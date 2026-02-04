@@ -12,7 +12,7 @@ from spy.textbuilder import TextBuilder
 from spy.vm.cell import W_Cell
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc
 from spy.vm.module import W_Module
-from spy.vm.modules.unsafe.ptr import W_RawPtr, W_RawPtrType
+from spy.vm.modules.unsafe.ptr import W_Ptr, W_PtrType
 from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import W_I32
 from spy.vm.struct import W_StructType
@@ -203,9 +203,9 @@ class CModuleWriter:
             self.tbc_globals.wl(f"{c_type} {fqn.c_name} = {intval};")
 
         # ==== misc consts ====
-        elif isinstance(w_T, W_RawPtrType):
+        elif isinstance(w_T, W_PtrType):
             # for now, we only support NULL constnts
-            assert isinstance(w_obj, W_RawPtr)
+            assert isinstance(w_obj, W_Ptr)
             assert w_obj.addr == 0, (
                 "only NULL pointers can be stored in constants for now"
             )

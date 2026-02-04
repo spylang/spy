@@ -3,7 +3,7 @@ from spy.tests.support import CompilerTest, expect_errors, only_C, only_interp
 from spy.tests.wasm_wrapper import WasmPtr
 from spy.vm.b import B
 from spy.vm.modules.unsafe import UNSAFE
-from spy.vm.modules.unsafe.ptr import W_RawPtr
+from spy.vm.modules.unsafe.ptr import W_Ptr
 
 
 class TestUnsafePtr(CompilerTest):
@@ -347,10 +347,10 @@ class TestUnsafePtr(CompilerTest):
         """)
         w_p = mod.foo()
         if self.backend in ("interp", "doppler"):
-            assert isinstance(w_p, W_RawPtr)
+            assert isinstance(w_p, W_Ptr)
             assert w_p.addr == 0
             assert w_p.length == 0
-            assert repr(w_p) == "W_RawPtr(i32, NULL)"
+            assert repr(w_p) == "W_Ptr('raw', i32, NULL)"
         else:
             assert isinstance(w_p, WasmPtr)
             assert w_p.addr == 0

@@ -24,7 +24,7 @@ on each:
     point to
 """
 
-from typing import TYPE_CHECKING, Annotated, Any, Optional, Self
+from typing import TYPE_CHECKING, Annotated, Any, Literal, Optional, Self
 
 import fixedint
 
@@ -47,13 +47,16 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
+MEMKIND = Literal["raw", "gc"]
+
+
 @UNSAFE.builtin_func(color="blue", kind="generic")
 def w_raw_ptr(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     """
     The raw_ptr[T] generic type
     """
     fqn = FQN("unsafe").join("raw_ptr", [w_T.fqn])  # unsafe::raw_ptr[i32]
-    w_ptrtype = W_RawPtrType.from_itemtype(fqn, w_T)
+    w_ptrtype = W_PtrType.from_itemtype(fqn, "raw", w_T)
     return w_ptrtype
 
 
@@ -73,12 +76,13 @@ def w_raw_ref(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     return w_reftype
 
 
-@UNSAFE.builtin_type("__memloc_type")
+@UNSAFE.builtin_type("_memloctype")
 class W_MemLocType(W_Type):
     """
     The base type for all ptrs and refs
     """
 
+    memkind: MEMKIND
     w_itemT: Annotated[W_Type, Member("itemtype")]
 
     def spy_dir(self, vm: "SPyVM") -> set[str]:
@@ -88,15 +92,16 @@ class W_MemLocType(W_Type):
 
 
 @UNSAFE.builtin_type("rawptrtype")
-class W_RawPtrType(W_MemLocType):
+class W_PtrType(W_MemLocType):
     """
     A specialized ptr type.
-    ptr[i32] -> W_RawPtrType(fqn, B.w_i32)
+    raw_ptr[i32] -> W_PtrType(fqn, "raw", B.w_i32)
     """
 
     @classmethod
-    def from_itemtype(cls, fqn: FQN, w_itemT: W_Type) -> Self:
-        w_T = cls.from_pyclass(fqn, W_RawPtr)
+    def from_itemtype(cls, fqn: FQN, memkind: MEMKIND, w_itemT: W_Type) -> Self:
+        w_T = cls.from_pyclass(fqn, W_Ptr)
+        w_T.memkind = memkind
         w_T.w_itemT = w_itemT
         return w_T
 
@@ -129,13 +134,13 @@ class W_RawPtrType(W_MemLocType):
     def w_GET_NULL(vm: "SPyVM", wam_self: W_MetaArg) -> W_OpSpec:
         # NOTE: the precise spelling of the FQN of NULL matters! The
         # C backend emits a #define to match it, see Context.new_ptr_type
-        w_self = wam_self.blue_ensure(vm, UNSAFE.w_rawptrtype)
-        assert isinstance(w_self, W_RawPtrType)
-        w_NULL = W_RawPtr(w_self, 0, 0)
+        w_self = wam_self.blue_ensure(vm, UNSAFE.w__memloctype)
+        assert isinstance(w_self, W_MemLocType)
+        w_NULL = W_Ptr(w_self, 0, 0)
         vm.add_global(w_self.fqn.join("NULL"), w_NULL)
 
-        @vm.register_builtin_func(w_self.fqn, color="blue")  # ptr[i32]::get_NULL
-        def w_get_NULL(vm: "SPyVM") -> Annotated["W_RawPtr", w_self]:
+        @vm.register_builtin_func(w_self.fqn, color="blue")  # raw_ptr[i32]::get_NULL
+        def w_get_NULL(vm: "SPyVM") -> Annotated["W_Ptr", w_self]:
             return w_NULL
 
         return W_OpSpec(w_get_NULL, [])
@@ -149,13 +154,13 @@ class W_RawRefType(W_MemLocType):
         w_T.w_itemT = w_itemT
         return w_T
 
-    def as_ptrtype(self, vm: "SPyVM") -> W_RawPtrType:
+    def as_ptrtype(self, vm: "SPyVM") -> W_PtrType:
         w_ptrtype = vm.fast_call(w_raw_ptr, [self.w_itemT])
-        assert isinstance(w_ptrtype, W_RawPtrType)
+        assert isinstance(w_ptrtype, W_PtrType)
         return w_ptrtype
 
 
-@UNSAFE.builtin_type("__memloc")
+@UNSAFE.builtin_type("_memloc")
 class W_MemLoc(W_Object):
     """
     Base class for raw_ptr, raw_ref, gc_ptr, gc_ref
@@ -257,7 +262,7 @@ class W_MemLoc(W_Object):
             return W_OpSpec(w_func, [wam_self, wam_name, wam_offset, wam_v])
 
 
-class W_RawPtr(W_MemLoc):
+class W_Ptr(W_MemLoc):
     """
     An actual ptr
     """
@@ -267,10 +272,11 @@ class W_RawPtr(W_MemLoc):
     def __repr__(self) -> str:
         clsname = self.__class__.__name__
         t = self.w_T.w_itemT.fqn.human_name
+        k = self.w_T.memkind
         if self.addr == 0:
-            return f"{clsname}({t}, NULL)"
+            return f"{clsname}({k!r}, {t}, NULL)"
         else:
-            return f"{clsname}({t}, 0x{self.addr:x}, length={self.length})"
+            return f"{clsname}({k!r}, {t}, 0x{self.addr:x}, length={self.length})"
 
     def spy_key(self, vm: "SPyVM") -> Any:
         t = self.w_T.spy_key(vm)
@@ -279,10 +285,10 @@ class W_RawPtr(W_MemLoc):
     @builtin_method("__getitem__", color="blue", kind="metafunc")
     @staticmethod
     def w_GETITEM(vm: "SPyVM", wam_self: W_MetaArg, wam_i: W_MetaArg) -> W_OpSpec:
-        w_T = W_RawPtr._get_memlocT(wam_self)
+        w_T = W_Ptr._get_memlocT(wam_self)
         w_itemT = w_T.w_itemT
         ITEMSIZE = sizeof(w_itemT)
-        PTR = Annotated[W_RawPtr, w_T]
+        PTR = Annotated[W_Ptr, w_T]
 
         if w_itemT.is_struct(vm):
             w_itemT = vm.fast_call(w_raw_ref, [w_itemT])  # type: ignore
@@ -323,10 +329,10 @@ class W_RawPtr(W_MemLoc):
     def w_SETITEM(
         vm: "SPyVM", wam_self: W_MetaArg, wam_i: W_MetaArg, wam_v: W_MetaArg
     ) -> W_OpSpec:
-        w_T = W_RawPtr._get_memlocT(wam_self)
+        w_T = W_Ptr._get_memlocT(wam_self)
         w_itemT = w_T.w_itemT
         ITEMSIZE = sizeof(w_itemT)
-        PTR = Annotated[W_RawPtr, w_T]
+        PTR = Annotated[W_Ptr, w_T]
         ITEM = Annotated[W_Object, w_itemT]
         irtag = IRTag("ptr.store")
 
@@ -354,8 +360,8 @@ class W_RawPtr(W_MemLoc):
         vm: "SPyVM", wam_expT: W_MetaArg, wam_gotT: W_MetaArg, wam_x: W_MetaArg
     ) -> W_OpSpec:
         w_T = wam_expT.w_blueval
-        w_ptrtype = W_RawPtr._get_memlocT(wam_x)
-        PTR = Annotated[W_RawPtr, w_ptrtype]
+        w_ptrtype = W_Ptr._get_memlocT(wam_x)
+        PTR = Annotated[W_Ptr, w_ptrtype]
 
         if w_T is B.w_bool:
 
@@ -424,7 +430,7 @@ def w_ptr_getfield(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
 
     @vm.register_builtin_func("unsafe", f"ptr_getfield_{by}", [w_T.fqn], irtag=tag)
     def w_ptr_getfield_T(
-        vm: "SPyVM", w_ptr: W_RawPtr, w_name: W_Str, w_offset: W_I32
+        vm: "SPyVM", w_ptr: W_Ptr, w_name: W_Str, w_offset: W_I32
     ) -> T:
         """
         NOTE: w_name is ignored here, but it's used by the C backend
@@ -448,7 +454,7 @@ def w_ptr_setfield(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
 
     @vm.register_builtin_func("unsafe", "ptr_setfield", [w_T.fqn], irtag=irtag)
     def w_ptr_setfield_T(
-        vm: "SPyVM", w_ptr: W_RawPtr, w_name: W_Str, w_offset: W_I32, w_val: T
+        vm: "SPyVM", w_ptr: W_Ptr, w_name: W_Str, w_offset: W_I32, w_val: T
     ) -> None:
         """
         NOTE: w_name is ignored here, but it's used by the C backend
