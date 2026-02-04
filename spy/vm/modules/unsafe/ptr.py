@@ -82,7 +82,23 @@ def w_raw_ref(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     vm.make_fqn_const(w_ptrtype)
     # 2. create raw_ref[T]
     fqn = FQN("unsafe").join("raw_ref", [w_T.fqn])  # unsafe::raw_ref[i32]
-    w_reftype = W_RawRefType.from_itemtype(fqn, w_T)
+    w_reftype = W_RefType.from_itemtype(fqn, "raw", w_T)
+    return w_reftype
+
+
+@UNSAFE.builtin_func(color="blue", kind="generic")
+def w_gc_ref(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
+    """
+    The gc_ref[T] generic type
+    """
+    # the C backend assumes that for every gc_ref[T], the corresponding gc_ptr[T]
+    # exists. Let's make sure it does:
+    # 1. create gc_ptr[T]
+    w_ptrtype = vm.fast_call(w_gc_ptr, [w_T])
+    vm.make_fqn_const(w_ptrtype)
+    # 2. create gc_ref[T]
+    fqn = FQN("unsafe").join("gc_ref", [w_T.fqn])  # unsafe::gc_ref[i32]
+    w_reftype = W_RefType.from_itemtype(fqn, "gc", w_T)
     return w_reftype
 
 
@@ -157,15 +173,26 @@ class W_PtrType(W_MemLocType):
 
 
 @UNSAFE.builtin_type("rawreftype")
-class W_RawRefType(W_MemLocType):
+class W_RefType(W_MemLocType):
+    """
+    A specialized ref type.
+    raw_ref[i32] -> W_RefType(fqn, "raw", B.w_i32)
+    gc_ref[i32] -> W_RefType(fqn, "gc", B.w_i32)
+    """
+
     @classmethod
-    def from_itemtype(cls, fqn: FQN, w_itemT: W_Type) -> Self:
-        w_T = cls.from_pyclass(fqn, W_RawRef)
+    def from_itemtype(cls, fqn: FQN, memkind: MEMKIND, w_itemT: W_Type) -> Self:
+        w_T = cls.from_pyclass(fqn, W_Ref)
+        w_T.memkind = memkind
         w_T.w_itemT = w_itemT
         return w_T
 
     def as_ptrtype(self, vm: "SPyVM") -> W_PtrType:
-        w_ptrtype = vm.fast_call(w_raw_ptr, [self.w_itemT])
+        if self.memkind == "raw":
+            w_ptr_func = w_raw_ptr
+        else:
+            w_ptr_func = w_gc_ptr
+        w_ptrtype = vm.fast_call(w_ptr_func, [self.w_itemT])
         assert isinstance(w_ptrtype, W_PtrType)
         return w_ptrtype
 
@@ -259,9 +286,10 @@ class W_MemLoc(W_Object):
         wam_offset = W_MetaArg.from_w_obj(vm, vm.wrap(offset))
 
         if opkind == "get":
-            # ptr_getfield[field_T](ptr, name, offset)
+            # ptr_getfield[field_T, memkind](ptr, name, offset)
             assert wam_v is None
-            w_func = vm.fast_call(UNSAFE.w_ptr_getfield, [w_field.w_T])
+            w_memkind = vm.wrap(w_T.memkind)
+            w_func = vm.fast_call(UNSAFE.w_ptr_getfield, [w_field.w_T, w_memkind])
             assert isinstance(w_func, W_Func)
             return W_OpSpec(w_func, [wam_self, wam_name, wam_offset])
         else:
@@ -301,7 +329,8 @@ class W_Ptr(W_MemLoc):
         PTR = Annotated[W_Ptr, w_T]
 
         if w_itemT.is_struct(vm):
-            w_itemT = vm.fast_call(w_raw_ref, [w_itemT])  # type: ignore
+            w_ref_func = w_raw_ref if w_T.memkind == "raw" else w_gc_ref
+            w_itemT = vm.fast_call(w_ref_func, [w_itemT])  # type: ignore
             by = "byref"
         else:
             by = "byval"
@@ -323,8 +352,8 @@ class W_Ptr(W_MemLoc):
                 raise SPyError.simple("W_PanicError", msg, "", w_loc.loc)
 
             if by == "byref":
-                assert isinstance(w_itemT, W_RawRefType)
-                return W_RawRef(w_itemT, addr, length - i)
+                assert isinstance(w_itemT, W_RefType)
+                return W_Ref(w_itemT, addr, length - i)
             else:
                 return vm.call_generic(UNSAFE.w_mem_read, [w_itemT], [vm.wrap(addr)])
 
@@ -387,12 +416,12 @@ class W_Ptr(W_MemLoc):
             return W_OpSpec.NULL
 
 
-class W_RawRef(W_MemLoc):
+class W_Ref(W_MemLoc):
     __spy_storage_category__ = "value"
 
     def spy_key(self, vm: "SPyVM") -> Any:
         t = self.w_T.spy_key(vm)
-        return ("raw_ref", t, self.addr, self.length)
+        return ("ref", t, self.addr, self.length)
 
     @builtin_method("__convert_to__", color="blue", kind="metafunc")
     @staticmethod
@@ -400,10 +429,10 @@ class W_RawRef(W_MemLoc):
         vm: "SPyVM", wam_expT: W_MetaArg, wam_gotT: W_MetaArg, wam_x: W_MetaArg
     ) -> W_OpSpec:
         w_T = wam_expT.w_blueval
-        w_reftype = W_RawRef._get_memlocT(wam_x)
-        assert isinstance(w_reftype, W_RawRefType)
+        w_reftype = W_Ref._get_memlocT(wam_x)
+        assert isinstance(w_reftype, W_RefType)
         T = Annotated[W_Object, w_T]
-        REF = Annotated[W_RawRef, w_reftype]
+        REF = Annotated[W_Ref, w_reftype]
 
         if w_T is w_reftype.w_itemT:
             # convert 'raw_ref[T]' into 'T'
@@ -421,12 +450,14 @@ class W_RawRef(W_MemLoc):
 
 
 @UNSAFE.builtin_func(color="blue")
-def w_ptr_getfield(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
+def w_ptr_getfield(vm: "SPyVM", w_T: W_Type, w_memkind: W_Str) -> W_Dynamic:
+    memkind = vm.unwrap_str(w_memkind)
     # fields can be returned "by value" or "by reference". Primitive types
     # returned by value, but struct types are always returned by reference
     # (i.e., we return a pointer to it).
     if w_T.is_struct(vm):
-        w_T = vm.fast_call(w_raw_ref, [w_T])  # type: ignore
+        w_ref_func = w_raw_ref if memkind == "raw" else w_gc_ref
+        w_T = vm.fast_call(w_ref_func, [w_T])  # type: ignore
         by = "byref"
     else:
         by = "byval"
@@ -436,6 +467,7 @@ def w_ptr_getfield(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     # example FQNs:
     #     unsafe::ptr_getfield_byval[i32]
     #     unsafe::ptr_getfield_byref[raw_ref[Point]]
+    #     unsafe::ptr_getfield_byref[gc_ref[Point]]
     tag = IRTag("ptr.getfield", by=by)
 
     @vm.register_builtin_func("unsafe", f"ptr_getfield_{by}", [w_T.fqn], irtag=tag)
@@ -447,8 +479,8 @@ def w_ptr_getfield(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
         """
         addr = w_ptr.addr + vm.unwrap_i32(w_offset)
         if by == "byref":
-            assert isinstance(w_T, W_RawRefType)
-            return W_RawRef(w_T, addr, 1)
+            assert isinstance(w_T, W_RefType)
+            return W_Ref(w_T, addr, 1)
         else:
             return vm.call_generic(UNSAFE.w_mem_read, [w_T], [vm.wrap(addr)])
 

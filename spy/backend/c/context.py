@@ -8,7 +8,7 @@ from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.jsffi import JSFFI
 from spy.vm.modules.posix import POSIX
 from spy.vm.modules.rawbuffer import RB
-from spy.vm.modules.unsafe.ptr import W_RawRefType
+from spy.vm.modules.unsafe.ptr import W_RefType
 from spy.vm.object import W_Type
 from spy.vm.vm import SPyVM
 

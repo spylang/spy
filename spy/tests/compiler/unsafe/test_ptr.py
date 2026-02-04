@@ -16,10 +16,14 @@ def memkind(request):
 class TestUnsafePtr(CompilerTest):
     @only_interp
     def test_ptrtype_repr(self):
-        w_ptrtype = self.vm.fast_call(UNSAFE.w_raw_ptr, [B.w_i32])
-        w_reftype = self.vm.fast_call(UNSAFE.w_raw_ref, [B.w_i32])
-        assert repr(w_ptrtype) == "<spy type 'unsafe::raw_ptr[i32]'>"
-        assert repr(w_reftype) == "<spy type 'unsafe::raw_ref[i32]'>"
+        w_raw_ptrtype = self.vm.fast_call(UNSAFE.w_raw_ptr, [B.w_i32])
+        w_raw_reftype = self.vm.fast_call(UNSAFE.w_raw_ref, [B.w_i32])
+        w_gc_ptrtype = self.vm.fast_call(UNSAFE.w_gc_ptr, [B.w_i32])
+        w_gc_reftype = self.vm.fast_call(UNSAFE.w_gc_ref, [B.w_i32])
+        assert repr(w_raw_ptrtype) == "<spy type 'unsafe::raw_ptr[i32]'>"
+        assert repr(w_raw_reftype) == "<spy type 'unsafe::raw_ref[i32]'>"
+        assert repr(w_gc_ptrtype) == "<spy type 'unsafe::gc_ptr[i32]'>"
+        assert repr(w_gc_reftype) == "<spy type 'unsafe::gc_ref[i32]'>"
 
     @only_interp
     def test_itemtype(self):
@@ -60,19 +64,20 @@ class TestUnsafePtr(CompilerTest):
         assert mod.bar(1) == 3.4
         assert mod.bar(2) == 5.6
 
-    def test_out_of_bound(self):
-        mod = self.compile("""
-        from unsafe import raw_alloc, raw_ptr
+    def test_out_of_bound(self, memkind):
+        k = memkind
+        mod = self.compile(f"""
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr
 
         def foo(i: i32) -> i32:
-            buf = raw_alloc[i32](3)
+            buf = k_alloc[i32](3)
             buf[0] = 0
             buf[1] = 100
             buf[2] = 200
             return buf[i]
 
         def bar(i: i32, v: i32) -> i32:
-            buf = raw_alloc[i32](3)
+            buf = k_alloc[i32](3)
             buf[0] = 0
             buf[1] = 100
             buf[2] = 200
@@ -90,17 +95,18 @@ class TestUnsafePtr(CompilerTest):
         with SPyError.raises("W_PanicError", match="ptr_store out of bounds"):
             mod.bar(-5, 300)
 
-    def test_ptr_to_struct(self):
-        mod = self.compile("""
-        from unsafe import raw_alloc, raw_ptr, raw_ref
+    def test_ptr_to_struct(self, memkind):
+        k = memkind
+        mod = self.compile(f"""
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, {k}_ref as k_ref
 
         @struct
         class Point:
             x: i32
             y: f64
 
-        def make_point(x: i32, y: f64) -> raw_ptr[Point]:
-            p = raw_alloc[Point](1)
+        def make_point(x: i32, y: f64) -> k_ptr[Point]:
+            p = k_alloc[Point](1)
             p.x = x
             p.y = y
             return p
@@ -110,9 +116,9 @@ class TestUnsafePtr(CompilerTest):
             return p.x + p.y
 
         def with_ref(x: i32, y: f64) -> f64:
-            # reading an item out of a ptr returns a raw_ref
+            # reading an item out of a ptr returns a ref
             p = make_point(x, y)
-            r: raw_ref[Point] = p[0]
+            r: k_ref[Point] = p[0]
             return r.x + r.y
 
         """)
