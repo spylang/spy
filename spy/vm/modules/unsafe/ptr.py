@@ -61,6 +61,16 @@ def w_raw_ptr(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
 
 
 @UNSAFE.builtin_func(color="blue", kind="generic")
+def w_gc_ptr(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
+    """
+    The gc_ptr[T] generic type
+    """
+    fqn = FQN("unsafe").join("gc_ptr", [w_T.fqn])  # unsafe::gc_ptr[i32]
+    w_ptrtype = W_PtrType.from_itemtype(fqn, "gc", w_T)
+    return w_ptrtype
+
+
+@UNSAFE.builtin_func(color="blue", kind="generic")
 def w_raw_ref(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     """
     The raw_ref[T] generic type

@@ -1,9 +1,16 @@
+import pytest
+
 from spy.errors import SPyError
 from spy.tests.support import CompilerTest, expect_errors, only_C, only_interp
 from spy.tests.wasm_wrapper import WasmPtr
 from spy.vm.b import B
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.modules.unsafe.ptr import W_Ptr
+
+
+@pytest.fixture(params=["raw", "gc"])
+def memkind(request):
+    return request.param
 
 
 class TestUnsafePtr(CompilerTest):
@@ -30,18 +37,19 @@ class TestUnsafePtr(CompilerTest):
         w_T = mod.get_itemtype_ref(unwrap=False)
         assert w_T is B.w_f64
 
-    def test_raw_alloc(self):
-        mod = self.compile("""
-        from unsafe import raw_alloc, raw_ptr
+    def test_alloc(self, memkind):
+        k = memkind
+        mod = self.compile(f"""
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr
 
         def foo() -> i32:
-            buf = raw_alloc[i32](1)
+            buf: k_ptr[i32] = k_alloc[i32](1)
             buf[0] = 42
             return buf[0]
 
         def bar(i: i32) -> f64:
             # make sure that we can use other item types as well
-            buf = raw_alloc[f64](3)
+            buf = k_alloc[f64](3)
             buf[0] = 1.2
             buf[1] = 3.4
             buf[2] = 5.6
