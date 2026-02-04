@@ -161,7 +161,7 @@ class W_MemLoc(W_Object):
     Base class for raw_ptr, raw_ref, gc_ptr, gc_ref
     """
 
-    w_ptrtype: W_MemLocType
+    w_T: W_MemLocType
     # XXX: this works only if we target 32bit platforms such as wasm32, but we
     # need to think of a more general solution
     addr: fixedint.Int32
@@ -169,7 +169,7 @@ class W_MemLoc(W_Object):
 
     def __init__(
         self,
-        w_ptrtype: W_MemLocType,
+        w_T: W_MemLocType,
         addr: int | fixedint.Int32,
         length: int | fixedint.Int32,
     ) -> None:
@@ -179,21 +179,21 @@ class W_MemLoc(W_Object):
             assert length == 0
         else:
             assert length >= 1
-        self.w_ptrtype = w_ptrtype
+        self.w_T = w_T
         self.addr = fixedint.Int32(addr)
         self.length = fixedint.Int32(length)
 
     def spy_get_w_type(self, vm: "SPyVM") -> W_Type:
-        return self.w_ptrtype
+        return self.w_T
 
     def spy_unwrap(self, vm: "SPyVM") -> "W_MemLoc":
         return self
 
     @staticmethod
-    def _get_ptrtype(wam_ptr: W_MetaArg) -> W_MemLocType:
-        w_ptrtype = wam_ptr.w_static_T
-        if isinstance(w_ptrtype, W_MemLocType):
-            return w_ptrtype
+    def _get_memlocT(wam_self: W_MetaArg) -> W_MemLocType:
+        w_memlocT = wam_self.w_static_T
+        if isinstance(w_memlocT, W_MemLocType):
+            return w_memlocT
         else:
             # I think we can get here if we have something typed 'ptr' as
             # opposed to e.g. 'ptr[i32]'
@@ -202,30 +202,30 @@ class W_MemLoc(W_Object):
     @builtin_method("__getattribute__", color="blue", kind="metafunc")
     @staticmethod
     def w_GETATTRIBUTE(
-        vm: "SPyVM", wam_ptr: W_MetaArg, wam_name: W_MetaArg
+        vm: "SPyVM", wam_self: W_MetaArg, wam_name: W_MetaArg
     ) -> W_OpSpec:
-        return W_MemLoc.op_ATTR("get", vm, wam_ptr, wam_name, None)
+        return W_MemLoc.op_ATTR("get", vm, wam_self, wam_name, None)
 
     @builtin_method("__setattr__", color="blue", kind="metafunc")
     @staticmethod
     def w_SETATTR(
-        vm: "SPyVM", wam_ptr: W_MetaArg, wam_name: W_MetaArg, wam_v: W_MetaArg
+        vm: "SPyVM", wam_self: W_MetaArg, wam_name: W_MetaArg, wam_v: W_MetaArg
     ) -> W_OpSpec:
-        return W_MemLoc.op_ATTR("set", vm, wam_ptr, wam_name, wam_v)
+        return W_MemLoc.op_ATTR("set", vm, wam_self, wam_name, wam_v)
 
     @staticmethod
     def op_ATTR(
         opkind: str,
         vm: "SPyVM",
-        wam_ptr: W_MetaArg,
+        wam_self: W_MetaArg,
         wam_name: W_MetaArg,
         wam_v: Optional[W_MetaArg],
     ) -> W_OpSpec:
         """
         Implement both w_GETATTRIBUTE and w_SETATTR.
         """
-        w_ptrtype = W_MemLoc._get_ptrtype(wam_ptr)
-        w_itemT = w_ptrtype.w_itemT
+        w_T = W_MemLoc._get_memlocT(wam_self)
+        w_itemT = w_T.w_itemT
         # attributes are supported only on ptr-to-structs
         if not w_itemT.is_struct(vm):
             return W_OpSpec.NULL
@@ -248,13 +248,13 @@ class W_MemLoc(W_Object):
             assert wam_v is None
             w_func = vm.fast_call(UNSAFE.w_ptr_getfield, [w_field.w_T])
             assert isinstance(w_func, W_Func)
-            return W_OpSpec(w_func, [wam_ptr, wam_name, wam_offset])
+            return W_OpSpec(w_func, [wam_self, wam_name, wam_offset])
         else:
             # ptr_setfield[field_T](ptr, name, offset, v)
             assert wam_v is not None
             w_func = vm.fast_call(UNSAFE.w_ptr_setfield, [w_field.w_T])
             assert isinstance(w_func, W_Func)
-            return W_OpSpec(w_func, [wam_ptr, wam_name, wam_offset, wam_v])
+            return W_OpSpec(w_func, [wam_self, wam_name, wam_offset, wam_v])
 
 
 class W_RawPtr(W_MemLoc):
@@ -266,23 +266,23 @@ class W_RawPtr(W_MemLoc):
 
     def __repr__(self) -> str:
         clsname = self.__class__.__name__
-        t = self.w_ptrtype.w_itemT.fqn.human_name
+        t = self.w_T.w_itemT.fqn.human_name
         if self.addr == 0:
             return f"{clsname}({t}, NULL)"
         else:
             return f"{clsname}({t}, 0x{self.addr:x}, length={self.length})"
 
     def spy_key(self, vm: "SPyVM") -> Any:
-        t = self.w_ptrtype.spy_key(vm)
+        t = self.w_T.spy_key(vm)
         return ("ptr", t, self.addr, self.length)
 
     @builtin_method("__getitem__", color="blue", kind="metafunc")
     @staticmethod
-    def w_GETITEM(vm: "SPyVM", wam_ptr: W_MetaArg, wam_i: W_MetaArg) -> W_OpSpec:
-        w_ptrtype = W_RawPtr._get_ptrtype(wam_ptr)
-        w_itemT = w_ptrtype.w_itemT
+    def w_GETITEM(vm: "SPyVM", wam_self: W_MetaArg, wam_i: W_MetaArg) -> W_OpSpec:
+        w_T = W_RawPtr._get_memlocT(wam_self)
+        w_itemT = w_T.w_itemT
         ITEMSIZE = sizeof(w_itemT)
-        PTR = Annotated[W_RawPtr, w_ptrtype]
+        PTR = Annotated[W_RawPtr, w_T]
 
         if w_itemT.is_struct(vm):
             w_itemT = vm.fast_call(w_raw_ref, [w_itemT])  # type: ignore
@@ -293,7 +293,7 @@ class W_RawPtr(W_MemLoc):
         ITEM = Annotated[W_Object, w_itemT]
         irtag = IRTag("ptr.getitem")
 
-        @vm.register_builtin_func(w_ptrtype.fqn, f"getitem_{by}", irtag=irtag)
+        @vm.register_builtin_func(w_T.fqn, f"getitem_{by}", irtag=irtag)
         def w_ptr_getitem(vm: "SPyVM", w_ptr: PTR, w_i: W_I32, w_loc: W_Loc) -> ITEM:
             base = w_ptr.addr
             length = w_ptr.length
@@ -315,22 +315,22 @@ class W_RawPtr(W_MemLoc):
         # for now we explicitly pass a loc to use to construct a
         # W_PanicError. Probably we want a more generic way to do that instead
         # of hardcodid locs everywhere
-        wam_loc = W_MetaArg.from_w_obj(vm, W_Loc(wam_ptr.loc))
-        return W_OpSpec(w_ptr_getitem, [wam_ptr, wam_i, wam_loc])
+        wam_loc = W_MetaArg.from_w_obj(vm, W_Loc(wam_self.loc))
+        return W_OpSpec(w_ptr_getitem, [wam_self, wam_i, wam_loc])
 
     @builtin_method("__setitem__", color="blue", kind="metafunc")
     @staticmethod
     def w_SETITEM(
-        vm: "SPyVM", wam_ptr: W_MetaArg, wam_i: W_MetaArg, wam_v: W_MetaArg
+        vm: "SPyVM", wam_self: W_MetaArg, wam_i: W_MetaArg, wam_v: W_MetaArg
     ) -> W_OpSpec:
-        w_ptrtype = W_RawPtr._get_ptrtype(wam_ptr)
-        w_itemT = w_ptrtype.w_itemT
+        w_T = W_RawPtr._get_memlocT(wam_self)
+        w_itemT = w_T.w_itemT
         ITEMSIZE = sizeof(w_itemT)
-        PTR = Annotated[W_RawPtr, w_ptrtype]
+        PTR = Annotated[W_RawPtr, w_T]
         ITEM = Annotated[W_Object, w_itemT]
         irtag = IRTag("ptr.store")
 
-        @vm.register_builtin_func(w_ptrtype.fqn, "store", irtag=irtag)
+        @vm.register_builtin_func(w_T.fqn, "store", irtag=irtag)
         def w_ptr_store_T(
             vm: "SPyVM", w_ptr: PTR, w_i: W_I32, w_v: ITEM, w_loc: W_Loc
         ) -> None:
@@ -345,8 +345,8 @@ class W_RawPtr(W_MemLoc):
                 raise SPyError.simple("W_PanicError", msg, "", w_loc.loc)
             vm.call_generic(UNSAFE.w_mem_write, [w_itemT], [vm.wrap(addr), w_v])
 
-        wam_loc = W_MetaArg.from_w_obj(vm, W_Loc(wam_ptr.loc))
-        return W_OpSpec(w_ptr_store_T, [wam_ptr, wam_i, wam_v, wam_loc])
+        wam_loc = W_MetaArg.from_w_obj(vm, W_Loc(wam_self.loc))
+        return W_OpSpec(w_ptr_store_T, [wam_self, wam_i, wam_v, wam_loc])
 
     @builtin_method("__convert_to__", color="blue", kind="metafunc")
     @staticmethod
@@ -354,7 +354,7 @@ class W_RawPtr(W_MemLoc):
         vm: "SPyVM", wam_expT: W_MetaArg, wam_gotT: W_MetaArg, wam_x: W_MetaArg
     ) -> W_OpSpec:
         w_T = wam_expT.w_blueval
-        w_ptrtype = W_RawPtr._get_ptrtype(wam_x)
+        w_ptrtype = W_RawPtr._get_memlocT(wam_x)
         PTR = Annotated[W_RawPtr, w_ptrtype]
 
         if w_T is B.w_bool:
@@ -375,7 +375,7 @@ class W_RawRef(W_MemLoc):
     __spy_storage_category__ = "value"
 
     def spy_key(self, vm: "SPyVM") -> Any:
-        t = self.w_ptrtype.spy_key(vm)
+        t = self.w_T.spy_key(vm)
         return ("raw_ref", t, self.addr, self.length)
 
     @builtin_method("__convert_to__", color="blue", kind="metafunc")
@@ -384,7 +384,7 @@ class W_RawRef(W_MemLoc):
         vm: "SPyVM", wam_expT: W_MetaArg, wam_gotT: W_MetaArg, wam_x: W_MetaArg
     ) -> W_OpSpec:
         w_T = wam_expT.w_blueval
-        w_reftype = W_RawRef._get_ptrtype(wam_x)
+        w_reftype = W_RawRef._get_memlocT(wam_x)
         assert isinstance(w_reftype, W_RawRefType)
         T = Annotated[W_Object, w_T]
         REF = Annotated[W_RawRef, w_reftype]
