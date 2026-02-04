@@ -6,7 +6,6 @@ from spy.tests.support import CompilerTest, expect_errors, only_interp
 from spy.tests.wasm_wrapper import WasmPtr
 from spy.vm.b import B
 from spy.vm.modules.unsafe import UNSAFE
-from spy.vm.modules.unsafe.ptr import W_RawPtr
 from spy.vm.object import W_Type
 from spy.vm.struct import UnwrappedStruct
 
