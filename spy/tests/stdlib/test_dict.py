@@ -257,7 +257,7 @@ class TestDict(CompilerTest):
         mod = self.compile(src)
         assert mod.test() == 60
 
-    @skip_backends("doppler", "C", reason="FIXME")
+    @skip_backends("C", reason="FIXME")
     def test_literal_stdlib(self):
         mod = self.compile("""
         def foo() -> dict[i32, i32]:
@@ -268,7 +268,7 @@ class TestDict(CompilerTest):
         print(x)
         assert x == {0: 1, 50: 2, 30: 3}
 
-    @skip_backends("doppler", "C", reason="FIXME")
+    @skip_backends("C", reason="FIXME")
     def test_literal_preserves_order(self):
         mod = self.compile("""
         def foo() -> dict[i32, i32]:
@@ -290,7 +290,7 @@ class TestDict(CompilerTest):
         ):
             mod.foo()
 
-    @skip_backends("doppler", "C", reason="FIXME")
+    @skip_backends("C", reason="FIXME")
     def test_literal_single_element(self):
         # useful for single element type
         mod = self.compile("""
@@ -300,7 +300,7 @@ class TestDict(CompilerTest):
         x = mod.foo()
         assert x[42] == 100
 
-    @skip_backends("doppler", "C", reason="FIXME")
+    @skip_backends("C", reason="FIXME")
     def test_literal_mixed_value_types_key_value(self):
         # useful for mixed type support
         # type of x must be i32
