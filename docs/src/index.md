@@ -1,4 +1,4 @@
-# <img src="assets/logo.svg" width="60" style="vertical-align: middle;"> SPy
+# <img src="assets/logo.svg" width="60" style="vertical-align: middle;"> Home
 
 
 ## What is SPy?

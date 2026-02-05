@@ -1213,19 +1213,19 @@ class TestBasic(CompilerTest):
     @only_interp
     def test_automatic_forward_declaration(self):
         mod = self.compile("""
-        from unsafe import ptr
+        from unsafe import raw_ptr
 
         # we can use S even if it's declared later
-        def foo(s: S, p: ptr[S]) -> None:
+        def foo(s: S, p: raw_ptr[S]) -> None:
             pass
 
-        ptr_S1 = ptr[S] # using the forward decl
+        ptr_S1 = raw_ptr[S] # using the forward decl
 
         @struct
         class S:
             pass
 
-        ptr_S2 = ptr[S] # using the actual S
+        ptr_S2 = raw_ptr[S] # using the actual S
         """)
         w_mod = mod.w_mod
         w_foo = w_mod.getattr("foo")
@@ -1233,7 +1233,7 @@ class TestBasic(CompilerTest):
         w_ptr_S1 = w_mod.getattr("ptr_S1")
         w_ptr_S2 = w_mod.getattr("ptr_S2")
         #
-        expected_sig = "def(test::S, unsafe::ptr[test::S]) -> None"
+        expected_sig = "def(test::S, unsafe::raw_ptr[test::S]) -> None"
         assert w_foo.w_functype.fqn.human_name == expected_sig
         params = w_foo.w_functype.params
         assert params[0].w_T is w_S
@@ -1242,17 +1242,17 @@ class TestBasic(CompilerTest):
     @only_interp
     def test_forward_declaration_in_funcdef(self):
         mod = self.compile("""
-        from unsafe import ptr, gc_alloc
+        from unsafe import raw_ptr, raw_alloc
 
         @blue
         def foo() -> i32:
-            p: ptr[S]  # S is forward-declared at this point
+            p: raw_ptr[S]  # S is forward-declared at this point
 
             @struct
             class S:
                 x: i32
 
-            p = gc_alloc(S)(1)
+            p = raw_alloc[S](1)
             p.x = 42
             return p.x
         """)
