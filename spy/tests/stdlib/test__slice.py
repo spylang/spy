@@ -8,10 +8,10 @@ from spy.vm.struct import UnwrappedStruct
 class TestSlice(CompilerTest):
     def test__slice_module(self):
         src = """
-        def make_slice() -> Slice:
+        def make_slice() -> slice:
             return slice(0,1,2)
 
-        def make_slice_none() -> Slice:
+        def make_slice_none() -> slice:
             return slice(None, None, None)
         """
         mod = self.compile(src)
@@ -32,7 +32,7 @@ class TestSlice(CompilerTest):
         ) -> tuple[int, int, int]:
             src = f"""
                 def _get_indices() -> str:
-                    s: Slice = Slice({start}, {stop}, {step})
+                    s: slice = slice({start}, {stop}, {step})
                     indices = s.indices({length})
                     return str(indices.start) + ", " + str(indices.stop) + ", " + str(indices.step)
             """
