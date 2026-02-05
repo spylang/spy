@@ -1146,17 +1146,11 @@ class AbstractFrame:
         return W_MetaArg(self.vm, color, B.w_tuple, w_val, op.loc)
 
     def eval_expr_Dict(self, dict: ast.Dict) -> W_MetaArg:
-        # 0. empty dict[k, v] are hanlded as immutable dictionary.
-        # We need to know type of [k, v] (e.g. [str, i32])
+        # 0. empty dicts are special
         if len(dict.items) == 0:
-            # empty dict is not support yet.
-            # it will come along with compiler part.
-            raise SPyError.simple(
-                "W_WIP",
-                "empty dict literals are not supported yet",
-                "this is empty dict",
-                dict.loc,
-            )
+            w_T = SPY.w_EmptyDictType
+            w_val = SPY.w_empty_dict
+            return W_MetaArg(self.vm, "red", w_T, w_val, dict.loc)
 
         # 1. evaluate type of key, value then infer the whole items type.
         key_value_pair = []

@@ -489,6 +489,10 @@ class DopplerFrame(ASTFrame):
         return newlst
 
     def shift_expr_Dict(self, dict: ast.Dict, wam: W_MetaArg) -> ast.Expr:
+        if len(dict.items) == 0:
+            assert wam.w_static_T is SPY.w_EmptyDictType
+            return make_const(self.vm, dict.loc, SPY.w_empty_dict)
+
         # instantiate an empty dict
         w_T = wam.w_static_T
         fqn_new = w_T.fqn.join("__new__")

@@ -277,18 +277,13 @@ class TestDict(CompilerTest):
         x = mod.foo()
         assert list(x.keys()) == [1, 2, 3]
 
-    @skip_backends("doppler", "C", reason="FIXME")
-    def test_empty_dict_unsupport(self):
-        # this test must be removed when empty dict support is implemented.
-        # it will come along with compiler part.
+    def test_empty_dict_literal(self):
         mod = self.compile("""
-        def foo() -> dict[i32, i32]:
-            return {}
+        def foo() ->i32:
+            d: dict[i32, i32] = {}
+            return len(d)
         """)
-        with SPyError.raises(
-            "W_WIP", match="empty dict literals are not supported yet"
-        ):
-            mod.foo()
+        assert mod.foo() == 0
 
     @skip_backends("C", reason="FIXME")
     def test_literal_single_element(self):
