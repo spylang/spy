@@ -26,10 +26,11 @@ class TestSlice(CompilerTest):
         assert (sn.start_is_none, sn.stop_is_none, sn.step_is_none) == (1, 1, 1)
 
     def test__slice_indices(self):
-        def args_to_func_name(*args):
+        def args_to_func_name(*args: int | None) -> str:
             return "f" + "_".join(str(a).replace("-", "n") for a in args)
 
-        eq_list: list[tuple[tuple[int | None], tuple[int | None]]] = [
+        type i_N = int | None
+        eq_list: list[tuple[tuple[i_N, i_N, i_N, int], tuple[int, int, int]]] = [
             ((None, None, None, 10), (0, 10, 1)),
             ((None, None, 2, 10), (0, 10, 2)),
             ((1, None, 2, 10), (1, 10, 2)),
@@ -49,6 +50,7 @@ class TestSlice(CompilerTest):
             ((None, 8, -1, 10), (9, 8, -1)),
             ((None, 9, -1, 10), (9, 9, -1)),
             ((None, 10, -1, 10), (9, 9, -1)),
+            ((-100, 100, None, 10), (0, 10, 1)),
         ]
 
         src = "from _slice import tuple3"
@@ -65,12 +67,3 @@ class TestSlice(CompilerTest):
         for inp, out in eq_list:
             assert getattr(mod, args_to_func_name(*inp))() == out
         return
-
-        assert get_slice_indices(-100, 100, length=10) == get_slice_indices(
-            None, length=10
-        )
-        assert get_slice_indices(100, -100, -1, length=10) == get_slice_indices(
-            None, None, -1, length=10
-        )
-
-        assert get_slice_indices(-100, 100, 2, length=10) == (0, 10, 2)

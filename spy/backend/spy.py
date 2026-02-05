@@ -522,7 +522,10 @@ class SPyBackend:
         (start, stop, step) = [
             self.fmt_expr(exp) for exp in (node.start, node.stop, node.step)
         ]
-        hide_none = lambda val: val if val != "None" else ""
+
+        def hide_none(val: str) -> str:
+            return val if val != "None" else ""
+
         return f"{hide_none(start)}:{hide_none(stop)}{f':{step}' if hide_none(step) else ''}"
 
     def fmt_expr_Dict(self, node: ast.Dict) -> str:
