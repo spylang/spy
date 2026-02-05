@@ -90,10 +90,12 @@ def list(T):
                 return OpSpec(getitem_int)
             
             elif m_x.static_type == Slice:
-                def _py_list_slice_wrap(_self: _ListImpl, s: Slice) -> _ListImpl:
+                def getitem_slice(_self: _ListImpl, s: Slice) -> _ListImpl:
                     ll = _self.__ll__
                     unpacked = _py_slice_unpack(ll.length, s)
-                    new_length = _py_adjust_indexes(ll.length, unpacked.start, unpacked.stop, unpacked.step)
+                    new_length = _py_adjust_indexes(
+                        ll.length, unpacked.start, unpacked.stop, unpacked.step
+                    )
                     indices = s.indices(new_length)
 
                     if new_length <= 0: return []
@@ -119,7 +121,7 @@ def list(T):
                             cur += indices.step
 
                         return _ListImpl.__make__(new_data)
-                return OpSpec(_py_list_slice_wrap)
+                return OpSpec(getitem_slice)
             
             else:
                 raise TypeError("Subscript to list must be i32 or Slice, got " + str(m_x))

@@ -1,5 +1,4 @@
-import itertools
-from random import randint
+from textwrap import dedent
 
 from spy.tests.support import CompilerTest, only_interp
 from spy.vm.struct import UnwrappedStruct
@@ -27,41 +26,45 @@ class TestSlice(CompilerTest):
         assert (sn.start_is_none, sn.stop_is_none, sn.step_is_none) == (1, 1, 1)
 
     def test__slice_indices(self):
-        def get_slice_indices(
-            start=None, stop=None, step=None, *, length
-        ) -> tuple[int, int, int]:
-            src = f"""
-                from _slice import tuple3
-                def _get_indices() -> tuple3:
-                    s: slice = slice({start}, {stop}, {step})
-                    return s.indices({length})
-            """
-            mod = self.compile(
-                src,
-                f"slicetest{'_'.join(str(s).replace('-', 'n') for s in (start, stop, step))}",
-            )  # Modules must have unique names or they won't be reimported by the vm
-            result = mod._get_indices()
-            return result
+        def args_to_func_name(*args):
+            return "f" + "_".join(str(a).replace("-", "n") for a in args)
 
-        assert get_slice_indices(None, length=10) == (0, 10, 1)
-        assert get_slice_indices(None, None, 2, length=10) == (0, 10, 2)
-        assert get_slice_indices(1, None, 2, length=10) == (1, 10, 2)
-        assert get_slice_indices(None, None, -1, length=10) == (9, -1, -1)
-        assert get_slice_indices(None, None, -2, length=10) == (9, -1, -2)
-        assert get_slice_indices(3, None, -2, length=10) == (3, -1, -2)
-        # issue 3004 tests
-        assert get_slice_indices(None, -9, length=10) == (0, 1, 1)
-        assert get_slice_indices(None, -10, length=10) == (0, 0, 1)
-        assert get_slice_indices(None, -11, length=10) == (0, 0, 1)
-        assert get_slice_indices(None, -10, -1, length=10) == (9, 0, -1)
-        assert get_slice_indices(None, -11, -1, length=10) == (9, -1, -1)
-        assert get_slice_indices(None, -12, -1, length=10) == (9, -1, -1)
-        assert get_slice_indices(None, 9, length=10) == (0, 9, 1)
-        assert get_slice_indices(None, 10, length=10) == (0, 10, 1)
-        assert get_slice_indices(None, 11, length=10) == (0, 10, 1)
-        assert get_slice_indices(None, 8, -1, length=10) == (9, 8, -1)
-        assert get_slice_indices(None, 9, -1, length=10) == (9, 9, -1)
-        assert get_slice_indices(None, 10, -1, length=10) == (9, 9, -1)
+        eq_list: list[tuple[tuple[int | None], tuple[int | None]]] = [
+            ((None, None, None, 10), (0, 10, 1)),
+            ((None, None, 2, 10), (0, 10, 2)),
+            ((1, None, 2, 10), (1, 10, 2)),
+            ((None, None, -1, 10), (9, -1, -1)),
+            ((None, None, -2, 10), (9, -1, -2)),
+            ((3, None, -2, 10), (3, -1, -2)),
+            # issue 3004 tests
+            ((None, -9, None, 10), (0, 1, 1)),
+            ((None, -10, None, 10), (0, 0, 1)),
+            ((None, -11, None, 10), (0, 0, 1)),
+            ((None, -10, -1, 10), (9, 0, -1)),
+            ((None, -11, -1, 10), (9, -1, -1)),
+            ((None, -12, -1, 10), (9, -1, -1)),
+            ((None, 9, None, 10), (0, 9, 1)),
+            ((None, 10, None, 10), (0, 10, 1)),
+            ((None, 11, None, 10), (0, 10, 1)),
+            ((None, 8, -1, 10), (9, 8, -1)),
+            ((None, 9, -1, 10), (9, 9, -1)),
+            ((None, 10, -1, 10), (9, 9, -1)),
+        ]
+
+        src = "from _slice import tuple3"
+
+        for inp, _ in eq_list:
+            src += dedent(f"""
+            def {args_to_func_name(*inp)}() -> tuple3:
+                s: slice = slice({inp[0]}, {inp[1]}, {inp[2]})
+                return s.indices({inp[3]})
+            """)
+
+        mod = self.compile(src)
+
+        for inp, out in eq_list:
+            assert getattr(mod, args_to_func_name(*inp))() == out
+        return
 
         assert get_slice_indices(-100, 100, length=10) == get_slice_indices(
             None, length=10
