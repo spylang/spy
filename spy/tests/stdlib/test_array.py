@@ -54,19 +54,19 @@ class TestArray(CompilerTest):
     def test_from_buffer(self):
         src = """
         from array import array
-        from unsafe import ptr, gc_alloc
+        from unsafe import gc_ptr, gc_alloc
 
-        def alloc_buf(n: i32) -> ptr[i32]:
+        def alloc_buf(n: i32) -> gc_ptr[i32]:
             return gc_alloc[i32](n)
 
-        def store(p: ptr[i32], i: i32, v: i32) -> None:
+        def store(p: gc_ptr[i32], i: i32, v: i32) -> None:
             p[i] = v
 
-        def test1(buf: ptr[i32], l: i32) -> i32:
+        def test1(buf: gc_ptr[i32], l: i32) -> i32:
             a = array[i32, 1].from_buffer(buf, l)
             return a[0] + a[1] + a[2]
 
-        def test2(buf: ptr[i32], h: i32, w: i32) -> int:
+        def test2(buf: gc_ptr[i32], h: i32, w: i32) -> int:
             a = array[i32, 2].from_buffer(buf, h, w)
             return a[1, 0]
         """
@@ -135,15 +135,15 @@ class TestArray(CompilerTest):
     def test_array3_from_buffer(self):
         src = """
         from array import array
-        from unsafe import ptr, gc_alloc
+        from unsafe import gc_ptr, gc_alloc
 
-        def alloc_buf(n: i32) -> ptr[i32]:
+        def alloc_buf(n: i32) -> gc_ptr[i32]:
             return gc_alloc[i32](n)
 
-        def store(p: ptr[i32], i: i32, v: i32) -> None:
+        def store(p: gc_ptr[i32], i: i32, v: i32) -> None:
             p[i] = v
 
-        def test3(buf: ptr[i32], d: i32, h: i32, w: i32) -> int:
+        def test3(buf: gc_ptr[i32], d: i32, h: i32, w: i32) -> int:
             a = array[i32, 3].from_buffer(buf, d, h, w)
             return a[1, 0, 1]
         """

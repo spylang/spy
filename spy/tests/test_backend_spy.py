@@ -364,9 +364,9 @@ class TestSPyBackend(CompilerTest):
 
     def test_ptr(self):
         src = """
-        from unsafe import ptr
+        from unsafe import raw_ptr
 
-        def foo(p: ptr[i32]) -> None:
+        def foo(p: raw_ptr[i32]) -> None:
             pass
         """
         expected = """

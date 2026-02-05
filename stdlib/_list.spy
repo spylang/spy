@@ -4,7 +4,7 @@ SPy list module
 A generic dynamic array implementation similar to Python's list.
 """
 
-from unsafe import gc_alloc, ptr
+from unsafe import gc_alloc, gc_ptr
 from operator import OpSpec, MetaArg
 from __spy__ import interp_list, EmptyListType
 
@@ -18,11 +18,11 @@ def list(T):
     class ListData:
         length: i32
         capacity: i32
-        items: ptr[T]
+        items: gc_ptr[T]
 
     @struct
     class list_iterator:
-        lst: ptr[ListData]
+        lst: gc_ptr[ListData]
         i: i32
 
         def __next__(self) -> list_iterator:
@@ -36,7 +36,7 @@ def list(T):
 
     @struct
     class _ListImpl:
-        __ll__: ptr[ListData]
+        __ll__: gc_ptr[ListData]
 
         def __new__() -> _ListImpl:
             data = gc_alloc[ListData](1)

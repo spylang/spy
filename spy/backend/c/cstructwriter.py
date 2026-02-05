@@ -7,7 +7,7 @@ from spy.backend.c.cffiwriter import CFFIWriter
 from spy.backend.c.context import C_Type, Context
 from spy.fqn import FQN
 from spy.textbuilder import TextBuilder
-from spy.vm.modules.unsafe.ptr import W_RawPtrType, W_RawRefType
+from spy.vm.modules.unsafe.ptr import W_PtrType, W_RefType
 from spy.vm.object import W_Type
 from spy.vm.struct import W_StructType
 from spy.vm.vm import SPyVM
@@ -98,10 +98,10 @@ class CStructWriter:
             assert fqn == w_type.fqn  # sanity check
             if isinstance(w_type, W_StructType):
                 self.emit_StructType(fqn, w_type)
-            elif isinstance(w_type, W_RawPtrType):
+            elif isinstance(w_type, W_PtrType):
                 self.emit_PtrType(fqn, w_type)
-            elif isinstance(w_type, W_RawRefType):
-                self.emit_RawRefType(fqn, w_type)
+            elif isinstance(w_type, W_RefType):
+                self.emit_RefType(fqn, w_type)
             else:
                 assert False, f"Unknown type: {w_type}"
 
@@ -131,13 +131,13 @@ class CStructWriter:
         tb.wl("};")
         tb.wl("")
 
-    def emit_PtrType(self, fqn: FQN, w_ptrtype: W_RawPtrType) -> None:
+    def emit_PtrType(self, fqn: FQN, w_ptrtype: W_PtrType) -> None:
         c_ptrtype = C_Type(w_ptrtype.fqn.c_name)
-        w_itemtype = w_ptrtype.w_itemtype
-        c_itemtype = self.ctx.w2c(w_itemtype)
+        w_itemT = w_ptrtype.w_itemT
+        c_itemT = self.ctx.w2c(w_itemT)
         self.tbh_fwdecl.wb(f"""
         typedef struct {c_ptrtype} {{
-            {c_itemtype} *p;
+            {c_itemT} *p;
         #ifdef SPY_DEBUG
             ptrdiff_t length;
         #endif
@@ -145,13 +145,14 @@ class CStructWriter:
         """)
         self.tbh_fwdecl.wl()
 
+        memkind = w_ptrtype.memkind
         self.tbh_ptrs_def.wb(f"""
-        SPY_PTR_FUNCTIONS({c_ptrtype}, {c_itemtype});
+        SPY_PTR_FUNCTIONS({memkind}, {c_ptrtype}, {c_itemT});
         #define {c_ptrtype}$NULL (({c_ptrtype}){{0}})
         """)
         self.tbh_ptrs_def.wl()
 
-    def emit_RawRefType(self, fqn: FQN, w_reftype: W_RawRefType) -> None:
+    def emit_RefType(self, fqn: FQN, w_reftype: W_RefType) -> None:
         w_ptrtype = w_reftype.as_ptrtype(self.ctx.vm)
         c_reftype = C_Type(w_reftype.fqn.c_name)
         c_ptrtype = C_Type(w_ptrtype.fqn.c_name)

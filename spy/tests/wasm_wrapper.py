@@ -11,7 +11,7 @@ from spy.vm.b import TYPES, B
 from spy.vm.cell import W_Cell
 from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
 from spy.vm.modules.rawbuffer import RB
-from spy.vm.modules.unsafe.ptr import W_RawPtrType
+from spy.vm.modules.unsafe.ptr import W_PtrType
 from spy.vm.object import W_Type
 from spy.vm.str import ll_spy_Str_new
 from spy.vm.struct import UnwrappedStruct, W_StructType
@@ -94,7 +94,7 @@ class WasmFuncWrapper:
         elif w_T is B.w_str:
             # XXX: with the GC, we need to think how to keep this alive
             return ll_spy_Str_new(self.ll, pyval)
-        elif isinstance(w_T, W_RawPtrType):
+        elif isinstance(w_T, W_PtrType):
             assert isinstance(pyval, WasmPtr)
             return (pyval.addr, pyval.length)
         elif isinstance(w_T, W_StructType):
@@ -148,7 +148,7 @@ class WasmFuncWrapper:
             length = self.ll.mem.read_i32(addr)
             buf = self.ll.mem.read(addr + 8, length)
             return buf
-        elif isinstance(w_T, W_RawPtrType):
+        elif isinstance(w_T, W_PtrType):
             # this assumes that we compiled libspy with SPY_DEBUG:
             #   - checked ptrs are represented as a struct { addr; length }
             #   - res contains a a list [addr, length] (because of WASM
@@ -222,7 +222,7 @@ def unflatten_struct(w_T: W_StructType, flat_values: list[Any]) -> UnwrappedStru
             if isinstance(w_field.w_T, W_StructType):
                 nested_result, idx = unflatten(w_field.w_T, idx)
                 content[w_field.name] = nested_result
-            elif isinstance(w_field.w_T, W_RawPtrType):
+            elif isinstance(w_field.w_T, W_PtrType):
                 # pointers are represented as {addr, length} in C/WASM
                 if idx + 1 >= len(flat_values):
                     raise ValueError(

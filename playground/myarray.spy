@@ -5,7 +5,7 @@ It implements the basics of a generic array type
 """
 
 from operator import OpSpec, MetaArg
-from unsafe import gc_alloc, ptr
+from unsafe import gc_alloc, gc_ptr
 
 
 @blue
@@ -14,7 +14,7 @@ def ArrayData(DTYPE):
     class _ArrayData:
         length: i32
         capacity: i32
-        items: ptr[DTYPE]
+        items: gc_ptr[DTYPE]
 
     return _ArrayData
 
@@ -29,7 +29,7 @@ def ndarray1(DTYPE):
 
     @struct
     class ndarray:
-        __ll__: ptr[ArrayData(DTYPE)]
+        __ll__: gc_ptr[ArrayData(DTYPE)]
 
         def __new__(length: i32) -> ndarray:
             data = gc_alloc(ArrayData(DTYPE))(1)
