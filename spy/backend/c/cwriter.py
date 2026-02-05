@@ -466,18 +466,60 @@ class CFuncWriter:
         else:
             return self.fmt_generic_call(fqn, call)
 
+    def _assignexpr_parts(self, expr: ast.Expr) -> tuple[str, ast.Expr] | None:
+        if isinstance(expr, ast.AssignExpr):
+            return expr.target.value, expr.value
+        if isinstance(expr, ast.AssignExprLocal):
+            return expr.target.value, expr.value
+        if isinstance(expr, ast.AssignExprCell):
+            return expr.target_fqn.c_name, expr.value
+        return None
+
+    def _fmt_call_args(self, args: list[ast.Expr]) -> tuple[list[C.Expr], list[C.Expr]]:
+        has_assignexpr = False
+        for arg in args:
+            if self._assignexpr_parts(arg) is not None:
+                has_assignexpr = True
+        if not has_assignexpr:
+            return [self.fmt_expr(arg) for arg in args], []
+
+        c_args: list[C.Expr] = []
+        prelude: list[C.Expr] = []
+        for arg in args:
+            assignexpr = self._assignexpr_parts(arg)
+            if assignexpr is None:
+                c_args.append(self.fmt_expr(arg))
+                continue
+            target, value_expr = assignexpr
+            prelude.append(self._fmt_assignexpr(target, value_expr))
+            c_args.append(C.Literal(f"{C_Ident(target)}"))
+        return c_args, prelude
+
+    def _chain_commas(self, exprs: list[C.Expr]) -> C.Expr:
+        assert exprs
+        acc = exprs[0]
+        for expr in exprs[1:]:
+            acc = C.BinOp(",", acc, expr)
+        return C.Literal(f"({acc})")
+
     def fmt_generic_call(self, fqn: FQN, call: ast.Call) -> C.Expr:
         # default case: call a function with the corresponding name
         self.ctx.add_include_maybe(fqn)
         c_name = fqn.c_name
-        c_args = [self.fmt_expr(arg) for arg in call.args]
-        return C.Call(c_name, c_args)
+        c_args, prelude = self._fmt_call_args(call.args)
+        call_expr = C.Call(c_name, c_args)
+        if prelude:
+            return self._chain_commas(prelude + [call_expr])
+        return call_expr
 
     def fmt_struct_make(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         c_structtype = self.ctx.c_restype_by_fqn(fqn)
-        c_args = [self.fmt_expr(arg) for arg in call.args]
+        c_args, prelude = self._fmt_call_args(call.args)
         strargs = ", ".join(map(str, c_args))
-        return C.Cast(c_structtype, C.Literal("{ %s }" % strargs))
+        cast = C.Cast(c_structtype, C.Literal("{ %s }" % strargs))
+        if prelude:
+            return self._chain_commas(prelude + [cast])
+        return cast
 
     def fmt_struct_getfield(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         assert len(call.args) == 1
