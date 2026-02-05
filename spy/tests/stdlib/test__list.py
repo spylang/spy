@@ -91,22 +91,15 @@ class TestList(CompilerTest):
         with SPyError.raises("W_IndexError"):
             mod.out_of_bounds()
 
-    def test_getitem_slice_type(self):
-        mod = self.compile("""
-            def foo() -> list[i32]:
-                l = [1,2,3]
-                return l[0:2:1]
-            """)
-        x = mod.foo()
-        assert type(x) == list
-
     def test_getitem_slice_simple(self):
         mod = self.compile("""
             def simple_slice() -> list[i32]:
                 l = [1,2,3]
                 return l[0:1:1]
             """)
-        assert mod.simple_slice() == [1]
+        s = mod.simple_slice()
+        assert type(s) == list
+        assert s == [1]
 
     def test_getitem_slice_long(self):
         mod = self.compile("""
@@ -130,7 +123,7 @@ class TestList(CompilerTest):
                 l = [1,2,3]
                 return l[1:2:0]
             """)
-        with pytest.raises(SPyError):
+        with SPyError.raises("W_ValueError"):
             mod.zero_slice()
 
     def test_getitem_slice_reverse(self):
