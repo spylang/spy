@@ -292,4 +292,8 @@ def dict(Key, Value):
         def keys(self) -> _dict:
             return self
 
+        def _push(self, key: Key, val: Value) -> _dict:
+            self.__setitem__(key, val)
+            return self
+
     return _dict

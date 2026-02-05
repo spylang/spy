@@ -243,6 +243,20 @@ class TestDict(CompilerTest):
         assert not mod.test_neq_missing_key()
         assert not mod.test_neq_key()
 
+    def test_push(self):
+        src = """
+        from _dict import dict
+
+        def test() -> int:
+            d = dict[i32, i32]()
+            d = d._push(1, 10)
+            d = d._push(2, 20)
+            d = d._push(3, 30)
+            return d[1] + d[2] + d[3]
+        """
+        mod = self.compile(src)
+        assert mod.test() == 60
+
     @skip_backends("doppler", "C", reason="FIXME")
     def test_literal_stdlib(self):
         mod = self.compile("""
