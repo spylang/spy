@@ -346,6 +346,14 @@ class TestSPyBackend(CompilerTest):
         self.compile(src)
         self.assert_dump(src)
 
+    def test_slice(self):
+        src = """
+        def foo() -> dynamic:
+            return [1, 2, 3][:1:-1]
+        """
+        self.compile(src)
+        self.assert_dump(src)
+
     def test_unpack_assign(self):
         src = """
         def foo() -> None:

@@ -522,7 +522,8 @@ class SPyBackend:
         (start, stop, step) = [
             self.fmt_expr(exp) for exp in (node.start, node.stop, node.step)
         ]
-        return f"Slice({start}:{stop}{f':{step}' if step else ''})"
+        hide_none = lambda val: val if val != "None" else ""
+        return f"{hide_none(start)}:{hide_none(stop)}{f':{step}' if hide_none(step) else ''}"
 
     def fmt_expr_Dict(self, node: ast.Dict) -> str:
         pairs = [
