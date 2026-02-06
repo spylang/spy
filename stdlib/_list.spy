@@ -10,6 +10,9 @@ from __spy__ import interp_list, EmptyListType
 
 from _slice import Slice, tuple3
 
+# In future, use something like sys.maxint when implemented
+max_i32: i32 = 2147483647 
+
 
 @blue.generic
 def list(T):
@@ -350,7 +353,7 @@ def _py_slice_unpack(length:int, s:Slice) -> tuple3:
     
     if s.start_is_none:
         if _step < 0:
-            _start = 10000000
+            _start = max_i32
         else:
             _start = 0
     else:
@@ -358,9 +361,9 @@ def _py_slice_unpack(length:int, s:Slice) -> tuple3:
 
     if s.stop_is_none:
         if _step < 0:
-            _stop = -1000000000
+            _stop = - max_i32 - 1
         else:
-            _stop = 1000000000
+            _stop = max_i32
     else:
         _stop = s.stop
 
