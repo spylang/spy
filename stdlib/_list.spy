@@ -129,15 +129,21 @@ def list(T):
             else:
                 raise TypeError("Subscript to list must be i32 or Slice, got " + str(m_x))
 
-        def __setitem__(self, i: i32, value: T) -> None:
-            ll = self.__ll__
-            if i < 0:
-                i = i + ll.length
-            if i < 0:
-                raise IndexError
-            if i >= ll.length:
-                raise IndexError
-            ll.items[i] = value
+        @blue.metafunc
+        def __setitem__(self, m_x: MetaArg, value: MetaArg):
+            if m_x.static_type == i32:
+                def setitem_int(_self: _ListImpl, i: int, _value: T) -> None:
+                    ll = _self.__ll__ 
+                    if i < 0:
+                        i = i + ll.length
+                    if i < 0:
+                        raise IndexError
+                    if i >= ll.length:
+                        raise IndexError
+                    ll.items[i] = _value
+                return OpSpec(setitem_int)
+            else:
+                raise StaticError("WIP: list.__setitem__(slice) is not implemented yet")
 
         def pop(self) -> T:
             ll = self.__ll__
