@@ -302,7 +302,12 @@ def list(T):
 
     return _ListImpl
 
-def _py_adjust_indexes(length: int, start: int, stop: int, step: int) -> int:
+def _py_adjust_indexes(length: i32, start: i32, stop: i32, step: i32) -> i32:
+    """
+    Converts the start and stop values to 'actual' ones (bounded by 0 and len(list)-1)
+    Returns the number of elements in the list once the described slice is applied
+    Similar to implementation in CPython
+    """
     if start < 0:
         start += length
         if start < 0:
@@ -339,10 +344,10 @@ def _py_adjust_indexes(length: int, start: int, stop: int, step: int) -> int:
         
     return val
         
-def _py_slice_unpack(length:int, s:Slice) -> tuple3:
-    _start: int
-    _stop: int
-    _step: int
+def _py_slice_unpack(length:i32, s:Slice) -> tuple3:
+    _start: i32
+    _stop: i32
+    _step: i32
     if s.step_is_none:
         _step = 1
     else:
