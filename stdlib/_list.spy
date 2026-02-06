@@ -337,9 +337,9 @@ def _py_adjust_indexes(length: int, start: int, stop: int, step: int) -> int:
     return val
         
 def _py_slice_unpack(length:int, s:Slice) -> tuple3:
-    _start: int = 666
-    _stop: int = 666
-    _step: int = 666
+    _start: int
+    _stop: int
+    _step: int
     if s.step_is_none:
         _step = 1
     else:
