@@ -12,7 +12,7 @@ from typer import Option
 
 from spy.analyze.importing import ImportAnalyzer
 from spy.backend.c.cbackend import CBackend
-from spy.build.config import BuildConfig, BuildTarget, OutputKind
+from spy.build.config import BuildConfig, BuildTarget, GCOption, OutputKind
 from spy.cli._runners import init_vm, nullcontext, timer
 from spy.cli.commands.shared_args import (
     Base_Args,
@@ -89,6 +89,16 @@ class _build_mixin:
         ),
     ] = "exe"
 
+    gc: Annotated[
+        str,
+        Option(
+            "--gc",
+            help="GC implementation: auto, none, bdwgc (default: auto, "
+            "i.e. bdwgc for native, none for wasm targets)",
+            click_type=click.Choice(["auto", *GCOption.__args__]),
+        ),
+    ] = "auto"
+
 
 @dataclass
 class Build_Args(
@@ -108,11 +118,23 @@ async def build(args: Build_Args) -> None:
     vm.ast_color_map = {}
     vm.redshift(error_mode=args.error_mode)
 
+    gc: GCOption
+    if args.gc == "auto":
+        gc = "bdwgc" if args.target == "native" else "none"
+    else:
+        gc = args.gc  # type: ignore[assignment]
+
+    if gc != "none" and args.target != "native":
+        raise click.UsageError(
+            f"WASM targets only support --gc=none, got --gc={args.gc}"
+        )
+
     config = BuildConfig(
         target=args.target,
         kind=args.output_kind,
         build_type="release" if args.release_mode else "debug",
         warning_as_error=args.warning_as_error,
+        gc=gc,
     )
 
     cwd = py.path.local(".")
