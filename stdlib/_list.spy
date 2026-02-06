@@ -142,8 +142,10 @@ def list(T):
                         raise IndexError
                     ll.items[i] = _value
                 return OpSpec(setitem_int)
-            else:
+            elif m_x.static_type == slice:
                 raise StaticError("WIP: list.__setitem__(slice) is not implemented yet")
+            else:
+                return OpSpec.NULL
 
         def pop(self) -> T:
             ll = self.__ll__
