@@ -136,7 +136,7 @@ class CFuncWriter:
             )
             fqn = call.func.fqn
             irtag = self.ctx.vm.get_irtag(fqn)
-            if irtag.tag in ("struct.getfield", "ptr.getfield", "ptr.setfield"):
+            if irtag.tag in ("struct.getfield", "ptr.getfield"):
                 continue
             w_obj = self.ctx.vm.lookup_global(fqn)
             if not isinstance(w_obj, W_Func):
@@ -654,9 +654,13 @@ class CFuncWriter:
 
     def fmt_ptr_setfield(self, fqn: FQN, call: ast.Call) -> C.Expr:
         assert isinstance(call.args[1], ast.StrConst)
-        c_ptr = self.fmt_expr(call.args[0])
+        c_args, prelude = self._fmt_call_args(call)
+        c_ptr = c_args[0]
         attr = call.args[1].value
         offset = call.args[2]  # ignored
         c_lval = C.PtrField(c_ptr, attr)
-        c_rval = self.fmt_expr(call.args[3])
-        return C.BinOp("=", c_lval, c_rval)
+        c_rval = c_args[3]
+        assign = C.BinOp("=", c_lval, c_rval)
+        if prelude:
+            return self._chain_commas(prelude + [assign])
+        return assign
