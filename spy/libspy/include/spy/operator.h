@@ -67,9 +67,9 @@ static inline int32_t
 spy_operator$f32_to_i32(float x) {
     if (isnan(x))
         return 0;
-    if (x > INT32_MAX)
+    if (x > (float)INT32_MAX)
         return INT32_MAX;
-    if (x < INT32_MIN)
+    if (x < (float)INT32_MIN)
         return INT32_MIN;
     return (int32_t)x;
 }

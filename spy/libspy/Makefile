@@ -45,6 +45,13 @@ else
     $(error Invalid BUILD_TYPE: $(BUILD_TYPE). Must be 'release' or 'debug')
 endif
 
+# All compiler warnings are treated as errors
+ifeq ($(SPY_WERROR), true)
+	CFLAGS += "-Werror"
+else ifeq ($(SPY_WERROR), 1)
+	CFLAGS += "-Werror"
+endif
+
 # ------- no target specified -------
 ifeq ($(TARGET),)
 	.DEFAULT_GOAL := all

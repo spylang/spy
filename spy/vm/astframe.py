@@ -709,7 +709,7 @@ class AbstractFrame:
             target=for_node.target,
             value=ast.CallMethod(
                 loc=for_node.loc,
-                target=ast.NameLocal(for_node.loc, iter_sym),
+                target=ast.NameLocalDirect(for_node.loc, iter_sym),
                 method=ast.StrConst(for_node.loc, "__item__"),
                 args=[],
             ),
@@ -720,7 +720,7 @@ class AbstractFrame:
             target=iter_target,
             value=ast.CallMethod(
                 loc=for_node.loc,
-                target=ast.NameLocal(for_node.loc, iter_sym),
+                target=ast.NameLocalDirect(for_node.loc, iter_sym),
                 method=ast.StrConst(for_node.loc, "__next__"),
                 args=[],
             ),
@@ -730,7 +730,7 @@ class AbstractFrame:
             loc=for_node.loc,
             test=ast.CallMethod(
                 loc=for_node.loc,
-                target=ast.NameLocal(for_node.loc, iter_sym),
+                target=ast.NameLocalDirect(for_node.loc, iter_sym),
                 method=ast.StrConst(for_node.loc, "__continue_iteration__"),
                 args=[],
             ),
@@ -833,11 +833,12 @@ class AbstractFrame:
 
         if sym.impref is not None:
             return ast.NameImportRef(name.loc, sym)
-        elif sym.is_local:
-            assert sym.storage == "direct"
-            return ast.NameLocal(name.loc, sym)
+        elif sym.storage == "direct" and sym.is_local:
+            return ast.NameLocalDirect(name.loc, sym)
         elif sym.storage == "direct":
             return ast.NameOuterDirect(name.loc, sym)
+        elif sym.storage == "cell" and sym.is_local:
+            return ast.NameLocalCell(name.loc, sym)
         elif sym.storage == "cell":
             outervars = self.closure[-sym.level]
             w_cell = outervars[sym.name].w_val
@@ -873,13 +874,24 @@ class AbstractFrame:
         w_T = self.vm.dynamic_type(w_val)
         return W_MetaArg(self.vm, color, w_T, w_val, name.loc, sym=sym)
 
-    def eval_expr_NameLocal(self, name: ast.NameLocal) -> W_MetaArg:
+    def eval_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> W_MetaArg:
         sym = name.sym
         lv = self.locals[sym.name]
         if lv.color == "red" and self.redshifting:
             w_val = None
         else:
             w_val = self.load_local(sym.name)
+        return W_MetaArg(self.vm, lv.color, lv.w_T, w_val, name.loc, sym=sym)
+
+    def eval_expr_NameLocalCell(self, name: ast.NameLocalCell) -> W_MetaArg:
+        sym = name.sym
+        lv = self.locals[sym.name]
+        if lv.color == "red" and self.redshifting:
+            w_val = None
+        else:
+            w_cell = self.load_local(sym.name)
+            assert isinstance(w_cell, W_Cell)
+            w_val = w_cell.get()
         return W_MetaArg(self.vm, lv.color, lv.w_T, w_val, name.loc, sym=sym)
 
     def eval_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> W_MetaArg:
@@ -1132,6 +1144,78 @@ class AbstractFrame:
             items_w = [wam.w_val for wam in items_wam]
             w_val = W_Tuple(items_w)
         return W_MetaArg(self.vm, color, B.w_tuple, w_val, op.loc)
+
+    def eval_expr_Dict(self, dict: ast.Dict) -> W_MetaArg:
+        # 0. empty dict[k, v] are hanlded as immutable dictionary.
+        # We need to know type of [k, v] (e.g. [str, i32])
+        if len(dict.items) == 0:
+            # empty dict is not support yet.
+            # it will come along with compiler part.
+            raise SPyError.simple(
+                "W_WIP",
+                "empty dict literals are not supported yet",
+                "this is empty dict",
+                dict.loc,
+            )
+
+        # 1. evaluate type of key, value then infer the whole items type.
+        key_value_pair = []
+        w_keytype = None
+        w_valuetype = None
+        key_color: Color = "red"
+        value_color: Color = "red"
+        for pair in dict.items:
+            key = self.eval_expr(pair.key)
+            value = self.eval_expr(pair.value)
+
+            # If we have two blue items which happen to be equal, we reuse the same
+            # w_opimpl for push() below, with the result of pushing the first item
+            # twice, and the second item never. By making it red, we force to create a
+            # more generic opimpl. See also the corresponding code in eval_expr_List
+            key = key.as_red(self.vm)
+            value = value.as_red(self.vm)
+
+            key_value_pair.append((key, value))
+            key_color = maybe_blue(key_color, key.color)
+            value_color = maybe_blue(value_color, value.color)
+            if w_keytype is None:
+                # first iteration; key, value type are both None
+                # according to dict behavior as pair of key, value
+                # set key, value type
+                assert w_valuetype is None
+                w_keytype = key.w_static_T
+                w_valuetype = value.w_static_T
+            else:
+                # second iteration and so on.
+                # compute union type covering both current key, value and new key, value type
+                assert w_valuetype is not None
+                w_keytype = self.vm.union_type(w_keytype, key.w_static_T)
+                w_valuetype = self.vm.union_type(w_valuetype, value.w_static_T)
+
+        assert w_keytype is not None
+        assert w_valuetype is not None
+
+        # 2. instantiate a new dict
+        w_DictType = self.vm.lookup_global(FQN("_dict::dict"))
+        w_T = self.vm.getitem_w(w_DictType, w_keytype, w_valuetype)  # dict[K, V]
+        wam_T = W_MetaArg.from_w_obj(self.vm, w_T)
+
+        w_opimpl = self.vm.call_OP(dict.loc, OP.w_CALL, [wam_T])
+        wam_dict = self.eval_opimpl(dict, w_opimpl, [wam_T])
+
+        # 3. push items into the dict
+        assert isinstance(w_T, W_Type)
+        fqn_setitem = w_T.fqn.join("__setitem__")
+        w_setitem = self.vm.lookup_global(fqn_setitem)
+        wam_setitem = W_MetaArg.from_w_obj(self.vm, w_setitem)
+
+        for pair, (wam_key, wam_val) in zip(dict.items, key_value_pair):
+            w_opimpl = self.vm.call_OP(
+                dict.loc, OP.w_CALL, [wam_setitem, wam_dict, wam_key, wam_val]
+            )
+            self.eval_opimpl(pair, w_opimpl, [wam_setitem, wam_dict, wam_key, wam_val])
+
+        return wam_dict
 
 
 class ASTFrame(AbstractFrame):

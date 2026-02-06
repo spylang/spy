@@ -1,5 +1,74 @@
-site_name: SPy Documentation
+site_name: SPy
 docs_dir: src
+repo_url: https://github.com/spylang/spy
+repo_name: spylang/spy
+theme:
+  name: material
+  logo: assets/logo.svg
+  favicon: assets/logo.svg
+  palette:
+    # Light mode
+    - scheme: default
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode
+    - scheme: slate
+      primary: indigo
+      accent: cyan
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+
+markdown_extensions:
+  - attr_list
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.superfences
+  - pymdownx.snippets:
+      base_path: ['..']
+  - pymdownx.inlinehilite
+  - pymdownx.blocks.admonition
+  - pymdownx.tabbed:
+      alternate_style: true
+
+nav:
+  - Home: index.md
+  - contributing.md
+  - Unsorted notes:
+      - Low-level memory model: llmem.md
+
+# Example navigation structure with subsections:
+# nav:
+#   - Home: index.md
+#   - Getting Started:
+#       - Introduction: getting-started/intro.md
+#       - Installation: getting-started/installation.md
+#       - Quick Start: getting-started/quickstart.md
+#   - User Guide:
+#       - Overview: user-guide/overview.md
+#       - Basic Concepts: user-guide/concepts.md
+#       - Advanced Topics: user-guide/advanced.md
+#   - API Reference:
+#       - Functions: api/functions.md
+#       - Classes: api/classes.md
+#   - FAQ: faq.md
+
 extra:
   version:
     provider: mike
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/spylang/spy
+      name: SPy on GitHub

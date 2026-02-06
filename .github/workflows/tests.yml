@@ -20,6 +20,8 @@ jobs:
   test:
     name: test-${{ matrix.os }}-${{ matrix.python-version}}
     runs-on: ${{ matrix.os }}
+    env: 
+      SPY_WERROR: true
 
     strategy:
       fail-fast: false

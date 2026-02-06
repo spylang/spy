@@ -1,32 +1,32 @@
 # -*- mode: python -*-
 
-from unsafe import gc_alloc, ptr
+from unsafe import gc_alloc, gc_ptr
 
 @struct
 class Vector:
     capacity: i32
     length: i32
-    items: ptr[i32]
+    items: gc_ptr[i32]
 
 
 # available operations:
-#     arr: ptr[i32] = gc_alloc(i32)(5)  # allocates an array of 5 i32
+#     arr: gc_ptr[i32] = gc_alloc[i32](5)  # allocates an array of 5 i32
 #     arr[0]     # read item 0 of the array
 #     arr[0] = x # write item 0
-#     v = gc_alloc(Vector)(1)   # allocate a new Vector
+#     v = gc_alloc[Vector](1)   # allocate a new Vector
 #     v.capacity  # read the field "capacity" of the Vector "v"
 
-def vector_new(capacity: i32) -> ptr[Vector]:
-    v: ptr[Vector] = gc_alloc(Vector)(1)
+def vector_new(capacity: i32) -> gc_ptr[Vector]:
+    v: gc_ptr[Vector] = gc_alloc[Vector](1)
     v.capacity = capacity
     v.length = 0
-    v.items = gc_alloc(i32)(capacity)
+    v.items = gc_alloc[i32](capacity)
     return v
 
-def vector_append(v: ptr[Vector], item: i32) -> None:
+def vector_append(v: gc_ptr[Vector], item: i32) -> None:
     if v.length >= v.capacity:
         new_capacity = v.capacity * 2
-        new_items: ptr[i32] = gc_alloc(i32)(new_capacity)
+        new_items: gc_ptr[i32] = gc_alloc[i32](new_capacity)
         i = 0
         while i < v.length:
             new_items[i] = v.items[i]
@@ -36,14 +36,14 @@ def vector_append(v: ptr[Vector], item: i32) -> None:
     v.items[v.length] = item
     v.length = v.length+1
 
-def vector_get(v: ptr[Vector], index: i32) -> i32:
+def vector_get(v: gc_ptr[Vector], index: i32) -> i32:
     if index < 0:
         print("Index out of bounds")
     if index >= v.length:
         print("Index out of bounds")
     return v.items[index]
 
-def vector_set(v: ptr[Vector], index: i32, item: i32) -> None:
+def vector_set(v: gc_ptr[Vector], index: i32, item: i32) -> None:
     if index < 0:
         print("Index out of bounds")
 
@@ -51,10 +51,10 @@ def vector_set(v: ptr[Vector], index: i32, item: i32) -> None:
         print("Index out of bounds")
     v.items[index] = item
 
-def vector_len(v: ptr[Vector]) -> i32:
+def vector_len(v: gc_ptr[Vector]) -> i32:
     return v.length
 
-def vector_print(v: ptr[Vector]) -> None:
+def vector_print(v: gc_ptr[Vector]) -> None:
     i = 0
     while i < v.length:
         print(v.items[i])

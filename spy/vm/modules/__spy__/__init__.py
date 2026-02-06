@@ -21,6 +21,14 @@ from . import (
     interp_list,  # noqa: F401 -- side effects
 )
 
+# XXX: maybe we should move also STATIC_TYPE here?
+
+
+@SPY.builtin_func(color="blue", kind="metafunc")
+def w_COLOR(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
+    w_color = vm.wrap(wam_obj.color)
+    return W_OpSpec.const(w_color)
+
 
 @SPY.builtin_func
 def w_is_compiled(vm: "SPyVM") -> W_Bool:

@@ -508,3 +508,9 @@ class ScopeAnalyzer:
         self.mod_scope.implicit_imports.add("_list")
         for item in lst.items:
             self.flatten(item)
+
+    def flatten_Dict(self, dict: ast.Dict) -> None:
+        self.mod_scope.implicit_imports.add("_dict")
+        for keyVal in dict.items:
+            self.flatten(keyVal.key)
+            self.flatten(keyVal.value)

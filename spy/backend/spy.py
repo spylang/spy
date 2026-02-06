@@ -338,10 +338,14 @@ class SPyBackend:
             return f"{t}({m!r})"
         return self.fmt_fqn(const.fqn)
 
+    def fmt_expr_LocConst(self, const: ast.LocConst) -> str:
+        r = const.value._repr()
+        return f"Loc('{r}')"
+
     def fmt_expr_Name(self, name: ast.Name) -> str:
         return name.id
 
-    def fmt_expr_NameLocal(self, name: ast.NameLocal) -> str:
+    def fmt_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> str:
         return name.sym.name
 
     def fmt_expr_NameOuterCell(self, name: ast.NameOuterCell) -> str:
@@ -513,3 +517,9 @@ class SPyBackend:
         itemlist = [self.fmt_expr(it) for it in node.items]
         items = ", ".join(itemlist)
         return f"({items})"
+
+    def fmt_expr_Dict(self, node: ast.Dict) -> str:
+        pairs = [
+            f"{self.fmt_expr(kv.key)}: {self.fmt_expr(kv.value)}" for kv in node.items
+        ]
+        return "{" + ", ".join(pairs) + "}"

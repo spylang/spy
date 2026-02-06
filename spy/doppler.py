@@ -418,7 +418,9 @@ class DopplerFrame(ASTFrame):
     def shift_expr_Name(self, name: ast.Name, wam: W_MetaArg) -> ast.Expr:
         return self.specialized_names[name]
 
-    def shift_expr_NameLocal(self, name: ast.NameLocal, wam: W_MetaArg) -> ast.Expr:
+    def shift_expr_NameLocalDirect(
+        self, name: ast.NameLocalDirect, wam: W_MetaArg
+    ) -> ast.Expr:
         return name
 
     def shift_expr_NameOuterDirect(

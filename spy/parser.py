@@ -615,6 +615,18 @@ class Parser:
         items = [self.from_py_expr(py_item) for py_item in py_node.elts]
         return spy.ast.Tuple(py_node.loc, items)
 
+    def from_py_expr_Dict(self, py_node: py_ast.Dict) -> spy.ast.Dict:
+        keyValuePairItems = []
+        for key, value in zip(py_node.keys, py_node.values):
+            if key is None:
+                self.unsupported(value, "dict unpacking is unsupported.")
+            keyValuePairItems.append(
+                spy.ast.KeyValuePair(
+                    key.loc, self.from_py_expr(key), self.from_py_expr(value)
+                )
+            )
+        return spy.ast.Dict(py_node.loc, keyValuePairItems)
+
     def from_py_expr_NamedExpr(self, py_node: py_ast.NamedExpr) -> spy.ast.AssignExpr:
         target = spy.ast.StrConst(py_node.target.loc, py_node.target.id)
         value = self.from_py_expr(py_node.value)

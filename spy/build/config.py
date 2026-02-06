@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from os import getenv
 from typing import Literal, Optional
 
 import spy.libspy
@@ -14,6 +15,7 @@ class BuildConfig:
     kind: OutputKind
     build_type: BuildType
     opt_level: Optional[int] = None
+    warning_as_error: bool = False
 
 
 # ======= CFLAGS and LDFLAGS logic =======
@@ -21,7 +23,6 @@ class BuildConfig:
 # fmt: off
 CFLAGS = [
     "--std=c99",
-    "-Werror=implicit-function-declaration",
     "-Wfatal-errors",
     "-fdiagnostics-color=always",  # force colors
     "-I", str(spy.libspy.INCLUDE)
@@ -29,6 +30,9 @@ CFLAGS = [
 LDFLAGS = [
     "-lm"  # always include libm for now. Ideally we should do it only if needed
 ]
+
+WARNING_CFLAGS = ["-Werror=implicit-function-declaration"]
+WARNING_AS_ERROR_CFLAGS = ["-Werror", "-Wno-unreachable-code"]
 
 RELEASE_CFLAGS  = ["-DSPY_RELEASE", "-O3", "-flto"]
 RELEASE_LDFLAGS = ["-flto"]
@@ -61,6 +65,11 @@ class CompilerConfig:
             "-L", str(libdir),
             "-lspy",
         ]  # fmt: skip
+
+        if config.warning_as_error or getenv("SPY_WERROR") in ("true", "1"):
+            self.cflags += WARNING_AS_ERROR_CFLAGS
+        else:
+            self.cflags += WARNING_CFLAGS
 
         if config.build_type == "release":
             self.cflags += RELEASE_CFLAGS
