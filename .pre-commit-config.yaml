@@ -6,6 +6,7 @@ repos:
       - id: check-toml # checks toml files for parseable syntax.
       - id: check-xml # checks xml files for parseable syntax.
       - id: check-yaml # checks yaml files for parseable syntax.
+
   # 🧹 Ruff for linting, import sorting, and formatting
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.0
@@ -14,6 +15,8 @@ repos:
         args:
           - --fix
       - id: ruff-format
+        args: ["--extension", "py,spy"]  # Added .spy support
+
   - repo: https://github.com/pre-commit/mirrors-clang-format
     rev: v21.1.5
     hooks:
