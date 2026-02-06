@@ -27,9 +27,9 @@ class TestSlice(CompilerTest):
 
     def test__slice_indices(self):
         # This test is a bit of a workaround for the fact that we cannot easily
-        # have functions which accept either int or None; and we want to test a
-        # bunch of different combinations against the Slice.indices() function
-        # to make sure the results come out right.
+        # have SPy functions which accept either int or None; and we want to test a
+        # bunch of different combinations of int and None args against the
+        # Slice.indices() function to make sure the results come out right.
         #
         # So instead, we generate the source of all the functions we want to test
         # (using the naming function below) so that we can call them from the
@@ -48,7 +48,7 @@ class TestSlice(CompilerTest):
             ((None, None, -1, 10), (9, -1, -1)),
             ((None, None, -2, 10), (9, -1, -2)),
             ((3, None, -2, 10), (3, -1, -2)),
-            # issue 3004 tests
+            # CPython issue 3004 tests
             ((None, -9, None, 10), (0, 1, 1)),
             ((None, -10, None, 10), (0, 0, 1)),
             ((None, -11, None, 10), (0, 0, 1)),
