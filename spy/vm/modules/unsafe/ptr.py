@@ -339,7 +339,7 @@ class W_Ptr(W_BasePtr):
         else:
             # ptr_setfield[field_T](ptr, name, offset, v)
             assert wam_v is not None
-            w_func = vm.fast_call(UNSAFE.w_ptr_setfield, [w_field.w_T])
+            w_func = vm.fast_call(UNSAFE.w_ptr_setfield, [w_field.w_T, w_ptrtype])
             assert isinstance(w_func, W_Func)
             return W_OpSpec(w_func, [wam_ptr, wam_name, wam_offset, wam_v])
 
@@ -380,15 +380,18 @@ def w_ptr_getfield(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
 
 
 @UNSAFE.builtin_func(color="blue")
-def w_ptr_setfield(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
+def w_ptr_setfield(vm: "SPyVM", w_T: W_Type, w_ptrtype: W_PtrType) -> W_Dynamic:
     T = Annotated[W_Object, w_T]
+    PTR = Annotated[W_Ptr, w_ptrtype]
 
     # fqn is something like unsafe::setfield[i32]
     irtag = IRTag("ptr.setfield")
 
-    @vm.register_builtin_func("unsafe", "ptr_setfield", [w_T.fqn], irtag=irtag)
+    @vm.register_builtin_func(
+        "unsafe", "ptr_setfield", [w_T.fqn, w_ptrtype.fqn], irtag=irtag
+    )
     def w_ptr_setfield_T(
-        vm: "SPyVM", w_ptr: W_Ptr, w_name: W_Str, w_offset: W_I32, w_val: T
+        vm: "SPyVM", w_ptr: PTR, w_name: W_Str, w_offset: W_I32, w_val: T
     ) -> None:
         """
         NOTE: w_name is ignored here, but it's used by the C backend
