@@ -83,6 +83,7 @@ def w_raw_ref(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     # 2. create raw_ref[T]
     fqn = FQN("unsafe").join("raw_ref", [w_T.fqn])  # unsafe::raw_ref[i32]
     w_reftype = W_RefType.from_itemtype(fqn, "raw", w_T)
+    vm.make_fqn_const(w_reftype)
     return w_reftype
 
 
@@ -99,6 +100,7 @@ def w_gc_ref(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     # 2. create gc_ref[T]
     fqn = FQN("unsafe").join("gc_ref", [w_T.fqn])  # unsafe::gc_ref[i32]
     w_reftype = W_RefType.from_itemtype(fqn, "gc", w_T)
+    vm.make_fqn_const(w_reftype)
     return w_reftype
 
 
@@ -295,7 +297,7 @@ class W_MemLoc(W_Object):
         else:
             # ptr_setfield[field_T](ptr, name, offset, v)
             assert wam_v is not None
-            w_func = vm.fast_call(UNSAFE.w_ptr_setfield, [w_field.w_T])
+            w_func = vm.fast_call(UNSAFE.w_ptr_setfield, [w_field.w_T, w_T])
             assert isinstance(w_func, W_Func)
             return W_OpSpec(w_func, [wam_self, wam_name, wam_offset, wam_v])
 
@@ -446,11 +448,7 @@ class W_Ref(W_MemLoc):
             return W_OpSpec(w_ptr_deref)
 
         else:
-            # ptr_setfield[field_T](ptr, name, offset, v)
-            assert wam_v is not None
-            w_func = vm.fast_call(UNSAFE.w_ptr_setfield, [w_field.w_T, w_ptrtype])
-            assert isinstance(w_func, W_Func)
-            return W_OpSpec(w_func, [wam_ptr, wam_name, wam_offset, wam_v])
+            return W_OpSpec.NULL
 
 
 @UNSAFE.builtin_func(color="blue")
@@ -492,18 +490,18 @@ def w_ptr_getfield(vm: "SPyVM", w_T: W_Type, w_memkind: W_Str) -> W_Dynamic:
 
 
 @UNSAFE.builtin_func(color="blue")
-def w_ptr_setfield(vm: "SPyVM", w_T: W_Type, w_ptrtype: W_PtrType) -> W_Dynamic:
+def w_ptr_setfield(vm: "SPyVM", w_T: W_Type, w_memlocT: W_MemLocType) -> W_Dynamic:
     T = Annotated[W_Object, w_T]
-    PTR = Annotated[W_Ptr, w_ptrtype]
+    MEMLOC = Annotated[W_MemLoc, w_memlocT]
 
     # example FQN: unsafe::ptr_setfield[i32]
     irtag = IRTag("ptr.setfield")
 
     @vm.register_builtin_func(
-        "unsafe", "ptr_setfield", [w_T.fqn, w_ptrtype.fqn], irtag=irtag
+        "unsafe", "ptr_setfield", [w_T.fqn, w_memlocT.fqn], irtag=irtag
     )
     def w_ptr_setfield_T(
-        vm: "SPyVM", w_ptr: PTR, w_name: W_Str, w_offset: W_I32, w_val: T
+        vm: "SPyVM", w_ptr: MEMLOC, w_name: W_Str, w_offset: W_I32, w_val: T
     ) -> None:
         """
         NOTE: w_name is ignored here, but it's used by the C backend
