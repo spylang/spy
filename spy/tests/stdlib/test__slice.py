@@ -26,9 +26,20 @@ class TestSlice(CompilerTest):
         assert (sn.start_is_none, sn.stop_is_none, sn.step_is_none) == (1, 1, 1)
 
     def test__slice_indices(self):
+        # This test is a bit of a workaround for the fact that we cannot easily
+        # have functions which accept either int or None; and we want to test a
+        # bunch of different combinations against the Slice.indices() function
+        # to make sure the results come out right.
+        #
+        # So instead, we generate the source of all the functions we want to test
+        # (using the naming function below) so that we can call them from the
+        # test with no arguments
+
         def args_to_func_name(*args: int | None) -> str:
             return "f" + "_".join(str(a).replace("-", "n") for a in args)
 
+        # For each pair (inp, out), it should be true that slice(*inp).indices() == out
+        # These test cases replicate those in CPython
         type i_N = int | None
         eq_list: list[tuple[tuple[i_N, i_N, i_N, int], tuple[int, int, int]]] = [
             ((None, None, None, 10), (0, 10, 1)),
@@ -55,6 +66,10 @@ class TestSlice(CompilerTest):
 
         src = "from _slice import tuple3"
 
+        # Generate a function (who's name we know) that takes no arguments
+        # and returns the slice.indices() of the given slice.
+        # Append that function to the source code for the module
+        # we're about to compile.
         for inp, _ in eq_list:
             src += dedent(f"""
             def {args_to_func_name(*inp)}() -> tuple3:
@@ -65,5 +80,6 @@ class TestSlice(CompilerTest):
         mod = self.compile(src)
 
         for inp, out in eq_list:
+            # For each pair (inp, out), it should be true that slice(*inp).indices() == out
             assert getattr(mod, args_to_func_name(*inp))() == out
         return
