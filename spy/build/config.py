@@ -1,3 +1,6 @@
+import shutil
+import subprocess
+import sys
 from dataclasses import dataclass
 from os import getenv
 from typing import Literal, Optional
@@ -116,3 +119,14 @@ class CompilerConfig:
         if config.gc == "bdwgc":
             self.cflags += ["-DSPY_GC_BDWGC"]
             self.ldflags += ["-lgc"]
+            # On macOS, Homebrew installs bdw-gc outside the default
+            # compiler search paths
+            if sys.platform == "darwin" and shutil.which("brew"):
+                prefix = subprocess.run(
+                    ["brew", "--prefix", "bdw-gc"],
+                    capture_output=True,
+                    text=True,
+                ).stdout.strip()
+                if prefix:
+                    self.cflags += ["-I", f"{prefix}/include"]
+                    self.ldflags += ["-L", f"{prefix}/lib"]
