@@ -6,6 +6,7 @@
 
 typedef struct {
     size_t length;
+    int32_t hash;
     const char utf8[];
 } spy_Str;
 
@@ -27,12 +28,15 @@ spy_Str *WASM_EXPORT(spy_str_getitem)(spy_Str *s, int32_t i);
 
 int32_t WASM_EXPORT(spy_str_len)(spy_Str *s);
 
+int32_t WASM_EXPORT(spy_str_hash)(spy_Str *s);
+
 #define spy_operator$str_add spy_str_add
 #define spy_operator$str_mul spy_str_mul
 #define spy_operator$str_eq spy_str_eq
 #define spy_operator$str_ne spy_str_ne
 #define spy_builtins$str$__getitem__ spy_str_getitem
 #define spy_builtins$str$__len__ spy_str_len
+#define spy_builtins$hash_str spy_str_hash
 
 // __str__ methods of common builtin types
 spy_Str *spy_builtins$i32$__str__(int32_t x);
