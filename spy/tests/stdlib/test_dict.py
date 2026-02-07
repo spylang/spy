@@ -243,7 +243,20 @@ class TestDict(CompilerTest):
         assert not mod.test_neq_missing_key()
         assert not mod.test_neq_key()
 
-    @skip_backends("doppler", "C", reason="FIXME")
+    def test_push(self):
+        src = """
+        from _dict import dict
+
+        def test() -> int:
+            d = dict[i32, i32]()
+            d = d._push(1, 10)
+            d = d._push(2, 20)
+            d = d._push(3, 30)
+            return d[1] + d[2] + d[3]
+        """
+        mod = self.compile(src)
+        assert mod.test() == 60
+
     def test_literal_stdlib(self):
         mod = self.compile("""
         def foo() -> dict[i32, i32]:
@@ -251,10 +264,8 @@ class TestDict(CompilerTest):
             return x
         """)
         x = mod.foo()
-        print(x)
         assert x == {0: 1, 50: 2, 30: 3}
 
-    @skip_backends("doppler", "C", reason="FIXME")
     def test_literal_preserves_order(self):
         mod = self.compile("""
         def foo() -> dict[i32, i32]:
@@ -263,20 +274,14 @@ class TestDict(CompilerTest):
         x = mod.foo()
         assert list(x.keys()) == [1, 2, 3]
 
-    @skip_backends("doppler", "C", reason="FIXME")
-    def test_empty_dict_unsupport(self):
-        # this test must be removed when empty dict support is implemented.
-        # it will come along with compiler part.
+    def test_empty_dict_literal(self):
         mod = self.compile("""
-        def foo() -> dict[i32, i32]:
-            return {}
+        def foo() ->i32:
+            d: dict[i32, i32] = {}
+            return len(d)
         """)
-        with SPyError.raises(
-            "W_WIP", match="empty dict literals are not supported yet"
-        ):
-            mod.foo()
+        assert mod.foo() == 0
 
-    @skip_backends("doppler", "C", reason="FIXME")
     def test_literal_single_element(self):
         # useful for single element type
         mod = self.compile("""
@@ -286,7 +291,6 @@ class TestDict(CompilerTest):
         x = mod.foo()
         assert x[42] == 100
 
-    @skip_backends("doppler", "C", reason="FIXME")
     def test_literal_mixed_value_types_key_value(self):
         # useful for mixed type support
         # type of x must be i32
