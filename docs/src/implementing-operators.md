@@ -1,0 +1,582 @@
+# Implementing Operators in SPylang: A Test-Driven Approach
+
+This guide walks through the end-to-end process of implementing a binary operator in SPylang, using the `**` (power) operator as a real-world example. We'll follow a test-driven development approach: write the test first, watch it fail, then implement the feature step by step until the test passes.
+
+## Quick Architecture Overview
+
+SPylang's operator system uses a multi-method dispatch mechanism:
+- **Blue functions** (compile-time): Perform type checking and operator dispatch
+- **Red functions** (runtime): Execute the actual operation with values
+- **Multi-method table**: Maps operator + types to implementations
+
+## Step 1: Write a Failing Test
+
+Let's start by writing the simplest possible test for the `**` operator. We'll test `i8 ** i8` first.
+
+Create a new test file at `spy/tests/compiler/test_pow.py`:
+
+```python
+"""
+Tests for the ** (power) operator.
+"""
+from spy.tests.support import CompilerTest
+
+
+class TestPow(CompilerTest):
+    """Test the ** (power) operator for various numeric types."""
+
+    def test_pow_i8_basic(self):
+        """Test basic power operations with i8."""
+        mod = self.compile("""
+        def pow(x: i8, y: i8) -> i8:
+            return x ** y
+        """)
+        assert mod.pow(2, 3) == 8
+        assert mod.pow(3, 2) == 9
+        assert mod.pow(5, 0) == 1
+```
+
+### Run the Test (It Will Fail!)
+
+```bash
+pytest spy/tests/compiler/test_pow.py::TestPow::test_pow_i8_basic -v
+```
+
+**Expected Error:**
+```
+spy.errors.WIP: Operator not implemented yet: **
+```
+
+This error comes from the parser not recognizing the `**` token. Let's fix that!
+
+## Step 2: Map the Token to an Operator
+
+**File:** [spy/vm/modules/operator/__init__.py](spy/vm/modules/operator/__init__.py)
+
+Add the `**` token to the `_from_token` dictionary:
+
+```python
+_from_token: dict[str, W_Func] = {
+    "+": OP.w_ADD,
+    "-": OP.w_SUB,
+    "*": OP.w_MUL,
+    "/": OP.w_DIV,
+    "//": OP.w_FLOORDIV,
+    "%": OP.w_MOD,
+    "**": OP.w_POW,  # Add this line
+    "<<": OP.w_LSHIFT,
+    # ... rest of operators
+}
+```
+
+### Run the Test Again
+
+```bash
+pytest spy/tests/compiler/test_pow.py::TestPow::test_pow_i8_basic -v
+```
+
+**Expected Error:**
+```
+AttributeError: type object 'operator' has no attribute 'w_POW'
+```
+
+Now we need to create the blue operator function!
+
+## Step 3: Create the Blue Operator Function
+
+**File:** [spy/vm/modules/operator/binop.py](spy/vm/modules/operator/binop.py)
+
+Add the `w_POW` blue function that performs dispatch:
+
+```python
+@OP.builtin_func(color="blue")
+def w_POW(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
+    from spy.vm.typechecker import typecheck_opspec
+
+    w_ltype = wam_l.w_static_T
+    if w_opspec := MM.get_binary_opspec("**", wam_l, wam_r):
+        pass
+    elif w_pow := w_ltype.lookup_func("__pow__"):
+        w_opspec = vm.fast_metacall(w_pow, [wam_l, wam_r])
+    else:
+        w_opspec = W_OpSpec.NULL
+    return typecheck_opspec(
+        vm, w_opspec, [wam_l, wam_r], dispatch="multi", 
+        errmsg="cannot do `{0}` ** `{1}`"
+    )
+```
+
+**What this does:**
+1. Checks the multi-method table for a registered implementation
+2. Falls back to custom `__pow__` methods if available
+3. Returns NULL if no implementation exists
+4. Type checks and provides a helpful error message
+
+### Run the Test Again
+
+```bash
+pytest spy/tests/compiler/test_pow.py::TestPow::test_pow_i8_basic -v
+```
+
+**Expected Error:**
+```
+SPyTypeError: cannot do `i8` ** `i8`
+```
+
+Good progress! The parser recognizes `**` and dispatches to `w_POW`, but there's no implementation for `i8 ** i8` yet.
+
+## Step 4: Register in Multi-Method Table
+
+**File:** [spy/vm/modules/operator/binop.py](spy/vm/modules/operator/binop.py)
+
+In the section where i8 operators are registered, add the POW registration:
+
+```python
+# i8 ops
+MM.register("+",  "i8", "i8", OP.w_i8_add)
+MM.register("-",  "i8", "i8", OP.w_i8_sub)
+MM.register("*",  "i8", "i8", OP.w_i8_mul)
+MM.register("/",  "i8", "i8", OP.w_i8_div)
+MM.register("//", "i8", "i8", OP.w_i8_floordiv)
+MM.register("%",  "i8", "i8", OP.w_i8_mod)
+MM.register("<<", "i8", "i8", OP.w_i8_lshift)
+MM.register(">>", "i8", "i8", OP.w_i8_rshift)
+MM.register("&",  "i8", "i8", OP.w_i8_and)
+MM.register("|",  "i8", "i8", OP.w_i8_or)
+MM.register("^",  "i8", "i8", OP.w_i8_xor)
+MM.register("**", "i8", "i8", OP.w_i8_pow)  # Add this line
+MM.register("==", "i8", "i8", OP.w_i8_eq)
+# ... rest of i8 ops
+```
+
+### Run the Test Again
+
+```bash
+pytest spy/tests/compiler/test_pow.py::TestPow::test_pow_i8_basic -v
+```
+
+**Expected Error:**
+```
+AttributeError: type object 'operator' has no attribute 'w_i8_pow'
+```
+
+We've registered it, but the implementation doesn't exist yet. Time to create it!
+
+## Step 5: Implement the Python VM Operator
+
+**File:** [spy/vm/modules/operator/opimpl_int.py](spy/vm/modules/operator/opimpl_int.py)
+
+The integer operators are generated by the `make_ops()` function. Add the power operation inside this function:
+
+```python
+def make_ops(T: str, pyclass: type[W_Object]) -> None:
+    w_T = pyclass._w  # e.g. B.w_i32
+    WT = Annotated[W_IntLike, w_T]
+
+    # ... existing operators (add, sub, mul, etc.) ...
+    
+    @OP.builtin_func(f"{T}_pow")
+    def w_pow(vm: "SPyVM", w_a: WT, w_b: WT) -> WT:
+        return _binop(vm, w_a, w_b, lambda a, b: a ** b)
+    
+    # ... comparison operators (eq, ne, lt, etc.) ...
+```
+
+**What this does:**
+- Uses the `@OP.builtin_func` decorator to register the function as `builtins::i8_pow`
+- Takes two wrapped integers (`w_a`, `w_b`)
+- Uses `_binop` helper to unwrap values, apply operation, and wrap result
+- The lambda `lambda a, b: a ** b` uses Python's built-in power operator
+
+### Run the Test Again
+
+```bash
+pytest spy/tests/compiler/test_pow.py::TestPow::test_pow_i8_basic -v
+```
+
+**Expected Result:** The test should now **PASS** for the Python interpreter backend! 🎉
+
+But wait, if you run with the C backend, you'll get a linking error because the C runtime doesn't have the implementation yet.
+
+## Step 6: Implement C Runtime Operations
+
+**File:** [spy/libspy/include/spy/operator.h](spy/libspy/include/spy/operator.h)
+
+**File:** [spy/libspy/include/spy/operator.h](spy/libspy/include/spy/operator.h)
+
+Add the C implementation for `i8` power operation. For integer types, we use **exponentiation by squaring** for efficiency:
+
+```c
+// Power operations
+static inline int8_t
+spy_operator$i8_pow(int8_t base, int8_t exp) {
+    // For integer power, use simple iterative multiplication
+    if (exp == 0) return 1;
+    if (exp < 0) return 0;  // Integer division by 0 for negative exponents
+    
+    int8_t result = 1;
+    int8_t b = base;
+    int8_t e = exp;
+    
+    while (e > 0) {
+        if (e & 1) result *= b;
+        b *= b;
+        e >>= 1;
+    }
+    return result;
+}
+```
+
+**How Exponentiation by Squaring Works:**
+- For `2 ** 8`, instead of multiplying 2 eight times, we compute:
+  - `2^8 = (2^4)^2 = ((2^2)^2)^2` - only 3 multiplications!
+- The algorithm checks each bit of the exponent
+- When a bit is set, multiply the result by the current base power
+- Square the base and shift the exponent right
+
+### Run the Test Again
+
+```bash
+pytest spy/tests/compiler/test_pow.py::TestPow::test_pow_i8_basic -v
+```
+
+**Expected Result:** The test should now pass with both Python and C backends! ✅
+
+## Step 7: Expand to More Types
+
+Now that we have `i8 ** i8` working, let's add support for other integer types. This is straightforward since we already have the pattern.
+
+### Add u8, i32, u32 to Multi-Method Table
+
+**File:** [spy/vm/modules/operator/binop.py](spy/vm/modules/operator/binop.py)
+
+```python
+# u8 ops
+MM.register("**", "u8", "u8", OP.w_u8_pow)
+
+# i32 ops  
+MM.register("**", "i32", "i32", OP.w_i32_pow)
+
+# u32 ops
+MM.register("**", "u32", "u32", OP.w_u32_pow)
+```
+
+### Add C Implementations
+
+**File:** [spy/libspy/include/spy/operator.h](spy/libspy/include/spy/operator.h)
+
+```c
+static inline uint8_t
+spy_operator$u8_pow(uint8_t base, uint8_t exp) {
+    if (exp == 0) return 1;
+    
+    uint8_t result = 1;
+    uint8_t b = base;
+    uint8_t e = exp;
+    
+    while (e > 0) {
+        if (e & 1) result *= b;
+        b *= b;
+        e >>= 1;
+    }
+    return result;
+}
+
+static inline int32_t
+spy_operator$i32_pow(int32_t base, int32_t exp) {
+    if (exp == 0) return 1;
+    if (exp < 0) return 0;
+    
+    int32_t result = 1;
+    int32_t b = base;
+    int32_t e = exp;
+    
+    while (e > 0) {
+        if (e & 1) result *= b;
+        b *= b;
+        e >>= 1;
+    }
+    return result;
+}
+
+static inline uint32_t
+spy_operator$u32_pow(uint32_t base, uint32_t exp) {
+    if (exp == 0) return 1;
+    
+    uint32_t result = 1;
+    uint32_t b = base;
+    uint32_t e = exp;
+    
+    while (e > 0) {
+        if (e & 1) result *= b;
+        b *= b;
+        e >>= 1;
+    }
+    return result;
+}
+```
+
+Note: The Python VM implementation already handles all integer types through the `make_ops()` function!
+
+### Expand Your Tests
+
+**File:** [spy/tests/compiler/test_pow.py](spy/tests/compiler/test_pow.py)
+
+```python
+import pytest
+
+@pytest.fixture(params=["i32", "u32", "i8", "u8"])
+def int_type(request):
+    return request.param
+
+
+class TestPow(CompilerTest):
+    """Test the ** (power) operator for various numeric types."""
+
+    def test_pow_basic(self, int_type):
+        """Test basic power operations with integer types."""
+        mod = self.compile(f"""
+        T = {int_type}
+        def pow(x: T, y: T) -> T:
+            return x ** y
+        """)
+        assert mod.pow(2, 3) == 8
+        assert mod.pow(3, 2) == 9
+        assert mod.pow(5, 0) == 1
+        assert mod.pow(10, 2) == 100
+```
+
+Run the expanded tests:
+
+```bash
+pytest spy/tests/compiler/test_pow.py::TestPow::test_pow_basic -v
+```
+
+## Step 8: Add Floating-Point Support
+
+Floating-point power is simpler because we delegate to the C standard library's `pow()` function.
+
+### Add f64 VM Implementation
+
+**File:** [spy/vm/modules/operator/opimpl_f64.py](spy/vm/modules/operator/opimpl_f64.py)
+
+```python
+@OP.builtin_func
+def w_f64_pow(vm: "SPyVM", w_a: W_F64, w_b: W_F64) -> W_F64:
+    return _f64_op(vm, w_a, w_b, lambda a, b: a ** b)
+```
+
+### Add f64 to Multi-Method Table
+
+**File:** [spy/vm/modules/operator/binop.py](spy/vm/modules/operator/binop.py)
+
+```python
+# f64 ops
+MM.register("**", "f64", "f64", OP.w_f64_pow)
+```
+
+### Add C Implementation for f64
+
+**File:** [spy/libspy/include/spy/operator.h](spy/libspy/include/spy/operator.h)
+
+At the top, ensure `<math.h>` is included, then add:
+
+```c
+static inline double
+spy_operator$f64_pow(double x, double y) {
+    return pow(x, y);  // Uses C standard library
+}
+```
+
+### Add f64 Test
+
+**File:** [spy/tests/compiler/test_pow.py](spy/tests/compiler/test_pow.py)
+
+```python
+def test_f64_pow(self):
+    """Test power operations with f64."""
+    mod = self.compile("""
+    def pow(x: f64, y: f64) -> f64:
+        return x ** y
+    """)
+    assert mod.pow(2.0, 3.0) == 8.0
+    assert mod.pow(5.0, 0.0) == 1.0
+    assert abs(mod.pow(2.0, 0.5) - 1.4142135623730951) < 1e-10  # sqrt(2)
+```
+
+## Step 9: Mixed-Type Operations
+
+SPylang should support `i32 ** f64`, `f64 ** i32`, etc. When mixing integers and floats, the result should be `f64`.
+
+### Add Mixed-Type Registrations
+
+**File:** [spy/vm/modules/operator/binop.py](spy/vm/modules/operator/binop.py)
+
+```python
+# mixed int/f64 ops
+for num_t in ("i8", "u8", "u32", "i32", "f32"):
+    MM.register("**", "f64", num_t, OP.w_f64_pow)
+    MM.register("**", num_t, "f64", OP.w_f64_pow)
+```
+
+This automatically promotes integers to `f64` when mixed with floats.
+
+### Test Mixed Types
+
+**File:** [spy/tests/compiler/test_pow.py](spy/tests/compiler/test_pow.py)
+
+```python
+def test_mixed_int_float(self):
+    """Test power with mixed i32 and f64 types."""
+    mod = self.compile("""
+    def pow_if(x: i32, y: f64) -> f64:
+        return x ** y
+    
+    def pow_fi(x: f64, y: i32) -> f64:
+        return x ** y
+    """)
+    assert abs(mod.pow_if(2, 3.0) - 8.0) < 1e-10
+    assert abs(mod.pow_fi(2.0, 3) - 8.0) < 1e-10
+    assert abs(mod.pow_if(4, 0.5) - 2.0) < 1e-10  # 4 ** 0.5 = 2.0
+```
+
+## Step 10: Comprehensive Testing
+
+Add edge cases and complex expressions to ensure robustness.
+
+### Complete Test Suite
+
+**File:** [spy/tests/compiler/test_pow.py](spy/tests/compiler/test_pow.py)
+
+```python
+def test_pow_zero_base(self, int_type):
+    """Test power with zero base."""
+    mod = self.compile(f"""
+    T = {int_type}
+    def pow(x: T, y: T) -> T:
+        return x ** y
+    """)
+    assert mod.pow(0, 0) == 1  # 0**0 is defined as 1
+    assert mod.pow(0, 1) == 0
+    assert mod.pow(0, 5) == 0
+
+def test_pow_negative_base(self, int_type):
+    """Test power with negative base (only for signed types)."""
+    if int_type.startswith("u"):
+        pytest.skip("Skipping negative base test for unsigned types")
+    
+    mod = self.compile(f"""
+    T = {int_type}
+    def pow(x: T, y: T) -> T:
+        return x ** y
+    """)
+    assert mod.pow(-2, 3) == -8
+    assert mod.pow(-2, 2) == 4
+    assert mod.pow(-1, 5) == -1
+
+def test_pow_in_expression(self):
+    """Test power operator in complex expressions."""
+    mod = self.compile("""
+    def expr1(x: i32) -> i32:
+        return 2 ** x + 1
+    
+    def expr2(x: i32, y: i32) -> i32:
+        return x ** 2 + y ** 2
+    
+    def expr3(x: i32) -> i32:
+        return (x + 1) ** 2
+    """)
+    assert mod.expr1(3) == 9  # 2**3 + 1 = 9
+    assert mod.expr2(3, 4) == 25  # 3**2 + 4**2 = 25
+    assert mod.expr3(4) == 25  # (4+1)**2 = 25
+```
+
+### Run All Tests
+
+```bash
+pytest spy/tests/compiler/test_pow.py -v
+```
+
+All tests should pass! 🎉
+
+## Summary: The TDD Workflow
+
+1. ✅ **Write a failing test** - Start with the simplest case (`i8 ** i8`)
+2. ✅ **Add token mapping** - Connect `**` to `OP.w_POW`
+3. ✅ **Create blue function** - Implement type dispatch logic
+4. ✅ **Register in multi-method table** - Map types to implementations
+5. ✅ **Implement Python VM operator** - Add to `make_ops()` or standalone
+6. ✅ **Implement C runtime** - Add efficient low-level implementation
+7. ✅ **Expand to more types** - Repeat registration for all numeric types
+8. ✅ **Add mixed-type support** - Handle type promotions
+9. ✅ **Comprehensive testing** - Cover edge cases and expressions
+
+## Key Files Modified
+
+| File | Purpose |
+|------|---------|
+| [spy/tests/compiler/test_pow.py](spy/tests/compiler/test_pow.py) | Test suite |
+| [spy/vm/modules/operator/__init__.py](spy/vm/modules/operator/__init__.py) | Token → operator mapping |
+| [spy/vm/modules/operator/binop.py](spy/vm/modules/operator/binop.py) | Blue function & multi-method registration |
+| [spy/vm/modules/operator/opimpl_int.py](spy/vm/modules/operator/opimpl_int.py) | Integer VM implementations |
+| [spy/vm/modules/operator/opimpl_f64.py](spy/vm/modules/operator/opimpl_f64.py) | Float VM implementations |
+| [spy/libspy/include/spy/operator.h](spy/libspy/include/spy/operator.h) | C runtime implementations |
+
+## Common Patterns
+
+### Division-like Operators (with error checking)
+
+```python
+@OP.builtin_func(f"{T}_div")
+def w_div(vm: "SPyVM", w_a: WT, w_b: WT) -> W_F64:
+    if w_b.value == 0:
+        raise SPyError("W_ZeroDivisionError", "division by zero")
+    return _binop(vm, w_a, w_b, lambda a, b: a / b)
+```
+
+### Type-Changing Operators
+
+Some operators change types (e.g., `/` always returns `f64`):
+
+```python
+@OP.builtin_func(f"{T}_div")
+def w_div(vm: "SPyVM", w_a: WT, w_b: WT) -> W_F64:  # Returns f64, not WT
+    return _binop(vm, w_a, w_b, lambda a, b: a / b)
+```
+
+## Debugging Tips
+
+1. **Test incrementally** - Start with one type, verify it works, then expand
+2. **Check token mapping first** - `WIP: Operator not implemented` means missing token
+3. **Verify multi-method registration** - `SPyTypeError: cannot do X ** Y` means missing registration
+4. **Use pytest -v** - See exactly which test is failing
+5. **Test both backends** - Some failures only appear in C backend
+
+## Understanding the Dispatch Flow
+
+```
+Source Code: 2 ** 3
+     ↓
+Parser sees "**" token
+     ↓
+Looks up in _from_token → OP.w_POW
+     ↓
+w_POW receives types (i8, i8)
+     ↓
+Multi-method lookup: MM.get_binary_opspec("**", i8, i8)
+     ↓
+Returns OP.w_i8_pow (red function)
+     ↓
+Runtime executes: spy_operator$i8_pow(2, 3)
+     ↓
+Result: 8
+```
+
+## Next Steps
+
+Try implementing another operator yourself! Good candidates:
+- `@` - Matrix multiplication
+- `|>` - Pipe operator
+- `??` - Null coalescing
+
+Use this guide as a template and follow the same TDD approach. Happy coding! 🚀

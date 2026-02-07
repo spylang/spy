@@ -76,6 +76,7 @@ _from_token: dict[str, W_Func] = {
     "/": OP.w_DIV,
     "//": OP.w_FLOORDIV,
     "%": OP.w_MOD,
+    "**": OP.w_POW,
     "<<": OP.w_LSHIFT,
     ">>": OP.w_RSHIFT,
     "&": OP.w_AND,
