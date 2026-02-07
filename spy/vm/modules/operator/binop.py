@@ -322,7 +322,11 @@ def w_POW(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     else:
         w_opspec = W_OpSpec.NULL
     return typecheck_opspec(
-        vm, w_opspec, [wam_l, wam_r], dispatch="multi", errmsg="cannot do `{0}` ** `{1}`"
+        vm,
+        w_opspec,
+        [wam_l, wam_r],
+        dispatch="multi",
+        errmsg="cannot do `{0}` ** `{1}`",
     )
 
 
