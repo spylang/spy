@@ -1,6 +1,7 @@
 """
 Tests for the ** (power) operator.
 """
+
 import pytest
 
 from spy.tests.support import CompilerTest

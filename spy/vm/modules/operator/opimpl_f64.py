@@ -66,7 +66,7 @@ def w_f64_mod(vm: "SPyVM", w_a: W_F64, w_b: W_F64) -> W_F64:
 
 @OP.builtin_func
 def w_f64_pow(vm: "SPyVM", w_a: W_F64, w_b: W_F64) -> W_F64:
-    return _f64_op(vm, w_a, w_b, lambda a, b: a ** b)
+    return _f64_op(vm, w_a, w_b, lambda a, b: a**b)
 
 
 @OP.builtin_func
