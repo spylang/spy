@@ -43,7 +43,6 @@ class TestPow(CompilerTest):
         """Test power with negative base (only for signed types)."""
         if int_type.startswith("u"):
             pytest.skip("Skipping negative base test for unsigned types")
-        
         mod = self.compile(f"""
         T = {int_type}
         def pow(x: T, y: T) -> T:
@@ -82,7 +81,6 @@ class TestPow(CompilerTest):
         mod = self.compile("""
         def pow_if(x: i32, y: f64) -> f64:
             return x ** y
-        
         def pow_fi(x: f64, y: i32) -> f64:
             return x ** y
         """)
@@ -95,10 +93,8 @@ class TestPow(CompilerTest):
         mod = self.compile("""
         def expr1(x: i32) -> i32:
             return 2 ** x + 1
-        
         def expr2(x: i32, y: i32) -> i32:
             return x ** 2 + y ** 2
-        
         def expr3(x: i32) -> i32:
             return (x + 1) ** 2
         """)
