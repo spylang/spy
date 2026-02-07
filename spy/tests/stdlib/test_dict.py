@@ -264,7 +264,6 @@ class TestDict(CompilerTest):
             return x
         """)
         x = mod.foo()
-        print(x)
         assert x == {0: 1, 50: 2, 30: 3}
 
     def test_literal_preserves_order(self):

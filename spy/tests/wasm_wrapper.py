@@ -206,6 +206,19 @@ class WasmFuncWrapper:
         ll_ptr = pyres._content["__ll__"]
         assert isinstance(ll_ptr, WasmPtr)
 
+        # Read DictData struct from memory
+        # struct DictData {
+        #     ptr[i32] index;  // ptr is 8 bytes (4 for ptr + 4 for length)
+        #     i32 log_size;
+        #     i32 length;
+        #     ptr[Entry] entries;
+        # };
+        #
+        # struct Entry {
+        #     i32 empty;
+        #     i32 key;
+        #     i32 value;
+        # };
         addr = ll_ptr.addr
         index = self.ll.mem.read_i32(addr)
         log_size = self.ll.mem.read_i32(addr + 8)
@@ -219,7 +232,8 @@ class WasmFuncWrapper:
             empty = self.ll.mem.read_i32(entry_addr + 0)
             key = self.ll.mem.read_i32(entry_addr + 4)
             value = self.ll.mem.read_i32(entry_addr + 8)
-            result[key] = value
+            if not empty:
+                result[key] = value
 
         return result
 
