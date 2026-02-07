@@ -1,3 +1,6 @@
+import shutil
+import subprocess
+import sys
 from dataclasses import dataclass
 from os import getenv
 from typing import Literal, Optional
@@ -7,6 +10,7 @@ import spy.libspy
 BuildTarget = Literal["native", "wasi", "emscripten"]
 OutputKind = Literal["exe", "lib", "py-cffi"]
 BuildType = Literal["release", "debug"]
+GCOption = Literal["none", "bdwgc"]
 
 
 @dataclass
@@ -16,6 +20,7 @@ class BuildConfig:
     build_type: BuildType
     opt_level: Optional[int] = None
     warning_as_error: bool = False
+    gc: GCOption = "none"
 
 
 # ======= CFLAGS and LDFLAGS logic =======
@@ -109,3 +114,19 @@ class CompilerConfig:
 
         if config.opt_level is not None:
             self.cflags += [f"-O{config.opt_level}"]
+
+        # GC flags
+        if config.gc == "bdwgc":
+            self.cflags += ["-DSPY_GC_BDWGC"]
+            self.ldflags += ["-lgc"]
+            # On macOS, Homebrew installs bdw-gc outside the default
+            # compiler search paths
+            if sys.platform == "darwin" and shutil.which("brew"):
+                prefix = subprocess.run(
+                    ["brew", "--prefix", "bdw-gc"],
+                    capture_output=True,
+                    text=True,
+                ).stdout.strip()
+                if prefix:
+                    self.cflags += ["-I", f"{prefix}/include"]
+                    self.ldflags += ["-L", f"{prefix}/lib"]

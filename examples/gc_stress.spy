@@ -1,0 +1,28 @@
+# -*- mode: python -*-
+
+from unsafe import gc_alloc, gc_ptr
+
+# This example repeatedly allocates large buffers and discards them.
+# With --gc=none, RAM usage grows unbounded because allocations are never freed.
+# With --gc=bdwgc, the Boehm GC reclaims unused memory, so RAM stays bounded.
+
+def allocate_and_discard(size: i32, iterations: i32) -> i32:
+    result: i32 = 0
+    i: i32 = 0
+    while i < iterations:
+        buf: gc_ptr[i32] = gc_alloc[i32](size)
+        # Touch every element to make sure the memory is actually committed
+        j: i32 = 0
+        while j < size:
+            buf[j] = j
+            j = j + 1
+        result = buf[0]
+        # buf goes out of scope here -- with GC it can be reclaimed
+        i = i + 1
+    return result
+
+def main() -> None:
+    # Each iteration allocates 1M i32s = 4 MB
+    # 500 iterations = 2 GB total allocated
+    result = allocate_and_discard(1000000, 500)
+    print(result)
