@@ -243,7 +243,7 @@ class CFuncWriter:
         # generate the following:
         #
         #     // global declarations
-        #     static spy_Str SPY_g_str0 = {5, "hello"};
+        #     static spy_Str SPY_g_str0 = {5, 0, "hello"};
         #     ...
         #     // literal expr
         #     &SPY_g_str0 /* "hello" */
@@ -258,7 +258,7 @@ class CFuncWriter:
         v = self.cmodw.new_global_var("str")  # SPY_g_str0
         n = len(utf8)
         lit = C.Literal.from_bytes(utf8)
-        init = "{%d, %s}" % (n, lit)
+        init = "{%d, 0, %s}" % (n, lit)
         self.cmodw.tbc_globals.wl(f"static spy_Str {v} = {init};")
         #
         # shortstr is what we show in the comment, with a length limit

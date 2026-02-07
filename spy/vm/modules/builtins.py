@@ -180,6 +180,13 @@ def w_hash_bool(vm: "SPyVM", w_x: W_Bool) -> W_I32:
         assert False, "unreachable"
 
 
+@BUILTINS.builtin_func
+def w_hash_str(vm: "SPyVM", w_x: W_Str) -> W_I32:
+    assert isinstance(w_x, W_Str)
+    res = vm.ll.call("spy_str_hash", w_x.ptr)
+    return vm.wrap(res)
+
+
 @BUILTINS.builtin_func(color="blue", kind="metafunc")
 def w_hash(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
     w_T = wam_obj.w_static_T
@@ -191,6 +198,8 @@ def w_hash(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
         return W_OpSpec(B.w_hash_u8)
     elif w_T is B.w_bool:
         return W_OpSpec(B.w_hash_bool)
+    elif w_T is B.w_str:
+        return W_OpSpec(B.w_hash_str)
 
     if w_fn := w_T.lookup_func("__hash__"):
         w_opspec = vm.fast_metacall(w_fn, [wam_obj])
