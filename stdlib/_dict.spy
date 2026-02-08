@@ -1,6 +1,6 @@
 from unsafe import gc_alloc, gc_ptr
 from operator import OpSpec
-
+from __spy__ import EmptyDictType
 
 # spy dict
 # ========
@@ -214,6 +214,12 @@ def dict(Key, Value):
             data.index = new_index(data.log_size)
             data.entries = new_entries(data.log_size)
             return _dict.__make__(data)
+        
+        @blue.metafunc
+        def __convert_from__(m_expT, m_gotT, m_obj):
+            if m_gotT.blueval == EmptyDictType:
+                return OpSpec(_dict.__new__, [])
+            return OpSpec.NULL
 
         def __getitem__(self, key: Key) -> Value:
             data: gc_ptr[DictData] = self.__ll__
@@ -290,6 +296,10 @@ def dict(Key, Value):
             return dict_iterator(self.__ll__, 0)
 
         def keys(self) -> _dict:
+            return self
+
+        def _push(self, key: Key, val: Value) -> _dict:
+            self.__setitem__(key, val)
             return self
 
     return _dict

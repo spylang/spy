@@ -79,4 +79,22 @@ class W_EmptyListType(W_Object):
         return W_OpSpec.NULL
 
 
+@SPY.builtin_type("EmptyDictType")
+class W_EmptyDictType(W_Object):
+    """
+    An object representing '{}'
+    """
+
+    def __init__(self) -> None:
+        # just a sanity check, W_EmptyDict is a singleton
+        raise Exception("You cannot instantiate W_EmptyDictType")
+
+    def __repr__(self) -> str:
+        return "<spy empty_dict {}>"
+
+    def spy_unwrap(self, vm: "SPyVM") -> Any:
+        return {}
+
+
 SPY.add("empty_list", W_EmptyListType.__new__(W_EmptyListType))
+SPY.add("empty_dict", W_EmptyDictType.__new__(W_EmptyDictType))

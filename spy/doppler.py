@@ -494,6 +494,33 @@ class DopplerFrame(ASTFrame):
         v_stop = self.shifted_expr[op.stop]
         v_step = self.shifted_expr[op.step]
         return self.shift_opimpl(op, w_opimpl, [v_start, v_stop, v_step])
+    def shift_expr_Dict(self, dict: ast.Dict, wam: W_MetaArg) -> ast.Expr:
+        if len(dict.items) == 0:
+            assert wam.w_static_T is SPY.w_EmptyDictType
+            return make_const(self.vm, dict.loc, SPY.w_empty_dict)
+
+        # instantiate an empty dict
+        w_T = wam.w_static_T
+        fqn_new = w_T.fqn.join("__new__")
+        fqn_push = w_T.fqn.join("_push")
+
+        newdict = ast.Call(
+            loc=dict.loc,
+            func=ast.FQNConst(loc=dict.loc, fqn=fqn_new),
+            args=[],
+        )
+
+        # add a call to push() for each item (key, value)
+        for pair in dict.items:
+            shifted_key = self.shifted_expr[pair.key]
+            shifted_val = self.shifted_expr[pair.value]
+            newdict = ast.Call(
+                loc=pair.loc,
+                func=ast.FQNConst(loc=pair.loc, fqn=fqn_push),
+                args=[newdict, shifted_key, shifted_val],
+            )
+
+        return newdict
 
     def shift_expr_GetItem(self, op: ast.GetItem, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]
