@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 
 from spy import ast
 from spy.backend.c import c_ast as C
-from spy.backend.c.context import C_Ident, Context
+from spy.backend.c.context import C_Ident, C_Type, Context
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.textbuilder import TextBuilder
@@ -34,6 +34,9 @@ class CFuncWriter:
         self.fqn = fqn
         self.w_func = w_func
         self.last_emitted_linenos = (-1, -1)  # see emit_lineno_maybe
+        self._call_temps: dict[int, list[str | None]] = {}
+        self._temp_vars: list[tuple[str, C_Type]] = []
+        self._temp_var_counter = 0
 
     def ppc(self) -> None:
         """
@@ -55,6 +58,7 @@ class CFuncWriter:
         c_func = self.ctx.c_function(self.fqn.c_name, self.w_func)
         self.tbc.wl(c_func.decl() + " {")
         with self.tbc.indent():
+            self.collect_call_temps()
             self.emit_local_vars()
             for stmt in self.w_func.funcdef.body:
                 self.emit_stmt(stmt)
@@ -86,6 +90,76 @@ class CFuncWriter:
             ):
                 c_varname = C_Ident(varname)
                 self.tbc.wl(f"{c_type} {c_varname};")
+        for varname, c_type in self._temp_vars:
+            c_varname = C_Ident(varname)
+            self.tbc.wl(f"{c_type} {c_varname};")
+
+    def _new_temp_var(self, c_type: C_Type) -> str:
+        param_names = {arg.name for arg in self.w_func.funcdef.args}
+        locals_types = self.w_func.locals_types_w or {}
+        locals_names = set(locals_types)
+        reserved = param_names | locals_names | {name for name, _ in self._temp_vars}
+        while True:
+            varname = f"spy_tmp{self._temp_var_counter}"
+            self._temp_var_counter += 1
+            if varname not in reserved:
+                break
+        self._temp_vars.append((varname, c_type))
+        return varname
+
+    def _arg_contains_call(self, arg: ast.Expr) -> bool:
+        return any(isinstance(node, ast.Call) for node in arg.walk(ast.Call))
+
+    def _arg_contains_assignexpr(self, arg: ast.Expr) -> bool:
+        for node in arg.walk():
+            if isinstance(
+                node, (ast.AssignExpr, ast.AssignExprLocal, ast.AssignExprCell)
+            ):
+                return True
+        return False
+
+    def _needs_call_temps(self, call: ast.Call) -> bool:
+        for arg in call.args:
+            if self._arg_contains_assignexpr(arg) or self._arg_contains_call(arg):
+                return True
+        return False
+
+    def collect_call_temps(self) -> None:
+        for node in self.w_func.funcdef.walk():
+            if not isinstance(node, ast.Call):
+                continue
+            call = node
+            if not self._needs_call_temps(call):
+                continue
+            assert isinstance(call.func, ast.FQNConst), (
+                "indirect calls are not supported yet"
+            )
+            fqn = call.func.fqn
+            irtag = self.ctx.vm.get_irtag(fqn)
+            if irtag.tag in ("struct.getfield", "ptr.getfield"):
+                continue
+            w_obj = self.ctx.vm.lookup_global(fqn)
+            if not isinstance(w_obj, W_Func):
+                continue
+            params = list(w_obj.w_functype.params)
+            args_for_temps = call.args
+            if irtag.tag in ("ptr.getitem", "ptr.store"):
+                if args_for_temps and isinstance(args_for_temps[-1], ast.LocConst):
+                    args_for_temps = args_for_temps[:-1]
+                    params = params[:-1]
+            assert len(params) == len(args_for_temps), "param/arg mismatch"
+            temp_names: list[str | None] = []
+            for param, arg in zip(params, args_for_temps, strict=True):
+                needs_temp = self._arg_contains_assignexpr(
+                    arg
+                ) or self._arg_contains_call(arg)
+                if needs_temp:
+                    c_type = self.ctx.w2c(param.w_T)
+                    temp_names.append(self._new_temp_var(c_type))
+                else:
+                    temp_names.append(None)
+            if any(name is not None for name in temp_names):
+                self._call_temps[id(call)] = temp_names
 
     # ==============
 
@@ -424,14 +498,23 @@ class CFuncWriter:
         if op := self.FQN2BinOp.get(fqn):
             # binop special case
             assert len(call.args) == 2
-            l, r = [self.fmt_expr(arg) for arg in call.args]
-            return C.BinOp(op, l, r)
+            c_args, prelude = self._fmt_call_args(call)
+            l, r = c_args
+            bin_expr: C.Expr = C.BinOp(op, l, r)
+            if prelude:
+                return self._chain_commas(prelude + [bin_expr])
+            return bin_expr
 
         elif op := self.FQN2UnaryOp.get(fqn):
             # unary op special case
             assert len(call.args) == 1
-            v = self.fmt_expr(call.args[0])
-            return C.UnaryOp(op, v)
+            c_args, prelude = self._fmt_call_args(call)
+            assert len(c_args) == 1
+            v = c_args[0]
+            unary_expr: C.Expr = C.UnaryOp(op, v)
+            if prelude:
+                return self._chain_commas(prelude + [unary_expr])
+            return unary_expr
 
         elif irtag.tag == "struct.make":
             return self.fmt_struct_make(fqn, call, irtag)
@@ -466,18 +549,90 @@ class CFuncWriter:
         else:
             return self.fmt_generic_call(fqn, call)
 
+    def _assignexpr_parts(self, expr: ast.Expr) -> tuple[str, ast.Expr] | None:
+        if isinstance(expr, ast.AssignExpr):
+            return expr.target.value, expr.value
+        if isinstance(expr, ast.AssignExprLocal):
+            return expr.target.value, expr.value
+        if isinstance(expr, ast.AssignExprCell):
+            return expr.target_fqn.c_name, expr.value
+        return None
+
+    def _fmt_call_args(self, call: ast.Call) -> tuple[list[C.Expr], list[C.Expr]]:
+        args = call.args
+        temp_names = self._call_temps.get(id(call))
+        if temp_names is not None:
+            if len(temp_names) != len(args):
+                temp_names = None
+        if temp_names is not None:
+            c_args_temps: list[C.Expr] = []
+            prelude_temps: list[C.Expr] = []
+            for arg, temp_name in zip(args, temp_names, strict=True):
+                assignexpr = self._assignexpr_parts(arg)
+                if temp_name is None:
+                    if assignexpr is None:
+                        c_args_temps.append(self.fmt_expr(arg))
+                    else:
+                        target, value_expr = assignexpr
+                        prelude_temps.append(self._fmt_assignexpr(target, value_expr))
+                        c_args_temps.append(C.Literal(f"{C_Ident(target)}"))
+                    continue
+                temp_ident = C.Literal(f"{C_Ident(temp_name)}")
+                if assignexpr is None:
+                    prelude_temps.append(C.BinOp("=", temp_ident, self.fmt_expr(arg)))
+                else:
+                    target, value_expr = assignexpr
+                    prelude_temps.append(self._fmt_assignexpr(target, value_expr))
+                    prelude_temps.append(
+                        C.BinOp("=", temp_ident, C.Literal(f"{C_Ident(target)}"))
+                    )
+                c_args_temps.append(C.Literal(f"{C_Ident(temp_name)}"))
+            return c_args_temps, prelude_temps
+
+        has_assignexpr = False
+        for arg in args:
+            if self._assignexpr_parts(arg) is not None:
+                has_assignexpr = True
+        if not has_assignexpr:
+            return [self.fmt_expr(arg) for arg in args], []
+
+        c_args: list[C.Expr] = []
+        prelude: list[C.Expr] = []
+        for arg in args:
+            assignexpr = self._assignexpr_parts(arg)
+            if assignexpr is None:
+                c_args.append(self.fmt_expr(arg))
+                continue
+            target, value_expr = assignexpr
+            prelude.append(self._fmt_assignexpr(target, value_expr))
+            c_args.append(C.Literal(f"{C_Ident(target)}"))
+        return c_args, prelude
+
+    def _chain_commas(self, exprs: list[C.Expr]) -> C.Expr:
+        assert exprs
+        acc = exprs[0]
+        for expr in exprs[1:]:
+            acc = C.BinOp(",", acc, expr)
+        return C.Literal(f"({acc})")
+
     def fmt_generic_call(self, fqn: FQN, call: ast.Call) -> C.Expr:
         # default case: call a function with the corresponding name
         self.ctx.add_include_maybe(fqn)
         c_name = fqn.c_name
-        c_args = [self.fmt_expr(arg) for arg in call.args]
-        return C.Call(c_name, c_args)
+        c_args, prelude = self._fmt_call_args(call)
+        call_expr = C.Call(c_name, c_args)
+        if prelude:
+            return self._chain_commas(prelude + [call_expr])
+        return call_expr
 
     def fmt_struct_make(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         c_structtype = self.ctx.c_restype_by_fqn(fqn)
-        c_args = [self.fmt_expr(arg) for arg in call.args]
+        c_args, prelude = self._fmt_call_args(call)
         strargs = ", ".join(map(str, c_args))
-        return C.Cast(c_structtype, C.Literal("{ %s }" % strargs))
+        cast = C.Cast(c_structtype, C.Literal("{ %s }" % strargs))
+        if prelude:
+            return self._chain_commas(prelude + [cast])
+        return cast
 
     def fmt_struct_getfield(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         assert len(call.args) == 1
@@ -499,9 +654,13 @@ class CFuncWriter:
 
     def fmt_ptr_setfield(self, fqn: FQN, call: ast.Call) -> C.Expr:
         assert isinstance(call.args[1], ast.StrConst)
-        c_ptr = self.fmt_expr(call.args[0])
+        c_args, prelude = self._fmt_call_args(call)
+        c_ptr = c_args[0]
         attr = call.args[1].value
         offset = call.args[2]  # ignored
         c_lval = C.PtrField(c_ptr, attr)
-        c_rval = self.fmt_expr(call.args[3])
-        return C.BinOp("=", c_lval, c_rval)
+        c_rval = c_args[3]
+        assign = C.BinOp("=", c_lval, c_rval)
+        if prelude:
+            return self._chain_commas(prelude + [assign])
+        return assign
