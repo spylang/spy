@@ -312,6 +312,14 @@ class Call(Expr):
 
 
 @astnode
+class Slice(Expr):
+    precedence = 16
+    start: Expr
+    stop: Expr
+    step: Expr
+
+
+@astnode
 class CallMethod(Expr):
     precedence = 17  # higher than GetAttr
     target: Expr

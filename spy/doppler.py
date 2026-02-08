@@ -488,6 +488,13 @@ class DopplerFrame(ASTFrame):
             )
         return newlst
 
+    def shift_expr_Slice(self, op: ast.Slice, wam: W_MetaArg) -> ast.Expr:
+        w_opimpl = self.opimpl[op]
+        v_start = self.shifted_expr[op.start]
+        v_stop = self.shifted_expr[op.stop]
+        v_step = self.shifted_expr[op.step]
+        return self.shift_opimpl(op, w_opimpl, [v_start, v_stop, v_step])
+
     def shift_expr_Dict(self, dict: ast.Dict, wam: W_MetaArg) -> ast.Expr:
         if len(dict.items) == 0:
             assert wam.w_static_T is SPY.w_EmptyDictType

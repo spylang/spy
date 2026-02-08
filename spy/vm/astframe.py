@@ -1134,6 +1134,16 @@ class AbstractFrame:
 
         return wam_list
 
+    def eval_expr_Slice(self, op: ast.Slice) -> W_MetaArg:
+        w_SliceType = self.vm.lookup_global(FQN("_slice::Slice"))
+        assert isinstance(w_SliceType, W_Type)
+
+        wam_T = W_MetaArg.from_w_obj(self.vm, w_SliceType)
+        args = [self.eval_expr(arg) for arg in (op.start, op.stop, op.step)]
+        w_opimpl = self.vm.call_OP(op.loc, OP.w_CALL, [wam_T] + args)
+        wam_slice = self.eval_opimpl(op, w_opimpl, [wam_T] + args)
+        return wam_slice
+
     def eval_expr_Tuple(self, op: ast.Tuple) -> W_MetaArg:
         items_wam = [self.eval_expr(item) for item in op.items]
         colors = [wam.color for wam in items_wam]

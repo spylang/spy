@@ -114,6 +114,8 @@ class WasmFuncWrapper:
         #
         wasm_args: list[Any] = []
         for py_arg, param in zip(py_args, self.w_functype.params):
+            if param.w_T == TYPES.w_NoneType:
+                continue  # don't emit arguments of only type None
             wasm_arg = self.py2wasm(py_arg, param.w_T)
             if type(wasm_arg) is tuple:
                 # special case for multivalue

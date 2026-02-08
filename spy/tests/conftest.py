@@ -1,6 +1,7 @@
 # type: ignore
 
 import shutil
+import sys
 
 import py
 import pytest

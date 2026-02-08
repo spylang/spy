@@ -1,0 +1,148 @@
+"""
+SPy Slice module
+
+A Slice similar to CPython's
+"""
+
+from operator import OpSpec, MetaArg
+from types import NoneType
+
+from __spy__ import interp_list
+
+
+@struct
+class tuple3:
+    start: i32
+    stop: i32
+    step: i32
+
+
+@struct
+class Slice:
+    start: i32
+    start_is_none: i32  # bool
+    stop: i32
+    stop_is_none: i32  # bool
+    step: i32
+    step_is_none: i32  # bool
+
+    @blue.metafunc
+    def __new__(m_cls, m_start, m_stop, m_step) -> OpSpec:
+
+        TYPES = (m_start.static_type, m_stop.static_type, m_step.static_type)
+
+        # We can't use a normal list to hold the MetaArgs, since the _list module
+        # imports the _slice module (to use in list.__getitem__ and __setitem__)
+        # TO avoid a circular import, we use an interp_list
+        args_m = interp_list[MetaArg](m_start, m_stop, m_step)
+
+        # For each of the 8 possible combinations of three variables which
+        # can be either None and i32, create an mplementation with the
+        # correct parameter types. Each implementation calls Slice.__make__
+        # with the appropriate "flags" for None-ness set
+
+        if TYPES == (i32, i32, i32):
+
+            def impl1(_start: i32, _stop: i32, _step: i32) -> Slice:
+                return Slice.__make__(_start, 0, _stop, 0, _step, 0)
+
+            return OpSpec(impl1, interp_list[MetaArg](m_start, m_stop, m_step))
+
+        elif TYPES == (NoneType, i32, i32):
+
+            def impl2(_start: NoneType, _stop: i32, _step: i32) -> Slice:
+                return Slice.__make__(0, 1, _stop, 0, _step, 0)
+
+            return OpSpec(impl2, interp_list[MetaArg](m_start, m_stop, m_step))
+
+        elif TYPES == (i32, NoneType, i32):
+
+            def impl3(_start: i32, _stop: NoneType, _step: i32) -> Slice:
+                return Slice.__make__(_start, 0, 0, 1, _step, 0)
+
+            return OpSpec(impl3, interp_list[MetaArg](m_start, m_stop, m_step))
+
+        elif TYPES == (i32, i32, NoneType):
+
+            def impl4(_start: i32, _stop: i32, _step: NoneType) -> Slice:
+                return Slice.__make__(_start, 0, _stop, 0, 1, 1)
+
+            return OpSpec(impl4, interp_list[MetaArg](m_start, m_stop, m_step))
+
+        elif TYPES == (NoneType, NoneType, i32):
+
+            def impl5(_start: NoneType, _stop: NoneType, _step: i32) -> Slice:
+                return Slice.__make__(0, 1, 0, 1, _step, 0)
+
+            return OpSpec(impl5, interp_list[MetaArg](m_start, m_stop, m_step))
+
+        elif TYPES == (NoneType, i32, NoneType):
+
+            def impl6(_start: None, _stop: i32, _step: None) -> Slice:
+                return Slice.__make__(0, 1, _stop, 0, 1, 1)
+
+            return OpSpec(impl6, interp_list[MetaArg](m_start, m_stop, m_step))
+
+        elif TYPES == (i32, NoneType, NoneType):
+
+            def impl7(_start: i32, _stop: None, _step: None) -> Slice:
+                return Slice.__make__(_start, 0, 0, 1, 1, 1)
+
+            return OpSpec(impl7, interp_list[MetaArg](m_start, m_stop, m_step))
+
+        elif TYPES == (NoneType, NoneType, NoneType):
+
+            def impl8(_start: NoneType, _stop: NoneType, _step: NoneType) -> Slice:
+                return Slice.__make__(0, 1, 0, 1, 1, 1)
+
+            return OpSpec(impl8, interp_list[MetaArg](m_start, m_stop, m_step))
+
+        return OpSpec.NULL
+
+    def indices(self, length: i32) -> tuple3:
+        _step: i32 = 1
+        if not self.step_is_none:
+            _step = self.step
+        if _step == 0:
+            raise ValueError("slice step cannot be zero")
+
+        if length < 0:
+            raise ValueError("length should not be negative")
+
+        # Find lower and upper bounds for start and stop.
+        _lower: i32 = 0
+        if _step < 0:
+            _lower = -1
+        _upper: i32 = length
+        if _step < 0:
+            _upper = length - 1
+
+        # Compute start.
+        _start: i32 = 0
+        if self.start_is_none:
+            if _step < 0:
+                _start = _upper
+            else:
+                _start = _lower
+        else:
+            _start = self.start
+            if _start < 0:
+                _start = max(_start + length, _lower)
+            else:
+                _start = min(_start, _upper)
+
+        # Compute stop.
+        _stop: i32 = 0
+        if self.stop_is_none != 0:
+            if _step < 0:
+                _stop = _lower
+            else:
+                _stop = _upper
+        else:
+            _stop = self.stop
+            if _stop < 0:
+                _stop = max(_stop + length, _lower)
+            else:
+                _stop = min(_stop, _upper)
+
+        return tuple3(_start, _stop, _step)

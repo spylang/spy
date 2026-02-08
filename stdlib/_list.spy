@@ -8,6 +8,11 @@ from unsafe import gc_alloc, gc_ptr
 from operator import OpSpec, MetaArg
 from __spy__ import interp_list, EmptyListType
 
+from _slice import Slice, tuple3
+
+# In future, use something like sys.maxint when implemented
+max_i32: i32 = 2147483647 
+
 
 @blue.generic
 def list(T):
@@ -71,26 +76,76 @@ def list(T):
 
         def __len__(self) -> i32:
             return self.__ll__.length
+        
 
-        def __getitem__(self, i: i32) -> T:
-            ll = self.__ll__
-            if i < 0:
-                i = i + ll.length
-            if i < 0:
-                raise IndexError
-            if i >= ll.length:
-                raise IndexError
-            return ll.items[i]
+        @blue.metafunc
+        def __getitem__(self, m_x: MetaArg):
+            if m_x.static_type == i32:
+                def getitem_int(_self: _ListImpl, i: int) -> T:
+                    ll = _self.__ll__
+                    if i < 0:
+                        i = i + ll.length
+                    if i < 0:
+                        raise IndexError
+                    if i >= ll.length:
+                        raise IndexError
+                    return ll.items[i]
+                return OpSpec(getitem_int)
+            
+            elif m_x.static_type == Slice:
+                def getitem_slice(_self: _ListImpl, s: Slice) -> _ListImpl:
+                    ll = _self.__ll__
+                    unpacked = _py_slice_unpack(ll.length, s)
+                    new_length = _py_adjust_indexes(
+                        ll.length, unpacked.start, unpacked.stop, unpacked.step
+                    )
+                    indices = s.indices(new_length)
 
-        def __setitem__(self, i: i32, value: T) -> None:
-            ll = self.__ll__
-            if i < 0:
-                i = i + ll.length
-            if i < 0:
-                raise IndexError
-            if i >= ll.length:
-                raise IndexError
-            ll.items[i] = value
+                    if new_length <= 0: return []
+                    elif indices.step == 1:
+                        new_data = gc_alloc[ListData](1)
+                        new_data.length = new_length
+                        new_data.capacity = new_length + 1
+                        new_data.items = gc_alloc[T](ll.capacity)
+
+                        for i in range(new_length):
+                            new_data.items[i] = ll.items[indices.start + i]
+
+                        return _ListImpl.__make__(new_data)
+                    else:
+                        new_data = gc_alloc[ListData](1)
+                        new_data.length = new_length
+                        new_data.capacity = new_length + 1
+                        new_data.items = gc_alloc[T](ll.capacity)
+                        
+                        cur: int = indices.start
+                        for _i in range(new_length):
+                            new_data.items[_i] = ll.items[cur]
+                            cur += indices.step
+
+                        return _ListImpl.__make__(new_data)
+                return OpSpec(getitem_slice)
+            
+            else:
+                raise TypeError("Subscript to list must be i32 or Slice, got " + str(m_x))
+
+        @blue.metafunc
+        def __setitem__(self, m_x: MetaArg, value: MetaArg):
+            if m_x.static_type == i32:
+                def setitem_int(_self: _ListImpl, i: int, _value: T) -> None:
+                    ll = _self.__ll__ 
+                    if i < 0:
+                        i = i + ll.length
+                    if i < 0:
+                        raise IndexError
+                    if i >= ll.length:
+                        raise IndexError
+                    ll.items[i] = _value
+                return OpSpec(setitem_int)
+            elif m_x.static_type == slice:
+                raise StaticError("WIP: list.__setitem__(slice) is not implemented yet")
+            else:
+                return OpSpec.NULL
 
         def pop(self) -> T:
             ll = self.__ll__
@@ -252,4 +307,77 @@ def list(T):
             self.append(item)
             return self
 
+
     return _ListImpl
+
+def _py_adjust_indexes(length: i32, start: i32, stop: i32, step: i32) -> i32:
+    """
+    Converts the start and stop values to 'actual' ones (bounded by 0 and len(list)-1)
+    Returns the number of elements in the list once the described slice is applied
+    Similar to implementation in CPython
+    """
+    if start < 0:
+        start += length
+        if start < 0:
+            if step < 0:
+                start = -1
+            else:
+                start = 0
+    elif start >= length:
+        if step < 0:
+            start = length - 1
+        else:
+            start = length
+
+    if stop < 0:
+        stop += length
+        if stop < 0:
+            if step < 0:
+                stop = -1
+            else:
+                stop = 0
+    elif stop >= length:
+        if step < 0:
+            stop = length -1
+        else:
+            stop = length
+
+    val: int = 0
+    if step < 0:
+        if stop < start:
+            val = int((start - stop - 1) / (-step)) + 1
+    else:
+        if start < stop:
+            val = int((stop - start - 1) / step) + 1
+        
+    return val
+        
+def _py_slice_unpack(length:i32, s:Slice) -> tuple3:
+    _start: i32
+    _stop: i32
+    _step: i32
+    if s.step_is_none:
+        _step = 1
+    else:
+        _step = s.step
+
+    if _step == 0:
+        raise ValueError("slice step cannot be zero")
+    
+    if s.start_is_none:
+        if _step < 0:
+            _start = max_i32
+        else:
+            _start = 0
+    else:
+        _start = s.start
+
+    if s.stop_is_none:
+        if _step < 0:
+            _stop = - max_i32 - 1
+        else:
+            _stop = max_i32
+    else:
+        _stop = s.stop
+
+    return tuple3(_start, _stop, _step)

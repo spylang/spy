@@ -101,7 +101,9 @@ class C_Function:
         if self.params == []:
             s_params = "void"
         else:
-            paramlist = [f"{p.c_type} {p.name}" for p in self.params]
+            paramlist = [
+                f"{p.c_type} {p.name}" for p in self.params if p.c_type.name != "void"
+            ]
             s_params = ", ".join(paramlist)
         #
         return f"{self.c_restype} {self.name}({s_params})"

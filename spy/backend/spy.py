@@ -518,6 +518,16 @@ class SPyBackend:
         items = ", ".join(itemlist)
         return f"({items})"
 
+    def fmt_expr_Slice(self, node: ast.Slice) -> str:
+        (start, stop, step) = [
+            self.fmt_expr(exp) for exp in (node.start, node.stop, node.step)
+        ]
+
+        def hide_none(val: str) -> str:
+            return val if val != "None" else ""
+
+        return f"{hide_none(start)}:{hide_none(stop)}{f':{step}' if hide_none(step) else ''}"
+
     def fmt_expr_Dict(self, node: ast.Dict) -> str:
         pairs = [
             f"{self.fmt_expr(kv.key)}: {self.fmt_expr(kv.value)}" for kv in node.items
