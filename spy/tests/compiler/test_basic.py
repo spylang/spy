@@ -262,6 +262,13 @@ class TestBasic(CompilerTest):
         """)
         assert mod.inc(100) == 101
 
+    def test_none_arguments(self):
+        mod = self.compile("""
+        def foo(x: None) -> None:
+            pass
+        """)
+        assert mod.foo(None) == None
+
     def test_assign(self):
         mod = self.compile("""
         def inc(x: i32) -> i32:
