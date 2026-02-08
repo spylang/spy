@@ -1,5 +1,6 @@
 import re
 import subprocess
+import sys
 import textwrap
 from subprocess import getstatusoutput
 from typing import Any
@@ -220,7 +221,13 @@ class TestMain:
         "target",
         [
             pytest.param("native"),
-            pytest.param("native-static"),
+            pytest.param(
+                "native-static",
+                marks=pytest.mark.skipif(
+                    sys.platform == "darwin",
+                    reason="not supported on macOS",
+                ),
+            ),
             pytest.param("wasi"),
             pytest.param("emscripten", marks=pytest.mark.emscripten),
         ],

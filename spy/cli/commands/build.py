@@ -1,4 +1,5 @@
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import (
@@ -143,6 +144,9 @@ async def build(args: Build_Args) -> None:
 
     if args.static and args.target != "native":
         raise click.UsageError("--static can only be used with --target native")
+
+    if args.static and sys.platform == "darwin":
+        raise click.UsageError("--static is not supported on macOS")
 
     config = BuildConfig(
         target=args.target,

@@ -121,6 +121,10 @@ else ifeq ($(TARGET), native)
 
 # ------- native-static target ------
 else ifeq ($(TARGET), native-static)
+  ifeq ($(shell uname -s),Darwin)
+    $(warning Skipping native-static target - not supported on macOS)
+    .DEFAULT_GOAL := skip_native_static
+  else
 	CC := $(ZIG) cc
 	AR := $(ZIG) ar
 
@@ -130,6 +134,7 @@ else ifeq ($(TARGET), native-static)
 		--target=native-native-musl
 
 	.DEFAULT_GOAL := build/native-static/$(BUILD_TYPE)/libspy.a
+  endif
 
 # ---------- invalid target ---------
 else
@@ -177,6 +182,9 @@ build/$(TARGET)/$(BUILD_TYPE)/libspy.a: $(OBJS)
 $(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
+
+skip_native_static:
+	@echo "Skipping native-static build - not supported on macOS"
 
 skip_emscripten:
 	@echo "Skipping emscripten build - emcc compiler not found"
