@@ -220,18 +220,20 @@ class TestMain:
         "target",
         [
             pytest.param("native"),
+            pytest.param("native-static"),
             pytest.param("wasi"),
             pytest.param("emscripten", marks=pytest.mark.emscripten),
         ],
     )
     def test_build(self, target):
-        res, stdout = self.run(
-            "build",
-            "--target", target,
-            "--build-dir", self.tmpdir,
-            self.main_spy,
-        )  # fmt: skip
-        if target == "native":
+        build_args = ["build", "--build-dir", self.tmpdir]
+        if target == "native-static":
+            build_args += ["--target", "native", "--static"]
+        else:
+            build_args += ["--target", target]
+        build_args.append(self.main_spy)
+        res, stdout = self.run(*build_args)
+        if target in ("native", "native-static"):
             main_exe = self.tmpdir.join("main")
             assert main_exe.exists()
             cmd = str(main_exe)

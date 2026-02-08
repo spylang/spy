@@ -1,9 +1,10 @@
 # Supported targets and compilers:
 #
-#   TARGET      TRIPLET                     COMPILER
-#   wasi        wasm32-wasi-musl            zig cc
-#   emscripten  wasm32-unknown-emscripten   emcc
-#   native      x86_64-pc-linux-gnu (*)     cc
+#   TARGET         TRIPLET                     COMPILER
+#   native         x86_64-pc-linux-gnu (*)     cc
+#   native-static  native-native-musl          zig cc
+#   wasi           wasm32-wasi-musl            zig cc
+#   emscripten     wasm32-unknown-emscripten   emcc
 #
 # (*) the actual triplet for "native" depends on your system, of course
 
@@ -118,6 +119,17 @@ else ifeq ($(TARGET), native)
 
 	.DEFAULT_GOAL := build/native/$(BUILD_TYPE)/libspy.a
 
+# ------- native-static target ------
+else ifeq ($(TARGET), native-static)
+	CC := $(ZIG) cc
+	AR := $(ZIG) ar
+
+	CFLAGS := \
+		$(CFLAGS) \
+		-DSPY_TARGET_NATIVE \
+		--target=native-native-musl
+
+	.DEFAULT_GOAL := build/native-static/$(BUILD_TYPE)/libspy.a
 
 # ---------- invalid target ---------
 else
@@ -132,6 +144,8 @@ all:
 	make TARGET=wasi BUILD_TYPE=debug
 	make TARGET=native BUILD_TYPE=release
 	make TARGET=native BUILD_TYPE=debug
+	make TARGET=native-static BUILD_TYPE=release
+	make TARGET=native-static BUILD_TYPE=debug
 	make TARGET=emscripten BUILD_TYPE=release
 	make TARGET=emscripten BUILD_TYPE=debug
 
@@ -173,4 +187,4 @@ clean:
 
 
 usage:
-	@echo "Usage: make TARGET=[wasi|emscripten|native] BUILD_TYPE=[release|debug]"
+	@echo "Usage: make TARGET=[wasi|emscripten|native|native-static] BUILD_TYPE=[release|debug]"

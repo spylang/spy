@@ -21,6 +21,7 @@ class BuildConfig:
     opt_level: Optional[int] = None
     warning_as_error: bool = False
     gc: GCOption = "none"
+    static: bool = False
 
 
 # ======= CFLAGS and LDFLAGS logic =======
@@ -65,7 +66,12 @@ class CompilerConfig:
 
         # e.g. 'spy/libspy/build/native/release/'
         self.ldflags += LDFLAGS
-        libdir = spy.libspy.BUILD.join(config.target, config.build_type)
+        if config.static:
+            assert config.target == "native"
+            libdir_target = "native-static"
+        else:
+            libdir_target = config.target
+        libdir = spy.libspy.BUILD.join(libdir_target, config.build_type)
         self.ldflags += [
             "-L", str(libdir),
             "-lspy",
@@ -84,7 +90,13 @@ class CompilerConfig:
             self.ldflags += DEBUG_CFLAGS
 
         # target specific flags
-        if config.target == "native":
+        if config.target == "native" and config.static:
+            self.CC = "python -m ziglang cc"
+            self.ext = ""
+            self.cflags += ["--target=native-native-musl"]
+            self.ldflags += ["--target=native-native-musl", "-static"]
+
+        elif config.target == "native":
             self.CC = "cc"
             self.ext = ""
 
