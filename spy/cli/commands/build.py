@@ -129,8 +129,7 @@ async def build(args: Build_Args) -> None:
 
     gc: GCOption
     if args.gc == "auto":
-        if args.target == "native" and not args.static:
-            # XXX: we should enable bdwgc for static builds
+        if args.target == "native":
             gc = "bdwgc"
         else:
             gc = "none"

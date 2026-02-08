@@ -130,15 +130,32 @@ class CompilerConfig:
         # GC flags
         if config.gc == "bdwgc":
             self.cflags += ["-DSPY_GC_BDWGC"]
-            self.ldflags += ["-lgc"]
-            # On macOS, Homebrew installs bdw-gc outside the default
-            # compiler search paths
-            if sys.platform == "darwin" and shutil.which("brew"):
-                prefix = subprocess.run(
-                    ["brew", "--prefix", "bdw-gc"],
-                    capture_output=True,
-                    text=True,
-                ).stdout.strip()
-                if prefix:
-                    self.cflags += ["-I", f"{prefix}/include"]
-                    self.ldflags += ["-L", f"{prefix}/lib"]
+            if config.static:
+                self._build_bdwgc_static()
+                gc_prefix = str(spy.libspy.DEPS.join("build", "native-static"))
+                self.cflags += ["-I", f"{gc_prefix}/include"]
+                self.ldflags += ["-L", f"{gc_prefix}/lib", "-lgc"]
+            else:
+                self.ldflags += ["-lgc"]
+                # On macOS, Homebrew installs bdw-gc outside the default
+                # compiler search paths
+                if sys.platform == "darwin" and shutil.which("brew"):
+                    prefix = subprocess.run(
+                        ["brew", "--prefix", "bdw-gc"],
+                        capture_output=True,
+                        text=True,
+                    ).stdout.strip()
+                    if prefix:
+                        self.cflags += ["-I", f"{prefix}/include"]
+                        self.ldflags += ["-L", f"{prefix}/lib"]
+
+    @staticmethod
+    def _build_bdwgc_static() -> None:
+        deps_dir = str(spy.libspy.DEPS)
+        libgc = spy.libspy.DEPS.join("build", "native-static", "lib", "libgc.a")
+        if libgc.check(file=True):
+            return
+        subprocess.run(
+            ["make", "-C", deps_dir, "TARGET=native-static", "bdwgc"],
+            check=True,
+        )
