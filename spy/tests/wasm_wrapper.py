@@ -136,7 +136,7 @@ class WasmFuncWrapper:
             # res is a  spy_Str*
             addr = res
             length = self.ll.mem.read_i32(addr)
-            utf8 = self.ll.mem.read(addr + 4, length)
+            utf8 = self.ll.mem.read(addr + 8, length)
             return utf8.decode("utf-8")
         elif w_T is RB.w_RawBuffer:
             # res is a  spy_RawBuffer*

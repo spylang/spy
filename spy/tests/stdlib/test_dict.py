@@ -291,6 +291,19 @@ class TestDict(CompilerTest):
         x = mod.foo()
         assert x[42] == 100
 
+    def test_str_keys(self):
+        src = """
+        from _dict import dict
+
+        def test() -> i32:
+            d = dict[str, i32]()
+            d["hello"] = 1
+            d["world"] = 2
+            return d["hello"] + d["world"]
+        """
+        mod = self.compile(src)
+        assert mod.test() == 3
+
     def test_literal_mixed_value_types_key_value(self):
         # useful for mixed type support
         # type of x must be i32

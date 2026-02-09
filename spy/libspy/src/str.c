@@ -7,6 +7,7 @@ spy_str_alloc(size_t length) {
     size_t size = sizeof(spy_Str) + length;
     spy_Str *res = (spy_Str *)spy_GcAlloc(size).p;
     res->length = length;
+    res->hash = 0;
     return res;
 }
 
@@ -59,6 +60,25 @@ spy_str_getitem(spy_Str *s, int32_t i) {
 int32_t
 spy_str_len(spy_Str *s) {
     return (int32_t)s->length;
+}
+
+int32_t
+spy_str_hash(spy_Str *s) {
+    if (s->hash != 0)
+        return s->hash;
+    // FNV-1a hash
+    uint32_t h = 2166136261u;
+    for (size_t i = 0; i < s->length; i++) {
+        h ^= (uint8_t)s->utf8[i];
+        h *= 16777619u;
+    }
+    int32_t result = (int32_t)h;
+    if (result == -1)
+        result = -2;
+    if (result == 0)
+        result = 1;
+    s->hash = result;
+    return result;
 }
 
 // Helper function to format and convert to spy_Str
