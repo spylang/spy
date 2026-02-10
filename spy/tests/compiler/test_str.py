@@ -189,3 +189,14 @@ class TestStr(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == "\nBall"
+
+    def test_str_replace(self):
+        mod = self.compile("""
+        def foo(s: str, old: str, new: str) -> str:
+            return s.replace(old, new)
+        """)
+        assert mod.foo("hello world", "world", "spy") == "hello spy"
+        assert mod.foo("aaa", "a", "bb") == "bbbbbb"
+        assert mod.foo("hello", "", "_") == "_h_e_l_l_o_"
+        assert mod.foo("hello", "xyz", "abc") == "hello"
+        assert mod.foo("", "a", "b") == ""
