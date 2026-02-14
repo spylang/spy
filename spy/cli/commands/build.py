@@ -1,4 +1,5 @@
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import (
@@ -99,6 +100,14 @@ class _build_mixin:
         ),
     ] = "auto"
 
+    static: Annotated[
+        bool,
+        Option(
+            "--static",
+            help="Produce a statically-linked executable (requires --target native)",
+        ),
+    ] = False
+
 
 @dataclass
 class Build_Args(
@@ -120,7 +129,10 @@ async def build(args: Build_Args) -> None:
 
     gc: GCOption
     if args.gc == "auto":
-        gc = "bdwgc" if args.target == "native" else "none"
+        if args.target == "native":
+            gc = "bdwgc"
+        else:
+            gc = "none"
     else:
         gc = args.gc  # type: ignore[assignment]
 
@@ -129,12 +141,19 @@ async def build(args: Build_Args) -> None:
             f"WASM targets only support --gc=none, got --gc={args.gc}"
         )
 
+    if args.static and args.target != "native":
+        raise click.UsageError("--static can only be used with --target native")
+
+    if args.static and sys.platform == "darwin":
+        raise click.UsageError("--static is not supported on macOS")
+
     config = BuildConfig(
         target=args.target,
         kind=args.output_kind,
         build_type="release" if args.release_mode else "debug",
         warning_as_error=args.warning_as_error,
         gc=gc,
+        static=args.static,
     )
 
     cwd = py.path.local(".")

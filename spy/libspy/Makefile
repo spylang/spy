@@ -1,9 +1,10 @@
 # Supported targets and compilers:
 #
-#   TARGET      TRIPLET                     COMPILER
-#   wasi        wasm32-wasi-musl            zig cc
-#   emscripten  wasm32-unknown-emscripten   emcc
-#   native      x86_64-pc-linux-gnu (*)     cc
+#   TARGET         TRIPLET                     COMPILER
+#   native         x86_64-pc-linux-gnu (*)     cc
+#   native-static  native-native-musl          zig cc
+#   wasi           wasm32-wasi-musl            zig cc
+#   emscripten     wasm32-unknown-emscripten   emcc
 #
 # (*) the actual triplet for "native" depends on your system, of course
 
@@ -118,6 +119,22 @@ else ifeq ($(TARGET), native)
 
 	.DEFAULT_GOAL := build/native/$(BUILD_TYPE)/libspy.a
 
+# ------- native-static target ------
+else ifeq ($(TARGET), native-static)
+  ifeq ($(shell uname -s),Darwin)
+    $(warning Skipping native-static target - not supported on macOS)
+    .DEFAULT_GOAL := skip_native_static
+  else
+	CC := $(ZIG) cc
+	AR := $(ZIG) ar
+
+	CFLAGS := \
+		$(CFLAGS) \
+		-DSPY_TARGET_NATIVE \
+		--target=native-native-musl
+
+	.DEFAULT_GOAL := build/native-static/$(BUILD_TYPE)/libspy.a
+  endif
 
 # ---------- invalid target ---------
 else
@@ -132,6 +149,8 @@ all:
 	make TARGET=wasi BUILD_TYPE=debug
 	make TARGET=native BUILD_TYPE=release
 	make TARGET=native BUILD_TYPE=debug
+	make TARGET=native-static BUILD_TYPE=release
+	make TARGET=native-static BUILD_TYPE=debug
 	make TARGET=emscripten BUILD_TYPE=release
 	make TARGET=emscripten BUILD_TYPE=debug
 
@@ -164,6 +183,9 @@ $(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+skip_native_static:
+	@echo "Skipping native-static build - not supported on macOS"
+
 skip_emscripten:
 	@echo "Skipping emscripten build - emcc compiler not found"
 	@echo "To build for emscripten, please install and activate the emsdk toolchain"
@@ -173,4 +195,4 @@ clean:
 
 
 usage:
-	@echo "Usage: make TARGET=[wasi|emscripten|native] BUILD_TYPE=[release|debug]"
+	@echo "Usage: make TARGET=[wasi|emscripten|native|native-static] BUILD_TYPE=[release|debug]"
