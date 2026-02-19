@@ -5,7 +5,7 @@ from spy.fqn import FQN
 from spy.vm.b import BUILTINS, TYPES, B
 from spy.vm.builtin import W_BuiltinFunc, builtin_method
 from spy.vm.field import W_Field
-from spy.vm.function import FuncParam, W_FuncType
+from spy.vm.function import FuncParam, W_BuiltinFunc, W_FuncType
 from spy.vm.irtag import IRTag
 from spy.vm.object import ClassBody, W_Object, W_Type
 from spy.vm.opspec import W_MetaArg, W_OpSpec
@@ -32,6 +32,7 @@ class W_StructType(W_Type):
         w_meth = self.dict_w["__make__"]
         assert isinstance(w_meth, W_StaticMethod)
         w_make = w_meth.w_obj
+        assert isinstance(w_make, W_BuiltinFunc)
         vm.add_global(w_make.fqn, w_make, irtag=IRTag("struct.make"))
 
     def lazy_define_from_classbody(self, body: ClassBody) -> None:

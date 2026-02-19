@@ -116,6 +116,7 @@ class ModuleRegistry:
         expected to be provided by libspy.
         """
         from spy.vm.field import W_Field
+        from spy.vm.function import W_BuiltinFunc
         from spy.vm.object import ClassBody
         from spy.vm.property import W_StaticMethod
         from spy.vm.struct import W_StructType
@@ -134,6 +135,7 @@ class ModuleRegistry:
         w_meth = w_st.dict_w["__make__"]
         assert isinstance(w_meth, W_StaticMethod)
         w_make = w_meth.w_obj
+        assert isinstance(w_make, W_BuiltinFunc)
 
         # add the struct type and the __make__ function to the registry
         if builtin:
