@@ -100,13 +100,20 @@ class ModuleRegistry:
         return decorator
 
     def struct_type(
-        self, typename: str, fields: list[tuple[str, "W_Type"]]
+        self,
+        typename: str,
+        fields: list[tuple[str, "W_Type"]],
+        *,
+        builtin: bool = False,
     ) -> "W_StructType":
         """
         Register a struct type on the module.
 
         fields is a list of (name, w_type) pairs, e.g.:
             [("x", B.w_i32), ("y", B.w_i32)]
+
+        If builtin is True, the C backend does NOT generate the struct definition: it is
+        expected to be provided by libspy.
         """
         from spy.vm.field import W_Field
         from spy.vm.object import ClassBody
@@ -129,7 +136,11 @@ class ModuleRegistry:
         w_make = w_meth.w_obj
 
         # add the struct type and the __make__ function to the registry
-        self.add(typename, w_st)
+        if builtin:
+            irtag = IRTag("struct.builtin")
+        else:
+            irtag = IRTag.Empty
+        self.add(typename, w_st, irtag=irtag)
         self.content.append((w_make.fqn, w_make, IRTag("struct.make")))
 
         return w_st
