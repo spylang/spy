@@ -582,9 +582,9 @@ class Parser:
         T = type(py_node.value)
         if T is str:
             return spy.ast.StrConst(py_node.loc, py_node.value)
-        elif T in (int, float, bool, NoneType):
+        elif T in (int, float, complex, bool, NoneType):
             return spy.ast.Constant(py_node.loc, py_node.value)
-        elif T in (bytes, float, complex, Ellipsis):
+        elif T in (bytes, Ellipsis):
             self.error(
                 f"unsupported literal: {py_node.value!r}",
                 f"this is not supported yet",
