@@ -9,8 +9,8 @@ from spy.location import Loc
 from spy.textbuilder import TextBuilder
 from spy.util import magic_dispatch, shortrepr
 from spy.vm.b import TYPES
-from spy.vm.builtin import IRTag
 from spy.vm.function import W_ASTFunc, W_Func
+from spy.vm.irtag import IRTag
 from spy.vm.modules.unsafe.ptr import W_Ptr
 
 if TYPE_CHECKING:

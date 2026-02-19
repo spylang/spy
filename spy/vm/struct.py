@@ -3,9 +3,10 @@ from typing import TYPE_CHECKING, Annotated, Any, Iterable, Optional
 from spy.errors import WIP
 from spy.fqn import FQN
 from spy.vm.b import BUILTINS, TYPES, B
-from spy.vm.builtin import IRTag, W_BuiltinFunc, builtin_method
+from spy.vm.builtin import W_BuiltinFunc, builtin_method
 from spy.vm.field import W_Field
-from spy.vm.function import FuncParam, W_FuncType
+from spy.vm.function import FuncParam, W_BuiltinFunc, W_FuncType
+from spy.vm.irtag import IRTag
 from spy.vm.object import ClassBody, W_Object, W_Type
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.property import W_StaticMethod
@@ -22,6 +23,28 @@ class W_StructType(W_Type):
     spy_key_is_valid: bool
 
     def define_from_classbody(self, vm: "SPyVM", body: ClassBody) -> None:
+        """
+        "Fully" define the struct type, including adding the __make__ function to
+        the globals.
+        """
+        self.lazy_define_from_classbody(body)
+        # add the __make__ to the globals
+        w_meth = self.dict_w["__make__"]
+        assert isinstance(w_meth, W_StaticMethod)
+        w_make = w_meth.w_obj
+        assert isinstance(w_make, W_BuiltinFunc)
+        vm.add_global(w_make.fqn, w_make, irtag=IRTag("struct.make"))
+
+    def lazy_define_from_classbody(self, body: ClassBody) -> None:
+        """
+        Partially define the struct type.
+
+        The main difference w.r.t. define_from_classbody is that the __make__ function
+        is NOT added to the globals.
+
+        This is mostly useful to implement ModuleRegistry.struct_type, because in that
+        case the __make__ function will be registered at vm.make_module time.
+        """
         # compute the layout of the struct and get the list of its fields
         struct_fields_w, size = calc_layout(body.fields_w)
         self.size = size
@@ -41,7 +64,7 @@ class W_StructType(W_Type):
             dict_w[key] = w_obj
 
         # add '__make__' and optionally '__new__'
-        w_make = self._create_w_make(vm, struct_fields_w)
+        w_make = self._create_w_make(struct_fields_w)
         dict_w["__make__"] = W_StaticMethod(w_make)
         if "__new__" not in dict_w:
             dict_w["__new__"] = w_make
@@ -60,9 +83,7 @@ class W_StructType(W_Type):
 
         super().define(W_Struct, dict_w)
 
-    def _create_w_make(
-        self, vm: "SPyVM", struct_fields_w: list["W_StructField"]
-    ) -> W_BuiltinFunc:
+    def _create_w_make(self, struct_fields_w: list["W_StructField"]) -> W_BuiltinFunc:
         """
         Generate the '__make__' staticmethod.
 
@@ -97,7 +118,6 @@ class W_StructType(W_Type):
         # create the actual function object
         fqn = self.fqn.join("__make__")
         w_make = W_BuiltinFunc(w_functype, fqn, w_make_impl)
-        vm.add_global(fqn, w_make, irtag=IRTag("struct.make"))
         return w_make
 
     def repr_hints(self) -> list[str]:

@@ -4,10 +4,13 @@ from typing import TYPE_CHECKING, Any, Callable, Optional, Type
 from spy.ast import Color, FuncKind
 from spy.fqn import FQN, QUALIFIERS
 from spy.location import Loc
+from spy.vm.irtag import IRTag
 
 if TYPE_CHECKING:
     from spy.vm.function import W_BuiltinFunc
     from spy.vm.object import W_Object, W_Type
+    from spy.vm.struct import W_StructType
+    from spy.vm.vm import SPyVM
 
 
 class ModuleRegistry:
@@ -18,7 +21,7 @@ class ModuleRegistry:
     """
 
     fqn: FQN
-    content: list[tuple[FQN, "W_Object"]]
+    content: list[tuple[FQN, "W_Object", IRTag]]
     loc: Loc
 
     def __init__(self, modname: str) -> None:
@@ -45,12 +48,18 @@ class ModuleRegistry:
             but well...)
             """
 
-    def add(self, attr: str, w_obj: "W_Object") -> None:
+    def add(
+        self,
+        attr: str,
+        w_obj: "W_Object",
+        *,
+        irtag: IRTag = IRTag.Empty,
+    ) -> None:
         fqn = self.fqn.join(attr)
         attr = f"w_{attr}"
         assert not hasattr(self, attr)
         setattr(self, attr, w_obj)
-        self.content.append((fqn, w_obj))
+        self.content.append((fqn, w_obj, irtag))
 
     def builtin_type(
         self,
@@ -89,6 +98,54 @@ class ModuleRegistry:
             return W_class
 
         return decorator
+
+    def struct_type(
+        self,
+        typename: str,
+        fields: list[tuple[str, "W_Type"]],
+        *,
+        builtin: bool = False,
+    ) -> "W_StructType":
+        """
+        Register a struct type on the module.
+
+        fields is a list of (name, w_type) pairs, e.g.:
+            [("x", B.w_i32), ("y", B.w_i32)]
+
+        If builtin is True, the C backend does NOT generate the struct definition: it is
+        expected to be provided by libspy.
+        """
+        from spy.vm.field import W_Field
+        from spy.vm.function import W_BuiltinFunc
+        from spy.vm.object import ClassBody
+        from spy.vm.property import W_StaticMethod
+        from spy.vm.struct import W_StructType
+
+        fqn = self.fqn.join(typename)
+        body = ClassBody(
+            fields_w={name: W_Field(name, w_T) for name, w_T in fields},
+            dict_w={},
+        )
+        w_st = W_StructType.declare(fqn)
+        w_st.lazy_define_from_classbody(body)
+
+        # lazy_define_from_classbody creates the __make__ but does NOT add it to the
+        # globals. Instead, we add it to the module contents so that it will be
+        # automatically added to the "right" vm when calling make_module.
+        w_meth = w_st.dict_w["__make__"]
+        assert isinstance(w_meth, W_StaticMethod)
+        w_make = w_meth.w_obj
+        assert isinstance(w_make, W_BuiltinFunc)
+
+        # add the struct type and the __make__ function to the registry
+        if builtin:
+            irtag = IRTag("struct.builtin")
+        else:
+            irtag = IRTag.Empty
+        self.add(typename, w_st, irtag=irtag)
+        self.content.append((w_make.fqn, w_make, IRTag("struct.make")))
+
+        return w_st
 
     def builtin_func(
         self,
@@ -142,7 +199,7 @@ class ModuleRegistry:
             )
             setattr(self, f"w_{w_func.fqn.symbol_name}", w_func)
             if not hidden:
-                self.content.append((w_func.fqn, w_func))
+                self.content.append((w_func.fqn, w_func, IRTag.Empty))
             return w_func
 
         if pyfunc is None:

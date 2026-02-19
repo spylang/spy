@@ -228,7 +228,7 @@ class W_Object:
     @builtin_method("__repr__", color="blue", kind="metafunc")
     @staticmethod
     def w_REPR(vm: "SPyVM", wam_self: "W_MetaArg") -> "W_OpSpec":
-        from spy.vm.builtin import IRTag
+        from spy.vm.irtag import IRTag
         from spy.vm.opspec import W_OpSpec
         from spy.vm.str import W_Str
 

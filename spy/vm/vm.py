@@ -17,7 +17,7 @@ from spy.location import Loc
 from spy.util import func_equals
 from spy.vm.b import B
 from spy.vm.bluecache import BlueCache
-from spy.vm.builtin import IRTag, make_builtin_func
+from spy.vm.builtin import make_builtin_func
 from spy.vm.debugger import spdb
 from spy.vm.exc import W_Exception, W_TypeError
 from spy.vm.function import (
@@ -28,6 +28,7 @@ from spy.vm.function import (
     W_Func,
     W_FuncType,
 )
+from spy.vm.irtag import IRTag
 from spy.vm.member import W_Member
 from spy.vm.module import W_Module
 from spy.vm.modules.__spy__ import SPY
@@ -221,14 +222,13 @@ class SPyVM:
     def make_module(self, reg: ModuleRegistry) -> None:
         w_mod = W_Module(reg.fqn.modname, None)
         self.register_module(w_mod)
-        for fqn, w_obj in reg.content:
+        for fqn, w_obj, irtag in reg.content:
             # 1.register w_obj as a global constant
-            self.add_global(fqn, w_obj)
+            self.add_global(fqn, w_obj, irtag=irtag)
             # 2. add it to the actual module
-            assert len(fqn.parts) == 2
-            assert fqn.modname == reg.fqn.modname
-            name = fqn.symbol_name
-            w_mod.setattr(name, w_obj)
+            if len(fqn.parts) == 2 and fqn.modname == reg.fqn.modname:
+                name = fqn.symbol_name
+                w_mod.setattr(name, w_obj)
 
     def call_INITs(self) -> None:
         for modname in self.modules_w:

@@ -32,7 +32,8 @@ from spy.errors import WIP, SPyError
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.vm.b import B
-from spy.vm.builtin import IRTag, builtin_method, builtin_property
+from spy.vm.builtin import builtin_method, builtin_property
+from spy.vm.irtag import IRTag
 from spy.vm.member import Member
 from spy.vm.modules.types import W_Loc
 from spy.vm.opspec import W_MetaArg, W_OpSpec

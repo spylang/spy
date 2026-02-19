@@ -117,7 +117,15 @@ class CStructWriter:
             return
 
         c_st = C_Type(w_st.fqn.c_name)
+        irtag = self.ctx.vm.get_irtag(fqn)
+        if irtag.tag == "struct.builtin":
+            self.tbh_structs.wl(
+                f"// struct {c_st}: skipping because it's tagged as builtin"
+            )
+            return
+
         self.tbh_fwdecl.wl(f"typedef struct {c_st} {c_st}; /* {w_st.fqn.human_name} */")
+
         # XXX this is VERY wrong: it assumes that the standard C layout
         # matches the layout computed by struct.calc_layout: as long as we use
         # only 32-bit types it should work, but eventually we need to do it
