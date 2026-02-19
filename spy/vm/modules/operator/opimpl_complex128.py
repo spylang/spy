@@ -40,6 +40,8 @@ def w_complex128_mul(vm: "SPyVM", w_a: W_Complex128, w_b: W_Complex128) -> W_Com
 
 @OP.builtin_func
 def w_complex128_div(vm: "SPyVM", w_a: W_Complex128, w_b: W_Complex128) -> W_Complex128:
+    if w_b.value == 0j:
+        raise SPyError("W_ZeroDivisionError", "complex division by zero")
     return _complex128_op(vm, w_a, w_b, lambda a, b: a / b)
 
 
