@@ -366,7 +366,7 @@ class TestScopeAnalyzer:
             "@return": MatchSymbol("@return", "var", "auto"),
         }
 
-    def test_no_shadowing(self):
+    def test_no_module_shadowing(self):
         src = """
         x: i32 = 1
         def foo() -> i32:
@@ -377,6 +377,36 @@ class TestScopeAnalyzer:
             "variable `x` shadows a name declared in an outer scope",
             ("this is the new declaration", "x: i32 = 2"),
             ("this is the previous declaration", "x: i32 = 1"),
+        )
+
+    def test_no_nested_function_redeclare(self):
+        src = """
+        def foo() -> None:
+            x: i32 = 1
+            def bar() -> None:
+                x: i32 = 2
+            bar()
+        """
+        self.expect_errors(
+            src,
+            "variable `x` shadows a name declared in an outer scope",
+            ("this is the new declaration", "x: i32 = 2"),
+            ("this is the previous declaration", "x: i32 = 1"),
+        )
+
+    def test_no_nested_function_shadowing(self):
+        src = """
+        def foo() -> None:
+            x = 1
+            def bar() -> None:
+                x = 2
+            bar()
+        """
+        self.expect_errors(
+            src,
+            "variable `x` shadows a name declared in an outer scope",
+            ("this is the new declaration", "x"),
+            ("this is the previous declaration", "x"),
         )
 
     def test_can_shadow_builtins(self):
