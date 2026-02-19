@@ -19,3 +19,30 @@ class TestComplex(CompilerTest):
             return 12.3j
         """)
         assert mod.foo() == 12.3j
+
+    def test_BinOp(self, complex_type):
+        mod = self.compile(f"""
+            T = {complex_type}
+            def add(x: T, y: T) -> T:      return x + y
+            def sub(x: T, y: T) -> T:      return x - y
+            def mul(x: T, y: T) -> T:      return x * y
+            def div(x: T, y: T) -> T:      return x / y
+            def neg(x: T) -> T:              return -x
+            """)
+        assert mod.add(1.5j, 2.6j) == 4.1j
+        assert mod.sub(1.5j, 0.2j) == 1.3j
+        assert mod.mul(1.5j, 0.5j) == -0.75 + 0j
+        assert mod.div(1.5j, 2.0j) == 0.75 + 0j
+        assert mod.neg(-2.5j) == 2.5j
+
+    def test_CompareOp(self, complex_type):
+        mod = self.compile(f"""
+            T = {complex_type}
+            def cmp_eq (x: T, y: T) -> bool: return x == y
+            def cmp_neq(x: T, y: T) -> bool: return x != y
+            """)
+        assert mod.cmp_eq(5.1j, 5.1j) is True
+        assert mod.cmp_eq(5.1j, 6.2j) is False
+
+        assert mod.cmp_neq(5.1j, 5.1j) is False
+        assert mod.cmp_neq(5.1j, 6.2j) is True
