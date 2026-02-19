@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING, Any, Callable, Optional, Type
 from spy.ast import Color, FuncKind
 from spy.fqn import FQN, QUALIFIERS
 from spy.location import Loc
+from spy.vm.irtag import IRTag
 
 if TYPE_CHECKING:
     from spy.vm.function import W_BuiltinFunc
@@ -18,7 +19,7 @@ class ModuleRegistry:
     """
 
     fqn: FQN
-    content: list[tuple[FQN, "W_Object"]]
+    content: list[tuple[FQN, "W_Object", IRTag]]
     loc: Loc
 
     def __init__(self, modname: str) -> None:
@@ -45,12 +46,18 @@ class ModuleRegistry:
             but well...)
             """
 
-    def add(self, attr: str, w_obj: "W_Object") -> None:
+    def add(
+        self,
+        attr: str,
+        w_obj: "W_Object",
+        *,
+        irtag: IRTag = IRTag.Empty,
+    ) -> None:
         fqn = self.fqn.join(attr)
         attr = f"w_{attr}"
         assert not hasattr(self, attr)
         setattr(self, attr, w_obj)
-        self.content.append((fqn, w_obj))
+        self.content.append((fqn, w_obj, irtag))
 
     def builtin_type(
         self,
@@ -142,7 +149,7 @@ class ModuleRegistry:
             )
             setattr(self, f"w_{w_func.fqn.symbol_name}", w_func)
             if not hidden:
-                self.content.append((w_func.fqn, w_func))
+                self.content.append((w_func.fqn, w_func, IRTag.Empty))
             return w_func
 
         if pyfunc is None:
