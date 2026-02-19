@@ -226,10 +226,9 @@ class SPyVM:
             # 1.register w_obj as a global constant
             self.add_global(fqn, w_obj, irtag=irtag)
             # 2. add it to the actual module
-            assert len(fqn.parts) == 2
-            assert fqn.modname == reg.fqn.modname
-            name = fqn.symbol_name
-            w_mod.setattr(name, w_obj)
+            if len(fqn.parts) == 2 and fqn.modname == reg.fqn.modname:
+                name = fqn.symbol_name
+                w_mod.setattr(name, w_obj)
 
     def call_INITs(self) -> None:
         for modname in self.modules_w:

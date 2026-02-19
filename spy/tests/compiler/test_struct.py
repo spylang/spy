@@ -7,6 +7,7 @@ from spy.tests.wasm_wrapper import WasmPtr
 from spy.vm.b import B
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.object import W_Type
+from spy.vm.registry import ModuleRegistry
 from spy.vm.struct import UnwrappedStruct
 
 
@@ -83,6 +84,29 @@ class TestStructOnStack(CompilerTest):
         p = mod.make_point(1, 2)
         assert p == (1, 2)
         assert mod.get_x(p) == 1
+
+    def test_module_registry_struct_type(self):
+        # check that ModuleRegistry.struct_type works
+        self.SKIP_SPY_BACKEND_SANITY_CHECK = True
+        EXT = ModuleRegistry("ext")
+        EXT.struct_type(
+            "MyPoint",
+            [
+                ("x", B.w_i32),
+                ("y", B.w_i32),
+            ],
+        )
+        self.vm.make_module(EXT)
+        src = """
+        from ext import MyPoint
+
+        def foo(x: i32, y: i32) -> i32:
+            p = MyPoint(x, y)
+            return p.x + p.y
+        """
+        mod = self.compile(src)
+        assert mod.foo(3, 4) == 7
+        assert mod.foo(10, 20) == 30
 
     def test_pass_and_return(self):
         src = """

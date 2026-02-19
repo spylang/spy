@@ -9,6 +9,8 @@ from spy.vm.irtag import IRTag
 if TYPE_CHECKING:
     from spy.vm.function import W_BuiltinFunc
     from spy.vm.object import W_Object, W_Type
+    from spy.vm.struct import W_StructType
+    from spy.vm.vm import SPyVM
 
 
 class ModuleRegistry:
@@ -96,6 +98,41 @@ class ModuleRegistry:
             return W_class
 
         return decorator
+
+    def struct_type(
+        self, typename: str, fields: list[tuple[str, "W_Type"]]
+    ) -> "W_StructType":
+        """
+        Register a struct type on the module.
+
+        fields is a list of (name, w_type) pairs, e.g.:
+            [("x", B.w_i32), ("y", B.w_i32)]
+        """
+        from spy.vm.field import W_Field
+        from spy.vm.object import ClassBody
+        from spy.vm.property import W_StaticMethod
+        from spy.vm.struct import W_StructType
+
+        fqn = self.fqn.join(typename)
+        body = ClassBody(
+            fields_w={name: W_Field(name, w_T) for name, w_T in fields},
+            dict_w={},
+        )
+        w_st = W_StructType.declare(fqn)
+        w_st.lazy_define_from_classbody(body)
+
+        # lazy_define_from_classbody creates the __make__ but does NOT add it to the
+        # globals. Instead, we add it to the module contents so that it will be
+        # automatically added to the "right" vm when calling make_module.
+        w_meth = w_st.dict_w["__make__"]
+        assert isinstance(w_meth, W_StaticMethod)
+        w_make = w_meth.w_obj
+
+        # add the struct type and the __make__ function to the registry
+        self.add(typename, w_st)
+        self.content.append((w_make.fqn, w_make, IRTag("struct.make")))
+
+        return w_st
 
     def builtin_func(
         self,
