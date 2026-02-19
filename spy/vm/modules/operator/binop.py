@@ -165,6 +165,15 @@ for int_t in ["i32"]:
     MM.register(">=", "f32", int_t, OP.w_f32_ge)
     MM.register(">=", int_t, "f32", OP.w_f32_ge)
 
+# complex128 ops
+MM.register("+", "complex128", "complex128", OP.w_complex128_add)
+MM.register("-", "complex128", "complex128", OP.w_complex128_sub)
+MM.register("*", "complex128", "complex128", OP.w_complex128_mul)
+MM.register("/", "complex128", "complex128", OP.w_complex128_div)
+MM.register("==", "complex128", "complex128", OP.w_complex128_eq)
+MM.register("!=", "complex128", "complex128", OP.w_complex128_ne)
+
+
 # str ops
 MM.register("+",  "str", "str", OP.w_str_add)
 MM.register("*",  "str", "i32", OP.w_str_mul)
