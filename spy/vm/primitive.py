@@ -237,6 +237,51 @@ class W_F32(W_Object):
         return vm.wrap(f"{f:.7g}")
 
 
+@B.builtin_type("complex128", lazy_definition=True)
+class W_Complex128(W_Object):
+    __spy_storage_category__ = "value"
+    value: complex
+
+    def __init__(self, value: complex) -> None:
+        assert type(value) is complex
+        self.value = value
+
+    @builtin_method("__new__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_NEW(vm: "SPyVM", wam_cls: "W_MetaArg", *args_wam: "W_MetaArg") -> "W_OpSpec":
+        from spy.vm.opspec import W_OpSpec
+
+        # TODO: need to check for named args (real and/or imag)
+        match len(args_wam):
+            case 1:
+                wam_arg = args_wam[0]
+                match wam_arg.w_static_T:
+                    case B.w_str:
+                        return W_OpSpec(OP.w_str_to_complex128, [wam_arg])
+                    case B.w_f64:
+                        return W_OpSpec(OP.w_f64_to_complex128, [wam_arg])
+            case 2:
+                # TODO: named args (real=0, imag=0) or reals
+                return W_OpSpec.NULL
+
+        return W_OpSpec.NULL
+
+    def __repr__(self) -> str:
+        return f"W_Complex128({self.value})"
+
+    def spy_unwrap(self, vm: "SPyVM") -> complex:
+        return self.value
+
+    def spy_key(self, vm: "SPyVM") -> complex:
+        return self.value
+
+    @builtin_method("__str__")
+    @staticmethod
+    def w_str(vm: "SPyVM", w_self: "W_Complex128") -> "W_Str":
+        f = vm.unwrap_complex128(w_self)
+        return vm.wrap(str(f))
+
+
 @B.builtin_type("bool", lazy_definition=True)
 class W_Bool(W_Object):
     __spy_storage_category__ = "value"

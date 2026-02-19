@@ -52,6 +52,7 @@ from spy.vm.primitive import (
     W_U8,
     W_U32,
     W_Bool,
+    W_Complex128,
     W_Dynamic,
     W_NoneType,
     W_NotImplementedType,
@@ -78,6 +79,7 @@ W_I8._w.define(W_I8)
 W_U8._w.define(W_U8)
 W_F64._w.define(W_F64)
 W_F32._w.define(W_F32)
+W_Complex128._w.define(W_Complex128)
 W_Bool._w.define(W_Bool)
 W_NoneType._w.define(W_NoneType)
 W_NotImplementedType._w.define(W_NotImplementedType)
@@ -570,6 +572,9 @@ class SPyVM:
     def wrap(self, value: float32) -> W_F32: ...
 
     @overload
+    def wrap(self, value: complex) -> W_Complex128: ...
+
+    @overload
     def wrap(self, value: str) -> W_Str: ...
 
     @overload
@@ -599,6 +604,8 @@ class SPyVM:
             return W_F64(value)
         elif T is float32:
             return W_F32(value)
+        elif T is complex:
+            return W_Complex128(value)
         elif T is bool:
             if value:
                 return B.w_True
@@ -657,6 +664,11 @@ class SPyVM:
         if not isinstance(w_value, W_F32):
             raise Exception("Type mismatch")
         return w_value.value.value
+
+    def unwrap_complex128(self, w_value: W_Object) -> Any:
+        if not isinstance(w_value, W_Complex128):
+            raise Exception("Type mismatch")
+        return w_value.value
 
     def unwrap_str(self, w_value: W_Object) -> str:
         if not isinstance(w_value, W_Str):
