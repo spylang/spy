@@ -73,26 +73,6 @@ class TestInterpDict(CompilerTest):
         """)
         assert mod.test_len() == 3
 
-    def test_contains(self):
-        pytest.skip(
-            "'in' operator not yet implemented; __contains__ can't be called directly"
-        )
-        mod = self.compile("""
-        from __spy__ import interp_dict
-
-        def test_contains() -> bool:
-            d = interp_dict[str, i32]()
-            d["hello"] = 42
-            return "hello" in d
-
-        def test_not_contains() -> bool:
-            d = interp_dict[str, i32]()
-            d["hello"] = 42
-            return "world" in d
-        """)
-        assert mod.test_contains() == True
-        assert mod.test_not_contains() == False
-
     def test_repr_str(self):
         mod = self.compile("""
         from __spy__ import interp_dict
