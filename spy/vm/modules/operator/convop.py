@@ -202,9 +202,10 @@ def w_f64_to_f32(vm: "SPyVM", w_x: W_F64) -> W_F32:
 
 
 @OP.builtin_func
-def w_f64_to_complex128(vm: "SPyVM", w_x: W_F64) -> W_Complex128:
-    val = vm.unwrap_f64(w_x)
-    return vm.wrap(complex(val))
+def w_f64_to_complex128(vm: "SPyVM", *w_args: W_F64) -> W_Complex128:
+    x = vm.unwrap_f64(w_args[0])
+    y = vm.unwrap_f64(w_args[1]) if len(w_args) == 2 else 0.0
+    return vm.wrap(complex(x, y))
 
 
 @OP.builtin_func

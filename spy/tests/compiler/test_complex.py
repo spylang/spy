@@ -63,3 +63,23 @@ class TestComplex(CompilerTest):
         assert mod.real(2 + 8j) == 2.0
         assert mod.imag(2 + 8j) == 8.0
         assert mod.conj(2 + 8j) == 2 - 8j
+
+    def test_explicit_conversion(self, complex_type):
+        mod = self.compile(f"""
+        T = {complex_type}
+        def str_to_complex(x: str) -> T:     return T(x)
+        def i32_to_complex(x: i32) -> T:     return T(x)
+        def f64_to_complex(x: f64) -> T:     return T(x)
+        """)
+        assert mod.str_to_complex("5.1") == 5.1 + 0j
+        assert mod.i32_to_complex(5) == 5 + 0j
+        assert mod.f64_to_complex(5.1) == 5.1 + 0j
+
+    def test_explicit_conv_two_params(self, complex_type):
+        mod = self.compile(f"""
+        T = {complex_type}
+        def i32_to_complex(x: i32, y: i32) -> T:     return T(x, y)
+        def f64_to_complex(x: f64, y: f64) -> T:     return T(x, y)
+        """)
+        assert mod.i32_to_complex(5, 6) == 5 + 6j
+        assert mod.f64_to_complex(5.1, 6.2) == 5.1 + 6.2j

@@ -263,11 +263,15 @@ class W_Complex128(W_Object):
                 match wam_arg.w_static_T:
                     case B.w_str:
                         return W_OpSpec(OP.w_str_to_complex128, [wam_arg])
-                    case B.w_f64:
+                    case B.w_i32 | B.w_f64:
                         return W_OpSpec(OP.w_f64_to_complex128, [wam_arg])
             case 2:
-                # TODO: named args (real=0, imag=0) or reals
-                return W_OpSpec.NULL
+                wam_arg_1, wam_arg_2 = args_wam[0], args_wam[1]
+                if wam_arg_1.w_static_T in (
+                    B.w_i32,
+                    B.w_f64,
+                ) and wam_arg_2.w_static_T in (B.w_i32, B.w_f64):
+                    return W_OpSpec(OP.w_f64_to_complex128, [wam_arg_1, wam_arg_2])
 
         return W_OpSpec.NULL
 
