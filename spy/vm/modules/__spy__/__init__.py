@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 SPY = ModuleRegistry("__spy__")
 
 from . import (
+    interp_dict,  # noqa: F401 -- side effects
     interp_list,  # noqa: F401 -- side effects
 )
 
