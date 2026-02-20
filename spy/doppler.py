@@ -13,11 +13,11 @@ from spy.vm.b import B
 from spy.vm.exc import W_StaticError
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.__spy__ import SPY
+from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
 from spy.vm.modules.types import TYPES, W_Loc
 from spy.vm.object import W_Object
 from spy.vm.opimpl import ArgSpec, W_OpImpl
 from spy.vm.opspec import W_MetaArg
-from spy.vm.tuple import W_Tuple
 
 if TYPE_CHECKING:
     from spy.vm.object import W_Type
@@ -51,8 +51,8 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
         value = vm.unwrap_str(w_val)
         return ast.StrConst(loc, value, w_T=w_T)
 
-    elif w_T is B.w_tuple:
-        assert isinstance(w_val, W_Tuple)
+    elif w_T is B.w_interp_tuple:
+        assert isinstance(w_val, W_InterpTuple)
         items = [make_const(vm, loc, w_item) for w_item in w_val.items_w]
         return ast.Tuple(loc, items, w_T=w_T)
 

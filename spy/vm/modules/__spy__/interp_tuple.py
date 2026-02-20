@@ -10,8 +10,8 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-@B.builtin_type("tuple")
-class W_Tuple(W_Object):
+@B.builtin_type("interp_tuple")
+class W_InterpTuple(W_Object):
     """
     This is not the "real" tuple type that we will have in SPy.
 
@@ -36,18 +36,18 @@ class W_Tuple(W_Object):
         return tuple(w_item.spy_key(vm) for w_item in self.items_w)
 
     def __repr__(self) -> str:
-        return f"W_Tuple({self.items_w})"
+        return f"W_InterpTuple({self.items_w})"
 
     @builtin_method("__getitem__")
     @staticmethod
-    def w_getitem(vm: "SPyVM", w_tup: "W_Tuple", w_i: W_I32) -> W_Dynamic:
+    def w_getitem(vm: "SPyVM", w_tup: "W_InterpTuple", w_i: W_I32) -> W_Dynamic:
         i = vm.unwrap_i32(w_i)
         # XXX bound check?
         return w_tup.items_w[i]
 
     @builtin_method("__len__")
     @staticmethod
-    def w_len(vm: "SPyVM", w_tup: "W_Tuple") -> W_I32:
+    def w_len(vm: "SPyVM", w_tup: "W_InterpTuple") -> W_I32:
         n = len(w_tup.items_w)
         return vm.wrap(n)
 
@@ -59,8 +59,8 @@ class W_Tuple(W_Object):
         if w_ltype is not w_rtype:
             return W_OpSpec.NULL
 
-        @vm.register_builtin_func(W_Tuple._w.fqn)
-        def w_eq(vm: "SPyVM", w_t1: W_Tuple, w_t2: W_Tuple) -> W_Bool:
+        @vm.register_builtin_func(W_InterpTuple._w.fqn)
+        def w_eq(vm: "SPyVM", w_t1: W_InterpTuple, w_t2: W_InterpTuple) -> W_Bool:
             items1_w = w_t1.items_w
             items2_w = w_t2.items_w
             if len(items1_w) != len(items2_w):

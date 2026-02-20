@@ -7,7 +7,7 @@ from spy.tests.support import CompilerTest, expect_errors, no_C
 # Eventually we want to remove the @only_interp, but for now the C backend
 # doesn't support lists
 @no_C
-class TestTuple(CompilerTest):
+class TestInterpTuple(CompilerTest):
     def test_literal(self):
         mod = self.compile("""
         def foo() -> dynamic:
@@ -39,7 +39,7 @@ class TestTuple(CompilerTest):
     def test_unpacking(self):
         mod = self.compile("""
         @blue
-        def make_tuple() -> tuple:
+        def make_tuple() -> interp_tuple:
             return 1, 2, 'hello'
 
         def foo() -> i32:
@@ -52,7 +52,7 @@ class TestTuple(CompilerTest):
     def test_unpacking_wrong_number(self):
         src = """
         @blue
-        def make_tuple() -> tuple:
+        def make_tuple() -> interp_tuple:
             return 1, 2
 
         def foo() -> None:
@@ -78,10 +78,10 @@ class TestTuple(CompilerTest):
 
     def test_eq(self):
         mod = self.compile("""
-        def tup1() -> tuple:
+        def tup1() -> interp_tuple:
             return 1, 2
 
-        def tup2() -> tuple:
+        def tup2() -> interp_tuple:
             return 3, 4
 
         def foo() -> bool:
