@@ -6,6 +6,7 @@ import fixedint
 from spy.fqn import FQN
 from spy.vm.b import OP, TYPES, B
 from spy.vm.builtin import builtin_method
+from spy.vm.member import Member
 from spy.vm.object import W_Object, W_Type
 
 # fixedint/__init__.pyi overrides FixedInt and mypy thinks it's a
@@ -241,10 +242,14 @@ class W_F32(W_Object):
 class W_Complex128(W_Object):
     __spy_storage_category__ = "value"
     value: complex
+    w_real: Annotated[W_F64, Member("real")]
+    w_imag: Annotated[W_F64, Member("imag")]
 
     def __init__(self, value: complex) -> None:
         assert type(value) is complex
         self.value = value
+        self.w_real = W_F64(value.real)
+        self.w_imag = W_F64(value.imag)
 
     @builtin_method("__new__", color="blue", kind="metafunc")
     @staticmethod
@@ -278,8 +283,14 @@ class W_Complex128(W_Object):
     @builtin_method("__str__")
     @staticmethod
     def w_str(vm: "SPyVM", w_self: "W_Complex128") -> "W_Str":
-        f = vm.unwrap_complex128(w_self)
-        return vm.wrap(str(f))
+        c = vm.unwrap_complex128(w_self)
+        return vm.wrap(str(c))
+
+    @builtin_method("conjugate")
+    @staticmethod
+    def w_conjugate(vm: "SPyVM", w_self: "W_Complex128") -> "W_Complex128":
+        c = vm.unwrap_complex128(w_self)
+        return vm.wrap(c.conjugate())
 
 
 @B.builtin_type("bool", lazy_definition=True)

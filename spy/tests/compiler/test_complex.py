@@ -52,3 +52,14 @@ class TestComplex(CompilerTest):
         """)
         with SPyError.raises("W_ZeroDivisionError", match="complex division by zero"):
             mod.div(1.5j, 0j)
+
+    def test_attributes_and_methods(self, complex_type):
+        mod = self.compile(f"""
+        T = {complex_type}
+        def real(x: T) -> f64:         return x.real
+        def imag(x: T) -> f64:         return x.imag
+        def conj(x: T) -> T:           return x.conjugate()
+        """)
+        assert mod.real(2 + 8j) == 2.0
+        assert mod.imag(2 + 8j) == 8.0
+        assert mod.conj(2 + 8j) == 2 - 8j
