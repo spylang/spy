@@ -108,3 +108,11 @@ class W_Str(W_Object):
         assert isinstance(w_s, W_Str)
         length = vm.ll.call("spy_str_len", w_s.ptr)
         return vm.wrap(length)
+
+    @builtin_method("replace")
+    @staticmethod
+    def w_replace(
+        vm: "SPyVM", w_original: "W_Str", w_old: "W_Str", w_new: "W_Str"
+    ) -> "W_Str":
+        ptr_c = vm.ll.call("spy_str_replace", w_original.ptr, w_old.ptr, w_new.ptr)
+        return W_Str.from_ptr(vm, ptr_c)

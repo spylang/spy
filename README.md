@@ -135,7 +135,7 @@ $ spy pyparse examples/hello.spy
 $ spy parse examples/hello.spy
 $ spy symtable examples/hello.spy
 $ spy redshift examples/hello.spy
-$ spy build --cwrite examples/hello.spy
+$ spy build --no-compile examples/hello.spy
 ```
 
 Moreover, the `execute` step performs the actual execution: it can happen

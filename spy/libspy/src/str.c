@@ -22,6 +22,67 @@ spy_str_add(spy_Str *a, spy_Str *b) {
 }
 
 spy_Str *
+spy_str_replace(spy_Str *original, spy_Str *old, spy_Str *new_str) {
+    size_t orig_len = original->length;
+    size_t old_len = old->length;
+    size_t new_len = new_str->length;
+
+    if (old_len == 0) {
+        // when old_len is empty insert new_str before each byte and after the last
+        size_t result_len = orig_len + (orig_len + 1) * new_len;
+        spy_Str *res = spy_str_alloc(result_len);
+        char *buf = (char *)res->utf8;
+        for (size_t i = 0; i < orig_len; i++) {
+            memcpy(buf, new_str->utf8, new_len);
+            buf += new_len;
+            buf[0] = original->utf8[i];
+            buf++;
+        }
+        memcpy(buf, new_str->utf8, new_len);
+        return res;
+    }
+
+    // First pass -> count occurrences
+    size_t count = 0;
+    const char *p = (const char *)original->utf8;
+    const char *end = p + orig_len;
+    while (p <= end - old_len) {
+        if (memcmp(p, old->utf8, old_len) == 0) {
+            count++;
+            p += old_len;
+        } else {
+            p++;
+        }
+    }
+
+    if (count == 0) {
+        // Return the original string when no occurrences are found
+        spy_Str *res = spy_str_alloc(orig_len);
+        memcpy((char *)res->utf8, original->utf8, orig_len);
+        return res;
+    }
+
+    // Second pass -> build the result
+    size_t result_len = orig_len + count * (new_len - old_len);
+    spy_Str *res = spy_str_alloc(result_len);
+    char *buf = (char *)res->utf8;
+    p = (const char *)original->utf8;
+    while (p <= end - old_len) {
+        if (memcmp(p, old->utf8, old_len) == 0) {
+            memcpy(buf, new_str->utf8, new_len);
+            buf += new_len;
+            p += old_len;
+        } else {
+            *buf++ = *p++;
+        }
+    }
+    // Copy remaining bytes
+    size_t remaining = end - p;
+    memcpy(buf, p, remaining);
+    return res;
+}
+
+spy_Str *
 spy_str_mul(spy_Str *a, int32_t b) {
     size_t l = a->length * b;
     spy_Str *res = spy_str_alloc(l);

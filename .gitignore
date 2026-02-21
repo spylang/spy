@@ -198,6 +198,7 @@ cython_debug/
 node_modules
 package-lock.json
 .claude/settings.local.json
+CLAUDE.local.md
 
 # Playground build artifacts
 /playground/libspy.mjs
