@@ -1,7 +1,7 @@
 import pytest
 
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest, only_interp
+from spy.tests.support import CompilerTest, no_C
 
 
 @pytest.fixture(params=["complex128"])
@@ -9,7 +9,7 @@ def complex_type(request):
     return request.param
 
 
-@only_interp
+@no_C
 class TestComplex(CompilerTest):
     def test_literal(self):
         mod = self.compile("""
