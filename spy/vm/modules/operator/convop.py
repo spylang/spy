@@ -178,6 +178,13 @@ def w_i32_to_f32(vm: "SPyVM", w_x: W_I32) -> W_F32:
 
 
 @OP.builtin_func
+def w_i32_to_complex128(vm: "SPyVM", *w_args: W_I32) -> W_Complex128:
+    x = vm.unwrap_i32(w_args[0])
+    y = vm.unwrap_i32(w_args[1]) if len(w_args) == 2 else 0.0
+    return vm.wrap(complex(x, y))
+
+
+@OP.builtin_func
 def w_u32_to_i32(vm: "SPyVM", w_x: W_U32) -> W_I32:
     return W_I32(w_x.value)
 
@@ -269,6 +276,7 @@ MM.register("convert", "f32", "f64", OP.w_f32_to_f64)
 MM.register("convert", "f64", "f32", OP.w_f64_to_f32)
 MM.register("convert", "i32", "f32", OP.w_i32_to_f32)
 MM.register("convert", "i32", "bool", OP.w_i32_to_bool)
+MM.register("convert", "i32", "complex128", OP.w_i32_to_complex128)
 MM.register("convert", "f64", "complex128", OP.w_f64_to_complex128)
 MM.register("convert", "str", "complex128", OP.w_str_to_complex128)
 

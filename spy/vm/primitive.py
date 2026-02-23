@@ -256,7 +256,7 @@ class W_Complex128(W_Object):
     def w_NEW(vm: "SPyVM", wam_cls: "W_MetaArg", *args_wam: "W_MetaArg") -> "W_OpSpec":
         from spy.vm.opspec import W_OpSpec
 
-        # TODO: need to check for named args (real and/or imag)
+        # TODO: need to check for named args (real and/or imag) when available
         match len(args_wam):
             case 1:
                 wam_arg = args_wam[0]
