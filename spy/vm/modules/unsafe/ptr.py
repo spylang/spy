@@ -295,7 +295,7 @@ class W_MemLoc(W_Object):
             assert isinstance(w_func, W_Func)
             return W_OpSpec(w_func, [wam_self, wam_name, wam_offset])
         else:
-            # ptr_setfield[field_T](ptr, name, offset, v)
+            # ptr_setfield[field_T, memloc_T](ptr, name, offset, v)
             assert wam_v is not None
             w_func = vm.fast_call(UNSAFE.w_ptr_setfield, [w_field.w_T, w_T])
             assert isinstance(w_func, W_Func)
