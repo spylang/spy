@@ -34,7 +34,7 @@ class CFuncWriter:
         self.fqn = fqn
         self.w_func = w_func
         self.last_emitted_linenos = (-1, -1)  # see emit_lineno_maybe
-        self._call_temps: dict[int, list[str | None]] = {}
+        self._call_temps: dict[int, list[str]] = {}
         self._temp_vars: list[tuple[str, C_Type]] = []
         self._temp_var_counter = 0
 
@@ -148,18 +148,11 @@ class CFuncWriter:
                     args_for_temps = args_for_temps[:-1]
                     params = params[:-1]
             assert len(params) == len(args_for_temps), "param/arg mismatch"
-            temp_names: list[str | None] = []
-            for param, arg in zip(params, args_for_temps, strict=True):
-                needs_temp = self._arg_contains_assignexpr(
-                    arg
-                ) or self._arg_contains_call(arg)
-                if needs_temp:
-                    c_type = self.ctx.w2c(param.w_T)
-                    temp_names.append(self._new_temp_var(c_type))
-                else:
-                    temp_names.append(None)
-            if any(name is not None for name in temp_names):
-                self._call_temps[id(call)] = temp_names
+            temp_names: list[str] = []
+            for param in params:
+                c_type = self.ctx.w2c(param.w_T)
+                temp_names.append(self._new_temp_var(c_type))
+            self._call_temps[id(call)] = temp_names
 
     # ==============
 
@@ -569,14 +562,6 @@ class CFuncWriter:
             prelude_temps: list[C.Expr] = []
             for arg, temp_name in zip(args, temp_names, strict=True):
                 assignexpr = self._assignexpr_parts(arg)
-                if temp_name is None:
-                    if assignexpr is None:
-                        c_args_temps.append(self.fmt_expr(arg))
-                    else:
-                        target, value_expr = assignexpr
-                        prelude_temps.append(self._fmt_assignexpr(target, value_expr))
-                        c_args_temps.append(C.Literal(f"{C_Ident(target)}"))
-                    continue
                 temp_ident = C.Literal(f"{C_Ident(temp_name)}")
                 if assignexpr is None:
                     prelude_temps.append(C.BinOp("=", temp_ident, self.fmt_expr(arg)))
