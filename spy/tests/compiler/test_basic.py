@@ -188,6 +188,17 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 2
 
+    def test_call_argument_order_left_to_right_walrus(self):
+        mod = self.compile("""
+        def f(a: i32, b: i32) -> i32:
+            return a * 10 + b
+
+        def foo() -> i32:
+            x = 0
+            return f(x, x := 1) + x
+        """)
+        assert mod.foo() == 2
+
     @only_interp
     def test_blue_cannot_redeclare(self):
         # see also the equivalent test
