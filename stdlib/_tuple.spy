@@ -3,19 +3,39 @@ from operator import OpSpec
 
 @blue.generic
 def tuple(*items_T):
-    # fields is a dict containing all the struct fields, e.g.:
-    # {
-    #     "_item0": int,
-    #     "_item1": int,
-    # }
-    fields: dict[str, type] = {}
-    for i in range(len(items_T)):
-        fname = "_item" + str(i)
-        T = items_T[i]
-        fields[fname] = T
+    @blue
+    def get_fields():
+        """
+        Return a dict like {
+            "_item0": int,
+            "_item1": int,
+        }
+        """
+        fields: dict[str, type] = {}
+        for i in range(len(items_T)):
+            fname = "_item" + str(i)
+            T = items_T[i]
+            fields[fname] = T
+        return fields
 
     @struct
     class _tup:
-        __extra_fields__ = fields
+        __extra_fields__ = get_fields()
+
+        @blue.metafunc
+        def __getitem__(m_self, m_i):
+            if m_i.color != "blue":
+                raise TypeError("tuple index must be blue")
+
+            # idx is blue so all the following lines are pre-evaluated at compile time
+            i = m_i.blueval
+            attr = "_item" + str(i)
+            T = items_T[i]
+
+            def get(self: _tup) -> T:
+                # attr is blue, so this is equivalent to e.g. `self.item0`
+                return getattr(self, attr)
+
+            return OpSpec(get, [m_self])
 
     return _tup
