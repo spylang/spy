@@ -1,0 +1,21 @@
+from operator import OpSpec
+
+
+@blue.generic
+def tuple(*items_T):
+    # fields is a dict containing all the struct fields, e.g.:
+    # {
+    #     "_item0": int,
+    #     "_item1": int,
+    # }
+    fields: dict[str, type] = {}
+    for i in range(len(items_T)):
+        fname = "_item" + str(i)
+        T = items_T[i]
+        fields[fname] = T
+
+    @struct
+    class _tup:
+        __extra_fields__ = fields
+
+    return _tup
