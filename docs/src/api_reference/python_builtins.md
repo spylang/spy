@@ -11,7 +11,7 @@ h3 {
 
 The following built-in functions work similarly to their equivalents in CPython; see the specific functions below for notes
 
-### __abs__`(object)` { data-toc-label='abs()' }
+### __abs__(object) { data-toc-label='abs()' }
 
 :   Currently only implemented for int32's or objects convertible to int32's. The `__abs__` attribute is not currently supported.
 
