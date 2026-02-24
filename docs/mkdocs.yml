@@ -44,12 +44,13 @@ markdown_extensions:
       alternate_style: true
   - toc:
       permalink: true
+  - def_list
 
 nav:
   - Home: index.md
   - contributing.md
   - API Reference:
-    - api_reference/builtins.md
+    - api_reference/python_builtins.md
   - Unsorted notes:
       - Low-level memory model: llmem.md
 
