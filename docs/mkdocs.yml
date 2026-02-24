@@ -46,6 +46,8 @@ markdown_extensions:
 nav:
   - Home: index.md
   - contributing.md
+  - API Reference:
+    - api_reference/builtins.md
   - Unsorted notes:
       - Low-level memory model: llmem.md
 
