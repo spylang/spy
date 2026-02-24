@@ -63,7 +63,7 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
         n = len(w_val.values_w)  # length of the tuple
         items_w = [w_val.values_w[f"_item{i}"] for i in range(n)]
         items = [make_const(vm, loc, w_item) for w_item in items_w]
-        return ast.Tuple(loc, items)
+        return ast.Tuple(loc, items, w_T=w_T)
 
     elif w_T is TYPES.w_Loc:
         # note that here we have two locs: 'loc' is as usual the location
@@ -508,7 +508,7 @@ class DopplerFrame(ASTFrame):
     def shift_expr_Tuple(self, tup: ast.Tuple, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[tup]
         newitems_v = [self.shifted_expr[item] for item in tup.items]
-        return self.shift_opimpl(tup, w_opimpl, newitems_v)
+        return self.shift_opimpl(tup, w_opimpl, newitems_v, w_T=wam.w_static_T)
 
     def shift_expr_Slice(self, op: ast.Slice, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]
