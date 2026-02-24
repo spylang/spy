@@ -11,69 +11,69 @@ h3 {
 
 The following built-in functions work similarly to their equivalents in CPython; see the specific functions below for notes
 
-### __abs__`(object)`
+### __abs__`(object)` { data-toc-label='abs()' }
 
 :   Currently only implemented for int32's or objects convertable to int32's. The `__abs__` attribute is not currently supported.
 
-### __dict__\[type\]()
+### __dict__\[type\]() { data-toc-label='dict()' }
 :   The syntax `dict[keytype, valuetype]()` can be used to create a new empty dict of the given types; unlike CPython, this does not (currently) accept an Iterable to create a new dict from.
 
-### __float__(object)
+### __float__(object) { data-toc-label='float()' }
 
 :   Converts `object` to a float if able
 
-### __getattr__(obj, name: str)
+### __getattr__(obj, name: str) { data-toc-label='getattr()' }
 
 :   `attr` must be blue
 
-### __hash__(object)
+### __hash__(object) { data-toc-label='hash()' }
 :   Currently implented for types: `i8`,`i32`, `u8`, `bool`, `str`.
 
 :   By default, instances of SPy classes are not hashable are not hashable. Users can implement the `__hash__` function to permit hashing.
 
-### __int__(object)
+### __int__(object) { data-toc-label='int()' }
 
 :    Converts `object` to an int if able 
 
-### __len__(object)
+### __len__(object) { data-toc-label='len()' }
 
 :   Return the length (the number of items) in a container
 
-### __list__\[type\]()
+### __list__\[type\]() { data-toc-label='list()' }
 
 :   The syntax `list[type]()` can be used to create a new empty list of the given type; unlike CPython, this does not (currently) accept an Iterable to create a new list from.
 
-### __max__(x: i32, y: i32)
+### __max__(x: i32, y: i32) { data-toc-label='max()' }
 
 :   Currently only implemented for int32's or objects convertable to int32's.
 
-### __max__(x: i32, y: i32)
+### __max__(x: i32, y: i32) { data-toc-label='min()' }
 
 :   Currently only implemented for int32's or objects convertable to int32's.
 
-### __print__(obj)
+### __print__(obj) { data-toc-label='print()' }
 
 :   The print function is currently not variadic, in the sense that it only accepts a single argument. The built-in types are special-cased, and SPy can always print blue objects by pre-computing their string representation
 
-### __range__(stop)
-### __range__(start, stop, step)
+### __range__(stop) { data-toc-label='range()' }
+<h3> <b>range</b>(start, stop, step) { data-toc-label='' }</h3> <!-- An HTML label to hide this in the TOC -->
 
 Creates an interable set of indices between `start` and `stop`, jumping over `step` indices between each.
 
-### __repr__(object)
+### __repr__(object) { data-toc-label='repr()' }
 
 :   Returna string containing a printable representation of an object.
 
-### __setattr__(object, name: str, value: obj)
+### __setattr__(object, name: str, value: obj) { data-toc-label='setattr()' }
 
 :   `attr` must be blue
 
-### __slice__(stop)
-### __slice__(start, stop, step=None)
+### __slice__(stop) { data-toc-label='slice()' }
+<h3><b>slice</b>(start, stop, step=None)</h3> <!-- An HTML label to hide this in the TOC -->
 
 :   Return a slice object representing the items reached when iterating over range(start, stop, step). The start and step arguments default to None.
 
-### __str__(object)
+### __str__(object) { data-toc-label='str()' }
 
 :   Returns a string version of the object. Selecting an encoding is not currently implemented.
 
