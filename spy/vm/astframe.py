@@ -1166,16 +1166,28 @@ class AbstractFrame:
         wam_slice = self.eval_opimpl(op, w_opimpl, [wam_T] + args)
         return wam_slice
 
-    def eval_expr_Tuple(self, op: ast.Tuple) -> W_MetaArg:
-        items_wam = [self.eval_expr(item) for item in op.items]
+    def eval_expr_Tuple(self, tup: ast.Tuple) -> W_MetaArg:
+        # 1. evaluate each item
+        items_wam = [self.eval_expr(item) for item in tup.items]
+        itemtypes_w = [wam.w_static_T for wam in items_wam]
         colors = [wam.color for wam in items_wam]
         color = maybe_blue(*colors)
-        if color == "red" and self.redshifting:
-            w_val = None
-        else:
-            items_w = [wam.w_val for wam in items_wam]
-            w_val = W_InterpTuple(items_w)
-        return W_MetaArg(self.vm, color, B.w_interp_tuple, w_val, op.loc)
+
+        # 2. get the tuple type
+        w_TupleType = self.vm.lookup_global(FQN("_tuple::tuple"))
+        w_T = self.vm.getitem_w(w_TupleType, *itemtypes_w, loc=tup.loc)
+        wam_T = W_MetaArg.from_w_obj(self.vm, w_T)
+
+        # 3. instantiate it
+        w_opimpl = self.vm.call_OP(tup.loc, OP.w_CALL, [wam_T] + items_wam)
+        wam_tuple = self.eval_opimpl(tup, w_opimpl, [wam_T] + items_wam)
+        return wam_tuple
+
+        ## if color == "red" and self.redshifting:
+        ##     w_val = None
+        ## else:
+        ##     items_w = [wam.w_val for wam in items_wam]
+        ##     w_val = W_InterpTuple(items_w)
 
     def eval_expr_Dict(self, dict: ast.Dict) -> W_MetaArg:
         # 0. empty dicts are special

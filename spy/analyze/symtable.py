@@ -192,6 +192,7 @@ class SymTable:
 
         add_sym("range", ImportRef("_range", "range"))
         add_sym("list", ImportRef("_list", "list"))
+        add_sym("tuple", ImportRef("_tuple", "tuple"))
         add_sym("slice", ImportRef("_slice", "Slice"))
         add_sym("dict", ImportRef("_dict", "dict"))
         return scope
