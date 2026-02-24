@@ -28,3 +28,14 @@ class TestTange(CompilerTest):
         mod = self.compile(src)
         res = mod.foo(10, 20)
         assert res == 20
+
+    def test_len(self):
+        mod = self.compile("""
+        from _tuple import tuple
+
+        def foo() -> i32:
+            tup = tuple[int, int, str](1, 2, 'hello')
+            return len(tup)
+        """)
+        x = mod.foo()
+        assert x == 3

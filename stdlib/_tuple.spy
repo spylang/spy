@@ -18,9 +18,14 @@ def tuple(*items_T):
             fields[fname] = T
         return fields
 
+    N = len(items_T)
+
     @struct
     class _tup:
         __extra_fields__ = get_fields()
+
+        def __len__(self) -> i32:
+            return N
 
         @blue.metafunc
         def __getitem__(m_self, m_i):
