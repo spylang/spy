@@ -17,40 +17,39 @@ class TestComplex(CompilerTest):
         """)
         assert mod.foo() == 12.3j
 
-    # def test_BinOp(self, complex_type):
-    #     mod = self.compile(f"""
-    #     T = {complex_type}
-    #     def add(x: T, y: T) -> T:      return x + y
-    #     def sub(x: T, y: T) -> T:      return x - y
-    #     def mul(x: T, y: T) -> T:      return x * y
-    #     def div(x: T, y: T) -> T:      return x / y
-    #     def neg(x: T) -> T:            return -x
-    #     """)
-    #     assert mod.add(1.5j, 2.6j) == 4.1j
-    #     assert mod.sub(1.5j, 0.2j) == 1.3j
-    #     assert mod.mul(1.5j, 0.5j) == -0.75 + 0j
-    #     assert mod.div(1.5j, 2.0j) == 0.75 + 0j
-    #     assert mod.neg(-2.5j) == 2.5j
+    def test_BinOp(self, complex_type):
+        mod = self.compile(f"""
+        T = {complex_type}
+        def add(x: T, y: T) -> T:      return x + y
+        def sub(x: T, y: T) -> T:      return x - y
+        def mul(x: T, y: T) -> T:      return x * y
+        def div(x: T, y: T) -> T:      return x / y
+        def neg(x: T) -> T:            return -x
+        """)
+        assert mod.add(1.5j, 2.6j) == 4.1j
+        assert mod.sub(1.5j, 0.2j) == 1.3j
+        assert mod.mul(1.5j, 0.5j) == -0.75 + 0j
+        assert mod.div(1.5j, 2.0j) == 0.75 + 0j
+        assert mod.neg(1 - 2.5j) == -1 + 2.5j
 
-    # def test_CompareOp(self, complex_type):
-    #     mod = self.compile(f"""
-    #     T = {complex_type}
-    #     def cmp_eq (x: T, y: T) -> bool: return x == y
-    #     def cmp_neq(x: T, y: T) -> bool: return x != y
-    #     """)
-    #     assert mod.cmp_eq(5.1j, 5.1j) is True
-    #     assert mod.cmp_eq(5.1j, 6.2j) is False
+    def test_CompareOp(self, complex_type):
+        mod = self.compile(f"""
+        T = {complex_type}
+        def cmp_eq (x: T, y: T) -> bool: return x == y
+        def cmp_neq(x: T, y: T) -> bool: return x != y
+        """)
+        assert mod.cmp_eq(5.1j, 5.1j) is True
+        assert mod.cmp_eq(5.1j, 6.2j) is False
+        assert mod.cmp_neq(5.1j, 5.1j) is False
+        assert mod.cmp_neq(5.1j, 6.2j) is True
 
-    #     assert mod.cmp_neq(5.1j, 5.1j) is False
-    #     assert mod.cmp_neq(5.1j, 6.2j) is True
-
-    # def test_zero_division_error(self, complex_type):
-    #     mod = self.compile(f"""
-    #     T = {complex_type}
-    #     def div(x: T, y: T) -> T:      return x / y
-    #     """)
-    #     with SPyError.raises("W_ZeroDivisionError", match="complex division by zero"):
-    #         mod.div(1.5j, 0j)
+    def test_zero_division_error(self, complex_type):
+        mod = self.compile(f"""
+        T = {complex_type}
+        def div(x: T, y: T) -> T:      return x / y
+        """)
+        with SPyError.raises("W_ZeroDivisionError", match="complex division by zero"):
+            mod.div(1.5j, 0j)
 
     # def test_attributes_and_methods(self, complex_type):
     #     mod = self.compile(f"""
