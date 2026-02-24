@@ -496,6 +496,11 @@ class DopplerFrame(ASTFrame):
             )
         return newlst
 
+    def shift_expr_Tuple(self, tup: ast.Tuple, wam: W_MetaArg) -> ast.Expr:
+        w_opimpl = self.opimpl[tup]
+        newitems_v = [self.shifted_expr[item] for item in tup.items]
+        return self.shift_opimpl(tup, w_opimpl, newitems_v)
+
     def shift_expr_Slice(self, op: ast.Slice, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]
         v_start = self.shifted_expr[op.start]
