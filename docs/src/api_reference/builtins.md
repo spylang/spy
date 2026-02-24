@@ -1,7 +1,9 @@
 title: Built-in Functions
 ---
 
-## Functions Like CPython
+## Implemented CPython-Like Built-ins 
+
+The following built-in functions work similarly to their equivalents in CPython; see the specific functions below for notes
 
 ### `dict()`
 The syntax `dict[keytype, valuetype]()` can be used to create a new empty dict of the given types; unlike CPython, this does not (currently) accept an Iterable to create a new dict from.
@@ -34,7 +36,7 @@ The syntax `list[type]()` can be used to create a new empty list of the given ty
 
 ### str()
 
-## CPython Built-Ins not Currently In SPy
+## Not-Implemented CPython-Like Built-ins 
 
 abs(), aiter(), all(), anext(), any(), ascii(), bin(), bool(), breakpoint(), bytearray(), bytes(), callable(), chr(), classmethod(), compile(), complex(), delattr(), dir(), divmod(), enumerate(), eval(), exec(), filter(), format(), frozenset(), globals(), hasattr(), help(), hex(), id(), input(), isinstance(), issubclass(), iter(), locals(), map(), max(), memoryview(), min(), next(), object(), oct(), open(), ord(), pow(), property(), reversed(), round(), set(), sorted(), staticmethod(), sum(), super(), tuple(), type(), vars(), zip(), __import__()
 
