@@ -49,6 +49,21 @@ class TestStructOnStack(CompilerTest):
         assert mod.foo(3, 4) == 7
         assert mod.bar(5, 6) == 11
 
+    def test_str_field(self):
+        mod = self.compile("""
+        @struct
+        class Named:
+            name: str
+            value: i32
+
+        def make(n: str, v: i32) -> Named:
+            return Named(n, v)
+        """)
+        s = mod.make("hello", 42)
+        assert s == ("hello", 42)
+        assert s.name == "hello"
+        assert s.value == 42
+
     def test_wrong_field(self):
         src = """
         @struct
