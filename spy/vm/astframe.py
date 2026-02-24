@@ -546,8 +546,9 @@ class AbstractFrame:
         wam_tup = self.eval_expr(unpack.value)
         w_T = wam_tup.w_static_T
 
-        is_tuple = w_T is SPY.w_interp_tuple or w_T.fqn.match("_tuple::tuple[*]::_tup")
-        if not is_tuple:
+        is_interp_tuple = w_T is SPY.w_interp_tuple
+        is_stdlib_tuple = w_T.fqn.match("_tuple::tuple[*]::_tup")
+        if not (is_interp_tuple or is_stdlib_tuple):
             t = wam_tup.w_static_T.fqn.human_name
             err = SPyError(
                 "W_TypeError",
@@ -557,10 +558,16 @@ class AbstractFrame:
             raise err
 
         # check that the tuple has the right length
-        exp = len(unpack.targets)
-        wam_got = self.vm.len_wam(wam_tup, loc=unpack.loc)
-        got = self.vm.unwrap_i32(wam_got.w_val)
+        if is_interp_tuple:
+            # XXX: probably we should put the number of items on the type
+            w_tup = wam_tup.w_val
+            assert isinstance(w_tup, W_InterpTuple)
+            got = len(w_tup.items_w)
+        else:
+            assert isinstance(w_T, W_StructType)
+            got = len(list(w_T.iterfields_w()))
 
+        exp = len(unpack.targets)
         if exp != got:
             # we cannot use ValueError because we want an exception type which
             # inherits from StaticError.
