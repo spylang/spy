@@ -11,7 +11,7 @@ h3 {
 
 The following built-in functions work similarly to their equivalents in CPython; see the specific functions below for notes
 
-### __abs__`(int32)`
+### __abs__`(object)`
 
 :   Currently only implemented for int32's or objects convertable to int32's. The `__abs__` attribute is not currently supported.
 
