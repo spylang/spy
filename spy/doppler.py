@@ -18,6 +18,7 @@ from spy.vm.modules.types import TYPES, W_Loc
 from spy.vm.object import W_Object
 from spy.vm.opimpl import ArgSpec, W_OpImpl
 from spy.vm.opspec import W_MetaArg
+from spy.vm.struct import W_Struct
 
 if TYPE_CHECKING:
     from spy.vm.object import W_Type
@@ -51,10 +52,18 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
         value = vm.unwrap_str(w_val)
         return ast.StrConst(loc, value, w_T=w_T)
 
-    elif w_T is B.w_interp_tuple:
+    elif w_T is SPY.w_interp_tuple:
         assert isinstance(w_val, W_InterpTuple)
         items = [make_const(vm, loc, w_item) for w_item in w_val.items_w]
         return ast.Tuple(loc, items, w_T=w_T)
+
+    elif w_T.fqn.match("_tuple::tuple[*]::_tup"):
+        # this is a bit of a hack, XXX explain
+        assert isinstance(w_val, W_Struct)
+        n = len(w_val.values_w)  # length of the tuple
+        items_w = [w_val.values_w[f"_item{i}"] for i in range(n)]
+        items = [make_const(vm, loc, w_item) for w_item in items_w]
+        return ast.Tuple(loc, items)
 
     elif w_T is TYPES.w_Loc:
         # note that here we have two locs: 'loc' is as usual the location

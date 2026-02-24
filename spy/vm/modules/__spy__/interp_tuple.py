@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING, Any
 
 from spy.vm.b import B
 from spy.vm.builtin import builtin_method
+from spy.vm.modules.__spy__ import SPY
 from spy.vm.object import W_Object
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_I32, W_Bool, W_Dynamic
@@ -10,7 +11,7 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-@B.builtin_type("interp_tuple")
+@SPY.builtin_type("interp_tuple")
 class W_InterpTuple(W_Object):
     """
     This is not the "real" tuple type that we will have in SPy.

@@ -23,3 +23,16 @@ class TestTuple(CompilerTest):
         """)
         tup = mod.foo()
         assert tup == (1, 2)
+
+    def test_unpacking_blue(self):
+        mod = self.compile("""
+        @blue
+        def make_tuple():
+            return 1, 2, 'hello'
+
+        def foo() -> i32:
+            a, b, c = make_tuple()
+            return a + b
+        """)
+        x = mod.foo()
+        assert x == 3

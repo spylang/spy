@@ -544,7 +544,10 @@ class AbstractFrame:
 
     def exec_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         wam_tup = self.eval_expr(unpack.value)
-        if wam_tup.w_static_T is not B.w_interp_tuple:
+        w_T = wam_tup.w_static_T
+
+        is_tuple = w_T is SPY.w_interp_tuple or w_T.fqn.match("_tuple::tuple[*]::_tup")
+        if not is_tuple:
             t = wam_tup.w_static_T.fqn.human_name
             err = SPyError(
                 "W_TypeError",
@@ -553,18 +556,11 @@ class AbstractFrame:
             err.add("error", f"this is `{t}`", unpack.value.loc)
             raise err
 
-        if wam_tup.color == "red" and self.symtable.color == "red":
-            raise SPyError.simple(
-                "W_WIP",
-                "redshift of UnpackAssign works only for blue tuples",
-                "this is red",
-                unpack.value.loc,
-            )
-
-        w_tup = wam_tup.w_val
-        assert isinstance(w_tup, W_InterpTuple)
+        # check that the tuple has the right length
         exp = len(unpack.targets)
-        got = len(w_tup.items_w)
+        wam_got = self.vm.len_wam(wam_tup, loc=unpack.loc)
+        got = self.vm.unwrap_i32(wam_got.w_val)
+
         if exp != got:
             # we cannot use ValueError because we want an exception type which
             # inherits from StaticError.
@@ -1386,7 +1382,7 @@ class ASTFrame(AbstractFrame):
                 # XXX: we don't have typed tuples, for now we just use a
                 # generic untyped tuple as the type.
                 assert i == len(funcdef.args) - 1
-                self.declare_local(arg.name, color, B.w_interp_tuple, arg.loc)
+                self.declare_local(arg.name, color, SPY.w_interp_tuple, arg.loc)
 
             else:
                 assert False
