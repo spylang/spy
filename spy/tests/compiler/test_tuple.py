@@ -48,3 +48,29 @@ class TestTuple(CompilerTest):
         """)
         x = mod.foo()
         assert x == 3
+
+    def test_unpacking_wrong_number(self):
+        src = """
+        def make_tuple() -> tuple[int, int]:
+            return 1, 2
+
+        def foo() -> None:
+            a, b, c = make_tuple()
+        """
+        errors = expect_errors(
+            "Wrong number of values to unpack",
+            ("expected 3 values", "a, b, c"),
+            ("got 2 values", "make_tuple()"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    def test_unpacking_wrong_type(self):
+        src = """
+        def foo() -> None:
+            a, b, c = 42
+        """
+        errors = expect_errors(
+            "`i32` does not support unpacking",
+            ("this is `i32`", "42"),
+        )
+        self.compile_raises(src, "foo", errors)
