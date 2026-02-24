@@ -44,6 +44,14 @@ class TestStr(CompilerTest):
         """)
         assert mod.foo("hello") == "hello world"
 
+    def test_str_functions_always_exported(self):
+        # see the comment about --whole-archive in spy/build/config.py
+        mod = self.compile("""
+        def identity(s: str) -> str:
+            return s
+        """)
+        assert mod.identity("hello") == "hello"
+
     def test_getitem(self):
         mod = self.compile("""
         def foo(a: str, i: i32) -> str:
