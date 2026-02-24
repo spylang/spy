@@ -13,7 +13,7 @@ The following built-in functions work similarly to their equivalents in CPython;
 
 ### __abs__`(object)` { data-toc-label='abs()' }
 
-:   Currently only implemented for int32's or objects convertable to int32's. The `__abs__` attribute is not currently supported.
+:   Currently only implemented for int32's or objects convertible to int32's. The `__abs__` attribute is not currently supported.
 
 ### __dict__\[type\]() { data-toc-label='dict()' }
 :   The syntax `dict[keytype, valuetype]()` can be used to create a new empty dict of the given types; unlike CPython, this does not (currently) accept an Iterable to create a new dict from.
@@ -27,7 +27,7 @@ The following built-in functions work similarly to their equivalents in CPython;
 :   `attr` must be blue
 
 ### __hash__(object) { data-toc-label='hash()' }
-:   Currently implented for types: `i8`,`i32`, `u8`, `bool`, `str`.
+:   Currently implemented for types: `i8`,`i32`, `u8`, `bool`, `str`.
 
 :   By default, instances of SPy classes are not hashable are not hashable. Users can implement the `__hash__` function to permit hashing.
 
@@ -45,11 +45,11 @@ The following built-in functions work similarly to their equivalents in CPython;
 
 ### __max__(x: i32, y: i32) { data-toc-label='max()' }
 
-:   Currently only implemented for int32's or objects convertable to int32's.
+:   Currently only implemented for int32's or objects convertible to int32's.
 
 ### __max__(x: i32, y: i32) { data-toc-label='min()' }
 
-:   Currently only implemented for int32's or objects convertable to int32's.
+:   Currently only implemented for int32's or objects convertible to int32's.
 
 ### __print__(obj) { data-toc-label='print()' }
 
@@ -58,11 +58,11 @@ The following built-in functions work similarly to their equivalents in CPython;
 ### __range__(stop) { data-toc-label='range()' }
 <h3> <b>range</b>(start, stop, step) { data-toc-label='' }</h3> <!-- An HTML label to hide this in the TOC -->
 
-Creates an interable set of indices between `start` and `stop`, jumping over `step` indices between each.
+Creates an iterable set of indices between `start` and `stop`, jumping over `step` indices between each.
 
 ### __repr__(object) { data-toc-label='repr()' }
 
-:   Returna string containing a printable representation of an object.
+:   Returns string containing a printable representation of an object.
 
 ### __setattr__(object, name: str, value: obj) { data-toc-label='setattr()' }
 
