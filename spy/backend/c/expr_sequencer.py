@@ -1,0 +1,413 @@
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Callable
+
+from spy import ast
+from spy.analyze.symtable import Symbol
+from spy.fqn import FQN
+from spy.location import Loc
+from spy.vm.b import TYPES, B
+
+if TYPE_CHECKING:
+    from spy.vm.object import W_Type
+
+TmpVar = tuple[str, "W_Type"]
+IsPureFQN = Callable[[FQN], bool]
+
+
+@dataclass
+class _ExprState:
+    expr: ast.Expr
+    pre_stmts: list[ast.Stmt]
+    has_side_effects: bool
+    is_stable: bool
+
+
+class _ExprSequencer:
+    tmp_prefix: str
+    next_tmp_index: int
+    tmpvars: list[TmpVar]
+    is_pure_fqn: IsPureFQN
+
+    def __init__(
+        self,
+        *,
+        start_index: int,
+        tmp_prefix: str,
+        is_pure_fqn: IsPureFQN,
+    ) -> None:
+        self.tmp_prefix = tmp_prefix
+        self.next_tmp_index = start_index
+        self.tmpvars = []
+        self.is_pure_fqn = is_pure_fqn
+
+    def _sequence_stmt(self, stmt: ast.Stmt) -> list[ast.Stmt]:
+        if isinstance(stmt, (ast.Pass, ast.Break, ast.Continue)):
+            return [stmt]
+
+        if isinstance(stmt, ast.Return):
+            value = self._sequence_expr(stmt.value)
+            return value.pre_stmts + [stmt.replace(value=value.expr)]
+
+        if isinstance(stmt, ast.VarDef):
+            if stmt.value is None:
+                return [stmt]
+            value = self._sequence_expr(stmt.value)
+            return value.pre_stmts + [stmt.replace(value=value.expr)]
+
+        if isinstance(stmt, ast.AssignLocal):
+            value = self._sequence_expr(stmt.value)
+            return value.pre_stmts + [stmt.replace(value=value.expr)]
+
+        if isinstance(stmt, ast.AssignCell):
+            value = self._sequence_expr(stmt.value)
+            return value.pre_stmts + [stmt.replace(value=value.expr)]
+
+        if isinstance(stmt, ast.StmtExpr):
+            value = self._sequence_expr(stmt.value)
+            return value.pre_stmts + [stmt.replace(value=value.expr)]
+
+        if isinstance(stmt, ast.If):
+            test = self._sequence_expr(stmt.test)
+            then_body = self._sequence_body(stmt.then_body)
+            else_body = self._sequence_body(stmt.else_body)
+            new_if = stmt.replace(
+                test=test.expr, then_body=then_body, else_body=else_body
+            )
+            return test.pre_stmts + [new_if]
+
+        if isinstance(stmt, ast.While):
+            test = self._sequence_expr(stmt.test)
+            body = self._sequence_body(stmt.body)
+            if not test.pre_stmts:
+                return [stmt.replace(test=test.expr, body=body)]
+
+            # Evaluate test preludes on every iteration, then decide whether
+            # to break. This preserves both sequencing and while semantics.
+            loop = ast.While(
+                loc=stmt.loc,
+                test=ast.Constant(loc=stmt.loc, value=True, w_T=B.w_bool),
+                body=test.pre_stmts
+                + [
+                    ast.If(
+                        loc=stmt.loc,
+                        test=test.expr,
+                        then_body=body,
+                        else_body=[ast.Break(loc=stmt.loc)],
+                    )
+                ],
+            )
+            return [loop]
+
+        if isinstance(stmt, ast.Assert):
+            test = self._sequence_expr(stmt.test)
+            if stmt.msg is None:
+                return test.pre_stmts + [stmt.replace(test=test.expr)]
+
+            # Keep message evaluation lazy: only when assertion fails.
+            msg = self._sequence_expr(stmt.msg)
+            if not msg.pre_stmts:
+                return test.pre_stmts + [stmt.replace(test=test.expr, msg=msg.expr)]
+
+            # If formatting the message needs preludes, evaluate them only on
+            # the failing branch.
+            fail_assert = ast.Assert(
+                loc=stmt.loc,
+                test=ast.Constant(loc=stmt.loc, value=False, w_T=B.w_bool),
+                msg=msg.expr,
+            )
+            lazy_assert = ast.If(
+                loc=stmt.loc,
+                test=test.expr,
+                then_body=[],
+                else_body=msg.pre_stmts + [fail_assert],
+            )
+            return test.pre_stmts + [lazy_assert]
+
+        return [stmt]
+
+    def _sequence_body(self, body: list[ast.Stmt]) -> list[ast.Stmt]:
+        out: list[ast.Stmt] = []
+        for stmt in body:
+            out.extend(self._sequence_stmt(stmt))
+        return out
+
+    def _sequence_expr(self, expr: ast.Expr) -> _ExprState:
+        if isinstance(expr, (ast.Constant, ast.StrConst, ast.FQNConst, ast.LocConst)):
+            return _ExprState(expr, [], False, True)
+
+        if isinstance(
+            expr, (ast.NameLocalDirect, ast.NameLocalCell, ast.NameOuterCell)
+        ):
+            is_stable = expr.sym.varkind == "const"
+            return _ExprState(expr, [], False, is_stable)
+
+        if isinstance(expr, (ast.NameOuterDirect, ast.NameImportRef)):
+            return _ExprState(expr, [], False, True)
+
+        if isinstance(expr, (ast.AssignExpr, ast.AssignExprLocal, ast.AssignExprCell)):
+            value = self._sequence_expr(expr.value)
+            return _ExprState(
+                expr=expr.replace(value=value.expr),
+                pre_stmts=value.pre_stmts,
+                has_side_effects=True,
+                is_stable=False,
+            )
+
+        if isinstance(expr, ast.And):
+            left = self._sequence_expr(expr.left)
+            right = self._sequence_expr(expr.right)
+            has_side_effects = left.has_side_effects or right.has_side_effects
+            is_stable = (not has_side_effects) and left.is_stable and right.is_stable
+            if not right.pre_stmts:
+                return _ExprState(
+                    expr=expr.replace(left=left.expr, right=right.expr),
+                    pre_stmts=left.pre_stmts,
+                    has_side_effects=has_side_effects,
+                    is_stable=is_stable,
+                )
+
+            left_ref, left_assign = self._make_tmp(left.expr)
+            target = ast.StrConst(loc=expr.loc, value=left_ref.sym.name)
+            then_body = right.pre_stmts + [
+                ast.AssignLocal(loc=expr.loc, target=target, value=right.expr)
+            ]
+            pre_stmts = left.pre_stmts + [
+                left_assign,
+                ast.If(
+                    loc=expr.loc,
+                    test=left_ref,
+                    then_body=then_body,
+                    else_body=[],
+                ),
+            ]
+            return _ExprState(
+                expr=left_ref,
+                pre_stmts=pre_stmts,
+                has_side_effects=has_side_effects,
+                is_stable=is_stable,
+            )
+
+        if isinstance(expr, ast.Or):
+            left = self._sequence_expr(expr.left)
+            right = self._sequence_expr(expr.right)
+            has_side_effects = left.has_side_effects or right.has_side_effects
+            is_stable = (not has_side_effects) and left.is_stable and right.is_stable
+            if not right.pre_stmts:
+                return _ExprState(
+                    expr=expr.replace(left=left.expr, right=right.expr),
+                    pre_stmts=left.pre_stmts,
+                    has_side_effects=has_side_effects,
+                    is_stable=is_stable,
+                )
+
+            left_ref, left_assign = self._make_tmp(left.expr)
+            target = ast.StrConst(loc=expr.loc, value=left_ref.sym.name)
+            else_body = right.pre_stmts + [
+                ast.AssignLocal(loc=expr.loc, target=target, value=right.expr)
+            ]
+            pre_stmts = left.pre_stmts + [
+                left_assign,
+                ast.If(
+                    loc=expr.loc,
+                    test=left_ref,
+                    then_body=[],
+                    else_body=else_body,
+                ),
+            ]
+            return _ExprState(
+                expr=left_ref,
+                pre_stmts=pre_stmts,
+                has_side_effects=has_side_effects,
+                is_stable=is_stable,
+            )
+
+        if isinstance(expr, ast.Call):
+            return self._sequence_call(expr)
+
+        raise NotImplementedError(
+            f"expr_sequencer does not support {type(expr).__name__}"
+        )
+
+    def _sequence_call(self, call: ast.Call) -> _ExprState:
+        states = [self._sequence_expr(call.func)] + [
+            self._sequence_expr(arg) for arg in call.args
+        ]
+        writes_per_state = [self._written_local_names_state(state) for state in states]
+        all_written_names: set[str] = set().union(*writes_per_state)
+
+        call_is_pure = self._is_pure_call(call.func)
+        has_side_effects = (not call_is_pure) or any(
+            state.has_side_effects for state in states
+        )
+        is_stable = (
+            call_is_pure
+            and (not has_side_effects)
+            and all(state.is_stable for state in states)
+        )
+
+        pre_stmts: list[ast.Stmt] = []
+        new_parts: list[ast.Expr] = []
+        has_effect_flags = [state.has_side_effects for state in states]
+        ordering_flags = []
+        for state in states:
+            ordering = state.has_side_effects or (not state.is_stable)
+            if (
+                isinstance(state.expr, ast.NameLocalDirect)
+                and state.expr.sym.varkind != "const"
+                and state.expr.sym.name not in all_written_names
+            ):
+                ordering = state.has_side_effects
+            ordering_flags.append(ordering)
+        suffix_has_effects = self._suffix_any(has_effect_flags)
+        suffix_ordering = self._suffix_any(ordering_flags)
+        suffix_written_names = self._suffix_union(writes_per_state)
+
+        for i, state in enumerate(states):
+            pre_stmts.extend(state.pre_stmts)
+            later_has_effects = suffix_has_effects[i + 1]
+            later_needs_ordering = suffix_ordering[i + 1]
+
+            need_tmp_for_effects = state.has_side_effects and later_needs_ordering
+            need_tmp_for_snapshot = (
+                (not state.has_side_effects)
+                and later_has_effects
+                and (not state.is_stable)
+            )
+            if (
+                need_tmp_for_snapshot
+                and isinstance(state.expr, ast.NameLocalDirect)
+                and state.expr.sym.varkind != "const"
+                and state.expr.sym.name not in suffix_written_names[i + 1]
+            ):
+                need_tmp_for_snapshot = False
+
+            if (
+                need_tmp_for_effects
+                and isinstance(state.expr, ast.AssignExprLocal)
+                and state.expr.target.value not in suffix_written_names[i + 1]
+            ):
+                # The assignment itself can be hoisted as a standalone stmt.
+                # We can then pass the assigned local by name and avoid a tmp.
+                pre_stmts.append(
+                    ast.AssignLocal(
+                        loc=state.expr.loc,
+                        target=state.expr.target,
+                        value=state.expr.value,
+                    )
+                )
+                new_parts.append(
+                    self._make_local_ref(
+                        name=state.expr.target.value,
+                        loc=state.expr.loc,
+                        w_T=self._expr_type(state.expr),
+                    )
+                )
+                continue
+
+            if need_tmp_for_effects or need_tmp_for_snapshot:
+                ref, assign = self._make_tmp(state.expr)
+                pre_stmts.append(assign)
+                new_parts.append(ref)
+            else:
+                new_parts.append(state.expr)
+
+        new_call = call.replace(func=new_parts[0], args=new_parts[1:])
+        return _ExprState(new_call, pre_stmts, has_side_effects, is_stable)
+
+    @staticmethod
+    def _suffix_any(flags: list[bool]) -> list[bool]:
+        out = [False] * (len(flags) + 1)
+        for i in range(len(flags) - 1, -1, -1):
+            out[i] = flags[i] or out[i + 1]
+        return out
+
+    @staticmethod
+    def _suffix_union(names: list[set[str]]) -> list[set[str]]:
+        out: list[set[str]] = [set() for _ in range(len(names) + 1)]
+        for i in range(len(names) - 1, -1, -1):
+            out[i] = set(out[i + 1])
+            out[i].update(names[i])
+        return out
+
+    def _make_tmp(self, expr: ast.Expr) -> tuple[ast.NameLocalDirect, ast.AssignLocal]:
+        w_T = self._expr_type(expr)
+        assert w_T is not TYPES.w_NoneType, "cannot materialize void expressions"
+
+        tmp_name = f"{self.tmp_prefix}{self.next_tmp_index}"
+        self.next_tmp_index += 1
+        self.tmpvars.append((tmp_name, w_T))
+
+        target = ast.StrConst(loc=expr.loc, value=tmp_name)
+        assign = ast.AssignLocal(loc=expr.loc, target=target, value=expr)
+        sym = Symbol(
+            name=tmp_name,
+            varkind="const",
+            varkind_origin="auto",
+            storage="direct",
+            loc=expr.loc,
+            type_loc=expr.loc,
+            level=0,
+        )
+        ref = ast.NameLocalDirect(loc=expr.loc, sym=sym, w_T=w_T)
+        return ref, assign
+
+    @staticmethod
+    def _make_local_ref(name: str, loc: Loc, w_T: "W_Type") -> ast.NameLocalDirect:
+        sym = Symbol(
+            name=name,
+            varkind="var",
+            varkind_origin="auto",
+            storage="direct",
+            loc=loc,
+            type_loc=loc,
+            level=0,
+        )
+        return ast.NameLocalDirect(loc=loc, sym=sym, w_T=w_T)
+
+    def _expr_type(self, expr: ast.Expr) -> "W_Type":
+        assert expr.w_T is not None, (
+            "expr_sequencer requires all expressions to have w_T set"
+        )
+        return expr.w_T
+
+    def _is_pure_call(self, func_expr: ast.Expr) -> bool:
+        if not isinstance(func_expr, ast.FQNConst):
+            return False
+        return self.is_pure_fqn(func_expr.fqn)
+
+    def _written_local_names_node(self, node: ast.Node) -> set[str]:
+        names: set[str] = set()
+        for cur in node.walk():
+            if isinstance(cur, ast.AssignLocal):
+                names.add(cur.target.value)
+            elif isinstance(cur, ast.VarDef):
+                names.add(cur.name.value)
+            elif isinstance(cur, (ast.AssignExpr, ast.AssignExprLocal)):
+                names.add(cur.target.value)
+        return names
+
+    def _written_local_names_state(self, state: _ExprState) -> set[str]:
+        names = self._written_local_names_node(state.expr)
+        for stmt in state.pre_stmts:
+            names.update(self._written_local_names_node(stmt))
+        return names
+
+
+def _default_is_pure_fqn(fqn: FQN) -> bool:
+    return fqn.modname == "operator" and fqn.symbol_name != "raise"
+
+
+def expr_sequencer(
+    stmt: ast.Stmt,
+    *,
+    start_index: int = 0,
+    tmp_prefix: str = "spy_tmp",
+    is_pure_fqn: IsPureFQN = _default_is_pure_fqn,
+) -> tuple[list[TmpVar], list[ast.Stmt], int]:
+    sequencer = _ExprSequencer(
+        start_index=start_index,
+        tmp_prefix=tmp_prefix,
+        is_pure_fqn=is_pure_fqn,
+    )
+    stmts = sequencer._sequence_stmt(stmt)
+    return sequencer.tmpvars, stmts, sequencer.next_tmp_index
