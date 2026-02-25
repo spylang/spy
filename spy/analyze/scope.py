@@ -63,7 +63,7 @@ class ScopeAnalyzer:
     def __init__(self, vm: "SPyVM", modname: str, mod: ast.Module) -> None:
         self.vm = vm
         self.mod = mod
-        self.builtins_scope = SymTable.from_builtins(vm)
+        self.builtins_scope = SymTable.from_builtins()
         self.mod_scope = SymTable(modname, "blue", "module")
         self.stack = []
         self.inner_scopes = {}
