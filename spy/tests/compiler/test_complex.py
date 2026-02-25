@@ -62,43 +62,43 @@ class TestComplex(CompilerTest):
         assert mod.imag(2 + 8j) == 8.0
         assert mod.conj(2 + 8j) == 2 - 8j
 
-    # def test_implicit_conversion(self, complex_type):
-    #     mod = self.compile(f"""
-    #     T = {complex_type}
-    #     def add_int(x: T, y: i32) -> T: return x + y
-    #     def add_float(x: T, y: f64) -> T: return x + y
-    #     def sub_int(x: i32, y: T) -> T: return x - y
-    #     def sub_float(x: f64, y: T) -> T: return x - y
-    #     def mul_int(x: T, y: i32) -> T: return x * y
-    #     def mul_float(x: T, y: f64) -> T: return x * y
-    #     def div_int(x: i32, y: T) -> T: return x / y
-    #     def div_float(x: f64, y: T) -> T: return x / y
-    #     """)
-    #     assert mod.add_int(1.5j, 2) == 2 + 1.5j
-    #     assert mod.add_float(1.5j, 2.0) == 2 + 1.5j
-    #     assert mod.sub_int(10, 0.5j) == 10 - 0.5j
-    #     assert mod.sub_float(10.0, 0.5j) == 10 - 0.5j
-    #     assert mod.mul_int(1.5j, 2) == 3j
-    #     assert mod.mul_float(1.5j, 2.0) == 3j
-    #     assert mod.div_int(10, 0.5j) == -20.0j
-    #     assert mod.div_float(10.0, 0.5j) == -20.0j
+    def test_implicit_conversion(self, complex_type):
+        mod = self.compile(f"""
+        T = {complex_type}
+        def add_int(x: T, y: i32) -> T: return x + y
+        def add_float(x: T, y: f64) -> T: return x + y
+        def sub_int(x: i32, y: T) -> T: return x - y
+        def sub_float(x: f64, y: T) -> T: return x - y
+        def mul_int(x: T, y: i32) -> T: return x * y
+        def mul_float(x: T, y: f64) -> T: return x * y
+        def div_int(x: i32, y: T) -> T: return x / y
+        def div_float(x: f64, y: T) -> T: return x / y
+        """)
+        assert mod.add_int(1.5j, 2) == 2 + 1.5j
+        assert mod.add_float(1.5j, 2.0) == 2 + 1.5j
+        assert mod.sub_int(10, 0.5j) == 10 - 0.5j
+        assert mod.sub_float(10.0, 0.5j) == 10 - 0.5j
+        assert mod.mul_int(1.5j, 2) == 3j
+        assert mod.mul_float(1.5j, 2.0) == 3j
+        assert mod.div_int(10, 0.5j) == -20.0j
+        assert mod.div_float(10.0, 0.5j) == -20.0j
 
-    # def test_explicit_conversion(self, complex_type):
-    #     mod = self.compile(f"""
-    #     T = {complex_type}
-    #     def str_to_complex(x: str) -> T:     return T(x)
-    #     def i32_to_complex(x: i32) -> T:     return T(x)
-    #     def f64_to_complex(x: f64) -> T:     return T(x)
-    #     """)
-    #     assert mod.str_to_complex("5.1") == 5.1 + 0j
-    #     assert mod.i32_to_complex(5) == 5 + 0j
-    #     assert mod.f64_to_complex(5.1) == 5.1 + 0j
+    def test_explicit_conversion(self, complex_type):
+        mod = self.compile(f"""
+        T = {complex_type}
+        # def str_to_complex(x: str) -> T:     return T(x)
+        def i32_to_complex(x: i32) -> T:     return T(x)
+        def f64_to_complex(x: f64) -> T:     return T(x)
+        """)
+        # assert mod.str_to_complex("5.1") == 5.1 + 0j
+        assert mod.i32_to_complex(5) == 5 + 0j
+        assert mod.f64_to_complex(5.1) == 5.1 + 0j
 
-    # def test_explicit_conv_two_params(self, complex_type):
-    #     mod = self.compile(f"""
-    #     T = {complex_type}
-    #     def i32_to_complex(x: i32, y: i32) -> T:     return T(x, y)
-    #     def f64_to_complex(x: f64, y: f64) -> T:     return T(x, y)
-    #     """)
-    #     assert mod.i32_to_complex(5, 6) == 5 + 6j
-    #     assert mod.f64_to_complex(5.1, 6.2) == 5.1 + 6.2j
+    def test_explicit_conv_two_params(self, complex_type):
+        mod = self.compile(f"""
+        T = {complex_type}
+        def i32_to_complex(x: i32, y: i32) -> T:     return T(x, y)
+        def f64_to_complex(x: f64, y: f64) -> T:     return T(x, y)
+        """)
+        assert mod.i32_to_complex(5, 6) == 5 + 6j
+        assert mod.f64_to_complex(5.1, 6.2) == 5.1 + 6.2j

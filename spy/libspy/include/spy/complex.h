@@ -32,6 +32,21 @@ spy_complex128_conjugate(spy_Complex128 x) {
 }
 
 static inline spy_Complex128
+spy_operator$i32_to_complex128(int32_t x) {
+    return (spy_Complex128){.real = (double)x};
+}
+
+static inline spy_Complex128
+spy_operator$f64_to_complex128(double x) {
+    return (spy_Complex128){.real = x};
+}
+
+static inline spy_Complex128
+spy_operator$f64_f64_to_complex128(double x, double y) {
+    return (spy_Complex128){.real = x, .imag = y};
+}
+
+static inline spy_Complex128
 spy_operator$complex128_add(spy_Complex128 x, spy_Complex128 y) {
     return (spy_Complex128){.real = x.real + y.real, .imag = x.imag + y.imag};
 }

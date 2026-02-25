@@ -178,10 +178,9 @@ def w_i32_to_f32(vm: "SPyVM", w_x: W_I32) -> W_F32:
 
 
 @OP.builtin_func
-def w_i32_to_complex128(vm: "SPyVM", *w_args: W_I32) -> W_Complex128:
-    x = vm.unwrap_i32(w_args[0])
-    y = vm.unwrap_i32(w_args[1]) if len(w_args) == 2 else 0.0
-    return vm.wrap(complex(x, y))
+def w_i32_to_complex128(vm: "SPyVM", w_x: W_I32) -> W_Complex128:
+    x = vm.unwrap_i32(w_x)
+    return vm.wrap(complex(x))
 
 
 @OP.builtin_func
@@ -209,9 +208,15 @@ def w_f64_to_f32(vm: "SPyVM", w_x: W_F64) -> W_F32:
 
 
 @OP.builtin_func
-def w_f64_to_complex128(vm: "SPyVM", *w_args: W_F64) -> W_Complex128:
-    x = vm.unwrap_f64(w_args[0])
-    y = vm.unwrap_f64(w_args[1]) if len(w_args) == 2 else 0.0
+def w_f64_to_complex128(vm: "SPyVM", w_x: W_F64) -> W_Complex128:
+    x = vm.unwrap_f64(w_x)
+    return vm.wrap(complex(x))
+
+
+@OP.builtin_func
+def w_f64_f64_to_complex128(vm: "SPyVM", w_x: W_F64, w_y: W_F64) -> W_Complex128:
+    x = vm.unwrap_f64(w_x)
+    y = vm.unwrap_f64(w_y)
     return vm.wrap(complex(x, y))
 
 
