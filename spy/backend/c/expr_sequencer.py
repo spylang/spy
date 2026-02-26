@@ -32,6 +32,7 @@ class _ExprSequencer:
     tmp_prefix: str
     next_tmp_index: int
     tmpvars: list[TmpVar]
+    tmp_names: set[str]
     is_pure_fqn: IsPureFQN
 
     def __init__(
@@ -44,6 +45,7 @@ class _ExprSequencer:
         self.tmp_prefix = tmp_prefix
         self.next_tmp_index = start_index
         self.tmpvars = []
+        self.tmp_names = set()
         self.is_pure_fqn = is_pure_fqn
 
     def _sequence_stmt(self, stmt: ast.Stmt) -> list[ast.Stmt]:
@@ -172,20 +174,27 @@ class _ExprSequencer:
                     is_stable=is_stable,
                 )
 
-            left_ref, left_assign = self._make_tmp(left.expr)
+            left_ref, left_assign = self._short_circuit_carrier(left.expr)
             target = ast.StrConst(loc=expr.loc, value=left_ref.sym.name)
-            then_body = right.pre_stmts + [
-                ast.AssignLocal(loc=expr.loc, target=target, value=right.expr)
-            ]
-            pre_stmts = left.pre_stmts + [
-                left_assign,
+            rhs_stmts, rhs_expr, need_join_assign = self._coalesce_short_circuit_rhs(
+                carrier=left_ref, rhs=right
+            )
+            then_body = list(rhs_stmts)
+            if need_join_assign:
+                then_body.append(
+                    ast.AssignLocal(loc=expr.loc, target=target, value=rhs_expr)
+                )
+            pre_stmts = list(left.pre_stmts)
+            if left_assign is not None:
+                pre_stmts.append(left_assign)
+            pre_stmts.append(
                 ast.If(
                     loc=expr.loc,
                     test=left_ref,
                     then_body=then_body,
                     else_body=[],
-                ),
-            ]
+                )
+            )
             return _ExprState(
                 expr=left_ref,
                 pre_stmts=pre_stmts,
@@ -206,20 +215,27 @@ class _ExprSequencer:
                     is_stable=is_stable,
                 )
 
-            left_ref, left_assign = self._make_tmp(left.expr)
+            left_ref, left_assign = self._short_circuit_carrier(left.expr)
             target = ast.StrConst(loc=expr.loc, value=left_ref.sym.name)
-            else_body = right.pre_stmts + [
-                ast.AssignLocal(loc=expr.loc, target=target, value=right.expr)
-            ]
-            pre_stmts = left.pre_stmts + [
-                left_assign,
+            rhs_stmts, rhs_expr, need_join_assign = self._coalesce_short_circuit_rhs(
+                carrier=left_ref, rhs=right
+            )
+            else_body = list(rhs_stmts)
+            if need_join_assign:
+                else_body.append(
+                    ast.AssignLocal(loc=expr.loc, target=target, value=rhs_expr)
+                )
+            pre_stmts = list(left.pre_stmts)
+            if left_assign is not None:
+                pre_stmts.append(left_assign)
+            pre_stmts.append(
                 ast.If(
                     loc=expr.loc,
                     test=left_ref,
                     then_body=[],
                     else_body=else_body,
-                ),
-            ]
+                )
+            )
             return _ExprState(
                 expr=left_ref,
                 pre_stmts=pre_stmts,
@@ -397,6 +413,7 @@ class _ExprSequencer:
         tmp_name = f"{self.tmp_prefix}{self.next_tmp_index}"
         self.next_tmp_index += 1
         self.tmpvars.append((tmp_name, w_T))
+        self.tmp_names.add(tmp_name)
 
         target = ast.StrConst(loc=expr.loc, value=tmp_name)
         assign = ast.AssignLocal(loc=expr.loc, target=target, value=expr)
@@ -411,6 +428,126 @@ class _ExprSequencer:
         )
         ref = ast.NameLocalDirect(loc=expr.loc, sym=sym, w_T=w_T)
         return ref, assign
+
+    def _short_circuit_carrier(
+        self, expr: ast.Expr
+    ) -> tuple[ast.NameLocalDirect, ast.AssignLocal | None]:
+        # Nested short-circuit rewrites often feed an existing compiler-generated
+        # tmp into another And/Or. Reuse that tmp as carrier to avoid tmp-to-tmp
+        # copies such as `spy_tmpN = spy_tmpM`.
+        if isinstance(expr, ast.NameLocalDirect) and expr.sym.name in self.tmp_names:
+            return expr, None
+        ref, assign = self._make_tmp(expr)
+        return ref, assign
+
+    def _coalesce_short_circuit_rhs(
+        self,
+        *,
+        carrier: ast.NameLocalDirect,
+        rhs: _ExprState,
+    ) -> tuple[list[ast.Stmt], ast.Expr, bool]:
+        """
+        Try to rewrite RHS preludes to write directly into `carrier` when RHS
+        already ends in a compiler-generated tmp. This removes redundant
+        tmp-to-tmp joins such as `spy_tmpN = spy_tmpM`.
+        """
+        if not isinstance(rhs.expr, ast.NameLocalDirect):
+            return rhs.pre_stmts, rhs.expr, True
+
+        rhs_name = rhs.expr.sym.name
+        carrier_name = carrier.sym.name
+        if rhs_name == carrier_name:
+            return rhs.pre_stmts, rhs.expr, False
+        if rhs_name not in self.tmp_names or carrier_name not in self.tmp_names:
+            return rhs.pre_stmts, rhs.expr, True
+
+        renamed = [
+            self._rename_local_stmt(stmt, old_name=rhs_name, new_name=carrier_name)
+            for stmt in rhs.pre_stmts
+        ]
+        self._drop_tmp(rhs_name)
+        return renamed, carrier, False
+
+    def _drop_tmp(self, tmp_name: str) -> None:
+        if tmp_name not in self.tmp_names:
+            return
+        self.tmp_names.remove(tmp_name)
+        self.tmpvars = [(name, w_T) for name, w_T in self.tmpvars if name != tmp_name]
+
+    def _rename_local_stmt(
+        self, stmt: ast.Stmt, *, old_name: str, new_name: str
+    ) -> ast.Stmt:
+        if isinstance(stmt, ast.AssignLocal):
+            target = stmt.target
+            if target.value == old_name:
+                target = target.replace(value=new_name)
+            return stmt.replace(
+                target=target,
+                value=self._rename_local_expr(
+                    stmt.value, old_name=old_name, new_name=new_name
+                ),
+            )
+        if isinstance(stmt, ast.If):
+            return stmt.replace(
+                test=self._rename_local_expr(
+                    stmt.test, old_name=old_name, new_name=new_name
+                ),
+                then_body=[
+                    self._rename_local_stmt(s, old_name=old_name, new_name=new_name)
+                    for s in stmt.then_body
+                ],
+                else_body=[
+                    self._rename_local_stmt(s, old_name=old_name, new_name=new_name)
+                    for s in stmt.else_body
+                ],
+            )
+        return stmt
+
+    def _rename_local_expr(
+        self, expr: ast.Expr, *, old_name: str, new_name: str
+    ) -> ast.Expr:
+        if isinstance(expr, ast.NameLocalDirect) and expr.sym.name == old_name:
+            return self._make_local_ref(
+                name=new_name,
+                loc=expr.loc,
+                w_T=self._expr_type(expr),
+            )
+        if isinstance(expr, (ast.AssignExpr, ast.AssignExprLocal)):
+            target = expr.target
+            if target.value == old_name:
+                target = target.replace(value=new_name)
+            return expr.replace(
+                target=target,
+                value=self._rename_local_expr(
+                    expr.value, old_name=old_name, new_name=new_name
+                ),
+            )
+        if isinstance(expr, ast.AssignExprCell):
+            return expr.replace(
+                value=self._rename_local_expr(
+                    expr.value, old_name=old_name, new_name=new_name
+                )
+            )
+        if isinstance(expr, ast.Call):
+            return expr.replace(
+                func=self._rename_local_expr(
+                    expr.func, old_name=old_name, new_name=new_name
+                ),
+                args=[
+                    self._rename_local_expr(arg, old_name=old_name, new_name=new_name)
+                    for arg in expr.args
+                ],
+            )
+        if isinstance(expr, (ast.And, ast.Or)):
+            return expr.replace(
+                left=self._rename_local_expr(
+                    expr.left, old_name=old_name, new_name=new_name
+                ),
+                right=self._rename_local_expr(
+                    expr.right, old_name=old_name, new_name=new_name
+                ),
+            )
+        return expr
 
     @staticmethod
     def _make_local_ref(name: str, loc: Loc, w_T: "W_Type") -> ast.NameLocalDirect:
