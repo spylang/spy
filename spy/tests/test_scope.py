@@ -17,7 +17,6 @@ from spy.analyze.symtable import (
 from spy.fqn import FQN
 from spy.parser import Parser
 from spy.tests.support import MatchAnnotation, expect_errors
-from spy.vm.vm import SPyVM
 
 MISSING = object()
 
@@ -61,7 +60,6 @@ class MatchSymbol:
 class TestScopeAnalyzer:
     @pytest.fixture
     def init(self, tmpdir):
-        self.vm = SPyVM()
         self.tmpdir = tmpdir
 
     def analyze(self, src: str):
@@ -70,7 +68,7 @@ class TestScopeAnalyzer:
         f.write(src)
         parser = Parser(src, str(f))
         self.mod = parser.parse()
-        scopes = ScopeAnalyzer(self.vm, "test", self.mod)
+        scopes = ScopeAnalyzer("test", self.mod)
         scopes.analyze()
         return scopes
 
