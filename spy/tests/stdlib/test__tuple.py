@@ -39,3 +39,20 @@ class TestTange(CompilerTest):
         """)
         x = mod.foo()
         assert x == 3
+
+    def test_eq(self):
+        mod = self.compile("""
+        def tup1() -> tuple[int, int]:
+            return 1, 2
+
+        def tup2() -> tuple[int, int]:
+            return 3, 4
+
+        def foo() -> bool:
+            return tup1() == tup1()
+
+        def bar() -> bool:
+            return tup1() == tup2()
+        """)
+        assert mod.foo()
+        assert not mod.bar()
