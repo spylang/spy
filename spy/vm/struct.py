@@ -161,39 +161,40 @@ class W_StructType(W_Type):
         def __ne__(a: Point, b: Point) -> bool:
             return not (a.x == b.x and a.y == b.y and ...)
         """
-        loc = Loc.fake()
         fields_w = list(self.iterfields_w())
+        func_loc = Loc.here()
 
-        def cmp_field(fname: str) -> ast.Expr:
-            a = ast.GetAttr(loc, ast.Name(loc, "a"), ast.StrConst(loc, fname))
-            b = ast.GetAttr(loc, ast.Name(loc, "b"), ast.StrConst(loc, fname))
-            return ast.CmpOp(loc, "==", a, b)
+        def cmp_field(w_field: W_StructField) -> ast.Expr:
+            loc = w_field.loc
+            a = ast.GetAttr(loc, ast.Name(loc, "a"), ast.StrConst(loc, w_field.name))
+            b = ast.GetAttr(loc, ast.Name(loc, "b"), ast.StrConst(loc, w_field.name))
+            return ast.CmpOp(Loc.here(), "==", a, b)
 
         if not fields_w:
-            result: ast.Expr = ast.Constant(loc, True)
+            result: ast.Expr = ast.Constant(func_loc, True)
         else:
-            result = cmp_field(fields_w[0].name)
+            result = cmp_field(fields_w[0])
             for w_field in fields_w[1:]:
-                result = ast.And(loc, result, cmp_field(w_field.name))
+                result = ast.And(w_field.loc, result, cmp_field(w_field))
 
         if name == "__eq__":
-            stmt = ast.Return(loc, result)
+            stmt = ast.Return(func_loc, result)
         elif name == "__ne__":
-            stmt = ast.Return(loc, ast.UnaryOp(loc, "not", result))
+            stmt = ast.Return(func_loc, ast.UnaryOp(Loc.here(), "not", result))
         else:
             assert False
 
-        self_type = ast.FQNConst(loc, self.fqn)
+        self_type = ast.FQNConst(func_loc, self.fqn)
         funcdef = ast.FuncDef(
-            loc=loc,
+            loc=func_loc,
             color="red",
             kind="plain",
             name=name,
             args=[
-                ast.FuncArg(loc, "a", self_type, "simple"),
-                ast.FuncArg(loc, "b", self_type, "simple"),
+                ast.FuncArg(func_loc, "a", self_type, "simple"),
+                ast.FuncArg(func_loc, "b", self_type, "simple"),
             ],
-            return_type=ast.FQNConst(loc, B.w_bool.fqn),
+            return_type=ast.FQNConst(func_loc, B.w_bool.fqn),
             docstring=None,
             body=[stmt],
             decorators=[],
@@ -201,10 +202,10 @@ class W_StructType(W_Type):
 
         # create a fake module so that we can run ScopeAnalyzer
         module = ast.Module(
-            loc=loc,
+            loc=func_loc,
             filename="<generated>",
             docstring=None,
-            decls=[ast.GlobalFuncDef(loc, funcdef)],
+            decls=[ast.GlobalFuncDef(func_loc, funcdef)],
         )
         analyzer = ScopeAnalyzer(self.fqn.modname, module)
         analyzer.analyze()
