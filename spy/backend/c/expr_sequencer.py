@@ -22,6 +22,12 @@ class _ExprState:
     is_stable: bool
 
 
+@dataclass(frozen=True)
+class _ExprEvalFacts:
+    has_side_effects: bool
+    is_stable: bool
+
+
 class _ExprSequencer:
     tmp_prefix: str
     next_tmp_index: int
@@ -234,6 +240,7 @@ class _ExprSequencer:
         ]
         writes_per_state = [self._written_local_names_state(state) for state in states]
         all_written_names: set[str] = set().union(*writes_per_state)
+        expr_eval_facts = [self._analyze_expr_eval(state.expr) for state in states]
 
         call_is_pure = self._is_pure_call(call.func)
         has_side_effects = (not call_is_pure) or any(
@@ -249,8 +256,8 @@ class _ExprSequencer:
         new_parts: list[ast.Expr] = []
         has_effect_flags = [state.has_side_effects for state in states]
         ordering_flags = []
-        for state in states:
-            ordering = state.has_side_effects or (not state.is_stable)
+        for i, state in enumerate(states):
+            ordering = state.has_side_effects or (not expr_eval_facts[i].is_stable)
             if (
                 isinstance(state.expr, ast.NameLocalDirect)
                 and state.expr.sym.varkind != "const"
@@ -266,12 +273,12 @@ class _ExprSequencer:
             pre_stmts.extend(state.pre_stmts)
             later_has_effects = suffix_has_effects[i + 1]
             later_needs_ordering = suffix_ordering[i + 1]
+            expr_has_effects = expr_eval_facts[i].has_side_effects
+            expr_is_stable = expr_eval_facts[i].is_stable
 
-            need_tmp_for_effects = state.has_side_effects and later_needs_ordering
+            need_tmp_for_effects = expr_has_effects and later_needs_ordering
             need_tmp_for_snapshot = (
-                (not state.has_side_effects)
-                and later_has_effects
-                and (not state.is_stable)
+                (not expr_has_effects) and later_has_effects and (not expr_is_stable)
             )
             if (
                 need_tmp_for_snapshot
@@ -313,6 +320,60 @@ class _ExprSequencer:
 
         new_call = call.replace(func=new_parts[0], args=new_parts[1:])
         return _ExprState(new_call, pre_stmts, has_side_effects, is_stable)
+
+    def _analyze_expr_eval(self, expr: ast.Expr) -> _ExprEvalFacts:
+        if isinstance(expr, (ast.Constant, ast.StrConst, ast.FQNConst, ast.LocConst)):
+            return _ExprEvalFacts(has_side_effects=False, is_stable=True)
+
+        if isinstance(
+            expr,
+            (
+                ast.NameLocalDirect,
+                ast.NameLocalCell,
+                ast.NameOuterCell,
+                ast.NameOuterDirect,
+                ast.NameImportRef,
+            ),
+        ):
+            is_stable = (
+                not isinstance(
+                    expr, (ast.NameLocalDirect, ast.NameLocalCell, ast.NameOuterCell)
+                )
+                or expr.sym.varkind == "const"
+            )
+            return _ExprEvalFacts(has_side_effects=False, is_stable=is_stable)
+
+        if isinstance(expr, (ast.AssignExpr, ast.AssignExprLocal, ast.AssignExprCell)):
+            return _ExprEvalFacts(has_side_effects=True, is_stable=False)
+
+        if isinstance(expr, (ast.And, ast.Or)):
+            left = self._analyze_expr_eval(expr.left)
+            right = self._analyze_expr_eval(expr.right)
+            has_side_effects = left.has_side_effects or right.has_side_effects
+            return _ExprEvalFacts(
+                has_side_effects=has_side_effects,
+                is_stable=(not has_side_effects) and left.is_stable and right.is_stable,
+            )
+
+        if isinstance(expr, ast.Call):
+            func = self._analyze_expr_eval(expr.func)
+            args = [self._analyze_expr_eval(arg) for arg in expr.args]
+            call_is_pure = self._is_pure_call(expr.func)
+            has_side_effects = (
+                func.has_side_effects
+                or any(arg.has_side_effects for arg in args)
+                or (not call_is_pure)
+            )
+            return _ExprEvalFacts(
+                has_side_effects=has_side_effects,
+                is_stable=(not has_side_effects)
+                and func.is_stable
+                and all(arg.is_stable for arg in args),
+            )
+
+        raise NotImplementedError(
+            f"expr_sequencer does not support {type(expr).__name__}"
+        )
 
     @staticmethod
     def _suffix_any(flags: list[bool]) -> list[bool]:
