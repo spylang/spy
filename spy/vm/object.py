@@ -72,7 +72,7 @@ if TYPE_CHECKING:
     from spy.vm.field import W_Field
     from spy.vm.function import W_Func
     from spy.vm.opspec import W_MetaArg, W_OpSpec
-    from spy.vm.primitive import W_Bool, W_NoneType
+    from spy.vm.primitive import W_Bool, W_Dynamic, W_NoneType
     from spy.vm.vm import SPyVM
 
 
@@ -693,6 +693,14 @@ class W_Type(W_Object):
         return None
 
     # ======== app-level interface ========
+
+    @builtin_method("__new__")
+    @staticmethod
+    def w_new(vm: "SPyVM", w_obj: "W_Dynamic") -> "W_Type":
+        """
+        This implements `type(obj)`, i.e. it returns its dynamic type
+        """
+        return vm.dynamic_type(w_obj)
 
     # this is the equivalent of CPython's typeobject.c:type_getattro
     @builtin_method("__getattribute__", color="blue", kind="metafunc")
