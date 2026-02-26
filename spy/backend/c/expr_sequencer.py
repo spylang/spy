@@ -140,108 +140,23 @@ class _ExprSequencer:
         return out
 
     def _sequence_expr(self, expr: ast.Expr) -> _ExprState:
-        if isinstance(expr, (ast.Constant, ast.StrConst, ast.FQNConst, ast.LocConst)):
-            return _ExprState(expr, [], False, True)
-
-        if isinstance(
-            expr, (ast.NameLocalDirect, ast.NameLocalCell, ast.NameOuterCell)
-        ):
-            is_stable = expr.sym.varkind == "const"
-            return _ExprState(expr, [], False, is_stable)
-
-        if isinstance(expr, (ast.NameOuterDirect, ast.NameImportRef)):
-            return _ExprState(expr, [], False, True)
+        leaf_facts = self._leaf_eval_facts(expr)
+        if leaf_facts is not None:
+            return self._state_from_facts(expr=expr, pre_stmts=[], facts=leaf_facts)
 
         if isinstance(expr, (ast.AssignExpr, ast.AssignExprLocal, ast.AssignExprCell)):
             value = self._sequence_expr(expr.value)
-            return _ExprState(
+            return self._state_from_facts(
                 expr=expr.replace(value=value.expr),
                 pre_stmts=value.pre_stmts,
-                has_side_effects=True,
-                is_stable=False,
+                facts=self._assign_expr_facts(),
             )
 
         if isinstance(expr, ast.And):
-            left = self._sequence_expr(expr.left)
-            right = self._sequence_expr(expr.right)
-            has_side_effects = left.has_side_effects or right.has_side_effects
-            is_stable = (not has_side_effects) and left.is_stable and right.is_stable
-            if not right.pre_stmts:
-                return _ExprState(
-                    expr=expr.replace(left=left.expr, right=right.expr),
-                    pre_stmts=left.pre_stmts,
-                    has_side_effects=has_side_effects,
-                    is_stable=is_stable,
-                )
-
-            left_ref, left_assign = self._short_circuit_carrier(left.expr)
-            target = ast.StrConst(loc=expr.loc, value=left_ref.sym.name)
-            rhs_stmts, rhs_expr, need_join_assign = self._coalesce_short_circuit_rhs(
-                carrier=left_ref, rhs=right
-            )
-            then_body = list(rhs_stmts)
-            if need_join_assign:
-                then_body.append(
-                    ast.AssignLocal(loc=expr.loc, target=target, value=rhs_expr)
-                )
-            pre_stmts = list(left.pre_stmts)
-            if left_assign is not None:
-                pre_stmts.append(left_assign)
-            pre_stmts.append(
-                ast.If(
-                    loc=expr.loc,
-                    test=left_ref,
-                    then_body=then_body,
-                    else_body=[],
-                )
-            )
-            return _ExprState(
-                expr=left_ref,
-                pre_stmts=pre_stmts,
-                has_side_effects=has_side_effects,
-                is_stable=is_stable,
-            )
+            return self._sequence_short_circuit(expr, rhs_when_test_true=True)
 
         if isinstance(expr, ast.Or):
-            left = self._sequence_expr(expr.left)
-            right = self._sequence_expr(expr.right)
-            has_side_effects = left.has_side_effects or right.has_side_effects
-            is_stable = (not has_side_effects) and left.is_stable and right.is_stable
-            if not right.pre_stmts:
-                return _ExprState(
-                    expr=expr.replace(left=left.expr, right=right.expr),
-                    pre_stmts=left.pre_stmts,
-                    has_side_effects=has_side_effects,
-                    is_stable=is_stable,
-                )
-
-            left_ref, left_assign = self._short_circuit_carrier(left.expr)
-            target = ast.StrConst(loc=expr.loc, value=left_ref.sym.name)
-            rhs_stmts, rhs_expr, need_join_assign = self._coalesce_short_circuit_rhs(
-                carrier=left_ref, rhs=right
-            )
-            else_body = list(rhs_stmts)
-            if need_join_assign:
-                else_body.append(
-                    ast.AssignLocal(loc=expr.loc, target=target, value=rhs_expr)
-                )
-            pre_stmts = list(left.pre_stmts)
-            if left_assign is not None:
-                pre_stmts.append(left_assign)
-            pre_stmts.append(
-                ast.If(
-                    loc=expr.loc,
-                    test=left_ref,
-                    then_body=[],
-                    else_body=else_body,
-                )
-            )
-            return _ExprState(
-                expr=left_ref,
-                pre_stmts=pre_stmts,
-                has_side_effects=has_side_effects,
-                is_stable=is_stable,
-            )
+            return self._sequence_short_circuit(expr, rhs_when_test_true=False)
 
         if isinstance(expr, ast.Call):
             return self._sequence_call(expr)
@@ -338,6 +253,116 @@ class _ExprSequencer:
         return _ExprState(new_call, pre_stmts, has_side_effects, is_stable)
 
     def _analyze_expr_eval(self, expr: ast.Expr) -> _ExprEvalFacts:
+        leaf_facts = self._leaf_eval_facts(expr)
+        if leaf_facts is not None:
+            return leaf_facts
+
+        if isinstance(expr, (ast.AssignExpr, ast.AssignExprLocal, ast.AssignExprCell)):
+            return self._assign_expr_facts()
+
+        if isinstance(expr, (ast.And, ast.Or)):
+            left = self._analyze_expr_eval(expr.left)
+            right = self._analyze_expr_eval(expr.right)
+            return self._merge_eval_facts(left, right)
+
+        if isinstance(expr, ast.Call):
+            func = self._analyze_expr_eval(expr.func)
+            args = [self._analyze_expr_eval(arg) for arg in expr.args]
+            call_is_pure = self._is_pure_call(expr.func)
+            has_side_effects = (
+                func.has_side_effects
+                or any(arg.has_side_effects for arg in args)
+                or (not call_is_pure)
+            )
+            return _ExprEvalFacts(
+                has_side_effects=has_side_effects,
+                is_stable=(not has_side_effects)
+                and func.is_stable
+                and all(arg.is_stable for arg in args),
+            )
+
+        raise NotImplementedError(
+            f"expr_sequencer does not support {type(expr).__name__}"
+        )
+
+    def _sequence_short_circuit(
+        self,
+        expr: ast.And | ast.Or,
+        *,
+        rhs_when_test_true: bool,
+    ) -> _ExprState:
+        left = self._sequence_expr(expr.left)
+        right = self._sequence_expr(expr.right)
+        facts = self._merge_eval_facts(
+            self._facts_from_state(left), self._facts_from_state(right)
+        )
+        if not right.pre_stmts:
+            return self._state_from_facts(
+                expr=expr.replace(left=left.expr, right=right.expr),
+                pre_stmts=left.pre_stmts,
+                facts=facts,
+            )
+
+        left_ref, left_assign = self._short_circuit_carrier(left.expr)
+        target = ast.StrConst(loc=expr.loc, value=left_ref.sym.name)
+        rhs_stmts, rhs_expr, need_join_assign = self._coalesce_short_circuit_rhs(
+            carrier=left_ref, rhs=right
+        )
+        rhs_body = list(rhs_stmts)
+        if need_join_assign:
+            rhs_body.append(
+                ast.AssignLocal(loc=expr.loc, target=target, value=rhs_expr)
+            )
+        then_body = rhs_body if rhs_when_test_true else []
+        else_body = [] if rhs_when_test_true else rhs_body
+
+        pre_stmts = list(left.pre_stmts)
+        if left_assign is not None:
+            pre_stmts.append(left_assign)
+        pre_stmts.append(
+            ast.If(
+                loc=expr.loc,
+                test=left_ref,
+                then_body=then_body,
+                else_body=else_body,
+            )
+        )
+        return self._state_from_facts(expr=left_ref, pre_stmts=pre_stmts, facts=facts)
+
+    @staticmethod
+    def _state_from_facts(
+        *, expr: ast.Expr, pre_stmts: list[ast.Stmt], facts: _ExprEvalFacts
+    ) -> _ExprState:
+        return _ExprState(
+            expr=expr,
+            pre_stmts=pre_stmts,
+            has_side_effects=facts.has_side_effects,
+            is_stable=facts.is_stable,
+        )
+
+    @staticmethod
+    def _facts_from_state(state: _ExprState) -> _ExprEvalFacts:
+        return _ExprEvalFacts(
+            has_side_effects=state.has_side_effects,
+            is_stable=state.is_stable,
+        )
+
+    @staticmethod
+    def _merge_eval_facts(
+        left: _ExprEvalFacts, right: _ExprEvalFacts
+    ) -> _ExprEvalFacts:
+        has_side_effects = left.has_side_effects or right.has_side_effects
+        return _ExprEvalFacts(
+            has_side_effects=has_side_effects,
+            is_stable=(not has_side_effects) and left.is_stable and right.is_stable,
+        )
+
+    @staticmethod
+    def _assign_expr_facts() -> _ExprEvalFacts:
+        return _ExprEvalFacts(has_side_effects=True, is_stable=False)
+
+    @staticmethod
+    def _leaf_eval_facts(expr: ast.Expr) -> _ExprEvalFacts | None:
         if isinstance(expr, (ast.Constant, ast.StrConst, ast.FQNConst, ast.LocConst)):
             return _ExprEvalFacts(has_side_effects=False, is_stable=True)
 
@@ -359,37 +384,7 @@ class _ExprSequencer:
             )
             return _ExprEvalFacts(has_side_effects=False, is_stable=is_stable)
 
-        if isinstance(expr, (ast.AssignExpr, ast.AssignExprLocal, ast.AssignExprCell)):
-            return _ExprEvalFacts(has_side_effects=True, is_stable=False)
-
-        if isinstance(expr, (ast.And, ast.Or)):
-            left = self._analyze_expr_eval(expr.left)
-            right = self._analyze_expr_eval(expr.right)
-            has_side_effects = left.has_side_effects or right.has_side_effects
-            return _ExprEvalFacts(
-                has_side_effects=has_side_effects,
-                is_stable=(not has_side_effects) and left.is_stable and right.is_stable,
-            )
-
-        if isinstance(expr, ast.Call):
-            func = self._analyze_expr_eval(expr.func)
-            args = [self._analyze_expr_eval(arg) for arg in expr.args]
-            call_is_pure = self._is_pure_call(expr.func)
-            has_side_effects = (
-                func.has_side_effects
-                or any(arg.has_side_effects for arg in args)
-                or (not call_is_pure)
-            )
-            return _ExprEvalFacts(
-                has_side_effects=has_side_effects,
-                is_stable=(not has_side_effects)
-                and func.is_stable
-                and all(arg.is_stable for arg in args),
-            )
-
-        raise NotImplementedError(
-            f"expr_sequencer does not support {type(expr).__name__}"
-        )
+        return None
 
     @staticmethod
     def _suffix_any(flags: list[bool]) -> list[bool]:
