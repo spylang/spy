@@ -186,60 +186,40 @@ class _ExprSequencer:
         pre_stmts: list[ast.Stmt] = []
         new_parts: list[ast.Expr] = []
         has_effect_flags = [state.has_side_effects for state in states]
-        ordering_flags = []
-        for i, state in enumerate(states):
-            ordering = state.has_side_effects or (not expr_eval_facts[i].is_stable)
-            if (
-                isinstance(state.expr, ast.NameLocalDirect)
-                and state.expr.sym.varkind != "const"
-                and state.expr.sym.name not in all_written_names
-            ):
-                ordering = state.has_side_effects
-            ordering_flags.append(ordering)
+        ordering_flags = [
+            self._needs_ordering(
+                state=state,
+                facts=expr_eval_facts[i],
+                all_written_names=all_written_names,
+            )
+            for i, state in enumerate(states)
+        ]
         suffix_has_effects = self._suffix_any(has_effect_flags)
         suffix_ordering = self._suffix_any(ordering_flags)
         suffix_written_names = self._suffix_union(writes_per_state)
 
         for i, state in enumerate(states):
             pre_stmts.extend(state.pre_stmts)
-            later_has_effects = suffix_has_effects[i + 1]
-            later_needs_ordering = suffix_ordering[i + 1]
-            expr_has_effects = expr_eval_facts[i].has_side_effects
-            expr_is_stable = expr_eval_facts[i].is_stable
-
-            need_tmp_for_effects = expr_has_effects and later_needs_ordering
-            need_tmp_for_snapshot = (
-                (not expr_has_effects) and later_has_effects and (not expr_is_stable)
+            later_written_names = suffix_written_names[i + 1]
+            need_tmp_for_effects, need_tmp_for_snapshot = self._tmp_requirements(
+                state=state,
+                facts=expr_eval_facts[i],
+                later_has_effects=suffix_has_effects[i + 1],
+                later_needs_ordering=suffix_ordering[i + 1],
+                later_written_names=later_written_names,
             )
-            if (
-                need_tmp_for_snapshot
-                and isinstance(state.expr, ast.NameLocalDirect)
-                and state.expr.sym.varkind != "const"
-                and state.expr.sym.name not in suffix_written_names[i + 1]
-            ):
-                need_tmp_for_snapshot = False
 
-            if (
-                need_tmp_for_effects
-                and isinstance(state.expr, ast.AssignExprLocal)
-                and state.expr.target.value not in suffix_written_names[i + 1]
+            if self._can_hoist_assignexpr_local(
+                expr=state.expr,
+                need_tmp_for_effects=need_tmp_for_effects,
+                later_written_names=later_written_names,
             ):
                 # The assignment itself can be hoisted as a standalone stmt.
                 # We can then pass the assigned local by name and avoid a tmp.
-                pre_stmts.append(
-                    ast.AssignLocal(
-                        loc=state.expr.loc,
-                        target=state.expr.target,
-                        value=state.expr.value,
-                    )
-                )
-                new_parts.append(
-                    self._make_local_ref(
-                        name=state.expr.target.value,
-                        loc=state.expr.loc,
-                        w_T=self._expr_type(state.expr),
-                    )
-                )
+                assert isinstance(state.expr, ast.AssignExprLocal)
+                assign, ref = self._hoist_assignexpr_local(state.expr)
+                pre_stmts.append(assign)
+                new_parts.append(ref)
                 continue
 
             if need_tmp_for_effects or need_tmp_for_snapshot:
@@ -251,6 +231,77 @@ class _ExprSequencer:
 
         new_call = call.replace(func=new_parts[0], args=new_parts[1:])
         return _ExprState(new_call, pre_stmts, has_side_effects, is_stable)
+
+    def _needs_ordering(
+        self,
+        *,
+        state: _ExprState,
+        facts: _ExprEvalFacts,
+        all_written_names: set[str],
+    ) -> bool:
+        ordering = state.has_side_effects or (not facts.is_stable)
+        if self._is_unwritten_mutable_local(
+            state.expr, written_names=all_written_names
+        ):
+            # If this local is never written by any part of the call, we only
+            # need ordering when reading it itself has side effects.
+            return state.has_side_effects
+        return ordering
+
+    def _tmp_requirements(
+        self,
+        *,
+        state: _ExprState,
+        facts: _ExprEvalFacts,
+        later_has_effects: bool,
+        later_needs_ordering: bool,
+        later_written_names: set[str],
+    ) -> tuple[bool, bool]:
+        need_tmp_for_effects = facts.has_side_effects and later_needs_ordering
+        need_tmp_for_snapshot = (
+            (not facts.has_side_effects) and later_has_effects and (not facts.is_stable)
+        )
+        if need_tmp_for_snapshot and self._is_unwritten_mutable_local(
+            state.expr, written_names=later_written_names
+        ):
+            need_tmp_for_snapshot = False
+        return need_tmp_for_effects, need_tmp_for_snapshot
+
+    @staticmethod
+    def _can_hoist_assignexpr_local(
+        *,
+        expr: ast.Expr,
+        need_tmp_for_effects: bool,
+        later_written_names: set[str],
+    ) -> bool:
+        return (
+            need_tmp_for_effects
+            and isinstance(expr, ast.AssignExprLocal)
+            and expr.target.value not in later_written_names
+        )
+
+    def _hoist_assignexpr_local(
+        self, expr: ast.AssignExprLocal
+    ) -> tuple[ast.AssignLocal, ast.NameLocalDirect]:
+        assign = ast.AssignLocal(
+            loc=expr.loc,
+            target=expr.target,
+            value=expr.value,
+        )
+        ref = self._make_local_ref(
+            name=expr.target.value,
+            loc=expr.loc,
+            w_T=self._expr_type(expr),
+        )
+        return assign, ref
+
+    @staticmethod
+    def _is_unwritten_mutable_local(expr: ast.Expr, *, written_names: set[str]) -> bool:
+        return (
+            isinstance(expr, ast.NameLocalDirect)
+            and expr.sym.varkind != "const"
+            and expr.sym.name not in written_names
+        )
 
     def _analyze_expr_eval(self, expr: ast.Expr) -> _ExprEvalFacts:
         leaf_facts = self._leaf_eval_facts(expr)
