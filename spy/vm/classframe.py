@@ -44,7 +44,7 @@ class ClassFrame(AbstractFrame):
         for stmt in self.classdef.body:
             self.exec_stmt(stmt)
 
-        body = ClassBody(fields_w={}, dict_w={}, loc=self.classdef.loc)
+        body = ClassBody(self.classdef.loc, fields_w={}, dict_w={})
         for name, lv in self.locals.items():
             # ignore reserved bool locals
             if name.startswith("@"):

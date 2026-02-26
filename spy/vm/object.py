@@ -843,9 +843,9 @@ class ClassBody:
     define user-defined types.
     """
 
+    loc: Loc
     fields_w: dict[str, "W_Field"]
     dict_w: dict[str, W_Object]
-    loc: Loc
 
 
 # Initial setup of the 'builtins' module

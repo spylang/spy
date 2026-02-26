@@ -126,9 +126,9 @@ class ModuleRegistry:
         loc = Loc.here(-2)
         fqn = self.fqn.join(typename)
         body = ClassBody(
+            loc=loc,
             fields_w={name: W_Field(name, w_T, loc) for name, w_T in fields},
             dict_w={},
-            loc=loc,
         )
         w_st = W_StructType.declare(fqn)
         w_st.lazy_define_from_classbody(body)
