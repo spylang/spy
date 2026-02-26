@@ -694,6 +694,14 @@ class W_Type(W_Object):
 
     # ======== app-level interface ========
 
+    @builtin_method("__new__")
+    @staticmethod
+    def w_new(vm: "SPyVM", w_obj: "W_Dynamic") -> "W_Type":
+        """
+        This implements `type(obj)`, i.e. it returns its dynamic type
+        """
+        return vm.dynamic_type(w_obj)
+
     # this is the equivalent of CPython's typeobject.c:type_getattro
     @builtin_method("__getattribute__", color="blue", kind="metafunc")
     @staticmethod
