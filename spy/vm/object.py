@@ -72,7 +72,7 @@ if TYPE_CHECKING:
     from spy.vm.field import W_Field
     from spy.vm.function import W_Func
     from spy.vm.opspec import W_MetaArg, W_OpSpec
-    from spy.vm.primitive import W_Bool, W_NoneType
+    from spy.vm.primitive import W_Bool, W_Dynamic, W_NoneType
     from spy.vm.vm import SPyVM
 
 
