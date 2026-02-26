@@ -44,7 +44,7 @@ class ClassFrame(AbstractFrame):
         for stmt in self.classdef.body:
             self.exec_stmt(stmt)
 
-        body = ClassBody(fields_w={}, dict_w={})
+        body = ClassBody(fields_w={}, dict_w={}, loc=self.classdef.loc)
         for name, lv in self.locals.items():
             # ignore reserved bool locals
             if name.startswith("@"):
@@ -55,7 +55,7 @@ class ClassFrame(AbstractFrame):
                 continue
             if lv.w_val is None:
                 # locals declared but not assigned
-                body.fields_w[name] = W_Field(name, lv.w_T)
+                body.fields_w[name] = W_Field(name, lv.w_T, lv.decl_loc)
             else:
                 body.dict_w[name] = lv.w_val
 

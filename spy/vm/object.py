@@ -46,6 +46,7 @@ basically a thin wrapper around the correspindig interp-level W_* class.
 
 import typing
 from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from typing import (
     TYPE_CHECKING,
     Annotated,
@@ -63,6 +64,7 @@ from typing import (
 from spy.ast import Color
 from spy.errors import WIP, SPyError
 from spy.fqn import FQN
+from spy.location import Loc
 from spy.vm.b import B
 
 if TYPE_CHECKING:
@@ -843,6 +845,7 @@ class ClassBody:
 
     fields_w: dict[str, "W_Field"]
     dict_w: dict[str, W_Object]
+    loc: Loc
 
 
 # Initial setup of the 'builtins' module

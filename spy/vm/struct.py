@@ -73,7 +73,7 @@ class W_StructType(W_Type):
             assert isinstance(w_extra, W_InterpDict)
             for name, (_, w_type) in w_extra.items_w.items():
                 assert isinstance(w_type, W_Type)
-                body.fields_w[name] = W_Field(name, w_type)
+                body.fields_w[name] = W_Field(name, w_type, body.loc)
 
         struct_fields_w, size = calc_layout(body.fields_w)
         self.size = size
@@ -160,9 +160,6 @@ class W_StructType(W_Type):
 
         def __ne__(a: Point, b: Point) -> bool:
             return not (a.x == b.x and a.y == b.y and ...)
-
-        Using FQNConst for type annotations avoids resolving type names through
-        the scope stack.
         """
         loc = Loc.fake()
         fields_w = list(self.iterfields_w())
@@ -239,7 +236,7 @@ def calc_layout(fields_w: dict[str, W_Field]) -> tuple[list["W_StructField"], in
         field_size = sizeof(w_field.w_T)
         # compute alignment
         offset = (offset + (field_size - 1)) & ~(field_size - 1)
-        struct_fields_w.append(W_StructField(name, w_field.w_T, offset))
+        struct_fields_w.append(W_StructField(name, w_field.w_T, offset, w_field.loc))
         offset += field_size
     size = offset
     return struct_fields_w, size
@@ -329,10 +326,11 @@ class W_Struct(W_Object):
 class W_StructField(W_Object):
     __spy_storage_category__ = "value"
 
-    def __init__(self, name: str, w_T: W_Type, offset: int) -> None:
+    def __init__(self, name: str, w_T: W_Type, offset: int, loc: Loc) -> None:
         self.name = name
         self.w_T = w_T
         self.offset = offset
+        self.loc = loc
 
     def spy_key(self, vm: "SPyVM") -> Any:
         return ("StructField", self.name, self.w_T.spy_key(vm), self.offset)

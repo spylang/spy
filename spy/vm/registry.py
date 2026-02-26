@@ -115,16 +115,20 @@ class ModuleRegistry:
         If builtin is True, the C backend does NOT generate the struct definition: it is
         expected to be provided by libspy.
         """
+        from spy.location import Loc
         from spy.vm.field import W_Field
         from spy.vm.function import W_BuiltinFunc
         from spy.vm.object import ClassBody
         from spy.vm.property import W_StaticMethod
         from spy.vm.struct import W_StructType
 
+        # Use the call site of struct_type as the loc for all fields and the body.
+        loc = Loc.here(-2)
         fqn = self.fqn.join(typename)
         body = ClassBody(
-            fields_w={name: W_Field(name, w_T) for name, w_T in fields},
+            fields_w={name: W_Field(name, w_T, loc) for name, w_T in fields},
             dict_w={},
+            loc=loc,
         )
         w_st = W_StructType.declare(fqn)
         w_st.lazy_define_from_classbody(body)
