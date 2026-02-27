@@ -355,8 +355,10 @@ class DopplerFrame(ASTFrame):
             expT = make_const(self.vm, lv.decl_loc, lv.w_T)
             gotT = make_const(self.vm, wam.loc, wam.w_static_T)
             new_expr = self.shift_opimpl(
-                expr, w_typeconv_opimpl, [expT, gotT, new_expr]
+                expr, w_typeconv_opimpl, [expT, gotT, new_expr], w_T=lv.w_T
             )
+
+        assert new_expr.w_T is not None, "eval_expr should produce a typed ast.Expr"
 
         self.shifted_expr[expr] = new_expr
         self.record_node_color(expr, wam.color)
@@ -395,6 +397,8 @@ class DopplerFrame(ASTFrame):
             return make_const(self.vm, op.loc, w_opimpl.w_const)
 
         assert w_opimpl.is_func_call()
+        if w_T is None:
+            w_T = w_opimpl.w_functype.w_restype
         func = make_const(self.vm, op.loc, w_opimpl.w_func)
         real_args = self._shift_opimpl_args(w_opimpl, orig_args)
         return ast.Call(op.loc, func, real_args, w_T=w_T)
@@ -482,17 +486,17 @@ class DopplerFrame(ASTFrame):
             loc=lst.loc,
             func=ast.FQNConst(loc=lst.loc, fqn=fqn_new),
             args=[],
+            w_T=w_T,
         )
 
         # add a call to push() for each item
-        for i, item in enumerate(lst.items):
+        for item in lst.items:
             shifted_item = self.shifted_expr[item]
-            is_last = i == len(lst.items) - 1
             newlst = ast.Call(
                 item.loc,
                 func=ast.FQNConst(loc=item.loc, fqn=fqn_push),
                 args=[newlst, shifted_item],
-                w_T=w_T if is_last else None,
+                w_T=w_T,
             )
         return newlst
 
@@ -519,18 +523,18 @@ class DopplerFrame(ASTFrame):
             loc=dict.loc,
             func=ast.FQNConst(loc=dict.loc, fqn=fqn_new),
             args=[],
+            w_T=w_T,
         )
 
         # add a call to push() for each item (key, value)
-        for i, pair in enumerate(dict.items):
+        for pair in dict.items:
             shifted_key = self.shifted_expr[pair.key]
             shifted_val = self.shifted_expr[pair.value]
-            is_last = i == len(dict.items) - 1
             newdict = ast.Call(
                 loc=pair.loc,
                 func=ast.FQNConst(loc=pair.loc, fqn=fqn_push),
                 args=[newdict, shifted_key, shifted_val],
-                w_T=w_T if is_last else None,
+                w_T=w_T,
             )
 
         return newdict

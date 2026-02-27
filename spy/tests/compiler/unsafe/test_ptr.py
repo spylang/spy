@@ -125,6 +125,37 @@ class TestUnsafePtr(CompilerTest):
         assert mod.with_ptr(3, 4.5) == 7.5
         assert mod.with_ref(6, 7.8) == 13.8
 
+    def test_ptr_setfield_eval_order_left_to_right(self, memkind):
+        k = memkind
+        mod = self.compile(f"""
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr
+
+        var state: i32 = 0
+
+        @struct
+        class Point:
+            x: i32
+
+        def make_point(v: i32) -> k_ptr[Point]:
+            state = v
+            p = k_alloc[Point](1)
+            p.x = 0
+            return p
+
+        def bump() -> i32:
+            state = state + 1
+            return state
+
+        def foo() -> i32:
+            state = 0
+            make_point(10).x = bump()
+            return state
+        """)
+        # LTR order:
+        #   1) make_point(10) sets state=10
+        #   2) bump() sets state=11
+        assert mod.foo() == 11
+
     def test_ptr_to_string(self, memkind):
         # XXX: support for raw_alloc[str] was added by 30ffdb9a, but doesn't make sense
         # now. We should support ONLY gc_alloc[str]
