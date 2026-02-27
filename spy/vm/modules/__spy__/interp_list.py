@@ -237,6 +237,32 @@ class W_InterpList(W_BaseInterpList, Generic[T]):
 
         return W_OpSpec(w_eq)
 
+    @builtin_method("__len__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_LEN(vm: "SPyVM", wam_list: W_MetaArg) -> W_OpSpec:
+        w_listtype = W_InterpList._get_listtype(wam_list)
+        LIST = Annotated[W_InterpList, w_listtype]
+
+        @vm.register_builtin_func(w_listtype.fqn)
+        def w_len(vm: "SPyVM", w_list: LIST) -> W_I32:
+            return vm.wrap(len(w_list.items_w))  # type: ignore[return-value]
+
+        return W_OpSpec(w_len, [wam_list])
+
+    @builtin_method("append", color="blue", kind="metafunc")
+    @staticmethod
+    def w_APPEND(vm: "SPyVM", wam_list: W_MetaArg, wam_item: W_MetaArg) -> W_OpSpec:
+        w_listtype = W_InterpList._get_listtype(wam_list)
+        w_T = w_listtype.w_itemtype
+        LIST = Annotated[W_InterpList, w_listtype]
+        T = Annotated[W_Object, w_T]
+
+        @vm.register_builtin_func(w_listtype.fqn)
+        def w_append(vm: "SPyVM", w_list: LIST, w_item: T) -> None:
+            w_list.items_w.append(w_item)
+
+        return W_OpSpec(w_append)
+
     @builtin_method("__add__", color="blue", kind="metafunc")
     @staticmethod
     def w_ADD(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpSpec:

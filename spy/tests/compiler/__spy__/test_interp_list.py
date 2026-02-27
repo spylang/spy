@@ -155,3 +155,24 @@ class TestInterpList(CompilerTest):
         w_foo = mod.foo.w_func
         w_l = self.vm.fast_call(w_foo, [])
         assert repr(w_l) == "W_InterpList('i32', [W_I32(1), W_I32(2)])"
+
+    def test_len(self):
+        mod = self.compile("""
+        from __spy__ import interp_list
+
+        def foo() -> i32:
+            x = interp_list[i32](10, 20, 30)
+            return len(x)
+        """)
+        assert mod.foo() == 3
+
+    def test_append(self):
+        mod = self.compile("""
+        from __spy__ import interp_list
+
+        def foo() -> interp_list[i32]:
+            x = interp_list[i32](1, 2)
+            x.append(3)
+            return x
+        """)
+        assert mod.foo() == [1, 2, 3]

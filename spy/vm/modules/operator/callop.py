@@ -93,8 +93,15 @@ def default_callmethod(
         # cannot even write a test because we don't any way to inject
         # non-methods in the type dict
         assert isinstance(w_func, W_Func)
-        # call the w_func, passing wam_obj as the implicit self
-        w_opspec = W_OpSpec(w_func, [wam_obj] + list(args_wam))
+        new_args_wam = [wam_obj] + list(args_wam)
+        # fast_metacall handles both regular funcs and metafuncs: for regular
+        # funcs it wraps them in an OpSpec; for metafuncs it calls them to get
+        # the actual (specialized) OpSpec.
+        w_opspec = vm.fast_metacall(w_func, new_args_wam)
+        if w_opspec.is_simple():
+            # The metafunc returned a simple OpSpec (without explicit args), so
+            # we pin the args explicitly to exclude wam_meth from the call.
+            return W_OpSpec(w_opspec._w_func, new_args_wam)
         return w_opspec
     else:
         return W_OpSpec.NULL
