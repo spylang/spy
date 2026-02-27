@@ -81,7 +81,7 @@ class TestOpSpec(CompilerTest):
         mod = self.compile("""
         from operator import MetaArg
 
-        def foo() -> interp_tuple:
+        def foo() -> tuple[str, type, int]:
             arg = MetaArg('blue', i32, 42)
             return (arg.color, arg.static_type, arg.blueval)
         """)

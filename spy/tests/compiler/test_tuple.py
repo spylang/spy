@@ -1,7 +1,9 @@
 import pytest
 
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest, expect_errors
+from spy.tests.support import CompilerTest, expect_errors, only_interp
+from spy.vm.b import B
+from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
 
 
 class TestTuple(CompilerTest):
@@ -16,13 +18,25 @@ class TestTuple(CompilerTest):
     test_interp_tuple.py
     """
 
-    def test_literal(self):
+    def test_literal_stdlib(self):
         mod = self.compile("""
         def foo() -> tuple[i32, i32]:
             return 1, 2
         """)
         tup = mod.foo()
         assert tup == (1, 2)
+
+    @only_interp
+    def test_literal_interp_tuple(self):
+        mod = self.compile("""
+        def foo() -> tuple[int, type]:
+            return 1, int
+        """)
+        w_tup = mod.foo(unwrap=False)
+        assert isinstance(w_tup, W_InterpTuple)
+        w_x, w_T = w_tup.items_w
+        assert self.vm.unwrap_i32(w_x) == 1
+        assert w_T is B.w_i32
 
     def test_unpacking_blue(self):
         mod = self.compile("""
