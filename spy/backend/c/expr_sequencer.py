@@ -29,6 +29,8 @@ Assumptions and heuristics:
   call-part sequence are not snapshotted;
 - assumption for that optimization: caller direct locals are frame-private, and
   only explicit local writes in the current expression can rebind them.
+- tmp index growth relies on Python's unbounded integers; fixed-width ports
+  should add an explicit overflow guard when advancing the tmp counter.
 
 The transform is backend-local:
 - it runs inside C emission right before nodes are lowered to C;
@@ -537,6 +539,8 @@ class _ExprSequencer:
         w_T = self._expr_type(expr)
         assert w_T is not TYPES.w_NoneType, "cannot materialize void expressions"
 
+        # Porting note: Python ints do not overflow. If this pass is reimplemented
+        # with fixed-width integers (e.g. in self-hosted SPy), guard this increment.
         tmp_name = f"{self.tmp_prefix}{self.next_tmp_index}"
         self.next_tmp_index += 1
         self.tmpvars.append((tmp_name, w_T))
