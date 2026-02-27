@@ -582,6 +582,38 @@ class TestScopeAnalyzer:
             "i32": MatchSymbol("i32", "const", "explicit", level=2),
         }
 
+    def test_for_loop_nested_funcs(self):
+        scopes = self.analyze("""
+        def foo() -> None:
+            for i in range(10):
+                x: i32 = i * 2
+
+            def bar() -> None:
+                for j in range(5):
+                    y: i32 = j * 3
+        """)
+        foo_scope = scopes.by_funcdef(self.mod.get_funcdef("foo"))
+        assert foo_scope._symbols == {
+            "_$iter0": MatchSymbol("_$iter0", "var", "auto"),
+            "i": MatchSymbol("i", "var", "auto"),
+            "x": MatchSymbol("x", "var", "auto"),
+            "bar": MatchSymbol("bar", "const", "funcdef"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+            "range": MatchSymbol("range", "const", "explicit", level=2),
+            "i32": MatchSymbol("i32", "const", "explicit", level=2),
+        }
+        foo_funcdef = self.mod.get_funcdef("foo")
+        bar_funcdef = foo_funcdef.body[1]  # type: ignore[assignment]
+        bar_scope = scopes.by_funcdef(bar_funcdef)
+        assert bar_scope._symbols == {
+            "_$iter1": MatchSymbol("_$iter1", "var", "auto"),
+            "j": MatchSymbol("j", "var", "auto"),
+            "y": MatchSymbol("y", "var", "auto"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+            "range": MatchSymbol("range", "const", "explicit", level=3),
+            "i32": MatchSymbol("i32", "const", "explicit", level=3),
+        }
+
     def test_for_loop_no_shadowing(self):
         src = """
         i: i32 = 0
