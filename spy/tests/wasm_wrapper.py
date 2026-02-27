@@ -161,7 +161,7 @@ class WasmFuncWrapper:
             # when you return struct-by-val from C, wasmtime automatically
             # converts them into a list, flattening nested structs
             assert isinstance(res, list)
-            pyres = unflatten_struct(w_T, res)
+            pyres = unflatten_struct(self.ll, w_T, res)
             if w_T.fqn == FQN("_list::list[i32]::_ListImpl"):
                 # we support only reading list[i32] for tests
                 return self._to_pylist_i32(pyres)
@@ -247,7 +247,9 @@ class WasmFuncWrapper:
         return self.to_py_result(w_T, res)
 
 
-def unflatten_struct(w_T: W_StructType, flat_values: list[Any]) -> UnwrappedStruct:
+def unflatten_struct(
+    ll: LLSPyInstance, w_T: W_StructType, flat_values: list[Any]
+) -> UnwrappedStruct:
     """
     Unflatten a struct from a flat list of values.
 
@@ -274,6 +276,16 @@ def unflatten_struct(w_T: W_StructType, flat_values: list[Any]) -> UnwrappedStru
                 length = flat_values[idx + 1]
                 content[w_field.name] = WasmPtr(addr, length)
                 idx += 2
+            elif w_field.w_T is B.w_str:
+                # str fields are spy_Str* pointers; read from WASM memory
+                addr = flat_values[idx]
+                if ll is not None:
+                    length = ll.mem.read_i32(addr)
+                    utf8 = ll.mem.read(addr + 8, length)
+                    content[w_field.name] = utf8.decode("utf-8")
+                else:
+                    content[w_field.name] = addr
+                idx += 1
             else:
                 if idx >= len(flat_values):
                     raise ValueError(

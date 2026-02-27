@@ -664,6 +664,14 @@ class TestScopeAnalyzer:
         scope = scopes.by_module()
         assert scope.implicit_imports == {"_list"}
 
+    def test_tuple_literal(self):
+        scopes = self.analyze("""
+        def foo() -> None:
+            tup = 1, 2, 3
+        """)
+        scope = scopes.by_module()
+        assert scope.implicit_imports == {"_tuple"}
+
     def test_dict_literal(self):
         scopes = self.analyze("""
         def foo() -> None:

@@ -72,10 +72,25 @@ class CompilerConfig:
         else:
             libdir_target = config.target
         libdir = spy.libspy.BUILD.join(libdir_target, config.build_type)
-        self.ldflags += [
-            "-L", str(libdir),
-            "-lspy",
-        ]  # fmt: skip
+        if config.target == "wasi" and config.kind == "lib":
+            # WASM libs are mostly used by tests: in this case we want to make sure to
+            # include the whole libspy.a, so that helper functions usch as spy_str_alloc
+            # are always available.
+            #
+            # If you don't pass --whole-archive, the linker will silently discard all
+            # the .o files which are not used (so e.g. if you never call any str_*
+            # function, str.o is discarded and spy_str_alloc is not present at all).
+            libspy_a = str(libdir.join("libspy.a"))
+            self.ldflags += [
+                "-Wl,--whole-archive",
+                libspy_a,
+                "-Wl,--no-whole-archive",
+            ]  # fmt: skp
+        else:
+            self.ldflags += [
+                "-L", str(libdir),
+                "-lspy",
+            ]  # fmt: skip
 
         if config.warning_as_error or getenv("SPY_WERROR") in ("true", "1"):
             self.cflags += WARNING_AS_ERROR_CFLAGS

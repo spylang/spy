@@ -13,6 +13,7 @@ from spy.vm.cell import W_Cell
 from spy.vm.exc import W_TypeError
 from spy.vm.function import CLOSURE, FuncParam, LocalVar, W_ASTFunc, W_Func, W_FuncType
 from spy.vm.modules.__spy__ import SPY
+from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
 from spy.vm.modules.operator import OP, OP_from_token, OP_unary_from_token
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.vm.modules.types import TYPES
@@ -21,7 +22,6 @@ from spy.vm.opimpl import W_OpImpl
 from spy.vm.opspec import W_MetaArg
 from spy.vm.primitive import W_Bool
 from spy.vm.struct import W_StructType
-from spy.vm.tuple import W_Tuple
 from spy.vm.typechecker import maybe_plural
 
 if TYPE_CHECKING:
@@ -544,7 +544,11 @@ class AbstractFrame:
 
     def exec_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         wam_tup = self.eval_expr(unpack.value)
-        if wam_tup.w_static_T is not B.w_tuple:
+        w_T = wam_tup.w_static_T
+
+        is_interp_tuple = w_T is SPY.w_interp_tuple
+        is_stdlib_tuple = w_T.fqn.match("_tuple::tuple[*]::_tup")
+        if not (is_interp_tuple or is_stdlib_tuple):
             t = wam_tup.w_static_T.fqn.human_name
             err = SPyError(
                 "W_TypeError",
@@ -553,18 +557,17 @@ class AbstractFrame:
             err.add("error", f"this is `{t}`", unpack.value.loc)
             raise err
 
-        if wam_tup.color == "red" and self.symtable.color == "red":
-            raise SPyError.simple(
-                "W_WIP",
-                "redshift of UnpackAssign works only for blue tuples",
-                "this is red",
-                unpack.value.loc,
-            )
+        # check that the tuple has the right length
+        if is_interp_tuple:
+            # XXX: probably we should put the number of items on the type
+            w_tup = wam_tup.w_val
+            assert isinstance(w_tup, W_InterpTuple)
+            got = len(w_tup.items_w)
+        else:
+            assert isinstance(w_T, W_StructType)
+            got = len(list(w_T.iterfields_w()))
 
-        w_tup = wam_tup.w_val
-        assert isinstance(w_tup, W_Tuple)
         exp = len(unpack.targets)
-        got = len(w_tup.items_w)
         if exp != got:
             # we cannot use ValueError because we want an exception type which
             # inherits from StaticError.
@@ -1166,16 +1169,22 @@ class AbstractFrame:
         wam_slice = self.eval_opimpl(op, w_opimpl, [wam_T] + args)
         return wam_slice
 
-    def eval_expr_Tuple(self, op: ast.Tuple) -> W_MetaArg:
-        items_wam = [self.eval_expr(item) for item in op.items]
+    def eval_expr_Tuple(self, tup: ast.Tuple) -> W_MetaArg:
+        # 1. evaluate each item
+        items_wam = [self.eval_expr(item) for item in tup.items]
+        itemtypes_w = [wam.w_static_T for wam in items_wam]
         colors = [wam.color for wam in items_wam]
         color = maybe_blue(*colors)
-        if color == "red" and self.redshifting:
-            w_val = None
-        else:
-            items_w = [wam.w_val for wam in items_wam]
-            w_val = W_Tuple(items_w)
-        return W_MetaArg(self.vm, color, B.w_tuple, w_val, op.loc)
+
+        # 2. get the tuple type
+        w_TupleType = self.vm.lookup_global(FQN("_tuple::tuple"))
+        w_T = self.vm.getitem_w(w_TupleType, *itemtypes_w, loc=tup.loc)
+        wam_T = W_MetaArg.from_w_obj(self.vm, w_T)
+
+        # 3. instantiate it
+        w_opimpl = self.vm.call_OP(tup.loc, OP.w_CALL, [wam_T] + items_wam)
+        wam_tuple = self.eval_opimpl(tup, w_opimpl, [wam_T] + items_wam)
+        return wam_tuple
 
     def eval_expr_Dict(self, dict: ast.Dict) -> W_MetaArg:
         # 0. empty dicts are special
@@ -1374,7 +1383,7 @@ class ASTFrame(AbstractFrame):
                 # XXX: we don't have typed tuples, for now we just use a
                 # generic untyped tuple as the type.
                 assert i == len(funcdef.args) - 1
-                self.declare_local(arg.name, color, B.w_tuple, arg.loc)
+                self.declare_local(arg.name, color, SPY.w_interp_tuple, arg.loc)
 
             else:
                 assert False
@@ -1395,7 +1404,7 @@ class ASTFrame(AbstractFrame):
                 assert i == len(self.funcdef.args) - 1
                 arg = self.funcdef.args[i]
                 items_w = args_w[i:]
-                w_varargs = W_Tuple(list(items_w))
+                w_varargs = W_InterpTuple(list(items_w))
                 self.store_local(arg.name, w_varargs)
 
             else:

@@ -13,11 +13,12 @@ from spy.vm.b import B
 from spy.vm.exc import W_StaticError
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.__spy__ import SPY
+from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
 from spy.vm.modules.types import TYPES, W_Loc
 from spy.vm.object import W_Object
 from spy.vm.opimpl import ArgSpec, W_OpImpl
 from spy.vm.opspec import W_MetaArg
-from spy.vm.tuple import W_Tuple
+from spy.vm.struct import W_Struct
 
 if TYPE_CHECKING:
     from spy.vm.object import W_Type
@@ -51,9 +52,18 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
         value = vm.unwrap_str(w_val)
         return ast.StrConst(loc, value, w_T=w_T)
 
-    elif w_T is B.w_tuple:
-        assert isinstance(w_val, W_Tuple)
+    elif w_T is SPY.w_interp_tuple:
+        assert isinstance(w_val, W_InterpTuple)
         items = [make_const(vm, loc, w_item) for w_item in w_val.items_w]
+        return ast.Tuple(loc, items, w_T=w_T)
+
+    elif w_T.fqn.match("_tuple::tuple[*]::_tup"):
+        # transform the struct into a syntactical ast.Tuple node, so that we can put it
+        # in the AST without necessarily create a FQN
+        assert isinstance(w_val, W_Struct)
+        n = len(w_val.values_w)  # length of the tuple
+        items_w = [w_val.values_w[f"_item{i}"] for i in range(n)]
+        items = [make_const(vm, loc, w_item) for w_item in items_w]
         return ast.Tuple(loc, items, w_T=w_T)
 
     elif w_T is TYPES.w_Loc:
@@ -495,6 +505,11 @@ class DopplerFrame(ASTFrame):
                 w_T=w_T if is_last else None,
             )
         return newlst
+
+    def shift_expr_Tuple(self, tup: ast.Tuple, wam: W_MetaArg) -> ast.Expr:
+        w_opimpl = self.opimpl[tup]
+        newitems_v = [self.shifted_expr[item] for item in tup.items]
+        return self.shift_opimpl(tup, w_opimpl, newitems_v, w_T=wam.w_static_T)
 
     def shift_expr_Slice(self, op: ast.Slice, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]

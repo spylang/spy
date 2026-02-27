@@ -947,3 +947,8 @@ class SPyVM:
         "repr(obj) (on meta arguments)"
         wam_repr = W_MetaArg.from_w_obj(self, BUILTINS.w_repr)
         return self.call_wam(wam_repr, [wam_o], loc=loc)
+
+    def len_wam(self, wam_o: W_MetaArg, *, loc: Loc) -> W_MetaArg:
+        "len(obj) (on meta arguments)"
+        wam_len = W_MetaArg.from_w_obj(self, BUILTINS.w_len)
+        return self.call_wam(wam_len, [wam_o], loc=loc)
