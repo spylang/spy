@@ -1,3 +1,4 @@
+import re
 from typing import Any
 
 import pytest
@@ -8,6 +9,7 @@ from spy.tests.support import (
     CompilerTest,
     expect_errors,
     no_C,
+    only_C,
     only_interp,
     skip_backends,
 )
@@ -187,6 +189,98 @@ class TestBasic(CompilerTest):
             return x + result
         """)
         assert mod.foo() == 2
+
+    def test_call_argument_order_left_to_right_nested_calls(self):
+        mod = self.compile("""
+        var g: i32 = 0
+
+        def side() -> i32:
+            g = g + 1
+            return g
+
+        def h(a: i32, b: i32) -> i32:
+            return a * 10 + b
+
+        def f(a: i32, b: i32) -> i32:
+            return a * 100 + b
+
+        def foo() -> i32:
+            g = 0
+            x = 5
+            return f(x, h(x := 1, side()))
+        """)
+        # left-to-right:
+        #   f arg0: x = 5
+        #   then arg1: h(x := 1, side()) = 11
+        # 5*100 + (1*10 + 1) = 511
+        assert mod.foo() == 511
+
+    @only_C
+    def test_binop_operand_order_left_to_right(self):
+        mod = self.compile("""
+        var state: i32 = 0
+
+        def fa() -> i32:
+            state = 1
+            return 10
+
+        def fb() -> i32:
+            state = state + 10
+            return 20
+
+        def foo() -> i32:
+            state = 0
+            return fa() + fb() + state
+        """)
+        # left-to-right:
+        #   fa() sets state = 1
+        #   fb() sets state = 11
+        #   trailing + state reads 11
+        # 10 + 20 + (1+10) = 41
+        assert mod.foo() == 41
+        cfile = self.builddir.join("src", "test.c")
+        if not cfile.exists():
+            cfile = self.builddir.join("test.c")
+        csrc = cfile.read()
+        # C leaves operand evaluation order for `+` unspecified,
+        # so we should never emit direct `fa(...) + ... + fb(...)` in one expression.
+        # Match with flexible whitespace and intervening tokens up to `;`
+        assert re.search(r"\$fa\s*\(\s*\)\s*\+\s*[^;]*\$fb\s*\(\s*\)", csrc) is None
+
+    def test_call_argument_order_left_to_right_temp_name_collision(self):
+        mod = self.compile("""
+        def add(a: i32, b: i32) -> i32:
+            return a * 10 + b
+
+        def foo() -> i32:
+            spy_tmp0 = 40
+            return add(spy_tmp0, spy_tmp0 := 2)
+        """)
+        # left-to-right:
+        #   first arg snapshots 40, then second arg assigns 2
+        assert mod.foo() == 402
+
+    @only_C
+    def test_call_argument_order_left_to_right_short_circuit_rhs(self):
+        mod = self.compile("""
+        def add(a: i32, b: i32) -> i32:
+            return a * 10 + b
+
+        def foo() -> i32:
+            x = 0
+            if True and add(x, x := 1) == 1:
+                return x
+            return 100
+        """)
+        assert mod.foo() == 1
+        cfile = self.builddir.join("src", "test.c")
+        if not cfile.exists():
+            cfile = self.builddir.join("test.c")
+        csrc = cfile.read()
+        # Calls embedded in lazy boolean contexts still need explicit sequencing:
+        # C argument order is unspecified for patterns like `f(x, x = 1)`.
+        # This regex matches any `(x, x = 1)` argument pair form.
+        assert re.search(r"\(\s*x\s*,\s*\(?\s*x\s*=\s*1\s*\)?\s*\)", csrc) is None
 
     @only_interp
     def test_blue_cannot_redeclare(self):
