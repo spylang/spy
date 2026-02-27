@@ -4,22 +4,24 @@ from spy.errors import SPyError
 from spy.tests.support import CompilerTest, expect_errors, no_C
 
 
-# Eventually we want to remove the @only_interp, but for now the C backend
-# doesn't support lists
 @no_C
 class TestInterpTuple(CompilerTest):
-    def test_literal(self):
+    def test_new(self):
         mod = self.compile("""
-        def foo() -> dynamic:
-            return 1, 2, 'hello'
+        from __spy__ import interp_tuple
+
+        def foo() -> interp_tuple:
+            return interp_tuple(1, 2, 'hello')
         """)
         tup = mod.foo()
         assert tup == (1, 2, "hello")
 
     def test_getitem(self):
         mod = self.compile("""
+        from __spy__ import interp_tuple
+
         def foo(i: i32) -> dynamic:
-            tup = 1, 2, 'hello'
+            tup = interp_tuple(1, 2, 'hello')
             return tup[i]
         """)
         x = mod.foo(0)
@@ -29,8 +31,10 @@ class TestInterpTuple(CompilerTest):
 
     def test_len(self):
         mod = self.compile("""
+        from __spy__ import interp_tuple
+
         def foo() -> i32:
-            tup = 1, 2, 'hello'
+            tup = interp_tuple(1, 2, 'hello')
             return len(tup)
         """)
         x = mod.foo()
@@ -38,9 +42,11 @@ class TestInterpTuple(CompilerTest):
 
     def test_unpacking(self):
         mod = self.compile("""
+        from __spy__ import interp_tuple
+
         @blue
         def make_tuple() -> interp_tuple:
-            return 1, 2, 'hello'
+            return interp_tuple(1, 2, 'hello')
 
         def foo() -> i32:
             a, b, c = make_tuple()
@@ -51,9 +57,11 @@ class TestInterpTuple(CompilerTest):
 
     def test_unpacking_wrong_number(self):
         src = """
+        from __spy__ import interp_tuple
+
         @blue
         def make_tuple() -> interp_tuple:
-            return 1, 2
+            return interp_tuple(1, 2)
 
         def foo() -> None:
             a, b, c = make_tuple()
@@ -78,11 +86,13 @@ class TestInterpTuple(CompilerTest):
 
     def test_eq(self):
         mod = self.compile("""
+        from __spy__ import interp_tuple
+
         def tup1() -> interp_tuple:
-            return 1, 2
+            return interp_tuple(1, 2)
 
         def tup2() -> interp_tuple:
-            return 3, 4
+            return interp_tuple(3, 4)
 
         def foo() -> bool:
             return tup1() == tup1()

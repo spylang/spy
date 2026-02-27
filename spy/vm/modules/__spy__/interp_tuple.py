@@ -39,6 +39,11 @@ class W_InterpTuple(W_Object):
     def __repr__(self) -> str:
         return f"W_InterpTuple({self.items_w})"
 
+    @builtin_method("__new__")
+    @staticmethod
+    def w_new(vm: "SPyVM", *args_w: W_Object) -> "W_InterpTuple":
+        return W_InterpTuple(list(args_w))
+
     @builtin_method("__getitem__")
     @staticmethod
     def w_getitem(vm: "SPyVM", w_tup: "W_InterpTuple", w_i: W_I32) -> W_Dynamic:

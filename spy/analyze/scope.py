@@ -509,6 +509,12 @@ class ScopeAnalyzer:
         for item in tup.items:
             self.flatten(item)
 
+    def flatten_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
+        self.mod_scope.implicit_imports.add("_tuple")
+        for target in unpack.targets:
+            self.flatten(target)
+        self.flatten(unpack.value)
+
     def flatten_Dict(self, dict: ast.Dict) -> None:
         self.mod_scope.implicit_imports.add("_dict")
         for keyVal in dict.items:
