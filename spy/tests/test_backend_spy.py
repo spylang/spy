@@ -340,7 +340,7 @@ class TestSPyBackend(CompilerTest):
 
     def test_tuple_literal(self):
         src = """
-        def foo() -> interp_tuple:
+        def foo() -> dynamic:
             return (1, 2, 3)
         """
         self.compile(src)
