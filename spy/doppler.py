@@ -58,7 +58,8 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
         return ast.Tuple(loc, items, w_T=w_T)
 
     elif w_T.fqn.match("_tuple::tuple[*]::_tup"):
-        # this is a bit of a hack, XXX explain
+        # transform the struct into a syntactical ast.Tuple node, so that we can put it
+        # in the AST without necessarily create a FQN
         assert isinstance(w_val, W_Struct)
         n = len(w_val.values_w)  # length of the tuple
         items_w = [w_val.values_w[f"_item{i}"] for i in range(n)]
