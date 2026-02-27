@@ -1186,12 +1186,6 @@ class AbstractFrame:
         wam_tuple = self.eval_opimpl(tup, w_opimpl, [wam_T] + items_wam)
         return wam_tuple
 
-        ## if color == "red" and self.redshifting:
-        ##     w_val = None
-        ## else:
-        ##     items_w = [wam.w_val for wam in items_wam]
-        ##     w_val = W_InterpTuple(items_w)
-
     def eval_expr_Dict(self, dict: ast.Dict) -> W_MetaArg:
         # 0. empty dicts are special
         if len(dict.items) == 0:
