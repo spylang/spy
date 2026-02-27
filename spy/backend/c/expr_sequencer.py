@@ -1,3 +1,40 @@
+"""
+Expression sequencing pass for the C backend.
+
+This module rewrites one typed `ast.Stmt` into an equivalent statement list
+whose expression evaluation order is explicit and safe to lower to C.
+
+Why this exists:
+- C leaves operand evaluation order unspecified in many contexts.
+- SPy semantics require left-to-right evaluation.
+- Some expressions (`and`/`or`, assignment expressions, effectful calls) need
+  statement-level rewrites to preserve those semantics.
+
+What this pass does:
+- emits pre-statements for subexpressions when ordering must be made explicit;
+- materializes selected subexpressions into compiler-generated temporaries;
+- lowers short-circuit expressions with RHS preludes into `if`-based control flow;
+- rewrites certain `while`/`assert` cases so preludes execute with correct timing.
+
+Assumptions and heuristics:
+- input is already typed (`expr.w_T` is expected to be set);
+- purity is FQN-based: known pure FQNs are treated as effect-free, while
+  unknown/non-FQN call targets are treated conservatively as effectful;
+- temporary insertion follows two rules:
+  1) preserve ordering when an effectful part precedes later
+     ordering-sensitive work;
+  2) snapshot unstable reads only when later effects could change observed
+     values;
+- optimization: direct mutable locals that are never written later in the same
+  call-part sequence are not snapshotted;
+- assumption for that optimization: caller direct locals are frame-private, and
+  only explicit local writes in the current expression can rebind them.
+
+The transform is backend-local:
+- it runs inside C emission right before nodes are lowered to C;
+- it returns rewritten nodes/tmp metadata instead of mutating earlier phases.
+"""
+
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable
 
