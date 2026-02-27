@@ -84,6 +84,26 @@ class TestInterpTuple(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
+    def test_fastiter(self):
+        if self.backend != "interp":
+            pytest.skip(
+                "interp_tuple __fastiter__ is only supported on the interp backend"
+            )
+        mod = self.compile("""
+        from __spy__ import interp_tuple
+
+        @blue
+        def make_tuple() -> interp_tuple:
+            return interp_tuple(1, 2, 3)
+
+        def foo() -> i32:
+            count: i32 = 0
+            for item in make_tuple():
+                count = count + 1
+            return count
+        """)
+        assert mod.foo() == 3
+
     def test_eq(self):
         mod = self.compile("""
         from __spy__ import interp_tuple

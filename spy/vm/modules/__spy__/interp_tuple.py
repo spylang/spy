@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Annotated, Any
 
 from spy.vm.b import B
 from spy.vm.builtin import builtin_method
@@ -9,6 +9,34 @@ from spy.vm.primitive import W_I32, W_Bool, W_Dynamic
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
+
+
+@SPY.builtin_type("interp_tuple_iterator")
+class W_InterpTupleIterator(W_Object):
+    items_w: list[W_Object]
+    i: int
+
+    def __init__(self, items_w: list[W_Object], i: int) -> None:
+        self.items_w = items_w
+        self.i = i
+
+    def __repr__(self) -> str:
+        return f"W_InterpTupleIterator({self.items_w}, {self.i})"
+
+    @builtin_method("__next__")
+    @staticmethod
+    def w_next(vm: "SPyVM", w_it: "W_InterpTupleIterator") -> "W_InterpTupleIterator":
+        return W_InterpTupleIterator(w_it.items_w, w_it.i + 1)
+
+    @builtin_method("__item__")
+    @staticmethod
+    def w_item(vm: "SPyVM", w_it: "W_InterpTupleIterator") -> W_Dynamic:
+        return w_it.items_w[w_it.i]
+
+    @builtin_method("__continue_iteration__")
+    @staticmethod
+    def w_continue_iteration(vm: "SPyVM", w_it: "W_InterpTupleIterator") -> W_Bool:
+        return vm.wrap(w_it.i < len(w_it.items_w))
 
 
 @SPY.builtin_type("interp_tuple")
@@ -43,6 +71,13 @@ class W_InterpTuple(W_Object):
     @staticmethod
     def w_new(vm: "SPyVM", *args_w: W_Object) -> "W_InterpTuple":
         return W_InterpTuple(list(args_w))
+
+    @builtin_method("__fastiter__")
+    @staticmethod
+    def w_fastiter(
+        vm: "SPyVM", w_tup: "W_InterpTuple"
+    ) -> Annotated[W_InterpTupleIterator, W_InterpTupleIterator._w]:
+        return W_InterpTupleIterator(w_tup.items_w, 0)
 
     @builtin_method("__getitem__")
     @staticmethod
