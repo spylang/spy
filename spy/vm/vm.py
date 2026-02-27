@@ -465,6 +465,8 @@ class SPyVM:
             fqn = w_T.fqn.join("prebuilt")
             fqn = self.get_unique_FQN(fqn)
         else:
+            return FQN("hello")
+
             w_T = self.dynamic_type(w_val)
             T = w_T.fqn.human_name
             msg = f"This prebuilt constant cannot be redshifted (yet): {w_val}"

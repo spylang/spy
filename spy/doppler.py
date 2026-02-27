@@ -271,6 +271,12 @@ class DopplerFrame(ASTFrame):
         return [while_node.replace(test=newtest, body=newbody)]
 
     def shift_stmt_For(self, for_node: ast.For) -> list[ast.Stmt]:
+        unrolled = self._try_unroll_For(for_node)
+        if unrolled is not None:
+            result: list[ast.Stmt] = []
+            for stmt in unrolled:
+                result.extend(self.shift_stmt(stmt))
+            return result
         init_iter, while_loop = self._desugar_For(for_node)
         return self.shift_stmt(init_iter) + self.shift_stmt(while_loop)
 

@@ -1,6 +1,7 @@
+import dataclasses
 from contextlib import contextmanager
 from types import NoneType
-from typing import TYPE_CHECKING, Iterator, Optional, Sequence
+from typing import TYPE_CHECKING, Any, Iterator, Optional, Sequence
 
 from spy import ast
 from spy.analyze.symtable import Color, Symbol, SymTable, maybe_blue
@@ -64,6 +65,7 @@ class AbstractFrame:
     specialized_assigns: dict[ast.Assign, ast.Stmt]
     specialized_assignexprs: dict[ast.AssignExpr, ast.Expr]
     desugared_fors: dict[ast.For, tuple[ast.Assign, ast.While]]
+    unrolled_fors: dict[ast.For, list[ast.Stmt]]
 
     def __init__(
         self, vm: "SPyVM", ns: FQN, loc: Loc, symtable: SymTable, closure: CLOSURE
@@ -96,6 +98,7 @@ class AbstractFrame:
         self.specialized_assigns = {}
         self.specialized_assignexprs = {}
         self.desugared_fors = {}
+        self.unrolled_fors = {}
 
     # overridden by DopplerFrame
     @property
@@ -669,9 +672,20 @@ class AbstractFrame:
 
     def exec_stmt_For(self, for_node: ast.For) -> None:
         # see the comment in __init__ about desugared_fors
+        if for_node in self.unrolled_fors:
+            for stmt in self.unrolled_fors[for_node]:
+                self.exec_stmt(stmt)
+            return
+
         if for_node in self.desugared_fors:
             init_iter, while_loop = self.desugared_fors[for_node]
         else:
+            unrolled = self._try_unroll_For(for_node)
+            if unrolled is not None:
+                self.unrolled_fors[for_node] = unrolled
+                for stmt in unrolled:
+                    self.exec_stmt(stmt)
+                return
             init_iter, while_loop = self._desugar_For(for_node)
             self.desugared_fors[for_node] = (init_iter, while_loop)
         self.exec_stmt(init_iter)
@@ -742,6 +756,124 @@ class AbstractFrame:
             body=[assign_item, advance_iter] + for_node.body,
         )
         return init_iter, while_loop
+
+    def _try_unroll_For(self, for_node: ast.For) -> Optional[list[ast.Stmt]]:
+        from spy.vm.modules.__spy__.unroll_range import W_UnrollRange, w_UNROLL_RANGE
+
+        if not isinstance(for_node.iter, ast.Call):
+            return None
+        wam_func = self.eval_expr(for_node.iter.func)
+        if not (wam_func.color == "blue" and wam_func.w_blueval is w_UNROLL_RANGE):
+            return None
+        if len(for_node.iter.args) != 1:
+            return None
+        wam_n = self.eval_expr(for_node.iter.args[0])
+        n = self.vm.unwrap_i32(wam_n.w_val)
+        return self._unroll_For(for_node, n)
+
+    def _unroll_For(self, for_node: ast.For, n: int) -> list[ast.Stmt]:
+        loc = for_node.loc
+        target_name = for_node.target.value
+        body_vardef_names = self._collect_body_vardef_names(for_node.body)
+        stmts: list[ast.Stmt] = []
+        for k in range(n):
+            # Build substitution: loop var + all VarDef-declared vars in body get
+            # unique per-iteration names so Doppler treats them as blue consts.
+            subst: dict[str, str] = {}
+            unique_loop_var = f"{target_name}_$unroll_{for_node.seq}_{k}"
+            subst[target_name] = unique_loop_var
+            for var_name in body_vardef_names:
+                subst[var_name] = f"{var_name}_$unroll_{for_node.seq}_{k}"
+
+            for unique_name in subst.values():
+                if self.symtable.lookup_maybe(unique_name) is None:
+                    sym = Symbol(
+                        unique_name,
+                        "const",
+                        "auto",
+                        "direct",
+                        loc=loc,
+                        type_loc=loc,
+                        level=0,
+                    )
+                    self.symtable.add(sym)
+
+            # i_$unroll_0_k = k
+            stmts.append(
+                ast.Assign(
+                    loc=loc,
+                    target=ast.StrConst(loc, unique_loop_var),
+                    value=ast.Constant(loc, k),
+                )
+            )
+            # body copy with all names substituted
+            stmts.extend(self._substitute_names_in_stmts(for_node.body, subst))
+        return stmts
+
+    def _collect_body_vardef_names(self, stmts: list[ast.Stmt]) -> set[str]:
+        """Collect all variable names declared via VarDef inside the given statements."""
+        names: set[str] = set()
+        for stmt in stmts:
+            self._collect_vardef_names_node(stmt, names)
+        return names
+
+    def _collect_vardef_names_node(self, node: ast.Node, names: set[str]) -> None:
+        if isinstance(node, ast.VarDef):
+            names.add(node.name.value)
+        for f in dataclasses.fields(node):  # type: ignore[arg-type]
+            val = getattr(node, f.name)
+            if isinstance(val, ast.Node):
+                self._collect_vardef_names_node(val, names)
+            elif isinstance(val, list):
+                for item in val:
+                    if isinstance(item, ast.Node):
+                        self._collect_vardef_names_node(item, names)
+
+    def _substitute_names_in_stmts(
+        self, stmts: list[ast.Stmt], subst: dict[str, str]
+    ) -> list[ast.Stmt]:
+        result = [self._substitute_name_in_node(s, subst) for s in stmts]
+        return result  # type: ignore[return-value]
+
+    def _substitute_name_in_node(
+        self, node: ast.Node, subst: dict[str, str]
+    ) -> ast.Node:
+        # Variable read
+        if isinstance(node, ast.Name) and node.id in subst:
+            return node.replace(id=subst[node.id])
+        # VarDef declaration: substitute name and recurse into type/value
+        if isinstance(node, ast.VarDef) and node.name.value in subst:
+            new_name_node = ast.StrConst(node.name.loc, subst[node.name.value])
+            new_type = self._substitute_name_in_node(node.type, subst)
+            new_value = (
+                self._substitute_name_in_node(node.value, subst)
+                if node.value is not None
+                else None
+            )
+            return node.replace(name=new_name_node, type=new_type, value=new_value)
+        # Assign/AugAssign targets
+        if isinstance(node, (ast.Assign, ast.AugAssign)) and node.target.value in subst:
+            new_target = ast.StrConst(node.target.loc, subst[node.target.value])
+            new_value = self._substitute_name_in_node(node.value, subst)
+            return node.replace(target=new_target, value=new_value)
+        # Generic recursion for all other nodes
+        kwargs: dict[str, Any] = {}
+        for f in dataclasses.fields(node):  # type: ignore[arg-type]
+            val = getattr(node, f.name)
+            if isinstance(val, ast.Node):
+                new_val = self._substitute_name_in_node(val, subst)
+                if new_val is not val:
+                    kwargs[f.name] = new_val
+            elif isinstance(val, list):
+                new_list = [
+                    self._substitute_name_in_node(item, subst)
+                    if isinstance(item, ast.Node)
+                    else item
+                    for item in val
+                ]
+                if any(n is not o for n, o in zip(new_list, val)):
+                    kwargs[f.name] = new_list
+        return node.replace(**kwargs) if kwargs else node
 
     def exec_stmt_Raise(self, raise_node: ast.Raise) -> None:
         wam_exc = self.eval_expr(raise_node.exc)
