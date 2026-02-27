@@ -98,13 +98,8 @@ class CFuncWriter:
         """
         Emit a #line directive, but only if it's needed.
         """
-        desired_spy = loc.line_start
         # line numbers corresponding to the last emitted #line
         last_spy, last_c = self.last_emitted_linenos
-        # When sequenced lowering emits many synthetic statements for the same
-        # source line, avoid re-emitting identical #line directives.
-        if desired_spy == last_spy:
-            return
         #
         # line numbers as they are understood by the C compiler, i.e. what
         # goes to debuginfo if we don't emit a new #line
@@ -112,6 +107,7 @@ class CFuncWriter:
         cur_spy = last_spy + (cur_c - last_c) - 1
         #
         # desired spy line number, i.e. what we would like it to be
+        desired_spy = loc.line_start
         if desired_spy != cur_spy:
             # time to emit a new #line directive
             self.emit_lineno(desired_spy)
