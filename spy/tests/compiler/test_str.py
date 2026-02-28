@@ -197,3 +197,24 @@ class TestStr(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == "\nBall"
+
+    def test_fstr_basic(self):
+        mod = self.compile("""
+        def foo(name: str) -> str:
+            return f"hello {name}, welcome"
+        """)
+        assert mod.foo("world") == "hello world, welcome"
+
+    def test_fstr_with_int(self):
+        mod = self.compile("""
+        def foo(x: i32) -> str:
+            return f"value={x}"
+        """)
+        assert mod.foo(42) == "value=42"
+
+    def test_fstr_only_string(self):
+        mod = self.compile("""
+        def foo() -> str:
+            return f"just a string"
+        """)
+        assert mod.foo() == "just a string"

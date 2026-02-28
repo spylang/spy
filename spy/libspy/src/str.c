@@ -190,3 +190,35 @@ spy_operator$str_to_u8(spy_Str *s) {
     spy_check_range(val, 0LL, 255LL, "u8");
     return (uint8_t)val;
 }
+
+spy_StringBuilder *
+spy_str_builder_new(int32_t initial_capacity) {
+    spy_StringBuilder *sb =
+        (spy_StringBuilder *)spy_GcAlloc(sizeof(spy_StringBuilder)).p;
+    sb->length = 0;
+    sb->capacity = (size_t)initial_capacity;
+    sb->buf = (char *)malloc((size_t)initial_capacity);
+    return sb;
+}
+
+spy_StringBuilder *
+spy_str_builder_push(spy_StringBuilder *sb, spy_Str *s) {
+    size_t needed = sb->length + s->length;
+    if (needed > sb->capacity) {
+        size_t new_cap = sb->capacity * 2;
+        while (new_cap < needed)
+            new_cap *= 2;
+        sb->buf = (char *)realloc(sb->buf, new_cap);
+        sb->capacity = new_cap;
+    }
+    memcpy(sb->buf + sb->length, s->utf8, s->length);
+    sb->length += s->length;
+    return sb;
+}
+
+spy_Str *
+spy_str_builder_build(spy_StringBuilder *sb) {
+    spy_Str *res = spy_str_alloc(sb->length);
+    memcpy((char *)res->utf8, sb->buf, sb->length);
+    return res;
+}

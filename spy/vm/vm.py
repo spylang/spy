@@ -60,7 +60,7 @@ from spy.vm.primitive import (
 )
 from spy.vm.property import W_ClassMethod, W_Property, W_StaticMethod
 from spy.vm.registry import ModuleRegistry
-from spy.vm.str import W_Str
+from spy.vm.str import W_Str, W_StringBuilder
 from spy.vm.struct import UnwrappedStruct
 
 # lazy definition of some some core types. See the docstring of W_Type.
@@ -83,6 +83,7 @@ W_Bool._w.define(W_Bool)
 W_NoneType._w.define(W_NoneType)
 W_NotImplementedType._w.define(W_NotImplementedType)
 W_Str._w.define(W_Str)
+W_StringBuilder._w.define(W_StringBuilder)
 # note: W_Dynamic doesn't exist: the equivalent of W_Dynamic._w is
 # w_DynamicType. See "The <dynamic> type" comment in primitive.py
 w_DynamicType.define(W_Object)

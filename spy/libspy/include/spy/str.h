@@ -58,4 +58,26 @@ int8_t spy_operator$str_to_i8(spy_Str *s);
 
 uint8_t spy_operator$str_to_u8(spy_Str *s);
 
+// StringBuilder for f-string lowering
+typedef struct {
+    size_t length;   // bytes currently written
+    size_t capacity; // allocated capacity of buf
+    char *buf;       // mutable data buffer
+} spy_StringBuilder;
+
+spy_StringBuilder *WASM_EXPORT(spy_str_builder_new)(int32_t initial_capacity);
+spy_StringBuilder *WASM_EXPORT(spy_str_builder_push)(spy_StringBuilder *sb, spy_Str *s);
+spy_Str *WASM_EXPORT(spy_str_builder_build)(spy_StringBuilder *sb);
+
+#define spy_builtins$str_builder_new spy_str_builder_new
+#define spy_builtins$StringBuilder$push spy_str_builder_push
+#define spy_builtins$StringBuilder$build spy_str_builder_build
+
+// str.__str__ identity: needed so str(s) works when s: str
+static inline spy_Str *
+spy_str_identity(spy_Str *s) {
+    return s;
+}
+#define spy_builtins$str$__str__ spy_str_identity
+
 #endif /* SPY_STR_H */

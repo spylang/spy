@@ -108,3 +108,37 @@ class W_Str(W_Object):
         assert isinstance(w_s, W_Str)
         length = vm.ll.call("spy_str_len", w_s.ptr)
         return vm.wrap(length)
+
+    @builtin_method("__str__")
+    @staticmethod
+    def w_str(vm: "SPyVM", w_s: "W_Str") -> "W_Str":
+        return w_s
+
+
+@B.builtin_type("StringBuilder", lazy_definition=True)
+class W_StringBuilder(W_Object):
+    parts: list[str]
+
+    def __init__(self) -> None:
+        self.parts = []
+
+    @builtin_method("__new__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_NEW(vm: "SPyVM", wam_cls: W_MetaArg, wam_cap: W_MetaArg) -> "W_OpSpec":
+        return W_OpSpec(B.w_str_builder_new, [wam_cap])
+
+    @builtin_method("push")
+    @staticmethod
+    def w_push(vm: "SPyVM", w_sb: "W_StringBuilder", w_s: W_Str) -> "W_StringBuilder":
+        w_sb.parts.append(w_s._as_str())
+        return w_sb
+
+    @builtin_method("build")
+    @staticmethod
+    def w_build(vm: "SPyVM", w_sb: "W_StringBuilder") -> W_Str:
+        return vm.wrap("".join(w_sb.parts))
+
+
+@B.builtin_func
+def w_str_builder_new(vm: "SPyVM", w_cap: W_I32) -> W_StringBuilder:
+    return W_StringBuilder()

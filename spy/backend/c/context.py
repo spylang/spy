@@ -9,6 +9,7 @@ from spy.vm.modules.jsffi import JSFFI
 from spy.vm.modules.rawbuffer import RB
 from spy.vm.modules.unsafe.ptr import W_RefType
 from spy.vm.object import W_Type
+from spy.vm.str import W_StringBuilder
 from spy.vm.vm import SPyVM
 
 
@@ -135,6 +136,7 @@ class Context:
         self._d[B.w_f32] = C_Type("float")
         self._d[B.w_bool] = C_Type("bool")
         self._d[B.w_str] = C_Type("spy_Str *")
+        self._d[B.w_StringBuilder] = C_Type("spy_StringBuilder *")
         self._d[RB.w_RawBuffer] = C_Type("spy_RawBuffer *")
         self._d[JSFFI.w_JsRef] = C_Type("JsRef")
 

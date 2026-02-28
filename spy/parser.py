@@ -578,6 +578,49 @@ class Parser:
     def from_py_expr_Name(self, py_node: py_ast.Name) -> spy.ast.Name:
         return spy.ast.Name(py_node.loc, py_node.id)
 
+    def from_py_expr_JoinedStr(self, py_node: py_ast.JoinedStr) -> spy.ast.Expr:
+        loc = py_node.loc
+        # Estimate initial buffer capacity at compile time to avoid reallocation
+        capacity = 0
+        for value in py_node.values:
+            if isinstance(value, py_ast.Constant) and isinstance(value.value, str):
+                capacity += len(value.value.encode("utf-8"))
+            else:
+                capacity += 16
+        capacity = max(capacity, 16)
+        # Start with StringBuilder(capacity)
+        expr: spy.ast.Expr = spy.ast.Call(
+            loc,
+            func=spy.ast.Name(loc, "StringBuilder"),
+            args=[spy.ast.Constant(loc, capacity)],
+        )
+        for value in py_node.values:
+            if isinstance(value, py_ast.Constant) and isinstance(value.value, str):
+                arg: spy.ast.Expr = spy.ast.StrConst(value.loc, value.value)
+            elif isinstance(value, py_ast.FormattedValue):
+                if value.format_spec is not None:
+                    self.unsupported(value, "f-string format specs are not supported")
+                inner = self.from_py_expr(value.value)
+                arg = spy.ast.Call(
+                    value.loc,
+                    func=spy.ast.Name(loc, "str"),
+                    args=[inner],
+                )
+            else:
+                self.unsupported(value, "unsupported f-string component")
+            expr = spy.ast.CallMethod(
+                loc,
+                target=expr,
+                method=spy.ast.StrConst(loc, "push"),
+                args=[arg],
+            )
+        return spy.ast.CallMethod(
+            loc,
+            target=expr,
+            method=spy.ast.StrConst(loc, "build"),
+            args=[],
+        )
+
     def from_py_expr_Constant(self, py_node: py_ast.Constant) -> spy.ast.Expr:
         # according to _ast.pyi, the type of const.value can be one of the
         # following:
