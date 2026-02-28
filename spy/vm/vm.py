@@ -41,6 +41,7 @@ from spy.vm.modules.posix import POSIX
 from spy.vm.modules.rawbuffer import RAW_BUFFER
 from spy.vm.modules.time import TIME
 from spy.vm.modules.types import TYPES, W_Loc
+from spy.vm.modules.aws import AWS
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import W_OpImpl
@@ -134,6 +135,7 @@ class SPyVM:
         self.make_module(UNSAFE)
         self.make_module(RAW_BUFFER)
         self.make_module(JSFFI)
+        self.make_module(AWS)
         self.make_module(POSIX)
         self.make_module(TIME)
         self.make_module(SPY)

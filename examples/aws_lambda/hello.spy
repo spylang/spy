@@ -1,0 +1,7 @@
+from aws import lambda_init, lambda_next_body, response
+
+def main() -> None:
+    lambda_init()
+    while True:
+        body: str = lambda_next_body()
+        response(200, '{"message": "Hello from SPy!"}')

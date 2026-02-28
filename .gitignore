@@ -199,6 +199,11 @@ node_modules
 package-lock.json
 .claude/settings.local.json
 
+# deps build artifacts
+spy/libspy/deps/gc-*/
+spy/libspy/deps/curl-*/
+spy/libspy/deps/*.tar.gz
+
 # Playground build artifacts
 /playground/libspy.mjs
 /playground/*.whl

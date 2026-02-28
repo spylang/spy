@@ -22,6 +22,7 @@ class BuildConfig:
     warning_as_error: bool = False
     gc: GCOption = "none"
     static: bool = False
+    uses_aws: bool = False
 
 
 # ======= CFLAGS and LDFLAGS logic =======
@@ -163,6 +164,30 @@ class CompilerConfig:
                     if prefix:
                         self.cflags += ["-I", f"{prefix}/include"]
                         self.ldflags += ["-L", f"{prefix}/lib"]
+
+        # AWS flags
+        if config.uses_aws:
+            assert config.static, "aws module requires --static"
+            self._build_aws_static()
+            aws_prefix = str(spy.libspy.DEPS.join("build", "native-static"))
+            self.cflags += ["-DSPY_HAS_AWS", "-I", f"{aws_prefix}/include"]
+            self.ldflags += [
+                "-L", f"{aws_prefix}/lib",
+                "-laws_lambda", "-lcurl",
+            ]
+
+    @staticmethod
+    def _build_aws_static() -> None:
+        deps_dir = str(spy.libspy.DEPS)
+        libaws = spy.libspy.DEPS.join(
+            "build", "native-static", "lib", "libaws_lambda.a"
+        )
+        if libaws.check(file=True):
+            return
+        subprocess.run(
+            ["make", "-C", deps_dir, "TARGET=native-static", "aws_sdk"],
+            check=True,
+        )
 
     @staticmethod
     def _build_bdwgc_static() -> None:

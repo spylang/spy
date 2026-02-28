@@ -54,4 +54,8 @@
 #  include "spy/jsffi.h"
 #endif
 
+#ifdef SPY_HAS_AWS
+#  include "spy/aws.h"
+#endif
+
 #endif /* SPY_H */

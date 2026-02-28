@@ -147,6 +147,10 @@ async def build(args: Build_Args) -> None:
     if args.static and sys.platform == "darwin":
         raise click.UsageError("--static is not supported on macOS")
 
+    uses_aws = "aws" in importer.mods
+    if uses_aws and not args.static:
+        raise click.UsageError("aws module requires --static")
+
     config = BuildConfig(
         target=args.target,
         kind=args.output_kind,
@@ -154,6 +158,7 @@ async def build(args: Build_Args) -> None:
         warning_as_error=args.warning_as_error,
         gc=gc,
         static=args.static,
+        uses_aws=uses_aws,
     )
 
     cwd = py.path.local(".")
