@@ -33,7 +33,9 @@ The following built-in functions work similarly to their equivalents in CPython;
 
 ### __int__(object) { data-toc-label='int()' }
 
-:    Converts `object` to an int if able 
+:    Converts `object` to an int if able. Works for number types, as well as strings.
+
+:    For conversion to specific integer types, see also [str_to_i32()](), [str_to_u32()](), [str_to_i8()](), [str_to_u8()]().
 
 ### __len__(object) { data-toc-label='len()' }
 
@@ -76,6 +78,10 @@ Creates an iterable set of indices between `start` and `stop`, jumping over `ste
 ### __str__(object) { data-toc-label='str()' }
 
 :   Returns a string version of the object. Selecting an encoding is not currently implemented.
+
+### __type__(object) { data-toc-label='type()' }
+
+:   Returns the type (i.e. the dynamic type at runtime) of an object
 
 ## Not-Implemented CPython Built-ins 
 
