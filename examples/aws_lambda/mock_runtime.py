@@ -3,6 +3,7 @@ Mock AWS Lambda Runtime API server for testing.
 
 Serves a single invocation, waits for the handler's response, then exits.
 """
+
 import http.server
 import json
 import sys
@@ -24,10 +25,14 @@ class MockHandler(http.server.BaseHTTPRequestHandler):
 
     def do_GET(self):
         if "/invocation/next" in self.path:
-            event = json.dumps({
-                "body": "test-body-from-mock",
-                "requestContext": {"http": {"method": "GET"}},
-            })
+            event = json.dumps(
+                {
+                    "body": "",
+                    "rawPath": "/login",
+                    "rawQueryString": "name=World",
+                    "requestContext": {"http": {"method": "GET", "path": "/login"}},
+                }
+            )
             self.send_response(200)
             self.send_header("Lambda-Runtime-Aws-Request-Id", "test-request-123")
             self.send_header("Content-Type", "application/json")

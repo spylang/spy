@@ -29,5 +29,24 @@ def w_lambda_next_body(vm: "SPyVM") -> W_Str:
 
 
 @AWS.builtin_func
+def w_lambda_next_path(vm: "SPyVM") -> W_Str:
+    raise NotImplementedError("aws.lambda_next_path is only available in native builds")
+
+
+@AWS.builtin_func
+def w_lambda_next_method(vm: "SPyVM") -> W_Str:
+    raise NotImplementedError(
+        "aws.lambda_next_method is only available in native builds"
+    )
+
+
+@AWS.builtin_func
+def w_lambda_next_query_string(vm: "SPyVM") -> W_Str:
+    raise NotImplementedError(
+        "aws.lambda_next_query_string is only available in native builds"
+    )
+
+
+@AWS.builtin_func
 def w_response(vm: "SPyVM", w_status_code: W_I32, w_body: W_Str) -> None:
     raise NotImplementedError("aws.response is only available in native builds")

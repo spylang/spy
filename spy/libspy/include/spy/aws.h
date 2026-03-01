@@ -22,6 +22,8 @@ typedef struct {
 static const char *spy_aws_runtime_api;
 static char spy_aws_request_id[256];
 static CURL *spy_aws_curl;
+/* Cached full event JSON from the most recent lambda_next_body() call. */
+static spy_aws_mem spy_aws_event_cache;
 
 static size_t
 spy_aws_write_cb(void *ptr, size_t size, size_t nmemb, void *userp) {
@@ -117,13 +119,28 @@ spy_aws$lambda_init(void) {
     }
 }
 
-/* Fetch the next Lambda invocation and return the HTTP body as a spy_Str. */
+/* Extract HTTP method from event JSON (nested under requestContext.http.method). */
+static char *
+spy_aws_extract_method(const char *event_json) {
+    const char *rc = strstr(event_json, "\"requestContext\"");
+    if (!rc)
+        return NULL;
+    const char *http = strstr(rc, "\"http\"");
+    if (!http)
+        return NULL;
+    return spy_aws_json_extract(http, "method");
+}
+
+/* Fetch the next Lambda invocation, cache the event, and return the HTTP body.
+ * lambda_next_path/method/query_string read from this cache, so they must be
+ * called after lambda_next_body within the same iteration. */
 static inline spy_Str *
 spy_aws$lambda_next_body(void) {
     char url[512];
-    snprintf(url, sizeof(url),
-             "http://%s/2018-06-01/runtime/invocation/next",
-             spy_aws_runtime_api);
+    snprintf(
+        url, sizeof(url), "http://%s/2018-06-01/runtime/invocation/next",
+        spy_aws_runtime_api
+    );
 
     spy_aws_mem event = {0};
     spy_aws_mem hdrs = {0};
@@ -137,8 +154,7 @@ spy_aws$lambda_next_body(void) {
 
     CURLcode res = curl_easy_perform(spy_aws_curl);
     if (res != CURLE_OK) {
-        fprintf(stderr, "aws: invocation/next failed: %s\n",
-                curl_easy_strerror(res));
+        fprintf(stderr, "aws: invocation/next failed: %s\n", curl_easy_strerror(res));
         free(event.data);
         free(hdrs.data);
         exit(1);
@@ -151,7 +167,13 @@ spy_aws$lambda_next_body(void) {
         exit(1);
     }
 
-    char *body = spy_aws_json_extract(event.data, "body");
+    free(hdrs.data);
+
+    /* Cache the full event for the other lambda_next_* accessors. */
+    free(spy_aws_event_cache.data);
+    spy_aws_event_cache = event;
+
+    char *body = spy_aws_json_extract(spy_aws_event_cache.data, "body");
     if (!body)
         body = strdup("");
 
@@ -160,8 +182,45 @@ spy_aws$lambda_next_body(void) {
     memcpy((char *)result->utf8, body, len);
 
     free(body);
-    free(event.data);
-    free(hdrs.data);
+    return result;
+}
+
+/* Return the request path (rawPath) from the cached event. */
+static inline spy_Str *
+spy_aws$lambda_next_path(void) {
+    char *path = spy_aws_json_extract(spy_aws_event_cache.data, "rawPath");
+    if (!path)
+        path = strdup("/");
+    size_t len = strlen(path);
+    spy_Str *result = spy_str_alloc(len);
+    memcpy((char *)result->utf8, path, len);
+    free(path);
+    return result;
+}
+
+/* Return the HTTP method (e.g. "GET", "POST") from the cached event. */
+static inline spy_Str *
+spy_aws$lambda_next_method(void) {
+    char *method = spy_aws_extract_method(spy_aws_event_cache.data);
+    if (!method)
+        method = strdup("GET");
+    size_t len = strlen(method);
+    spy_Str *result = spy_str_alloc(len);
+    memcpy((char *)result->utf8, method, len);
+    free(method);
+    return result;
+}
+
+/* Return the raw query string (e.g. "name=foo&bar=1") from the cached event. */
+static inline spy_Str *
+spy_aws$lambda_next_query_string(void) {
+    char *qs = spy_aws_json_extract(spy_aws_event_cache.data, "rawQueryString");
+    if (!qs)
+        qs = strdup("");
+    size_t len = strlen(qs);
+    spy_Str *result = spy_str_alloc(len);
+    memcpy((char *)result->utf8, qs, len);
+    free(qs);
     return result;
 }
 
@@ -169,9 +228,10 @@ spy_aws$lambda_next_body(void) {
 static inline void
 spy_aws$response(int32_t status_code, spy_Str *body) {
     char url[512];
-    snprintf(url, sizeof(url),
-             "http://%s/2018-06-01/runtime/invocation/%s/response",
-             spy_aws_runtime_api, spy_aws_request_id);
+    snprintf(
+        url, sizeof(url), "http://%s/2018-06-01/runtime/invocation/%s/response",
+        spy_aws_runtime_api, spy_aws_request_id
+    );
 
     size_t body_len = body->length;
     char *escaped = malloc(body_len * 2 + 1);
@@ -183,12 +243,29 @@ spy_aws$response(int32_t status_code, spy_Str *body) {
     size_t j = 0;
     for (size_t i = 0; i < body_len; i++) {
         switch (body->utf8[i]) {
-        case '"':  escaped[j++] = '\\'; escaped[j++] = '"'; break;
-        case '\\': escaped[j++] = '\\'; escaped[j++] = '\\'; break;
-        case '\n': escaped[j++] = '\\'; escaped[j++] = 'n'; break;
-        case '\r': escaped[j++] = '\\'; escaped[j++] = 'r'; break;
-        case '\t': escaped[j++] = '\\'; escaped[j++] = 't'; break;
-        default:   escaped[j++] = body->utf8[i]; break;
+        case '"':
+            escaped[j++] = '\\';
+            escaped[j++] = '"';
+            break;
+        case '\\':
+            escaped[j++] = '\\';
+            escaped[j++] = '\\';
+            break;
+        case '\n':
+            escaped[j++] = '\\';
+            escaped[j++] = 'n';
+            break;
+        case '\r':
+            escaped[j++] = '\\';
+            escaped[j++] = 'r';
+            break;
+        case '\t':
+            escaped[j++] = '\\';
+            escaped[j++] = 't';
+            break;
+        default:
+            escaped[j++] = body->utf8[i];
+            break;
         }
     }
     escaped[j] = '\0';
@@ -201,10 +278,12 @@ spy_aws$response(int32_t status_code, spy_Str *body) {
         return;
     }
 
-    snprintf(response, resp_size,
-             "{\"statusCode\":%d,\"body\":\"%s\","
-             "\"headers\":{\"Content-Type\":\"application/json\"}}",
-             status_code, escaped);
+    snprintf(
+        response, resp_size,
+        "{\"statusCode\":%d,\"body\":\"%s\","
+        "\"headers\":{\"Content-Type\":\"application/json\"}}",
+        status_code, escaped
+    );
     free(escaped);
 
     curl_easy_reset(spy_aws_curl);
@@ -218,8 +297,7 @@ spy_aws$response(int32_t status_code, spy_Str *body) {
 
     CURLcode res = curl_easy_perform(spy_aws_curl);
     if (res != CURLE_OK) {
-        fprintf(stderr, "aws: failed to send response: %s\n",
-                curl_easy_strerror(res));
+        fprintf(stderr, "aws: failed to send response: %s\n", curl_easy_strerror(res));
     }
 
     curl_slist_free_all(headers);

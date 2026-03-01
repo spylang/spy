@@ -1,7 +1,24 @@
-from aws import lambda_init, lambda_next_body, response
+from aws import (lambda_init, lambda_next_body, lambda_next_method,
+                  lambda_next_path, lambda_next_query_string, response)
+from spyapi import App, dispatch
+
+app = App()
+
+@app.get("/")
+def index() -> None:
+    response(200, '{"message": "Hello from SPy!"}')
+
+
+@app.get("/login")
+def login() -> None:
+    qs: str = lambda_next_query_string()
+    response(200, f'{{"message": "Hello from login, query={qs}"}}')
+
 
 def main() -> None:
     lambda_init()
     while True:
         body: str = lambda_next_body()
-        response(200, '{"message": "Hello from SPy!"}')
+        method: str = lambda_next_method()
+        path: str = lambda_next_path()
+        dispatch(method, path)
