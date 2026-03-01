@@ -6,13 +6,13 @@ app = App()
 
 @app.get("/")
 def index() -> None:
-    response(200, '{"message": "Hello from SPy!"}')
+    response(200, '{"message": "Hello from SPy!"}', 'application/json')
 
 
 @app.get("/login")
 def login() -> None:
     qs: str = lambda_next_query_string()
-    response(200, f'{{"message": "Hello from login, query={qs}"}}')
+    response(200, f'{{"message": "Hello from login, query={qs}"}}', 'application/json')
 
 
 def main() -> None:

@@ -226,7 +226,7 @@ spy_aws$lambda_next_query_string(void) {
 
 /* Send an HTTP response for the current Lambda invocation. */
 static inline void
-spy_aws$response(int32_t status_code, spy_Str *body) {
+spy_aws$response(int32_t status_code, spy_Str *body, spy_Str *content_type) {
     char url[512];
     snprintf(
         url, sizeof(url), "http://%s/2018-06-01/runtime/invocation/%s/response",
@@ -278,11 +278,12 @@ spy_aws$response(int32_t status_code, spy_Str *body) {
         return;
     }
 
+    /* content_type->utf8 is null-terminated (spy_str_alloc adds \0) */
     snprintf(
         response, resp_size,
         "{\"statusCode\":%d,\"body\":\"%s\","
-        "\"headers\":{\"Content-Type\":\"application/json\"}}",
-        status_code, escaped
+        "\"headers\":{\"Content-Type\":\"%s\"}}",
+        status_code, escaped, content_type->utf8
     );
     free(escaped);
 

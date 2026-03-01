@@ -5,7 +5,7 @@ FUNCTION_NAME="hello-c-lambda"
 REGION="${AWS_REGION:-us-east-1}"
 
 echo "Packaging..."
-cp build/hello bootstrap
+cp build/demo bootstrap
 zip -j function.zip bootstrap
 
 echo "Uploading to Lambda..."

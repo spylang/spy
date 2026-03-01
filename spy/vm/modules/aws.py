@@ -48,5 +48,7 @@ def w_lambda_next_query_string(vm: "SPyVM") -> W_Str:
 
 
 @AWS.builtin_func
-def w_response(vm: "SPyVM", w_status_code: W_I32, w_body: W_Str) -> None:
+def w_response(
+    vm: "SPyVM", w_status_code: W_I32, w_body: W_Str, w_content_type: W_Str
+) -> None:
     raise NotImplementedError("aws.response is only available in native builds")

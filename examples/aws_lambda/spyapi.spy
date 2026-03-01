@@ -53,4 +53,4 @@ def dispatch(req_method: str, req_path: str) -> None:
             fn()
             return
 
-    response(404, '{"message": "Not Found"}')
+    response(404, '{"message": "Not Found"}', 'application/json')
