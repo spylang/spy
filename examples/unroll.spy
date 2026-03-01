@@ -1,0 +1,7 @@
+from __spy__ import UNROLL_RANGE
+
+
+def main() -> None:
+    for i in UNROLL_RANGE(4):
+        const x = i * 3
+        print(x)
