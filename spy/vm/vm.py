@@ -33,6 +33,7 @@ from spy.vm.member import W_Member
 from spy.vm.module import W_Module
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules._testing_helpers import _TESTING_HELPERS
+from spy.vm.modules.aws import AWS
 from spy.vm.modules.builtins import BUILTINS
 from spy.vm.modules.jsffi import JSFFI
 from spy.vm.modules.math import MATH
@@ -41,7 +42,6 @@ from spy.vm.modules.posix import POSIX
 from spy.vm.modules.rawbuffer import RAW_BUFFER
 from spy.vm.modules.time import TIME
 from spy.vm.modules.types import TYPES, W_Loc
-from spy.vm.modules.aws import AWS
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import W_OpImpl
@@ -62,7 +62,7 @@ from spy.vm.primitive import (
 from spy.vm.property import W_ClassMethod, W_Property, W_StaticMethod
 from spy.vm.registry import ModuleRegistry
 from spy.vm.str import W_Str, W_StringBuilder
-from spy.vm.struct import UnwrappedStruct
+from spy.vm.struct import UnwrappedStruct, W_Struct
 
 # lazy definition of some some core types. See the docstring of W_Type.
 W_Object._w.define(W_Object)
@@ -467,8 +467,13 @@ class SPyVM:
             w_T = self.dynamic_type(w_val)
             fqn = w_T.fqn.join("prebuilt")
             fqn = self.get_unique_FQN(fqn)
+
+        elif isinstance(w_val, W_Struct):
+            fqn = FQN("builtins::pbc")
+            fqn = self.get_unique_FQN(fqn)
+
         else:
-            return FQN("hello")
+            # return FQN("hello")
 
             w_T = self.dynamic_type(w_val)
             T = w_T.fqn.human_name

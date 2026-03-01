@@ -12,6 +12,7 @@ from spy.vm.b import TYPES
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.irtag import IRTag
 from spy.vm.modules.unsafe.ptr import W_Ptr
+from spy.vm.struct import W_Struct
 
 if TYPE_CHECKING:
     from spy.backend.c.cmodwriter import CModuleWriter
@@ -301,6 +302,11 @@ class CFuncWriter:
             return C.Literal(const.fqn.c_name)
         elif isinstance(w_obj, W_Func):
             return C.Literal(const.fqn.c_name)
+        elif isinstance(w_obj, W_Struct):
+            assert w_obj.values_w == {}, "only empty structs are supported"
+            w_T = self.ctx.vm.dynamic_type(w_obj)
+            c_T = self.ctx.w2c(w_T)
+            return C.Cast(c_T, C.Literal("{}"))
         else:
             assert False
 
