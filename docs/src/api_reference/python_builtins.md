@@ -85,4 +85,40 @@ Creates an iterable set of indices between `start` and `stop`, jumping over `ste
 
 ## Not-Implemented CPython Built-ins 
 
-:   aiter(), all(), anext(), any(), ascii(), bin(), bool(), breakpoint(), bytearray(), bytes(), callable(), chr(), classmethod(), compile(), complex(), delattr(), dir(), divmod(), enumerate(), eval(), exec(), filter(), format(), frozenset(), globals(), hasattr(), help(), hex(), id(), input(), isinstance(), issubclass(), iter(), locals(), map(), memoryview(), next(), object(), oct(), open(), ord(), pow(), property(), reversed(), round(), set(), sorted(), staticmethod(), sum(), super(), tuple(), type(), vars(), zip(), \_\_import\_\_()
+The following CPython built-ins are not currently implemented in SPy. Each category has a brief note about the current state of that category of object or function - some require additional internal mechanics, others are simply lower priority that other facets of the langauge to this point.
+
+### Async
+
+SPy does not currently have an async story.
+
+:   aiter(), anext()
+
+### Iterables and Iterators
+
+Iterables and collections are very much an area of active developmen; their API solidifies, these types of builtins should become more straightfoward to implement.
+
+:   all(), any(), enumerate(), filter(), iter(), map(), next(), reversed(), sorted(), sum(), zip()
+
+### Math
+
+Number types beyond int and float are in active development; some of the math functions below are also in active development.
+
+:   divmod(), bin(), hex(), oct(), pow(), round()
+
+### Function Types, Introspection and Metaprogramming
+
+The internals of SPy are significantly different from CPython; as such, the road to (and need for) some of these built-ins is less straightfoward. Some are also waiting on internal details to solidify prior to implementation.
+
+:   breakpoint(), callable(), classmethod(), compile(), delattr(), dir(), eval(), exec(), globals(), hasattr(), help(), id(), isinstance(), issubclass(), locals(), property(), staticmethod(), super(), type(), vars(). \_\_import\_\_()
+
+### Type Conversion
+
+Many of these types are not implemented yet; others are in active development.
+
+:   ascii(), bool(), bytearray(), bytes(), chr(), complex(), format(), frozenset(), memoryview(), object(), ord() set(), tuple()
+
+### I/O
+
+The I/O story is currently a high priority and is in active development.
+
+:   input(), open()
