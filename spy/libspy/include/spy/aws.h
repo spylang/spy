@@ -19,11 +19,20 @@ typedef struct {
     size_t size;
 } spy_aws_mem;
 
-static const char *spy_aws_runtime_api;
-static char spy_aws_request_id[256];
-static CURL *spy_aws_curl;
+/* These four variables must be shared across all translation units that include
+ * this header (e.g. demo.c and spyapi.c both include spy.h → aws.h).  Using
+ * 'static' would give each TU its own private copy; lambda_init() would
+ * initialise one copy while response() in another TU would see NULL pointers
+ * and crash inside curl_easy_reset().
+ *
+ * __attribute__((weak)) allows multiple definitions across TUs: the linker
+ * (including lld with LTO) keeps exactly one copy and redirects all references
+ * to it, giving us the shared singleton we need. */
+__attribute__((weak)) const char *spy_aws_runtime_api;
+__attribute__((weak)) char spy_aws_request_id[256];
+__attribute__((weak)) CURL *spy_aws_curl;
 /* Cached full event JSON from the most recent lambda_next_body() call. */
-static spy_aws_mem spy_aws_event_cache;
+__attribute__((weak)) spy_aws_mem spy_aws_event_cache;
 
 static size_t
 spy_aws_write_cb(void *ptr, size_t size, size_t nmemb, void *userp) {
