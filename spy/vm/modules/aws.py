@@ -48,6 +48,13 @@ def w_lambda_next_query_string(vm: "SPyVM") -> W_Str:
 
 
 @AWS.builtin_func
+def w_lambda_next_get_query_param(vm: "SPyVM", w_name: W_Str) -> W_Str:
+    raise NotImplementedError(
+        "aws.lambda_next_get_query_param is only available in native builds"
+    )
+
+
+@AWS.builtin_func
 def w_response(
     vm: "SPyVM", w_status_code: W_I32, w_body: W_Str, w_content_type: W_Str
 ) -> None:

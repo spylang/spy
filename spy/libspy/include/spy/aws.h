@@ -233,6 +233,61 @@ spy_aws$lambda_next_query_string(void) {
     return result;
 }
 
+/* Return the value of a named query parameter from the cached event's
+ * rawQueryString (e.g. "aaa=1&bbb=2"). Returns "" if the key is absent. */
+static inline spy_Str *
+spy_aws$lambda_next_get_query_param(spy_Str *name) {
+    char *qs = spy_aws_json_extract(spy_aws_event_cache.data, "rawQueryString");
+    if (!qs)
+        qs = strdup("");
+
+    /* null-terminate name for easy strcmp */
+    size_t name_len = name->length;
+    char key[256];
+    if (name_len >= sizeof(key))
+        name_len = sizeof(key) - 1;
+    memcpy(key, name->utf8, name_len);
+    key[name_len] = '\0';
+
+    char *result_str = NULL;
+    char *p = qs;
+    while (*p) {
+        /* find end of this key (up to '=' or end of string) */
+        char *eq = strchr(p, '=');
+        if (!eq)
+            break;
+        size_t klen = eq - p;
+        if (klen == name_len && memcmp(p, key, klen) == 0) {
+            /* found our key; value extends to '&' or end of string */
+            char *vstart = eq + 1;
+            char *amp = strchr(vstart, '&');
+            size_t vlen = amp ? (size_t)(amp - vstart) : strlen(vstart);
+            result_str = malloc(vlen + 1);
+            if (result_str) {
+                memcpy(result_str, vstart, vlen);
+                result_str[vlen] = '\0';
+            }
+            break;
+        }
+        /* advance past this pair */
+        char *amp = strchr(eq + 1, '&');
+        if (!amp)
+            break;
+        p = amp + 1;
+    }
+
+    free(qs);
+
+    if (!result_str)
+        result_str = strdup("");
+
+    size_t len = strlen(result_str);
+    spy_Str *result = spy_str_alloc(len);
+    memcpy((char *)result->utf8, result_str, len);
+    free(result_str);
+    return result;
+}
+
 /* Send an HTTP response for the current Lambda invocation. */
 static inline void
 spy_aws$response(int32_t status_code, spy_Str *body, spy_Str *content_type) {
