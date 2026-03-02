@@ -1,3 +1,5 @@
+from math import isinf, isnan
+
 import pytest
 
 from spy.errors import SPyError
@@ -86,13 +88,42 @@ class TestComplex(CompilerTest):
     def test_explicit_conversion(self, complex_type):
         mod = self.compile(f"""
         T = {complex_type}
-        # def str_to_complex(x: str) -> T:     return T(x)
+        def str_to_complex(x: str) -> T:     return T(x)
         def i32_to_complex(x: i32) -> T:     return T(x)
         def f64_to_complex(x: f64) -> T:     return T(x)
         """)
-        # assert mod.str_to_complex("5.1") == 5.1 + 0j
+        assert mod.str_to_complex("5.1") == 5.1 + 0j
         assert mod.i32_to_complex(5) == 5 + 0j
         assert mod.f64_to_complex(5.1) == 5.1 + 0j
+
+    def test_str_parsing_conversion(self, complex_type):
+        mod = self.compile(f"""
+        T = {complex_type}
+        def str_to_complex(x: str) -> T:     return T(x)
+        """)
+        assert mod.str_to_complex("+1.23") == 1.23 + 0j
+        assert mod.str_to_complex("-4.5j") == -4.5j
+        assert mod.str_to_complex("-1.23+4.5j") == -1.23 + 4.5j
+        assert mod.str_to_complex("\t( -1.23+4.5J )\n") == -1.23 + 4.5j
+        with SPyError.raises(
+            "W_ValueError", match=r"complex\(\) arg is a malformed string"
+        ):
+            mod.str_to_complex(" ")
+        with SPyError.raises(
+            "W_ValueError", match=r"complex\(\) arg is a malformed string"
+        ):
+            mod.str_to_complex(" (   ) ")
+        with SPyError.raises(
+            "W_ValueError", match=r"complex\(\) arg is a malformed string"
+        ):
+            mod.str_to_complex("-4.5j+1.23")
+        with SPyError.raises(
+            "W_ValueError", match=r"complex\(\) arg is a malformed string"
+        ):
+            mod.str_to_complex("1 + 2j")
+        c = mod.str_to_complex("-Infinity+NaNj")
+        assert isinf(c.real)
+        assert isnan(c.imag)
 
     def test_explicit_conv_two_params(self, complex_type):
         mod = self.compile(f"""

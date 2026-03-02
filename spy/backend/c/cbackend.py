@@ -223,4 +223,9 @@ class CBackend:
                     or isinstance(w_obj, W_Cell)
                 )
             ]
+
+        # common wasm exports
+        libspy_exports = ["spy_str_alloc"]
+        wasm_exports.extend(libspy_exports)
+
         return wasm_exports
