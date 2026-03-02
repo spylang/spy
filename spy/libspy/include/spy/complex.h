@@ -3,7 +3,6 @@
 
 #include "spy.h"
 #include "spy/debug.h"
-#include "spy/str.h"
 #include <complex.h>
 #include <ctype.h>
 #include <errno.h>
@@ -34,7 +33,7 @@ spy_complex128_conjugate(spy_Complex128 x) {
     return x;
 }
 
-spy_Complex128
+static inline spy_Complex128
 spy_operator$str_to_complex128(spy_Str *x) {
     size_t len = x->length;
     if (len == 0) {
@@ -43,7 +42,7 @@ spy_operator$str_to_complex128(spy_Str *x) {
         );
     }
 
-    char *start = spy_str_alloc(len)->utf8;
+    char *start = (char *)spy_str_alloc(len)->utf8;
     const char *s = (char *)x->utf8;
     memcpy(start, s, len);
     char *end = start + len - 1;
