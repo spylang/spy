@@ -7,6 +7,7 @@
 #include <ctype.h>
 #include <errno.h>
 #include <math.h>
+#include <stdio.h>
 
 typedef struct {
     double real;
@@ -46,7 +47,6 @@ spy_operator$str_to_complex128(spy_Str *x) {
     const char *s = (char *)x->utf8;
     memcpy(start, s, len);
     char *end = start + len - 1;
-    start[len] = '\0';
 
     while (isspace(*start))
         start++;
