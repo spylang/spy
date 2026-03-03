@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Optional
 
 import click
-from typer import Option
+from typer import Argument, Option
 
 from spy.analyze.importing import ImportAnalyzer
 from spy.backend.html import SpyastJs
@@ -47,7 +47,11 @@ class _redshift_mixin:
 @dataclass
 class Redshift_Args(
     Base_Args, _redshift_mixin, _execute_flag, _execute_options, Filename_Required_Args
-): ...
+):
+    extra_files: Annotated[
+        Optional[list[Path]],
+        Argument(help="Additional modules to dump"),
+    ] = None
 
 
 async def redshift(args: Redshift_Args) -> None:
@@ -58,7 +62,17 @@ async def redshift(args: Redshift_Args) -> None:
     modname = args.filename.stem
     vm = await init_vm(args)
 
+    extra_files = args.extra_files or []
+    extra_modnames = [f.stem for f in extra_files]
+
+    for extra_file in extra_files:
+        srcdir = str(extra_file.parent)
+        if srcdir not in vm.path:
+            vm.path.append(srcdir)
+
     importer = ImportAnalyzer(vm, modname, use_spyc=not args.no_spyc)
+    for extra_modname in extra_modnames:
+        importer.queue.append(extra_modname)
     importer.parse_all()
     importer.import_all()
 
@@ -70,16 +84,22 @@ async def redshift(args: Redshift_Args) -> None:
         argv = args.argv or []
         execute_spy_main(vm, w_mod, argv, redshift=True, _timeit=args.timeit)
     else:
-        if args.format == "spy":
-            dump_spy_mod(vm, modname, args.full_fqn)
-        elif args.format == "ast":
-            dump_spy_mod_ast(vm, modname)
-        elif args.format == "html":
-            html = dump_spy_mod_html(vm, modname, args.spyast_js)
-            build_dir = Path(args.filename.parent) / "build"
-            build_dir.mkdir(exist_ok=True, parents=True)
-            out = build_dir / f"{modname}_rs.html"
-            out.write_text(html)
-            print(f"Written {out}")
-        else:
-            assert False, f"Invalid redshift format `{args.format}`"
+        all_files = [args.filename] + extra_files
+        all_modnames = [modname] + extra_modnames
+        show_filename = len(all_modnames) > 1
+        for filename, mod_name in zip(all_files, all_modnames):
+            if show_filename and args.format in ("spy", "ast"):
+                print(f"# {filename}")
+            if args.format == "spy":
+                dump_spy_mod(vm, mod_name, args.full_fqn)
+            elif args.format == "ast":
+                dump_spy_mod_ast(vm, mod_name)
+            elif args.format == "html":
+                html = dump_spy_mod_html(vm, mod_name, args.spyast_js)
+                build_dir = Path(filename.parent) / "build"
+                build_dir.mkdir(exist_ok=True, parents=True)
+                out = build_dir / f"{mod_name}_rs.html"
+                out.write_text(html)
+                print(f"Written {out}")
+            else:
+                assert False, f"Invalid redshift format `{args.format}`"
