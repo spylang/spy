@@ -457,7 +457,6 @@ class W_Ref(W_MemLoc):
         ref_T = wam_T.w_static_T
         assert isinstance(ref_T, W_RefType)
         w_T = ref_T.w_itemT
-        assert isinstance(w_T, W_Type)
 
         name = wam_name.blue_unwrap_str(vm)
         w_meth = w_T.lookup(name)
