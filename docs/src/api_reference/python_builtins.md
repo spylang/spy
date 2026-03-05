@@ -15,12 +15,24 @@ The following built-in functions work similarly to their equivalents in CPython;
 
 :   Currently only implemented for int32's or objects convertible to int32's. The `__abs__` attribute is not currently supported.
 
+### __breakpoint()__
+
+:   Drops the user into an interactive SPy debugging session via `spdb`, a `pdb-like` debugging interface for SPy.
+
 ### __dict__\[type\]() { data-toc-label='dict()' }
-:   The syntax `dict[keytype, valuetype]()` can be used to create a new empty dict of the given types; unlike CPython, this does not (currently) accept an Iterable to create a new dict from.
+:   In SPy, `dict` must always be fully typed and used as `dict[keytype, valuetype]`. The syntax `dict[keytype, valuetype]()` can be used to create a new empty dict of the given types; unlike CPython, this does not (currently) accept an Iterable to create a new dict from. The simpler syntax `d: dict[keytype, valuetype] = {}` can also be used.
+
+:   The implemention (in SPy) of `dict` can be [viewed here](https://github.com/spylang/spy/blob/main/stdlib/_dict.spy).
+
+### __dir__(object) {data-toc-label='dir()'}
+
+:   Returns a list of object’s attributes’ names, the names of its class’s attributes, and recursively of the attributes of its class’s base classes. `dir(type)` is not currently implemented.
+
+:   The no-argument form of `dir()` a-la CPython (i.e. print local variables) is not implemented. Custom `__dir__` methods on objects are not currently supported.
 
 ### __float__(object) { data-toc-label='float()' }
 
-:   Converts `object` to a float if able
+:   Converts `object` to a float if able. `float` is an alias for the `f64` type.
 
 ### __getattr__(obj, name: str) { data-toc-label='getattr()' }
 
@@ -29,13 +41,11 @@ The following built-in functions work similarly to their equivalents in CPython;
 ### __hash__(object) { data-toc-label='hash()' }
 :   Currently implemented for types: `i8`,`i32`, `u8`, `bool`, `str`.
 
-:   By default, instances of SPy classes are not hashable are not hashable. Users can implement the `__hash__` function to permit hashing.
+:   By default, instances of SPy structs are not hashable. A future feature will be that structs will have auto-generated `__hash__` by default, btu that is awaiting implementation. Currently, users can implement the `__hash__` function to permit hashing. 
 
 ### __int__(object) { data-toc-label='int()' }
 
-:    Converts `object` to an int if able. Works for number types, as well as strings.
-
-:    For conversion to specific integer types, see also [str_to_i32()](), [str_to_u32()](), [str_to_i8()](), [str_to_u8()]().
+:    Converts `object` to an int if able. Works for number types, as well as strings. The `int` type is currently an alias to `i32`. In the future, `int` will alias preferred individual types for specific platforms, but currently it is always `i32`.
 
 ### __len__(object) { data-toc-label='len()' }
 
@@ -43,15 +53,21 @@ The following built-in functions work similarly to their equivalents in CPython;
 
 ### __list__\[type\]() { data-toc-label='list()' }
 
-:   The syntax `list[type]()` can be used to create a new empty list of the given type; unlike CPython, this does not (currently) accept an Iterable to create a new list from.
+:   The syntax `list[type]()` can be used to create a new empty list of the given type; unlike CPython, this does not (currently) accept an Iterable to create a new list from. The simpler syntax `l: list[membertype] = []` can also be used.
+
+:   The implemention (in SPy) of `list` can be [viewed here](https://github.com/spylang/spy/blob/main/stdlib/_list.spy).
 
 ### __max__(x: i32, y: i32) { data-toc-label='max()' }
 
 :   Currently only implemented for int32's or objects convertible to int32's.
 
-### __max__(x: i32, y: i32) { data-toc-label='min()' }
+### __min__(x: i32, y: i32) { data-toc-label='min()' }
 
 :   Currently only implemented for int32's or objects convertible to int32's.
+
+### object
+
+:   `object` is implemented as a type, and can be used as a paramter or return type. "Plain" objects (i.e. `x = object()`) are not supported.
 
 ### __print__(obj) { data-toc-label='print()' }
 
@@ -60,7 +76,9 @@ The following built-in functions work similarly to their equivalents in CPython;
 ### __range__(stop) { data-toc-label='range()' }
 <h3> <b>range</b>(start, stop, step) { data-toc-label='' }</h3> <!-- An HTML label to hide this in the TOC -->
 
-Creates an iterable set of indices between `start` and `stop`, jumping over `step` indices between each.
+:   Creates an iterable set of indices between `start` and `stop`, jumping over `step` indices between each.
+
+:   The implemention (in SPy) of `range` can be [viewed here](https://github.com/spylang/spy/blob/main/stdlib/_range.spy).
 
 ### __repr__(object) { data-toc-label='repr()' }
 
@@ -79,6 +97,12 @@ Creates an iterable set of indices between `start` and `stop`, jumping over `ste
 
 :   Returns a string version of the object. Selecting an encoding is not currently implemented.
 
+### __tuple__()
+
+:   The syntax `tuple[t1, t2, ...](val1, val2 ...)` can be used to create a new tuple, with `t1` as the type of `val1`, etc. unlike CPython, this does not (currently) accept an Iterable to create a new tuple from. 
+
+:   The implemention (in SPy) of `tuple` can be [viewed here](https://github.com/spylang/spy/blob/main/stdlib/_tuple.spy).
+
 ### __type__(object) { data-toc-label='type()' }
 
 :   Returns the type (i.e. the dynamic type at runtime) of an object
@@ -95,7 +119,9 @@ SPy does not currently have an async story.
 
 ### Iterables and Iterators
 
-Iterables and collections are very much an area of active developmen; their API solidifies, these types of builtins should become more straightfoward to implement.
+Iterables and collections are very much an area of active developmen; as their API solidifies, these types of builtins should become more straightfoward to implement.
+
+Generators are not currently supported in SPy.
 
 :   all(), any(), enumerate(), filter(), iter(), map(), next(), reversed(), sorted(), sum(), zip()
 
@@ -109,13 +135,13 @@ Number types beyond int and float are in active development; some of the math fu
 
 The internals of SPy are significantly different from CPython; as such, the road to (and need for) some of these built-ins is less straightfoward. Some are also waiting on internal details to solidify prior to implementation.
 
-:   breakpoint(), callable(), classmethod(), compile(), delattr(), dir(), eval(), exec(), globals(), hasattr(), help(), id(), isinstance(), issubclass(), locals(), property(), staticmethod(), super(), type(), vars(). \_\_import\_\_()
+:   callable(), classmethod(), compile(), delattr(), eval(), exec(), globals(), hasattr(), help(), id(), isinstance(), issubclass(), locals(), property(), super(), vars(). \_\_import\_\_()
 
 ### Type Conversion
 
 Many of these types are not implemented yet; others are in active development.
 
-:   ascii(), bool(), bytearray(), bytes(), chr(), complex(), format(), frozenset(), memoryview(), object(), ord() set(), tuple()
+:   ascii(), bool(), bytearray(), bytes(), chr(), complex(), format(), frozenset(), memoryview(), ord() set(), tuple()
 
 ### I/O
 
