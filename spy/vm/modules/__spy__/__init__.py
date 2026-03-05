@@ -20,6 +20,7 @@ SPY = ModuleRegistry("__spy__")
 from . import (
     interp_dict,  # noqa: F401 -- side effects
     interp_list,  # noqa: F401 -- side effects
+    interp_tuple,  # noqa: F401 -- side effects
 )
 
 # XXX: maybe we should move also STATIC_TYPE here?

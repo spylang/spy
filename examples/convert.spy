@@ -1,0 +1,50 @@
+"""
+Example which shows how to use __convert_to__ and __convert_from__
+"""
+
+from operator import OpSpec
+
+
+@struct
+class CursedStr:
+    """
+    A str which can be implicitly converted to/from int
+    """
+
+    value: str
+
+    @blue.metafunc
+    def __convert_to__(m_expT, m_gotT, m_x):
+        expT = m_expT.blueval  # expected type
+        if expT == int:
+
+            def conv(x: CursedStr) -> int:
+                return int(x.value)
+
+            return OpSpec(conv, [m_x])
+
+        return OpSpec.NULL
+
+    @blue.metafunc
+    def __convert_from__(m_expT, m_gotT, m_x):
+        gotT = m_gotT.blueval  # got type
+        if gotT == int:
+
+            def conv(x: int) -> CursedStr:
+                return CursedStr(str(x))
+
+            return OpSpec(conv, [m_x])
+
+        return OpSpec.NULL
+
+
+def inc(x: int) -> int:
+    return x + 1
+
+
+def main() -> None:
+    s = CursedStr("41")
+    print(inc(s))
+
+    s2: CursedStr = 123
+    print("Hello " + s2.value)

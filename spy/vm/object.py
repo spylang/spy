@@ -46,6 +46,7 @@ basically a thin wrapper around the correspindig interp-level W_* class.
 
 import typing
 from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from typing import (
     TYPE_CHECKING,
     Annotated,
@@ -63,6 +64,7 @@ from typing import (
 from spy.ast import Color
 from spy.errors import WIP, SPyError
 from spy.fqn import FQN
+from spy.location import Loc
 from spy.vm.b import B
 
 if TYPE_CHECKING:
@@ -70,7 +72,7 @@ if TYPE_CHECKING:
     from spy.vm.field import W_Field
     from spy.vm.function import W_Func
     from spy.vm.opspec import W_MetaArg, W_OpSpec
-    from spy.vm.primitive import W_Bool, W_NoneType
+    from spy.vm.primitive import W_Bool, W_Dynamic, W_NoneType
     from spy.vm.vm import SPyVM
 
 
@@ -692,6 +694,14 @@ class W_Type(W_Object):
 
     # ======== app-level interface ========
 
+    @builtin_method("__new__")
+    @staticmethod
+    def w_new(vm: "SPyVM", w_obj: "W_Dynamic") -> "W_Type":
+        """
+        This implements `type(obj)`, i.e. it returns its dynamic type
+        """
+        return vm.dynamic_type(w_obj)
+
     # this is the equivalent of CPython's typeobject.c:type_getattro
     @builtin_method("__getattribute__", color="blue", kind="metafunc")
     @staticmethod
@@ -841,6 +851,7 @@ class ClassBody:
     define user-defined types.
     """
 
+    loc: Loc
     fields_w: dict[str, "W_Field"]
     dict_w: dict[str, W_Object]
 

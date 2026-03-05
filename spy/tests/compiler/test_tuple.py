@@ -1,45 +1,59 @@
 import pytest
 
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest, expect_errors, no_C
+from spy.tests.support import CompilerTest, expect_errors, only_interp
+from spy.vm.b import B
+from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
 
 
-# Eventually we want to remove the @only_interp, but for now the C backend
-# doesn't support lists
-@no_C
 class TestTuple(CompilerTest):
-    def test_literal(self):
+    """
+    These are only few of the tests about tuples, mostly to check that:
+
+      1. tuple[T1, T2, ...] does the right thing
+
+      2. the tuple literal syntax "(a, b, c)" works
+
+    The actual behavior of tuple objects is tested by stdlib/test__tuple.py and
+    test_interp_tuple.py
+    """
+
+    def test_literal_stdlib(self):
         mod = self.compile("""
-        def foo() -> dynamic:
-            return 1, 2, 'hello'
+        def foo() -> tuple[i32, i32]:
+            return 1, 2
         """)
         tup = mod.foo()
-        assert tup == (1, 2, "hello")
+        assert tup == (1, 2)
 
-    def test_getitem(self):
+    @only_interp
+    def test_literal_interp_tuple(self):
         mod = self.compile("""
-        def foo(i: i32) -> dynamic:
-            tup = 1, 2, 'hello'
-            return tup[i]
+        def foo() -> tuple[int, type]:
+            return 1, int
         """)
-        x = mod.foo(0)
-        assert x == 1
-        y = mod.foo(2)
-        assert y == "hello"
+        w_tup = mod.foo(unwrap=False)
+        assert isinstance(w_tup, W_InterpTuple)
+        w_x, w_T = w_tup.items_w
+        assert self.vm.unwrap_i32(w_x) == 1
+        assert w_T is B.w_i32
 
-    def test_len(self):
+    def test_unpacking_blue(self):
         mod = self.compile("""
+        @blue
+        def make_tuple():
+            return 1, 2, 'hello'
+
         def foo() -> i32:
-            tup = 1, 2, 'hello'
-            return len(tup)
+            a, b, c = make_tuple()
+            return a + b
         """)
         x = mod.foo()
         assert x == 3
 
-    def test_unpacking(self):
+    def test_unpacking_red(self):
         mod = self.compile("""
-        @blue
-        def make_tuple() -> tuple:
+        def make_tuple() -> tuple[i32, i32, str]:
             return 1, 2, 'hello'
 
         def foo() -> i32:
@@ -51,8 +65,7 @@ class TestTuple(CompilerTest):
 
     def test_unpacking_wrong_number(self):
         src = """
-        @blue
-        def make_tuple() -> tuple:
+        def make_tuple() -> tuple[int, int]:
             return 1, 2
 
         def foo() -> None:
@@ -75,20 +88,3 @@ class TestTuple(CompilerTest):
             ("this is `i32`", "42"),
         )
         self.compile_raises(src, "foo", errors)
-
-    def test_eq(self):
-        mod = self.compile("""
-        def tup1() -> tuple:
-            return 1, 2
-
-        def tup2() -> tuple:
-            return 3, 4
-
-        def foo() -> bool:
-            return tup1() == tup1()
-
-        def bar() -> bool:
-            return tup1() == tup2()
-        """)
-        assert mod.foo()
-        assert not mod.bar()

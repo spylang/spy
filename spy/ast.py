@@ -22,11 +22,24 @@ from spy.location import Loc
 from spy.util import extend
 
 if TYPE_CHECKING:
+    from spy.vm.object import W_Type
     from spy.vm.vm import SPyVM
 
 ClassKind = typing.Literal["class", "struct"]
 FuncKind = typing.Literal["plain", "generic", "metafunc"]
 FuncParamKind = typing.Literal["simple", "var_positional"]
+
+# ==== Typed vs untyped ASTs ====
+#
+# The Expr class has an optional field w_T which indicates the type of the expression.
+#
+# AST trees are said UNTYPED when all their Exprs have w_T == None.
+# AST trees are said TYPED when all their Exprs have w_T != None.
+#
+# It is a logical error to have AST trees which mix typed and untyped nodes.
+#
+# The parser produces UNTYPED ASTs. DopplerFrame produces TYPED ASTs.
+# ================================
 
 
 @extend(py_ast.AST)
@@ -225,6 +238,9 @@ class Expr(Node):
     # precedence must be overriden by subclasses. The weird type comment is
     # needed to make mypy happy
     precedence = "<Expr.precedence not set>"  # type: int # type: ignore
+
+    # the type of the expression: present only in TYPED ASTs.
+    w_T: Optional["W_Type"] = field(default=None, kw_only=True)
 
 
 @astnode

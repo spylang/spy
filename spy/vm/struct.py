@@ -1,11 +1,14 @@
 from typing import TYPE_CHECKING, Annotated, Any, Iterable, Optional
 
+from spy import ast
+from spy.analyze.scope import ScopeAnalyzer
 from spy.errors import WIP, SPyError
 from spy.fqn import FQN
+from spy.location import Loc
 from spy.vm.b import BUILTINS, TYPES, B
 from spy.vm.builtin import W_BuiltinFunc, builtin_method
 from spy.vm.field import W_Field
-from spy.vm.function import FuncParam, W_BuiltinFunc, W_FuncType
+from spy.vm.function import FuncParam, W_ASTFunc, W_BuiltinFunc, W_FuncType
 from spy.vm.irtag import IRTag
 from spy.vm.modules.__spy__.interp_dict import W_InterpDict
 from spy.vm.object import ClassBody, W_Object, W_Type
@@ -15,7 +18,14 @@ from spy.vm.property import W_StaticMethod
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-OFFSETS_T = dict[str, int]
+
+@TYPES.builtin_func(color="red")
+def w__eq_ne_placeholder(vm: "SPyVM", w_a: W_Object, w_b: W_Object) -> None:
+    """
+    Temporary placeholder for struct's __eq__ and __ne__. See
+    W_StructType.define_from_classbody.
+    """
+    raise SPyError("W_AssertionError", "_eq_ne_placeholder should never be called")
 
 
 @TYPES.builtin_type("StructType")
@@ -25,8 +35,17 @@ class W_StructType(W_Type):
 
     def define_from_classbody(self, vm: "SPyVM", body: ClassBody) -> None:
         """
-        "Fully" define the struct type, including adding the __make__ function to
-        the globals.
+        "Finalize" the definition of the struct type.
+
+        The lazy/define distinction is needed because of @ModuleRegistry.struct_type:
+        structs defined that way don't have a vm available immediately, so we need to
+        split the logic in two:
+
+          1. vm-indipendent logic is done inside lazy_define_from_classbody
+          2. vm-dependent logic is done here
+
+        In particular, we need a vm to create custom ASTFuncs for __eq__ and __ne__, and
+        for registering those plus __make__ to the vm globals.
         """
         self.lazy_define_from_classbody(body)
         # add the __make__ to the globals
@@ -36,15 +55,17 @@ class W_StructType(W_Type):
         assert isinstance(w_make, W_BuiltinFunc)
         vm.add_global(w_make.fqn, w_make, irtag=IRTag("struct.make"))
 
+        if self.spy_key_is_valid:
+            assert self.dict_w["__eq__"] is TYPES.w__eq_ne_placeholder
+            assert self.dict_w["__ne__"] is TYPES.w__eq_ne_placeholder
+            self.dict_w["__eq__"] = w_eq = self._create_w_eq_ne("__eq__")
+            self.dict_w["__ne__"] = w_ne = self._create_w_eq_ne("__ne__")
+            vm.add_global(w_eq.fqn, w_eq)
+            vm.add_global(w_ne.fqn, w_ne)
+
     def lazy_define_from_classbody(self, body: ClassBody) -> None:
         """
         Partially define the struct type.
-
-        The main difference w.r.t. define_from_classbody is that the __make__ function
-        is NOT added to the globals.
-
-        This is mostly useful to implement ModuleRegistry.struct_type, because in that
-        case the __make__ function will be registered at vm.make_module time.
         """
         # compute the layout of the struct and get the list of its fields
         if "__extra_fields__" in body.dict_w:
@@ -52,7 +73,7 @@ class W_StructType(W_Type):
             assert isinstance(w_extra, W_InterpDict)
             for name, (_, w_type) in w_extra.items_w.items():
                 assert isinstance(w_type, W_Type)
-                body.fields_w[name] = W_Field(name, w_type)
+                body.fields_w[name] = W_Field(name, w_type, body.loc)
 
         struct_fields_w, size = calc_layout(body.fields_w)
         self.size = size
@@ -88,6 +109,8 @@ class W_StructType(W_Type):
             self.spy_key_is_valid = False
         else:
             self.spy_key_is_valid = True
+            dict_w["__eq__"] = w__eq_ne_placeholder
+            dict_w["__ne__"] = w__eq_ne_placeholder
 
         super().define(W_Struct, dict_w)
 
@@ -128,6 +151,71 @@ class W_StructType(W_Type):
         w_make = W_BuiltinFunc(w_functype, fqn, w_make_impl)
         return w_make
 
+    def _create_w_eq_ne(self, name: str) -> W_ASTFunc:
+        """
+        Auto-generate __eq__ or __ne__ as an ASTFunc for field-by-field comparison.
+
+        def __eq__(a: Point, b: Point) -> bool:
+            return a.x == b.x and a.y == b.y and ...
+
+        def __ne__(a: Point, b: Point) -> bool:
+            return not (a.x == b.x and a.y == b.y and ...)
+        """
+        fields_w = list(self.iterfields_w())
+        func_loc = Loc.here()
+
+        def cmp_field(w_field: W_StructField) -> ast.Expr:
+            loc = w_field.loc
+            a = ast.GetAttr(loc, ast.Name(loc, "a"), ast.StrConst(loc, w_field.name))
+            b = ast.GetAttr(loc, ast.Name(loc, "b"), ast.StrConst(loc, w_field.name))
+            return ast.CmpOp(Loc.here(), "==", a, b)
+
+        if not fields_w:
+            result: ast.Expr = ast.Constant(func_loc, True)
+        else:
+            result = cmp_field(fields_w[0])
+            for w_field in fields_w[1:]:
+                result = ast.And(w_field.loc, result, cmp_field(w_field))
+
+        if name == "__eq__":
+            stmt = ast.Return(func_loc, result)
+        elif name == "__ne__":
+            stmt = ast.Return(func_loc, ast.UnaryOp(Loc.here(), "not", result))
+        else:
+            assert False
+
+        self_type = ast.FQNConst(func_loc, self.fqn)
+        funcdef = ast.FuncDef(
+            loc=func_loc,
+            color="red",
+            kind="plain",
+            name=name,
+            args=[
+                ast.FuncArg(func_loc, "a", self_type, "simple"),
+                ast.FuncArg(func_loc, "b", self_type, "simple"),
+            ],
+            return_type=ast.FQNConst(func_loc, B.w_bool.fqn),
+            docstring=None,
+            body=[stmt],
+            decorators=[],
+        )
+
+        # create a fake module so that we can run ScopeAnalyzer
+        module = ast.Module(
+            loc=func_loc,
+            filename="<generated>",
+            docstring=None,
+            decls=[ast.GlobalFuncDef(func_loc, funcdef)],
+        )
+        analyzer = ScopeAnalyzer(self.fqn.modname, module)
+        analyzer.analyze()
+
+        # create the actual W_ASTFunc object
+        params = [FuncParam(self, "simple"), FuncParam(self, "simple")]
+        w_functype = W_FuncType.new(params, w_restype=B.w_bool)
+        fqn = self.fqn.join(name)
+        return W_ASTFunc(w_functype, fqn, funcdef, closure=())
+
     def repr_hints(self) -> list[str]:
         return super().repr_hints() + ["struct"]
 
@@ -149,7 +237,7 @@ def calc_layout(fields_w: dict[str, W_Field]) -> tuple[list["W_StructField"], in
         field_size = sizeof(w_field.w_T)
         # compute alignment
         offset = (offset + (field_size - 1)) & ~(field_size - 1)
-        struct_fields_w.append(W_StructField(name, w_field.w_T, offset))
+        struct_fields_w.append(W_StructField(name, w_field.w_T, offset, w_field.loc))
         offset += field_size
     size = offset
     return struct_fields_w, size
@@ -239,10 +327,11 @@ class W_Struct(W_Object):
 class W_StructField(W_Object):
     __spy_storage_category__ = "value"
 
-    def __init__(self, name: str, w_T: W_Type, offset: int) -> None:
+    def __init__(self, name: str, w_T: W_Type, offset: int, loc: Loc) -> None:
         self.name = name
         self.w_T = w_T
         self.offset = offset
+        self.loc = loc
 
     def spy_key(self, vm: "SPyVM") -> Any:
         return ("StructField", self.name, self.w_T.spy_key(vm), self.offset)

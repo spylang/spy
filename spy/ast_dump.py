@@ -121,6 +121,9 @@ class Dumper(TextBuilder):
             self.writeline("")
         with self.indent():
             for field, value in zip(fields, values):
+                # print the w_T only if it's not None
+                if field == "w_T" and value is None:
+                    continue
                 is_last = field is fields[-1]
                 self.write(f"{field}=")
                 self.dump_anything(value)

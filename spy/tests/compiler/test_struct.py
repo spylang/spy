@@ -49,6 +49,21 @@ class TestStructOnStack(CompilerTest):
         assert mod.foo(3, 4) == 7
         assert mod.bar(5, 6) == 11
 
+    def test_str_field(self):
+        mod = self.compile("""
+        @struct
+        class Named:
+            name: str
+            value: i32
+
+        def make(n: str, v: i32) -> Named:
+            return Named(n, v)
+        """)
+        s = mod.make("hello", 42)
+        assert s == ("hello", 42)
+        assert s.name == "hello"
+        assert s.value == 42
+
     def test_wrong_field(self):
         src = """
         @struct
@@ -203,6 +218,44 @@ class TestStructOnStack(CompilerTest):
         msg = "method `test::Point::dont_exist` does not exist"
         with SPyError.raises("W_TypeError", match=msg):
             mod.wrong_meth(10.0)
+
+    def test_default_eq(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo(x0: i32, y0: i32, x1: i32, y1: i32) -> bool:
+            p0 = Point(x0, y0)
+            p1 = Point(x1, y1)
+            return p0 == p1
+        """
+        mod = self.compile(src)
+        assert mod.foo(1, 2, 3, 4) == False
+        assert mod.foo(1, 2, 1, 2) == True
+
+    def test_default_eq_nested(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        @struct
+        class Rect:
+            top_left: Point
+            bottom_right: Point
+
+        def foo(x0: i32, y0: i32, x1: i32, y1: i32,
+                x2: i32, y2: i32, x3: i32, y3: i32) -> bool:
+            r0 = Rect(Point(x0, y0), Point(x1, y1))
+            r1 = Rect(Point(x2, y2), Point(x3, y3))
+            return r0 == r1
+        """
+        mod = self.compile(src)
+        assert mod.foo(0, 0, 1, 1, 0, 0, 1, 1) == True
+        assert mod.foo(0, 0, 1, 1, 0, 0, 1, 2) == False
 
     def test_custom_new(self):
         src = """
