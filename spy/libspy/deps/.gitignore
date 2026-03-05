@@ -1,0 +1,3 @@
+build/
+gc-*/
+*.tar.gz

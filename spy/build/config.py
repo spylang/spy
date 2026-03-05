@@ -1,3 +1,6 @@
+import shutil
+import subprocess
+import sys
 from dataclasses import dataclass
 from os import getenv
 from typing import Literal, Optional
@@ -7,6 +10,7 @@ import spy.libspy
 BuildTarget = Literal["native", "wasi", "emscripten"]
 OutputKind = Literal["exe", "lib", "py-cffi"]
 BuildType = Literal["release", "debug"]
+GCOption = Literal["none", "bdwgc"]
 
 
 @dataclass
@@ -16,6 +20,8 @@ class BuildConfig:
     build_type: BuildType
     opt_level: Optional[int] = None
     warning_as_error: bool = False
+    gc: GCOption = "none"
+    static: bool = False
 
 
 # ======= CFLAGS and LDFLAGS logic =======
@@ -60,11 +66,31 @@ class CompilerConfig:
 
         # e.g. 'spy/libspy/build/native/release/'
         self.ldflags += LDFLAGS
-        libdir = spy.libspy.BUILD.join(config.target, config.build_type)
-        self.ldflags += [
-            "-L", str(libdir),
-            "-lspy",
-        ]  # fmt: skip
+        if config.static:
+            assert config.target == "native"
+            libdir_target = "native-static"
+        else:
+            libdir_target = config.target
+        libdir = spy.libspy.BUILD.join(libdir_target, config.build_type)
+        if config.target == "wasi" and config.kind == "lib":
+            # WASM libs are mostly used by tests: in this case we want to make sure to
+            # include the whole libspy.a, so that helper functions usch as spy_str_alloc
+            # are always available.
+            #
+            # If you don't pass --whole-archive, the linker will silently discard all
+            # the .o files which are not used (so e.g. if you never call any str_*
+            # function, str.o is discarded and spy_str_alloc is not present at all).
+            libspy_a = str(libdir.join("libspy.a"))
+            self.ldflags += [
+                "-Wl,--whole-archive",
+                libspy_a,
+                "-Wl,--no-whole-archive",
+            ]  # fmt: skp
+        else:
+            self.ldflags += [
+                "-L", str(libdir),
+                "-lspy",
+            ]  # fmt: skip
 
         if config.warning_as_error or getenv("SPY_WERROR") in ("true", "1"):
             self.cflags += WARNING_AS_ERROR_CFLAGS
@@ -79,7 +105,13 @@ class CompilerConfig:
             self.ldflags += DEBUG_CFLAGS
 
         # target specific flags
-        if config.target == "native":
+        if config.target == "native" and config.static:
+            self.CC = "python -m ziglang cc"
+            self.ext = ""
+            self.cflags += ["--target=native-native-musl"]
+            self.ldflags += ["--target=native-native-musl", "-static"]
+
+        elif config.target == "native":
             self.CC = "cc"
             self.ext = ""
 
@@ -109,3 +141,36 @@ class CompilerConfig:
 
         if config.opt_level is not None:
             self.cflags += [f"-O{config.opt_level}"]
+
+        # GC flags
+        if config.gc == "bdwgc":
+            self.cflags += ["-DSPY_GC_BDWGC"]
+            if config.static:
+                self._build_bdwgc_static()
+                gc_prefix = str(spy.libspy.DEPS.join("build", "native-static"))
+                self.cflags += ["-I", f"{gc_prefix}/include"]
+                self.ldflags += ["-L", f"{gc_prefix}/lib", "-lgc"]
+            else:
+                self.ldflags += ["-lgc"]
+                # On macOS, Homebrew installs bdw-gc outside the default
+                # compiler search paths
+                if sys.platform == "darwin" and shutil.which("brew"):
+                    prefix = subprocess.run(
+                        ["brew", "--prefix", "bdw-gc"],
+                        capture_output=True,
+                        text=True,
+                    ).stdout.strip()
+                    if prefix:
+                        self.cflags += ["-I", f"{prefix}/include"]
+                        self.ldflags += ["-L", f"{prefix}/lib"]
+
+    @staticmethod
+    def _build_bdwgc_static() -> None:
+        deps_dir = str(spy.libspy.DEPS)
+        libgc = spy.libspy.DEPS.join("build", "native-static", "lib", "libgc.a")
+        if libgc.check(file=True):
+            return
+        subprocess.run(
+            ["make", "-C", deps_dir, "TARGET=native-static", "bdwgc"],
+            check=True,
+        )

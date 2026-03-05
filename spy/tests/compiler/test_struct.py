@@ -7,6 +7,7 @@ from spy.tests.wasm_wrapper import WasmPtr
 from spy.vm.b import B
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.object import W_Type
+from spy.vm.registry import ModuleRegistry
 from spy.vm.struct import UnwrappedStruct
 
 
@@ -48,6 +49,21 @@ class TestStructOnStack(CompilerTest):
         assert mod.foo(3, 4) == 7
         assert mod.bar(5, 6) == 11
 
+    def test_str_field(self):
+        mod = self.compile("""
+        @struct
+        class Named:
+            name: str
+            value: i32
+
+        def make(n: str, v: i32) -> Named:
+            return Named(n, v)
+        """)
+        s = mod.make("hello", 42)
+        assert s == ("hello", 42)
+        assert s.name == "hello"
+        assert s.value == 42
+
     def test_wrong_field(self):
         src = """
         @struct
@@ -83,6 +99,29 @@ class TestStructOnStack(CompilerTest):
         p = mod.make_point(1, 2)
         assert p == (1, 2)
         assert mod.get_x(p) == 1
+
+    def test_module_registry_struct_type(self):
+        # check that ModuleRegistry.struct_type works
+        self.SKIP_SPY_BACKEND_SANITY_CHECK = True
+        EXT = ModuleRegistry("ext")
+        EXT.struct_type(
+            "MyPoint",
+            [
+                ("x", B.w_i32),
+                ("y", B.w_i32),
+            ],
+        )
+        self.vm.make_module(EXT)
+        src = """
+        from ext import MyPoint
+
+        def foo(x: i32, y: i32) -> i32:
+            p = MyPoint(x, y)
+            return p.x + p.y
+        """
+        mod = self.compile(src)
+        assert mod.foo(3, 4) == 7
+        assert mod.foo(10, 20) == 30
 
     def test_pass_and_return(self):
         src = """
@@ -179,6 +218,44 @@ class TestStructOnStack(CompilerTest):
         msg = "method `test::Point::dont_exist` does not exist"
         with SPyError.raises("W_TypeError", match=msg):
             mod.wrong_meth(10.0)
+
+    def test_default_eq(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo(x0: i32, y0: i32, x1: i32, y1: i32) -> bool:
+            p0 = Point(x0, y0)
+            p1 = Point(x1, y1)
+            return p0 == p1
+        """
+        mod = self.compile(src)
+        assert mod.foo(1, 2, 3, 4) == False
+        assert mod.foo(1, 2, 1, 2) == True
+
+    def test_default_eq_nested(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        @struct
+        class Rect:
+            top_left: Point
+            bottom_right: Point
+
+        def foo(x0: i32, y0: i32, x1: i32, y1: i32,
+                x2: i32, y2: i32, x3: i32, y3: i32) -> bool:
+            r0 = Rect(Point(x0, y0), Point(x1, y1))
+            r1 = Rect(Point(x2, y2), Point(x3, y3))
+            return r0 == r1
+        """
+        mod = self.compile(src)
+        assert mod.foo(0, 0, 1, 1, 0, 0, 1, 1) == True
+        assert mod.foo(0, 0, 1, 1, 0, 0, 1, 2) == False
 
     def test_custom_new(self):
         src = """
@@ -485,3 +562,44 @@ class TestStructOnStack(CompilerTest):
             ("not found in this scope", "x"),
         )
         self.compile_raises(src, "main", errors)
+
+    def test_extra_fields(self):
+        src = """
+        @blue
+        def make_Point():
+            fields = {
+                "x": i32,
+                "y": i32,
+            }
+
+            @struct
+            class Point:
+                __extra_fields__ = fields
+
+            return Point
+
+        Point = make_Point()
+
+        def foo() -> Point:
+            return Point(1, 2)
+        """
+        mod = self.compile(src)
+        assert mod.foo() == (1, 2)
+
+    def test_extra_fields_wrong_type(self):
+        src = """
+        @blue
+        def make_Point():
+            @struct
+            class Point:
+                __extra_fields__ = 42
+
+            return Point
+
+        Point = make_Point()
+        """
+        errors = expect_errors(
+            "mismatched types",
+            ("expected `__spy__::interp_dict[str, type]`, got `i32`", "42"),
+        )
+        self.compile_raises(src, "", errors, error_reporting="eager")

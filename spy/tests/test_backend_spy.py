@@ -340,8 +340,16 @@ class TestSPyBackend(CompilerTest):
 
     def test_tuple_literal(self):
         src = """
-        def foo() -> tuple:
+        def foo() -> dynamic:
             return (1, 2, 3)
+        """
+        self.compile(src)
+        self.assert_dump(src)
+
+    def test_slice(self):
+        src = """
+        def foo() -> dynamic:
+            return [1, 2, 3][:1:-1]
         """
         self.compile(src)
         self.assert_dump(src)

@@ -206,8 +206,12 @@ class Parser:
             return_type = spy.ast.Auto(retloc)
 
         docstring, py_body = self.get_docstring_maybe(py_funcdef.body)
-        self.for_loop_seq = 0  # reset counter for this function
+        # by doing this "saved_seq" dance, we ensure that nested functions "continue"
+        # the numbering from the their parent, but sibling functions reset the
+        # numbering. See test_scope::test_for_loop_nested_funcs
+        saved_seq = self.for_loop_seq
         body = self.from_py_body(py_body)
+        self.for_loop_seq = saved_seq
 
         return spy.ast.FuncDef(
             loc=py_funcdef.loc,
@@ -730,3 +734,18 @@ class Parser:
             )
         else:
             return spy.ast.Call(loc=py_node.loc, func=func, args=args)
+
+    def from_py_expr_Slice(self, py_node: py_ast.Slice) -> spy.ast.Slice:
+        def from_py_expr_or_none(py_node: py_ast.expr, attr: str) -> spy.ast.Expr:
+            if getattr(py_node, attr) is not None:
+                return self.from_py_expr(getattr(py_node, attr))
+            return spy.ast.Constant(py_node.loc, None)
+
+        r = spy.ast.Slice(
+            py_node.loc,
+            from_py_expr_or_none(py_node, "lower"),
+            from_py_expr_or_none(py_node, "upper"),
+            from_py_expr_or_none(py_node, "step"),
+        )
+
+        return r

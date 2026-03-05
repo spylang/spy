@@ -2,7 +2,7 @@
 # Update importing.SPYC_VERSION in case of any significant change
 # ================================================================
 
-from typing import TYPE_CHECKING, Optional
+from typing import Optional
 
 from spy import ast
 from spy.analyze.symtable import (
@@ -17,9 +17,6 @@ from spy.analyze.symtable import (
 )
 from spy.errors import SPyError
 from spy.location import Loc
-
-if TYPE_CHECKING:
-    from spy.vm.vm import SPyVM
 
 
 class ScopeAnalyzer:
@@ -54,16 +51,14 @@ class ScopeAnalyzer:
          defined or referenced in that scope.
     """
 
-    vm: "SPyVM"
     mod: ast.Module
     stack: list[SymTable]
     inner_scopes: dict[ast.FuncDef | ast.ClassDef, SymTable]
     loop_depth: int
 
-    def __init__(self, vm: "SPyVM", modname: str, mod: ast.Module) -> None:
-        self.vm = vm
+    def __init__(self, modname: str, mod: ast.Module) -> None:
         self.mod = mod
-        self.builtins_scope = SymTable.from_builtins(vm)
+        self.builtins_scope = SymTable.from_builtins()
         self.mod_scope = SymTable(modname, "blue", "module")
         self.stack = []
         self.inner_scopes = {}
@@ -508,6 +503,17 @@ class ScopeAnalyzer:
         self.mod_scope.implicit_imports.add("_list")
         for item in lst.items:
             self.flatten(item)
+
+    def flatten_Tuple(self, tup: ast.Tuple) -> None:
+        self.mod_scope.implicit_imports.add("_tuple")
+        for item in tup.items:
+            self.flatten(item)
+
+    def flatten_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
+        self.mod_scope.implicit_imports.add("_tuple")
+        for target in unpack.targets:
+            self.flatten(target)
+        self.flatten(unpack.value)
 
     def flatten_Dict(self, dict: ast.Dict) -> None:
         self.mod_scope.implicit_imports.add("_dict")

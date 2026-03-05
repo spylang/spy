@@ -13,13 +13,15 @@ from spy.vm.b import B
 from spy.vm.exc import W_StaticError
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.__spy__ import SPY
+from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
 from spy.vm.modules.types import TYPES, W_Loc
 from spy.vm.object import W_Object
 from spy.vm.opimpl import ArgSpec, W_OpImpl
 from spy.vm.opspec import W_MetaArg
-from spy.vm.tuple import W_Tuple
+from spy.vm.struct import W_Struct
 
 if TYPE_CHECKING:
+    from spy.vm.object import W_Type
     from spy.vm.vm import SPyVM
 
 ErrorMode = Literal["eager", "lazy", "warn"]
@@ -44,16 +46,25 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
         value = vm.unwrap(w_val)
         if isinstance(value, FixedInt):  # type: ignore
             value = int(value)
-        return ast.Constant(loc, value)
+        return ast.Constant(loc, value, w_T=w_T)
 
     elif w_T is B.w_str:
         value = vm.unwrap_str(w_val)
-        return ast.StrConst(loc, value)
+        return ast.StrConst(loc, value, w_T=w_T)
 
-    elif w_T is B.w_tuple:
-        assert isinstance(w_val, W_Tuple)
+    elif w_T is SPY.w_interp_tuple:
+        assert isinstance(w_val, W_InterpTuple)
         items = [make_const(vm, loc, w_item) for w_item in w_val.items_w]
-        return ast.Tuple(loc, items)
+        return ast.Tuple(loc, items, w_T=w_T)
+
+    elif w_T.fqn.match("_tuple::tuple[*]::_tup"):
+        # transform the struct into a syntactical ast.Tuple node, so that we can put it
+        # in the AST without necessarily create a FQN
+        assert isinstance(w_val, W_Struct)
+        n = len(w_val.values_w)  # length of the tuple
+        items_w = [w_val.values_w[f"_item{i}"] for i in range(n)]
+        items = [make_const(vm, loc, w_item) for w_item in items_w]
+        return ast.Tuple(loc, items, w_T=w_T)
 
     elif w_T is TYPES.w_Loc:
         # note that here we have two locs: 'loc' is as usual the location
@@ -61,11 +72,11 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
         # const, which happen to be of type Loc.
         assert isinstance(w_val, W_Loc)
         value = w_val.loc
-        return ast.LocConst(loc, value)
+        return ast.LocConst(loc, value, w_T=w_T)
 
     # this is a non-primitive prebuilt constant.
     fqn = vm.make_fqn_const(w_val)
-    return ast.FQNConst(loc, fqn)
+    return ast.FQNConst(loc, fqn, w_T=w_T)
 
 
 class DopplerFrame(ASTFrame):
@@ -345,6 +356,7 @@ class DopplerFrame(ASTFrame):
         assert self.redshifting
         wam = magic_dispatch(self, "eval_expr", expr)
         new_expr = self.shift_expr(expr, wam)
+        assert new_expr.w_T is not None, "shift_expr should return a typed ast.Expr"
 
         w_typeconv_opimpl = self.typecheck_maybe(wam, varname)
         if w_typeconv_opimpl:
@@ -382,7 +394,11 @@ class DopplerFrame(ASTFrame):
             return magic_dispatch(self, "shift_expr", expr, wam)
 
     def shift_opimpl(
-        self, op: ast.Node, w_opimpl: W_OpImpl, orig_args: list[ast.Expr]
+        self,
+        op: ast.Node,
+        w_opimpl: W_OpImpl,
+        orig_args: list[ast.Expr],
+        w_T: Optional["W_Type"] = None,
     ) -> ast.Expr:
         if w_opimpl.is_const():
             assert w_opimpl.w_const is not None
@@ -391,7 +407,7 @@ class DopplerFrame(ASTFrame):
         assert w_opimpl.is_func_call()
         func = make_const(self.vm, op.loc, w_opimpl.w_func)
         real_args = self._shift_opimpl_args(w_opimpl, orig_args)
-        return ast.Call(op.loc, func, real_args)
+        return ast.Call(op.loc, func, real_args, w_T=w_T)
 
     def _shift_opimpl_args(
         self, w_opimpl: W_OpImpl, orig_args: list[ast.Expr]
@@ -413,52 +429,52 @@ class DopplerFrame(ASTFrame):
         return real_args
 
     def shift_expr_Constant(self, const: ast.Constant, wam: W_MetaArg) -> ast.Expr:
-        return const
+        return const.replace(w_T=wam.w_static_T)
 
     def shift_expr_Name(self, name: ast.Name, wam: W_MetaArg) -> ast.Expr:
-        return self.specialized_names[name]
+        return self.specialized_names[name].replace(w_T=wam.w_static_T)
 
     def shift_expr_NameLocalDirect(
         self, name: ast.NameLocalDirect, wam: W_MetaArg
     ) -> ast.Expr:
-        return name
+        return name.replace(w_T=wam.w_static_T)
 
     def shift_expr_NameOuterDirect(
         self, name: ast.NameOuterDirect, wam: W_MetaArg
     ) -> ast.Expr:
-        return name
+        return name.replace(w_T=wam.w_static_T)
 
     def shift_expr_NameOuterCell(
         self, name: ast.NameOuterCell, wam: W_MetaArg
     ) -> ast.Expr:
-        return name
+        return name.replace(w_T=wam.w_static_T)
 
     def shift_expr_BinOp(self, binop: ast.BinOp, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[binop]
         l = self.shifted_expr[binop.left]
         r = self.shifted_expr[binop.right]
-        return self.shift_opimpl(binop, w_opimpl, [l, r])
+        return self.shift_opimpl(binop, w_opimpl, [l, r], w_T=wam.w_static_T)
 
     def shift_expr_CmpOp(self, op: ast.CmpOp, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]
         l = self.shifted_expr[op.left]
         r = self.shifted_expr[op.right]
-        return self.shift_opimpl(op, w_opimpl, [l, r])
+        return self.shift_opimpl(op, w_opimpl, [l, r], w_T=wam.w_static_T)
 
     def shift_expr_And(self, op: ast.And, wam: W_MetaArg) -> ast.Expr:
         l = self.shifted_expr[op.left]
         r = self.shifted_expr[op.right]
-        return ast.And(op.loc, l, r)
+        return ast.And(op.loc, l, r, w_T=wam.w_static_T)
 
     def shift_expr_Or(self, op: ast.Or, wam: W_MetaArg) -> ast.Expr:
         l = self.shifted_expr[op.left]
         r = self.shifted_expr[op.right]
-        return ast.Or(op.loc, l, r)
+        return ast.Or(op.loc, l, r, w_T=wam.w_static_T)
 
     def shift_expr_UnaryOp(self, unop: ast.UnaryOp, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[unop]
         v = self.shifted_expr[unop.value]
-        return self.shift_opimpl(unop, w_opimpl, [v])
+        return self.shift_opimpl(unop, w_opimpl, [v], w_T=wam.w_static_T)
 
     def shift_expr_List(self, lst: ast.List, wam: W_MetaArg) -> ast.Expr:
         # this logic is equivalent to what we have in eval_expr_List. Instead of
@@ -472,51 +488,105 @@ class DopplerFrame(ASTFrame):
         fqn_push = w_T.fqn.join("_push")
 
         # instantiate an empty list
-        newlst = ast.Call(
+        newlst: ast.Expr = ast.Call(
             loc=lst.loc,
             func=ast.FQNConst(loc=lst.loc, fqn=fqn_new),
             args=[],
         )
 
         # add a call to push() for each item
-        for item in lst.items:
+        for i, item in enumerate(lst.items):
             shifted_item = self.shifted_expr[item]
+            is_last = i == len(lst.items) - 1
             newlst = ast.Call(
                 item.loc,
                 func=ast.FQNConst(loc=item.loc, fqn=fqn_push),
                 args=[newlst, shifted_item],
+                w_T=w_T if is_last else None,
             )
         return newlst
+
+    def shift_expr_Tuple(self, tup: ast.Tuple, wam: W_MetaArg) -> ast.Expr:
+        w_opimpl = self.opimpl[tup]
+        newitems_v = [self.shifted_expr[item] for item in tup.items]
+        return self.shift_opimpl(tup, w_opimpl, newitems_v, w_T=wam.w_static_T)
+
+    def shift_expr_Slice(self, op: ast.Slice, wam: W_MetaArg) -> ast.Expr:
+        w_opimpl = self.opimpl[op]
+        v_start = self.shifted_expr[op.start]
+        v_stop = self.shifted_expr[op.stop]
+        v_step = self.shifted_expr[op.step]
+        return self.shift_opimpl(
+            op, w_opimpl, [v_start, v_stop, v_step], w_T=wam.w_static_T
+        )
+
+    def shift_expr_Dict(self, dict: ast.Dict, wam: W_MetaArg) -> ast.Expr:
+        if len(dict.items) == 0:
+            assert wam.w_static_T is SPY.w_EmptyDictType
+            return make_const(self.vm, dict.loc, SPY.w_empty_dict)
+
+        # instantiate an empty dict
+        w_T = wam.w_static_T
+        fqn_new = w_T.fqn.join("__new__")
+        fqn_push = w_T.fqn.join("_push")
+
+        newdict: ast.Expr = ast.Call(
+            loc=dict.loc,
+            func=ast.FQNConst(loc=dict.loc, fqn=fqn_new),
+            args=[],
+        )
+
+        # add a call to push() for each item (key, value)
+        for i, pair in enumerate(dict.items):
+            shifted_key = self.shifted_expr[pair.key]
+            shifted_val = self.shifted_expr[pair.value]
+            is_last = i == len(dict.items) - 1
+            newdict = ast.Call(
+                loc=pair.loc,
+                func=ast.FQNConst(loc=pair.loc, fqn=fqn_push),
+                args=[newdict, shifted_key, shifted_val],
+                w_T=w_T if is_last else None,
+            )
+
+        return newdict
 
     def shift_expr_GetItem(self, op: ast.GetItem, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]
         v = self.shifted_expr[op.value]
         args = [self.shifted_expr[arg] for arg in op.args]
-        return self.shift_opimpl(op, w_opimpl, [v] + args)
+        return self.shift_opimpl(op, w_opimpl, [v] + args, w_T=wam.w_static_T)
 
     def shift_expr_GetAttr(self, op: ast.GetAttr, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]
         v = self.shifted_expr[op.value]
         v_attr = self.shifted_expr[op.attr]
-        return self.shift_opimpl(op, w_opimpl, [v, v_attr])
+        return self.shift_opimpl(op, w_opimpl, [v, v_attr], w_T=wam.w_static_T)
 
     def shift_expr_Call(self, call: ast.Call, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[call]
         newfunc = self.shifted_expr[call.func]
         newargs = [self.shifted_expr[arg] for arg in call.args]
-        newcall = self.shift_opimpl(call, w_opimpl, [newfunc] + newargs)
-        return newcall
+
+        if self.special_calls.get(call) in ("getattr", "setattr"):
+            # see also the corresponding code in ASTFrame.eval_expr_Call.
+            return self.shift_opimpl(call, w_opimpl, newargs, w_T=wam.w_static_T)
+        else:
+            return self.shift_opimpl(
+                call, w_opimpl, [newfunc] + newargs, w_T=wam.w_static_T
+            )
 
     def shift_expr_CallMethod(self, op: ast.CallMethod, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]
         v_obj = self.shifted_expr[op.target]
         v_meth = self.shifted_expr[op.method]
         newargs_v = [self.shifted_expr[arg] for arg in op.args]
-        return self.shift_opimpl(op, w_opimpl, [v_obj, v_meth] + newargs_v)
+        return self.shift_opimpl(
+            op, w_opimpl, [v_obj, v_meth] + newargs_v, w_T=wam.w_static_T
+        )
 
     def shift_expr_AssignExpr(
         self, assignexpr: ast.AssignExpr, wam: W_MetaArg
     ) -> ast.Expr:
         specialized = self.specialized_assignexprs[assignexpr]
         new_value = self.shifted_expr[assignexpr.value]
-        return specialized.replace(value=new_value)
+        return specialized.replace(value=new_value, w_T=wam.w_static_T)

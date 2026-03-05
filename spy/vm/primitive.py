@@ -70,6 +70,8 @@ class W_I32(W_Object):
             return W_OpSpec(OP.w_f64_to_i32, [wam_arg])
         elif wam_arg.w_static_T == B.w_f32:
             return W_OpSpec(OP.w_f32_to_i32, [wam_arg])
+        elif wam_arg.w_static_T == B.w_str:
+            return W_OpSpec(OP.w_str_to_i32, [wam_arg])
         return W_OpSpec.NULL
 
     def __repr__(self) -> str:
@@ -104,6 +106,18 @@ class W_U32(W_Object):
     def __init__(self, value: int | FixedInt) -> None:
         self.value = fixedint.UInt32(value)
 
+    @builtin_method("__new__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_NEW(vm: "SPyVM", wam_cls: "W_MetaArg", *args_wam: "W_MetaArg") -> "W_OpSpec":
+        from spy.vm.opspec import W_OpSpec
+
+        if len(args_wam) != 1:
+            return W_OpSpec.NULL
+        wam_arg = args_wam[0]
+        if wam_arg.w_static_T == B.w_str:
+            return W_OpSpec(OP.w_str_to_u32, [wam_arg])
+        return W_OpSpec.NULL
+
     def __repr__(self) -> str:
         return f"W_U32({self.value})"
 
@@ -134,6 +148,18 @@ class W_I8(W_Object):
     def __init__(self, value: int | FixedInt) -> None:
         self.value = fixedint.Int8(value)
 
+    @builtin_method("__new__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_NEW(vm: "SPyVM", wam_cls: "W_MetaArg", *args_wam: "W_MetaArg") -> "W_OpSpec":
+        from spy.vm.opspec import W_OpSpec
+
+        if len(args_wam) != 1:
+            return W_OpSpec.NULL
+        wam_arg = args_wam[0]
+        if wam_arg.w_static_T == B.w_str:
+            return W_OpSpec(OP.w_str_to_i8, [wam_arg])
+        return W_OpSpec.NULL
+
     def __repr__(self) -> str:
         return f"W_I8({self.value})"
 
@@ -157,6 +183,18 @@ class W_U8(W_Object):
 
     def __init__(self, value: int | FixedInt) -> None:
         self.value = fixedint.UInt8(value)
+
+    @builtin_method("__new__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_NEW(vm: "SPyVM", wam_cls: "W_MetaArg", *args_wam: "W_MetaArg") -> "W_OpSpec":
+        from spy.vm.opspec import W_OpSpec
+
+        if len(args_wam) != 1:
+            return W_OpSpec.NULL
+        wam_arg = args_wam[0]
+        if wam_arg.w_static_T == B.w_str:
+            return W_OpSpec(OP.w_str_to_u8, [wam_arg])
+        return W_OpSpec.NULL
 
     def __repr__(self) -> str:
         return f"W_U8({self.value})"

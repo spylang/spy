@@ -9,6 +9,7 @@ from spy.platform import IS_BROWSER, IS_NODE, IS_PYODIDE
 SRC = spy.ROOT.join("libspy", "src")
 INCLUDE = spy.ROOT.join("libspy", "include")
 BUILD = spy.ROOT.join("libspy", "build")
+DEPS = spy.ROOT.join("libspy", "deps")
 
 
 if IS_NODE:

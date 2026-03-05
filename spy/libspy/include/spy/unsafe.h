@@ -6,6 +6,14 @@
 void *WASM_EXPORT(spy_gc_alloc)(size_t size);
 void *WASM_EXPORT(spy_raw_alloc)(size_t size);
 
+// When compiling with bdwgc, override spy_gc_alloc with an inline that calls
+// GC_MALLOC. This takes precedence over the function in libspy.a.
+#ifdef SPY_GC_BDWGC
+#include <gc.h>
+static inline void *spy_gc_alloc_bdwgc(size_t size) { return GC_MALLOC(size); }
+#define spy_gc_alloc(size) spy_gc_alloc_bdwgc(size)
+#endif
+
 /* Define the struct and accessor functions to represent a managed pointer to
    type T.
 

@@ -114,6 +114,8 @@ class WasmFuncWrapper:
         #
         wasm_args: list[Any] = []
         for py_arg, param in zip(py_args, self.w_functype.params):
+            if param.w_T == TYPES.w_NoneType:
+                continue  # don't emit arguments of only type None
             wasm_arg = self.py2wasm(py_arg, param.w_T)
             if type(wasm_arg) is tuple:
                 # special case for multivalue
@@ -134,7 +136,7 @@ class WasmFuncWrapper:
             # res is a  spy_Str*
             addr = res
             length = self.ll.mem.read_i32(addr)
-            utf8 = self.ll.mem.read(addr + 4, length)
+            utf8 = self.ll.mem.read(addr + 8, length)
             return utf8.decode("utf-8")
         elif w_T is RB.w_RawBuffer:
             # res is a  spy_RawBuffer*
@@ -159,12 +161,15 @@ class WasmFuncWrapper:
             # when you return struct-by-val from C, wasmtime automatically
             # converts them into a list, flattening nested structs
             assert isinstance(res, list)
-            pyres = unflatten_struct(w_T, res)
+            pyres = unflatten_struct(self.ll, w_T, res)
             if w_T.fqn == FQN("_list::list[i32]::_ListImpl"):
                 # we support only reading list[i32] for tests
                 return self._to_pylist_i32(pyres)
             elif str(w_T.fqn).startswith("_list::list["):
                 raise NotImplementedError(f"Reading {w_T.fqn} out of WASM memory")
+            elif w_T.fqn == FQN("_dict::dict[i32, i32]::_dict"):
+                # we support only reading dict[i32, i32] for test
+                return self._to_pydict_i32(pyres)
             else:
                 return pyres
         else:
@@ -198,6 +203,42 @@ class WasmFuncWrapper:
 
         return result
 
+    def _to_pydict_i32(self, pyres: UnwrappedStruct) -> dict[Any, Any]:
+        assert "__ll__" in pyres._content
+        ll_ptr = pyres._content["__ll__"]
+        assert isinstance(ll_ptr, WasmPtr)
+
+        # Read DictData struct from memory
+        # struct DictData {
+        #     ptr[i32] index;  // ptr is 8 bytes (4 for ptr + 4 for length)
+        #     i32 log_size;
+        #     i32 length;
+        #     ptr[Entry] entries;
+        # };
+        #
+        # struct Entry {
+        #     i32 empty;
+        #     i32 key;
+        #     i32 value;
+        # };
+        addr = ll_ptr.addr
+        index = self.ll.mem.read_i32(addr)
+        log_size = self.ll.mem.read_i32(addr + 8)
+        length = self.ll.mem.read_i32(addr + 12)
+        entries = self.ll.mem.read_i32(addr + 16)
+
+        result = {}
+        entry_size = 12  # for dict[i32, i32]
+        for i in range(1, length + 1):
+            entry_addr = entries + i * entry_size
+            empty = self.ll.mem.read_i32(entry_addr + 0)
+            key = self.ll.mem.read_i32(entry_addr + 4)
+            value = self.ll.mem.read_i32(entry_addr + 8)
+            if not empty:
+                result[key] = value
+
+        return result
+
     def __call__(self, *py_args: Any, unwrap: bool = True) -> Any:
         assert unwrap, "unwrap=False is not supported by the C backend"
         wasm_args = self.from_py_args(py_args)
@@ -206,7 +247,9 @@ class WasmFuncWrapper:
         return self.to_py_result(w_T, res)
 
 
-def unflatten_struct(w_T: W_StructType, flat_values: list[Any]) -> UnwrappedStruct:
+def unflatten_struct(
+    ll: LLSPyInstance, w_T: W_StructType, flat_values: list[Any]
+) -> UnwrappedStruct:
     """
     Unflatten a struct from a flat list of values.
 
@@ -233,6 +276,16 @@ def unflatten_struct(w_T: W_StructType, flat_values: list[Any]) -> UnwrappedStru
                 length = flat_values[idx + 1]
                 content[w_field.name] = WasmPtr(addr, length)
                 idx += 2
+            elif w_field.w_T is B.w_str:
+                # str fields are spy_Str* pointers; read from WASM memory
+                addr = flat_values[idx]
+                if ll is not None:
+                    length = ll.mem.read_i32(addr)
+                    utf8 = ll.mem.read(addr + 8, length)
+                    content[w_field.name] = utf8.decode("utf-8")
+                else:
+                    content[w_field.name] = addr
+                idx += 1
             else:
                 if idx >= len(flat_values):
                     raise ValueError(

@@ -1,4 +1,5 @@
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import (
@@ -12,7 +13,7 @@ from typer import Option
 
 from spy.analyze.importing import ImportAnalyzer
 from spy.backend.c.cbackend import CBackend
-from spy.build.config import BuildConfig, BuildTarget, OutputKind
+from spy.build.config import BuildConfig, BuildTarget, GCOption, OutputKind
 from spy.cli._runners import init_vm, nullcontext, timer
 from spy.cli.commands.shared_args import (
     Base_Args,
@@ -89,6 +90,24 @@ class _build_mixin:
         ),
     ] = "exe"
 
+    gc: Annotated[
+        str,
+        Option(
+            "--gc",
+            help="GC implementation: auto, none, bdwgc (default: auto, "
+            "i.e. bdwgc for native, none for wasm targets)",
+            click_type=click.Choice(["auto", *GCOption.__args__]),
+        ),
+    ] = "auto"
+
+    static: Annotated[
+        bool,
+        Option(
+            "--static",
+            help="Produce a statically-linked executable (requires --target native)",
+        ),
+    ] = False
+
 
 @dataclass
 class Build_Args(
@@ -108,11 +127,33 @@ async def build(args: Build_Args) -> None:
     vm.ast_color_map = {}
     vm.redshift(error_mode=args.error_mode)
 
+    gc: GCOption
+    if args.gc == "auto":
+        if args.target == "native":
+            gc = "bdwgc"
+        else:
+            gc = "none"
+    else:
+        gc = args.gc  # type: ignore[assignment]
+
+    if gc != "none" and args.target != "native":
+        raise click.UsageError(
+            f"WASM targets only support --gc=none, got --gc={args.gc}"
+        )
+
+    if args.static and args.target != "native":
+        raise click.UsageError("--static can only be used with --target native")
+
+    if args.static and sys.platform == "darwin":
+        raise click.UsageError("--static is not supported on macOS")
+
     config = BuildConfig(
         target=args.target,
         kind=args.output_kind,
         build_type="release" if args.release_mode else "debug",
         warning_as_error=args.warning_as_error,
+        gc=gc,
+        static=args.static,
     )
 
     cwd = py.path.local(".")

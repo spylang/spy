@@ -180,6 +180,13 @@ def w_hash_bool(vm: "SPyVM", w_x: W_Bool) -> W_I32:
         assert False, "unreachable"
 
 
+@BUILTINS.builtin_func
+def w_hash_str(vm: "SPyVM", w_x: W_Str) -> W_I32:
+    assert isinstance(w_x, W_Str)
+    res = vm.ll.call("spy_str_hash", w_x.ptr)
+    return vm.wrap(res)
+
+
 @BUILTINS.builtin_func(color="blue", kind="metafunc")
 def w_hash(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
     w_T = wam_obj.w_static_T
@@ -191,6 +198,8 @@ def w_hash(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
         return W_OpSpec(B.w_hash_u8)
     elif w_T is B.w_bool:
         return W_OpSpec(B.w_hash_bool)
+    elif w_T is B.w_str:
+        return W_OpSpec(B.w_hash_str)
 
     if w_fn := w_T.lookup_func("__hash__"):
         w_opspec = vm.fast_metacall(w_fn, [wam_obj])
@@ -217,6 +226,36 @@ def w_dir(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
     names_w = [vm.wrap(name) for name in sorted(names)]
     w_names = make_str_interp_list(names_w)
     return W_OpSpec.const(w_names)
+
+
+@BUILTINS.builtin_func(color="blue", kind="metafunc")
+def w_getattr(vm: "SPyVM", wam_obj: W_MetaArg, wam_name: W_MetaArg) -> W_OpSpec:
+    # ensure that wam_name is blue; raise TypeError if not
+    name = wam_name.blue_unwrap_str(vm)
+
+    @vm.register_builtin_func("builtins", "getattr", [name])
+    def w_fn(vm: "SPyVM", w_obj: W_Object, w_name: W_Str) -> W_Object:
+        assert False, (
+            "this function shouldn't be called, it's special cased by astframe"
+        )
+
+    return W_OpSpec(w_fn)
+
+
+@BUILTINS.builtin_func(color="blue", kind="metafunc")
+def w_setattr(
+    vm: "SPyVM", wam_obj: W_MetaArg, wam_name: W_MetaArg, wam_value: W_MetaArg
+) -> W_OpSpec:
+    # ensure that wam_name is blue; raise TypeError if not
+    name = wam_name.blue_unwrap_str(vm)
+
+    @vm.register_builtin_func("builtins", "getattr", [name])
+    def w_fn(vm: "SPyVM", w_obj: W_Object, w_name: W_Str, w_val: W_Object) -> W_Object:
+        assert False, (
+            "this function shouldn't be called, it's special cased by astframe"
+        )
+
+    return W_OpSpec(w_fn)
 
 
 # add aliases for common types. For now we map:

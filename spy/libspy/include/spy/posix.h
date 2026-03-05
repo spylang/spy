@@ -6,14 +6,17 @@
 #endif
 #include <unistd.h>
 
-typedef struct {
+// NOTE: this struct is also defined in vm/modules/posix.py, the two definitions must be
+// kept in sync
+typedef struct spy_posix$TerminalSize spy_posix$TerminalSize;
+struct spy_posix$TerminalSize {
     int32_t columns;
     int32_t lines;
-} spy_TerminalSize;
+};
 
-static inline spy_TerminalSize
+static inline spy_posix$TerminalSize
 spy_posix$get_terminal_size(void) {
-    spy_TerminalSize result;
+    spy_posix$TerminalSize result;
 
 #ifndef SPY_TARGET_WASI
     struct winsize w;
@@ -31,16 +34,6 @@ spy_posix$get_terminal_size(void) {
 #endif
 
     return result;
-}
-
-static inline int32_t
-spy_posix$TerminalSize$__get_columns__(spy_TerminalSize self) {
-    return self.columns;
-}
-
-static inline int32_t
-spy_posix$TerminalSize$__get_lines__(spy_TerminalSize self) {
-    return self.lines;
 }
 
 #endif /* SPY_POSIX_H */

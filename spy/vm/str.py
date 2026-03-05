@@ -21,7 +21,7 @@ def ll_spy_Str_new(ll: LLWasmInstance, s: str) -> int:
     utf8 = s.encode("utf-8")
     length = len(utf8)
     ptr = ll.call("spy_str_alloc", length)
-    ll.mem.write(ptr + 4, utf8)
+    ll.mem.write(ptr + 8, utf8)
     return ptr
 
 
@@ -34,6 +34,7 @@ class W_Str(W_Object):
     resides in the linear memory of the VM:
         typedef struct {
             size_t length;
+            int32_t hash;
             const char utf8[];
         } spy_Str;
     """
@@ -59,7 +60,7 @@ class W_Str(W_Object):
 
     def get_utf8(self) -> bytes:
         length = self.get_length()
-        ba = self.vm.ll.mem.read(self.ptr + 4, length)
+        ba = self.vm.ll.mem.read(self.ptr + 8, length)
         return bytes(ba)
 
     def _as_str(self) -> str:
@@ -107,3 +108,11 @@ class W_Str(W_Object):
         assert isinstance(w_s, W_Str)
         length = vm.ll.call("spy_str_len", w_s.ptr)
         return vm.wrap(length)
+
+    @builtin_method("replace")
+    @staticmethod
+    def w_replace(
+        vm: "SPyVM", w_original: "W_Str", w_old: "W_Str", w_new: "W_Str"
+    ) -> "W_Str":
+        ptr_c = vm.ll.call("spy_str_replace", w_original.ptr, w_old.ptr, w_new.ptr)
+        return W_Str.from_ptr(vm, ptr_c)

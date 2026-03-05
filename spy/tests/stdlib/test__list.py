@@ -91,6 +91,50 @@ class TestList(CompilerTest):
         with SPyError.raises("W_IndexError"):
             mod.out_of_bounds()
 
+    def test_getitem_slice_simple(self):
+        mod = self.compile("""
+            def simple_slice() -> list[i32]:
+                l = [1,2,3]
+                return l[0:1:1]
+            """)
+        s = mod.simple_slice()
+        assert type(s) == list
+        assert s == [1]
+
+    def test_getitem_slice_long(self):
+        mod = self.compile("""
+            def long_slice() -> list[i32]:
+                l = [1,2,3,4,5,6]
+                return l[1:4:1]
+            """)
+        assert mod.long_slice() == [2, 3, 4]
+
+    def test_getitem_slice_long_stride(self):
+        mod = self.compile("""
+            def long_stride() -> list[i32]:
+                l = [1,2,3,4,5,6]
+                return l[0:5:2]
+            """)
+        assert mod.long_stride() == [1, 3, 5]
+
+    def test_getitem_slice_zero_step(self):
+        mod = self.compile("""
+            def zero_slice() -> list[i32]:
+                l = [1,2,3]
+                return l[1:2:0]
+            """)
+        with SPyError.raises("W_ValueError"):
+            mod.zero_slice()
+
+    def test_getitem_slice_reverse(self):
+        mod = self.compile("""
+            def reverse_slice() -> list[i32]:
+                m = [1,2,3]
+                return m[::-1]
+            """)
+
+        assert mod.reverse_slice() == [3, 2, 1]
+
     def test_fastiter(self):
         src = """
         from _list import list

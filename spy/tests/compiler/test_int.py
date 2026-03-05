@@ -176,3 +176,41 @@ class TestInt(CompilerTest):
         assert mod.cmp_gte(5, 6) is False
         assert mod.cmp_gte(5, 5) is True
         assert mod.cmp_gte(6, 5) is True
+
+    def test_int_from_str(self, int_type):
+        mod = self.compile(f"""
+        T = {int_type}
+        def foo(s: str) -> T:
+            return T(s)
+        """)
+        assert mod.foo("0") == 0
+        assert mod.foo("123") == 123
+        if not int_type.startswith("u"):
+            assert mod.foo("-42") == -42
+
+    def test_int_from_str_invalid(self, int_type):
+        mod = self.compile(f"""
+        T = {int_type}
+        def foo(s: str) -> T:
+            return T(s)
+        """)
+        with SPyError.raises("W_ValueError", match="invalid literal for int()"):
+            mod.foo("hello")
+
+    def test_int_from_str_overflow(self, int_type):
+        mod = self.compile(f"""
+        T = {int_type}
+        def foo(s: str) -> T:
+            return T(s)
+        """)
+        limits = {
+            "i32": ("2147483648", "-2147483649"),
+            "u32": ("4294967296", "-1"),
+            "i8": ("128", "-129"),
+            "u8": ("256", "-1"),
+        }
+        too_big, too_small = limits[int_type]
+        with SPyError.raises("W_OverflowError", match="out of range"):
+            mod.foo(too_big)
+        with SPyError.raises("W_OverflowError", match="out of range"):
+            mod.foo(too_small)

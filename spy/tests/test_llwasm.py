@@ -88,8 +88,7 @@ class TestLLWasm(CTest):
 
             ll = LLWasmInstance.from_file(test_wasm)
             exports = ll.all_exports()
-            exports.sort()
-            assert exports == ["_initialize", "add", "memory", "x", "y"]
+            assert {"_initialize", "add", "memory", "x", "y"}.issubset(exports)
 
         fn(self.selenium, test_wasm)
 

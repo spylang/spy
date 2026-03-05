@@ -271,6 +271,11 @@ class W_ValueError(W_Exception):
     pass
 
 
+@BUILTINS.builtin_type("OverflowError")
+class W_OverflowError(W_Exception):
+    pass
+
+
 @BUILTINS.builtin_type("IndexError")
 class W_IndexError(W_Exception):
     pass

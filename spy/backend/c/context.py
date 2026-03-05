@@ -6,7 +6,6 @@ from spy.textbuilder import TextBuilder
 from spy.vm.b import TYPES, B
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.jsffi import JSFFI
-from spy.vm.modules.posix import POSIX
 from spy.vm.modules.rawbuffer import RB
 from spy.vm.modules.unsafe.ptr import W_RefType
 from spy.vm.object import W_Type
@@ -101,7 +100,9 @@ class C_Function:
         if self.params == []:
             s_params = "void"
         else:
-            paramlist = [f"{p.c_type} {p.name}" for p in self.params]
+            paramlist = [
+                f"{p.c_type} {p.name}" for p in self.params if p.c_type.name != "void"
+            ]
             s_params = ", ".join(paramlist)
         #
         return f"{self.c_restype} {self.name}({s_params})"
@@ -136,7 +137,6 @@ class Context:
         self._d[B.w_str] = C_Type("spy_Str *")
         self._d[RB.w_RawBuffer] = C_Type("spy_RawBuffer *")
         self._d[JSFFI.w_JsRef] = C_Type("JsRef")
-        self._d[POSIX.w_TerminalSize] = C_Type("spy_TerminalSize")
 
     def w2c(self, w_T: W_Type) -> C_Type:
         if w_T in self._d:

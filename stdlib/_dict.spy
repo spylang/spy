@@ -1,6 +1,6 @@
 from unsafe import gc_alloc, gc_ptr
 from operator import OpSpec
-
+from __spy__ import interp_dict, EmptyDictType
 
 # spy dict
 # ========
@@ -38,6 +38,9 @@ MAX_FILL_RATIO = 2 / 3
 
 @blue.generic
 def dict(Key, Value):
+    if Key == type or Key == object or Value == type or Value == object:
+        return interp_dict[Key, Value]
+
     @struct
     class Entry:
         # empty: bool
@@ -215,6 +218,12 @@ def dict(Key, Value):
             data.entries = new_entries(data.log_size)
             return _dict.__make__(data)
 
+        @blue.metafunc
+        def __convert_from__(m_expT, m_gotT, m_obj):
+            if m_gotT.blueval == EmptyDictType:
+                return OpSpec(_dict.__new__, [])
+            return OpSpec.NULL
+
         def __getitem__(self, key: Key) -> Value:
             data: gc_ptr[DictData] = self.__ll__
             ix = lookup(data, key)
@@ -290,6 +299,10 @@ def dict(Key, Value):
             return dict_iterator(self.__ll__, 0)
 
         def keys(self) -> _dict:
+            return self
+
+        def _push(self, key: Key, val: Value) -> _dict:
+            self.__setitem__(key, val)
             return self
 
     return _dict

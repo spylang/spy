@@ -60,15 +60,6 @@ def get_linker(
     """
     hostmods = hostmods or []
 
-    def find_meth(imp: Any) -> Any:
-        assert hostmods is not None
-        methname = f"{imp.module}_{imp.name}"
-        for hostmod in hostmods:
-            meth = getattr(hostmod, methname, None)
-            if meth is not None:
-                return meth
-        raise NotImplementedError(f"Missing WASM import: {methname}")
-
     py2w = {
         int: wt.ValType.i32(),
     }
@@ -84,10 +75,24 @@ def get_linker(
         return wt.FuncType(args, restypes)
 
     def get_wasmfunc(imp: Any) -> wt.Func:
-        meth = find_meth(imp)
-        functype = FuncType_from_pyfunc(meth)
-        wasmfunc = wt.Func(store, functype, meth)
-        return wasmfunc
+        methname = f"{imp.module}_{imp.name}"
+        meth = None
+        for hostmod in hostmods or []:
+            meth = getattr(hostmod, methname, None)
+            if meth is not None:
+                break
+        if meth is not None:
+            functype = FuncType_from_pyfunc(meth)
+            return wt.Func(store, functype, meth)
+        # The import is not provided by any hostmod. Create a stub that traps
+        # if actually called.
+        functype = imp.type
+        assert isinstance(functype, wt.FuncType)
+
+        def trap(*args: Any, _name: str = methname) -> None:
+            raise NotImplementedError(f"Called unresolved WASM import: {_name}")
+
+        return wt.Func(store, functype, trap)
 
     linker = wt.Linker(store.engine)
     if wasi_config:

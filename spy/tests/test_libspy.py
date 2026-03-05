@@ -11,11 +11,12 @@ def mk_spy_Str(utf8: bytes) -> bytes:
 
     For example, for b'hello' we have the following in-memory repr:
          <i   4 bytes of length, little endian
+         i    4 bytes of hash (0 for uncached)
          5s   5 bytes of data (b'hello')
     """
     n = len(utf8)
-    fmt = f"<i{n}s"
-    return struct.pack(fmt, n, utf8)
+    fmt = f"<ii{n}s"
+    return struct.pack(fmt, n, 0, utf8)
 
 
 class TestLibSPy(CTest):
@@ -47,7 +48,7 @@ class TestLibSPy(CTest):
         src = r"""
         #include <spy.h>
 
-        spy_Str H = {6, "hello "};
+        spy_Str H = {6, 0, "hello "};
 
         spy_Str *mk_W(void) {
             spy_Str *s = spy_str_alloc(5);
@@ -58,13 +59,13 @@ class TestLibSPy(CTest):
         test_wasm = self.c_compile(src, exports=["H", "mk_W"])
         ll = LLSPyInstance.from_file(test_wasm)
         ptr_H = ll.read_global("H")
-        assert ll.mem.read(ptr_H, 10) == mk_spy_Str(b"hello ")
+        assert ll.mem.read(ptr_H, 14) == mk_spy_Str(b"hello ")
         #
         ptr_W = ll.call("mk_W")
-        assert ll.mem.read(ptr_W, 9) == mk_spy_Str(b"world")
+        assert ll.mem.read(ptr_W, 13) == mk_spy_Str(b"world")
         #
         ptr_HW = ll.call("spy_str_add", ptr_H, ptr_W)
-        assert ll.mem.read(ptr_HW, 15) == mk_spy_Str(b"hello world")
+        assert ll.mem.read(ptr_HW, 19) == mk_spy_Str(b"hello world")
 
     def test_debug_log(self):
         src = r"""

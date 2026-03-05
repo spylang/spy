@@ -158,6 +158,110 @@ class TestBuiltins(CompilerTest):
         # check that we can actually call them from SPy code
         assert mod.foo() == 42
 
+    def test_getattr(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo(x: i32, y: i32) -> i32:
+            p = Point(x, y)
+            return getattr(p, 'x')
+        """
+        mod = self.compile(src)
+        assert mod.foo(3, 4) == 3
+        assert mod.foo(10, 20) == 10
+
+    def test_getattr_AttributeError(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo() -> i32:
+            p = Point(1, 2)
+            return getattr(p, 'xxx')
+        """
+        errors = expect_errors(
+            "type `test::Point` has no attribute 'xxx'",
+            ("this is `test::Point`", "p"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    def test_getattr_red(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo() -> i32:
+            var attr = "x"  # this is red
+            p = Point(1, 2)
+            return getattr(p, attr)
+        """
+        errors = expect_errors(
+            "expected blue argument",
+            ("this is red", "attr"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    def test_setattr(self):
+        src = """
+        from unsafe import raw_alloc, raw_ptr
+
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo(x: i32, y: i32) -> i32:
+            p = raw_alloc[Point](1)
+            setattr(p, 'x', x)
+            setattr(p, 'y', y)
+            return p.x + p.y
+        """
+        mod = self.compile(src)
+        assert mod.foo(3, 4) == 7
+        assert mod.foo(10, 20) == 30
+
+    def test_setattr_AttributeError(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo() -> None:
+            p = Point(1, 2)
+            setattr(p, 'xxx', 42)
+        """
+        errors = expect_errors(
+            "type `test::Point` does not support assignment to attribute 'xxx'",
+            ("this is `test::Point`", "p"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    def test_setattr_red(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo() -> None:
+            var attr = "x"  # this is red
+            p = Point(1, 2)
+            setattr(p, attr, 42)
+        """
+        errors = expect_errors(
+            "expected blue argument",
+            ("this is red", "attr"),
+        )
+        self.compile_raises(src, "foo", errors)
+
     @only_interp
     def test_dir(self):
         src = """
