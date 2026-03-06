@@ -310,6 +310,34 @@ class TestUnsafePtr(CompilerTest):
         assert not mod.ne(p0, p0)
         assert mod.ne(p0, p1)
 
+    def test_ref_method(self, memkind):
+        k = memkind
+        mod = self.compile(f"""
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, {k}_ref as k_ref
+
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+            def foo(self) -> i32:
+                return self.x + self.y
+
+        def method_on_ref() -> i32:
+            p: k_ptr[Point] = k_alloc[Point](1)
+            p[0] = Point(1,2)
+            r: k_ref[Point] = p[0]
+            return r.foo()
+
+        def compare_eq() -> bool:
+            p: k_ptr[Point] = k_alloc[Point](1)
+            r: k_ref[Point] = p[0]
+            return r == p[0]
+        """)
+
+        assert mod.method_on_ref() == 3
+        assert mod.compare_eq()
+
     def test_can_allocate_ptr(self, memkind):
         k = memkind
         mod = self.compile(f"""
