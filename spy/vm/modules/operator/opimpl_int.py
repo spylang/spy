@@ -86,6 +86,10 @@ def make_ops(T: str, pyclass: type[W_Object]) -> None:
     def w_xor(vm: "SPyVM", w_a: WT, w_b: WT) -> WT:
         return _binop(vm, w_a, w_b, lambda a, b: a ^ b)
 
+    @OP.builtin_func(f"{T}_pow")
+    def w_pow(vm: "SPyVM", w_a: WT, w_b: WT) -> WT:
+        return _binop(vm, w_a, w_b, lambda a, b: a**b)
+
     @OP.builtin_func(f"{T}_eq")
     def w_eq(vm: "SPyVM", w_a: WT, w_b: WT) -> W_Bool:
         return _binop(vm, w_a, w_b, lambda a, b: a == b)
