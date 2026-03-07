@@ -4,19 +4,19 @@ from toyast import EXAMPLE, Module, Assign, If, Const, BinOp
 
 def to_dict(node):
     if isinstance(node, Module):
-        return {'type': 'Module', 'body': [to_dict(s) for s in node.body]}
+        return {'type': 'Module', 'src': node.src, 'body': [to_dict(s) for s in node.body]}
     if isinstance(node, Assign):
-        return {'type': 'Assign', 'target': node.target, 'value': to_dict(node.value)}
+        return {'type': 'Assign', 'src': node.src, 'target': node.target, 'value': to_dict(node.value)}
     if isinstance(node, If):
-        return {'type': 'If',
+        return {'type': 'If', 'src': node.src,
                 'test': to_dict(node.test),
                 'then_body': [to_dict(s) for s in node.then_body],
                 'else_body': [to_dict(s) for s in node.else_body]}
     if isinstance(node, BinOp):
-        return {'type': 'BinOp', 'op': node.op,
+        return {'type': 'BinOp', 'src': node.src, 'op': node.op,
                 'left': to_dict(node.left), 'right': to_dict(node.right)}
     if isinstance(node, Const):
-        return {'type': 'Const', 'value': node.value}
+        return {'type': 'Const', 'src': node.src, 'value': node.value}
     raise ValueError(f'Unknown node: {node}')
 
 
@@ -34,10 +34,12 @@ html = f"""<!DOCTYPE html>
   <script>
 const astData = {ast_json};
 
-const NODE_W = 110, NODE_H = 28, X_INDENT = 40, ROW_H = 44, ROW_GAP = ROW_H - NODE_H;
+const NODE_W = 110, NODE_H = 28;
+const X_INDENT = 40, ROW_GAP = 16;
 const EXPR_H_GAP = 16, EXPR_V_GAP = 30, PAD = 20;
+const CHAR_W = 7.8, LINE_H = 18, SRC_PAD_X = 10, SRC_PAD_Y = 8;
 
-// --- assign stable IDs to every node once ---
+// --- assign stable IDs once ---
 let _idCounter = 0;
 function assignIds(node) {{
   node._id = _idCounter++;
@@ -51,7 +53,8 @@ assignIds(astData);
 const collapsed = new Set();
 
 // --- helpers ---
-function isExpr(node) {{ return node.type === 'BinOp' || node.type === 'Const'; }}
+function isExpr(node)  {{ return node.type === 'BinOp' || node.type === 'Const'; }}
+function canCollapse(node) {{ return node.type === 'BinOp' || childrenOf(node).length > 0; }}
 
 function labelOf(node) {{
   if (node.type === 'Assign') return `Assign: ${{node.target}}`;
@@ -67,52 +70,74 @@ function childrenOf(node) {{
   return [];
 }}
 
+// Returns the dimensions of the node box itself (not the whole subtree).
+// Collapsed nodes with children expand to show their src.
+function nodeSize(node) {{
+  if (!collapsed.has(node._id) || !canCollapse(node))
+    return {{w: NODE_W, h: NODE_H}};
+  const lines = (node.src || '').split('\\n');
+  const maxLen = Math.max(...lines.map(l => l.length));
+  return {{
+    w: Math.max(NODE_W, Math.ceil(maxLen * CHAR_W) + 2 * SRC_PAD_X),
+    h: lines.length * LINE_H + 2 * SRC_PAD_Y,
+  }};
+}}
+
 // --- expr layout ---
 function measureExpr(node) {{
-  if (collapsed.has(node._id) || node.type !== 'BinOp') return NODE_W;
+  if (collapsed.has(node._id) || node.type !== 'BinOp') return nodeSize(node).w;
   return measureExpr(node.left) + EXPR_H_GAP + measureExpr(node.right);
 }}
 
 function placeExpr(node, leftX, y, svgNodes, svgLines) {{
-  const w = measureExpr(node);
-  const nodeX = leftX + (w - NODE_W) / 2;
-  const hasChildren = node.type === 'BinOp';
-  svgNodes.push({{x: nodeX, y, label: labelOf(node), id: node._id, hasChildren}});
+  const totalW = measureExpr(node);
+  const {{w: nw, h: nh}} = nodeSize(node);
+  const nodeX = leftX + (totalW - nw) / 2;
+  const isCollapsed = collapsed.has(node._id);
+  svgNodes.push({{x: nodeX, y, nw, nh, label: labelOf(node), src: node.src,
+                  id: node._id, hasChildren: node.type === 'BinOp', isCollapsed}});
 
-  if (hasChildren && !collapsed.has(node._id)) {{
-    const childY = y + NODE_H + EXPR_V_GAP;
+  if (node.type === 'BinOp' && !isCollapsed) {{
+    const childY = y + nh + EXPR_V_GAP;
     const leftW  = measureExpr(node.left);
     const rightW = measureExpr(node.right);
-    const leftChildX  = leftX + (leftW - NODE_W) / 2;
-    const rightChildX = leftX + leftW + EXPR_H_GAP + (rightW - NODE_W) / 2;
-    const parentCx = nodeX + NODE_W / 2;
-    svgLines.push({{x1: parentCx, y1: y + NODE_H, x2: leftChildX  + NODE_W / 2, y2: childY}});
-    svgLines.push({{x1: parentCx, y1: y + NODE_H, x2: rightChildX + NODE_W / 2, y2: childY}});
-    const lb = placeExpr(node.left,  leftX,                       childY, svgNodes, svgLines);
-    const rb = placeExpr(node.right, leftX + leftW + EXPR_H_GAP,  childY, svgNodes, svgLines);
+    const {{w: lnw}} = nodeSize(node.left);
+    const {{w: rnw}} = nodeSize(node.right);
+    const leftChildX  = leftX + (leftW - lnw) / 2;
+    const rightChildX = leftX + leftW + EXPR_H_GAP + (rightW - rnw) / 2;
+    const parentCx = nodeX + nw / 2;
+    svgLines.push({{x1: parentCx, y1: y + nh, x2: leftChildX  + lnw / 2, y2: childY}});
+    svgLines.push({{x1: parentCx, y1: y + nh, x2: rightChildX + rnw / 2, y2: childY}});
+    const lb = placeExpr(node.left,  leftX,                      childY, svgNodes, svgLines);
+    const rb = placeExpr(node.right, leftX + leftW + EXPR_H_GAP, childY, svgNodes, svgLines);
     return Math.max(lb, rb);
   }}
-  return y + NODE_H;
+  return y + nh;
 }}
 
 // --- stmt folder-view layout ---
 function visit(node, x, y, svgNodes, svgLines) {{
+  const {{w: nw, h: nh}} = nodeSize(node);
   const children = childrenOf(node);
   const hasChildren = children.length > 0;
-  svgNodes.push({{x, y, label: labelOf(node), id: node._id, hasChildren}});
-  let ny = y + ROW_H;
+  const isCollapsed = collapsed.has(node._id);
+  svgNodes.push({{x, y, nw, nh, label: labelOf(node), src: node.src,
+                  id: node._id, hasChildren, isCollapsed}});
+  let ny = y + nh + ROW_GAP;
 
-  if (!hasChildren || collapsed.has(node._id)) return ny;
+  if (!hasChildren || isCollapsed) return ny;
 
   const childX = x + X_INDENT;
   const vx = childX - X_INDENT / 2;
 
   const connectors = [];
   for (const child of children) {{
-    const midY = ny + NODE_H / 2;
+    const childNh = nodeSize(child).h;
+    const midY = ny + childNh / 2;
     if (isExpr(child)) {{
-      const nodeLeftX = childX + (measureExpr(child) - NODE_W) / 2;
-      connectors.push({{x: nodeLeftX, y: midY}});
+      const totalW = measureExpr(child);
+      const {{w: cnw}} = nodeSize(child);
+      connectors.push({{x: childX + (totalW - cnw) / 2, y: midY}});
       ny = placeExpr(child, childX, ny, svgNodes, svgLines) + ROW_GAP;
     }} else {{
       connectors.push({{x: childX, y: midY}});
@@ -120,7 +145,7 @@ function visit(node, x, y, svgNodes, svgLines) {{
     }}
   }}
 
-  svgLines.push({{x1: vx, y1: y + NODE_H, x2: vx, y2: connectors[connectors.length - 1].y}});
+  svgLines.push({{x1: vx, y1: y + nh, x2: vx, y2: connectors[connectors.length - 1].y}});
   for (const {{x: tx, y: ty}} of connectors)
     svgLines.push({{x1: vx, y1: ty, x2: tx, y2: ty}});
 
@@ -132,8 +157,8 @@ function render() {{
   const svgNodes = [], svgLines = [];
   visit(astData, PAD, PAD, svgNodes, svgLines);
 
-  const W = Math.max(...svgNodes.map(n => n.x + NODE_W)) + PAD;
-  const H = Math.max(...svgNodes.map(n => n.y + NODE_H)) + PAD;
+  const W = Math.max(...svgNodes.map(n => n.x + n.nw)) + PAD;
+  const H = Math.max(...svgNodes.map(n => n.y + n.nh)) + PAD;
 
   const svg = document.getElementById('diagram');
   svg.setAttribute('width',  W);
@@ -151,8 +176,7 @@ function render() {{
     svg.appendChild(el);
   }}
 
-  for (const {{x, y, label, id, hasChildren}} of svgNodes) {{
-    const isCollapsed = collapsed.has(id);
+  for (const {{x, y, nw, nh, label, src, id, hasChildren, isCollapsed}} of svgNodes) {{
     const g = document.createElementNS(NS, 'g');
     if (hasChildren) {{
       g.style.cursor = 'pointer';
@@ -164,24 +188,43 @@ function render() {{
 
     const rect = document.createElementNS(NS, 'rect');
     rect.setAttribute('x', x); rect.setAttribute('y', y);
-    rect.setAttribute('width', NODE_W); rect.setAttribute('height', NODE_H);
+    rect.setAttribute('width', nw); rect.setAttribute('height', nh);
     rect.setAttribute('rx', 4);
     rect.setAttribute('fill',   isCollapsed ? '#e0e7ff' : '#dbeafe');
     rect.setAttribute('stroke', isCollapsed ? '#6366f1' : '#3b82f6');
     rect.setAttribute('stroke-width', '1.5');
-
-    const text = document.createElementNS(NS, 'text');
-    text.setAttribute('x', x + NODE_W / 2);
-    text.setAttribute('y', y + NODE_H / 2 + 5);
-    text.setAttribute('text-anchor', 'middle');
-    text.setAttribute('font-family', 'monospace');
-    text.setAttribute('font-size', '13');
-    text.setAttribute('fill', '#1e3a5f');
-    text.setAttribute('pointer-events', 'none');
-    text.textContent = (hasChildren ? (isCollapsed ? '▶ ' : '▼ ') : '') + label;
-
     g.appendChild(rect);
-    g.appendChild(text);
+
+    if (isCollapsed && src) {{
+      // multi-line src display
+      const text = document.createElementNS(NS, 'text');
+      text.setAttribute('x', x + SRC_PAD_X);
+      text.setAttribute('y', y + SRC_PAD_Y + 13);
+      text.setAttribute('font-family', 'monospace');
+      text.setAttribute('font-size', '13');
+      text.setAttribute('fill', '#312e81');
+      text.setAttribute('pointer-events', 'none');
+      src.split('\\n').forEach((line, i) => {{
+        const tspan = document.createElementNS(NS, 'tspan');
+        tspan.setAttribute('x', x + SRC_PAD_X);
+        if (i > 0) tspan.setAttribute('dy', LINE_H);
+        tspan.textContent = line;
+        text.appendChild(tspan);
+      }});
+      g.appendChild(text);
+    }} else {{
+      const text = document.createElementNS(NS, 'text');
+      text.setAttribute('x', x + nw / 2);
+      text.setAttribute('y', y + nh / 2 + 5);
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('font-family', 'monospace');
+      text.setAttribute('font-size', '13');
+      text.setAttribute('fill', '#1e3a5f');
+      text.setAttribute('pointer-events', 'none');
+      text.textContent = (hasChildren ? (isCollapsed ? '▶ ' : '▼ ') : '') + label;
+      g.appendChild(text);
+    }}
+
     svg.appendChild(g);
   }}
 }}

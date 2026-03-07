@@ -37,6 +37,31 @@ class BinOp(Expr):
     right: Expr
 
 
+def attach_src(node):
+    if isinstance(node, Const):
+        node.src = str(node.value)
+    elif isinstance(node, BinOp):
+        attach_src(node.left)
+        attach_src(node.right)
+        node.src = f"{node.left.src} {node.op} {node.right.src}"
+    elif isinstance(node, Assign):
+        attach_src(node.value)
+        node.src = f"{node.target} = {node.value.src}"
+    elif isinstance(node, If):
+        attach_src(node.test)
+        for s in node.then_body:
+            attach_src(s)
+        for s in node.else_body:
+            attach_src(s)
+        then_lines = "\n".join(f"    {s.src}" for s in node.then_body)
+        else_lines = "\n".join(f"    {s.src}" for s in node.else_body)
+        node.src = f"if {node.test.src}:\n{then_lines}\nelse:\n{else_lines}"
+    elif isinstance(node, Module):
+        for s in node.body:
+            attach_src(s)
+        node.src = "\n".join(s.src for s in node.body)
+
+
 # x = 1 + 2 * 3
 # if (1 + 4) > 3:
 #     y = x + 1
@@ -57,3 +82,4 @@ EXAMPLE = Module(body=[
         ],
     ),
 ])
+attach_src(EXAMPLE)
