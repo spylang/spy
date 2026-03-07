@@ -122,10 +122,24 @@ function placeExpr(node, leftX, y, svgNodes, svgLines) {{
     const leftChildX  = leftX + (leftW - lnw) / 2;
     const rightChildX = leftX + leftW + EXPR_H_GAP + (rightW - rnw) / 2;
     const parentCx = nodeX + nw / 2;
-    svgLines.push({{x1: parentCx, y1: y + nh, x2: leftChildX  + lnw / 2, y2: childY,
-                    label: 'left',  id: `e-${{node._id}}-${{node.left._id}}`}});
-    svgLines.push({{x1: parentCx, y1: y + nh, x2: rightChildX + rnw / 2, y2: childY,
-                    label: 'right', id: `e-${{node._id}}-${{node.right._id}}`}});
+    const midY    = y + nh + EXPR_V_GAP / 2;
+    const lChildCx = leftChildX  + lnw / 2;
+    const rChildCx = rightChildX + rnw / 2;
+    // vertical stem down from parent
+    svgLines.push({{x1: parentCx,  y1: y + nh, x2: parentCx,  y2: midY,
+                    id: `evs-${{node._id}}`}});
+    // left half of bar — label "left" sits above it
+    svgLines.push({{x1: lChildCx,  y1: midY,   x2: parentCx,  y2: midY,
+                    label: 'left',  id: `ehl-${{node._id}}`}});
+    // right half of bar — label "right" sits above it
+    svgLines.push({{x1: parentCx,  y1: midY,   x2: rChildCx,  y2: midY,
+                    label: 'right', id: `ehr-${{node._id}}`}});
+    // left drop (no label)
+    svgLines.push({{x1: lChildCx,  y1: midY,   x2: lChildCx,  y2: childY,
+                    id: `el-${{node._id}}-${{node.left._id}}`}});
+    // right drop (no label)
+    svgLines.push({{x1: rChildCx,  y1: midY,   x2: rChildCx,  y2: childY,
+                    id: `er-${{node._id}}-${{node.right._id}}`}});
     const lb = placeExpr(node.left,  leftX,                      childY, svgNodes, svgLines);
     const rb = placeExpr(node.right, leftX + leftW + EXPR_H_GAP, childY, svgNodes, svgLines);
     return Math.max(lb, rb);
@@ -193,7 +207,7 @@ function animateLinePos(els, from, to) {{
     els.line.setAttribute('x1', x1); els.line.setAttribute('y1', y1);
     els.line.setAttribute('x2', x2); els.line.setAttribute('y2', y2);
     if (els.text) {{
-      els.text.setAttribute('x', (x1 + x2) / 2);
+      els.text.setAttribute('x', (x1 + x2) / 2 + (els.labelDx || 0));
       els.text.setAttribute('y', (y1 + y2) / 2 - 3);
     }}
     if (t < 1) requestAnimationFrame(step);
@@ -266,7 +280,9 @@ function updateLines(svgLines) {{
   }}
 
   // Update existing lines, create new ones
-  for (const {{id, x1, y1, x2, y2, label}} of svgLines) {{
+  for (const {{id, x1, y1, x2, y2, label, labelDx}} of svgLines) {{
+    const lx = (x1 + x2) / 2 + (labelDx || 0);
+    const ly = (y1 + y2) / 2 - 3;
     if (lineElements.has(id)) {{
       const els = lineElements.get(id);
       const from = {{
@@ -278,7 +294,7 @@ function updateLines(svgLines) {{
       else {{
         els.line.setAttribute('x1', x1); els.line.setAttribute('y1', y1);
         els.line.setAttribute('x2', x2); els.line.setAttribute('y2', y2);
-        if (els.text) {{ els.text.setAttribute('x', (x1+x2)/2); els.text.setAttribute('y', (y1+y2)/2-3); }}
+        if (els.text) {{ els.text.setAttribute('x', lx); els.text.setAttribute('y', ly); }}
       }}
     }} else {{
       const line = document.createElementNS(NS, 'line');
@@ -290,7 +306,7 @@ function updateLines(svgLines) {{
       let text = null;
       if (label) {{
         text = document.createElementNS(NS, 'text');
-        text.setAttribute('x', (x1+x2)/2); text.setAttribute('y', (y1+y2)/2-3);
+        text.setAttribute('x', lx); text.setAttribute('y', ly);
         text.setAttribute('text-anchor', 'middle');
         text.setAttribute('font-family', 'sans-serif'); text.setAttribute('font-size', '10');
         text.setAttribute('fill', '#64748b');
@@ -298,7 +314,7 @@ function updateLines(svgLines) {{
         linesGroup.appendChild(text);
       }}
 
-      lineElements.set(id, {{line, text}});
+      lineElements.set(id, {{line, text, labelDx: labelDx || 0}});
       if (!firstRender) {{
         line.style.opacity = '0';
         line.style.transition = `opacity ${{ANIM_MS}}ms ease`;
