@@ -191,8 +191,53 @@ const NS = 'http://www.w3.org/2000/svg';
 const ANIM_MS = 300;
 const nodeElements = new Map(); // id -> <g>
 const lineElements = new Map(); // id -> {{line, text}}
-let linesGroup = null, nodesGroup = null;
+let linesGroup = null, nodesGroup = null, tooltipGroup = null;
 let firstRender = true;
+
+function showTooltip(nd) {{
+  tooltipGroup.innerHTML = '';
+  if (!nd.src || nd.isCollapsed || !nd.hasChildren) return;
+  const lines = nd.src.split('\\n');
+  const maxLen = Math.max(...lines.map(l => l.length));
+  const tw = Math.max(NODE_W, Math.ceil(maxLen * CHAR_W) + 2 * SRC_PAD_X);
+  const th = lines.length * LINE_H + 2 * SRC_PAD_Y;
+  const tx = nd.x, ty = nd.y + nd.nh + 6;
+
+  const rect = document.createElementNS(NS, 'rect');
+  rect.setAttribute('x', tx); rect.setAttribute('y', ty);
+  rect.setAttribute('width', tw); rect.setAttribute('height', th);
+  rect.setAttribute('rx', 4);
+  rect.setAttribute('fill',   nd.expr ? '#fef3c7' : '#e0e7ff');
+  rect.setAttribute('stroke', nd.expr ? '#d97706' : '#6366f1');
+  rect.setAttribute('stroke-width', '1');
+  rect.setAttribute('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,.15))');
+  tooltipGroup.appendChild(rect);
+
+  const text = document.createElementNS(NS, 'text');
+  text.setAttribute('x', tx + SRC_PAD_X);
+  text.setAttribute('y', ty + SRC_PAD_Y + 13);
+  text.setAttribute('font-family', 'monospace');
+  text.setAttribute('font-size', '13');
+  text.setAttribute('fill', nd.expr ? '#78350f' : '#312e81');
+  text.setAttribute('pointer-events', 'none');
+  lines.forEach((line, i) => {{
+    const tspan = document.createElementNS(NS, 'tspan');
+    tspan.setAttribute('x', tx + SRC_PAD_X);
+    if (i > 0) tspan.setAttribute('dy', LINE_H);
+    tspan.textContent = line;
+    text.appendChild(tspan);
+  }});
+  tooltipGroup.appendChild(text);
+}}
+
+let _tooltipTimer = null;
+function scheduleTooltip(nd) {{
+  _tooltipTimer = setTimeout(() => showTooltip(nd), 600);
+}}
+function hideTooltip() {{
+  clearTimeout(_tooltipTimer);
+  tooltipGroup.innerHTML = '';
+}}
 
 function easeInOut(t) {{ return t < 0.5 ? 2*t*t : -1+(4-2*t)*t; }}
 
@@ -341,8 +386,10 @@ function render() {{
   if (!linesGroup) {{
     linesGroup = document.createElementNS(NS, 'g');
     nodesGroup = document.createElementNS(NS, 'g');
+    tooltipGroup = document.createElementNS(NS, 'g');
     svg.appendChild(linesGroup);
     svg.appendChild(nodesGroup);
+    svg.appendChild(tooltipGroup);  // on top
   }}
 
   updateLines(svgLines);
@@ -365,16 +412,20 @@ function render() {{
       const g = nodeElements.get(id);
       if (!firstRender) g.style.transition = `transform ${{ANIM_MS}}ms ease`;
       g.style.transform = `translate(${{x}}px, ${{y}}px)`;
+      g._nd = nd;
       buildNodeContent(g, nd);
     }} else {{
       const g = document.createElementNS(NS, 'g');
       g.style.transform = `translate(${{x}}px, ${{y}}px)`;
+      g._nd = nd;
       if (nd.hasChildren) {{
         g.style.cursor = 'pointer';
         g.addEventListener('click', () => {{
           collapsed.has(id) ? collapsed.delete(id) : collapsed.add(id);
           render();
         }});
+        g.addEventListener('mouseover', e => {{ e.stopPropagation(); scheduleTooltip(g._nd); }});
+        g.addEventListener('mouseout',  () => hideTooltip());
       }}
       buildNodeContent(g, nd);
       nodesGroup.appendChild(g);
