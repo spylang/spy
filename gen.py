@@ -168,6 +168,84 @@ function visit(node, x, y, svgNodes, svgLines) {{
   return ny;
 }}
 
+// --- persistent DOM state ---
+const NS = 'http://www.w3.org/2000/svg';
+const ANIM_MS = 300;
+const nodeElements = new Map(); // id -> <g>
+let linesGroup = null, nodesGroup = null;
+let firstRender = true;
+
+function nodeColors(expr, isCollapsed) {{
+  return {{
+    fill:   expr ? (isCollapsed ? '#fef3c7' : '#fef9c3') : (isCollapsed ? '#e0e7ff' : '#dbeafe'),
+    stroke: expr ? (isCollapsed ? '#d97706' : '#ca8a04') : (isCollapsed ? '#6366f1' : '#3b82f6'),
+  }};
+}}
+
+// Rebuild the children of <g> (rect + text) using coords relative to the group origin.
+function buildNodeContent(g, nd) {{
+  while (g.firstChild) g.removeChild(g.firstChild);
+  const {{nw, nh, label, src, hasChildren, isCollapsed, expr}} = nd;
+  const c = nodeColors(expr, isCollapsed);
+
+  const rect = document.createElementNS(NS, 'rect');
+  rect.setAttribute('x', 0); rect.setAttribute('y', 0);
+  rect.setAttribute('width', nw); rect.setAttribute('height', nh);
+  rect.setAttribute('rx', 4);
+  rect.setAttribute('fill', c.fill); rect.setAttribute('stroke', c.stroke);
+  rect.setAttribute('stroke-width', '1.5');
+  g.appendChild(rect);
+
+  if (isCollapsed && src) {{
+    const text = document.createElementNS(NS, 'text');
+    text.setAttribute('x', SRC_PAD_X);
+    text.setAttribute('y', SRC_PAD_Y + 13);
+    text.setAttribute('font-family', 'monospace');
+    text.setAttribute('font-size', '13');
+    text.setAttribute('fill', expr ? '#78350f' : '#312e81');
+    text.setAttribute('pointer-events', 'none');
+    src.split('\\n').forEach((line, i) => {{
+      const tspan = document.createElementNS(NS, 'tspan');
+      tspan.setAttribute('x', SRC_PAD_X);
+      if (i > 0) tspan.setAttribute('dy', LINE_H);
+      tspan.textContent = line;
+      text.appendChild(tspan);
+    }});
+    g.appendChild(text);
+  }} else {{
+    const text = document.createElementNS(NS, 'text');
+    text.setAttribute('x', nw / 2);
+    text.setAttribute('y', nh / 2 + 5);
+    text.setAttribute('text-anchor', 'middle');
+    text.setAttribute('font-family', 'monospace');
+    text.setAttribute('font-size', '13');
+    text.setAttribute('fill', '#1e3a5f');
+    text.setAttribute('pointer-events', 'none');
+    text.textContent = (hasChildren ? (isCollapsed ? '▶ ' : '▼ ') : '') + label;
+    g.appendChild(text);
+  }}
+}}
+
+function drawLines(svgLines) {{
+  linesGroup.innerHTML = '';
+  for (const {{x1, y1, x2, y2, label}} of svgLines) {{
+    const el = document.createElementNS(NS, 'line');
+    el.setAttribute('x1', x1); el.setAttribute('y1', y1);
+    el.setAttribute('x2', x2); el.setAttribute('y2', y2);
+    el.setAttribute('stroke', '#94a3b8'); el.setAttribute('stroke-width', '1.5');
+    linesGroup.appendChild(el);
+    if (label) {{
+      const t = document.createElementNS(NS, 'text');
+      t.setAttribute('x', (x1 + x2) / 2); t.setAttribute('y', (y1 + y2) / 2 - 3);
+      t.setAttribute('text-anchor', 'middle');
+      t.setAttribute('font-family', 'sans-serif'); t.setAttribute('font-size', '10');
+      t.setAttribute('fill', '#64748b');
+      t.textContent = label;
+      linesGroup.appendChild(t);
+    }}
+  }}
+}}
+
 // --- render ---
 function render() {{
   const svgNodes = [], svgLines = [];
@@ -177,90 +255,65 @@ function render() {{
   const H = Math.max(...svgNodes.map(n => n.y + n.nh)) + PAD;
 
   const svg = document.getElementById('diagram');
-  svg.setAttribute('width',  W);
-  svg.setAttribute('height', H);
-  svg.innerHTML = '';
+  svg.setAttribute('width', W); svg.setAttribute('height', H);
 
-  const NS = 'http://www.w3.org/2000/svg';
+  if (!linesGroup) {{
+    linesGroup = document.createElementNS(NS, 'g');
+    nodesGroup = document.createElementNS(NS, 'g');
+    svg.appendChild(linesGroup);
+    svg.appendChild(nodesGroup);
+  }}
 
-  for (const {{x1, y1, x2, y2, label}} of svgLines) {{
-    const el = document.createElementNS(NS, 'line');
-    el.setAttribute('x1', x1); el.setAttribute('y1', y1);
-    el.setAttribute('x2', x2); el.setAttribute('y2', y2);
-    el.setAttribute('stroke', '#94a3b8');
-    el.setAttribute('stroke-width', '1.5');
-    svg.appendChild(el);
+  // Lines: instant on first render, cross-fade otherwise
+  if (firstRender) {{
+    drawLines(svgLines);
+  }} else {{
+    linesGroup.style.transition = `opacity ${{ANIM_MS / 2}}ms ease`;
+    linesGroup.style.opacity = '0';
+    setTimeout(() => {{ drawLines(svgLines); linesGroup.style.opacity = '1'; }}, ANIM_MS / 2);
+  }}
 
-    if (label) {{
-      const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
-      const t = document.createElementNS(NS, 'text');
-      t.setAttribute('x', mx);
-      t.setAttribute('y', my - 3);
-      t.setAttribute('text-anchor', 'middle');
-      t.setAttribute('font-family', 'sans-serif');
-      t.setAttribute('font-size', '10');
-      t.setAttribute('fill', '#64748b');
-      t.textContent = label;
-      svg.appendChild(t);
+  const newIds = new Set(svgNodes.map(n => n.id));
+
+  // Fade out and remove nodes that disappeared
+  for (const [id, g] of [...nodeElements.entries()]) {{
+    if (!newIds.has(id)) {{
+      g.style.transition = `opacity ${{ANIM_MS}}ms ease`;
+      g.style.opacity = '0';
+      setTimeout(() => {{ g.remove(); nodeElements.delete(id); }}, ANIM_MS);
     }}
   }}
 
-  for (const {{x, y, nw, nh, label, src, id, hasChildren, isCollapsed, expr}} of svgNodes) {{
-    const g = document.createElementNS(NS, 'g');
-    if (hasChildren) {{
-      g.style.cursor = 'pointer';
-      g.addEventListener('click', () => {{
-        isCollapsed ? collapsed.delete(id) : collapsed.add(id);
-        render();
-      }});
-    }}
-
-    const COLORS = {{
-      fill:   expr ? (isCollapsed ? '#fef3c7' : '#fef9c3') : (isCollapsed ? '#e0e7ff' : '#dbeafe'),
-      stroke: expr ? (isCollapsed ? '#d97706' : '#ca8a04') : (isCollapsed ? '#6366f1' : '#3b82f6'),
-    }};
-
-    const rect = document.createElementNS(NS, 'rect');
-    rect.setAttribute('x', x); rect.setAttribute('y', y);
-    rect.setAttribute('width', nw); rect.setAttribute('height', nh);
-    rect.setAttribute('rx', 4);
-    rect.setAttribute('fill',   COLORS.fill);
-    rect.setAttribute('stroke', COLORS.stroke);
-    rect.setAttribute('stroke-width', '1.5');
-    g.appendChild(rect);
-
-    if (isCollapsed && src) {{
-      // multi-line src display
-      const text = document.createElementNS(NS, 'text');
-      text.setAttribute('x', x + SRC_PAD_X);
-      text.setAttribute('y', y + SRC_PAD_Y + 13);
-      text.setAttribute('font-family', 'monospace');
-      text.setAttribute('font-size', '13');
-      text.setAttribute('fill', expr ? '#78350f' : '#312e81');
-      text.setAttribute('pointer-events', 'none');
-      src.split('\\n').forEach((line, i) => {{
-        const tspan = document.createElementNS(NS, 'tspan');
-        tspan.setAttribute('x', x + SRC_PAD_X);
-        if (i > 0) tspan.setAttribute('dy', LINE_H);
-        tspan.textContent = line;
-        text.appendChild(tspan);
-      }});
-      g.appendChild(text);
+  // Update existing nodes, create new ones
+  for (const nd of svgNodes) {{
+    const {{id, x, y}} = nd;
+    if (nodeElements.has(id)) {{
+      const g = nodeElements.get(id);
+      if (!firstRender) g.style.transition = `transform ${{ANIM_MS}}ms ease`;
+      g.style.transform = `translate(${{x}}px, ${{y}}px)`;
+      buildNodeContent(g, nd);
     }} else {{
-      const text = document.createElementNS(NS, 'text');
-      text.setAttribute('x', x + nw / 2);
-      text.setAttribute('y', y + nh / 2 + 5);
-      text.setAttribute('text-anchor', 'middle');
-      text.setAttribute('font-family', 'monospace');
-      text.setAttribute('font-size', '13');
-      text.setAttribute('fill', '#1e3a5f');
-      text.setAttribute('pointer-events', 'none');
-      text.textContent = (hasChildren ? (isCollapsed ? '▶ ' : '▼ ') : '') + label;
-      g.appendChild(text);
+      const g = document.createElementNS(NS, 'g');
+      g.style.transform = `translate(${{x}}px, ${{y}}px)`;
+      if (nd.hasChildren) {{
+        g.style.cursor = 'pointer';
+        g.addEventListener('click', () => {{
+          collapsed.has(id) ? collapsed.delete(id) : collapsed.add(id);
+          render();
+        }});
+      }}
+      buildNodeContent(g, nd);
+      nodesGroup.appendChild(g);
+      nodeElements.set(id, g);
+      if (!firstRender) {{
+        g.style.opacity = '0';
+        g.style.transition = `opacity ${{ANIM_MS}}ms ease`;
+        requestAnimationFrame(() => requestAnimationFrame(() => {{ g.style.opacity = '1'; }}));
+      }}
     }}
-
-    svg.appendChild(g);
   }}
+
+  firstRender = false;
 }}
 
 initCollapsed(astData);
