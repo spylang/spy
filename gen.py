@@ -6,7 +6,9 @@ def to_dict(node):
     if isinstance(node, Module):
         return {'type': 'Module', 'src': node.src, 'body': [to_dict(s) for s in node.body]}
     if isinstance(node, Assign):
-        return {'type': 'Assign', 'src': node.src, 'target': node.target, 'value': to_dict(node.value)}
+        return {'type': 'Assign', 'src': node.src,
+                'target': {'type': 'Name', 'src': node.target, 'name': node.target},
+                'value': to_dict(node.value)}
     if isinstance(node, If):
         return {'type': 'If', 'src': node.src,
                 'test': to_dict(node.test),
@@ -35,7 +37,7 @@ html = f"""<!DOCTYPE html>
 const astData = {ast_json};
 
 const NODE_W = 110, NODE_H = 28;
-const X_INDENT = 40, ROW_GAP = 16;
+const X_INDENT = 120, ROW_GAP = 16;
 const EXPR_H_GAP = 16, EXPR_V_GAP = 30, PAD = 20;
 const CHAR_W = 7.8, LINE_H = 18, SRC_PAD_X = 10, SRC_PAD_Y = 8;
 
@@ -44,29 +46,43 @@ let _idCounter = 0;
 function assignIds(node) {{
   node._id = _idCounter++;
   if (node.type === 'Module')  node.body.forEach(assignIds);
-  if (node.type === 'Assign')  assignIds(node.value);
+  if (node.type === 'Assign')  {{ assignIds(node.target); assignIds(node.value); }}
   if (node.type === 'If')      {{ assignIds(node.test); node.then_body.forEach(assignIds); node.else_body.forEach(assignIds); }}
   if (node.type === 'BinOp')   {{ assignIds(node.left); assignIds(node.right); }}
 }}
 assignIds(astData);
 
 const collapsed = new Set();
+function initCollapsed(node) {{
+  if (canCollapse(node)) collapsed.add(node._id);
+  if (node.type === 'Module')  node.body.forEach(initCollapsed);
+  if (node.type === 'Assign')  {{ initCollapsed(node.target); initCollapsed(node.value); }}
+  if (node.type === 'If')      {{ initCollapsed(node.test); node.then_body.forEach(initCollapsed); node.else_body.forEach(initCollapsed); }}
+  if (node.type === 'BinOp')   {{ initCollapsed(node.left); initCollapsed(node.right); }}
+}}
 
 // --- helpers ---
-function isExpr(node)  {{ return node.type === 'BinOp' || node.type === 'Const'; }}
+function isExpr(node)  {{ return node.type === 'BinOp' || node.type === 'Const' || node.type === 'Name'; }}
 function canCollapse(node) {{ return node.type === 'BinOp' || childrenOf(node).length > 0; }}
 
 function labelOf(node) {{
-  if (node.type === 'Assign') return `Assign: ${{node.target}}`;
   if (node.type === 'BinOp')  return `BinOp: ${{node.op}}`;
   if (node.type === 'Const')  return `Const: ${{node.value}}`;
+  if (node.type === 'Name')   return node.name;
   return node.type;
 }}
 
 function childrenOf(node) {{
-  if (node.type === 'Module') return node.body;
-  if (node.type === 'Assign') return [node.value];
-  if (node.type === 'If')     return [node.test, ...node.then_body, ...node.else_body];
+  if (node.type === 'Module')
+    return node.body.map((n, i) => ({{attr: node.body.length > 1 ? `body[${{i}}]` : 'body', node: n}}));
+  if (node.type === 'Assign')
+    return [{{attr: 'target', node: node.target}}, {{attr: 'value', node: node.value}}];
+  if (node.type === 'If')
+    return [
+      {{attr: 'test', node: node.test}},
+      ...node.then_body.map((n, i) => ({{attr: node.then_body.length > 1 ? `then[${{i}}]` : 'then', node: n}})),
+      ...node.else_body.map((n, i) => ({{attr: node.else_body.length > 1 ? `else[${{i}}]` : 'else', node: n}})),
+    ];
   return [];
 }}
 
@@ -95,7 +111,7 @@ function placeExpr(node, leftX, y, svgNodes, svgLines) {{
   const nodeX = leftX + (totalW - nw) / 2;
   const isCollapsed = collapsed.has(node._id);
   svgNodes.push({{x: nodeX, y, nw, nh, label: labelOf(node), src: node.src,
-                  id: node._id, hasChildren: node.type === 'BinOp', isCollapsed}});
+                  id: node._id, hasChildren: node.type === 'BinOp', isCollapsed, expr: true}});
 
   if (node.type === 'BinOp' && !isCollapsed) {{
     const childY = y + nh + EXPR_V_GAP;
@@ -106,8 +122,8 @@ function placeExpr(node, leftX, y, svgNodes, svgLines) {{
     const leftChildX  = leftX + (leftW - lnw) / 2;
     const rightChildX = leftX + leftW + EXPR_H_GAP + (rightW - rnw) / 2;
     const parentCx = nodeX + nw / 2;
-    svgLines.push({{x1: parentCx, y1: y + nh, x2: leftChildX  + lnw / 2, y2: childY}});
-    svgLines.push({{x1: parentCx, y1: y + nh, x2: rightChildX + rnw / 2, y2: childY}});
+    svgLines.push({{x1: parentCx, y1: y + nh, x2: leftChildX  + lnw / 2, y2: childY, label: 'left'}});
+    svgLines.push({{x1: parentCx, y1: y + nh, x2: rightChildX + rnw / 2, y2: childY, label: 'right'}});
     const lb = placeExpr(node.left,  leftX,                      childY, svgNodes, svgLines);
     const rb = placeExpr(node.right, leftX + leftW + EXPR_H_GAP, childY, svgNodes, svgLines);
     return Math.max(lb, rb);
@@ -122,7 +138,7 @@ function visit(node, x, y, svgNodes, svgLines) {{
   const hasChildren = children.length > 0;
   const isCollapsed = collapsed.has(node._id);
   svgNodes.push({{x, y, nw, nh, label: labelOf(node), src: node.src,
-                  id: node._id, hasChildren, isCollapsed}});
+                  id: node._id, hasChildren, isCollapsed, expr: false}});
   let ny = y + nh + ROW_GAP;
 
   if (!hasChildren || isCollapsed) return ny;
@@ -131,23 +147,23 @@ function visit(node, x, y, svgNodes, svgLines) {{
   const vx = childX - X_INDENT / 2;
 
   const connectors = [];
-  for (const child of children) {{
+  for (const {{attr, node: child}} of children) {{
     const childNh = nodeSize(child).h;
     const midY = ny + childNh / 2;
     if (isExpr(child)) {{
       const totalW = measureExpr(child);
       const {{w: cnw}} = nodeSize(child);
-      connectors.push({{x: childX + (totalW - cnw) / 2, y: midY}});
+      connectors.push({{x: childX + (totalW - cnw) / 2, y: midY, attr}});
       ny = placeExpr(child, childX, ny, svgNodes, svgLines) + ROW_GAP;
     }} else {{
-      connectors.push({{x: childX, y: midY}});
+      connectors.push({{x: childX, y: midY, attr}});
       ny = visit(child, childX, ny, svgNodes, svgLines);
     }}
   }}
 
   svgLines.push({{x1: vx, y1: y + nh, x2: vx, y2: connectors[connectors.length - 1].y}});
-  for (const {{x: tx, y: ty}} of connectors)
-    svgLines.push({{x1: vx, y1: ty, x2: tx, y2: ty}});
+  for (const {{x: tx, y: ty, attr}} of connectors)
+    svgLines.push({{x1: vx, y1: ty, x2: tx, y2: ty, label: attr}});
 
   return ny;
 }}
@@ -167,16 +183,29 @@ function render() {{
 
   const NS = 'http://www.w3.org/2000/svg';
 
-  for (const {{x1, y1, x2, y2}} of svgLines) {{
+  for (const {{x1, y1, x2, y2, label}} of svgLines) {{
     const el = document.createElementNS(NS, 'line');
     el.setAttribute('x1', x1); el.setAttribute('y1', y1);
     el.setAttribute('x2', x2); el.setAttribute('y2', y2);
     el.setAttribute('stroke', '#94a3b8');
     el.setAttribute('stroke-width', '1.5');
     svg.appendChild(el);
+
+    if (label) {{
+      const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+      const t = document.createElementNS(NS, 'text');
+      t.setAttribute('x', mx);
+      t.setAttribute('y', my - 3);
+      t.setAttribute('text-anchor', 'middle');
+      t.setAttribute('font-family', 'sans-serif');
+      t.setAttribute('font-size', '10');
+      t.setAttribute('fill', '#64748b');
+      t.textContent = label;
+      svg.appendChild(t);
+    }}
   }}
 
-  for (const {{x, y, nw, nh, label, src, id, hasChildren, isCollapsed}} of svgNodes) {{
+  for (const {{x, y, nw, nh, label, src, id, hasChildren, isCollapsed, expr}} of svgNodes) {{
     const g = document.createElementNS(NS, 'g');
     if (hasChildren) {{
       g.style.cursor = 'pointer';
@@ -186,12 +215,17 @@ function render() {{
       }});
     }}
 
+    const COLORS = {{
+      fill:   expr ? (isCollapsed ? '#fef3c7' : '#fef9c3') : (isCollapsed ? '#e0e7ff' : '#dbeafe'),
+      stroke: expr ? (isCollapsed ? '#d97706' : '#ca8a04') : (isCollapsed ? '#6366f1' : '#3b82f6'),
+    }};
+
     const rect = document.createElementNS(NS, 'rect');
     rect.setAttribute('x', x); rect.setAttribute('y', y);
     rect.setAttribute('width', nw); rect.setAttribute('height', nh);
     rect.setAttribute('rx', 4);
-    rect.setAttribute('fill',   isCollapsed ? '#e0e7ff' : '#dbeafe');
-    rect.setAttribute('stroke', isCollapsed ? '#6366f1' : '#3b82f6');
+    rect.setAttribute('fill',   COLORS.fill);
+    rect.setAttribute('stroke', COLORS.stroke);
     rect.setAttribute('stroke-width', '1.5');
     g.appendChild(rect);
 
@@ -202,7 +236,7 @@ function render() {{
       text.setAttribute('y', y + SRC_PAD_Y + 13);
       text.setAttribute('font-family', 'monospace');
       text.setAttribute('font-size', '13');
-      text.setAttribute('fill', '#312e81');
+      text.setAttribute('fill', expr ? '#78350f' : '#312e81');
       text.setAttribute('pointer-events', 'none');
       src.split('\\n').forEach((line, i) => {{
         const tspan = document.createElementNS(NS, 'tspan');
@@ -229,6 +263,7 @@ function render() {{
   }}
 }}
 
+initCollapsed(astData);
 render();
   </script>
 </body>
