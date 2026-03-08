@@ -77,7 +77,7 @@ html = f"""<!DOCTYPE html>
   <h2>AST: EXAMPLE</h2>
   <svg id="diagram"></svg>
   <script src="spyast.js"></script>
-  <script>ToyAstViz.render(document.getElementById('diagram'), {ast_json});</script>
+  <script>SPyAstViz.render(document.getElementById('diagram'), {ast_json});</script>
 </body>
 </html>
 """

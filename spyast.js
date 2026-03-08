@@ -1,5 +1,5 @@
 // spyast.js — standalone AST visualizer
-// Usage: ToyAstViz.render(svgElement, astData)
+// Usage: SPyAstViz.render(svgElement, astData)
 //
 // Each node in astData must have:
 //   label        {string}  text shown when expanded
@@ -446,6 +446,6 @@
     render();
   }
 
-  global.ToyAstViz = { render: init };
+  global.SPyAstViz = { render: init };
 
 })(typeof window !== 'undefined' ? window : this);
