@@ -1,24 +1,30 @@
 from dataclasses import dataclass
 
+
 class Node:
     pass
+
 
 @dataclass
 class Stmt(Node):
     pass
 
+
 @dataclass
 class Expr(Node):
     pass
+
 
 @dataclass
 class Module:
     body: list[Stmt]
 
+
 @dataclass
 class Assign(Stmt):
     target: str
     value: Expr
+
 
 @dataclass
 class If(Stmt):
@@ -26,9 +32,11 @@ class If(Stmt):
     then_body: list[Stmt]
     else_body: list[Stmt]
 
+
 @dataclass
 class Const(Expr):
     value: int
+
 
 @dataclass
 class BinOp(Expr):
@@ -36,9 +44,16 @@ class BinOp(Expr):
     left: Expr
     right: Expr
 
+
 @dataclass
 class Name(Expr):
     name: str
+
+
+@dataclass
+class UnaryOp(Expr):
+    op: str
+    operand: Expr
 
 
 @dataclass
@@ -46,9 +61,11 @@ class FuncArg(Node):
     name: str
     type: Expr
 
+
 @dataclass
 class Return(Stmt):
     value: Expr
+
 
 @dataclass
 class FuncDef(Stmt):
@@ -77,7 +94,12 @@ def attach_src(node):
             attach_src(s)
         args_src = ", ".join(a.src for a in node.args)
         body_lines = "\n".join(f"    {s.src}" for s in node.body)
-        node.src = f"def {node.name}({args_src}) -> {node.return_type.src}:\n{body_lines}"
+        node.src = (
+            f"def {node.name}({args_src}) -> {node.return_type.src}:\n{body_lines}"
+        )
+    elif isinstance(node, UnaryOp):
+        attach_src(node.operand)
+        node.src = f"{node.op}{node.operand.src}"
     elif isinstance(node, BinOp):
         attach_src(node.left)
         attach_src(node.right)
@@ -107,31 +129,37 @@ def attach_src(node):
 #     y = 0
 # def add(a: int, b: int) -> int:
 #     result = a + b
-EXAMPLE = Module(body=[
-    Assign(
-        target='x',
-        value=BinOp('+', Const(1), BinOp('*', Const(2), Const(3))),
-    ),
-    If(
-        test=BinOp('>', BinOp('+', Const(1), Const(4)), Const(3)),
-        then_body=[
-            Assign(target='y', value=BinOp('+', Const(0), Const(1))),
-        ],
-        else_body=[
-            Assign(target='y', value=Const(0)),
-        ],
-    ),
-    FuncDef(
-        name='add',
-        args=[
-            FuncArg(name='a', type=Name('int')),
-            FuncArg(name='b', type=Name('int')),
-        ],
-        return_type=Name('int'),
-        body=[
-            Assign(target='result', value=BinOp('+', Name('a'), Name('b'))),
-            Return(value=Name('result')),
-        ],
-    ),
-])
+EXAMPLE = Module(
+    body=[
+        Assign(
+            target="x",
+            value=BinOp("+", Const(1), BinOp("*", Const(2), Const(3))),
+        ),
+        Assign(
+            target="neg",
+            value=UnaryOp("-", Name("x")),
+        ),
+        If(
+            test=BinOp(">", BinOp("+", Const(1), Const(4)), Const(3)),
+            then_body=[
+                Assign(target="y", value=BinOp("+", Const(0), Const(1))),
+            ],
+            else_body=[
+                Assign(target="y", value=Const(0)),
+            ],
+        ),
+        FuncDef(
+            name="add",
+            args=[
+                FuncArg(name="a", type=Name("int")),
+                FuncArg(name="b", type=Name("int")),
+            ],
+            return_type=Name("int"),
+            body=[
+                Assign(target="result", value=BinOp("+", Name("a"), Name("b"))),
+                Return(value=Name("result")),
+            ],
+        ),
+    ]
+)
 attach_src(EXAMPLE)

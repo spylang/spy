@@ -74,10 +74,11 @@
       };
     }
 
-    // Expr layout assumes binary children (ch[0]=left, ch[1]=right).
+    // Expr layout: handles 0, 1, or 2 children.
     function measureExpr(node) {
       const ch = childrenOf(node);
-      if (collapsed.has(node._id) || ch.length < 2) return nodeSize(node).w;
+      if (collapsed.has(node._id) || ch.length === 0) return nodeSize(node).w;
+      if (ch.length === 1) return Math.max(nodeSize(node).w, measureExpr(ch[0].node));
       return measureExpr(ch[0].node) + EXPR_H_GAP + measureExpr(ch[1].node);
     }
 
@@ -89,6 +90,19 @@
       const isCollapsed = collapsed.has(node._id);
       svgNodes.push({ x: nodeX, y, nw, nh, label: labelOf(node), src: node.src,
                       id: node._id, hasChildren: ch.length > 0, isCollapsed, expr: true, shape: node.shape, color: node.color });
+
+      if (ch.length === 1 && !isCollapsed) {
+        const child = ch[0].node;
+        const childY = y + nh + EXPR_V_GAP;
+        const childW = measureExpr(child);
+        const { w: cnw } = nodeSize(child);
+        const childX = leftX + (totalW - cnw) / 2;
+        const parentCx = nodeX + nw / 2;
+        const childCx  = childX + cnw / 2;
+        // straight vertical connector, no horizontal bar
+        svgLines.push({ x1: parentCx, y1: y + nh, x2: childCx, y2: childY, id: `e1-${node._id}-${child._id}` });
+        return placeExpr(child, leftX + (totalW - childW) / 2, childY, svgNodes, svgLines);
+      }
 
       if (ch.length >= 2 && !isCollapsed) {
         const leftChild  = ch[0].node, rightChild = ch[1].node;
