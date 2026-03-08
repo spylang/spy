@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Annotated
 
 import click
@@ -13,6 +14,7 @@ from spy.cli.commands.shared_args import (
     _execute_flag,
     _execute_options,
 )
+from spy.tool.astviz import SpyastJs
 
 
 @dataclass
@@ -26,10 +28,19 @@ class _redshift_mixin:
         str,
         Option(
             "--format",
-            help="Output format (ast or spy [source])",
-            click_type=click.Choice(["ast", "spy"]),
+            help="Output format (ast, spy [source], or html)",
+            click_type=click.Choice(["ast", "spy", "html"]),
         ),
     ] = "spy"
+
+    spyast_js: Annotated[
+        SpyastJs,
+        Option(
+            "--spyast-js",
+            help="How to include spyast.js in the HTML output",
+            click_type=click.Choice(["cdn", "local"]),
+        ),
+    ] = "cdn"
 
 
 @dataclass
@@ -61,5 +72,14 @@ async def redshift(args: Redshift_Args) -> None:
             dump_spy_mod(vm, modname, args.full_fqn)
         elif args.format == "ast":
             dump_spy_mod_ast(vm, modname)
+        elif args.format == "html":
+            from spy.tool.astviz import dump_html
+
+            html = dump_html(vm, modname, args.spyast_js)
+            build_dir = Path(args.filename.parent) / "build"
+            build_dir.mkdir(exist_ok=True, parents=True)
+            out = build_dir / f"{modname}_ast.html"
+            out.write_text(html)
+            print(f"Written {out}")
         else:
             assert False, f"Invalid redshift format `{args.format}`"

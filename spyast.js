@@ -62,7 +62,7 @@
       if (!collapsed.has(node._id) || !canCollapse(node)) {
         const w = canCollapse(node)
           ? Math.max(NODE_W, ARROW_W + Math.ceil(labelOf(node).length * CHAR_W) + SRC_PAD_X)
-          : NODE_W;
+          : Math.max(NODE_W, SRC_PAD_X + Math.ceil(labelOf(node).length * CHAR_W) + SRC_PAD_X);
         return { w, h: NODE_H };
       }
       const lines = (node.src || '').split('\n');
