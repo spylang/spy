@@ -29,6 +29,7 @@ def to_dict(node):
                 'argtype': to_dict(node.type)}
     if isinstance(node, FuncDef):
         return {'type': 'FuncDef', 'src': node.src, 'name': node.name,
+                'name_node': {'type': 'Name', 'src': node.name, 'name': node.name},
                 'args': [to_dict(a) for a in node.args],
                 'return_type': to_dict(node.return_type),
                 'body': [to_dict(s) for s in node.body]}
@@ -62,7 +63,7 @@ function assignIds(node) {{
   if (node.type === 'Assign')  {{ assignIds(node.target); assignIds(node.value); }}
   if (node.type === 'If')      {{ assignIds(node.test); node.then_body.forEach(assignIds); node.else_body.forEach(assignIds); }}
   if (node.type === 'BinOp')   {{ assignIds(node.left); assignIds(node.right); }}
-  if (node.type === 'FuncDef') {{ node.args.forEach(assignIds); assignIds(node.return_type); node.body.forEach(assignIds); }}
+  if (node.type === 'FuncDef') {{ assignIds(node.name_node); node.args.forEach(assignIds); assignIds(node.return_type); node.body.forEach(assignIds); }}
   if (node.type === 'FuncArg') {{ assignIds(node.argname_node); assignIds(node.argtype); }}
   if (node.type === 'Return')  {{ assignIds(node.value); }}
 }}
@@ -70,12 +71,12 @@ assignIds(astData);
 
 const collapsed = new Set();
 function initCollapsed(node) {{
-  if (canCollapse(node)) collapsed.add(node._id);
+  if (canCollapse(node) && node.type !== 'Module') collapsed.add(node._id);
   if (node.type === 'Module')  node.body.forEach(initCollapsed);
   if (node.type === 'Assign')  {{ initCollapsed(node.target); initCollapsed(node.value); }}
   if (node.type === 'If')      {{ initCollapsed(node.test); node.then_body.forEach(initCollapsed); node.else_body.forEach(initCollapsed); }}
   if (node.type === 'BinOp')   {{ initCollapsed(node.left); initCollapsed(node.right); }}
-  if (node.type === 'FuncDef') {{ node.args.forEach(initCollapsed); initCollapsed(node.return_type); node.body.forEach(initCollapsed); }}
+  if (node.type === 'FuncDef') {{ initCollapsed(node.name_node); node.args.forEach(initCollapsed); initCollapsed(node.return_type); node.body.forEach(initCollapsed); }}
   if (node.type === 'FuncArg') {{ initCollapsed(node.argname_node); initCollapsed(node.argtype); }}
   if (node.type === 'Return')  {{ initCollapsed(node.value); }}
 }}
@@ -107,6 +108,7 @@ function childrenOf(node) {{
     ];
   if (node.type === 'FuncDef')
     return [
+      {{attr: 'name', node: node.name_node}},
       ...node.args.map((n, i) => ({{attr: node.args.length > 1 ? `args[${{i}}]` : 'args', node: n}})),
       {{attr: 'return_type', node: node.return_type}},
       ...node.body.map((n, i) => ({{attr: node.body.length > 1 ? `body[${{i}}]` : 'body', node: n}})),
