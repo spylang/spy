@@ -1,63 +1,66 @@
 import json
-from toyast import EXAMPLE, Module, Assign, If, Const, BinOp, Name, FuncDef, FuncArg, Return
+import dataclasses
+from toyast import EXAMPLE, Node, Expr, Module
 
 
-def ch(attr, node):
-    return {'attr': attr, 'node': to_dict(node)}
+# Which string field to append to the type name to form the label.
+# Nodes not listed here use just the type name as label.
+LABEL_FIELD = {
+    'BinOp':   'op',
+    'Const':   'value',
+    'Name':    'name',
+    'FuncDef': 'name',
+    'FuncArg': 'name',
+}
+
+# String fields that should be rendered as a Name leaf child node
+# rather than being silently ignored.
+STR_AS_NAME = {
+    'Assign': {'target'},
+    'FuncDef': {'name'},
+    'FuncArg': {'name'},
+}
+
+# Nodes that start expanded (all others start collapsed).
+EXPAND_BY_DEFAULT = {'Module'}
+
 
 def name_leaf(name):
     return {'type': 'Name', 'src': name, 'label': name, 'expr': True, 'children': []}
 
+
+def label_of(node):
+    typename = type(node).__name__
+    key = LABEL_FIELD.get(typename)
+    return f'{typename} {getattr(node, key)}' if key else typename
+
+
 def to_dict(node):
-    if isinstance(node, Module):
-        return {'type': 'Module', 'src': node.src, 'label': 'Module',
-                'expr': False, 'startExpanded': True,
-                'children': [{'attr': f'body[{i}]' if len(node.body) > 1 else 'body', 'node': to_dict(s)}
-                             for i, s in enumerate(node.body)]}
-    if isinstance(node, Assign):
-        return {'type': 'Assign', 'src': node.src, 'label': 'Assign',
-                'expr': False,
-                'children': [{'attr': 'target', 'node': name_leaf(node.target)},
-                             ch('value', node.value)]}
-    if isinstance(node, If):
-        then_ch = [{'attr': f'then[{i}]' if len(node.then_body) > 1 else 'then', 'node': to_dict(s)}
-                   for i, s in enumerate(node.then_body)]
-        else_ch = [{'attr': f'else[{i}]' if len(node.else_body) > 1 else 'else', 'node': to_dict(s)}
-                   for i, s in enumerate(node.else_body)]
-        return {'type': 'If', 'src': node.src, 'label': 'If',
-                'expr': False,
-                'children': [ch('test', node.test), *then_ch, *else_ch]}
-    if isinstance(node, BinOp):
-        return {'type': 'BinOp', 'src': node.src, 'label': f'BinOp {node.op}',
-                'expr': True,
-                'children': [ch('left', node.left), ch('right', node.right)]}
-    if isinstance(node, Const):
-        return {'type': 'Const', 'src': node.src, 'label': f'Const {node.value}',
-                'expr': True, 'children': []}
-    if isinstance(node, Name):
-        return {'type': 'Name', 'src': node.name, 'label': node.name,
-                'expr': True, 'children': []}
-    if isinstance(node, Return):
-        return {'type': 'Return', 'src': node.src, 'label': 'Return',
-                'expr': False,
-                'children': [ch('value', node.value)]}
-    if isinstance(node, FuncArg):
-        return {'type': 'FuncArg', 'src': node.src, 'label': f'FuncArg {node.name}',
-                'expr': False,
-                'children': [{'attr': 'name', 'node': name_leaf(node.name)},
-                             ch('type', node.type)]}
-    if isinstance(node, FuncDef):
-        args_ch = [{'attr': f'args[{i}]' if len(node.args) > 1 else 'args', 'node': to_dict(a)}
-                   for i, a in enumerate(node.args)]
-        body_ch = [{'attr': f'body[{i}]' if len(node.body) > 1 else 'body', 'node': to_dict(s)}
-                   for i, s in enumerate(node.body)]
-        return {'type': 'FuncDef', 'src': node.src, 'label': f'FuncDef {node.name}',
-                'expr': False,
-                'children': [{'attr': 'name', 'node': name_leaf(node.name)},
-                             *args_ch,
-                             ch('return_type', node.return_type),
-                             *body_ch]}
-    raise ValueError(f'Unknown node: {node}')
+    typename = type(node).__name__
+    str_as_name = STR_AS_NAME.get(typename, set())
+    children = []
+
+    for field in dataclasses.fields(node):
+        val = getattr(node, field.name)
+        if field.name in str_as_name:
+            children.append({'attr': field.name, 'node': name_leaf(val)})
+        elif isinstance(val, Node):
+            children.append({'attr': field.name, 'node': to_dict(val)})
+        elif isinstance(val, list) and val and isinstance(val[0], Node):
+            for i, item in enumerate(val):
+                attr = f'{field.name}[{i}]' if len(val) > 1 else field.name
+                children.append({'attr': attr, 'node': to_dict(item)})
+
+    result = {
+        'type':     typename,
+        'src':      node.src,
+        'label':    label_of(node),
+        'expr':     isinstance(node, Expr),
+        'children': children,
+    }
+    if typename in EXPAND_BY_DEFAULT:
+        result['startExpanded'] = True
+    return result
 
 
 ast_json = json.dumps(to_dict(EXAMPLE))
