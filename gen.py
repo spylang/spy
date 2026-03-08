@@ -1,5 +1,5 @@
 import json
-from toyast import EXAMPLE, Module, Assign, If, Const, BinOp
+from toyast import EXAMPLE, Module, Assign, If, Const, BinOp, Name, FuncDef, FuncArg, Return
 
 
 def to_dict(node):
@@ -19,6 +19,19 @@ def to_dict(node):
                 'left': to_dict(node.left), 'right': to_dict(node.right)}
     if isinstance(node, Const):
         return {'type': 'Const', 'src': node.src, 'value': node.value}
+    if isinstance(node, Return):
+        return {'type': 'Return', 'src': node.src, 'value': to_dict(node.value)}
+    if isinstance(node, Name):
+        return {'type': 'Name', 'src': node.name, 'name': node.name}
+    if isinstance(node, FuncArg):
+        return {'type': 'FuncArg', 'src': node.src, 'argname': node.name,
+                'argname_node': {'type': 'Name', 'src': node.name, 'name': node.name},
+                'argtype': to_dict(node.type)}
+    if isinstance(node, FuncDef):
+        return {'type': 'FuncDef', 'src': node.src, 'name': node.name,
+                'args': [to_dict(a) for a in node.args],
+                'return_type': to_dict(node.return_type),
+                'body': [to_dict(s) for s in node.body]}
     raise ValueError(f'Unknown node: {node}')
 
 
@@ -49,6 +62,9 @@ function assignIds(node) {{
   if (node.type === 'Assign')  {{ assignIds(node.target); assignIds(node.value); }}
   if (node.type === 'If')      {{ assignIds(node.test); node.then_body.forEach(assignIds); node.else_body.forEach(assignIds); }}
   if (node.type === 'BinOp')   {{ assignIds(node.left); assignIds(node.right); }}
+  if (node.type === 'FuncDef') {{ node.args.forEach(assignIds); assignIds(node.return_type); node.body.forEach(assignIds); }}
+  if (node.type === 'FuncArg') {{ assignIds(node.argname_node); assignIds(node.argtype); }}
+  if (node.type === 'Return')  {{ assignIds(node.value); }}
 }}
 assignIds(astData);
 
@@ -59,6 +75,9 @@ function initCollapsed(node) {{
   if (node.type === 'Assign')  {{ initCollapsed(node.target); initCollapsed(node.value); }}
   if (node.type === 'If')      {{ initCollapsed(node.test); node.then_body.forEach(initCollapsed); node.else_body.forEach(initCollapsed); }}
   if (node.type === 'BinOp')   {{ initCollapsed(node.left); initCollapsed(node.right); }}
+  if (node.type === 'FuncDef') {{ node.args.forEach(initCollapsed); initCollapsed(node.return_type); node.body.forEach(initCollapsed); }}
+  if (node.type === 'FuncArg') {{ initCollapsed(node.argname_node); initCollapsed(node.argtype); }}
+  if (node.type === 'Return')  {{ initCollapsed(node.value); }}
 }}
 
 // --- helpers ---
@@ -66,9 +85,12 @@ function isExpr(node)  {{ return node.type === 'BinOp' || node.type === 'Const' 
 function canCollapse(node) {{ return node.type === 'BinOp' || childrenOf(node).length > 0; }}
 
 function labelOf(node) {{
-  if (node.type === 'BinOp')  return `BinOp: ${{node.op}}`;
-  if (node.type === 'Const')  return `Const: ${{node.value}}`;
-  if (node.type === 'Name')   return node.name;
+  if (node.type === 'BinOp')   return `BinOp: ${{node.op}}`;
+  if (node.type === 'Const')   return `Const: ${{node.value}}`;
+  if (node.type === 'Name')    return node.name;
+  if (node.type === 'FuncDef') return `FuncDef ${{node.name}}`;
+  if (node.type === 'Return')  return 'Return';
+  if (node.type === 'FuncArg') return `FuncArg ${{node.argname}}`;
   return node.type;
 }}
 
@@ -83,6 +105,16 @@ function childrenOf(node) {{
       ...node.then_body.map((n, i) => ({{attr: node.then_body.length > 1 ? `then[${{i}}]` : 'then', node: n}})),
       ...node.else_body.map((n, i) => ({{attr: node.else_body.length > 1 ? `else[${{i}}]` : 'else', node: n}})),
     ];
+  if (node.type === 'FuncDef')
+    return [
+      ...node.args.map((n, i) => ({{attr: node.args.length > 1 ? `args[${{i}}]` : 'args', node: n}})),
+      {{attr: 'return_type', node: node.return_type}},
+      ...node.body.map((n, i) => ({{attr: node.body.length > 1 ? `body[${{i}}]` : 'body', node: n}})),
+    ];
+  if (node.type === 'FuncArg')
+    return [{{attr: 'name', node: node.argname_node}}, {{attr: 'type', node: node.argtype}}];
+  if (node.type === 'Return')
+    return [{{attr: 'value', node: node.value}}];
   return [];
 }}
 

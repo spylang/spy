@@ -36,10 +36,48 @@ class BinOp(Expr):
     left: Expr
     right: Expr
 
+@dataclass
+class Name(Expr):
+    name: str
+
+
+@dataclass
+class FuncArg(Node):
+    name: str
+    type: Expr
+
+@dataclass
+class Return(Stmt):
+    value: Expr
+
+@dataclass
+class FuncDef(Stmt):
+    name: str
+    args: list[FuncArg]
+    return_type: Expr
+    body: list[Stmt]
+
 
 def attach_src(node):
     if isinstance(node, Const):
         node.src = str(node.value)
+    elif isinstance(node, Name):
+        node.src = node.name
+    elif isinstance(node, FuncArg):
+        attach_src(node.type)
+        node.src = f"{node.name}: {node.type.src}"
+    elif isinstance(node, Return):
+        attach_src(node.value)
+        node.src = f"return {node.value.src}"
+    elif isinstance(node, FuncDef):
+        for arg in node.args:
+            attach_src(arg)
+        attach_src(node.return_type)
+        for s in node.body:
+            attach_src(s)
+        args_src = ", ".join(a.src for a in node.args)
+        body_lines = "\n".join(f"    {s.src}" for s in node.body)
+        node.src = f"def {node.name}({args_src}) -> {node.return_type.src}:\n{body_lines}"
     elif isinstance(node, BinOp):
         attach_src(node.left)
         attach_src(node.right)
@@ -67,6 +105,8 @@ def attach_src(node):
 #     y = x + 1
 # else:
 #     y = 0
+# def add(a: int, b: int) -> int:
+#     result = a + b
 EXAMPLE = Module(body=[
     Assign(
         target='x',
@@ -79,6 +119,18 @@ EXAMPLE = Module(body=[
         ],
         else_body=[
             Assign(target='y', value=Const(0)),
+        ],
+    ),
+    FuncDef(
+        name='add',
+        args=[
+            FuncArg(name='a', type=Name('int')),
+            FuncArg(name='b', type=Name('int')),
+        ],
+        return_type=Name('int'),
+        body=[
+            Assign(target='result', value=BinOp('+', Name('a'), Name('b'))),
+            Return(value=Name('result')),
         ],
     ),
 ])
