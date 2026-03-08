@@ -189,6 +189,30 @@ The first render is always instant (no animation).
 
 ---
 
+## Reference implementation (Python)
+
+`toyast.py` and `gen.py` are a reference implementation showing how to connect
+a Python AST to `spyast.js`. They are not part of the library itself.
+
+**`toyast.py`** defines a small toy language AST (nodes like `Module`, `Assign`,
+`If`, `BinOp`, `FuncDef`, etc.) and an `EXAMPLE` program that exercises all
+node types. It also contains `attach_src`, which computes a source-code string
+for every node by reconstructing it from the tree. This is only needed because
+the AST is fabricated — in a real compiler the `src` field would be populated
+from the actual source file on disk using the parser's source spans.
+
+**`gen.py`** shows how to convert that AST into the JSON schema expected by
+`spyast.js` and produce a self-contained HTML file. The key function is
+`to_dict`, which walks the dataclass fields automatically (via
+`dataclasses.fields()`) and decides for each field whether it becomes a child
+node, a list of child nodes, or just contributes to the label. Three small
+config dicts at the top of the file encode all the display decisions specific
+to this AST (which field to append to the label, which string fields to render
+as leaf nodes, which nodes start expanded). These are the only things that need
+to change when adapting `gen.py` to a different AST.
+
+---
+
 ## Constants (internal defaults)
 
 These are compiled into the library and are not currently runtime-configurable.
