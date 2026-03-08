@@ -377,6 +377,7 @@
             g.style.cursor = 'pointer';
             g.addEventListener('click', () => {
               collapsed.has(id) ? collapsed.delete(id) : collapsed.add(id);
+              writeHash();
               render();
             });
             g.addEventListener('mouseover', e => { e.stopPropagation(); scheduleTooltip(g._nd); });
@@ -396,9 +397,23 @@
       firstRender = false;
     }
 
+    // ---- hash state ----
+    function writeHash() {
+      const ids = [...collapsed].sort((a, b) => a - b).join(',');
+      history.replaceState(null, '', '#' + ids);
+    }
+
+    function readHash() {
+      const hash = location.hash.slice(1);
+      if (!hash) return false;
+      collapsed.clear();
+      hash.split(',').filter(Boolean).forEach(s => collapsed.add(Number(s)));
+      return true;
+    }
+
     // ---- bootstrap ----
     assignIds(astData);
-    initCollapsed(astData);
+    if (!readHash()) initCollapsed(astData);
     render();
   }
 
