@@ -26,7 +26,7 @@ EXPAND_BY_DEFAULT = {'Module'}
 
 
 def name_leaf(name):
-    return {'type': 'Name', 'src': name, 'label': name, 'expr': True, 'children': []}
+    return {'type': 'Name', 'src': name, 'label': name, 'expr': True, 'shape': 'leaf', 'children': []}
 
 
 def label_of(node):
@@ -56,6 +56,7 @@ def to_dict(node):
         'src':      node.src,
         'label':    label_of(node),
         'expr':     isinstance(node, Expr),
+        'shape':    'expr' if isinstance(node, Expr) else 'stmt',
         'children': children,
     }
     if typename in EXPAND_BY_DEFAULT:
@@ -64,9 +65,6 @@ def to_dict(node):
 
 
 ast_json = json.dumps(to_dict(EXAMPLE))
-
-with open('/tmp/mermaid/spyast.js') as f:
-    viz_js = f.read()
 
 html = f"""<!DOCTYPE html>
 <html>
@@ -77,10 +75,8 @@ html = f"""<!DOCTYPE html>
 <body style="background:#f8fafc; padding:20px; font-family:sans-serif;">
   <h2>AST: EXAMPLE</h2>
   <svg id="diagram"></svg>
-  <script>
-{viz_js}
-    ToyAstViz.render(document.getElementById('diagram'), {ast_json});
-  </script>
+  <script src="spyast.js"></script>
+  <script>ToyAstViz.render(document.getElementById('diagram'), {ast_json});</script>
 </body>
 </html>
 """

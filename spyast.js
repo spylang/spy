@@ -73,7 +73,7 @@
       const nodeX = leftX + (totalW - nw) / 2;
       const isCollapsed = collapsed.has(node._id);
       svgNodes.push({ x: nodeX, y, nw, nh, label: labelOf(node), src: node.src,
-                      id: node._id, hasChildren: ch.length > 0, isCollapsed, expr: true });
+                      id: node._id, hasChildren: ch.length > 0, isCollapsed, expr: true, shape: node.shape });
 
       if (ch.length >= 2 && !isCollapsed) {
         const leftChild  = ch[0].node, rightChild = ch[1].node;
@@ -107,7 +107,7 @@
       const hasChildren = children.length > 0;
       const isCollapsed = collapsed.has(node._id);
       svgNodes.push({ x, y, nw, nh, label: labelOf(node), src: node.src,
-                      id: node._id, hasChildren, isCollapsed, expr: false });
+                      id: node._id, hasChildren, isCollapsed, expr: false, shape: node.shape });
       let ny = y + nh + ROW_GAP;
 
       if (!hasChildren || isCollapsed) return ny;
@@ -151,8 +151,9 @@
       rect.setAttribute('x', tx); rect.setAttribute('y', ty);
       rect.setAttribute('width', tw); rect.setAttribute('height', th);
       rect.setAttribute('rx', 4);
-      rect.setAttribute('fill',   nd.expr ? '#fef3c7' : '#e0e7ff');
-      rect.setAttribute('stroke', nd.expr ? '#d97706' : '#6366f1');
+      const tc = nodeColors(nd.shape, true);
+      rect.setAttribute('fill',   tc.fill);
+      rect.setAttribute('stroke', tc.stroke);
       rect.setAttribute('stroke-width', '1');
       rect.setAttribute('filter', 'drop-shadow(0 2px 4px rgba(0,0,0,.15))');
       tooltipGroup.appendChild(rect);
@@ -162,7 +163,7 @@
       text.setAttribute('y', ty + SRC_PAD_Y + 13);
       text.setAttribute('font-family', 'monospace');
       text.setAttribute('font-size', '13');
-      text.setAttribute('fill', nd.expr ? '#78350f' : '#312e81');
+      text.setAttribute('fill', { stmt: '#312e81', expr: '#78350f', leaf: '#065f46' }[nd.shape] || '#1e3a5f');
       text.setAttribute('pointer-events', 'none');
       lines.forEach((line, i) => {
         const tspan = document.createElementNS(NS, 'tspan');
@@ -200,25 +201,45 @@
     }
 
     // ---- DOM helpers ----
-    function nodeColors(expr, isCollapsed) {
-      return {
-        fill:   expr ? (isCollapsed ? '#fef3c7' : '#fef9c3') : (isCollapsed ? '#e0e7ff' : '#dbeafe'),
-        stroke: expr ? (isCollapsed ? '#d97706' : '#ca8a04') : (isCollapsed ? '#6366f1' : '#3b82f6'),
+    function nodeColors(shape, isCollapsed) {
+      if (shape === 'leaf') return { fill: '#d1fae5', stroke: '#059669' };
+      if (shape === 'expr') return {
+        fill:   isCollapsed ? '#fef3c7' : '#fef9c3',
+        stroke: isCollapsed ? '#d97706' : '#ca8a04',
+      };
+      return {  // stmt
+        fill:   isCollapsed ? '#e0e7ff' : '#dbeafe',
+        stroke: isCollapsed ? '#6366f1' : '#3b82f6',
       };
     }
 
     function buildNodeContent(g, nd) {
       while (g.firstChild) g.removeChild(g.firstChild);
-      const { nw, nh, label, src, hasChildren, isCollapsed, expr } = nd;
-      const c = nodeColors(expr, isCollapsed);
+      const { nw, nh, label, src, hasChildren, isCollapsed, shape } = nd;
+      const c = nodeColors(shape, isCollapsed);
 
-      const rect = document.createElementNS(NS, 'rect');
-      rect.setAttribute('x', 0); rect.setAttribute('y', 0);
-      rect.setAttribute('width', nw); rect.setAttribute('height', nh);
-      rect.setAttribute('rx', 4);
-      rect.setAttribute('fill', c.fill); rect.setAttribute('stroke', c.stroke);
-      rect.setAttribute('stroke-width', '1.5');
-      g.appendChild(rect);
+      // Draw shape outline
+      let outline;
+      if (shape === 'leaf') {
+        outline = document.createElementNS(NS, 'polygon');
+        const hx = nh / 2;
+        outline.setAttribute('points', `${hx},0 ${nw-hx},0 ${nw},${nh/2} ${nw-hx},${nh} ${hx},${nh} 0,${nh/2}`);
+      } else if (shape === 'expr') {
+        outline = document.createElementNS(NS, 'rect');
+        outline.setAttribute('x', 0); outline.setAttribute('y', 0);
+        outline.setAttribute('width', nw); outline.setAttribute('height', nh);
+        outline.setAttribute('rx', nh / 2);
+      } else {
+        outline = document.createElementNS(NS, 'rect');
+        outline.setAttribute('x', 0); outline.setAttribute('y', 0);
+        outline.setAttribute('width', nw); outline.setAttribute('height', nh);
+        outline.setAttribute('rx', 4);
+      }
+      outline.setAttribute('fill', c.fill); outline.setAttribute('stroke', c.stroke);
+      outline.setAttribute('stroke-width', '1.5');
+      g.appendChild(outline);
+
+      const srcTextColor = { stmt: '#312e81', expr: '#78350f', leaf: '#065f46' }[shape] || '#1e3a5f';
 
       if (isCollapsed && src) {
         const text = document.createElementNS(NS, 'text');
@@ -226,7 +247,7 @@
         text.setAttribute('y', SRC_PAD_Y + 13);
         text.setAttribute('font-family', 'monospace');
         text.setAttribute('font-size', '13');
-        text.setAttribute('fill', expr ? '#78350f' : '#312e81');
+        text.setAttribute('fill', srcTextColor);
         text.setAttribute('pointer-events', 'none');
         src.split('\n').forEach((line, i) => {
           const tspan = document.createElementNS(NS, 'tspan');
