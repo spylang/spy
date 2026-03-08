@@ -35,6 +35,7 @@
     let linesGroup = null, nodesGroup = null, tooltipGroup = null;
     let firstRender = true;
     let _tooltipTimer = null;
+    let _animating = false, _animatingTimer = null;
 
     // ---- generic node accessors ----
     function isExpr(node)      { return !!node.expr; }
@@ -58,8 +59,12 @@
 
     // ---- layout ----
     function nodeSize(node) {
-      if (!collapsed.has(node._id) || !canCollapse(node))
-        return { w: NODE_W, h: NODE_H };
+      if (!collapsed.has(node._id) || !canCollapse(node)) {
+        const w = canCollapse(node)
+          ? Math.max(NODE_W, ARROW_W + Math.ceil(labelOf(node).length * CHAR_W) + SRC_PAD_X)
+          : NODE_W;
+        return { w, h: NODE_H };
+      }
       const lines = (node.src || '').split('\n');
       const maxLen = Math.max(...lines.map(l => l.length));
       const leftPad = canCollapse(node) ? ARROW_W : SRC_PAD_X;
@@ -185,7 +190,10 @@
       tooltipGroup.appendChild(text);
     }
 
-    function scheduleTooltip(nd) { _tooltipTimer = setTimeout(() => showTooltip(nd), 600); }
+    function scheduleTooltip(nd) {
+      if (_animating) return;
+      _tooltipTimer = setTimeout(() => showTooltip(nd), 600);
+    }
     function hideTooltip()       { clearTimeout(_tooltipTimer); tooltipGroup.innerHTML = ''; }
 
     // ---- animation ----
@@ -391,6 +399,7 @@
           if (nd.hasChildren) {
             g.style.cursor = 'pointer';
             g.addEventListener('click', () => {
+              hideTooltip();
               collapsed.has(id) ? collapsed.delete(id) : collapsed.add(id);
               writeHash();
               render();
@@ -409,6 +418,11 @@
         }
       }
 
+      if (!firstRender) {
+        _animating = true;
+        clearTimeout(_animatingTimer);
+        _animatingTimer = setTimeout(() => { _animating = false; }, ANIM_MS);
+      }
       firstRender = false;
     }
 
