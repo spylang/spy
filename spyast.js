@@ -268,8 +268,29 @@
         text.setAttribute('font-size', '13');
         text.setAttribute('fill', '#1e3a5f');
         text.setAttribute('pointer-events', 'none');
-        text.textContent = (hasChildren ? (isCollapsed ? '▶ ' : '▼ ') : '') + label;
+        text.textContent = label;
         g.appendChild(text);
+      }
+
+      // Collapse/expand badge: circle on right edge with + / −
+      if (hasChildren) {
+        const cx = nd.expr ? nw / 2 : X_INDENT / 2, cy = nh;
+        const sq = document.createElementNS(NS, 'rect');
+        sq.setAttribute('x', cx - 6); sq.setAttribute('y', cy - 6);
+        sq.setAttribute('width', 12); sq.setAttribute('height', 12);
+        sq.setAttribute('rx', 2);
+        sq.setAttribute('fill', 'white');
+        sq.setAttribute('stroke', c.stroke); sq.setAttribute('stroke-width', '1.5');
+        sq.setAttribute('pointer-events', 'none');
+        g.appendChild(sq);
+        const sign = document.createElementNS(NS, 'text');
+        sign.setAttribute('x', cx); sign.setAttribute('y', cy + 4);
+        sign.setAttribute('text-anchor', 'middle');
+        sign.setAttribute('font-family', 'sans-serif'); sign.setAttribute('font-size', '11');
+        sign.setAttribute('font-weight', 'bold'); sign.setAttribute('fill', c.stroke);
+        sign.setAttribute('pointer-events', 'none');
+        sign.textContent = isCollapsed ? '+' : '−';
+        g.appendChild(sign);
       }
     }
 
