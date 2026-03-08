@@ -17,6 +17,15 @@
   const NS = 'http://www.w3.org/2000/svg';
   const ANIM_MS = 300;
 
+  const PALETTE = {
+    blue:    { fill: ['#dbeafe', '#e0e7ff'], stroke: ['#3b82f6', '#6366f1'] },
+    amber:   { fill: ['#fef9c3', '#fef3c7'], stroke: ['#ca8a04', '#d97706'] },
+    emerald: { fill: ['#d1fae5', '#a7f3d0'], stroke: ['#059669', '#047857'] },
+    red:     { fill: ['#fee2e2', '#fecaca'], stroke: ['#ef4444', '#dc2626'] },
+    purple:  { fill: ['#ede9fe', '#ddd6fe'], stroke: ['#7c3aed', '#6d28d9'] },
+    gray:    { fill: ['#f1f5f9', '#e2e8f0'], stroke: ['#94a3b8', '#64748b'] },
+  };
+
   function init(svgEl, astData) {
     // ---- per-instance state ----
     let _idCounter = 0;
@@ -73,7 +82,7 @@
       const nodeX = leftX + (totalW - nw) / 2;
       const isCollapsed = collapsed.has(node._id);
       svgNodes.push({ x: nodeX, y, nw, nh, label: labelOf(node), src: node.src,
-                      id: node._id, hasChildren: ch.length > 0, isCollapsed, expr: true, shape: node.shape });
+                      id: node._id, hasChildren: ch.length > 0, isCollapsed, expr: true, shape: node.shape, color: node.color });
 
       if (ch.length >= 2 && !isCollapsed) {
         const leftChild  = ch[0].node, rightChild = ch[1].node;
@@ -107,7 +116,7 @@
       const hasChildren = children.length > 0;
       const isCollapsed = collapsed.has(node._id);
       svgNodes.push({ x, y, nw, nh, label: labelOf(node), src: node.src,
-                      id: node._id, hasChildren, isCollapsed, expr: false, shape: node.shape });
+                      id: node._id, hasChildren, isCollapsed, expr: false, shape: node.shape, color: node.color });
       let ny = y + nh + ROW_GAP;
 
       if (!hasChildren || isCollapsed) return ny;
@@ -151,7 +160,7 @@
       rect.setAttribute('x', tx); rect.setAttribute('y', ty);
       rect.setAttribute('width', tw); rect.setAttribute('height', th);
       rect.setAttribute('rx', 4);
-      const tc = nodeColors(nd.shape, true);
+      const tc = nodeColors(nd.color, true);
       rect.setAttribute('fill',   tc.fill);
       rect.setAttribute('stroke', tc.stroke);
       rect.setAttribute('stroke-width', '1');
@@ -201,22 +210,15 @@
     }
 
     // ---- DOM helpers ----
-    function nodeColors(shape, isCollapsed) {
-      if (shape === 'leaf') return { fill: '#d1fae5', stroke: '#059669' };
-      if (shape === 'expr') return {
-        fill:   isCollapsed ? '#fef3c7' : '#fef9c3',
-        stroke: isCollapsed ? '#d97706' : '#ca8a04',
-      };
-      return {  // stmt
-        fill:   isCollapsed ? '#e0e7ff' : '#dbeafe',
-        stroke: isCollapsed ? '#6366f1' : '#3b82f6',
-      };
+    function nodeColors(color, isCollapsed) {
+      const c = PALETTE[color] || PALETTE.gray;
+      return { fill: c.fill[isCollapsed ? 1 : 0], stroke: c.stroke[isCollapsed ? 1 : 0] };
     }
 
     function buildNodeContent(g, nd) {
       while (g.firstChild) g.removeChild(g.firstChild);
-      const { nw, nh, label, src, hasChildren, isCollapsed, shape } = nd;
-      const c = nodeColors(shape, isCollapsed);
+      const { nw, nh, label, src, hasChildren, isCollapsed, shape, color } = nd;
+      const c = nodeColors(color, isCollapsed);
 
       // Draw shape outline
       let outline;

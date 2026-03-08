@@ -26,7 +26,7 @@ EXPAND_BY_DEFAULT = {'Module'}
 
 
 def name_leaf(name):
-    return {'type': 'Name', 'src': name, 'label': name, 'expr': True, 'shape': 'leaf', 'children': []}
+    return {'type': 'Name', 'src': name, 'label': name, 'expr': True, 'shape': 'leaf', 'color': 'emerald', 'children': []}
 
 
 def label_of(node):
@@ -57,6 +57,7 @@ def to_dict(node):
         'label':    label_of(node),
         'expr':     isinstance(node, Expr),
         'shape':    'expr' if isinstance(node, Expr) else 'stmt',
+        'color':    'amber' if isinstance(node, Expr) else 'blue',
         'children': children,
     }
     if typename in EXPAND_BY_DEFAULT:
