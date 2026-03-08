@@ -14,7 +14,7 @@ from spy.cli.commands.shared_args import (
     _execute_flag,
     _execute_options,
 )
-from spy.tool.astviz import SpyastJs
+from spy.tool.astviz import SpyastJs, dump_spy_mod_html
 
 
 @dataclass
@@ -38,7 +38,7 @@ class _redshift_mixin:
         Option(
             "--spyast-js",
             help="How to include spyast.js in the HTML output",
-            click_type=click.Choice(["cdn", "local"]),
+            click_type=click.Choice(["cdn", "inline"]),
         ),
     ] = "cdn"
 
@@ -73,12 +73,10 @@ async def redshift(args: Redshift_Args) -> None:
         elif args.format == "ast":
             dump_spy_mod_ast(vm, modname)
         elif args.format == "html":
-            from spy.tool.astviz import dump_html
-
-            html = dump_html(vm, modname, args.spyast_js)
+            html = dump_spy_mod_html(vm, modname, args.spyast_js)
             build_dir = Path(args.filename.parent) / "build"
             build_dir.mkdir(exist_ok=True, parents=True)
-            out = build_dir / f"{modname}_ast.html"
+            out = build_dir / f"{modname}_rs.html"
             out.write_text(html)
             print(f"Written {out}")
         else:

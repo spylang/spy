@@ -11,7 +11,7 @@ from spy.cli.commands.shared_args import (
     Base_Args,
     Filename_Required_Args,
 )
-from spy.tool.astviz import SpyastJs
+from spy.tool.astviz import SpyastJs, generate_html
 
 
 @dataclass
@@ -30,7 +30,7 @@ class _parse_mixin:
         Option(
             "--spyast-js",
             help="How to include spyast.js in the HTML output",
-            click_type=click.Choice(["cdn", "local"]),
+            click_type=click.Choice(["cdn", "inline"]),
         ),
     ] = "cdn"
 
@@ -52,12 +52,10 @@ async def parse(args: Parse_Args) -> None:
     if args.format == "ast":
         orig_mod.pp()
     elif args.format == "html":
-        from spy.tool.astviz import generate_html
-
         html = generate_html([(modname, orig_mod)], args.spyast_js)
         build_dir = Path(args.filename.parent) / "build"
         build_dir.mkdir(exist_ok=True, parents=True)
-        out = build_dir / f"{modname}_parse.html"
+        out = build_dir / f"{modname}_ast.html"
         out.write_text(html)
         print(f"Written {out}")
     else:

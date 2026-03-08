@@ -9,7 +9,7 @@ from spy.fqn import FQN
 from spy.vm.function import W_ASTFunc
 from spy.vm.vm import SPyVM
 
-SpyastJs = Literal["cdn", "local"]
+SpyastJs = Literal["cdn", "inline"]
 
 FIELDS_TO_IGNORE = frozenset(
     {
@@ -121,8 +121,9 @@ def _spyast_js_tag(mode: SpyastJs) -> str:
         url = "https://cdn.jsdelivr.net/gh/spy-lang/spy/playground/spyast/spyast.js"
         return f'<script src="{url}"></script>'
     else:
-        local_path = _REPO_ROOT / "playground" / "spyast" / "spyast.js"
-        return f'<script src="{local_path}"></script>'
+        js_path = _REPO_ROOT / "playground" / "spyast" / "spyast.js"
+        js_code = js_path.read_text()
+        return f"<script>\n{js_code}\n</script>"
 
 
 def generate_html(
@@ -158,7 +159,7 @@ def generate_html(
 """
 
 
-def dump_html(vm: SPyVM, modname: str, spyast_js: SpyastJs) -> str:
+def dump_spy_mod_html(vm: SPyVM, modname: str, spyast_js: SpyastJs) -> str:
     """
     Build an HTML page visualizing all red W_ASTFuncs in the given module.
     Returns the HTML string.
