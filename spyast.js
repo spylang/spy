@@ -13,7 +13,7 @@
   const NODE_W = 110, NODE_H = 28;
   const X_INDENT = 120, ROW_GAP = 16;
   const EXPR_H_GAP = 16, EXPR_V_GAP = 30, PAD = 20;
-  const CHAR_W = 7.8, LINE_H = 18, SRC_PAD_X = 10, SRC_PAD_Y = 8;
+  const CHAR_W = 7.8, LINE_H = 18, SRC_PAD_X = 10, SRC_PAD_Y = 8, ARROW_W = 26;
   const NS = 'http://www.w3.org/2000/svg';
   const ANIM_MS = 300;
 
@@ -62,8 +62,9 @@
         return { w: NODE_W, h: NODE_H };
       const lines = (node.src || '').split('\n');
       const maxLen = Math.max(...lines.map(l => l.length));
+      const leftPad = canCollapse(node) ? ARROW_W : SRC_PAD_X;
       return {
-        w: Math.max(NODE_W, Math.ceil(maxLen * CHAR_W) + 2 * SRC_PAD_X),
+        w: Math.max(NODE_W, Math.ceil(maxLen * CHAR_W) + leftPad + SRC_PAD_X),
         h: lines.length * LINE_H + 2 * SRC_PAD_Y,
       };
     }
@@ -243,9 +244,23 @@
 
       const srcTextColor = { stmt: '#312e81', expr: '#78350f', leaf: '#065f46' }[shape] || '#1e3a5f';
 
+      // Chevron arrow on the left for collapsible nodes
+      if (hasChildren) {
+        const ax = 9, ay = nh / 2;
+        const arrow = document.createElementNS(NS, 'polygon');
+        arrow.setAttribute('points', isCollapsed
+          ? `${ax-5},${ay-5} ${ax-5},${ay+5} ${ax+5},${ay}`   // right-pointing
+          : `${ax-5},${ay-3} ${ax+5},${ay-3} ${ax},${ay+5}`); // down-pointing
+        arrow.setAttribute('fill', c.stroke);
+        arrow.setAttribute('pointer-events', 'none');
+        g.appendChild(arrow);
+      }
+
+      const textX = hasChildren ? ARROW_W : SRC_PAD_X;
+
       if (isCollapsed && src) {
         const text = document.createElementNS(NS, 'text');
-        text.setAttribute('x', SRC_PAD_X);
+        text.setAttribute('x', textX);
         text.setAttribute('y', SRC_PAD_Y + 13);
         text.setAttribute('font-family', 'monospace');
         text.setAttribute('font-size', '13');
@@ -253,7 +268,7 @@
         text.setAttribute('pointer-events', 'none');
         src.split('\n').forEach((line, i) => {
           const tspan = document.createElementNS(NS, 'tspan');
-          tspan.setAttribute('x', SRC_PAD_X);
+          tspan.setAttribute('x', textX);
           if (i > 0) tspan.setAttribute('dy', LINE_H);
           tspan.textContent = line;
           text.appendChild(tspan);
@@ -261,36 +276,15 @@
         g.appendChild(text);
       } else {
         const text = document.createElementNS(NS, 'text');
-        text.setAttribute('x', nw / 2);
+        text.setAttribute('x', hasChildren ? textX : nw / 2);
         text.setAttribute('y', nh / 2 + 5);
-        text.setAttribute('text-anchor', 'middle');
+        text.setAttribute('text-anchor', hasChildren ? 'start' : 'middle');
         text.setAttribute('font-family', 'monospace');
         text.setAttribute('font-size', '13');
         text.setAttribute('fill', '#1e3a5f');
         text.setAttribute('pointer-events', 'none');
         text.textContent = label;
         g.appendChild(text);
-      }
-
-      // Collapse/expand badge: circle on right edge with + / −
-      if (hasChildren) {
-        const cx = nd.expr ? nw / 2 : X_INDENT / 2, cy = nh;
-        const sq = document.createElementNS(NS, 'rect');
-        sq.setAttribute('x', cx - 6); sq.setAttribute('y', cy - 6);
-        sq.setAttribute('width', 12); sq.setAttribute('height', 12);
-        sq.setAttribute('rx', 2);
-        sq.setAttribute('fill', 'white');
-        sq.setAttribute('stroke', c.stroke); sq.setAttribute('stroke-width', '1.5');
-        sq.setAttribute('pointer-events', 'none');
-        g.appendChild(sq);
-        const sign = document.createElementNS(NS, 'text');
-        sign.setAttribute('x', cx); sign.setAttribute('y', cy + 4);
-        sign.setAttribute('text-anchor', 'middle');
-        sign.setAttribute('font-family', 'sans-serif'); sign.setAttribute('font-size', '11');
-        sign.setAttribute('font-weight', 'bold'); sign.setAttribute('fill', c.stroke);
-        sign.setAttribute('pointer-events', 'none');
-        sign.textContent = isCollapsed ? '+' : '−';
-        g.appendChild(sign);
       }
     }
 
