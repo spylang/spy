@@ -79,7 +79,12 @@
       const ch = childrenOf(node);
       if (collapsed.has(node._id) || ch.length === 0) return nodeSize(node).w;
       if (ch.length === 1) return Math.max(nodeSize(node).w, measureExpr(ch[0].node));
-      return measureExpr(ch[0].node) + EXPR_H_GAP + measureExpr(ch[1].node);
+      let total = 0;
+      for (let i = 0; i < ch.length; i++) {
+        if (i > 0) total += EXPR_H_GAP;
+        total += measureExpr(ch[i].node);
+      }
+      return total;
     }
 
     function placeExpr(node, leftX, y, svgNodes, svgLines) {
@@ -105,27 +110,41 @@
       }
 
       if (ch.length >= 2 && !isCollapsed) {
-        const leftChild  = ch[0].node, rightChild = ch[1].node;
-        const leftLabel  = ch[0].attr,  rightLabel = ch[1].attr;
         const childY  = y + nh + EXPR_V_GAP;
-        const leftW   = measureExpr(leftChild);
-        const rightW  = measureExpr(rightChild);
-        const { w: lnw } = nodeSize(leftChild);
-        const { w: rnw } = nodeSize(rightChild);
-        const leftChildX  = leftX + (leftW - lnw) / 2;
-        const rightChildX = leftX + leftW + EXPR_H_GAP + (rightW - rnw) / 2;
         const parentCx = nodeX + nw / 2;
         const midY     = y + nh + EXPR_V_GAP / 2;
-        const lChildCx = leftChildX  + lnw / 2;
-        const rChildCx = rightChildX + rnw / 2;
-        svgLines.push({ x1: parentCx, y1: y + nh, x2: parentCx, y2: midY,   id: `evs-${node._id}` });
-        svgLines.push({ x1: lChildCx, y1: midY,   x2: parentCx, y2: midY,   label: leftLabel,  id: `ehl-${node._id}` });
-        svgLines.push({ x1: parentCx, y1: midY,   x2: rChildCx, y2: midY,   label: rightLabel, id: `ehr-${node._id}` });
-        svgLines.push({ x1: lChildCx, y1: midY,   x2: lChildCx, y2: childY, id: `el-${node._id}-${leftChild._id}` });
-        svgLines.push({ x1: rChildCx, y1: midY,   x2: rChildCx, y2: childY, id: `er-${node._id}-${rightChild._id}` });
-        const lb = placeExpr(leftChild,  leftX,                      childY, svgNodes, svgLines);
-        const rb = placeExpr(rightChild, leftX + leftW + EXPR_H_GAP, childY, svgNodes, svgLines);
-        return Math.max(lb, rb);
+
+        // measure all children
+        const childWidths = ch.map(c => measureExpr(c.node));
+        const childNodeWidths = ch.map(c => nodeSize(c.node).w);
+
+        // compute x positions for each child
+        let cx = leftX;
+        const childLeftXs = [];
+        for (let i = 0; i < ch.length; i++) {
+          childLeftXs.push(cx);
+          cx += childWidths[i] + (i < ch.length - 1 ? EXPR_H_GAP : 0);
+        }
+
+        const childCenters = childLeftXs.map((lx, i) => lx + (childWidths[i] - childNodeWidths[i]) / 2 + childNodeWidths[i] / 2);
+
+        // vertical stem from parent
+        svgLines.push({ x1: parentCx, y1: y + nh, x2: parentCx, y2: midY, id: `evs-${node._id}` });
+
+        // horizontal bar + vertical drops for each child
+        for (let i = 0; i < ch.length; i++) {
+          const ccx = childCenters[i];
+          svgLines.push({ x1: parentCx, y1: midY, x2: ccx, y2: midY, label: ch[i].attr, id: `eh-${node._id}-${i}` });
+          svgLines.push({ x1: ccx, y1: midY, x2: ccx, y2: childY, id: `ev-${node._id}-${ch[i].node._id}` });
+        }
+
+        // place children and track max bottom
+        let maxBottom = y + nh;
+        for (let i = 0; i < ch.length; i++) {
+          const b = placeExpr(ch[i].node, childLeftXs[i], childY, svgNodes, svgLines);
+          if (b > maxBottom) maxBottom = b;
+        }
+        return maxBottom;
       }
       return y + nh;
     }

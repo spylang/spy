@@ -82,7 +82,7 @@ def node_to_dict(node: spy.ast.Node) -> dict[str, Any]:
             children.append({"attr": f.name, "node": _scalar_leaf(val)})
 
     sr = node.shortrepr()
-    label = f"{typename} {sr}" if sr is not None else typename
+    label = f"{typename}: {sr}" if sr is not None else typename
     result: dict[str, Any] = {
         "label": label,
         "expr": is_expr,
