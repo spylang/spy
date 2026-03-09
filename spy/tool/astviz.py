@@ -34,9 +34,10 @@ _REPO_ROOT = Path(__file__).parents[2]
 
 
 def _label_str(val: Any) -> str:
-    # Symbol objects are verbose; just show the variable name.
     if isinstance(val, Symbol):
         return val.name
+    if isinstance(val, str):
+        return repr(val)
     return str(val)
 
 

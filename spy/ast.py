@@ -292,7 +292,7 @@ class StrConst(Expr):
     value: str
 
     def shortrepr(self) -> Optional[str]:
-        return self.value
+        return repr(self.value)
 
 
 @astnode
