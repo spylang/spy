@@ -25,21 +25,6 @@ FIELDS_TO_IGNORE = frozenset(
     }
 )
 
-# For each typename, which plain scalar fields to append to the label (in order).
-LABEL_FIELDS: dict[str, list[str]] = {
-    "Name": ["id"],
-    "BinOp": ["op"],
-    "CmpOp": ["op"],
-    "UnaryOp": ["op"],
-    "AugAssign": ["op"],
-    "AssignExpr": [],
-    "FuncDef": ["color", "name"],
-    "FuncArg": ["name", "kind"],
-    "ClassDef": ["kind", "name"],
-    "Constant": ["value"],
-    "StrConst": ["value"],
-    "Import": ["asname"],
-}
 
 # Nodes that start expanded.
 EXPAND_BY_DEFAULT = frozenset({"Module", "FuncDef", "GlobalFuncDef"})
@@ -77,18 +62,10 @@ def _scalar_leaf(val: Any) -> dict[str, Any]:
 def node_to_dict(node: spy.ast.Node) -> dict[str, Any]:
     typename = type(node).__name__
     is_expr = isinstance(node, spy.ast.Expr)
-    label_field_names = LABEL_FIELDS.get(typename, [])
-
-    label_parts = [typename]
-    for fname in label_field_names:
-        val = getattr(node, fname, None)
-        if val is not None:
-            label_parts.append(_label_str(val))
-    label = " ".join(label_parts)
 
     children = []
     for f in dataclasses.fields(node):  # type: ignore[arg-type]
-        if f.name in FIELDS_TO_IGNORE or f.name in label_field_names:
+        if f.name in FIELDS_TO_IGNORE:
             continue
         val = getattr(node, f.name)
         if isinstance(val, spy.ast.Node):
@@ -103,6 +80,8 @@ def node_to_dict(node: spy.ast.Node) -> dict[str, Any]:
         elif val is not None:
             children.append({"attr": f.name, "node": _scalar_leaf(val)})
 
+    sr = node.shortrepr()
+    label = f"{typename} {sr}" if sr is not None else typename
     result: dict[str, Any] = {
         "label": label,
         "expr": is_expr,
