@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from spy.backend.html import HTMLBackend, SpyastJs
 from spy.backend.spy import FQN_FORMAT, SPyBackend
 from spy.highlight import highlight_src
 from spy.vm.function import W_ASTFunc
@@ -19,6 +20,19 @@ def dump_spy_mod_ast(vm: SPyVM, modname: str) -> None:
             print(f"`{fqn}` = ", end="")
             w_obj.funcdef.pp()
             print()
+
+
+def dump_spy_mod_html(vm: SPyVM, modname: str, spyast_js: SpyastJs) -> str:
+    """
+    Build an HTML page visualizing all red W_ASTFuncs in the given module.
+    Returns the HTML string.
+    """
+    sections = []
+    for fqn, w_obj in vm.fqns_by_modname(modname):
+        if isinstance(w_obj, W_ASTFunc) and w_obj.color == "red" and w_obj.fqn == fqn:
+            sections.append((str(fqn), w_obj.funcdef))
+    b = HTMLBackend(spyast_js)
+    return b.generate(sections)
 
 
 def colorize_sourcecode(sourcefile: Path, coords_dict: dict) -> str:

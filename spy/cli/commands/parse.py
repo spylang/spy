@@ -6,12 +6,12 @@ import click
 from typer import Option
 
 from spy.analyze.importing import ImportAnalyzer
+from spy.backend.html import HTMLBackend, SpyastJs
 from spy.cli._runners import init_vm
 from spy.cli.commands.shared_args import (
     Base_Args,
     Filename_Required_Args,
 )
-from spy.tool.astviz import SpyastJs, generate_html
 
 
 @dataclass
@@ -52,7 +52,8 @@ async def parse(args: Parse_Args) -> None:
     if args.format == "ast":
         orig_mod.pp()
     elif args.format == "html":
-        html = generate_html([(modname, orig_mod)], args.spyast_js)
+        b = HTMLBackend(args.spyast_js)
+        html = b.generate([(modname, orig_mod)])
         build_dir = Path(args.filename.parent) / "build"
         build_dir.mkdir(exist_ok=True, parents=True)
         out = build_dir / f"{modname}_ast.html"

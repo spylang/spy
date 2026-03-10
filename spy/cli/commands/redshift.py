@@ -6,7 +6,8 @@ import click
 from typer import Option
 
 from spy.analyze.importing import ImportAnalyzer
-from spy.cli._format import dump_spy_mod, dump_spy_mod_ast
+from spy.backend.html import SpyastJs
+from spy.cli._format import dump_spy_mod, dump_spy_mod_ast, dump_spy_mod_html
 from spy.cli._runners import execute_spy_main, init_vm
 from spy.cli.commands.shared_args import (
     Base_Args,
@@ -14,7 +15,6 @@ from spy.cli.commands.shared_args import (
     _execute_flag,
     _execute_options,
 )
-from spy.tool.astviz import SpyastJs, dump_spy_mod_html
 
 
 @dataclass

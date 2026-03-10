@@ -5,9 +5,6 @@ from typing import Any, Literal
 
 import spy.ast
 from spy.analyze.symtable import Symbol
-from spy.fqn import FQN
-from spy.vm.function import W_ASTFunc
-from spy.vm.vm import SPyVM
 
 SpyastJs = Literal["cdn", "inline"]
 
@@ -25,11 +22,10 @@ FIELDS_TO_IGNORE = frozenset(
     }
 )
 
-
 # Nodes that start expanded.
 EXPAND_BY_DEFAULT = frozenset({"Module", "FuncDef", "GlobalFuncDef"})
 
-# Repo root: spy/tool/astviz.py → spy/tool/ → spy/ → <repo root>
+# Repo root: spy/backend/html.py → spy/backend/ → spy/ → <repo root>
 _REPO_ROOT = Path(__file__).parents[2]
 
 
@@ -106,25 +102,29 @@ def _spyast_js_tag(mode: SpyastJs) -> str:
         return f"<script>\n{js_code}\n</script>"
 
 
-def generate_html(
-    sections: list[tuple[str, spy.ast.Node]],
-    spyast_js: SpyastJs = "cdn",
-) -> str:
-    js_tag = _spyast_js_tag(spyast_js)
+class HTMLBackend:
+    def __init__(self, spyast_js: SpyastJs = "cdn") -> None:
+        self.spyast_js = spyast_js
 
-    renders = []
-    for i, (title, node) in enumerate(sections):
-        ast_json = json.dumps(node_to_dict(node))
-        svg_id = f"diagram_{i}"
-        renders.append(
-            f"  <h2>{title}</h2>\n"
-            f'  <svg id="{svg_id}"></svg>\n'
-            f"  <script>SPyAstViz.render("
-            f"document.getElementById({svg_id!r}), {ast_json});</script>"
-        )
+    def generate(
+        self,
+        sections: list[tuple[str, spy.ast.Node]],
+    ) -> str:
+        js_tag = _spyast_js_tag(self.spyast_js)
 
-    body = "\n".join(renders)
-    return f"""\
+        renders = []
+        for i, (title, node) in enumerate(sections):
+            ast_json = json.dumps(node_to_dict(node))
+            svg_id = f"diagram_{i}"
+            renders.append(
+                f"  <h2>{title}</h2>\n"
+                f'  <svg id="{svg_id}"></svg>\n'
+                f"  <script>SPyAstViz.render("
+                f"document.getElementById({svg_id!r}), {ast_json});</script>"
+            )
+
+        body = "\n".join(renders)
+        return f"""\
 <!DOCTYPE html>
 <html>
 <head>
@@ -137,15 +137,3 @@ def generate_html(
 </body>
 </html>
 """
-
-
-def dump_spy_mod_html(vm: SPyVM, modname: str, spyast_js: SpyastJs) -> str:
-    """
-    Build an HTML page visualizing all red W_ASTFuncs in the given module.
-    Returns the HTML string.
-    """
-    sections = []
-    for fqn, w_obj in vm.fqns_by_modname(modname):
-        if isinstance(w_obj, W_ASTFunc) and w_obj.color == "red" and w_obj.fqn == fqn:
-            sections.append((str(fqn), w_obj.funcdef))
-    return generate_html(sections, spyast_js)
