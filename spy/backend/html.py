@@ -1,9 +1,9 @@
 import dataclasses
 import json
-from pathlib import Path
 from typing import Any, Literal
 
 import spy.ast
+from spy import ROOT
 from spy.analyze.symtable import Symbol
 
 SpyastJs = Literal["cdn", "inline"]
@@ -25,8 +25,7 @@ FIELDS_TO_IGNORE = frozenset(
 # Nodes that start expanded.
 EXPAND_BY_DEFAULT = frozenset({"Module", "FuncDef", "GlobalFuncDef"})
 
-# Repo root: spy/backend/html.py → spy/backend/ → spy/ → <repo root>
-_REPO_ROOT = Path(__file__).parents[2]
+_SPYAST_JS = ROOT / ".." / "playground" / "spyast" / "spyast.js"
 
 
 def _label_str(val: Any) -> str:
@@ -97,8 +96,7 @@ def _spyast_js_tag(mode: SpyastJs) -> str:
         url = "https://cdn.jsdelivr.net/gh/spy-lang/spy/playground/spyast/spyast.js"
         return f'<script src="{url}"></script>'
     else:
-        js_path = _REPO_ROOT / "playground" / "spyast" / "spyast.js"
-        js_code = js_path.read_text()
+        js_code = _SPYAST_JS.read()
         return f"<script>\n{js_code}\n</script>"
 
 
