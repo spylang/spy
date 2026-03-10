@@ -38,9 +38,20 @@ def _label_str(val: Any) -> str:
 
 def _get_src(node: spy.ast.Node) -> str:
     try:
-        return node.loc.get_src()
+        src = node.loc.get_src()
     except (ValueError, AttributeError):
         return ""
+    # get_src strips col_start from the first line but not subsequent ones, dedent
+    # manually
+    indent = node.loc.col_start
+    if indent == 0:
+        return src
+    prefix = " " * indent
+    lines = src.split("\n")
+    dedented = [lines[0]] + [
+        line[indent:] if line.startswith(prefix) else line for line in lines[1:]
+    ]
+    return "\n".join(dedented)
 
 
 def _scalar_leaf(val: Any) -> dict[str, Any]:

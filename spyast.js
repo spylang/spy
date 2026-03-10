@@ -311,7 +311,9 @@
           const tspan = document.createElementNS(NS, 'tspan');
           tspan.setAttribute('x', textX);
           if (i > 0) tspan.setAttribute('dy', LINE_H);
-          tspan.textContent = line;
+          // Replace leading spaces with non-breaking spaces to preserve indentation
+          const m = line.match(/^( +)/);
+          tspan.textContent = m ? '\u00A0'.repeat(m[1].length) + line.slice(m[1].length) : line;
           text.appendChild(tspan);
         });
         g.appendChild(text);
