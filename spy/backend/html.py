@@ -1,10 +1,12 @@
 import dataclasses
 import json
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 import spy.ast
 from spy import ROOT
 from spy.analyze.symtable import Symbol
+from spy.backend.spy import SPyBackend
+from spy.vm.vm import SPyVM
 
 SpyastJs = Literal["cdn", "inline"]
 
@@ -66,42 +68,6 @@ def _scalar_leaf(val: Any) -> dict[str, Any]:
     }
 
 
-def node_to_dict(node: spy.ast.Node) -> dict[str, Any]:
-    typename = type(node).__name__
-    is_expr = isinstance(node, spy.ast.Expr)
-
-    children = []
-    for f in dataclasses.fields(node):  # type: ignore[arg-type]
-        if f.name in FIELDS_TO_IGNORE:
-            continue
-        val = getattr(node, f.name)
-        if isinstance(val, spy.ast.Node):
-            children.append({"attr": f.name, "node": node_to_dict(val)})
-        elif isinstance(val, list):
-            for i, item in enumerate(val):
-                attr = f"{f.name}[{i}]" if len(val) > 1 else f.name
-                if isinstance(item, spy.ast.Node):
-                    children.append({"attr": attr, "node": node_to_dict(item)})
-                else:
-                    children.append({"attr": attr, "node": _scalar_leaf(item)})
-        elif val is not None:
-            children.append({"attr": f.name, "node": _scalar_leaf(val)})
-
-    sr = node.shortrepr()
-    label = f"{typename}: {sr}" if sr is not None else typename
-    result: dict[str, Any] = {
-        "label": label,
-        "expr": is_expr,
-        "src": _get_src(node),
-        "shape": "expr" if is_expr else "stmt",
-        "color": "amber" if is_expr else "blue",
-        "children": children,
-    }
-    if typename in EXPAND_BY_DEFAULT:
-        result["startExpanded"] = True
-    return result
-
-
 def _spyast_js_tag(mode: SpyastJs) -> str:
     if mode == "cdn":
         url = "https://cdn.jsdelivr.net/gh/spy-lang/spy/playground/spyast/spyast.js"
@@ -112,8 +78,57 @@ def _spyast_js_tag(mode: SpyastJs) -> str:
 
 
 class HTMLBackend:
-    def __init__(self, spyast_js: SpyastJs = "cdn") -> None:
+    def __init__(
+        self,
+        spyast_js: SpyastJs = "cdn",
+        vm: Optional[SPyVM] = None,
+        is_redshifted: bool = False,
+    ) -> None:
         self.spyast_js = spyast_js
+        self.spy_backend: Optional[SPyBackend] = None
+        if is_redshifted:
+            assert vm is not None
+            self.spy_backend = SPyBackend(vm)
+
+    def node_to_dict(self, node: spy.ast.Node) -> dict[str, Any]:
+        typename = type(node).__name__
+        is_expr = isinstance(node, spy.ast.Expr)
+
+        children = []
+        for f in dataclasses.fields(node):  # type: ignore[arg-type]
+            if f.name in FIELDS_TO_IGNORE:
+                continue
+            val = getattr(node, f.name)
+            if isinstance(val, spy.ast.Node):
+                children.append({"attr": f.name, "node": self.node_to_dict(val)})
+            elif isinstance(val, list):
+                for i, item in enumerate(val):
+                    attr = f"{f.name}[{i}]" if len(val) > 1 else f.name
+                    if isinstance(item, spy.ast.Node):
+                        children.append({"attr": attr, "node": self.node_to_dict(item)})
+                    else:
+                        children.append({"attr": attr, "node": _scalar_leaf(item)})
+            elif val is not None:
+                children.append({"attr": f.name, "node": _scalar_leaf(val)})
+
+        if self.spy_backend is not None and is_expr:
+            src = self.spy_backend.fmt_expr(node)
+        else:
+            src = _get_src(node)
+
+        sr = node.shortrepr()
+        label = f"{typename}: {sr}" if sr is not None else typename
+        result: dict[str, Any] = {
+            "label": label,
+            "expr": is_expr,
+            "src": src,
+            "shape": "expr" if is_expr else "stmt",
+            "color": "amber" if is_expr else "blue",
+            "children": children,
+        }
+        if typename in EXPAND_BY_DEFAULT:
+            result["startExpanded"] = True
+        return result
 
     def generate(
         self,
@@ -123,7 +138,7 @@ class HTMLBackend:
 
         renders = []
         for i, (title, node) in enumerate(sections):
-            ast_json = json.dumps(node_to_dict(node))
+            ast_json = json.dumps(self.node_to_dict(node))
             svg_id = f"diagram_{i}"
             renders.append(
                 f"  <h2>{title}</h2>\n"
