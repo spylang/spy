@@ -235,6 +235,18 @@ class TestException(CompilerTest):
         with SPyError.raises("W_ZeroDivisionError", match="division by zero"):
             mod.must_return_str()
 
+    @pytest.mark.parametrize("error_mode", ["lazy", "eager"])
+    def test_non_static_errors_remain_lazy_in_non_primitive_typed_contexts(
+        self, error_mode
+    ):
+        src = """
+        def must_return_tuple() -> tuple[i32, i32]:
+            return 1 / 0
+        """
+        mod = self.compile(src, error_mode=error_mode)
+        with SPyError.raises("W_ZeroDivisionError", match="division by zero"):
+            mod.must_return_tuple()
+
     def test_static_errors_are_eager_in_dead_code_and_boolops(self):
         src = """
         def dead_branch_type_error() -> None:

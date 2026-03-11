@@ -489,6 +489,15 @@ class CFuncWriter:
             call.args.pop()  # remove it
             return self.fmt_generic_call(fqn, call)
 
+        elif fqn == FQN("operator::raise") and call.w_T not in (None, TYPES.w_NoneType):
+            self.ctx.add_include_maybe(fqn)
+            c_args = [str(self.fmt_expr(arg)) for arg in call.args]
+            c_arglist = ", ".join(c_args)
+            c_restype = self.ctx.w2c(call.w_T)
+            # Make operator::raise usable as an expression of any C type.
+            expr = f"({fqn.c_name}({c_arglist}), ({c_restype}){{0}})"
+            return C.Literal(expr)
+
         else:
             return self.fmt_generic_call(fqn, call)
 

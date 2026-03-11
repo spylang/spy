@@ -192,11 +192,9 @@ class DopplerFrame(ASTFrame):
         elif w_T is B.w_str:
             fqn = FQN("operator::raise_str")
         else:
-            tname = w_T.fqn.human_name
-            raise SPyError(
-                "W_WIP",
-                f"deferred non-static errors are not yet supported for `{tname}`",
-            )
+            # Fallback for non-primitive result types. C backend will render
+            # this as a typed expression via a dedicated formatting path.
+            fqn = FQN("operator::raise")
         func: ast.Expr = ast.FQNConst(loc=expr.loc, fqn=fqn)
         return ast.Call(
             loc=expr.loc,
