@@ -79,93 +79,24 @@ spy_operator$raise(spy_Str *etype, spy_Str *message, spy_Str *fname, int32_t lin
     spy_panic(etype->utf8, message->utf8, fname->utf8, lineno);
 }
 
-static inline int8_t
-spy_operator$raise_i8(
-    spy_Str *etype,
-    spy_Str *message,
-    spy_Str *fname,
-    int32_t lineno
-) {
-    spy_operator$raise(etype, message, fname, lineno);
-    return 0;
-}
+#define SPY_DEFINE_RAISE_TYPED(name, rettype, fallback)                                \
+    static inline rettype spy_operator$raise_##name(                                   \
+        spy_Str *etype, spy_Str *message, spy_Str *fname, int32_t lineno               \
+    ) {                                                                                \
+        spy_operator$raise(etype, message, fname, lineno);                             \
+        return fallback;                                                               \
+    }
 
-static inline uint8_t
-spy_operator$raise_u8(
-    spy_Str *etype,
-    spy_Str *message,
-    spy_Str *fname,
-    int32_t lineno
-) {
-    spy_operator$raise(etype, message, fname, lineno);
-    return 0;
-}
+SPY_DEFINE_RAISE_TYPED(i8, int8_t, 0)
+SPY_DEFINE_RAISE_TYPED(u8, uint8_t, 0)
+SPY_DEFINE_RAISE_TYPED(i32, int32_t, 0)
+SPY_DEFINE_RAISE_TYPED(u32, uint32_t, 0)
+SPY_DEFINE_RAISE_TYPED(f32, float, 0.0f)
+SPY_DEFINE_RAISE_TYPED(f64, double, 0.0)
+SPY_DEFINE_RAISE_TYPED(str, spy_Str *, NULL)
+SPY_DEFINE_RAISE_TYPED(bool, bool, false)
 
-static inline int32_t
-spy_operator$raise_i32(
-    spy_Str *etype,
-    spy_Str *message,
-    spy_Str *fname,
-    int32_t lineno
-) {
-    spy_operator$raise(etype, message, fname, lineno);
-    return 0;
-}
-
-static inline uint32_t
-spy_operator$raise_u32(
-    spy_Str *etype,
-    spy_Str *message,
-    spy_Str *fname,
-    int32_t lineno
-) {
-    spy_operator$raise(etype, message, fname, lineno);
-    return 0;
-}
-
-static inline float
-spy_operator$raise_f32(
-    spy_Str *etype,
-    spy_Str *message,
-    spy_Str *fname,
-    int32_t lineno
-) {
-    spy_operator$raise(etype, message, fname, lineno);
-    return 0.0f;
-}
-
-static inline double
-spy_operator$raise_f64(
-    spy_Str *etype,
-    spy_Str *message,
-    spy_Str *fname,
-    int32_t lineno
-) {
-    spy_operator$raise(etype, message, fname, lineno);
-    return 0.0;
-}
-
-static inline spy_Str *
-spy_operator$raise_str(
-    spy_Str *etype,
-    spy_Str *message,
-    spy_Str *fname,
-    int32_t lineno
-) {
-    spy_operator$raise(etype, message, fname, lineno);
-    return NULL;
-}
-
-static inline bool
-spy_operator$raise_bool(
-    spy_Str *etype,
-    spy_Str *message,
-    spy_Str *fname,
-    int32_t lineno
-) {
-    spy_operator$raise(etype, message, fname, lineno);
-    return false;
-}
+#undef SPY_DEFINE_RAISE_TYPED
 
 static inline double
 spy_operator$i8_div(int8_t x, int8_t y) {
