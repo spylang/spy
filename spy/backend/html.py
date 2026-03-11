@@ -2,7 +2,7 @@
 
 import dataclasses
 import json
-from typing import Any, Literal, Optional
+from typing import Any, Literal, Optional, Sequence
 
 import spy.ast
 from spy import ROOT
@@ -177,7 +177,7 @@ class HTMLBackend:
 
     def generate(
         self,
-        sections: list[tuple[str, spy.ast.Node]],
+        sections: Sequence[tuple[str, spy.ast.Node]],
     ) -> str:
         js_tag = _spyast_js_tag(self.spyast_js)
 

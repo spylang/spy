@@ -8,6 +8,7 @@ from typer import Option
 import spy.ast
 from spy.analyze.importing import ImportAnalyzer
 from spy.backend.html import SpyastJs
+from spy.doppler import ErrorMode
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -50,7 +51,7 @@ class Colorize_Args(Base_Args, _colorize_mixin, Filename_Required_Args): ...
 
 
 def colorize_mod(
-    vm: "SPyVM", modname: str, *, use_spyc: bool, error_mode: str
+    vm: "SPyVM", modname: str, *, use_spyc: bool, error_mode: ErrorMode
 ) -> "spy.ast.Module":
     """
     Import and redshift the given module, populating vm.ast_color_map.
@@ -82,6 +83,7 @@ async def colorize(args: Colorize_Args) -> None:
     elif args.format == "spy":
         print(colorize_sourcecode(args.filename, coords))
     elif args.format == "html":
+        assert vm.ast_color_map is not None
         html = dump_colorize_html(orig_mod, vm.ast_color_map, args.spyast_js)
         build_dir = Path(args.filename.parent) / "build"
         build_dir.mkdir(exist_ok=True, parents=True)
