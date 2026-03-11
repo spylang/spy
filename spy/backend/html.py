@@ -152,9 +152,9 @@ class HTMLBackend:
             elif node_color == "blue":
                 color = "blue"
             else:
-                color = "gray"
+                color = "default"
         else:
-            color = "amber" if is_expr else "gray"
+            color = "amber" if is_expr else "default"
 
         sr = node.shortrepr()
         label = f"{typename}: {sr}" if sr is not None else typename

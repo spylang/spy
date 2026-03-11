@@ -17,13 +17,13 @@
   const NS = 'http://www.w3.org/2000/svg';
   const ANIM_MS = 300;
 
+  // Each entry has fill: [expanded, collapsed] and stroke: [expanded, collapsed].
   const PALETTE = {
-    blue:    { fill: ['#c8ddf0', '#b8d0e8'], stroke: ['#87afd7', '#6a9ac4'] },
+    blue:    { fill: ['#b8d0e8', '#b8d0e8'], stroke: ['#87afd7', '#6a9ac4'] },
     amber:   { fill: ['#fef9c3', '#fef3c7'], stroke: ['#e0b840', '#e5c04a'] },
     emerald: { fill: ['#d1fae5', '#a7f3d0'], stroke: ['#6dd0a0', '#5cc090'] },
-    red:     { fill: ['#f0d0d0', '#e8c0c0'], stroke: ['#d78787', '#c07070'] },
-    gray:    { fill: ['#f5f5f5', '#ebebeb'], stroke: ['#c0c0c0', '#b0b0b0'] },
-    lavender:{ fill: ['#e8e0f0', '#ddd4e8'], stroke: ['#a890c0', '#9680b0'] },
+    red:     { fill: ['#e8c0c0', '#e8c0c0'], stroke: ['#d78787', '#c07070'] },
+    default: { fill: ['#e8e0f0', '#f5f5f5'], stroke: ['#a890c0', '#c0c0c0'] },
   };
 
   function init(svgEl, astData) {
@@ -253,15 +253,14 @@
 
     // ---- DOM helpers ----
     function nodeColors(color, isCollapsed) {
-      const c = PALETTE[color] || PALETTE.gray;
+      const c = PALETTE[color] || PALETTE.default;
       return { fill: c.fill[isCollapsed ? 1 : 0], stroke: c.stroke[isCollapsed ? 1 : 0] };
     }
 
     function buildNodeContent(g, nd) {
       while (g.firstChild) g.removeChild(g.firstChild);
       const { nw, nh, label, src, hasChildren, isCollapsed, shape, color } = nd;
-      const effectiveColor = (!isCollapsed && hasChildren) ? 'lavender' : color;
-      const c = nodeColors(effectiveColor, isCollapsed);
+      const c = nodeColors(color, isCollapsed);
 
       // Draw shape outline
       let outline;
