@@ -396,13 +396,13 @@ class BinOp(Expr):
     def precedence(self) -> int:
         return self._precedence[self.op]
 
-    def shortrepr(self) -> Optional[str]:
-        return self.op
-
     # this is just to make mypy happy
     @precedence.setter
     def precedence(self, newval: int) -> None:
         raise TypeError("readonly attribute")
+
+    def shortrepr(self) -> Optional[str]:
+        return self.op
 
 
 # eventually this should allow chained comparisons, but for now we support
@@ -431,13 +431,13 @@ class CmpOp(Expr):
     def precedence(self) -> int:
         return self._precedence[self.op]
 
-    def shortrepr(self) -> Optional[str]:
-        return self.op
-
     # this is just to make mypy happy
     @precedence.setter
     def precedence(self, newval: int) -> None:
         raise TypeError("readonly attribute")
+
+    def shortrepr(self) -> Optional[str]:
+        return self.op
 
 
 @astnode
@@ -471,13 +471,13 @@ class UnaryOp(Expr):
     def precedence(self) -> int:
         return self._precedence[self.op]
 
-    def shortrepr(self) -> Optional[str]:
-        return self.op
-
     # this is just to make mypy happy
     @precedence.setter
     def precedence(self, newval: int) -> None:
         raise TypeError("readonly attribute")
+
+    def shortrepr(self) -> Optional[str]:
+        return self.op
 
 
 @astnode
