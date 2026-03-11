@@ -61,7 +61,7 @@ def _scalar_leaf(val: Any) -> dict[str, Any]:
     return {
         "label": s,
         "expr": True,
-        "src": s,
+        "src": None,
         "shape": "leaf",
         "color": "emerald",
         "children": [],

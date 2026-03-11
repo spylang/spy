@@ -11,10 +11,16 @@ from spy.vm.function import W_ASTFunc
 from spy.vm.vm import SPyVM
 
 
-def dump_node(d: dict[str, Any], indent: int = 0) -> str:
+def dump_node(d: dict[str, Any], indent: int = 0, show_src: bool = False) -> str:
     """
     Pretty-print a node_to_dict result into a compact text format:
         <label> (shape, color)
+            attr: <child_label> (shape, color)
+
+    If show_src=True, source lines are shown after the header:
+        <label> (shape, color)
+            | line 1 of source
+            | line 2 of source
             attr: <child_label> (shape, color)
     """
     parts = []
@@ -22,11 +28,15 @@ def dump_node(d: dict[str, Any], indent: int = 0) -> str:
     flags = f"{d['shape']}, {d['color']}"
     header = f"{prefix}<{d['label']}> ({flags})"
     parts.append(header)
+    if show_src:
+        src = d.get("src", "")
+        if src:
+            for line in src.split("\n"):
+                parts.append(f"{prefix}    | {line}")
     for child in d["children"]:
         attr = child["attr"]
         node = child["node"]
-        child_str = dump_node(node, indent + 1)
-        # Replace the leading indentation of the first line with "attr: "
+        child_str = dump_node(node, indent + 1, show_src=show_src)
         child_prefix = "    " * (indent + 1)
         child_str = f"{child_prefix}{attr}: {child_str.lstrip()}"
         parts.append(child_str)
@@ -99,8 +109,10 @@ class TestHTMLBackend:
             lines[sc["line"]] = line
         return "\n".join(lines)
 
-    def assert_dump(self, d: dict[str, Any], expected: str) -> None:
-        dumped = dump_node(d)
+    def assert_dump(
+        self, d: dict[str, Any], expected: str, show_src: bool = False
+    ) -> None:
+        dumped = dump_node(d, show_src=show_src)
         expected = textwrap.dedent(expected).strip()
         if "{tmpdir}" in expected:
             expected = expected.format(tmpdir=self.tmpdir)
@@ -108,7 +120,7 @@ class TestHTMLBackend:
             print_diff(expected, dumped, "expected", "got")
             pytest.fail("assert_dump failed")
 
-    def test_simple_funcdef(self):
+    def test_parse_simple(self):
         d = self.parse("""
         def foo() -> void:
             pass
@@ -127,7 +139,7 @@ class TestHTMLBackend:
         """
         self.assert_dump(d, expected)
 
-    def test_funcdef_with_exprs(self):
+    def test_parse_exprs(self):
         d = self.parse("""
         def foo(x: i32) -> i32:
             return x + 1
@@ -154,6 +166,43 @@ class TestHTMLBackend:
                         value: <1> (leaf, emerald)
         """
         self.assert_dump(funcdef, expected)
+
+    def test_parse_show_src(self):
+        d = self.parse("""
+        def foo(x: i32) -> i32:
+            return x + 1
+        """)
+        funcdef = self.get_node(d, "FuncDef: red foo")
+        expected = """
+        <FuncDef: red foo> (stmt, default)
+            | def foo(x: i32) -> i32:
+            |     return x + 1
+            color: <'red'> (leaf, emerald)
+            kind: <'plain'> (leaf, emerald)
+            name: <'foo'> (leaf, emerald)
+            args[0]: <FuncArg: x simple> (stmt, default)
+                | x: i32
+                name: <'x'> (leaf, emerald)
+                type: <Name: i32> (expr, amber)
+                    | i32
+                    id: <'i32'> (leaf, emerald)
+                kind: <'simple'> (leaf, emerald)
+            return_type: <Name: i32> (expr, amber)
+                | i32
+                id: <'i32'> (leaf, emerald)
+            body[0]: <Return> (stmt, default)
+                | return x + 1
+                value: <BinOp: +> (expr, amber)
+                    | x + 1
+                    op: <'+'> (leaf, emerald)
+                    left: <Name: x> (expr, amber)
+                        | x
+                        id: <'x'> (leaf, emerald)
+                    right: <Constant: 1> (expr, amber)
+                        | 1
+                        value: <1> (leaf, emerald)
+        """
+        self.assert_dump(funcdef, expected, show_src=True)
 
     def test_redshift(self):
         d = self.redshift("""
@@ -193,7 +242,7 @@ class TestHTMLBackend:
         """
         self.assert_dump(ret, expected)
 
-    def test_src_color(self):
+    def test_colorize_src_colors(self):
         d = self.colorize("""
         def foo(x: i32) -> i32:
             return x + 1
