@@ -135,7 +135,7 @@ class HTMLBackend:
                         children.append({"attr": attr, "node": self.node_to_dict(item)})
                     else:
                         children.append({"attr": attr, "node": _scalar_leaf(item)})
-            elif val is not None:
+            else:
                 children.append({"attr": f.name, "node": _scalar_leaf(val)})
 
         if self.spy_backend is not None and is_expr:
