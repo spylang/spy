@@ -24,10 +24,18 @@ jobs:
           python-version: "3.12"
           cache: "pip"
 
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libgc-dev
+
       - name: Install project
         run: |
           python -m pip install --upgrade pip
           pip install -e .[dev]
+
+      - name: Build libspy
+        run: |
+          cd spy/libspy
+          make
 
       - name: Run playground tests
         run: |
