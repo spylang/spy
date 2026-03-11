@@ -140,7 +140,7 @@ class DopplerFrame(ASTFrame):
         return err.match(W_StaticError)
 
     def _should_lazify_stmt_error(self, err: SPyError) -> bool:
-        return self.error_mode == "lazy" or not self._is_static_error(err)
+        return self.error_mode == "lazy" and self._is_static_error(err)
 
     def _emit_lazify_warning_maybe(self, err: SPyError) -> None:
         if self.error_mode == "lazy" and self._is_static_error(err):
@@ -164,37 +164,51 @@ class DopplerFrame(ASTFrame):
         exc = ast.FQNConst(fqn=fqn, loc=stmt.loc)
         return self.shift_stmt(ast.Raise(exc=exc, loc=stmt.loc))
 
-    def make_raise_expr_from_SPyError(self, expr: ast.Expr, err: SPyError) -> ast.Expr:
+    def make_raise_expr_from_SPyError(
+        self, expr: ast.Expr, err: SPyError, *, w_T: "W_Type"
+    ) -> ast.Expr:
         """
         Turn an expression-time error into an expression which raises at runtime.
         """
         etype = err.etype
         assert etype.startswith("W_")
+        fqn = None
+        if w_T is TYPES.w_NoneType:
+            fqn = FQN("operator::raise")
+        elif w_T is B.w_bool:
+            fqn = FQN("operator::raise_bool")
+        elif w_T is B.w_i8:
+            fqn = FQN("operator::raise_i8")
+        elif w_T is B.w_u8:
+            fqn = FQN("operator::raise_u8")
+        elif w_T is B.w_i32:
+            fqn = FQN("operator::raise_i32")
+        elif w_T is B.w_u32:
+            fqn = FQN("operator::raise_u32")
+        elif w_T is B.w_f32:
+            fqn = FQN("operator::raise_f32")
+        elif w_T is B.w_f64:
+            fqn = FQN("operator::raise_f64")
+        elif w_T is B.w_str:
+            fqn = FQN("operator::raise_str")
+        else:
+            tname = w_T.fqn.human_name
+            raise SPyError(
+                "W_WIP",
+                f"deferred non-static errors are not yet supported for `{tname}`",
+            )
+        func: ast.Expr = ast.FQNConst(loc=expr.loc, fqn=fqn)
         return ast.Call(
             loc=expr.loc,
-            func=ast.FQNConst(loc=expr.loc, fqn=FQN("operator::raise_bool")),
+            func=func,
             args=[
                 ast.StrConst(loc=expr.loc, value=etype[2:]),
                 ast.StrConst(loc=expr.loc, value=err.w_exc.message),
                 ast.StrConst(loc=expr.loc, value=expr.loc.filename),
                 ast.Constant(loc=expr.loc, value=expr.loc.line_start),
             ],
-            w_T=B.w_bool,
+            w_T=w_T,
         )
-
-    def lazify_non_static_expr_error(
-        self, expr: ast.Expr, err: SPyError, *, varname: str
-    ) -> W_MetaArg:
-        self.shifted_expr[expr] = self.make_raise_expr_from_SPyError(expr, err)
-        return W_MetaArg(self.vm, "red", self.locals[varname].w_T, None, expr.loc)
-
-    def _eval_boolop_rhs(self, expr: ast.Expr, *, varname: str) -> W_MetaArg:
-        try:
-            return self.eval_expr(expr, varname=varname)
-        except SPyError as err:
-            if self._is_static_error(err):
-                raise
-            return self.lazify_non_static_expr_error(expr, err, varname=varname)
 
     def record_node_color(self, node: ast.Node, color: Color) -> None:
         if self.vm.ast_color_map is not None:
@@ -326,24 +340,7 @@ class DopplerFrame(ASTFrame):
         new_msg = None
 
         if assert_node.msg is not None:
-            try:
-                wam_msg = self.eval_expr(assert_node.msg)
-            except SPyError as err:
-                if self._is_static_error(err):
-                    raise
-                # non-static errors in assert message must stay lazy and happen
-                # only if the assert condition is false.
-                lazy_raise = self.make_raise_from_SPyError(
-                    ast.Pass(loc=assert_node.msg.loc), err
-                )
-                return [
-                    ast.If(
-                        loc=assert_node.loc,
-                        test=new_test,
-                        then_body=[],
-                        else_body=lazy_raise,
-                    )
-                ]
+            wam_msg = self.eval_expr(assert_node.msg, w_expected=B.w_str)
 
             if wam_msg.w_static_T is not B.w_str:
                 type_err = SPyError("W_TypeError", "mismatched types")
@@ -377,6 +374,7 @@ class DopplerFrame(ASTFrame):
         expr: ast.Expr,
         *,
         varname: Optional[str] = None,
+        w_expected: Optional["W_Type"] = None,
     ) -> W_MetaArg:
         """
         Override ASTFrame.eval_expr.
@@ -411,7 +409,26 @@ class DopplerFrame(ASTFrame):
                   -> compute shited binop (stored in .shifted_expr)
         """
         assert self.redshifting
-        wam = magic_dispatch(self, "eval_expr", expr)
+        try:
+            wam = magic_dispatch(self, "eval_expr", expr)
+        except SPyError as err:
+            if self._is_static_error(err):
+                raise
+            if w_expected is not None:
+                pass
+            elif varname is not None:
+                w_expected = self.locals[varname].w_T
+            elif expr in self.opimpl:
+                w_expected = self.opimpl[expr].w_functype.w_restype
+            else:
+                raise
+            assert w_expected is not None
+            self.shifted_expr[expr] = self.make_raise_expr_from_SPyError(
+                expr, err, w_T=w_expected
+            )
+            self.record_node_color(expr, "red")
+            return W_MetaArg(self.vm, "red", w_expected, None, expr.loc)
+
         new_expr = self.shift_expr(expr, wam)
         assert new_expr.w_T is not None, "shift_expr should return a typed ast.Expr"
 

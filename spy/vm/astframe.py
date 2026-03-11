@@ -1007,14 +1007,10 @@ class AbstractFrame:
             redshifting=False,  # we want to always execute this eagerly
         )
 
-    def _eval_boolop_rhs(self, expr: ast.Expr, *, varname: str) -> W_MetaArg:
-        # Override for DopplerFrame boolop RHS redshift error handling.
-        return self.eval_expr(expr, varname=varname)
-
     def eval_expr_And(self, op: ast.And) -> W_MetaArg:
         if self.redshifting:
             wam_l = self.eval_expr(op.left, varname="@and")
-            wam_r = self._eval_boolop_rhs(op.right, varname="@and")
+            wam_r = self.eval_expr(op.right, varname="@and")
             color = maybe_blue(wam_l.color, wam_r.color)
             if color == "blue":
                 w_left_bool = self._ensure_bool(wam_l)
@@ -1037,7 +1033,7 @@ class AbstractFrame:
     def eval_expr_Or(self, op: ast.Or) -> W_MetaArg:
         if self.redshifting:
             wam_l = self.eval_expr(op.left, varname="@or")
-            wam_r = self._eval_boolop_rhs(op.right, varname="@or")
+            wam_r = self.eval_expr(op.right, varname="@or")
             color = maybe_blue(wam_l.color, wam_r.color)
             if color == "blue":
                 w_left_bool = self._ensure_bool(wam_l)

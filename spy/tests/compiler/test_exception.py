@@ -204,6 +204,37 @@ class TestException(CompilerTest):
         with SPyError.raises("W_ZeroDivisionError", match="division by zero"):
             mod.assert_with_division_message(False)
 
+    @pytest.mark.parametrize("error_mode", ["lazy", "eager"])
+    def test_non_static_errors_preserve_side_effect_order(self, error_mode):
+        src = """
+        var counter: i32 = 0
+
+        def inc() -> i32:
+            counter = counter + 1
+            return 10
+
+        def sum_then_divide() -> f64:
+            return inc() + (1 / 0)
+
+        def read_counter() -> i32:
+            return counter
+        """
+        mod = self.compile(src, error_mode=error_mode)
+        assert mod.read_counter() == 0
+        with SPyError.raises("W_ZeroDivisionError", match="division by zero"):
+            mod.sum_then_divide()
+        assert mod.read_counter() == 1
+
+    @pytest.mark.parametrize("error_mode", ["lazy", "eager"])
+    def test_non_static_errors_remain_lazy_in_typed_contexts(self, error_mode):
+        src = """
+        def must_return_str() -> str:
+            return 1 / 0
+        """
+        mod = self.compile(src, error_mode=error_mode)
+        with SPyError.raises("W_ZeroDivisionError", match="division by zero"):
+            mod.must_return_str()
+
     def test_static_errors_are_eager_in_dead_code_and_boolops(self):
         src = """
         def dead_branch_type_error() -> None:
