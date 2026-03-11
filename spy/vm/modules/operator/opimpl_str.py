@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 from spy.errors import SPyError
-from spy.vm.primitive import W_I8, W_I32, W_U8, W_U32, W_Bool
+from spy.vm.primitive import W_I8, W_I32, W_U8, W_U32, W_Bool, W_Complex128
 from spy.vm.str import W_Str
 
 from . import OP
@@ -83,3 +83,13 @@ def w_str_to_u8(vm: "SPyVM", w_s: W_Str) -> W_U8:
     val = _parse_int(vm, w_s)
     _check_range(val, 0, 255, "u8")
     return W_U8(val)
+
+
+@OP.builtin_func
+def w_str_to_complex128(vm: "SPyVM", w_x: W_Str) -> W_Complex128:
+    try:
+        val = complex(vm.unwrap_str(w_x))
+    except ValueError:
+        raise SPyError("W_ValueError", "complex() arg is a malformed string")
+
+    return vm.wrap(val)

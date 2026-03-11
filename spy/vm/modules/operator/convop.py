@@ -239,16 +239,6 @@ def w_f32_to_i32(vm: "SPyVM", w_x: W_F32) -> W_I32:
     return vm.wrap(int(val))
 
 
-@OP.builtin_func
-def w_str_to_complex128(vm: "SPyVM", w_x: W_Str) -> W_Complex128:
-    try:
-        val = complex(vm.unwrap_str(w_x))
-    except ValueError:
-        raise SPyError("W_ValueError", "complex() arg is a malformed string")
-
-    return vm.wrap(val)
-
-
 @OP.builtin_func(color="blue")
 def w_from_dynamic(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     """
