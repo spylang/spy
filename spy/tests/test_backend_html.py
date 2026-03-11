@@ -3,10 +3,11 @@ from typing import Any
 
 import pytest
 
-from spy.analyze.importing import ImportAnalyzer
 from spy.backend.html import HTMLBackend
+from spy.cli.commands.colorize import colorize_mod
 from spy.parser import Parser
 from spy.util import print_diff
+from spy.vm.function import W_ASTFunc
 from spy.vm.vm import SPyVM
 
 
@@ -37,32 +38,35 @@ class TestHTMLBackend:
     @pytest.fixture
     def init(self, tmpdir):
         self.tmpdir = tmpdir
+        self.vm = SPyVM()
+        self.vm.path.append(str(self.tmpdir))
 
-    def parse(self, src: str):
+    def write_src(self, src: str) -> None:
         f = self.tmpdir.join("test.spy")
         src = textwrap.dedent(src)
         f.write(src)
-        parser = Parser(src, str(f))
-        return parser.parse()
 
-    def to_dict(self, src: str) -> dict[str, Any]:
-        mod = self.parse(src)
+    def parse(self, src: str) -> dict[str, Any]:
+        self.write_src(src)
+        parser = Parser(textwrap.dedent(src), str(self.tmpdir.join("test.spy")))
+        mod = parser.parse()
         b = HTMLBackend()
         return b.node_to_dict(mod)
 
+    def redshift(self, src: str) -> dict[str, Any]:
+        self.write_src(src)
+        self.vm.import_("test")
+        self.vm.redshift(error_mode="eager")
+        b = HTMLBackend(vm=self.vm, is_redshifted=True)
+        for fqn, w_obj in self.vm.fqns_by_modname("test"):
+            if isinstance(w_obj, W_ASTFunc) and w_obj.color == "red":
+                return b.node_to_dict(w_obj.funcdef)
+        raise ValueError("no red function found")
+
     def colorize(self, src: str) -> dict[str, Any]:
-        f = self.tmpdir.join("test.spy")
-        src = textwrap.dedent(src)
-        f.write(src)
-        vm = SPyVM()
-        vm.path.append(str(self.tmpdir))
-        importer = ImportAnalyzer(vm, "test", use_spyc=False)
-        importer.parse_all()
-        orig_mod = importer.getmod("test")
-        importer.import_all()
-        vm.ast_color_map = {}
-        vm.redshift(error_mode="eager")
-        b = HTMLBackend(ast_color_map=vm.ast_color_map)
+        self.write_src(src)
+        orig_mod = colorize_mod(self.vm, "test", use_spyc=False, error_mode="eager")
+        b = HTMLBackend(ast_color_map=self.vm.ast_color_map)
         return b.node_to_dict(orig_mod)
 
     def get_node(self, d: dict[str, Any], label: str) -> dict[str, Any]:
@@ -105,7 +109,7 @@ class TestHTMLBackend:
             pytest.fail("assert_dump failed")
 
     def test_simple_funcdef(self):
-        d = self.to_dict("""
+        d = self.parse("""
         def foo() -> void:
             pass
         """)
@@ -124,7 +128,7 @@ class TestHTMLBackend:
         self.assert_dump(d, expected)
 
     def test_funcdef_with_exprs(self):
-        d = self.to_dict("""
+        d = self.parse("""
         def foo(x: i32) -> i32:
             return x + 1
         """)
@@ -150,6 +154,24 @@ class TestHTMLBackend:
                         value: <1> (leaf, emerald)
         """
         self.assert_dump(funcdef, expected)
+
+    def test_redshift(self):
+        d = self.redshift("""
+        def foo(x: i32) -> i32:
+            return x + 1
+        """)
+        ret = self.get_node(d, "Return")
+        expected = """
+        <Return> (stmt, default)
+            value: <Call> (expr, amber)
+                func: <FQNConst> (expr, amber)
+                    fqn: <operator::i32_add> (leaf, emerald)
+                args[0]: <NameLocalDirect> (expr, amber)
+                    sym: <x> (leaf, emerald)
+                args[1]: <Constant: 1> (expr, amber)
+                    value: <1> (leaf, emerald)
+        """
+        self.assert_dump(ret, expected)
 
     def test_colorize(self):
         d = self.colorize("""

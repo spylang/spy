@@ -1,12 +1,16 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 import click
 from typer import Option
 
+import spy.ast
 from spy.analyze.importing import ImportAnalyzer
 from spy.backend.html import SpyastJs
+
+if TYPE_CHECKING:
+    from spy.vm.vm import SPyVM
 from spy.cli._format import colorize_sourcecode, dump_colorize_html
 from spy.cli._runners import init_vm
 from spy.cli.commands.shared_args import (
@@ -45,19 +49,30 @@ class _colorize_mixin:
 class Colorize_Args(Base_Args, _colorize_mixin, Filename_Required_Args): ...
 
 
+def colorize_mod(
+    vm: "SPyVM", modname: str, *, use_spyc: bool, error_mode: str
+) -> "spy.ast.Module":
+    """
+    Import and redshift the given module, populating vm.ast_color_map.
+    Return the original (pre-redshift) AST module.
+    """
+    importer = ImportAnalyzer(vm, modname, use_spyc=use_spyc)
+    importer.parse_all()
+    orig_mod = importer.getmod(modname)
+    importer.import_all()
+    vm.ast_color_map = {}
+    vm.redshift(error_mode=error_mode)
+    return orig_mod
+
+
 async def colorize(args: Colorize_Args) -> None:
     """Output the redshifted code or AST with blue / red text colors."""
     modname = args.filename.stem
     vm = await init_vm(args)
 
-    importer = ImportAnalyzer(vm, modname, use_spyc=not args.no_spyc)
-    importer.parse_all()
-
-    orig_mod = importer.getmod(modname)
-
-    importer.import_all()
-    vm.ast_color_map = {}
-    vm.redshift(error_mode=args.error_mode)
+    orig_mod = colorize_mod(
+        vm, modname, use_spyc=not args.no_spyc, error_mode=args.error_mode
+    )
     coords = colors_coordinates(orig_mod, vm.ast_color_map)
 
     if args.format == "ast":
