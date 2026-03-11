@@ -264,7 +264,8 @@ spy_operator$str_to_complex128(spy_Str *s) {
 
     memcpy(buf, s->utf8, len);
     buf[len] = '\0';
-    char *end = buf + len - 1;
+    char *start = buf;
+    char *end = start + len - 1;
 
     while (isspace(*start))
         start++;
