@@ -3,9 +3,11 @@ from typing import Any
 
 import pytest
 
+from spy.analyze.importing import ImportAnalyzer
 from spy.backend.html import HTMLBackend
 from spy.parser import Parser
 from spy.util import print_diff
+from spy.vm.vm import SPyVM
 
 
 def dump_node(d: dict[str, Any], indent: int = 0) -> str:
@@ -49,6 +51,21 @@ class TestHTMLBackend:
         mod = self.parse(src)
         b = HTMLBackend()
         return b.node_to_dict(mod)
+
+    def colorize(self, src: str) -> dict[str, Any]:
+        f = self.tmpdir.join("test.spy")
+        src = textwrap.dedent(src)
+        f.write(src)
+        vm = SPyVM()
+        vm.path.append(str(self.tmpdir))
+        importer = ImportAnalyzer(vm, "test", use_spyc=False)
+        importer.parse_all()
+        orig_mod = importer.getmod("test")
+        importer.import_all()
+        vm.ast_color_map = {}
+        vm.redshift(error_mode="eager")
+        b = HTMLBackend(ast_color_map=vm.ast_color_map)
+        return b.node_to_dict(orig_mod)
 
     def get_node(self, d: dict[str, Any], label: str) -> dict[str, Any]:
         if d["label"] == label:
@@ -114,3 +131,20 @@ class TestHTMLBackend:
                         value: <1> (leaf, emerald)
         """
         self.assert_dump(funcdef, expected)
+
+    def test_colorize(self):
+        d = self.colorize("""
+        def foo(x: i32) -> i32:
+            return x + 1
+        """)
+        ret = self.get_node(d, "Return")
+        expected = """
+        <Return> (stmt, default, src_colors=[{'line': 0, 'start': 7, 'end': 12, 'color': 'red'}, {'line': 0, 'start': 7, 'end': 8, 'color': 'red'}, {'line': 0, 'start': 11, 'end': 12, 'color': 'blue'}])
+            value: <BinOp: +> (expr, red, src_colors=[{'line': 0, 'start': 0, 'end': 1, 'color': 'red'}, {'line': 0, 'start': 4, 'end': 5, 'color': 'blue'}])
+                op: <'+'> (leaf, emerald)
+                left: <Name: x> (expr, red)
+                    id: <'x'> (leaf, emerald)
+                right: <Constant: 1> (expr, blue)
+                    value: <1> (leaf, emerald)
+        """
+        self.assert_dump(ret, expected)
