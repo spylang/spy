@@ -28,6 +28,7 @@ class _redshift_mixin:
         str,
         Option(
             "--format",
+            "-f",
             help="Output format (ast, spy [source], or html)",
             click_type=click.Choice(["ast", "spy", "html"]),
         ),
@@ -40,7 +41,7 @@ class _redshift_mixin:
             help="How to include spyast.js in the HTML output",
             click_type=click.Choice(["cdn", "inline"]),
         ),
-    ] = "cdn"
+    ] = "inline"
 
 
 @dataclass
