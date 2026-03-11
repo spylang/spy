@@ -222,6 +222,29 @@ class TestHTMLBackend:
         """
         self.assert_dump(ret, expected)
 
+    def test_redshift_show_src(self):
+        d = self.redshift("""
+        def foo(x: i32) -> i32:
+            return x + 1
+        """)
+        ret = self.get_node(d, "Return")
+        expected = """
+        <Return> (stmt, default)
+            | return x + 1
+            value: <Call> (expr, amber)
+                | x + 1
+                func: <FQNConst> (expr, amber)
+                    | `operator::i32_add`
+                    fqn: <operator::i32_add> (leaf, emerald)
+                args[0]: <NameLocalDirect> (expr, amber)
+                    | x
+                    sym: <x> (leaf, emerald)
+                args[1]: <Constant: 1> (expr, amber)
+                    | 1
+                    value: <1> (leaf, emerald)
+        """
+        self.assert_dump(ret, expected, show_src=True)
+
     def test_colorize(self):
         d = self.colorize("""
         def foo(x: i32) -> i32:
