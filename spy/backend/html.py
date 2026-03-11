@@ -4,7 +4,7 @@ from typing import Any, Literal, Optional
 
 import spy.ast
 from spy import ROOT
-from spy.analyze.symtable import Symbol
+from spy.analyze.symtable import Color, Symbol
 from spy.backend.spy import SPyBackend
 from spy.vm.vm import SPyVM
 
@@ -83,9 +83,11 @@ class HTMLBackend:
         spyast_js: SpyastJs = "cdn",
         vm: Optional[SPyVM] = None,
         is_redshifted: bool = False,
+        ast_color_map: Optional[dict[spy.ast.Node, Color]] = None,
     ) -> None:
         self.spyast_js = spyast_js
         self.spy_backend: Optional[SPyBackend] = None
+        self.ast_color_map = ast_color_map
         if is_redshifted:
             assert vm is not None
             self.spy_backend = SPyBackend(vm)
@@ -116,6 +118,17 @@ class HTMLBackend:
         else:
             src = _get_src(node)
 
+        if self.ast_color_map is not None:
+            node_color = self.ast_color_map.get(node)
+            if node_color == "red":
+                color = "red"
+            elif node_color == "blue":
+                color = "blue"
+            else:
+                color = "gray"
+        else:
+            color = "amber" if is_expr else "gray"
+
         sr = node.shortrepr()
         label = f"{typename}: {sr}" if sr is not None else typename
         result: dict[str, Any] = {
@@ -123,7 +136,7 @@ class HTMLBackend:
             "expr": is_expr,
             "src": src,
             "shape": "expr" if is_expr else "stmt",
-            "color": "amber" if is_expr else "blue",
+            "color": color,
             "children": children,
         }
         if typename in EXPAND_BY_DEFAULT:

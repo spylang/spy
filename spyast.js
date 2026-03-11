@@ -18,12 +18,11 @@
   const ANIM_MS = 300;
 
   const PALETTE = {
-    blue:    { fill: ['#dbeafe', '#e0e7ff'], stroke: ['#3b82f6', '#6366f1'] },
-    amber:   { fill: ['#fef9c3', '#fef3c7'], stroke: ['#ca8a04', '#d97706'] },
-    emerald: { fill: ['#d1fae5', '#a7f3d0'], stroke: ['#059669', '#047857'] },
-    red:     { fill: ['#fee2e2', '#fecaca'], stroke: ['#ef4444', '#dc2626'] },
-    purple:  { fill: ['#ede9fe', '#ddd6fe'], stroke: ['#7c3aed', '#6d28d9'] },
-    gray:    { fill: ['#f1f5f9', '#e2e8f0'], stroke: ['#94a3b8', '#64748b'] },
+    blue:    { fill: ['#dbeafe', '#e0e7ff'], stroke: ['#93b8f6', '#a5b4fc'] },
+    amber:   { fill: ['#fef9c3', '#fef3c7'], stroke: ['#e0b840', '#e5c04a'] },
+    emerald: { fill: ['#d1fae5', '#a7f3d0'], stroke: ['#6dd0a0', '#5cc090'] },
+    red:     { fill: ['#fee2e2', '#fde8e8'], stroke: ['#f5a0a0', '#f0b0b0'] },
+    gray:    { fill: ['#f5f5f5', '#ebebeb'], stroke: ['#c0c0c0', '#b0b0b0'] },
   };
 
   function init(svgEl, astData) {
@@ -283,7 +282,7 @@
       outline.setAttribute('stroke-width', '1.5');
       g.appendChild(outline);
 
-      const srcTextColor = { stmt: '#312e81', expr: '#78350f', leaf: '#065f46' }[shape] || '#1e3a5f';
+      const srcTextColor = '#000000';
 
       // Chevron arrow on the left for collapsible nodes
       if (hasChildren) {

@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import spy.ast
+from spy.analyze.symtable import Color
 from spy.backend.html import HTMLBackend, SpyastJs
 from spy.backend.spy import FQN_FORMAT, SPyBackend
 from spy.highlight import highlight_src
@@ -33,6 +35,16 @@ def dump_spy_mod_html(vm: SPyVM, modname: str, spyast_js: SpyastJs) -> str:
             sections.append((str(fqn), w_obj.funcdef))
     b = HTMLBackend(spyast_js, vm=vm, is_redshifted=True)
     return b.generate(sections)
+
+
+def dump_colorize_html(
+    orig_mod: spy.ast.Module,
+    ast_color_map: dict[spy.ast.Node, Color],
+    spyast_js: SpyastJs,
+) -> str:
+    modname = orig_mod.filename
+    b = HTMLBackend(spyast_js, ast_color_map=ast_color_map)
+    return b.generate([(modname, orig_mod)])
 
 
 def colorize_sourcecode(sourcefile: Path, coords_dict: dict) -> str:
