@@ -133,7 +133,9 @@ class Node:
 
     def shortrepr(self) -> Optional[str]:
         """
-        Return a short string to append to the class name in astviz labels.
+        Return a short string to append to the class name, use by
+        spy/backend/html.py to generate labels for the interactive nodes.
+
         Return None to use just the class name.
         """
         return None
