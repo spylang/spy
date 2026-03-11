@@ -1,3 +1,9 @@
+"""
+Example code for how to use spyast.js.
+
+THIS FILE IS NOT A FUNCTIONAL PART OF SPy
+"""
+
 from dataclasses import dataclass
 
 

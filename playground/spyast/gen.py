@@ -1,3 +1,9 @@
+"""
+Example code for how to visualize toyast.py with spyast.js.
+
+THIS FILE IS NOT A FUNCTIONAL PART OF SPy
+"""
+
 import dataclasses
 import json
 
