@@ -76,6 +76,7 @@ def _spyast_js_tag(mode: SpyastJs) -> str:
         return f'<script src="{url}"></script>'
     else:
         js_code = _SPYAST_JS.read()
+        assert isinstance(js_code, str)
         return f"<script>\n{js_code}\n</script>"
 
 
@@ -140,7 +141,7 @@ class HTMLBackend:
             else:
                 children.append({"attr": f.name, "node": _scalar_leaf(val)})
 
-        if self.spy_backend is not None and is_expr:
+        if self.spy_backend is not None and isinstance(node, spy.ast.Expr):
             src = self.spy_backend.fmt_expr(node)
         else:
             src = _get_src(node)
