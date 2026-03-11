@@ -130,7 +130,7 @@ class HTMLBackend:
                 children.append({"attr": f.name, "node": self.node_to_dict(val)})
             elif isinstance(val, list):
                 for i, item in enumerate(val):
-                    attr = f"{f.name}[{i}]" if len(val) > 1 else f.name
+                    attr = f"{f.name}[{i}]"
                     if isinstance(item, spy.ast.Node):
                         children.append({"attr": attr, "node": self.node_to_dict(item)})
                     else:

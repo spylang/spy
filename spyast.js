@@ -23,7 +23,7 @@
     amber:   { fill: ['#fef9c3', '#fef3c7'], stroke: ['#e0b840', '#e5c04a'] },
     emerald: { fill: ['#d1fae5', '#a7f3d0'], stroke: ['#6dd0a0', '#5cc090'] },
     red:     { fill: ['#e8c0c0', '#e8c0c0'], stroke: ['#d78787', '#c07070'] },
-    default: { fill: ['#e8e0f0', '#f5f5f5'], stroke: ['#a890c0', '#c0c0c0'] },
+    default: { fill: ['#f5f5f5', '#ffffff'], stroke: ['#c0c0c0', '#c0c0c0'] },
   };
 
   function init(svgEl, astData) {
