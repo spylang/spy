@@ -51,6 +51,15 @@ class TestHTMLBackend:
         b = HTMLBackend()
         return b.node_to_dict(mod)
 
+    def get_node(self, d: dict[str, Any], label: str) -> dict[str, Any]:
+        if d["label"] == label:
+            return d
+        for child in d["children"]:
+            result = self.get_node(child["node"], label)
+            if result is not None:
+                return result
+        return None
+
     def assert_dump(self, d: dict[str, Any], expected: str) -> None:
         dumped = dump_node(d)
         expected = textwrap.dedent(expected).strip()
@@ -78,3 +87,31 @@ class TestHTMLBackend:
                     body[0]: <Pass> (stmt, default)
         """
         self.assert_dump(d, expected)
+
+    def test_funcdef_with_exprs(self):
+        d = self.to_dict("""
+        def foo(x: i32) -> i32:
+            return x + 1
+        """)
+        funcdef = self.get_node(d, "FuncDef: red foo")
+        expected = """
+        <FuncDef: red foo> (stmt, default)
+            color: <'red'> (leaf, emerald)
+            kind: <'plain'> (leaf, emerald)
+            name: <'foo'> (leaf, emerald)
+            args[0]: <FuncArg: x simple> (stmt, default)
+                name: <'x'> (leaf, emerald)
+                type: <Name: i32> (expr, amber)
+                    id: <'i32'> (leaf, emerald)
+                kind: <'simple'> (leaf, emerald)
+            return_type: <Name: i32> (expr, amber)
+                id: <'i32'> (leaf, emerald)
+            body[0]: <Return> (stmt, default)
+                value: <BinOp: +> (expr, amber)
+                    op: <'+'> (leaf, emerald)
+                    left: <Name: x> (expr, amber)
+                        id: <'x'> (leaf, emerald)
+                    right: <Constant: 1> (expr, amber)
+                        value: <1> (leaf, emerald)
+        """
+        self.assert_dump(funcdef, expected)
