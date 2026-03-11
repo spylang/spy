@@ -49,7 +49,10 @@ def dump_colorize_html(
 
 def colorize_sourcecode(sourcefile: Path, coords_dict: dict) -> str:
     reset = "\033[0m"
-    ansi_colors = {"red": "\033[41m\033[30m", "blue": "\033[44m\033[30m"}
+    ansi_colors = {
+        "red": "\033[48;5;174m\033[30m",  # 256-color: light pink
+        "blue": "\033[48;5;110m\033[30m",  # 256-color: light steel blue
+    }
     with open(sourcefile) as f:
         lines = f.readlines()
 
