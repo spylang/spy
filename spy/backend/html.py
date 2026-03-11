@@ -92,6 +92,31 @@ class HTMLBackend:
             assert vm is not None
             self.spy_backend = SPyBackend(vm)
 
+    def _get_src_colors(self, node: spy.ast.Node) -> list[dict[str, Any]]:
+        if self.ast_color_map is None:
+            return []
+        parent_line = node.loc.line_start
+        indent = node.loc.col_start
+        colors = []
+        for child in node.walk():
+            if child is node:
+                continue
+            color = self.ast_color_map.get(child)
+            if color is None:
+                continue
+            # only single-line children for now
+            if child.loc.line_start != child.loc.line_end:
+                continue
+            colors.append(
+                {
+                    "line": child.loc.line_start - parent_line,
+                    "start": child.loc.col_start - indent,
+                    "end": child.loc.col_end - indent,
+                    "color": color,
+                }
+            )
+        return colors
+
     def node_to_dict(self, node: spy.ast.Node) -> dict[str, Any]:
         typename = type(node).__name__
         is_expr = isinstance(node, spy.ast.Expr)
@@ -118,6 +143,8 @@ class HTMLBackend:
         else:
             src = _get_src(node)
 
+        src_colors = self._get_src_colors(node)
+
         if self.ast_color_map is not None:
             node_color = self.ast_color_map.get(node)
             if node_color == "red":
@@ -139,6 +166,8 @@ class HTMLBackend:
             "color": color,
             "children": children,
         }
+        if src_colors:
+            result["src_colors"] = src_colors
         if typename in EXPAND_BY_DEFAULT:
             result["startExpanded"] = True
         return result

@@ -18,11 +18,12 @@
   const ANIM_MS = 300;
 
   const PALETTE = {
-    blue:    { fill: ['#dbeafe', '#e0e7ff'], stroke: ['#93b8f6', '#a5b4fc'] },
+    blue:    { fill: ['#c8ddf0', '#b8d0e8'], stroke: ['#87afd7', '#6a9ac4'] },
     amber:   { fill: ['#fef9c3', '#fef3c7'], stroke: ['#e0b840', '#e5c04a'] },
     emerald: { fill: ['#d1fae5', '#a7f3d0'], stroke: ['#6dd0a0', '#5cc090'] },
-    red:     { fill: ['#fee2e2', '#fde8e8'], stroke: ['#f5a0a0', '#f0b0b0'] },
+    red:     { fill: ['#f0d0d0', '#e8c0c0'], stroke: ['#d78787', '#c07070'] },
     gray:    { fill: ['#f5f5f5', '#ebebeb'], stroke: ['#c0c0c0', '#b0b0b0'] },
+    lavender:{ fill: ['#e8e0f0', '#ddd4e8'], stroke: ['#a890c0', '#9680b0'] },
   };
 
   function init(svgEl, astData) {
@@ -92,7 +93,7 @@
       const { w: nw, h: nh } = nodeSize(node);
       const nodeX = leftX + (totalW - nw) / 2;
       const isCollapsed = collapsed.has(node._id);
-      svgNodes.push({ x: nodeX, y, nw, nh, label: labelOf(node), src: node.src,
+      svgNodes.push({ x: nodeX, y, nw, nh, label: labelOf(node), src: node.src, src_colors: node.src_colors,
                       id: node._id, hasChildren: ch.length > 0, isCollapsed, expr: true, shape: node.shape, color: node.color });
 
       if (ch.length === 1 && !isCollapsed) {
@@ -153,7 +154,7 @@
       const children = childrenOf(node);
       const hasChildren = children.length > 0;
       const isCollapsed = collapsed.has(node._id);
-      svgNodes.push({ x, y, nw, nh, label: labelOf(node), src: node.src,
+      svgNodes.push({ x, y, nw, nh, label: labelOf(node), src: node.src, src_colors: node.src_colors,
                       id: node._id, hasChildren, isCollapsed, expr: false, shape: node.shape, color: node.color });
       let ny = y + nh + ROW_GAP;
 
@@ -259,7 +260,8 @@
     function buildNodeContent(g, nd) {
       while (g.firstChild) g.removeChild(g.firstChild);
       const { nw, nh, label, src, hasChildren, isCollapsed, shape, color } = nd;
-      const c = nodeColors(color, isCollapsed);
+      const effectiveColor = (!isCollapsed && hasChildren) ? 'lavender' : color;
+      const c = nodeColors(effectiveColor, isCollapsed);
 
       // Draw shape outline
       let outline;
@@ -299,6 +301,25 @@
       const textX = hasChildren ? ARROW_W : SRC_PAD_X;
 
       if (isCollapsed && src) {
+        // Draw colored highlight rectangles behind text (from src_colors)
+        if (nd.src_colors) {
+          nd.src_colors.forEach(sc => {
+            const pal = PALETTE[sc.color];
+            if (!pal) return;
+            const rx = textX + sc.start * CHAR_W;
+            const ry = SRC_PAD_Y + sc.line * LINE_H;
+            const rw = (sc.end - sc.start) * CHAR_W;
+            const rect = document.createElementNS(NS, 'rect');
+            rect.setAttribute('x', rx);
+            rect.setAttribute('y', ry);
+            rect.setAttribute('width', rw);
+            rect.setAttribute('height', LINE_H);
+            rect.setAttribute('fill', pal.fill[1]);
+            rect.setAttribute('rx', '2');
+            rect.setAttribute('pointer-events', 'none');
+            g.appendChild(rect);
+          });
+        }
         const text = document.createElementNS(NS, 'text');
         text.setAttribute('x', textX);
         text.setAttribute('y', SRC_PAD_Y + 13);
