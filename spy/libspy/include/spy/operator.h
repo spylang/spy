@@ -79,6 +79,17 @@ spy_operator$raise(spy_Str *etype, spy_Str *message, spy_Str *fname, int32_t lin
     spy_panic(etype->utf8, message->utf8, fname->utf8, lineno);
 }
 
+static inline bool
+spy_operator$raise_bool(
+    spy_Str *etype,
+    spy_Str *message,
+    spy_Str *fname,
+    int32_t lineno
+) {
+    spy_operator$raise(etype, message, fname, lineno);
+    return false;
+}
+
 static inline double
 spy_operator$i8_div(int8_t x, int8_t y) {
     if (y == 0) {

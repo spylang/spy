@@ -805,7 +805,7 @@ class AbstractFrame:
     def eval_expr_FQNConst(self, const: ast.FQNConst) -> W_MetaArg:
         w_value = self.vm.lookup_global(const.fqn)
         assert w_value is not None
-        return W_MetaArg.from_w_obj(self.vm, w_value)
+        return W_MetaArg.from_w_obj(self.vm, w_value, loc=const.loc)
 
     def eval_expr_Name(self, name: ast.Name) -> W_MetaArg:
         # see the comment in __init__ about specialized_names
@@ -1007,10 +1007,14 @@ class AbstractFrame:
             redshifting=False,  # we want to always execute this eagerly
         )
 
+    def _eval_boolop_rhs(self, expr: ast.Expr, *, varname: str) -> W_MetaArg:
+        # Override for DopplerFrame boolop RHS redshift error handling.
+        return self.eval_expr(expr, varname=varname)
+
     def eval_expr_And(self, op: ast.And) -> W_MetaArg:
         if self.redshifting:
             wam_l = self.eval_expr(op.left, varname="@and")
-            wam_r = self.eval_expr(op.right, varname="@and")
+            wam_r = self._eval_boolop_rhs(op.right, varname="@and")
             color = maybe_blue(wam_l.color, wam_r.color)
             if color == "blue":
                 w_left_bool = self._ensure_bool(wam_l)
@@ -1033,7 +1037,7 @@ class AbstractFrame:
     def eval_expr_Or(self, op: ast.Or) -> W_MetaArg:
         if self.redshifting:
             wam_l = self.eval_expr(op.left, varname="@or")
-            wam_r = self.eval_expr(op.right, varname="@or")
+            wam_r = self._eval_boolop_rhs(op.right, varname="@or")
             color = maybe_blue(wam_l.color, wam_r.color)
             if color == "blue":
                 w_left_bool = self._ensure_bool(wam_l)
