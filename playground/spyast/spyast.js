@@ -1,3 +1,4 @@
+// # WARNING: this file has written by autonomous coding assistans for the major part.
 // spyast.js — standalone AST visualizer
 // Usage: SPyAstViz.render(svgElement, astData)
 //

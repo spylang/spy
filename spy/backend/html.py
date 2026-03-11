@@ -1,3 +1,5 @@
+# WARNING: this file has written by autonomous coding assistans for the major part.
+
 import dataclasses
 import json
 from typing import Any, Literal, Optional
