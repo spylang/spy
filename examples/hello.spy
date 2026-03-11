@@ -1,4 +1,5 @@
 #! -*- mode: python -*-
 
+
 def main() -> None:
     print("Hello world!")

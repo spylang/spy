@@ -35,8 +35,8 @@ ANSI_ESCAPE = re.compile(
 
 def ansi_to_readable(s: str) -> str:
     mapping = {
-        "\x1b[41m": "[R]",  # red background
-        "\x1b[44m": "[B]",  # blue background
+        "\x1b[48;5;174m": "[R]",  # 256-color: light pink (red)
+        "\x1b[48;5;110m": "[B]",  # 256-color: light steel blue (blue)
         "\x1b[0m": "[/COLOR]",  # reset (end of color)
     }
 

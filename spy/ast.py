@@ -131,6 +131,15 @@ class Node:
                     if isinstance(item, Node):
                         yield item
 
+    def shortrepr(self) -> Optional[str]:
+        """
+        Return a short string to append to the class name, use by
+        spy/backend/html.py to generate labels for the interactive nodes.
+
+        Return None to use just the class name.
+        """
+        return None
+
     def visit(self, prefix: str, visitor: Any, *args: Any) -> None:
         """
         Generic visitor algorithm.
@@ -204,6 +213,9 @@ class Import(Decl):
     ref: ImportRef
     asname: str
 
+    def shortrepr(self) -> Optional[str]:
+        return self.asname
+
 
 # ====== Expr hierarchy ======
 
@@ -248,6 +260,9 @@ class Name(Expr):
     precedence = 100  # the highest
     id: str
 
+    def shortrepr(self) -> Optional[str]:
+        return self.id
+
 
 @astnode
 class Auto(Expr):
@@ -262,6 +277,9 @@ class Constant(Expr):
     def __post_init__(self) -> None:
         assert type(self.value) is not str, "use StrConst instead"
 
+    def shortrepr(self) -> Optional[str]:
+        return str(self.value)
+
 
 @astnode
 class StrConst(Expr):
@@ -274,6 +292,9 @@ class StrConst(Expr):
 
     precedence = 100  # the highest
     value: str
+
+    def shortrepr(self) -> Optional[str]:
+        return repr(self.value)
 
 
 @astnode
@@ -382,6 +403,9 @@ class BinOp(Expr):
     def precedence(self, newval: int) -> None:
         raise TypeError("readonly attribute")
 
+    def shortrepr(self) -> Optional[str]:
+        return self.op
+
 
 # eventually this should allow chained comparisons, but for now we support
 # only binary ones
@@ -413,6 +437,9 @@ class CmpOp(Expr):
     @precedence.setter
     def precedence(self, newval: int) -> None:
         raise TypeError("readonly attribute")
+
+    def shortrepr(self) -> Optional[str]:
+        return self.op
 
 
 @astnode
@@ -451,6 +478,9 @@ class UnaryOp(Expr):
     def precedence(self, newval: int) -> None:
         raise TypeError("readonly attribute")
 
+    def shortrepr(self) -> Optional[str]:
+        return self.op
+
 
 @astnode
 class AssignExpr(Expr):
@@ -473,6 +503,9 @@ class FuncArg(Node):
     type: "Expr"
     kind: FuncParamKind
 
+    def shortrepr(self) -> Optional[str]:
+        return f"{self.name} {self.kind}"
+
 
 @astnode
 class FuncDef(Stmt):
@@ -485,6 +518,9 @@ class FuncDef(Stmt):
     body: list["Stmt"]
     decorators: list["Expr"]
     symtable: Any = field(repr=False, default=None)
+
+    def shortrepr(self) -> Optional[str]:
+        return f"{self.color} {self.name}"
 
     @property
     def prototype_loc(self) -> Loc:
@@ -503,6 +539,9 @@ class ClassDef(Stmt):
     docstring: Optional[str]
     body: list["Stmt"]
     symtable: Any = field(repr=False, default=None)
+
+    def shortrepr(self) -> Optional[str]:
+        return f"{self.kind} {self.name}"
 
 
 @astnode
@@ -549,6 +588,9 @@ class AugAssign(Stmt):
     op: str
     target: StrConst
     value: Expr
+
+    def shortrepr(self) -> Optional[str]:
+        return self.op
 
 
 @astnode

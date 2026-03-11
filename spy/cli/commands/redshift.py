@@ -1,11 +1,13 @@
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Annotated
 
 import click
 from typer import Option
 
 from spy.analyze.importing import ImportAnalyzer
-from spy.cli._format import dump_spy_mod, dump_spy_mod_ast
+from spy.backend.html import SpyastJs
+from spy.cli._format import dump_spy_mod, dump_spy_mod_ast, dump_spy_mod_html
 from spy.cli._runners import execute_spy_main, init_vm
 from spy.cli.commands.shared_args import (
     Base_Args,
@@ -26,10 +28,20 @@ class _redshift_mixin:
         str,
         Option(
             "--format",
-            help="Output format (ast or spy [source])",
-            click_type=click.Choice(["ast", "spy"]),
+            "-f",
+            help="Output format (ast, spy [source], or html)",
+            click_type=click.Choice(["ast", "spy", "html"]),
         ),
     ] = "spy"
+
+    spyast_js: Annotated[
+        SpyastJs,
+        Option(
+            "--spyast-js",
+            help="How to include spyast.js in the HTML output",
+            click_type=click.Choice(["cdn", "inline"]),
+        ),
+    ] = "inline"
 
 
 @dataclass
@@ -61,5 +73,12 @@ async def redshift(args: Redshift_Args) -> None:
             dump_spy_mod(vm, modname, args.full_fqn)
         elif args.format == "ast":
             dump_spy_mod_ast(vm, modname)
+        elif args.format == "html":
+            html = dump_spy_mod_html(vm, modname, args.spyast_js)
+            build_dir = Path(args.filename.parent) / "build"
+            build_dir.mkdir(exist_ok=True, parents=True)
+            out = build_dir / f"{modname}_rs.html"
+            out.write_text(html)
+            print(f"Written {out}")
         else:
             assert False, f"Invalid redshift format `{args.format}`"

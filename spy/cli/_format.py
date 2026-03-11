@@ -1,5 +1,8 @@
 from pathlib import Path
 
+import spy.ast
+from spy.analyze.symtable import Color
+from spy.backend.html import HTMLBackend, SpyastJs
 from spy.backend.spy import FQN_FORMAT, SPyBackend
 from spy.highlight import highlight_src
 from spy.vm.function import W_ASTFunc
@@ -21,9 +24,35 @@ def dump_spy_mod_ast(vm: SPyVM, modname: str) -> None:
             print()
 
 
+def dump_spy_mod_html(vm: SPyVM, modname: str, spyast_js: SpyastJs) -> str:
+    """
+    Build an HTML page visualizing all red W_ASTFuncs in the given module.
+    Returns the HTML string.
+    """
+    sections = []
+    for fqn, w_obj in vm.fqns_by_modname(modname):
+        if isinstance(w_obj, W_ASTFunc) and w_obj.color == "red" and w_obj.fqn == fqn:
+            sections.append((str(fqn), w_obj.funcdef))
+    b = HTMLBackend(spyast_js, vm=vm, is_redshifted=True)
+    return b.generate(sections)
+
+
+def dump_colorize_html(
+    orig_mod: spy.ast.Module,
+    ast_color_map: dict[spy.ast.Node, Color],
+    spyast_js: SpyastJs,
+) -> str:
+    modname = orig_mod.filename
+    b = HTMLBackend(spyast_js, ast_color_map=ast_color_map)
+    return b.generate([(modname, orig_mod)])
+
+
 def colorize_sourcecode(sourcefile: Path, coords_dict: dict) -> str:
     reset = "\033[0m"
-    ansi_colors = {"red": "\033[41m\033[30m", "blue": "\033[44m\033[30m"}
+    ansi_colors = {
+        "red": "\033[48;5;174m\033[30m",  # 256-color: light pink
+        "blue": "\033[48;5;110m\033[30m",  # 256-color: light steel blue
+    }
     with open(sourcefile) as f:
         lines = f.readlines()
 
