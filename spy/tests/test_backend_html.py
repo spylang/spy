@@ -19,8 +19,6 @@ def dump_node(d: dict[str, Any], indent: int = 0) -> str:
     parts = []
     prefix = "    " * indent
     flags = f"{d['shape']}, {d['color']}"
-    if d.get("src_colors"):
-        flags += f", src_colors={d['src_colors']}"
     header = f"{prefix}<{d['label']}> ({flags})"
     parts.append(header)
     for child in d["children"]:
@@ -68,13 +66,34 @@ class TestHTMLBackend:
         return b.node_to_dict(orig_mod)
 
     def get_node(self, d: dict[str, Any], label: str) -> dict[str, Any]:
-        if d["label"] == label:
-            return d
-        for child in d["children"]:
-            result = self.get_node(child["node"], label)
-            if result is not None:
-                return result
-        return None
+        def find(d: dict[str, Any]) -> Any:
+            if d["label"] == label:
+                return d
+            for child in d["children"]:
+                result = find(child["node"])
+                if result is not None:
+                    return result
+            return None
+
+        result = find(d)
+        if result is None:
+            raise KeyError(label)
+        return result
+
+    def format_src(self, src: str, src_colors: list[dict[str, Any]]) -> str:
+        """
+        Apply src_colors to the given src. Return a string like:
+            [R]x[R] + [B]1[/B]
+        """
+        COLOR_TAG = {"red": "R", "blue": "B"}
+        lines = src.split("\n")
+        for sc in sorted(src_colors, key=lambda c: (c["line"], -c["start"])):
+            line = lines[sc["line"]]
+            tag = COLOR_TAG[sc["color"]]
+            start, end = sc["start"], sc["end"]
+            line = f"{line[:start]}[{tag}]{line[start:end]}[/{tag}]{line[end:]}"
+            lines[sc["line"]] = line
+        return "\n".join(lines)
 
     def assert_dump(self, d: dict[str, Any], expected: str) -> None:
         dumped = dump_node(d)
@@ -138,9 +157,12 @@ class TestHTMLBackend:
             return x + 1
         """)
         ret = self.get_node(d, "Return")
+        # "x + 1" --> red
+        # "x"     --> red
+        # "1"     --> blue
         expected = """
-        <Return> (stmt, default, src_colors=[{'line': 0, 'start': 7, 'end': 12, 'color': 'red'}, {'line': 0, 'start': 7, 'end': 8, 'color': 'red'}, {'line': 0, 'start': 11, 'end': 12, 'color': 'blue'}])
-            value: <BinOp: +> (expr, red, src_colors=[{'line': 0, 'start': 0, 'end': 1, 'color': 'red'}, {'line': 0, 'start': 4, 'end': 5, 'color': 'blue'}])
+        <Return> (stmt, default)
+            value: <BinOp: +> (expr, red)
                 op: <'+'> (leaf, emerald)
                 left: <Name: x> (expr, red)
                     id: <'x'> (leaf, emerald)
@@ -148,3 +170,15 @@ class TestHTMLBackend:
                     value: <1> (leaf, emerald)
         """
         self.assert_dump(ret, expected)
+
+    def test_src_color(self):
+        d = self.colorize("""
+        def foo(x: i32) -> i32:
+            return x + 1
+        """)
+        binop = self.get_node(d, "BinOp: +")
+        src = binop["src"]
+        src_colors = binop["src_colors"]
+        fmt = self.format_src(src, src_colors)
+        assert src == "x + 1"
+        assert fmt == "[R]x[/R] + [B]1[/B]"
