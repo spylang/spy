@@ -276,3 +276,21 @@ class TestHTMLBackend:
         fmt = self.format_src(src, src_colors)
         assert src == "x + 1"
         assert fmt == "[R]x[/R] + [B]1[/B]"
+
+    def test_str_const_shortrepr(self):
+        d = self.parse("""
+        def foo() -> void:
+            x: str = 'hello'
+        """)
+        vardef = self.get_node(d, "VarDef")
+        expected = """
+        <VarDef> (stmt, default)
+            kind: <None> (leaf, emerald)
+            name: <StrConst: 'x'> (expr, amber)
+                value: <'x'> (leaf, emerald)
+            type: <Name: str> (expr, amber)
+                id: <'str'> (leaf, emerald)
+            value: <StrConst: 'hello'> (expr, amber)
+                value: <'hello'> (leaf, emerald)
+        """
+        self.assert_dump(vardef, expected)
