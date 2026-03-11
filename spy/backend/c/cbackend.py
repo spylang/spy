@@ -14,6 +14,7 @@ from spy.vm.function import W_ASTFunc
 from spy.vm.modules.unsafe.ptr import W_MemLocType
 from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import W_I32
+from spy.vm.struct import W_StructType
 from spy.vm.vm import SPyVM
 
 
@@ -148,10 +149,13 @@ class CBackend:
             # ignore W_Modules
             if fqn.is_module():
                 continue
-            # ignore w_objs belonging to a builtin modules, unless they are ptrs
+            # ignore w_objs belonging to builtin modules, unless they are
+            # ptr/ref types or struct types (which need C definitions)
             modname = fqn.modname
             w_mod = self.vm.modules_w[modname]
-            if w_mod.filepath is None and not isinstance(w_obj, W_MemLocType):
+            if w_mod.filepath is None and not isinstance(
+                w_obj, (W_MemLocType, W_StructType)
+            ):
                 continue
 
             if isinstance(w_obj, W_Type):

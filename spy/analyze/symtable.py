@@ -4,14 +4,10 @@
 
 import pprint
 from dataclasses import KW_ONLY, dataclass, replace
-from typing import TYPE_CHECKING, Any, Literal, Optional
+from typing import Any, Literal, Optional
 
-from spy.fqn import FQN
 from spy.location import Loc
 from spy.textbuilder import ColorFormatter
-
-if TYPE_CHECKING:
-    from spy.vm.vm import SPyVM
 
 # ====== VarKind rules ======
 #
@@ -164,7 +160,8 @@ class SymTable:
         self.implicit_imports = set()
 
     @classmethod
-    def from_builtins(cls, vm: "SPyVM") -> "SymTable":
+    def from_builtins(cls) -> "SymTable":
+        from spy.vm.b import BUILTINS
         from spy.vm.function import W_BuiltinFunc
 
         scope = cls("builtins", "blue", "module")
@@ -172,33 +169,32 @@ class SymTable:
             filename="<builtins>", line_start=0, line_end=0, col_start=0, col_end=0
         )
 
-        def add_sym(attr: str, loc: Optional[Loc], impref: ImportRef) -> None:
-            if loc is None:
-                loc = generic_loc
+        def add_sym(attr: str, impref: ImportRef, loc: Optional[Loc] = None) -> None:
             sym = Symbol(
                 attr,
                 "const",
                 "explicit",
                 "direct",
-                loc=loc,
-                type_loc=loc,
+                loc=loc or generic_loc,
+                type_loc=loc or generic_loc,
                 level=0,
                 impref=impref,
             )
             scope.add(sym)
 
-        builtins_mod = vm.modules_w["builtins"]
-        for attr, w_obj in builtins_mod.items_w():
-            if isinstance(w_obj, W_BuiltinFunc):
-                loc = w_obj.def_loc
-            else:
-                loc = None
-            add_sym(attr, loc, ImportRef("builtins", attr))
+        for fqn, w_obj, _irtag in BUILTINS.content:
+            # add only top-level symbols
+            if len(fqn.parts) != 2:
+                continue
+            attr = fqn.symbol_name
+            loc = w_obj.def_loc if isinstance(w_obj, W_BuiltinFunc) else None
+            add_sym(attr, ImportRef("builtins", attr), loc)
 
-        add_sym("range", None, ImportRef("_range", "range"))
-        add_sym("list", None, ImportRef("_list", "list"))
-        add_sym("slice", None, ImportRef("_slice", "Slice"))
-        add_sym("dict", None, ImportRef("_dict", "dict"))
+        add_sym("range", ImportRef("_range", "range"))
+        add_sym("list", ImportRef("_list", "list"))
+        add_sym("tuple", ImportRef("_tuple", "tuple"))
+        add_sym("slice", ImportRef("_slice", "Slice"))
+        add_sym("dict", ImportRef("_dict", "dict"))
         return scope
 
     def __repr__(self) -> str:

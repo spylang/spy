@@ -32,7 +32,9 @@ from spy.errors import WIP, SPyError
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.vm.b import B
-from spy.vm.builtin import IRTag, builtin_method, builtin_property
+from spy.vm.builtin import builtin_method, builtin_property
+from spy.vm.function import W_ASTFunc
+from spy.vm.irtag import IRTag
 from spy.vm.member import Member
 from spy.vm.modules.types import W_Loc
 from spy.vm.opspec import W_MetaArg, W_OpSpec
@@ -447,6 +449,22 @@ class W_Ref(W_MemLoc):
 
         else:
             return W_OpSpec.NULL
+
+    @builtin_method("__call_method__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_CALL_METHOD(
+        vm: "SPyVM", wam_T: "W_MetaArg", wam_name: "W_MetaArg", *args_wam: "W_MetaArg"
+    ) -> "W_OpSpec":
+        ref_T = wam_T.w_static_T
+        assert isinstance(ref_T, W_RefType)
+        w_T = ref_T.w_itemT
+
+        name = wam_name.blue_unwrap_str(vm)
+        w_meth = w_T.lookup(name)
+        if not isinstance(w_meth, W_ASTFunc):
+            return W_OpSpec.NULL
+        else:
+            return W_OpSpec(w_meth, [wam_T, *args_wam])
 
 
 @UNSAFE.builtin_func(color="blue")

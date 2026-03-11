@@ -9,8 +9,8 @@ from spy.location import Loc
 from spy.textbuilder import TextBuilder
 from spy.util import magic_dispatch, shortrepr
 from spy.vm.b import TYPES
-from spy.vm.builtin import IRTag
 from spy.vm.function import W_ASTFunc, W_Func
+from spy.vm.irtag import IRTag
 from spy.vm.modules.unsafe.ptr import W_Ptr
 
 if TYPE_CHECKING:
@@ -170,6 +170,32 @@ class CFuncWriter:
         target = assign.target_fqn.c_name
         c_varname = C_Ident(target)
         self.tbc.wl(f"{c_varname} = {v};")
+
+    def emit_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
+        if isinstance(unpack.value, ast.Tuple):
+            # Blue tuple literal: directly assign each item to its target
+            for target, item in zip(unpack.targets, unpack.value.items):
+                c_target = C_Ident(target.value)
+                v = self.fmt_expr(item)
+                self.tbc.wl(f"{c_target} = {v};")
+        else:
+            # Red tuple (struct): we save the result into a tmp variable and the assign
+            # all fields one by one. The code look like this more or less:
+            # {
+            #     T tmp = some_expression()
+            #     a = tmp._item0;
+            #     b = tmp._item1;
+            # }
+            assert unpack.value.w_T is not None
+            c_tuple_type = self.ctx.w2c(unpack.value.w_T)
+            v = self.fmt_expr(unpack.value)
+            self.tbc.wl("{")
+            with self.tbc.indent():
+                self.tbc.wl(f"{c_tuple_type} tmp = {v};")
+                for i, target in enumerate(unpack.targets):
+                    c_target = C_Ident(target.value)
+                    self.tbc.wl(f"{c_target} = tmp._item{i};")
+            self.tbc.wl("}")
 
     def emit_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
         v = self.fmt_expr(stmt.value)

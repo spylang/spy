@@ -256,7 +256,7 @@ class ImportAnalyzer:
         return mod
 
     def analyze_one(self, modname: str, mod: ast.Module) -> ScopeAnalyzer:
-        scopes = ScopeAnalyzer(self.vm, modname, mod)
+        scopes = ScopeAnalyzer(modname, mod)
         scopes.analyze()
         return scopes
 

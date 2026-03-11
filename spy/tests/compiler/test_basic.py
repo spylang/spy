@@ -1523,3 +1523,25 @@ class TestBasic(CompilerTest):
         assert mod.color_x == "blue"
         assert mod.color_y == "blue"
         assert mod.color_z == "red"
+
+    @no_C
+    def test_type_call(self):
+        src = """
+        def get_type(obj: dynamic) -> type:
+            return type(obj)
+
+        def foo(x: i32) -> type:
+            if x == 0:
+                return get_type(42)
+            elif x == 1:
+                return get_type("hello")
+            else:
+                return get_type(str)
+        """
+        mod = self.compile(src)
+        w_T0 = mod.foo(0, unwrap=False)
+        w_T1 = mod.foo(1, unwrap=False)
+        w_T2 = mod.foo(2, unwrap=False)
+        assert w_T0 is B.w_i32
+        assert w_T1 is B.w_str
+        assert w_T2 is B.w_type

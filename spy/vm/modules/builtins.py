@@ -228,6 +228,36 @@ def w_dir(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
     return W_OpSpec.const(w_names)
 
 
+@BUILTINS.builtin_func(color="blue", kind="metafunc")
+def w_getattr(vm: "SPyVM", wam_obj: W_MetaArg, wam_name: W_MetaArg) -> W_OpSpec:
+    # ensure that wam_name is blue; raise TypeError if not
+    name = wam_name.blue_unwrap_str(vm)
+
+    @vm.register_builtin_func("builtins", "getattr", [name])
+    def w_fn(vm: "SPyVM", w_obj: W_Object, w_name: W_Str) -> W_Object:
+        assert False, (
+            "this function shouldn't be called, it's special cased by astframe"
+        )
+
+    return W_OpSpec(w_fn)
+
+
+@BUILTINS.builtin_func(color="blue", kind="metafunc")
+def w_setattr(
+    vm: "SPyVM", wam_obj: W_MetaArg, wam_name: W_MetaArg, wam_value: W_MetaArg
+) -> W_OpSpec:
+    # ensure that wam_name is blue; raise TypeError if not
+    name = wam_name.blue_unwrap_str(vm)
+
+    @vm.register_builtin_func("builtins", "getattr", [name])
+    def w_fn(vm: "SPyVM", w_obj: W_Object, w_name: W_Str, w_val: W_Object) -> W_Object:
+        assert False, (
+            "this function shouldn't be called, it's special cased by astframe"
+        )
+
+    return W_OpSpec(w_fn)
+
+
 # add aliases for common types. For now we map:
 #   int -> i32
 #   float -> f64
