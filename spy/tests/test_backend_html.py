@@ -11,9 +11,8 @@ from spy.util import print_diff
 def dump_node(d: dict[str, Any], indent: int = 0) -> str:
     """
     Pretty-print a node_to_dict result into a compact text format:
-        label [shape/color] *expanded
-          attr: child_label [shape/color]
-          attr: ...
+        <label> (shape, color)
+            attr: <child_label> (shape, color)
     """
     parts = []
     prefix = "    " * indent
