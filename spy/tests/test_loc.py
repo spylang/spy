@@ -1,3 +1,5 @@
+import linecache
+
 from spy.location import Loc
 
 
@@ -34,14 +36,35 @@ def test_Loc_from_pyfunc():
     exp = "    def bar():"
 
 
-def test_get_src_multiline():
-    loc = Loc.here()
-    # 1234567890ABCD
+def make_src(*lines: str):
+    return "\n".join(lines) + "\n"
+
+
+def test_get_src_multiline(tmpdir):
+    f = tmpdir.join("test.spy")
+    src = make_src(
+        "a",  # line 1
+        "bb",  # line 2
+        "ccc",  # line 3
+    )
+    f.write(src)
+    loc = Loc(str(f), line_start=1, line_end=4, col_start=0, col_end=0)
+    assert loc.get_src() == src
     #
-    # make a new loc which spans two lines
-    loc2 = loc.replace(line_end=loc.line_end + 1)
-    exp = """\
-    loc = Loc.here()
-    # 1234567890ABCD
-    """[:-5]  # remove the last line
-    assert loc2.get_src() == exp
+    src = make_src(
+        "def foo():",
+        "....def inner():",  # line 2
+        "        x = 1",
+        "        y # hello",
+        "    return innner",
+    )
+    #
+    f.write(src)
+    linecache.checkcache(str(f))
+    loc = Loc(str(f), line_start=2, line_end=4, col_start=4, col_end=9)
+    expected = make_src(
+        "    def inner():",
+        "        x = 1",
+        "        y",
+    )[:-1]  # remove the trailing newline
+    assert loc.get_src() == expected
