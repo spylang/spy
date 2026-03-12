@@ -118,7 +118,11 @@ class Parser:
         return None, body
 
     def from_py_Module(self, py_mod: py_ast.Module) -> spy.ast.Module:
-        loc = Loc(self.filename, 1, 1, 0, -1)
+        # create a Loc which encompasses the whole module. Lines are 1-based, columns
+        # are 0-based.
+        lines = self.src.splitlines()
+        endcol = len(lines[-1])
+        loc = Loc(self.filename, 1, len(lines) + 1, 0, endcol)
 
         # Extract module docstring
         docstring, py_body = self.get_docstring_maybe(py_mod.body)

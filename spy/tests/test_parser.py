@@ -39,10 +39,11 @@ class TestParser:
             pytest.fail("assert_dump failed")
 
     def test_Module(self):
-        mod = self.parse("""
+        src = """
         def foo() -> None:
             pass
-        """)
+        """
+        mod = self.parse(src)
         expected = """
         Module(
             filename='{tmpdir}/test.spy',
@@ -66,6 +67,7 @@ class TestParser:
         )
         """
         self.assert_dump(mod, expected)
+        assert mod.loc.get_src() == textwrap.dedent(src)
 
     def test_FuncDef_arguments(self):
         mod = self.parse("""

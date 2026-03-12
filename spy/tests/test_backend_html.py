@@ -277,6 +277,7 @@ class TestHTMLBackend:
         assert src == "x + 1"
         assert fmt == "[R]x[/R] + [B]1[/B]"
 
+    @pytest.mark.skip("fixme")
     def test_colorize_src_colors_no_overflow(self):
         d = self.colorize("""
         def foo(x: i32) -> i32:

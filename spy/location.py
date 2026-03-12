@@ -10,7 +10,10 @@ from typing import TYPE_CHECKING, Any, Callable
 @dataclass(frozen=True)
 class Loc:
     """
-    Represent a location inside the source code
+    Represent a location inside the source code.
+
+    Lines are 1-based (the first line in a file is line 1).
+    Columns are 0-based (the first column in a line is column 0).
     """
 
     filename: str
