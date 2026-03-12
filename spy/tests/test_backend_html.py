@@ -288,15 +288,31 @@ class TestHTMLBackend:
             def sum(self) -> i32:
                 return self.x + self.y
         """)
-        # ClassDef's src is only "class Point:" (1 line), but its descendants
-        # (the method body) have colors on lines 1+. Without bounds checking,
-        # ClassDef would get out-of-bounds src_colors causing spurious SVG rects.
         classdef = self.get_node(d, "ClassDef: struct Point")
-        assert classdef["src"] == "class Point:"
-        assert "src_colors" not in classdef
+        # ClassDef src comes from body_loc, which includes the full class body
+        assert classdef["src"] == (
+            "class Point:\n"
+            "    x: i32\n"
+            "    y: i32\n"
+            "    def sum(self) -> i32:\n"
+            "        return self.x + self.y"
+        )
         # The method inside should still have its own src_colors
         funcdef = self.get_node(d, "FuncDef: red sum")
         assert funcdef["src_colors"] is not None
+
+    def test_classdef_src_uses_body_loc(self):
+        d = self.parse("""
+        @struct
+        class Point:
+            x: i32
+            y: i32
+        """)
+        expected_src = "class Point:\n    x: i32\n    y: i32"
+        classdef = self.get_node(d, "ClassDef: struct Point")
+        assert classdef["src"] == expected_src
+        globalclassdef = self.get_node(d, "GlobalClassDef")
+        assert globalclassdef["src"] == expected_src
 
     def test_str_const_shortrepr(self):
         d = self.parse("""

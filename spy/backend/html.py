@@ -41,8 +41,15 @@ def _label_str(val: Any) -> str:
 
 
 def _get_src(node: spy.ast.Node) -> str:
+    # ClassDef/GlobalClassDef.loc points only to "class X:", use body_loc to include the body
+    if isinstance(node, spy.ast.ClassDef):
+        loc = node.body_loc
+    elif isinstance(node, spy.ast.GlobalClassDef):
+        loc = node.classdef.body_loc
+    else:
+        loc = node.loc
     try:
-        src = node.loc.get_src()
+        src = loc.get_src()
     except (ValueError, AttributeError):
         return ""
     # get_src strips col_start from the first line but not subsequent ones, dedent
