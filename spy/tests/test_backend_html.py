@@ -277,19 +277,25 @@ class TestHTMLBackend:
         assert src == "x + 1"
         assert fmt == "[R]x[/R] + [B]1[/B]"
 
-    @pytest.mark.skip("fixme")
     def test_colorize_src_colors_no_overflow(self):
         d = self.colorize("""
-        def foo(x: i32) -> i32:
-            return x + 1
+        from operator import OpSpec
+
+        @struct
+        class Point:
+            x: i32
+            y: i32
+            def sum(self) -> i32:
+                return self.x + self.y
         """)
-        # Module's src is only the first line ("def foo(x: i32) -> i32:");
-        # the colored expressions are on line 1, beyond Module's src.
-        # Before the fix, Module got out-of-bounds src_colors that caused
-        # spurious SVG highlight rects.
-        assert "src_colors" not in d
-        # FuncDef's src spans both lines, so it should have src_colors
-        funcdef = self.get_node(d, "FuncDef: red foo")
+        # ClassDef's src is only "class Point:" (1 line), but its descendants
+        # (the method body) have colors on lines 1+. Without bounds checking,
+        # ClassDef would get out-of-bounds src_colors causing spurious SVG rects.
+        classdef = self.get_node(d, "ClassDef: struct Point")
+        assert classdef["src"] == "class Point:"
+        assert "src_colors" not in classdef
+        # The method inside should still have its own src_colors
+        funcdef = self.get_node(d, "FuncDef: red sum")
         assert funcdef["src_colors"] is not None
 
     def test_str_const_shortrepr(self):
