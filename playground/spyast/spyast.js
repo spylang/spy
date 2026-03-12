@@ -218,7 +218,7 @@
         const tspan = document.createElementNS(NS, 'tspan');
         tspan.setAttribute('x', tx + SRC_PAD_X);
         if (i > 0) tspan.setAttribute('dy', LINE_H);
-        tspan.textContent = line;
+        tspan.textContent = line === '' ? '\u00A0' : line;
         text.appendChild(tspan);
       });
       tooltipGroup.appendChild(text);
@@ -331,9 +331,9 @@
           const tspan = document.createElementNS(NS, 'tspan');
           tspan.setAttribute('x', textX);
           if (i > 0) tspan.setAttribute('dy', LINE_H);
-          // Replace leading spaces with non-breaking spaces to preserve indentation
+          // SVG tspans need content to advance dy; blank lines must have \u00A0
           const m = line.match(/^( +)/);
-          tspan.textContent = m ? '\u00A0'.repeat(m[1].length) + line.slice(m[1].length) : line;
+          tspan.textContent = line === '' ? '\u00A0' : m ? '\u00A0'.repeat(m[1].length) + line.slice(m[1].length) : line;
           text.appendChild(tspan);
         });
         g.appendChild(text);
