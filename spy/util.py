@@ -275,6 +275,41 @@ def colors_coordinates(ast_module, ast_color_map) -> dict[int, list[tuple[str, s
     return dict(coords)
 
 
+def build_char_color_map(
+    src: str, spans: list[tuple[int, int, str]]
+) -> list[str | None]:
+    """
+    Build a per-character color array from a list of (start, end_exclusive, color) spans.
+    Later spans overwrite earlier ones, so innermost/last-applied colors win.
+    """
+    color_map: list[str | None] = [None] * len(src)
+    for start, end, color in spans:
+        for i in range(start, min(end, len(src))):
+            color_map[i] = color
+    return color_map
+
+
+def encode_color_map(color_map: list[str | None]) -> str:
+    """
+    Run-length encode a per-character color map to a compact string.
+    E.g. [None, None, 'red', 'red', 'blue'] -> "_2 R2 B1"
+    Returns "" if no characters are colored.
+    """
+    if not any(c is not None for c in color_map):
+        return ""
+    _TAG = {None: "_", "red": "R", "blue": "B"}
+    result = []
+    i = 0
+    while i < len(color_map):
+        c = color_map[i]
+        j = i + 1
+        while j < len(color_map) and color_map[j] == c:
+            j += 1
+        result.append(f"{_TAG[c]}{j - i}")
+        i = j
+    return " ".join(result)
+
+
 def format_colors_as_json(coords_dict: dict[int, list[tuple[str, str]]]) -> str:
     """
     Convert color coordinates to JSON format for editor integration.

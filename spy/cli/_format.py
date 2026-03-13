@@ -5,6 +5,7 @@ from spy.analyze.symtable import Color
 from spy.backend.html import HTMLBackend, SpyastJs
 from spy.backend.spy import FQN_FORMAT, SPyBackend
 from spy.highlight import highlight_src
+from spy.util import build_char_color_map
 from spy.vm.function import W_ASTFunc
 from spy.vm.vm import SPyVM
 
@@ -63,41 +64,27 @@ def colorize_sourcecode(sourcefile: Path, coords_dict: dict) -> str:
             highlighted_lines.append(line)
             continue
 
-        # Segments in input order: later spans overwrite earlier ones
+        # coords_dict uses inclusive end (col_end - 1); convert to exclusive
         spans = [
-            (int(s.split(":")[0]), int(s.split(":")[1]), color)
+            (int(s.split(":")[0]), int(s.split(":")[1]) + 1, color)
             for s, color in coords_dict[i]
         ]
+        color_map = build_char_color_map(line, spans)
 
-        # Track color per character using segments
-        line_len = len(line)
-        color_map = [None] * line_len
-        for start, end, color in spans:
-            for j in range(start, min(end + 1, line_len)):
-                color_map[j] = color
-
-        # Build line from contiguous segments
+        # Render ANSI escape sequences from the color map
         result = []
-        current_color = None
         cursor = 0
-        while cursor < line_len:
+        while cursor < len(line):
             c = color_map[cursor]
-            if c != current_color:
-                if current_color is not None:
-                    result.append(reset)
-                if c is not None:
-                    # Find contiguous run of this color
-                    run_end = cursor
-                    while run_end < line_len and color_map[run_end] == c:
-                        run_end += 1
-                    result.append(ansi_colors[c] + line[cursor:run_end] + reset)
-                    cursor = run_end
-                    current_color = None
-                    continue
-                current_color = c
+            if c is not None:
+                run_end = cursor + 1
+                while run_end < len(line) and color_map[run_end] == c:
+                    run_end += 1
+                result.append(ansi_colors[c] + line[cursor:run_end] + reset)
+                cursor = run_end
             else:
                 result.append(line[cursor])
-            cursor += 1
+                cursor += 1
 
         highlighted_lines.append("".join(result))
     return "".join(highlighted_lines)

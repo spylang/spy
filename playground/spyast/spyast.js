@@ -301,23 +301,35 @@
       const textX = hasChildren ? ARROW_W : SRC_PAD_X;
 
       if (isCollapsed && src) {
-        // Draw colored highlight rectangles behind text (from src_colors)
+        // Draw colored highlight rectangles behind text (from src_colors compact string)
         if (nd.src_colors) {
-          nd.src_colors.forEach(sc => {
-            const pal = PALETTE[sc.color];
-            if (!pal) return;
-            const rx = textX + sc.start * CHAR_W;
-            const ry = SRC_PAD_Y + sc.line * LINE_H;
-            const rw = (sc.end - sc.start) * CHAR_W;
-            const rect = document.createElementNS(NS, 'rect');
-            rect.setAttribute('x', rx);
-            rect.setAttribute('y', ry);
-            rect.setAttribute('width', rw);
-            rect.setAttribute('height', LINE_H);
-            rect.setAttribute('fill', pal.fill[1]);
-            rect.setAttribute('rx', '2');
-            rect.setAttribute('pointer-events', 'none');
-            g.appendChild(rect);
+          // Parse compact run-length string like "_10 R5 B4 _4" and walk src in parallel
+          // to track (line, col) position for each run.
+          const COLOR_TAG = { R: 'red', B: 'blue' };
+          let line = 0, col = 0, srcIdx = 0;
+          nd.src_colors.split(' ').forEach(run => {
+            const tag = run[0], count = parseInt(run.slice(1));
+            if (tag !== '_') {
+              // Colored run — never crosses a line boundary
+              const pal = PALETTE[COLOR_TAG[tag]];
+              if (pal) {
+                const rect = document.createElementNS(NS, 'rect');
+                rect.setAttribute('x', textX + col * CHAR_W);
+                rect.setAttribute('y', SRC_PAD_Y + line * LINE_H);
+                rect.setAttribute('width', count * CHAR_W);
+                rect.setAttribute('height', LINE_H);
+                rect.setAttribute('fill', pal.fill[1]);
+                rect.setAttribute('rx', '2');
+                rect.setAttribute('pointer-events', 'none');
+                g.appendChild(rect);
+              }
+              col += count; srcIdx += count;
+            } else {
+              // Blank run — advance position, tracking newlines
+              for (let k = 0; k < count; k++, srcIdx++) {
+                if (src[srcIdx] === '\n') { line++; col = 0; } else { col++; }
+              }
+            }
           });
         }
         const text = document.createElementNS(NS, 'text');
