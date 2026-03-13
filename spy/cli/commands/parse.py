@@ -57,7 +57,7 @@ async def parse(args: Parse_Args) -> None:
         html = b.generate([(modname, orig_mod)])
         build_dir = Path(args.filename.parent) / "build"
         build_dir.mkdir(exist_ok=True, parents=True)
-        out = build_dir / f"{modname}_ast.html"
+        out = build_dir / f"{modname}_parse.html"
         out.write_text(html)
         print(f"Written {out}")
     else:
