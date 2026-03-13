@@ -491,16 +491,36 @@ class Parser:
         else:
             self.unsupported(py_target, "assign to complex expressions")
 
-    def from_py_stmt_AugAssign(self, py_node: py_ast.AugAssign) -> spy.ast.AugAssign:
+    def from_py_stmt_AugAssign(self, py_node: py_ast.AugAssign) -> spy.ast.Stmt:
         py_target = py_node.target
+        opname = type(py_node.op).__name__
+        op = self._binops[opname]
+
         if isinstance(py_target, py_ast.Name):
-            opname = type(py_node.op).__name__
-            op = self._binops[opname]
+            # Simple case: x += 1
             return spy.ast.AugAssign(
                 loc=py_node.loc,
                 op=op,
                 target=spy.ast.StrConst(py_target.loc, py_target.id),
                 value=self.from_py_expr(py_node.value),
+            )
+        elif isinstance(py_target, py_ast.Attribute):
+            # Attribute access: a.b += 1
+            # Convert to SetAttr with desugared BinOp
+            return spy.ast.SetAttr(
+                loc=py_node.loc,
+                target=self.from_py_expr(py_target.value),
+                attr=spy.ast.StrConst(py_target.loc, py_target.attr),
+                value=spy.ast.BinOp(
+                    loc=py_node.loc,
+                    op=op,
+                    left=spy.ast.GetAttr(
+                        loc=py_node.loc,
+                        value=self.from_py_expr(py_target.value),
+                        attr=spy.ast.StrConst(py_target.loc, py_target.attr),
+                    ),
+                    right=self.from_py_expr(py_node.value),
+                ),
             )
         else:
             self.unsupported(py_target, "assign to complex expressions")
