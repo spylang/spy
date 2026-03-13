@@ -43,7 +43,7 @@ def dump_colorize_html(
     spyast_js: SpyastJs,
 ) -> str:
     modname = orig_mod.filename
-    b = HTMLBackend(spyast_js, ast_color_map=ast_color_map)
+    b = HTMLBackend(spyast_js, ast_color_map=ast_color_map, start_all_collapsed=True)
     return b.generate([(modname, orig_mod)])
 
 

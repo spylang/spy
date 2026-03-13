@@ -94,10 +94,12 @@ class HTMLBackend:
         vm: Optional[SPyVM] = None,
         is_redshifted: bool = False,
         ast_color_map: Optional[dict[spy.ast.Node, Color]] = None,
+        start_all_collapsed: bool = False,
     ) -> None:
         self.spyast_js = spyast_js
         self.spy_backend: Optional[SPyBackend] = None
         self.ast_color_map = ast_color_map
+        self.start_all_collapsed = start_all_collapsed
         if is_redshifted:
             assert vm is not None
             self.spy_backend = SPyBackend(vm)
@@ -187,7 +189,7 @@ class HTMLBackend:
         }
         if src_colors:
             result["src_colors"] = src_colors
-        if typename in EXPAND_BY_DEFAULT:
+        if not self.start_all_collapsed and typename in EXPAND_BY_DEFAULT:
             result["startExpanded"] = True
         return result
 
