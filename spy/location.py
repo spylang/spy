@@ -10,7 +10,10 @@ from typing import TYPE_CHECKING, Any, Callable
 @dataclass(frozen=True)
 class Loc:
     """
-    Represent a location inside the source code
+    Represent a location inside the source code.
+
+    Lines are 1-based (the first line in a file is line 1).
+    Columns are 0-based (the first column in a line is column 0).
     """
 
     filename: str
@@ -118,8 +121,9 @@ class Loc:
             for line_num in range(self.line_start, self.line_end + 1):
                 srcline = linecache.getline(filename, line_num)
                 if line_num == self.line_start:
-                    # First line - start from col_start
-                    lines.append(srcline[self.col_start :])
+                    # First line - keep indentation but replace
+                    # chars before col_start with spaces
+                    lines.append(" " * self.col_start + srcline[self.col_start :])
                 elif line_num == self.line_end:
                     # Last line - end at col_end
                     lines.append(srcline[: self.col_end])

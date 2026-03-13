@@ -2,12 +2,14 @@
 
 import dataclasses
 import json
+import textwrap
 from typing import Any, Literal, Optional, Sequence
 
 import spy.ast
 from spy import ROOT
 from spy.analyze.symtable import Color, Symbol
 from spy.backend.spy import SPyBackend
+from spy.util import build_char_color_map, encode_color_map
 from spy.vm.vm import SPyVM
 
 SpyastJs = Literal["cdn", "inline"]
@@ -41,21 +43,18 @@ def _label_str(val: Any) -> str:
 
 
 def _get_src(node: spy.ast.Node) -> str:
+    # ClassDef/GlobalClassDef.loc points only to "class X:", use body_loc to include the body
+    if isinstance(node, spy.ast.ClassDef):
+        loc = node.body_loc
+    elif isinstance(node, spy.ast.GlobalClassDef):
+        loc = node.classdef.body_loc
+    else:
+        loc = node.loc
     try:
-        src = node.loc.get_src()
+        src = loc.get_src()
     except (ValueError, AttributeError):
         return ""
-    # get_src strips col_start from the first line but not subsequent ones, dedent
-    # manually
-    indent = node.loc.col_start
-    if indent == 0:
-        return src
-    prefix = " " * indent
-    lines = src.split("\n")
-    dedented = [lines[0]] + [
-        line[indent:] if line.startswith(prefix) else line for line in lines[1:]
-    ]
-    return "\n".join(dedented)
+    return textwrap.dedent(src)
 
 
 def _scalar_leaf(val: Any) -> dict[str, Any]:
@@ -87,20 +86,32 @@ class HTMLBackend:
         vm: Optional[SPyVM] = None,
         is_redshifted: bool = False,
         ast_color_map: Optional[dict[spy.ast.Node, Color]] = None,
+        start_all_collapsed: bool = False,
     ) -> None:
         self.spyast_js = spyast_js
         self.spy_backend: Optional[SPyBackend] = None
         self.ast_color_map = ast_color_map
+        self.start_all_collapsed = start_all_collapsed
         if is_redshifted:
             assert vm is not None
             self.spy_backend = SPyBackend(vm)
 
-    def _get_src_colors(self, node: spy.ast.Node) -> list[dict[str, Any]]:
-        if self.ast_color_map is None:
-            return []
+    def _get_src_colors(self, node: spy.ast.Node, src: str) -> str:
+        if self.ast_color_map is None or not src:
+            return ""
+        src_lines = src.split("\n")
+        num_lines = len(src_lines)
         parent_line = node.loc.line_start
         indent = node.loc.col_start
-        colors = []
+
+        # Build flat line-start offsets for converting (line_idx, col) to flat position
+        line_offsets: list[int] = []
+        offset = 0
+        for src_line in src_lines:
+            line_offsets.append(offset)
+            offset += len(src_line) + 1  # +1 for \n
+
+        spans: list[tuple[int, int, str]] = []
         for child in node.walk():
             if child is node:
                 continue
@@ -110,15 +121,18 @@ class HTMLBackend:
             # only single-line children for now
             if child.loc.line_start != child.loc.line_end:
                 continue
-            colors.append(
-                {
-                    "line": child.loc.line_start - parent_line,
-                    "start": child.loc.col_start - indent,
-                    "end": child.loc.col_end - indent,
-                    "color": color,
-                }
-            )
-        return colors
+            line_idx = child.loc.line_start - parent_line
+            if line_idx < 0 or line_idx >= num_lines:
+                continue
+            start = child.loc.col_start - indent
+            end = child.loc.col_end - indent
+            if start < 0 or end > len(src_lines[line_idx]):
+                continue
+            flat_start = line_offsets[line_idx] + start
+            flat_end = line_offsets[line_idx] + end
+            spans.append((flat_start, flat_end, color))
+
+        return encode_color_map(build_char_color_map(src, spans))
 
     def node_to_dict(self, node: spy.ast.Node) -> dict[str, Any]:
         typename = type(node).__name__
@@ -146,7 +160,7 @@ class HTMLBackend:
         else:
             src = _get_src(node)
 
-        src_colors = self._get_src_colors(node)
+        src_colors = self._get_src_colors(node, src)
 
         if self.ast_color_map is not None:
             node_color = self.ast_color_map.get(node)
@@ -171,7 +185,7 @@ class HTMLBackend:
         }
         if src_colors:
             result["src_colors"] = src_colors
-        if typename in EXPAND_BY_DEFAULT:
+        if not self.start_all_collapsed and typename in EXPAND_BY_DEFAULT:
             result["startExpanded"] = True
         return result
 
