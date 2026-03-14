@@ -78,13 +78,18 @@ async def _run_command(user_func: Callable, args: "Base_Args") -> None:
 def execute_spy_main(
     vm: SPyVM, w_mod: W_Module, redshift: bool = False, _timeit: bool = False
 ) -> None:
-    w_main_functype = W_FuncType.parse("def() -> None")
+    expected_functype = W_FuncType.parse("def() -> None")
     w_main = w_mod.getattr_maybe("main")
     if w_main is None:
         print("Cannot find function main()")
         return
 
-    vm.typecheck(w_main, w_main_functype)
+    actual_functype = w_main.w_functype
+    is_return_exit_code = actual_functype.w_restype == B.w_i32
+    if is_return_exit_code:
+        expected_functype = W_FuncType.parse("def() -> i32")
+
+    vm.typecheck(w_main, expected_functype)
     assert isinstance(w_main, W_ASTFunc)
 
     # find the redshifted version, if necessary
@@ -98,7 +103,13 @@ def execute_spy_main(
 
     with timer() if _timeit else nullcontext():
         w_res = vm.fast_call(w_main, [])
-    assert w_res is B.w_None
+
+        if is_return_exit_code:
+            exit_code = vm.unwrap_i32(w_res)
+            sys.exit(exit_code)
+        else:
+            assert w_res is B.w_None
+            sys.exit(0)
 
 
 class Init_Args(Protocol):

@@ -120,6 +120,36 @@ class TestMain:
             raise Exception("run_external failed")
         return exit_code, decolorize(stdout)
 
+    def test_return_exit_code(self):
+        return_exit_code_src = """
+        def main() -> i32:
+            print("This main return 99 as exit code")
+            return 99
+        """
+        return_exit_code_file = self.tmpdir.join("return_exit_code_src.spy")
+        return_exit_code_file.write(textwrap.dedent(return_exit_code_src))
+
+        res = self.runner.invoke(app, [str(return_exit_code_file)])
+        assert res.exit_code == 99
+
+    def test_nested_functions_exit_code(self):
+        return_nested_exit_code_src = """
+        def actual_exit_code_return() -> i32:
+            return 88
+
+        def main() -> i32:
+            print("This main return 88 as exit code")
+            result = actual_exit_code_return()
+            return result
+        """
+        return_nested_exit_code_file = self.tmpdir.join(
+            "return_nested_exit_code_src.spy"
+        )
+        return_nested_exit_code_file.write(textwrap.dedent(return_nested_exit_code_src))
+
+        res = self.runner.invoke(app, [str(return_nested_exit_code_file)])
+        assert res.exit_code == 88
+
     def test_py_file_error(self):
         # Create a .py file instead of .spy
         py_file = self.tmpdir.join("test.py")
