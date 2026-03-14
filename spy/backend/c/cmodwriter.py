@@ -154,6 +154,10 @@ class CModuleWriter:
         fqn_main = FQN([self.c_mod.modname, "main"])
         if self.is_main_mod and fqn_main in self.ctx.vm.globals_w:
             w_main = self.ctx.vm.globals_w[fqn_main]
+            if w_main.w_functype.w_restype not in [B.w_i32, B.w_None]:
+                raise NotImplementedError(
+                    "Only i32 and None exit type support for main function."
+                )
 
             execution_code = f"""
                 int main(void) {{
@@ -161,6 +165,7 @@ class CModuleWriter:
                     return 0;
                 }}
                 """
+
             if w_main.w_functype.w_restype == B.w_i32:
                 execution_code = f"""
                 int main(void) {{
