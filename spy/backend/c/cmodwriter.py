@@ -9,6 +9,7 @@ from spy.backend.c.context import Context
 from spy.backend.c.cwriter import CFuncWriter
 from spy.fqn import FQN
 from spy.textbuilder import TextBuilder
+from spy.vm.b import B
 from spy.vm.cell import W_Cell
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc
 from spy.vm.module import W_Module
@@ -150,15 +151,24 @@ class CModuleWriter:
         self.tbc.wl()
         self.tbc_content = self.tbc.make_nested_builder()
 
-        # Main function
         fqn_main = FQN([self.c_mod.modname, "main"])
         if self.is_main_mod and fqn_main in self.ctx.vm.globals_w:
-            self.tbc.wb(f"""
+            w_main = self.ctx.vm.globals_w[fqn_main]
+
+            execution_code = f"""
                 int main(void) {{
                     {fqn_main.c_name}();
                     return 0;
                 }}
-            """)
+                """
+            if w_main.w_functype.w_restype == B.w_i32:
+                execution_code = f"""
+                int main(void) {{
+                    return {fqn_main.c_name}();
+                }}
+                """
+
+            self.tbc.wb(execution_code)
 
     def emit_jsffi_error_maybe(self) -> None:
         if self.jsffi_error_emitted:

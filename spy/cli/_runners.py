@@ -85,8 +85,7 @@ def execute_spy_main(
         return
 
     actual_functype = w_main.w_functype
-    is_return_exit_code = actual_functype.w_restype == B.w_i32
-    if is_return_exit_code:
+    if actual_functype.w_restype == B.w_i32:
         expected_functype = W_FuncType.parse("def() -> i32")
 
     vm.typecheck(w_main, expected_functype)
@@ -104,7 +103,7 @@ def execute_spy_main(
     with timer() if _timeit else nullcontext():
         w_res = vm.fast_call(w_main, [])
 
-        if is_return_exit_code:
+        if actual_functype.w_restype == B.w_i32:
             exit_code = vm.unwrap_i32(w_res)
             sys.exit(exit_code)
         else:

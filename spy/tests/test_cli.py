@@ -247,6 +247,49 @@ class TestMain:
         csrc = main_c.read()
         assert csrc.startswith('#include "main.h"')
 
+    def test_return_exit_code_cwrite(self):
+        return_exit_code_src = """
+        def main() -> i32:
+            print("This main return 99 as exit code")
+            return 99
+        """
+        return_exit_code_file = self.tmpdir.join("return_exit_code_src.spy")
+        return_exit_code_file.write(textwrap.dedent(return_exit_code_src))
+
+        self.run(
+            "build", "--no-compile", "--build-dir", self.tmpdir, return_exit_code_file
+        )
+        main_c = self.tmpdir.join("src", "return_exit_code_src.c")
+        assert main_c.exists()
+        csrc = main_c.read()
+        assert "return 99;" in csrc
+
+    def test_nested_functions_exit_code_cwrite(self):
+        return_nested_exit_code_src = """
+        def actual_exit_code_return() -> i32:
+            return 88
+
+        def main() -> i32:
+            print("This main return 88 as exit code")
+            result = actual_exit_code_return()
+            return result
+        """
+        return_nested_exit_code_file = self.tmpdir.join(
+            "return_nested_exit_code_src.spy"
+        )
+        return_nested_exit_code_file.write(textwrap.dedent(return_nested_exit_code_src))
+        self.run(
+            "build",
+            "--no-compile",
+            "--build-dir",
+            self.tmpdir,
+            return_nested_exit_code_file,
+        )
+        main_c = self.tmpdir.join("src", "return_nested_exit_code_src.c")
+        assert main_c.exists()
+        csrc = main_c.read()
+        assert "return 88;" in csrc
+
     @pytest.mark.parametrize(
         "target",
         [
