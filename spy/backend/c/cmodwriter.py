@@ -12,7 +12,7 @@ from spy.textbuilder import TextBuilder
 from spy.vm.b import B
 from spy.vm.cell import W_Cell
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc
-from spy.vm.module import W_Module
+from spy.vm.module import TYPES, W_Module
 from spy.vm.modules.unsafe.ptr import W_Ptr, W_PtrType
 from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import W_I32
@@ -154,7 +154,7 @@ class CModuleWriter:
         fqn_main = FQN([self.c_mod.modname, "main"])
         if self.is_main_mod and fqn_main in self.ctx.vm.globals_w:
             w_main = self.ctx.vm.globals_w[fqn_main]
-            if w_main.w_functype.w_restype not in [B.w_i32, B.w_None]:
+            if w_main.w_functype.w_restype not in [B.w_i32, TYPES.w_NoneType]:
                 raise NotImplementedError(
                     "Only i32 and None exit type support for main function."
                 )

@@ -100,15 +100,18 @@ def execute_spy_main(
     else:
         assert not w_main.redshifted
 
-    with timer() if _timeit else nullcontext():
-        w_res = vm.fast_call(w_main, [])
-
-        if actual_functype.w_restype == B.w_i32:
-            exit_code = vm.unwrap_i32(w_res)
-            sys.exit(exit_code)
-        else:
-            assert w_res is B.w_None
-            sys.exit(0)
+    if _timeit:
+        with timer():
+            w_res = vm.fast_call(w_main, [])
+    else:
+        with nullcontext():
+            w_res = vm.fast_call(w_main, [])
+            if actual_functype.w_restype == B.w_i32:
+                exit_code = vm.unwrap_i32(w_res)
+                sys.exit(exit_code)
+            else:
+                assert w_res is B.w_None
+                sys.exit(0)
 
 
 class Init_Args(Protocol):
