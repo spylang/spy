@@ -167,7 +167,8 @@ graph TD
     %% Core pipeline
     SRC -- pyparse --> PYAST -- parse --> AST -- ScopeAnalyzer --> SYMAST
     SYMAST -- import --> SPyVM -- execute --> OUT
-    SPyVM -- redshift --> REDSHIFTED -- cwrite --> C
+    SPyVM -- redshift --> REDSHIFTED -- execute --> OUT
+    REDSHIFTED -- cwrite --> C
     C -- ninja --> EXE_NAT -- execute --> OUT
     C -- ninja --> EXE_WASI -- execute --> OUT
     C -- ninja --> EXE_EM -- execute --> OUT
