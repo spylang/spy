@@ -506,7 +506,6 @@ class Parser:
             )
         elif isinstance(py_target, py_ast.Attribute):
             # Attribute access: a.b += 1
-            # Convert to SetAttr with desugared BinOp
             return spy.ast.SetAttr(
                 loc=py_node.loc,
                 target=self.from_py_expr(py_target.value),
@@ -518,6 +517,31 @@ class Parser:
                         loc=py_node.loc,
                         value=self.from_py_expr(py_target.value),
                         attr=spy.ast.StrConst(py_target.loc, py_target.attr),
+                    ),
+                    right=self.from_py_expr(py_node.value),
+                ),
+            )
+        elif isinstance(py_target, py_ast.Subscript):
+            # Subscript access: arr[i] += 1
+            target = self.from_py_expr(py_target.value)
+            index = self.from_py_expr(py_target.slice)
+
+            if isinstance(index, spy.ast.Tuple):
+                args = index.items
+            else:
+                args = [index]
+
+            return spy.ast.SetItem(
+                loc=py_node.loc,
+                target=target,
+                args=args,
+                value=spy.ast.BinOp(
+                    loc=py_node.loc,
+                    op=op,
+                    left=spy.ast.GetItem(
+                        loc=py_target.loc,
+                        value=target,
+                        args=args,
                     ),
                     right=self.from_py_expr(py_node.value),
                 ),
