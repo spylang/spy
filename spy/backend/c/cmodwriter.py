@@ -154,6 +154,8 @@ class CModuleWriter:
         fqn_main = FQN([self.c_mod.modname, "main"])
         if self.is_main_mod and fqn_main in self.ctx.vm.globals_w:
             w_main = self.ctx.vm.globals_w[fqn_main]
+
+            assert isinstance(w_main, W_ASTFunc)
             if w_main.w_functype.w_restype not in [B.w_i32, TYPES.w_NoneType]:
                 raise NotImplementedError(
                     "Only i32 and None exit type support for main function."

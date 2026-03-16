@@ -84,12 +84,12 @@ def execute_spy_main(
         print("Cannot find function main()")
         return
 
+    assert isinstance(w_main, W_ASTFunc)
     actual_functype = w_main.w_functype
     if actual_functype.w_restype == B.w_i32:
         expected_functype = W_FuncType.parse("def() -> i32")
 
     vm.typecheck(w_main, expected_functype)
-    assert isinstance(w_main, W_ASTFunc)
 
     # find the redshifted version, if necessary
     if redshift:
