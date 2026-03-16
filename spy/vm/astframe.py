@@ -608,6 +608,10 @@ class AbstractFrame:
 
     def _desugar_AugAssign(self, node: ast.AugAssign) -> ast.Assign:
         # transform "x += 1" into "x = x + 1"
+        #
+        # Note: Only simple variable targets are supported in AugAssign.
+        # Complex targets (a.b += 1, arr[i] += 1) are desugared by the parser
+        # into SetAttr/SetItem nodes directly.
         return ast.Assign(
             loc=node.loc,
             target=node.target,

@@ -887,6 +887,76 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo(10) == ((10 + 1) * 2) - 3
 
+    def test_aug_assign_subscript(self):
+        mod = self.compile("""
+        from _list import list
+
+        def test_add() -> i32:
+            arr = list[i32]()
+            arr.append(10)
+            arr[0] += 5
+            return arr[0]
+
+        def test_mul() -> i32:
+            arr = list[i32]()
+            arr.append(10)
+            arr[0] *= 3
+            return arr[0]
+
+        def test_sub() -> i32:
+            arr = list[i32]()
+            arr.append(10)
+            arr[0] -= 3
+            return arr[0]
+        """)
+        assert mod.test_add() == 15
+        assert mod.test_mul() == 30
+        assert mod.test_sub() == 7
+
+    def test_aug_assign_attribute(self):
+        mod = self.compile("""
+        from unsafe import raw_alloc, raw_ptr
+
+        @struct
+        class Box:
+            value: i32
+
+        def test_add() -> i32:
+            b = raw_alloc[Box](1)
+            setattr(b, 'value', 10)
+            b.value += 5
+            return b.value
+
+        def test_sub() -> i32:
+            b = raw_alloc[Box](1)
+            setattr(b, 'value', 20)
+            b.value -= 3
+            return b.value
+
+        def test_mul() -> i32:
+            b = raw_alloc[Box](1)
+            setattr(b, 'value', 10)
+            b.value *= 2
+            return b.value
+
+        def test_div() -> i32:
+            b = raw_alloc[Box](1)
+            setattr(b, 'value', 20)
+            b.value //= 2
+            return b.value
+
+        def test_mod() -> i32:
+            b = raw_alloc[Box](1)
+            setattr(b, 'value', 10)
+            b.value %= 3
+            return b.value
+        """)
+        assert mod.test_add() == 15
+        assert mod.test_sub() == 17
+        assert mod.test_mul() == 20
+        assert mod.test_div() == 10
+        assert mod.test_mod() == 1
+
     def test_resolve_name(self):
         mod = self.compile("""
         from builtins import i32 as my_int
