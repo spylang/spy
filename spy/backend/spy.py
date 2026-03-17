@@ -57,6 +57,7 @@ class SPyBackend:
 
         # part 1: aliases
         w_mod = self.vm.modules_w[modname]
+        aliases = []
         for attr, w_obj in w_mod.items_w():
             expected_fqn = FQN(modname).join(attr)
             if (
@@ -64,17 +65,23 @@ class SPyBackend:
                 and w_obj.color == "red"
                 and w_obj.fqn != expected_fqn
             ):
-                self.out.wl(f"{attr} = `{w_obj.fqn}`")
-        self.out.wl()
+                aliases.append((attr, w_obj))
+        for attr, w_obj in aliases:
+            self.out.wl(f"{attr} = `{w_obj.fqn}`")
+        if aliases:
+            self.out.wl()
 
         # part 2: all the other FQNs
-        for fqn, w_obj in self.vm.fqns_by_modname(modname):
-            if (
-                isinstance(w_obj, W_ASTFunc)
-                and w_obj.color == "red"
-                and w_obj.fqn == fqn
-            ):
-                self.dump_w_func(fqn, w_obj)
+        funcs = [
+            (fqn, w_obj)
+            for fqn, w_obj in self.vm.fqns_by_modname(modname)
+            if isinstance(w_obj, W_ASTFunc)
+            and w_obj.color == "red"
+            and w_obj.fqn == fqn
+        ]
+        for i, (fqn, w_obj) in enumerate(funcs):
+            self.dump_w_func(fqn, w_obj)
+            if i < len(funcs) - 1:
                 self.out.wl()
 
         return self.out.build()
