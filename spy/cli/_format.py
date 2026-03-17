@@ -13,7 +13,7 @@ from spy.vm.vm import SPyVM
 def dump_spy_mod(vm: SPyVM, modname: str, full_fqn: bool) -> None:
     fqn_format: FQN_FORMAT = "full" if full_fqn else "short"
     b = SPyBackend(vm, fqn_format=fqn_format)
-    spy_code = b.dump_mod(modname)
+    spy_code = b.dump_mod(modname).rstrip()
     print(highlight_src("spy", spy_code))
 
 
