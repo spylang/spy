@@ -162,7 +162,7 @@ class TestMain:
 
     def test_redshift_spy_output(self):
         _, stdout = self.run("redshift", self.main_spy)
-        assert stdout.startswith("\ndef main() -> None:")
+        assert stdout.startswith("def main() -> None:")
 
     def test_colorize_ast(self):
         _, stdout = self.run("colorize", "--format", "ast", self.main_spy)
