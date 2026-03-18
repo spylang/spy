@@ -79,6 +79,45 @@
     _writePageHash();
   }
 
+  function _copySVG(sectionIdx, nodeId) {
+    const svg = _instances[sectionIdx].exportSubtreeSVG(nodeId);
+    if (!svg) return;
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    navigator.clipboard.write([new ClipboardItem({ 'image/svg+xml': blob })]).then(
+      () => _showToast('SVG copied to clipboard'),
+      () => {
+        // Fallback: copy as text
+        navigator.clipboard.writeText(svg).then(
+          () => _showToast('SVG copied to clipboard (as text)'),
+          () => _showToast('Failed to copy — try "Save SVG as file"')
+        );
+      }
+    );
+  }
+
+  function _saveSVG(sectionIdx, nodeId, label) {
+    const svg = _instances[sectionIdx].exportSubtreeSVG(nodeId);
+    if (!svg) return;
+    const name = (label || 'node').replace(/[^a-zA-Z0-9_.-]/g, '_') + '.svg';
+    const blob = new Blob([svg], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function _showToast(msg) {
+    const t = document.createElement('div');
+    t.textContent = msg;
+    t.style.cssText = 'position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#333;color:#fff;padding:8px 20px;border-radius:6px;font-family:sans-serif;font-size:13px;z-index:10001;opacity:0;transition:opacity .3s;';
+    document.body.appendChild(t);
+    requestAnimationFrame(() => { t.style.opacity = '1'; });
+    setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 300); }, 2000);
+  }
+
   function _applyFocus() {
     if (_focusSection >= 0) {
       // hide all sections except the focused one
@@ -180,7 +219,7 @@
     return false;
   }
 
-  function init(svgEl, astData) {
+  function init(svgEl, astData, initialCollapsed) {
     // ---- per-instance state ----
     const sectionIdx = _instances.length;
     let _idCounter = 0;
@@ -653,7 +692,9 @@
             if (_focusSection >= 0) {
               items.push({ label: 'Show all', action: _showAll });
             }
-            if (items.length > 0) _buildContextMenu(e.clientX, e.clientY, items);
+            items.push({ label: 'Copy SVG to clipboard', action: () => _copySVG(sectionIdx, curNd.id) });
+            items.push({ label: 'Save SVG as file', action: () => _saveSVG(sectionIdx, curNd.id, curNd.label) });
+            _buildContextMenu(e.clientX, e.clientY, items);
           });
           buildNodeContent(g, nd);
           nodesGroup.appendChild(g);
@@ -685,15 +726,47 @@
       render();
     }
 
+    function exportSubtreeSVG(nodeId) {
+      const subtree = _findNode(astData, nodeId);
+      if (!subtree) return null;
+      // Create a hidden SVG, render the subtree into it with the same
+      // collapsed/expanded state as the current view
+      const tmpSvg = document.createElementNS(NS, 'svg');
+      tmpSvg.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
+      document.body.appendChild(tmpSvg);
+      init(tmpSvg, subtree, collapsed);
+      _instances.pop();
+      tmpSvg.removeAttribute('style');
+      // Also strip inline styles from inner <g> elements (transition/transform)
+      // and convert transforms to static positions for a clean static SVG
+      tmpSvg.querySelectorAll('g[style]').forEach(g => {
+        const m = g.style.transform.match(/translate\((.+?)px,\s*(.+?)px\)/);
+        if (m) {
+          g.removeAttribute('style');
+          g.setAttribute('transform', 'translate(' + m[1] + ',' + m[2] + ')');
+        }
+      });
+      const serializer = new XMLSerializer();
+      const raw = serializer.serializeToString(tmpSvg);
+      tmpSvg.remove();
+      return '<?xml version="1.0" encoding="UTF-8"?>\n' + raw;
+    }
+
     // ---- bootstrap ----
-    assignIds(astData);
+    if (initialCollapsed) {
+      // Reuse existing _id values and collapsed state (e.g. for SVG export)
+      initialCollapsed.forEach(id => collapsed.add(id));
+    } else {
+      assignIds(astData);
+      initCollapsed(astData);
+    }
 
     const inst = {
       svgEl, astData, sectionIdx, headerEl, collapsed, render, renderWith,
+      exportSubtreeSVG,
     };
     _instances.push(inst);
 
-    initCollapsed(astData);
     render();
   }
 
@@ -715,6 +788,6 @@
     document.addEventListener('click', _removeContextMenu);
   }
 
-  global.SPyAstViz = { render: init, restoreFromHash: restoreFromHash };
+  global.SPyAstViz = { render: init, restoreFromHash: restoreFromHash, _instances: _instances };
 
 })(typeof window !== 'undefined' ? window : this);

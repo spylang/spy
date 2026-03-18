@@ -266,3 +266,40 @@ class TestSPyAST_js:
             "document.getElementById('spyast-show-all-banner')?.style.display"
         )
         assert banner == "none"
+
+    def test_export_svg(self):
+        path = self.generate_html("""\
+        def foo(x: i32) -> i32:
+            return x + 1
+        """)
+        self.open(path)
+
+        # Export the Module (root) subtree — Return node starts collapsed
+        svg_collapsed = self.js("SPyAstViz._instances[0].exportSubtreeSVG(0)")
+        assert svg_collapsed.startswith("<?xml version")
+        assert 'xmlns="http://www.w3.org/2000/svg"' in svg_collapsed
+        # Should not contain inline position styles (cleaned up for static SVG)
+        assert "position:" not in svg_collapsed
+        # Should use transform attribute instead of CSS transform
+        assert 'transform="translate(' in svg_collapsed
+        # Return starts collapsed, so the SVG should show the source text
+        assert "return x + 1" in svg_collapsed
+        # BinOp is a child of Return; collapsed means it's NOT rendered
+        assert "BinOp" not in svg_collapsed
+
+        # Now expand the Return node and export again
+        self.click_node("return x + 1")
+        svg_expanded = self.js("SPyAstViz._instances[0].exportSubtreeSVG(0)")
+        # Return is now expanded: the label "Return" should appear (not source text),
+        # and its child (BinOp, collapsed, showing "x + 1") should be rendered
+        assert ">Return<" in svg_expanded
+        # The "value" edge label connects Return to its child
+        assert ">value<" in svg_expanded
+
+        # Right-click should show SVG export options
+        self.right_click_node("FuncDef: red foo")
+        menu_text = self.js(
+            "document.getElementById('spyast-context-menu')?.textContent || ''"
+        )
+        assert "Copy SVG to clipboard" in menu_text
+        assert "Save SVG as file" in menu_text
