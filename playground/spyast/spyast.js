@@ -33,6 +33,7 @@
   let _focusNodeId = -1;
   let _contextMenu = null;
   let _showAllBanner = null;
+  let _hideLeaves = false;
 
   function _removeContextMenu() {
     if (_contextMenu) { _contextMenu.remove(); _contextMenu = null; }
@@ -76,6 +77,14 @@
     _focusSection = -1;
     _focusNodeId = -1;
     _applyFocus();
+    _writePageHash();
+  }
+
+  function _toggleLeaves() {
+    _hideLeaves = !_hideLeaves;
+    for (const inst of _instances) {
+      inst.render();
+    }
     _writePageHash();
   }
 
@@ -182,6 +191,9 @@
     if (_focusSection >= 0) {
       parts.push(`focus:${_focusSection}:${_focusNodeId}`);
     }
+    if (_hideLeaves) {
+      parts.push('noleaves');
+    }
     history.replaceState(null, '', '#' + parts.join(';'));
   }
 
@@ -193,7 +205,9 @@
     if (hash.includes('s0:') || hash.includes('focus:')) {
       const segments = hash.split(';');
       for (const seg of segments) {
-        if (seg.startsWith('focus:')) {
+        if (seg === 'noleaves') {
+          _hideLeaves = true;
+        } else if (seg.startsWith('focus:')) {
           const fParts = seg.split(':');
           _focusSection = parseInt(fParts[1]);
           _focusNodeId = parseInt(fParts[2]);
@@ -242,6 +256,11 @@
     function labelOf(node)     { return node.label || node.type; }
     function childrenOf(node)  { return node.children || []; }
     function canCollapse(node) { return childrenOf(node).length > 0; }
+    function visibleChildrenOf(node) {
+      const ch = childrenOf(node);
+      if (!_hideLeaves) return ch;
+      return ch.filter(({ node: child }) => childrenOf(child).length > 0);
+    }
 
     // ---- id assignment ----
     function assignIds(node) {
@@ -276,7 +295,7 @@
 
     // Expr layout: handles 0, 1, or 2 children.
     function measureExpr(node) {
-      const ch = childrenOf(node);
+      const ch = visibleChildrenOf(node);
       if (collapsed.has(node._id) || ch.length === 0) return nodeSize(node).w;
       if (ch.length === 1) return Math.max(nodeSize(node).w, measureExpr(ch[0].node));
       let total = 0;
@@ -288,7 +307,7 @@
     }
 
     function placeExpr(node, leftX, y, svgNodes, svgLines) {
-      const ch = childrenOf(node);
+      const ch = visibleChildrenOf(node);
       const totalW = measureExpr(node);
       const { w: nw, h: nh } = nodeSize(node);
       const nodeX = leftX + (totalW - nw) / 2;
@@ -351,8 +370,8 @@
 
     function visit(node, x, y, svgNodes, svgLines) {
       const { w: nw, h: nh } = nodeSize(node);
-      const children = childrenOf(node);
-      const hasChildren = children.length > 0;
+      const children = visibleChildrenOf(node);
+      const hasChildren = childrenOf(node).length > 0;
       const isCollapsed = collapsed.has(node._id);
       svgNodes.push({ x, y, nw, nh, label: labelOf(node), src: node.src, src_colors: node.src_colors,
                       id: node._id, hasChildren, isCollapsed, expr: false, shape: node.shape, color: node.color });
@@ -692,6 +711,7 @@
             if (_focusSection >= 0) {
               items.push({ label: 'Show all', action: _showAll });
             }
+            items.push({ label: _hideLeaves ? 'Show leaves' : 'Hide leaves', action: _toggleLeaves });
             items.push({ label: 'Copy SVG to clipboard', action: () => _copySVG(sectionIdx, curNd.id) });
             items.push({ label: 'Save SVG as file', action: () => _saveSVG(sectionIdx, curNd.id, curNd.label) });
             _buildContextMenu(e.clientX, e.clientY, items);

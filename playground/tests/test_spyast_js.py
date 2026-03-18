@@ -151,6 +151,16 @@ class TestSPyAST_js:
         self.rodney("waitstable")
         self.rodney("sleep", "0.5")
 
+    def click_node_by_label(self, label: str) -> None:
+        self.js(
+            f"[...document.querySelectorAll('svg g[style]')]"
+            f".find(g => g._nd && g._nd.label === {label!r})"
+            f".dispatchEvent("
+            f"new MouseEvent('click', {{bubbles: true}}))"
+        )
+        self.rodney("waitstable")
+        self.rodney("sleep", "0.5")
+
     def test_expand_collapse(self):
         path = self.generate_html("""
         def foo(x: i32) -> i32:
@@ -303,3 +313,60 @@ class TestSPyAST_js:
         )
         assert "Copy SVG to clipboard" in menu_text
         assert "Save SVG as file" in menu_text
+
+    def test_hide_leaves(self):
+        path = self.generate_html("""\
+        def foo(x: i32) -> i32:
+            return x + 1
+        """)
+        self.open(path)
+
+        # FuncDef starts expanded so leaf children are visible
+        visible = self.get_visible_labels()
+        assert "'red'" in visible
+
+        # Right-click and hide leaves
+        self.right_click_node("FuncDef: red foo")
+        menu_text = self.js(
+            "document.getElementById('spyast-context-menu')?.textContent || ''"
+        )
+        assert "Hide leaves" in menu_text
+        self.js(
+            "[...document.getElementById('spyast-context-menu').children]"
+            ".find(d => d.textContent === 'Hide leaves')"
+            ".dispatchEvent(new MouseEvent('click', {bubbles: true}))"
+        )
+        self.rodney("waitstable")
+        self.rodney("sleep", "0.5")
+
+        # Now leaves should be hidden
+        visible = self.get_visible_labels()
+        assert "'red'" not in visible
+        # But non-leaf nodes should still be visible
+        assert "FuncDef: red foo" in visible
+
+        # Hash should contain 'noleaves'
+        url_hash = self.js("location.hash")
+        assert "noleaves" in url_hash
+
+        # Right-click again — menu should say "Show leaves"
+        self.right_click_node("FuncDef: red foo")
+        menu_text = self.js(
+            "document.getElementById('spyast-context-menu')?.textContent || ''"
+        )
+        assert "Show leaves" in menu_text
+        self.js(
+            "[...document.getElementById('spyast-context-menu').children]"
+            ".find(d => d.textContent === 'Show leaves')"
+            ".dispatchEvent(new MouseEvent('click', {bubbles: true}))"
+        )
+        self.rodney("waitstable")
+        self.rodney("sleep", "0.5")
+
+        # Leaves should be visible again
+        visible = self.get_visible_labels()
+        assert "'red'" in visible
+
+        # Hash should not contain 'noleaves'
+        url_hash = self.js("location.hash")
+        assert "noleaves" not in url_hash
