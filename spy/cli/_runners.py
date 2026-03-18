@@ -88,10 +88,11 @@ def execute_spy_main(
     actual_functype = w_main.w_functype
     if actual_functype.w_restype == B.w_i32:
         expected_functype = W_FuncType.parse("def() -> i32")
-    assert (
-        vm.typecheck(w_main, expected_functype),
-        f"Only support None or i32 return type of main(), got `{actual_functype.w_restype.fqn.human_name}`",
-    )
+    try:
+        vm.typecheck(w_main, expected_functype)
+    except:
+        msg = f"Only support None or i32 return type of main(), got `{actual_functype.w_restype.fqn.human_name}`"
+        raise SPyError("W_TypeError", msg)
 
     # find the redshifted version, if necessary
     if redshift:

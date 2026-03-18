@@ -5,4 +5,4 @@ def actual_exit_code_return() -> i32:
 def main() -> str:
     print("This main return 88 as exit code")
     result = actual_exit_code_return()
-    return result
+    return "result"

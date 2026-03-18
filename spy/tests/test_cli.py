@@ -150,6 +150,19 @@ class TestMain:
         res = self.runner.invoke(app, [str(return_nested_exit_code_file)])
         assert res.exit_code == 88
 
+    def test_mismatch_main_return_type_error(self):
+        return_exit_code_src = """
+        def main() -> str:
+            return "oops"
+        """
+        return_exit_code_file = self.tmpdir.join("return_exit_code_src.spy")
+        return_exit_code_file.write(textwrap.dedent(return_exit_code_src))
+
+        res = self.runner.invoke(app, [str(return_exit_code_file)])
+        assert res.exit_code == 1
+        output = decolorize(res.output)
+        assert "Only support None or i32 return type of main(), got `str`" in output
+
     def test_py_file_error(self):
         # Create a .py file instead of .spy
         py_file = self.tmpdir.join("test.py")
