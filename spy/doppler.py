@@ -40,22 +40,23 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
     For non primitive types, we assign an unique FQN to the w_val, and we
     return ast.FQNConst.
     """
+    res: ast.Expr
     w_T = vm.dynamic_type(w_val)
     if w_T in (B.w_i32, B.w_f64, B.w_bool, TYPES.w_NoneType):
         # this is a primitive, we can just use ast.Constant
         value = vm.unwrap(w_val)
         if isinstance(value, FixedInt):  # type: ignore
             value = int(value)
-        return ast.Constant(loc, value, w_T=w_T)
+        res = ast.Constant(loc, value, w_T=w_T)
 
     elif w_T is B.w_str:
         value = vm.unwrap_str(w_val)
-        return ast.StrConst(loc, value, w_T=w_T)
+        res = ast.StrConst(loc, value, w_T=w_T)
 
     elif w_T is SPY.w_interp_tuple:
         assert isinstance(w_val, W_InterpTuple)
         items = [make_const(vm, loc, w_item) for w_item in w_val.items_w]
-        return ast.Tuple(loc, items, w_T=w_T)
+        res = ast.Tuple(loc, items, w_T=w_T)
 
     elif w_T.fqn.match("_tuple::tuple[*]::_tup"):
         # transform the struct into a syntactical ast.Tuple node, so that we can put it
@@ -64,7 +65,7 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
         n = len(w_val.values_w)  # length of the tuple
         items_w = [w_val.values_w[f"_item{i}"] for i in range(n)]
         items = [make_const(vm, loc, w_item) for w_item in items_w]
-        return ast.Tuple(loc, items, w_T=w_T)
+        res = ast.Tuple(loc, items, w_T=w_T)
 
     elif w_T is TYPES.w_Loc:
         # note that here we have two locs: 'loc' is as usual the location
@@ -72,11 +73,16 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
         # const, which happen to be of type Loc.
         assert isinstance(w_val, W_Loc)
         value = w_val.loc
-        return ast.LocConst(loc, value, w_T=w_T)
+        res = ast.LocConst(loc, value, w_T=w_T)
 
-    # this is a non-primitive prebuilt constant.
-    fqn = vm.make_fqn_const(w_val)
-    return ast.FQNConst(loc, fqn, w_T=w_T)
+    else:
+        # this is a non-primitive prebuilt constant.
+        fqn = vm.make_fqn_const(w_val)
+        res = ast.FQNConst(loc, fqn, w_T=w_T)
+
+    if vm.ast_color_map is not None:
+        vm.ast_color_map[res] = "blue"
+    return res
 
 
 class DopplerFrame(ASTFrame):
@@ -369,6 +375,7 @@ class DopplerFrame(ASTFrame):
             )
 
         self.shifted_expr[expr] = new_expr
+        # record the color of the ORIGINAL expression
         self.record_node_color(expr, wam.color)
         return wam
 
@@ -391,7 +398,10 @@ class DopplerFrame(ASTFrame):
         if wam.color == "blue":
             return make_const(self.vm, expr.loc, wam.w_val)
         else:
-            return magic_dispatch(self, "shift_expr", expr, wam)
+            res = magic_dispatch(self, "shift_expr", expr, wam)
+            # record the color of the SHIFTED expression
+            self.record_node_color(res, wam.color)
+            return res
 
     def shift_opimpl(
         self,

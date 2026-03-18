@@ -391,6 +391,15 @@ class TestDoppler:
         assert get_color(foo_orig, ast.Name, "i") == "red"
         assert get_color(foo_orig, ast.BinOp, "i + 2 * 3") == "red"
 
+        # check the colors of the redshifted function
+        #
+        # this is the node "6". Keep in mind that get_src() always points to the
+        # original src "2 * 3"
+        assert get_color(foo_rs, ast.Constant, None) == "blue"
+        #
+        # this is the "+", but it has been shifted into a call to i32_add
+        assert get_color(foo_rs, ast.Call, "i + 2 * 3") == "red"
+
     def test_dumper_uses_ast_color_map_for_bg(self, monkeypatch):
         # Verify that Dumper._dump_node passes correct bg argument based on ast_color_map
         from unittest.mock import Mock
