@@ -1,6 +1,7 @@
 from math import fabs
 
 
+@blue
 def get_pi() -> float:
     """
     Compute an approximation of PI using the Leibniz series
