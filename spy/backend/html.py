@@ -92,6 +92,7 @@ class HTMLBackend:
         self.spy_backend: Optional[SPyBackend] = None
         self.ast_color_map = ast_color_map
         self.start_all_collapsed = start_all_collapsed
+        self.is_redshifted = is_redshifted
         if is_redshifted:
             assert vm is not None
             self.spy_backend = SPyBackend(vm)
@@ -160,7 +161,10 @@ class HTMLBackend:
         else:
             src = _get_src(node)
 
-        src_colors = self._get_src_colors(node, src)
+        # try to colorize the source code, but don't do that for redshifted ASTs.
+        src_colors = ""
+        if not self.is_redshifted:
+            src_colors = self._get_src_colors(node, src)
 
         if self.ast_color_map is not None:
             node_color = self.ast_color_map.get(node)
