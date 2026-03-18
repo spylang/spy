@@ -27,8 +27,162 @@
     default: { fill: ['#f5f5f5', '#ffffff'], stroke: ['#c0c0c0', '#c0c0c0'] },
   };
 
+  // ---- page-level state ----
+  const _instances = [];    // [{svgEl, astData, sectionIdx, headerEl, render, collapsed, ...}]
+  let _focusSection = -1;   // -1 = show all
+  let _focusNodeId = -1;
+  let _contextMenu = null;
+  let _showAllBanner = null;
+
+  function _removeContextMenu() {
+    if (_contextMenu) { _contextMenu.remove(); _contextMenu = null; }
+  }
+
+  function _buildContextMenu(x, y, items) {
+    _removeContextMenu();
+    const menu = document.createElement('div');
+    menu.id = 'spyast-context-menu';
+    menu.style.cssText = `position:fixed;left:${x}px;top:${y}px;background:#fff;border:1px solid #ccc;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.18);z-index:10000;font-family:sans-serif;font-size:13px;padding:2px 0;min-width:160px;`;
+    for (const { label, action } of items) {
+      const item = document.createElement('div');
+      item.textContent = label;
+      item.style.cssText = 'padding:5px 16px;cursor:pointer;';
+      item.addEventListener('mouseenter', () => { item.style.background = '#e8f0fe'; });
+      item.addEventListener('mouseleave', () => { item.style.background = ''; });
+      item.addEventListener('click', (e) => { e.stopPropagation(); _removeContextMenu(); action(); });
+      menu.appendChild(item);
+    }
+    document.body.appendChild(menu);
+    _contextMenu = menu;
+  }
+
+  function _findNode(node, id) {
+    if (node._id === id) return node;
+    for (const { node: child } of (node.children || [])) {
+      const found = _findNode(child, id);
+      if (found) return found;
+    }
+    return null;
+  }
+
+  function _focusOnNode(sectionIdx, nodeId) {
+    _focusSection = sectionIdx;
+    _focusNodeId = nodeId;
+    _applyFocus();
+    _writePageHash();
+  }
+
+  function _showAll() {
+    _focusSection = -1;
+    _focusNodeId = -1;
+    _applyFocus();
+    _writePageHash();
+  }
+
+  function _applyFocus() {
+    if (_focusSection >= 0) {
+      // hide all sections except the focused one
+      for (let i = 0; i < _instances.length; i++) {
+        const inst = _instances[i];
+        const show = (i === _focusSection);
+        inst.svgEl.style.display = show ? '' : 'none';
+        if (inst.headerEl) inst.headerEl.style.display = 'none';
+      }
+      // re-render the focused section with subtree root
+      const inst = _instances[_focusSection];
+      const subtree = _findNode(inst.astData, _focusNodeId);
+      if (subtree) {
+        inst.renderWith(subtree);
+      }
+      _showBanner();
+    } else {
+      // show everything, re-render each section with full AST
+      for (const inst of _instances) {
+        inst.svgEl.style.display = '';
+        if (inst.headerEl) inst.headerEl.style.display = '';
+        inst.renderWith(inst.astData);
+      }
+      _hideBanner();
+    }
+  }
+
+  function _showBanner() {
+    if (!_showAllBanner) {
+      const banner = document.createElement('div');
+      banner.id = 'spyast-show-all-banner';
+      banner.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#1e3a5f;color:#fff;text-align:center;padding:6px 12px;font-family:sans-serif;font-size:13px;z-index:9999;display:flex;align-items:center;justify-content:center;gap:12px;';
+      const text = document.createElement('span');
+      text.textContent = 'Showing subtree only';
+      const btn = document.createElement('button');
+      btn.textContent = 'Show all';
+      btn.style.cssText = 'background:#fff;color:#1e3a5f;border:none;border-radius:3px;padding:3px 12px;cursor:pointer;font-size:13px;';
+      btn.addEventListener('click', _showAll);
+      banner.appendChild(text);
+      banner.appendChild(btn);
+      document.body.insertBefore(banner, document.body.firstChild);
+      _showAllBanner = banner;
+    }
+    _showAllBanner.style.display = '';
+  }
+
+  function _hideBanner() {
+    if (_showAllBanner) _showAllBanner.style.display = 'none';
+  }
+
+  // ---- page-level hash ----
+  // Format: "s<sectionIdx>:<collapsedIds>;...;focus:<sectionIdx>:<nodeId>"
+  // Simplified: we keep the old single-section format for backward compat when
+  // there's only one section and no focus. Otherwise use the new format.
+  function _writePageHash() {
+    const parts = [];
+    for (let i = 0; i < _instances.length; i++) {
+      const inst = _instances[i];
+      const ids = [...inst.collapsed].sort((a, b) => a - b).join(',');
+      parts.push(`s${i}:${ids}`);
+    }
+    if (_focusSection >= 0) {
+      parts.push(`focus:${_focusSection}:${_focusNodeId}`);
+    }
+    history.replaceState(null, '', '#' + parts.join(';'));
+  }
+
+  function _readPageHash() {
+    const hash = location.hash.slice(1);
+    if (!hash) return false;
+
+    // New format: sections separated by ';'
+    if (hash.includes('s0:') || hash.includes('focus:')) {
+      const segments = hash.split(';');
+      for (const seg of segments) {
+        if (seg.startsWith('focus:')) {
+          const fParts = seg.split(':');
+          _focusSection = parseInt(fParts[1]);
+          _focusNodeId = parseInt(fParts[2]);
+        } else if (seg.startsWith('s')) {
+          const colonIdx = seg.indexOf(':');
+          const idx = parseInt(seg.slice(1, colonIdx));
+          const idsStr = seg.slice(colonIdx + 1);
+          if (idx >= 0 && idx < _instances.length) {
+            _instances[idx].collapsed.clear();
+            idsStr.split(',').filter(Boolean).forEach(s => _instances[idx].collapsed.add(Number(s)));
+          }
+        }
+      }
+      return true;
+    }
+
+    // Legacy format: just comma-separated IDs for the first instance
+    if (_instances.length > 0) {
+      _instances[0].collapsed.clear();
+      hash.split(',').filter(Boolean).forEach(s => _instances[0].collapsed.add(Number(s)));
+      return true;
+    }
+    return false;
+  }
+
   function init(svgEl, astData) {
     // ---- per-instance state ----
+    const sectionIdx = _instances.length;
     let _idCounter = 0;
     const collapsed = new Set();
     const nodeElements = new Map();
@@ -37,6 +191,12 @@
     let firstRender = true;
     let _tooltipTimer = null;
     let _animating = false, _animatingTimer = null;
+    let _currentRoot = astData;  // the root currently being rendered (may be a subtree)
+
+    // Find the <h2> header immediately before this SVG
+    let headerEl = null;
+    let prev = svgEl.previousElementSibling;
+    if (prev && prev.tagName === 'H2') headerEl = prev;
 
     // ---- generic node accessors ----
     function isExpr(node)      { return !!node.expr; }
@@ -424,8 +584,13 @@
 
     // ---- main render loop ----
     function render() {
+      const root = _currentRoot;
       const svgNodes = [], svgLines = [];
-      visit(astData, PAD, PAD, svgNodes, svgLines);
+      if (isExpr(root)) {
+        placeExpr(root, PAD, PAD, svgNodes, svgLines);
+      } else {
+        visit(root, PAD, PAD, svgNodes, svgLines);
+      }
 
       const W = Math.max(...svgNodes.map(n => n.x + n.nw)) + PAD;
       const H = Math.max(...svgNodes.map(n => n.y + n.nh)) + PAD;
@@ -468,12 +633,28 @@
             g.addEventListener('click', () => {
               hideTooltip();
               collapsed.has(id) ? collapsed.delete(id) : collapsed.add(id);
-              writeHash();
+              _writePageHash();
               render();
             });
             g.addEventListener('mouseover', e => { e.stopPropagation(); scheduleTooltip(g._nd); });
             g.addEventListener('mouseout',  () => hideTooltip());
           }
+          // Right-click context menu for all nodes with children
+          g.addEventListener('contextmenu', e => {
+            const curNd = g._nd;
+            if (!curNd || !curNd.hasChildren) return;
+            e.preventDefault();
+            e.stopPropagation();
+            hideTooltip();
+            const items = [];
+            if (_focusSection < 0 || _focusNodeId !== curNd.id) {
+              items.push({ label: 'Focus on this subtree', action: () => _focusOnNode(sectionIdx, curNd.id) });
+            }
+            if (_focusSection >= 0) {
+              items.push({ label: 'Show all', action: _showAll });
+            }
+            if (items.length > 0) _buildContextMenu(e.clientX, e.clientY, items);
+          });
           buildNodeContent(g, nd);
           nodesGroup.appendChild(g);
           nodeElements.set(id, g);
@@ -493,26 +674,47 @@
       firstRender = false;
     }
 
-    // ---- hash state ----
-    function writeHash() {
-      const ids = [...collapsed].sort((a, b) => a - b).join(',');
-      history.replaceState(null, '', '#' + ids);
-    }
-
-    function readHash() {
-      const hash = location.hash.slice(1);
-      if (!hash) return false;
-      collapsed.clear();
-      hash.split(',').filter(Boolean).forEach(s => collapsed.add(Number(s)));
-      return true;
+    function renderWith(root) {
+      _currentRoot = root;
+      // Clear existing DOM elements to force full re-render
+      for (const [, g] of nodeElements) g.remove();
+      nodeElements.clear();
+      for (const [, els] of lineElements) { els.line.remove(); if (els.text) els.text.remove(); }
+      lineElements.clear();
+      firstRender = true;
+      render();
     }
 
     // ---- bootstrap ----
     assignIds(astData);
-    if (!readHash()) initCollapsed(astData);
+
+    const inst = {
+      svgEl, astData, sectionIdx, headerEl, collapsed, render, renderWith,
+    };
+    _instances.push(inst);
+
+    initCollapsed(astData);
     render();
   }
 
-  global.SPyAstViz = { render: init };
+  // Called after all sections have been rendered to restore hash state
+  function restoreFromHash() {
+    if (_readPageHash()) {
+      // Re-render all instances with restored collapsed state
+      for (const inst of _instances) {
+        inst.renderWith(inst.astData);
+      }
+      if (_focusSection >= 0) {
+        _applyFocus();
+      }
+    }
+  }
+
+  // Dismiss context menu on click anywhere
+  if (typeof document !== 'undefined') {
+    document.addEventListener('click', _removeContextMenu);
+  }
+
+  global.SPyAstViz = { render: init, restoreFromHash: restoreFromHash };
 
 })(typeof window !== 'undefined' ? window : this);

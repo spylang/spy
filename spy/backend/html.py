@@ -217,6 +217,7 @@ class HTMLBackend:
 <body style="background:#f8fafc; padding:20px; font-family:sans-serif;">
 {js_tag}
 {body}
+  <script>SPyAstViz.restoreFromHash();</script>
 </body>
 </html>
 """

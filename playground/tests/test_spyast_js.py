@@ -130,6 +130,17 @@ class TestSPyAST_js:
     def get_visible_labels(self) -> set[str]:
         return {n["label"] for n in self.get_nodes()}
 
+    def right_click_node(self, text: str) -> None:
+        # Find the <g> element via its _nd label rather than text content,
+        # since text content changes when collapsed/expanded
+        self.js(
+            f"[...document.querySelectorAll('svg g[style]')]"
+            f".find(g => g._nd && g._nd.label === {text!r})"
+            f".dispatchEvent("
+            f"new MouseEvent('contextmenu', {{bubbles: true, clientX: 100, clientY: 100}}))"
+        )
+        self.rodney("waitstable")
+
     def click_node(self, text: str) -> None:
         self.js(
             f"[...document.querySelectorAll('svg g > text')]"
@@ -191,3 +202,67 @@ class TestSPyAST_js:
         assert ret["isCollapsed"] is False
         assert ret["text"] == "Return"
         assert "BinOp: +" in self.get_visible_labels()
+
+    def test_focus_subtree(self):
+        path = self.generate_html("""\
+        def foo(x: i32) -> i32:
+            return x + 1
+
+        def bar(y: i32) -> i32:
+            return y - 1
+        """)
+        self.open(path)
+
+        # Initially both FuncDefs are visible
+        visible = self.get_visible_labels()
+        assert "FuncDef: red foo" in visible
+        assert "FuncDef: red bar" in visible
+
+        # Right-click on FuncDef: red foo and click "Focus on this subtree"
+        self.right_click_node("FuncDef: red foo")
+        menu_text = self.js(
+            "document.getElementById('spyast-context-menu')?.textContent || ''"
+        )
+        assert "Focus on this subtree" in menu_text
+
+        self.js(
+            "[...document.getElementById('spyast-context-menu').children]"
+            ".find(d => d.textContent === 'Focus on this subtree')"
+            ".dispatchEvent(new MouseEvent('click', {bubbles: true}))"
+        )
+        self.rodney("waitstable")
+        self.rodney("sleep", "0.5")
+
+        # Now only the FuncDef: red foo subtree is visible
+        visible = self.get_visible_labels()
+        assert "FuncDef: red foo" in visible
+        assert "FuncDef: red bar" not in visible
+
+        # The "Show all" banner should be visible
+        banner = self.js(
+            "document.getElementById('spyast-show-all-banner')?.style.display"
+        )
+        assert banner != "none"
+
+        # The URL hash should contain focus info
+        url_hash = self.js("location.hash")
+        assert "focus:" in url_hash
+
+        # Click "Show all" to restore
+        self.js(
+            "document.querySelector('#spyast-show-all-banner button')"
+            ".dispatchEvent(new MouseEvent('click', {bubbles: true}))"
+        )
+        self.rodney("waitstable")
+        self.rodney("sleep", "0.5")
+
+        # Both FuncDefs visible again
+        visible = self.get_visible_labels()
+        assert "FuncDef: red foo" in visible
+        assert "FuncDef: red bar" in visible
+
+        # Banner hidden
+        banner = self.js(
+            "document.getElementById('spyast-show-all-banner')?.style.display"
+        )
+        assert banner == "none"
