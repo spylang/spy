@@ -1,8 +1,12 @@
 import textwrap
+from typing import Optional
 
 import pytest
 
+from spy import ast
+from spy.analyze.symtable import Color
 from spy.backend.spy import FQN_FORMAT, SPyBackend
+from spy.fqn import FQN
 from spy.util import print_diff
 from spy.vm.vm import SPyVM
 
@@ -16,11 +20,14 @@ class TestDoppler:
         self.vm = SPyVM()
         self.vm.path.append(str(self.tmpdir))
 
-    def redshift(self, src: str) -> None:
+    def import_src(self, src: str) -> None:
         f = self.tmpdir.join("test.spy")
         src = textwrap.dedent(src)
         f.write(src)
         self.vm.import_("test")
+
+    def redshift(self, src: str) -> None:
+        self.import_src(src)
         self.vm.redshift(error_mode="eager")
 
     def assert_dump(self, expected: str, *, fqn_format: FQN_FORMAT = "short") -> None:
@@ -359,21 +366,39 @@ class TestDoppler:
             raise ValueError # /.../test.spy:4
         """)
 
-    def test_ast_color_map_populated(self, monkeypatch):
-        # Verify that when vm.ast_color_map is not None, redshift populates it
-        monkeypatch.setattr(self.vm, "ast_color_map", {})
+    def test_ast_color_map_populated(self):
+        self.vm.ast_color_map = {}
         src = """
         def foo(i: i32) -> i32:
-            return i + 2
+            return i + 2 * 3
         """
+        self.import_src(src)
+        w_foo_orig = self.vm.lookup_global(FQN("test::foo"))
         self.redshift(src)
+        w_foo_rs = self.vm.lookup_global(FQN("test::foo"))
 
-        # src contains 4 nodes, 3 red and 1 blue
-        assert self.vm
-        assert self.vm.ast_color_map
-        assert len(self.vm.ast_color_map) == 4
-        assert len([c for c in self.vm.ast_color_map.values() if c == "blue"]) == 1
-        assert len([c for c in self.vm.ast_color_map.values() if c == "red"]) == 3
+        def get_color(root: ast.Node, NodeType: type, src: Optional[str]) -> Color:
+            assert self.vm.ast_color_map is not None
+            node = root.find(NodeType, src)
+            return self.vm.ast_color_map[node]
+
+        foo_orig = w_foo_orig.funcdef  # type: ignore
+        foo_rs = w_foo_rs.funcdef  # type: ignore
+
+        # check the colors of the original function
+        assert get_color(foo_orig, ast.Constant, "2") == "blue"
+        assert get_color(foo_orig, ast.BinOp, "2 * 3") == "blue"
+        assert get_color(foo_orig, ast.Name, "i") == "red"
+        assert get_color(foo_orig, ast.BinOp, "i + 2 * 3") == "red"
+
+        # check the colors of the redshifted function
+        #
+        # this is the node "6". Keep in mind that get_src() always points to the
+        # original src "2 * 3"
+        assert get_color(foo_rs, ast.Constant, None) == "blue"
+        #
+        # this is the "+", but it has been shifted into a call to i32_add
+        assert get_color(foo_rs, ast.Call, "i + 2 * 3") == "red"
 
     def test_dumper_uses_ast_color_map_for_bg(self, monkeypatch):
         # Verify that Dumper._dump_node passes correct bg argument based on ast_color_map

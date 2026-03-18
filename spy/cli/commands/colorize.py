@@ -81,7 +81,7 @@ async def colorize(args: Colorize_Args) -> None:
     elif args.format == "json":
         print(format_colors_as_json(coords))
     elif args.format == "spy":
-        print(colorize_sourcecode(args.filename, coords))
+        print(colorize_sourcecode(args.filename, coords), end="")
     elif args.format == "html":
         assert vm.ast_color_map is not None
         html = dump_colorize_html(orig_mod, vm.ast_color_map, args.spyast_js)

@@ -34,7 +34,9 @@ def dump_spy_mod_html(vm: SPyVM, modname: str, spyast_js: SpyastJs) -> str:
     for fqn, w_obj in vm.fqns_by_modname(modname):
         if isinstance(w_obj, W_ASTFunc) and w_obj.color == "red" and w_obj.fqn == fqn:
             sections.append((str(fqn), w_obj.funcdef))
-    b = HTMLBackend(spyast_js, vm=vm, is_redshifted=True)
+    b = HTMLBackend(
+        spyast_js, vm=vm, is_redshifted=True, ast_color_map=vm.ast_color_map
+    )
     return b.generate(sections)
 
 

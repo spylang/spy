@@ -131,6 +131,18 @@ class Node:
                     if isinstance(item, Node):
                         yield item
 
+    def find(self, cls: type, src: Optional[str] = None) -> "Node":
+        """
+        Recursively walk the node to find the matching children.
+
+        The matching node much be of type `cls`, and point to the given `src` (if
+        specified).
+        """
+        for children in self.walk(cls):
+            if src is None or children.loc.get_src() == src:
+                return children
+        raise KeyError(f"Cannot find node {cls} with src `{src}`")
+
     def shortrepr(self) -> Optional[str]:
         """
         Return a short string to append to the class name, use by
