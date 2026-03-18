@@ -157,8 +157,9 @@ class CModuleWriter:
 
             assert isinstance(w_main, W_ASTFunc)
             if w_main.w_functype.w_restype not in [B.w_i32, TYPES.w_NoneType]:
-                raise NotImplementedError(
-                    "Only i32 and None exit type support for main function."
+                human_read_type = w_main.w_functype.w_restype.fqn.human_name
+                raise TypeError(
+                    f"Only support None or i32 return type of main(), got `{human_read_type}`"
                 )
 
             execution_code = f"""
