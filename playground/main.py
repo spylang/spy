@@ -216,6 +216,7 @@ def main():
 
     # Register tab activation callback
     example_tabs.on("tabsactivate", tab_activated)
+    example_tabs.find(".ui-tabs-panel").hide()
 
     (
         ltk.VBox(
