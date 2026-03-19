@@ -1,10 +1,12 @@
+import base64
 import sys
 import time
 import tomllib
+import zlib
 from pathlib import Path
 
 import ltk
-from js import console
+from js import console, window
 
 console.log("[Python] main.py started executing")
 
@@ -80,6 +82,26 @@ EXAMPLE_FILES = [
     for source, dest in config.get("files", {}).items()
     if dest == "examples/"
 ]
+
+
+def load_shared_code_from_url() -> None:
+    SHARED_FILENAME = "examples/shared.spy"
+    hash_str = str(window.location.hash)
+    if hash_str.startswith("#code="):
+        encoded = hash_str[len("#code=") :]
+        try:
+            compressed = base64.urlsafe_b64decode(encoded)
+            code = zlib.decompress(compressed).decode("utf-8")
+            Path(SHARED_FILENAME).parent.mkdir(parents=True, exist_ok=True)
+            Path(SHARED_FILENAME).write_text(code)
+            EXAMPLE_FILES.insert(0, SHARED_FILENAME)
+            console.log("[Python] Loaded shared code from URL into 'Shared' tab")
+        except Exception as e:
+            console.log(f"[Python] Failed to decode shared code from URL: {e}")
+
+
+load_shared_code_from_url()
+
 
 console.log(f"[Python] Creating editor with initial file: {EXAMPLE_FILES[0]}")
 editor = Editor(Path(EXAMPLE_FILES[0]).read_text())
@@ -160,6 +182,26 @@ def RunSPyButton(text):
     return btn
 
 
+def share_click(event):
+    text = editor.text()
+    compressed = zlib.compress(text.encode("utf-8"))
+    encoded = base64.urlsafe_b64encode(compressed).decode("ascii")
+    new_url = str(window.location.href).split("#")[0] + "#code=" + encoded
+    window.navigator.clipboard.writeText(new_url)
+    console.log(f"[Python] Share URL copied to clipboard")
+
+    btn = ltk.find(event.target)
+    btn.text("Copied! ✓")
+    ltk.schedule(lambda: btn.text("Share"), "Reset share button", 1)
+
+
+def RunShareButton():
+    btn = ltk.Button("Share", share_click)
+    btn.addClass("run-button")
+    btn.addClass("base-button")
+    return btn
+
+
 @ltk.callback
 def tab_activated(event, ui=None):
     # Load the selected example file into the editor
@@ -174,11 +216,15 @@ def main():
 
     # Register tab activation callback
     example_tabs.on("tabsactivate", tab_activated)
+    example_tabs.find(".ui-tabs-panel").hide()
 
     (
         ltk.VBox(
             example_tabs,
-            ltk.Label(f"{display_filename}"),
+            ltk.HBox(
+                ltk.Label(f"{display_filename}"),
+                RunShareButton().css("margin-left", "auto"),
+            ).css("margin", "5px"),
             editor.css("border", "1px solid gray")
             .css("height", 405)
             .attr("id", "editor"),
