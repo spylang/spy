@@ -6,7 +6,7 @@ import zlib
 from pathlib import Path
 
 import ltk
-from js import console
+from js import console, window
 
 console.log("[Python] main.py started executing")
 
@@ -82,6 +82,26 @@ EXAMPLE_FILES = [
     for source, dest in config.get("files", {}).items()
     if dest == "examples/"
 ]
+
+
+def load_shared_code_from_url() -> None:
+    SHARED_FILENAME = "examples/shared.spy"
+    hash_str = str(window.location.hash)
+    if hash_str.startswith("#code="):
+        encoded = hash_str[len("#code=") :]
+        try:
+            compressed = base64.urlsafe_b64decode(encoded)
+            code = zlib.decompress(compressed).decode("utf-8")
+            Path(SHARED_FILENAME).parent.mkdir(parents=True, exist_ok=True)
+            Path(SHARED_FILENAME).write_text(code)
+            EXAMPLE_FILES.insert(0, SHARED_FILENAME)
+            console.log("[Python] Loaded shared code from URL into 'Shared' tab")
+        except Exception as e:
+            console.log(f"[Python] Failed to decode shared code from URL: {e}")
+
+
+load_shared_code_from_url()
+
 
 console.log(f"[Python] Creating editor with initial file: {EXAMPLE_FILES[0]}")
 editor = Editor(Path(EXAMPLE_FILES[0]).read_text())
