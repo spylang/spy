@@ -1,6 +1,8 @@
+import base64
 import sys
 import time
 import tomllib
+import zlib
 from pathlib import Path
 
 import ltk
@@ -160,6 +162,26 @@ def RunSPyButton(text):
     return btn
 
 
+def share_click(event):
+    text = editor.text()
+    compressed = zlib.compress(text.encode("utf-8"))
+    encoded = base64.urlsafe_b64encode(compressed).decode("ascii")
+    new_url = str(window.location.href).split("#")[0] + "#code=" + encoded
+    window.navigator.clipboard.writeText(new_url)
+    console.log(f"[Python] Share URL copied to clipboard")
+
+    btn = ltk.find(event.target)
+    btn.text("Copied! ✓")
+    ltk.schedule(lambda: btn.text("Share"), "Reset share button", 1)
+
+
+def RunShareButton():
+    btn = ltk.Button("Share", share_click)
+    btn.addClass("share-button")
+    btn.addClass("base-button")
+    return btn
+
+
 @ltk.callback
 def tab_activated(event, ui=None):
     # Load the selected example file into the editor
@@ -193,6 +215,7 @@ def main():
                     RunSPyButton("redshift --full-fqn"),
                     RunSPyButton("build --cdump"),
                     RunSPyButton("colorize"),
+                    RunShareButton(),
                 ).css({"display": "flex", "gap": "5px", "vertical-align": "bottom"}),
             ).css(
                 {
