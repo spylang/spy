@@ -197,7 +197,7 @@ def share_click(event):
 
 def RunShareButton():
     btn = ltk.Button("Share", share_click)
-    btn.addClass("share-button")
+    btn.addClass("run-button")
     btn.addClass("base-button")
     return btn
 
@@ -220,7 +220,10 @@ def main():
     (
         ltk.VBox(
             example_tabs,
-            ltk.Label(f"{display_filename}"),
+            ltk.HBox(
+                ltk.Label(f"{display_filename}"),
+                RunShareButton().css("margin-left", "auto"),
+            ).css("margin", "5px"),
             editor.css("border", "1px solid gray")
             .css("height", 405)
             .attr("id", "editor"),
@@ -235,7 +238,6 @@ def main():
                     RunSPyButton("redshift --full-fqn"),
                     RunSPyButton("build --cdump"),
                     RunSPyButton("colorize"),
-                    RunShareButton(),
                 ).css({"display": "flex", "gap": "5px", "vertical-align": "bottom"}),
             ).css(
                 {
