@@ -231,8 +231,14 @@ class W_Func(W_Object):
         Maybe the proper thing to do is to introduce a new color and store
         this info on the w_functype.
         """
-        # this is a hack, but good enough to constant-fold arithmetic ops
-        return self.fqn.modname == "operator" and self.fqn.symbol_name != "raise"
+        # this is a hack, but good enough to constant-fold arithmetic ops and other
+        # selected ops.
+        is_op = self.fqn.modname == "operator" and self.fqn.symbol_name != "raise"
+        return is_op or self.fqn in self._pure_fqns
+
+    _pure_fqns = {
+        FQN("builtins::type::__new__"),
+    }
 
     def spy_get_w_type(self, vm: "SPyVM") -> W_Type:
         return self.w_functype

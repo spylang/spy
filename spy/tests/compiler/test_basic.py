@@ -1580,6 +1580,12 @@ class TestBasic(CompilerTest):
     @no_C
     def test_type_call(self):
         src = """
+        from __spy__ import COLOR
+
+        @blue
+        def get_color_of_type_call(obj: dynamic) -> str:
+            return COLOR(type(obj))
+
         def get_type(obj: dynamic) -> type:
             return type(obj)
 
@@ -1598,3 +1604,5 @@ class TestBasic(CompilerTest):
         assert w_T0 is B.w_i32
         assert w_T1 is B.w_str
         assert w_T2 is B.w_type
+        #
+        assert mod.get_color_of_type_call(0) == "blue"
