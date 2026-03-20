@@ -1178,6 +1178,59 @@ class TestBasic(CompilerTest):
         assert mod.type_ne(B.w_i32, B.w_i32) == False
         assert mod.type_ne(B.w_i32, B.w_str) == True
 
+    @only_interp
+    def test_is_isnot(self):
+        mod = self.compile("""
+        # we want to do "x is y" and "x is not y" using many different static types
+
+        def is_(T1: type, T2: type, x: dynamic, y: dynamic) -> bool:
+            xx: T1 = x
+            yy: T2 = y
+            return xx is yy
+
+        def isnot(T1: type, T2: type, x: dynamic, y: dynamic) -> bool:
+            xx: T1 = x
+            yy: T2 = y
+            return xx is not yy
+        """)
+
+        w_42 = self.vm.wrap(42)
+
+        # `object` is `object` and `dynamic` is `dynamic`: always possible
+        # int is int
+        assert mod.is_(B.w_object, B.w_object, B.w_int, B.w_int)
+        assert mod.is_(B.w_dynamic, B.w_dynamic, B.w_int, B.w_int)
+        # int is not str
+        assert mod.isnot(B.w_object, B.w_object, B.w_int, B.w_str)
+        assert mod.isnot(B.w_dynamic, B.w_dynamic, B.w_int, B.w_str)
+        # int is not 42
+        assert mod.isnot(B.w_object, B.w_object, B.w_int, w_42)
+        assert mod.isnot(B.w_dynamic, B.w_dynamic, B.w_int, w_42)
+
+        # `object/dynamic` is `type`, `object/dynamic` is `int`
+        # int is int
+        assert mod.is_(B.w_object, B.w_type, B.w_int, B.w_int)
+        assert mod.is_(B.w_dynamic, B.w_type, B.w_int, B.w_int)
+        # int is not 42
+        assert mod.isnot(B.w_object, B.w_int, B.w_int, w_42)
+        assert mod.isnot(B.w_dynamic, B.w_int, B.w_int, w_42)
+
+        # `type` is `type`: always possible
+        # int is int
+        assert mod.is_(B.w_type, B.w_type, B.w_int, B.w_int)
+        # int is not str
+        assert mod.isnot(B.w_type, B.w_type, B.w_int, B.w_str)
+
+        # `i32` is `i32`: ERROR!
+        msg = "cannot do `i32` is `i32`"
+        with SPyError.raises("W_TypeError", match=msg):
+            mod.is_(B.w_i32, B.w_i32, w_42, w_42)
+
+        # `i32` is not `i32`: ERROR!
+        msg = "cannot do `i32` is not `i32`"
+        with SPyError.raises("W_TypeError", match=msg):
+            mod.isnot(B.w_i32, B.w_i32, w_42, w_42)
+
     @skip_backends("doppler", "C", reason="we need lazy errors")
     def test_equality(self):
         mod = self.compile("""
