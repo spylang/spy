@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING
 
+from spy.errors import SPyError
 from spy.vm.b import B
 from spy.vm.object import W_Type
 from spy.vm.opimpl import W_OpImpl
@@ -482,6 +483,64 @@ def w_UNIVERSAL_NE(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
         dispatch="multi",
         errmsg="cannot do `{0}` <universal_ne> `{1}`",
     )
+
+
+@OP.builtin_func(color="blue")
+def w_IS(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
+    from spy.vm.typechecker import typecheck_opspec
+
+    w_ltype = wam_l.w_static_T
+    w_rtype = wam_r.w_static_T
+    if w_ltype.is_reference_type(vm) or w_rtype.is_reference_type(vm):
+        w_opspec = W_OpSpec(OP.w_object_is)
+        note = None
+    else:
+        w_opspec = W_OpSpec.NULL
+        note = "cannot use `is` between value types as they don't have an identity"
+
+    try:
+        return typecheck_opspec(
+            vm,
+            w_opspec,
+            [wam_l, wam_r],
+            dispatch="multi",
+            errmsg="cannot do `{0}` is `{1}`",
+        )
+    except SPyError as err:
+        # it would be nice to point to the `is` token but we don't have the loc
+        # available here. Let's point to the lvalue, it's good enough.
+        if note:
+            err.add("note", note, wam_l.loc)
+        raise
+
+
+@OP.builtin_func(color="blue")
+def w_ISNOT(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
+    from spy.vm.typechecker import typecheck_opspec
+
+    w_ltype = wam_l.w_static_T
+    w_rtype = wam_r.w_static_T
+    if w_ltype.is_reference_type(vm) or w_rtype.is_reference_type(vm):
+        w_opspec = W_OpSpec(OP.w_object_isnot)
+        note = None
+    else:
+        w_opspec = W_OpSpec.NULL
+        note = "cannot use `is not` between value types as they don't have an identity"
+
+    try:
+        return typecheck_opspec(
+            vm,
+            w_opspec,
+            [wam_l, wam_r],
+            dispatch="multi",
+            errmsg="cannot do `{0}` is not `{1}`",
+        )
+    except SPyError as err:
+        # it would be nice to point to the `is` token but we don't have the loc
+        # available here. Let's point to the lvalue, it's good enough.
+        if note:
+            err.add("note", note, wam_l.loc)
+        raise
 
 
 @OP.builtin_func(color="blue")
