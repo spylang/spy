@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Optional
 
 import click
 from typer import Argument, BadParameter, Option
@@ -72,7 +72,11 @@ class _timeit_mixin:
 
 
 @dataclass
-class _execute_options(_timeit_mixin): ...
+class _execute_options(_timeit_mixin):
+    spy_args: Annotated[
+        Optional[list[str]],
+        Argument(help="Arguments to pass to the SPy main() function"),
+    ] = None
 
 
 @dataclass

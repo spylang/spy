@@ -2,7 +2,8 @@
 def actual_exit_code_return() -> i32:
     return 88
 
-def main() -> str:
+def main(argv: list[str]) -> i32:
+    print(argv[0])
     print("This main return 88 as exit code")
     result = actual_exit_code_return()
-    return "result"
+    return result

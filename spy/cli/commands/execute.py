@@ -23,4 +23,6 @@ async def execute(args: Execute_Args) -> None:
     importer.import_all()
     w_mod = vm.modules_w[modname]
 
-    execute_spy_main(vm, w_mod, redshift=False, _timeit=args.timeit)
+    execute_spy_main(
+        vm, w_mod, redshift=False, _timeit=args.timeit, spy_args=args.spy_args
+    )

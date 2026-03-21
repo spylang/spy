@@ -161,7 +161,7 @@ class TestMain:
         res = self.runner.invoke(app, [str(return_exit_code_file)])
         assert res.exit_code == 1
         output = decolorize(res.output)
-        assert "Only support None or i32 return type of main(), got `str`" in output
+        assert "main() return type must be None or i32, got `str`" in output
 
     def test_py_file_error(self):
         # Create a .py file instead of .spy
@@ -416,3 +416,41 @@ class TestMain:
     def test_imports(self):
         _, stdout = self.run("imports", self.main_spy)
         assert stdout.startswith("Import tree:")
+
+    def test_main_with_args(self):
+        src = """
+        def main(args: list[str]) -> None:
+            for a in args:
+                print(a)
+        """
+        f = self.tmpdir.join("main_args.spy")
+        f.write(textwrap.dedent(src))
+        res = self.runner.invoke(app, [str(f), "arg1=value1", "arg2=value2"])
+        assert res.exit_code == 0
+        output = decolorize(res.output)
+        assert "arg1=value1" in output
+        assert "arg2=value2" in output
+
+    def test_main_wrong_param_type(self):
+        src = """
+        def main(x: i32) -> None:
+            pass
+        """
+        f = self.tmpdir.join("main_wrong_param.spy")
+        f.write(textwrap.dedent(src))
+        res = self.runner.invoke(app, [str(f)])
+        assert res.exit_code == 1
+        output = decolorize(res.output)
+        assert "main() parameter must be list[str]" in output
+
+    def test_main_too_many_params(self):
+        src = """
+        def main(a: list[str], b: list[str]) -> None:
+            pass
+        """
+        f = self.tmpdir.join("main_too_many_params.spy")
+        f.write(textwrap.dedent(src))
+        res = self.runner.invoke(app, [str(f)])
+        assert res.exit_code == 1
+        output = decolorize(res.output)
+        assert "main() supports at most one parameter" in output

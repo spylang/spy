@@ -14,11 +14,13 @@ from typing import (
 from spy.cli.commands.shared_args import Base_Args
 from spy.doppler import ErrorMode
 from spy.errors import SPyError
+from spy.fqn import FQN
 from spy.textbuilder import Color
-from spy.vm.b import B
+from spy.vm.b import TYPES, B
 from spy.vm.debugger.spdb import SPdb
-from spy.vm.function import W_ASTFunc, W_FuncType
+from spy.vm.function import FuncParam, W_ASTFunc, W_FuncType
 from spy.vm.module import W_Module
+from spy.vm.object import W_Object, W_Type
 from spy.vm.vm import SPyVM
 
 GLOBAL_VM: Optional[SPyVM] = None
@@ -75,10 +77,30 @@ async def _run_command(user_func: Callable, args: "Base_Args") -> None:
         sys.exit(1)
 
 
+def _make_spy_list_str(vm: SPyVM, items: list[str]) -> W_Object:
+    """
+    Convert a Python list[str] into a user-level SPy list[str] instance.
+    """
+    w_ListType = vm.lookup_global(FQN("_list::list"))
+    w_list_str_T = vm.getitem_w(w_ListType, B.w_str)
+
+    assert isinstance(w_list_str_T, W_Type)
+
+    w_list = vm.call_w(w_list_str_T, [], color="red")
+    fqn_push = w_list_str_T.fqn.join("_push")
+    w_push = vm.lookup_global(fqn_push)
+    for s in items:
+        w_list = vm.call_w(w_push, [w_list, vm.wrap(s)], color="red")
+    return w_list
+
+
 def execute_spy_main(
-    vm: SPyVM, w_mod: W_Module, redshift: bool = False, _timeit: bool = False
+    vm: SPyVM,
+    w_mod: W_Module,
+    redshift: bool = False,
+    _timeit: bool = False,
+    spy_args: Optional[list[str]] = None,
 ) -> None:
-    expected_functype = W_FuncType.parse("def() -> None")
     w_main = w_mod.getattr_maybe("main")
     if w_main is None:
         print("Cannot find function main()")
@@ -86,13 +108,33 @@ def execute_spy_main(
 
     assert isinstance(w_main, W_ASTFunc)
     actual_functype = w_main.w_functype
-    if actual_functype.w_restype == B.w_i32:
-        expected_functype = W_FuncType.parse("def() -> i32")
-    try:
-        vm.typecheck(w_main, expected_functype)
-    except:
-        msg = f"Only support None or i32 return type of main(), got `{actual_functype.w_restype.fqn.human_name}`"
-        raise SPyError("W_TypeError", msg)
+    main_func_param = actual_functype.params
+
+    # determine whether main() accepts an argument
+    has_args = False
+    if len(main_func_param) > 1:
+        raise SPyError("W_TypeError", "main() supports at most one parameter")
+    elif len(main_func_param) == 1:
+        fqn_str = str(main_func_param[0].w_T.fqn)
+        if not fqn_str.startswith("_list::list[str]"):
+            raise SPyError("W_TypeError", "main() parameter must be list[str]")
+        has_args = True
+
+    # determine expected return type (only None or i32 allowed)
+    has_exit_code = actual_functype.w_restype == B.w_i32
+    if not has_exit_code and actual_functype.w_restype != TYPES.w_NoneType:
+        got = actual_functype.w_restype.fqn.human_name
+        raise SPyError(
+            "W_TypeError", f"main() return type must be None or i32, got `{got}`"
+        )
+
+    # build the expected functype and typecheck
+    params = []
+    if has_args:
+        params = [FuncParam(main_func_param[0].w_T, main_func_param[0].kind)]
+    w_restype = B.w_i32 if has_exit_code else TYPES.w_NoneType
+    expected_functype = W_FuncType.new(params, w_restype)
+    vm.typecheck(w_main, expected_functype)
 
     # find the redshifted version, if necessary
     if redshift:
@@ -103,18 +145,21 @@ def execute_spy_main(
     else:
         assert not w_main.redshifted
 
-    if _timeit:
-        with timer():
-            w_res = vm.fast_call(w_main, [])
+    # build argument list for the call
+    args_w: list[W_Object] = []
+    if has_args:
+        args_w = [_make_spy_list_str(vm, spy_args or [])]
+
+    # call main()
+    ctx = timer() if _timeit else nullcontext()
+    with ctx:
+        w_res = vm.fast_call(w_main, args_w)
+
+    if has_exit_code:
+        sys.exit(vm.unwrap_i32(w_res))
     else:
-        with nullcontext():
-            w_res = vm.fast_call(w_main, [])
-            if actual_functype.w_restype == B.w_i32:
-                exit_code = vm.unwrap_i32(w_res)
-                sys.exit(exit_code)
-            else:
-                assert w_res is B.w_None
-                sys.exit(0)
+        assert w_res is B.w_None
+        sys.exit(0)
 
 
 class Init_Args(Protocol):
