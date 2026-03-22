@@ -239,6 +239,10 @@ def main():
                     RunSPyButton("redshift --full-fqn"),
                     RunSPyButton("build --cdump"),
                     RunSPyButton("colorize"),
+                    ltk.Label("Backend:")
+                    .css("margin-left", "10px")
+                    .css("align-self", "center"),
+                    ltk.Select(["WASM", "HTML"], "WASM").attr("id", "backend-select"),
                 ).css({"display": "flex", "gap": "5px", "vertical-align": "bottom"}),
             ).css(
                 {
