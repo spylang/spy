@@ -1,0 +1,46 @@
+from operator import OpSpec
+
+@blue.generic
+def Annotated(_T: type, *_extra):
+
+    @struct
+    class Ann:
+
+        @property
+        def T(self) -> type:
+            return _T
+
+        @property
+        def extra(self) -> tuple:
+            return _extra
+
+        @blue.metafunc
+        def __convert_to__(m_expT, m_gotT, m_x):
+            expT = m_expT.blueval # expected type
+            if expT == type:
+                def get_T() -> type:
+                    return _T
+                return OpSpec(get_T, [])
+
+            return OpSpec.NULL
+
+    return Ann()
+
+
+
+MyInt = Annotated[int, "hello"]
+
+def main() -> None:
+    print('MyInt.T, MyInt.extra:')
+    print(MyInt.T)
+    print(MyInt.extra)
+    print('')
+
+    # convert MyInt to type
+    print('converting MyInt to type:')
+    T: type = MyInt
+    print(T)
+
+    # the following currently doesn't work because we do a hard-check that `type(MyInt)
+    # is type`. We could modify the code to check that MyInt can be CONVERTED to `type`
+    # x: MyInt = 5
