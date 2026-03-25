@@ -28,7 +28,9 @@ It consists of:
 The documentation is very scarce at the moment, but the best source to
 understand the ideas behind SPy are:
 
-  - blog post [Inside SPy, part 1: Motivations and Goals](https://antocuni.eu/2025/10/29/inside-spy-part-1-motivations-and-goals/)
+  - blog post [Inside SPy, part 1: Motivations and Goals](https://antocuni.eu/2025/10/29/inside-spy-part-1-motivations-and-goals/).
+
+  - blog post [Inside SPy, part 2: Language semantics](https://antocuni.eu/2026/03/25/inside-spy-part-2-language-semantics/).
 
   - PyCon Italy 2025 talk: [slides](https://antocuni.eu/talk/2025/05/spy-pycon-italy/) and [recording](https://youtu.be/W-8tgZDgYmw).
 
@@ -37,10 +39,10 @@ understand the ideas behind SPy are:
 
 Additional info can be found on:
 
-  - Antonio Cuni's [blog](http://antocuni.eu/tags/#tag:spy)
+  - Antonio Cuni's [blog](http://antocuni.eu/tags/#tag:spy).
   - [A peek into a possible future of Python in the browser](https://lukasz.langa.pl/f37aa97a-9ea3-4aeb-b6a0-9daeea5a7505/) by Łukasz Langa.
-
-The [roadmap](./ROADMAP.md).
+  - The [roadmap](./ROADMAP.md).
+  - The [documentation](https://spylang.github.io/docs) (draft).
 
 ## Try it in your browser
 
