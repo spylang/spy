@@ -1,5 +1,6 @@
 pytest-shortcut.sh
 .dir-locals.el
+.claude
 
 libspy.a
 libspy.wasm
@@ -203,3 +204,4 @@ CLAUDE.local.md
 # Playground build artifacts
 /playground/libspy.mjs
 /playground/*.whl
+/playground/assets/
