@@ -12,7 +12,18 @@ from spy.backend.spy import SPyBackend
 from spy.util import build_char_color_map, encode_color_map
 from spy.vm.vm import SPyVM
 
-SpyastJs = Literal["cdn", "inline"]
+# How to include spyast.js in generated HTML:
+#   "cdn"      - load from jsDelivr CDN (works anywhere, but requires internet
+#                and may lag behind the current version)
+#   "inline"   - embed the full JS source directly in the HTML (requires the
+#                spyast.js file to be readable from the installed package path,
+#                so this does NOT work inside Pyodide/the playground)
+#   "relative" - use a relative <script src="spyast/spyast.js"> tag; the URL
+#                is resolved by the browser against the serving page, so it
+#                works both locally (http.server) and on GitHub Pages without
+#                an external dependency.  This is the right choice for the
+#                playground, where spyast.js is always co-deployed.
+SpyastJs = Literal["cdn", "inline", "relative"]
 
 FIELDS_TO_IGNORE = frozenset(
     {
@@ -73,6 +84,8 @@ def _spyast_js_tag(mode: SpyastJs) -> str:
     if mode == "cdn":
         url = "https://cdn.jsdelivr.net/gh/spy-lang/spy/playground/spyast/spyast.js"
         return f'<script src="{url}"></script>'
+    elif mode == "relative":
+        return '<script src="spyast/spyast.js"></script>'
     else:
         js_code = _SPYAST_JS.read()
         assert isinstance(js_code, str)
