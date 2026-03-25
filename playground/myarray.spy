@@ -85,7 +85,5 @@ def main() -> None:
     a_ints[3] = 4
     a_ints.append(5)
     a_ints.append(6)
-    i = 0
-    while i < 6:
+    for i in range(6):
         print(a_ints[i])
-        i = i + 1
