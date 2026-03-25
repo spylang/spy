@@ -161,6 +161,8 @@ async def build(args: Build_Args) -> None:
     backend = CBackend(vm, modname, config, build_dir, dump_c=args.cdump)
 
     backend.cwrite()
+    if args.cdump:
+        return
     backend.write_build_script()
     assert backend.build_script is not None
 
