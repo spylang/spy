@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import sys
 import time
@@ -34,7 +35,7 @@ libspy.LIBSPY_WASM = str(URL.new("./libspy.mjs", document.baseURI))
 
 def spy_main(argv):
     try:
-        spy.cli.app(argv)
+        return spy.cli.app(argv)
     except SystemExit:
         pass
 
@@ -133,6 +134,7 @@ def handle_term_enter(event):
         if value.startswith(INPUT_TERMINAL_LEADER):
             _, _, argv = value.partition(INPUT_TERMINAL_LEADER)
             run_spy_file_with_args(argv.split())
+            _show_terminal()
         else:
             print(f"{INPUT_TERMINAL_LEADER}{value} is not a valid command")
 
@@ -145,6 +147,21 @@ example_tabs = ltk.Tabs(
 )
 
 
+# Commands that support --format html --output -
+HTML_CAPABLE_COMMANDS = {"parse", "redshift", "colorize"}
+
+
+def _show_terminal() -> None:
+    ltk.find("#terminal").show()
+    ltk.find("#html-output").hide()
+
+
+def _show_html_output(html_content: str) -> None:
+    ltk.find("#terminal").hide()
+    ltk.find("#html-output").show()
+    ltk.window.jQuery("#html-frame").prop("srcdoc", html_content)
+
+
 def run_spy_file_with_args(argv: list[str]):
     """Given a list of space-delimited arguments, pass them to the spy cli"""
     __terminal__.clear()
@@ -155,17 +172,66 @@ def run_spy_file_with_args(argv: list[str]):
     spy_main(argv)
 
 
+HTML_OUTPUT_FILES = {
+    "parse": "build/{modname}_parse.html",
+    "redshift": "build/{modname}_rs.html",
+    "colorize": "build/{modname}_colorize.html",
+}
+
+
+async def _run_html_command_async(command: str) -> str:
+    """
+    Run an HTML-format spy command and return the generated HTML.
+
+    On emscripten, spy_typer.syncify() schedules an asyncio task stored in
+    spy_typer.last_task. We await it, then read the HTML file the CLI wrote.
+    """
+    import spy.cli.spy_typer as spy_typer
+
+    with open(display_filename, "w") as f:
+        f.write(editor.text())
+
+    modname = Path(display_filename).stem
+    argv = [command, "--format", "html", "--spyast-js", "relative", display_filename]
+    spy_main(argv)
+
+    task = spy_typer.last_task
+    if task is not None:
+        await task
+
+    output_path = HTML_OUTPUT_FILES.get(command, "").format(modname=modname)
+    if output_path and Path(output_path).exists():
+        return Path(output_path).read_text()
+    console.log(f"[Python] HTML output file not found: {output_path!r}")
+    return ""
+
+
+async def _run_click_html(command: str) -> None:
+    html_content = await _run_html_command_async(command)
+    if html_content.strip():
+        _show_html_output(html_content)
+    else:
+        _show_terminal()
+
+
 def run_click(event):
     """Pass the text label of a button as args to the Spy cli"""
     element = ltk.find(event.target)
     flag_value = element.text().lower()
-    run_spy_file_with_args(flag_value.split() + [display_filename])
+    base_command = flag_value.split()[0]
+    backend = str(ltk.find("#backend-select").val())
 
     inp = ltk.window.document.getElementById("terminal-input")
-    console.log(
-        f"Setting input value to {command_leader} spy {flag_value} {display_filename} "
-    )
     inp.value = f"{command_leader} spy {flag_value} {display_filename}"
+
+    if backend == "HTML" and base_command in HTML_CAPABLE_COMMANDS:
+        __terminal__.clear()
+        asyncio.ensure_future(_run_click_html(base_command))
+    else:
+        argv = flag_value.split() + [display_filename]
+        console.log(f"[Python] WASM backend: spy {' '.join(argv)}")
+        run_spy_file_with_args(argv)
+        _show_terminal()
 
 
 def ButtonLabel(text):
@@ -258,6 +324,13 @@ def main():
     )
 
     ltk.find("#terminal").append(ltk.find("py-terminal"))
+
+    ltk.window.jQuery('[name="Editor"]').append(
+        '<div id="html-output" style="display:none">'
+        '<iframe id="html-frame" style="width:100%;height:600px;border:none"></iframe>'
+        "</div>"
+    )
+
     console.log("[Python] GUI construction complete - playground ready!")
 
 
