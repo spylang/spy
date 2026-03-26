@@ -13,11 +13,12 @@ from spy.tests.support import (
     skip_backends,
 )
 from spy.vm.b import TYPES, B
+from spy.vm.object import W_Type
 
 
 @only_interp
 class TestMainFunc(CompilerTest):
-    def typecheck_main(self, src, ctx=None):
+    def typecheck_main(self, src: str, ctx: Any = None) -> tuple[W_Type, bool]:
         mod = self.compile(src)
         w_main = mod.w_mod.getattr_maybe("main")
         if ctx is None:
