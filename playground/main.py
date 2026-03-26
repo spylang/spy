@@ -230,7 +230,7 @@ async def _run_html_command_async(command: str) -> str:
         f.write(editor.text())
 
     modname = Path(display_filename).stem
-    argv = [command, "--format", "html", "--spyast-js", "relative", display_filename]
+    argv = [command, "--format", "html", "--spyast-js", "inline", display_filename]
     spy_main(argv)
 
     task = spy_typer.last_task
