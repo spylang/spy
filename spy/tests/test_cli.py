@@ -1,3 +1,4 @@
+import json
 import re
 import subprocess
 import sys
@@ -102,41 +103,6 @@ class TestMain:
             raise Exception("run_external failed")
         return exit_code, decolorize(stdout)
 
-    def test_return_exit_code(self):
-        src = """
-        def main() -> i32:
-            print("This main return 99 as exit code")
-            return 99
-        """
-        f = self.write("test.spy", src)
-        res = self.runner.invoke(app, [str(f)])
-        assert res.exit_code == 99
-
-    def test_nested_functions_exit_code(self):
-        src = """
-        def actual_exit_code_return() -> i32:
-            return 88
-
-        def main() -> i32:
-            print("This main return 88 as exit code")
-            result = actual_exit_code_return()
-            return result
-        """
-        f = self.write("test.spy", src)
-        res = self.runner.invoke(app, [str(f)])
-        assert res.exit_code == 88
-
-    def test_mismatch_main_return_type_error(self):
-        src = """
-        def main() -> str:
-            return "oops"
-        """
-        f = self.write("test.spy", src)
-        res = self.runner.invoke(app, [str(f)])
-        assert res.exit_code == 1
-        output = decolorize(res.output)
-        assert "main() return type must be None or i32, got `str`" in output
-
     def test_py_file_error(self):
         # Create a .py file instead of .spy
         py_file = self.tmpdir.join("test.py")
@@ -160,6 +126,27 @@ class TestMain:
         for argset in argsets:
             _, stdout = self.run(*argset, self.main_spy)
             assert stdout == "hello world\n"
+
+    def test_exit_code(self):
+        src = """
+        def main() -> i32:
+            print("This main return 99 as exit code")
+            return 99
+        """
+        f = self.write("test.spy", src)
+        res = self.runner.invoke(app, [str(f)])
+        assert res.exit_code == 99
+
+    def test_main_wrong_return_type(self):
+        src = """
+        def main() -> str:
+            return "oops"
+        """
+        f = self.write("test.spy", src)
+        res = self.runner.invoke(app, [str(f)])
+        assert res.exit_code == 1
+        output = decolorize(res.output)
+        assert "main() return type must be None or i32, got `str`" in output
 
     def test_timeit(self):
         _, stdout = self.run("--timeit", self.main_spy)
@@ -186,8 +173,6 @@ class TestMain:
         assert stdout.startswith("Module(")
 
     def test_colorize_json(self):
-        import json
-
         _, stdout = self.run("colorize", "--format", "json", self.main_spy)
         content = json.loads(stdout)
         keys = "line", "col", "length", "type"
@@ -250,36 +235,6 @@ class TestMain:
         csrc = main_c.read()
         assert csrc.startswith('#include "main.h"')
 
-    def test_return_exit_code_cwrite(self):
-        src = """
-        def main() -> i32:
-            print("This main return 99 as exit code")
-            return 99
-        """
-        f = self.write("test.spy", src)
-        self.run("build", "--no-compile", "--build-dir", self.tmpdir, f)
-        test_c = self.tmpdir.join("src", "test.c")
-        assert test_c.exists()
-        csrc = test_c.read()
-        assert "return 99;" in csrc
-
-    def test_nested_functions_exit_code_cwrite(self):
-        src = """
-        def actual_exit_code_return() -> i32:
-            return 88
-
-        def main() -> i32:
-            print("This main return 88 as exit code")
-            result = actual_exit_code_return()
-            return result
-        """
-        f = self.write("test.spy", src)
-        self.run("build", "--no-compile", "--build-dir", self.tmpdir, f)
-        test_c = self.tmpdir.join("src", "test.c")
-        assert test_c.exists()
-        csrc = test_c.read()
-        assert "return 88;" in csrc
-
     @pytest.mark.parametrize(
         "target",
         [
@@ -337,6 +292,19 @@ class TestMain:
         # by the test runner, check the output from timeit instead
         out, err = capfd.readouterr()
         assert "hello world" in out
+
+    def test_exit_code_C_backend(self):
+        src = """
+        def main() -> i32:
+            print("hello")
+            return 99
+        """
+        f = self.write("test.spy", src)
+        self.run("build", f)
+        test_exe = self.tmpdir.join("build", "test")
+        status, out = getstatusoutput([str(test_exe)])
+        assert status == 99
+        assert out == "hello"
 
     @pytest.mark.skipif(PYODIDE_EXE is None, reason="./pyodide/venv not found")
     @pytest.mark.pyodide
