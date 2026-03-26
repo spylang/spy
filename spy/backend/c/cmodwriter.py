@@ -161,22 +161,19 @@ class CModuleWriter:
                 raise TypeError(
                     f"Only support None or i32 return type of main(), got `{human_read_type}`"
                 )
-
-            execution_code = f"""
+            if w_main.w_functype.w_restype == B.w_i32:
+                self.tbc.wb(f"""
+                int main(void) {{
+                    return {fqn_main.c_name}();
+                }}
+                """)
+            else:
+                self.tbc.wb(f"""
                 int main(void) {{
                     {fqn_main.c_name}();
                     return 0;
                 }}
-                """
-
-            if w_main.w_functype.w_restype == B.w_i32:
-                execution_code = f"""
-                int main(void) {{
-                    return {fqn_main.c_name}();
-                }}
-                """
-
-            self.tbc.wb(execution_code)
+                """)
 
     def emit_jsffi_error_maybe(self) -> None:
         if self.jsffi_error_emitted:
