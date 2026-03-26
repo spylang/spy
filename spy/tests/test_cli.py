@@ -362,18 +362,29 @@ class TestMain:
         _, stdout = self.run("imports", self.main_spy)
         assert stdout.startswith("Import tree:")
 
-    def test_main_with_args(self):
+    def test_execute_argv(self):
         src = """
-        def main(args: list[str]) -> None:
-            for a in args:
+        def main(argv: list[str]) -> None:
+            for a in argv:
                 print(a)
         """
         f = self.write("test.spy", src)
-        res = self.runner.invoke(app, [str(f), "arg1=value1", "arg2=value2"])
+        res = self.runner.invoke(app, [str(f), "aaa", "bbb", "ccc"])
         assert res.exit_code == 0
         output = decolorize(res.output)
-        assert "arg1=value1" in output
-        assert "arg2=value2" in output
+        assert output.split() == ["aaa", "bbb", "ccc"]
+
+    def test_redshift_argv(self):
+        src = """
+        def main(argv: list[str]) -> None:
+            for a in argv:
+                print(a)
+        """
+        f = self.write("test.spy", src)
+        res = self.runner.invoke(app, ["redshift", "-x", str(f), "aaa", "bbb", "ccc"])
+        assert res.exit_code == 0
+        output = decolorize(res.output)
+        assert output.split() == ["aaa", "bbb", "ccc"]
 
     def test_main_wrong_param_type(self):
         src = """

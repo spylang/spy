@@ -67,7 +67,8 @@ async def redshift(args: Redshift_Args) -> None:
 
     if args.execute:
         w_mod = vm.modules_w[modname]
-        execute_spy_main(vm, w_mod, redshift=True, _timeit=args.timeit)
+        argv = args.argv or []
+        execute_spy_main(vm, w_mod, argv, redshift=True, _timeit=args.timeit)
     else:
         if args.format == "spy":
             dump_spy_mod(vm, modname, args.full_fqn)
