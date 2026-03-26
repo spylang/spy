@@ -272,3 +272,11 @@ class TestVM:
         py_file.write("i = 42\n")
         assert vm.find_file_on_path("py") is None
         assert vm.find_file_on_path("py", allow_py_files=True) == tmpdir.join("py.py")
+
+    def test_wrap_list(self):
+        from spy.vm.struct import unwrap_list  # XXX
+
+        vm = SPyVM()
+        w_lst = vm.wrap_list(B.w_str, ["a", "bb", "ccc"])
+        lst = unwrap_list(vm, w_lst)
+        assert lst == ["a", "bb", "ccc"]

@@ -77,29 +77,12 @@ async def _run_command(user_func: Callable, args: "Base_Args") -> None:
         sys.exit(1)
 
 
-def _make_spy_list_str(vm: SPyVM, items: list[str]) -> W_Object:
-    """
-    Convert a Python list[str] into a user-level SPy list[str] instance.
-    """
-    w_ListType = vm.lookup_global(FQN("_list::list"))
-    w_list_str_T = vm.getitem_w(w_ListType, B.w_str)
-
-    assert isinstance(w_list_str_T, W_Type)
-
-    w_list = vm.call_w(w_list_str_T, [], color="red")
-    fqn_push = w_list_str_T.fqn.join("_push")
-    w_push = vm.lookup_global(fqn_push)
-    for s in items:
-        w_list = vm.call_w(w_push, [w_list, vm.wrap(s)], color="red")
-    return w_list
-
-
 def execute_spy_main(
     vm: SPyVM,
     w_mod: W_Module,
+    argv: list[str],
     redshift: bool = False,
     _timeit: bool = False,
-    spy_args: Optional[list[str]] = None,
 ) -> None:
     w_main = w_mod.getattr_maybe("main")
     if w_main is None:
@@ -148,7 +131,8 @@ def execute_spy_main(
     # build argument list for the call
     args_w: list[W_Object] = []
     if has_args:
-        args_w = [_make_spy_list_str(vm, spy_args or [])]
+        w_argv = vm.wrap_list(B.w_str, argv)
+        args_w = [w_argv]
 
     # call main()
     ctx = timer() if _timeit else nullcontext()

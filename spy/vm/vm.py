@@ -619,6 +619,25 @@ class SPyVM:
             f"Cannot wrap interp-level objects " + f"of type {value.__class__.__name__}"
         )
 
+    def wrap_list(self, w_itemT: W_Type, items: list) -> W_Object:
+        """
+        Wrap the given interp-level list into an app-level list with the desired
+        item type
+        """
+        # create the list type
+        vm = self
+        vm.import_("_list")
+        w_list = vm.lookup_global(FQN("_list::list"))
+        w_list_T = vm.getitem_w(w_list, w_itemT)
+        fqn_push = w_list_T.fqn.join("_push")
+        w_push = vm.lookup_global(fqn_push)
+        # create an empty list
+        w_res = vm.call_w(w_list_T, [], color="red")
+        # push items
+        for item in items:
+            vm.call_w(w_push, [w_res, vm.wrap(item)], color="red")
+        return w_res
+
     def unwrap(self, w_value: W_Object) -> Any:
         """
         Useful for tests: magic funtion which wraps the given app-level w_
