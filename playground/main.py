@@ -151,6 +151,44 @@ example_tabs = ltk.Tabs(
 HTML_CAPABLE_COMMANDS = {"parse", "redshift", "colorize"}
 
 
+_original_terminal_rows: int = 0
+_original_terminal_cols: int = 0
+
+
+def _xterm_terminal():
+    return document.querySelector('script[type="py"][terminal]').terminal
+
+
+def _resize_xterm(rows: int, cols: int) -> None:
+    _xterm_terminal().resize(cols, rows)
+
+
+@ltk.callback
+def toggle_maximize(event) -> None:
+    global _original_terminal_rows, _original_terminal_cols
+    btn = ltk.window.jQuery(event.target)
+    container = btn.closest("#terminal, #html-output")
+    is_terminal = container.attr("id") == "terminal"
+    if container.hasClass("maximized"):
+        container.removeClass("maximized")
+        if is_terminal and _original_terminal_rows:
+            _resize_xterm(_original_terminal_rows, _original_terminal_cols)
+    else:
+        if is_terminal:
+            terminal = _xterm_terminal()
+            screen = document.querySelector(".xterm-screen")
+            if screen and terminal:
+                rect = screen.getBoundingClientRect()
+                char_height = rect.height / terminal.rows
+                char_width = rect.width / terminal.cols
+                _original_terminal_rows = terminal.rows
+                _original_terminal_cols = terminal.cols
+                new_rows = int((window.innerHeight - 30) / char_height)
+                new_cols = int(window.innerWidth / char_width)
+                _resize_xterm(new_rows, new_cols)
+        container.addClass("maximized")
+
+
 def _show_terminal() -> None:
     ltk.find("#terminal").show()
     ltk.find("#html-output").hide()
@@ -324,12 +362,16 @@ def main():
     )
 
     ltk.find("#terminal").append(ltk.find("py-terminal"))
+    ltk.window.jQuery("#terminal").append('<button class="maximize-btn">⤢</button>')
+    ltk.window.jQuery("#terminal .maximize-btn").on("click", toggle_maximize)
 
     ltk.window.jQuery('[name="Editor"]').append(
         '<div id="html-output" style="display:none">'
+        '<button class="maximize-btn">⤢</button>'
         '<iframe id="html-frame" style="width:100%;height:600px;border:none"></iframe>'
         "</div>"
     )
+    ltk.window.jQuery("#html-output .maximize-btn").on("click", toggle_maximize)
 
     console.log("[Python] GUI construction complete - playground ready!")
 

@@ -130,6 +130,79 @@ button.run-button:active {
     font-size: 13px;
     min-height: 200px;
     overflow: auto;
+    position: relative;
+}
+
+#html-output {
+    position: relative;
+}
+
+/* Maximize/restore button shown in the upper-right of output areas */
+.maximize-btn {
+    position: absolute;
+    top: 20px;  /* #terminal has padding:15px; stay inside the dark py-terminal area */
+    right: 20px;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.35);
+    color: #aaa;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    padding: 1px 5px;
+    border-radius: 3px;
+    z-index: 10;
+}
+
+.maximize-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+}
+
+#html-output .maximize-btn {
+    top: 6px;
+    right: 8px;
+    border-color: rgba(0, 0, 0, 0.25);
+    color: #555;
+}
+
+#html-output .maximize-btn:hover {
+    background: rgba(0, 0, 0, 0.07);
+    color: #000;
+}
+
+/* Maximized state: fill the entire viewport */
+#terminal.maximized,
+#html-output.maximized {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 1000 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    overflow: auto;
+    background-color: #1e1e1e;
+}
+
+/* Stretch py-terminal to fill the maximized container */
+#terminal.maximized py-terminal {
+    display: block !important;
+    min-height: calc(100vh - 30px);
+}
+
+#html-output.maximized iframe {
+    height: 100vh !important;
+}
+
+/* When maximized, fix the button to the viewport corner so it's always visible */
+.maximized .maximize-btn {
+    position: fixed !important;
+    top: 8px !important;
+    right: 8px !important;
+    background: rgba(80, 80, 80, 0.85) !important;
+    color: #fff !important;
+    border-color: rgba(255, 255, 255, 0.6) !important;
 }
 
 /* Command prompt - only style the "$ spy" prompt span */
