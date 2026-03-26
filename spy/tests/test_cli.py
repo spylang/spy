@@ -55,39 +55,21 @@ def decolorize(s: str) -> str:
 class TestMain:
     tmpdir: Any
 
+    def write(self, filename: str, src: str) -> Any:
+        src = textwrap.dedent(src)
+        srcfile = self.tmpdir.join(filename)
+        srcfile.write(src)
+        return srcfile
+
     @pytest.fixture
     def init(self, tmpdir):
         self.tmpdir = tmpdir
         self.runner = CliRunner()
-        self.main_spy = tmpdir.join("main.spy")
-        self.factorial_spy = tmpdir.join("factorial.spy")
-        self.blu_var_in_red_func_spy = tmpdir.join("blu_var_in_red_func.spy")
-        main_src = """
+        src = """
         def main() -> None:
             print("hello world")
         """
-        factorial_src = """
-        def factorial(n: i32) -> i32:
-            res = 1
-            for i in range(n):
-                res *= (i+1)
-            return res
-
-        def main() -> None:
-            print(factorial(5))
-        """
-        blu_var_in_red_func_src = """
-        @blue
-        def get_Type():
-            return int
-
-        def main() -> None:
-            T = get_Type()    # T is blue
-            print(T)
-        """
-        self.main_spy.write(textwrap.dedent(main_src))
-        self.factorial_spy.write(textwrap.dedent(factorial_src))
-        self.blu_var_in_red_func_spy.write(textwrap.dedent(blu_var_in_red_func_src))
+        self.main_spy = self.write("main.spy", src)
 
     def run(self, *args: Any, decolorize_stdout=True) -> Any:
         args2 = [str(arg) for arg in args]
@@ -121,19 +103,17 @@ class TestMain:
         return exit_code, decolorize(stdout)
 
     def test_return_exit_code(self):
-        return_exit_code_src = """
+        src = """
         def main() -> i32:
             print("This main return 99 as exit code")
             return 99
         """
-        return_exit_code_file = self.tmpdir.join("return_exit_code_src.spy")
-        return_exit_code_file.write(textwrap.dedent(return_exit_code_src))
-
-        res = self.runner.invoke(app, [str(return_exit_code_file)])
+        f = self.write("test.spy", src)
+        res = self.runner.invoke(app, [str(f)])
         assert res.exit_code == 99
 
     def test_nested_functions_exit_code(self):
-        return_nested_exit_code_src = """
+        src = """
         def actual_exit_code_return() -> i32:
             return 88
 
@@ -142,23 +122,17 @@ class TestMain:
             result = actual_exit_code_return()
             return result
         """
-        return_nested_exit_code_file = self.tmpdir.join(
-            "return_nested_exit_code_src.spy"
-        )
-        return_nested_exit_code_file.write(textwrap.dedent(return_nested_exit_code_src))
-
-        res = self.runner.invoke(app, [str(return_nested_exit_code_file)])
+        f = self.write("test.spy", src)
+        res = self.runner.invoke(app, [str(f)])
         assert res.exit_code == 88
 
     def test_mismatch_main_return_type_error(self):
-        return_exit_code_src = """
+        src = """
         def main() -> str:
             return "oops"
         """
-        return_exit_code_file = self.tmpdir.join("return_exit_code_src.spy")
-        return_exit_code_file.write(textwrap.dedent(return_exit_code_src))
-
-        res = self.runner.invoke(app, [str(return_exit_code_file)])
+        f = self.write("test.spy", src)
+        res = self.runner.invoke(app, [str(f)])
         assert res.exit_code == 1
         output = decolorize(res.output)
         assert "main() return type must be None or i32, got `str`" in output
@@ -222,12 +196,20 @@ class TestMain:
     def test_colorize_source(self):
         # source formatting is the default - run all the examples below
         # with both 'colorize --format spy' and bare 'colorize'
+        src = """
+        def factorial(n: i32) -> i32:
+            res = 1
+            for i in range(n):
+                res *= (i+1)
+            return res
 
-        args = ["colorize", "--format", "spy"]
-
-        _, stdout = self.run(*args, self.factorial_spy, decolorize_stdout=False)
+        def main() -> None:
+            print(factorial(5))
+        """
+        test1_spy = self.write("test1.spy", src)
+        _, stdout = self.run("colorize", test1_spy, decolorize_stdout=False)
         # B stands for Blue, R for Red, [/COLOR] means that the ANSI has been reset
-        expected_outout = """\
+        expected = textwrap.dedent("""
         def factorial(n: i32) -> i32:
             [R]res = [/COLOR][B]1[/COLOR]
             for i in [B]range[/COLOR][R](n)[/COLOR]:
@@ -235,23 +217,31 @@ class TestMain:
             return [R]res[/COLOR]
 
         def main() -> None:
-            [B]print[/COLOR][R]([/COLOR][B]factorial[/COLOR][R]([/COLOR][B]5[/COLOR][R]))[/COLOR]"""  # noqa
-        assert ansi_to_readable(stdout.strip()) == textwrap.dedent(expected_outout)
-        _, stdout = self.run(
-            *args, self.blu_var_in_red_func_spy, decolorize_stdout=False
-        )
-        expected_outout = """\
+            [B]print[/COLOR][R]([/COLOR][B]factorial[/COLOR][R]([/COLOR][B]5[/COLOR][R]))[/COLOR]
+        """)  # noqa
+        assert ansi_to_readable(stdout.strip()) == expected.strip()
+
+        src = """
+        @blue
+        def get_Type():
+            return int
+
+        def main() -> None:
+            T = get_Type()    # T is blue
+            print(T)
+        """
+        test2_spy = self.write("test2.spy", src)
+        _, stdout = self.run("colorize", test2_spy, decolorize_stdout=False)
+        expected = textwrap.dedent("""
         @blue
         def get_Type():
             return int
 
         def main() -> None:
             [B]T = get_Type()[/COLOR]    # T is blue
-            [B]print[/COLOR][R]([/COLOR][B]T[/COLOR][R])[/COLOR]"""  # noqa
-        print(f"{stdout=}")
-        print(stdout)
-        print(f"{ansi_to_readable(stdout.strip())=}")
-        assert ansi_to_readable(stdout.strip()) == textwrap.dedent(expected_outout)
+            [B]print[/COLOR][R]([/COLOR][B]T[/COLOR][R])[/COLOR]
+        """)  # noqa
+        assert ansi_to_readable(stdout.strip()) == expected.strip()
 
     def test_cwrite(self):
         self.run("build", "--no-compile", "--build-dir", self.tmpdir, self.main_spy)
@@ -261,24 +251,20 @@ class TestMain:
         assert csrc.startswith('#include "main.h"')
 
     def test_return_exit_code_cwrite(self):
-        return_exit_code_src = """
+        src = """
         def main() -> i32:
             print("This main return 99 as exit code")
             return 99
         """
-        return_exit_code_file = self.tmpdir.join("return_exit_code_src.spy")
-        return_exit_code_file.write(textwrap.dedent(return_exit_code_src))
-
-        self.run(
-            "build", "--no-compile", "--build-dir", self.tmpdir, return_exit_code_file
-        )
-        main_c = self.tmpdir.join("src", "return_exit_code_src.c")
-        assert main_c.exists()
-        csrc = main_c.read()
+        f = self.write("test.spy", src)
+        self.run("build", "--no-compile", "--build-dir", self.tmpdir, f)
+        test_c = self.tmpdir.join("src", "test.c")
+        assert test_c.exists()
+        csrc = test_c.read()
         assert "return 99;" in csrc
 
     def test_nested_functions_exit_code_cwrite(self):
-        return_nested_exit_code_src = """
+        src = """
         def actual_exit_code_return() -> i32:
             return 88
 
@@ -287,20 +273,11 @@ class TestMain:
             result = actual_exit_code_return()
             return result
         """
-        return_nested_exit_code_file = self.tmpdir.join(
-            "return_nested_exit_code_src.spy"
-        )
-        return_nested_exit_code_file.write(textwrap.dedent(return_nested_exit_code_src))
-        self.run(
-            "build",
-            "--no-compile",
-            "--build-dir",
-            self.tmpdir,
-            return_nested_exit_code_file,
-        )
-        main_c = self.tmpdir.join("src", "return_nested_exit_code_src.c")
-        assert main_c.exists()
-        csrc = main_c.read()
+        f = self.write("test.spy", src)
+        self.run("build", "--no-compile", "--build-dir", self.tmpdir, f)
+        test_c = self.tmpdir.join("src", "test.c")
+        assert test_c.exists()
+        csrc = test_c.read()
         assert "return 88;" in csrc
 
     @pytest.mark.parametrize(
@@ -423,8 +400,7 @@ class TestMain:
             for a in args:
                 print(a)
         """
-        f = self.tmpdir.join("main_args.spy")
-        f.write(textwrap.dedent(src))
+        f = self.write("test.spy", src)
         res = self.runner.invoke(app, [str(f), "arg1=value1", "arg2=value2"])
         assert res.exit_code == 0
         output = decolorize(res.output)
@@ -436,8 +412,7 @@ class TestMain:
         def main(x: i32) -> None:
             pass
         """
-        f = self.tmpdir.join("main_wrong_param.spy")
-        f.write(textwrap.dedent(src))
+        f = self.write("test.spy", src)
         res = self.runner.invoke(app, [str(f)])
         assert res.exit_code == 1
         output = decolorize(res.output)
@@ -448,8 +423,7 @@ class TestMain:
         def main(a: list[str], b: list[str]) -> None:
             pass
         """
-        f = self.tmpdir.join("main_too_many_params.spy")
-        f.write(textwrap.dedent(src))
+        f = self.write("test.spy", src)
         res = self.runner.invoke(app, [str(f)])
         assert res.exit_code == 1
         output = decolorize(res.output)

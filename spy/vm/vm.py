@@ -629,6 +629,7 @@ class SPyVM:
         vm.import_("_list")
         w_list = vm.lookup_global(FQN("_list::list"))
         w_list_T = vm.getitem_w(w_list, w_itemT)
+        assert isinstance(w_list_T, W_Type)
         fqn_push = w_list_T.fqn.join("_push")
         w_push = vm.lookup_global(fqn_push)
         # create an empty list
