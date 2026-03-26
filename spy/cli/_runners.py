@@ -17,8 +17,9 @@ from spy.errors import SPyError
 from spy.textbuilder import Color
 from spy.vm.b import B
 from spy.vm.debugger.spdb import SPdb
-from spy.vm.function import W_ASTFunc, W_FuncType
+from spy.vm.function import W_ASTFunc
 from spy.vm.module import W_Module
+from spy.vm.object import W_Object
 from spy.vm.vm import SPyVM
 
 GLOBAL_VM: Optional[SPyVM] = None
@@ -76,16 +77,20 @@ async def _run_command(user_func: Callable, args: "Base_Args") -> None:
 
 
 def execute_spy_main(
-    vm: SPyVM, w_mod: W_Module, redshift: bool = False, _timeit: bool = False
+    vm: SPyVM,
+    w_mod: W_Module,
+    argv: list[str],
+    redshift: bool = False,
+    _timeit: bool = False,
 ) -> None:
-    w_main_functype = W_FuncType.parse("def() -> None")
     w_main = w_mod.getattr_maybe("main")
     if w_main is None:
         print("Cannot find function main()")
         return
 
-    vm.typecheck(w_main, w_main_functype)
     assert isinstance(w_main, W_ASTFunc)
+    w_restype, has_args = vm.typecheck_main(w_main)
+    has_exit_code = w_restype == B.w_i32
 
     # find the redshifted version, if necessary
     if redshift:
@@ -96,9 +101,22 @@ def execute_spy_main(
     else:
         assert not w_main.redshifted
 
-    with timer() if _timeit else nullcontext():
-        w_res = vm.fast_call(w_main, [])
-    assert w_res is B.w_None
+    # build argument list for the call
+    args_w: list[W_Object] = []
+    if has_args:
+        w_argv = vm.wrap_list(B.w_str, argv)
+        args_w = [w_argv]
+
+    # call main()
+    ctx = timer() if _timeit else nullcontext()
+    with ctx:
+        w_res = vm.fast_call(w_main, args_w)
+
+    if has_exit_code:
+        sys.exit(vm.unwrap_i32(w_res))
+    else:
+        assert w_res is B.w_None
+        sys.exit(0)
 
 
 class Init_Args(Protocol):

@@ -1,3 +1,4 @@
+import json
 import re
 import subprocess
 import sys
@@ -55,39 +56,21 @@ def decolorize(s: str) -> str:
 class TestMain:
     tmpdir: Any
 
+    def write(self, filename: str, src: str) -> Any:
+        src = textwrap.dedent(src)
+        srcfile = self.tmpdir.join(filename)
+        srcfile.write(src)
+        return srcfile
+
     @pytest.fixture
     def init(self, tmpdir):
         self.tmpdir = tmpdir
         self.runner = CliRunner()
-        self.main_spy = tmpdir.join("main.spy")
-        self.factorial_spy = tmpdir.join("factorial.spy")
-        self.blu_var_in_red_func_spy = tmpdir.join("blu_var_in_red_func.spy")
-        main_src = """
+        src = """
         def main() -> None:
             print("hello world")
         """
-        factorial_src = """
-        def factorial(n: i32) -> i32:
-            res = 1
-            for i in range(n):
-                res *= (i+1)
-            return res
-
-        def main() -> None:
-            print(factorial(5))
-        """
-        blu_var_in_red_func_src = """
-        @blue
-        def get_Type():
-            return int
-
-        def main() -> None:
-            T = get_Type()    # T is blue
-            print(T)
-        """
-        self.main_spy.write(textwrap.dedent(main_src))
-        self.factorial_spy.write(textwrap.dedent(factorial_src))
-        self.blu_var_in_red_func_spy.write(textwrap.dedent(blu_var_in_red_func_src))
+        self.main_spy = self.write("main.spy", src)
 
     def run(self, *args: Any, decolorize_stdout=True) -> Any:
         args2 = [str(arg) for arg in args]
@@ -144,6 +127,27 @@ class TestMain:
             _, stdout = self.run(*argset, self.main_spy)
             assert stdout == "hello world\n"
 
+    def test_exit_code(self):
+        src = """
+        def main() -> i32:
+            print("This main return 99 as exit code")
+            return 99
+        """
+        f = self.write("test.spy", src)
+        res = self.runner.invoke(app, [str(f)])
+        assert res.exit_code == 99
+
+    def test_main_wrong_return_type(self):
+        src = """
+        def main() -> str:
+            return "oops"
+        """
+        f = self.write("test.spy", src)
+        res = self.runner.invoke(app, [str(f)])
+        assert res.exit_code == 1
+        output = decolorize(res.output)
+        assert "`main` has the wrong signature" in output
+
     def test_timeit(self):
         _, stdout = self.run("--timeit", self.main_spy)
         assert "main()" in stdout
@@ -169,8 +173,6 @@ class TestMain:
         assert stdout.startswith("Module(")
 
     def test_colorize_json(self):
-        import json
-
         _, stdout = self.run("colorize", "--format", "json", self.main_spy)
         content = json.loads(stdout)
         keys = "line", "col", "length", "type"
@@ -179,12 +181,20 @@ class TestMain:
     def test_colorize_source(self):
         # source formatting is the default - run all the examples below
         # with both 'colorize --format spy' and bare 'colorize'
+        src = """
+        def factorial(n: i32) -> i32:
+            res = 1
+            for i in range(n):
+                res *= (i+1)
+            return res
 
-        args = ["colorize", "--format", "spy"]
-
-        _, stdout = self.run(*args, self.factorial_spy, decolorize_stdout=False)
+        def main() -> None:
+            print(factorial(5))
+        """
+        test1_spy = self.write("test1.spy", src)
+        _, stdout = self.run("colorize", test1_spy, decolorize_stdout=False)
         # B stands for Blue, R for Red, [/COLOR] means that the ANSI has been reset
-        expected_outout = """\
+        expected = textwrap.dedent("""
         def factorial(n: i32) -> i32:
             [R]res = [/COLOR][B]1[/COLOR]
             for i in [B]range[/COLOR][R](n)[/COLOR]:
@@ -192,23 +202,31 @@ class TestMain:
             return [R]res[/COLOR]
 
         def main() -> None:
-            [B]print[/COLOR][R]([/COLOR][B]factorial[/COLOR][R]([/COLOR][B]5[/COLOR][R]))[/COLOR]"""  # noqa
-        assert ansi_to_readable(stdout.strip()) == textwrap.dedent(expected_outout)
-        _, stdout = self.run(
-            *args, self.blu_var_in_red_func_spy, decolorize_stdout=False
-        )
-        expected_outout = """\
+            [B]print[/COLOR][R]([/COLOR][B]factorial[/COLOR][R]([/COLOR][B]5[/COLOR][R]))[/COLOR]
+        """)  # noqa
+        assert ansi_to_readable(stdout.strip()) == expected.strip()
+
+        src = """
+        @blue
+        def get_Type():
+            return int
+
+        def main() -> None:
+            T = get_Type()    # T is blue
+            print(T)
+        """
+        test2_spy = self.write("test2.spy", src)
+        _, stdout = self.run("colorize", test2_spy, decolorize_stdout=False)
+        expected = textwrap.dedent("""
         @blue
         def get_Type():
             return int
 
         def main() -> None:
             [B]T = get_Type()[/COLOR]    # T is blue
-            [B]print[/COLOR][R]([/COLOR][B]T[/COLOR][R])[/COLOR]"""  # noqa
-        print(f"{stdout=}")
-        print(stdout)
-        print(f"{ansi_to_readable(stdout.strip())=}")
-        assert ansi_to_readable(stdout.strip()) == textwrap.dedent(expected_outout)
+            [B]print[/COLOR][R]([/COLOR][B]T[/COLOR][R])[/COLOR]
+        """)  # noqa
+        assert ansi_to_readable(stdout.strip()) == expected.strip()
 
     def test_cwrite(self):
         self.run("build", "--no-compile", "--build-dir", self.tmpdir, self.main_spy)
@@ -275,6 +293,19 @@ class TestMain:
         out, err = capfd.readouterr()
         assert "hello world" in out
 
+    def test_exit_code_C_backend(self):
+        src = """
+        def main() -> i32:
+            print("hello")
+            return 99
+        """
+        f = self.write("test.spy", src)
+        self.run("build", f)
+        test_exe = self.tmpdir.join("build", "test")
+        status, out = getstatusoutput([str(test_exe)])
+        assert status == 99
+        assert out == "hello"
+
     @pytest.mark.skipif(PYODIDE_EXE is None, reason="./pyodide/venv not found")
     @pytest.mark.pyodide
     def test_execute_pyodide(self):
@@ -330,3 +361,49 @@ class TestMain:
     def test_imports(self):
         _, stdout = self.run("imports", self.main_spy)
         assert stdout.startswith("Import tree:")
+
+    def test_execute_argv(self):
+        src = """
+        def main(argv: list[str]) -> None:
+            for a in argv:
+                print(a)
+        """
+        f = self.write("test.spy", src)
+        res = self.runner.invoke(app, [str(f), "aaa", "bbb", "ccc"])
+        assert res.exit_code == 0
+        output = decolorize(res.output)
+        assert output.split() == ["aaa", "bbb", "ccc"]
+
+    def test_redshift_argv(self):
+        src = """
+        def main(argv: list[str]) -> None:
+            for a in argv:
+                print(a)
+        """
+        f = self.write("test.spy", src)
+        res = self.runner.invoke(app, ["redshift", "-x", str(f), "aaa", "bbb", "ccc"])
+        assert res.exit_code == 0
+        output = decolorize(res.output)
+        assert output.split() == ["aaa", "bbb", "ccc"]
+
+    def test_main_wrong_param_type(self):
+        src = """
+        def main(x: i32) -> None:
+            pass
+        """
+        f = self.write("test.spy", src)
+        res = self.runner.invoke(app, [str(f)])
+        assert res.exit_code == 1
+        output = decolorize(res.output)
+        assert "`main` has the wrong signature" in output
+
+    def test_main_too_many_params(self):
+        src = """
+        def main(a: list[str], b: list[str]) -> None:
+            pass
+        """
+        f = self.write("test.spy", src)
+        res = self.runner.invoke(app, [str(f)])
+        assert res.exit_code == 1
+        output = decolorize(res.output)
+        assert "`main` has the wrong signature" in output

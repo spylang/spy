@@ -7,8 +7,10 @@ import py.path
 from spy.backend.c.cffiwriter import CFFIWriter
 from spy.backend.c.context import Context
 from spy.backend.c.cwriter import CFuncWriter
+from spy.errors import WIP
 from spy.fqn import FQN
 from spy.textbuilder import TextBuilder
+from spy.vm.b import B
 from spy.vm.cell import W_Cell
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc
 from spy.vm.module import W_Module
@@ -150,15 +152,27 @@ class CModuleWriter:
         self.tbc.wl()
         self.tbc_content = self.tbc.make_nested_builder()
 
-        # Main function
         fqn_main = FQN([self.c_mod.modname, "main"])
         if self.is_main_mod and fqn_main in self.ctx.vm.globals_w:
-            self.tbc.wb(f"""
+            w_main = self.ctx.vm.globals_w[fqn_main]
+            assert isinstance(w_main, W_ASTFunc)
+            w_restype, has_argv = self.ctx.vm.typecheck_main(w_main)
+            if has_argv:
+                raise WIP("`main(argv: list[str])` not supported by the C backend")
+
+            if w_restype == B.w_i32:
+                self.tbc.wb(f"""
+                int main(void) {{
+                    return {fqn_main.c_name}();
+                }}
+                """)
+            else:
+                self.tbc.wb(f"""
                 int main(void) {{
                     {fqn_main.c_name}();
                     return 0;
                 }}
-            """)
+                """)
 
     def emit_jsffi_error_maybe(self) -> None:
         if self.jsffi_error_emitted:

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Optional
 
 import click
 from typer import Argument, BadParameter, Option
@@ -72,7 +72,11 @@ class _timeit_mixin:
 
 
 @dataclass
-class _execute_options(_timeit_mixin): ...
+class _execute_options(_timeit_mixin):
+    argv: Annotated[
+        Optional[list[str]],
+        Argument(help="Arguments passed to the main() function"),
+    ] = None
 
 
 @dataclass

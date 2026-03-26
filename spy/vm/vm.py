@@ -526,6 +526,45 @@ class SPyVM:
             msg = f"Invalid cast. Expected `{exp}`, got `{got}`"
             raise SPyError("W_TypeError", msg)
 
+    def typecheck_main(self, w_main: W_ASTFunc) -> tuple[W_Type, bool]:
+        """
+        Validate the signature of main() and return (w_restype, has_argv).
+        """
+        funcdef = w_main.funcdef
+        functype = w_main.w_functype
+        params = functype.params
+        args = funcdef.args
+
+        # check parameters
+        has_argv = False
+        if len(params) == 1:
+            fqn_str = str(params[0].w_T.fqn)
+            if fqn_str.startswith("_list::list[str]"):
+                has_argv = True
+
+        if len(params) > 1 or (len(params) == 1 and not has_argv):
+            msg = "parameters must be `main(argv: list[str])`"
+            if len(args) > 1:
+                loc = Loc.combine(args[0].loc, args[-1].loc)
+            else:
+                loc = args[0].loc
+            err = SPyError("W_TypeError", "`main` has the wrong signature")
+            err.add("error", msg, loc)
+            raise err
+
+        # check return type
+        w_restype = functype.w_restype
+        if w_restype not in (TYPES.w_NoneType, B.w_i32):
+            err = SPyError("W_TypeError", "`main` has the wrong signature")
+            err.add(
+                "error",
+                "the only valid return types are `None`, `int` and `i32`",
+                funcdef.return_type.loc,
+            )
+            raise err
+
+        return (w_restype, has_argv)
+
     def is_type(self, w_obj: W_Object) -> bool:
         return self.isinstance(w_obj, B.w_type)
 
@@ -618,6 +657,26 @@ class SPyVM:
         raise Exception(
             f"Cannot wrap interp-level objects " + f"of type {value.__class__.__name__}"
         )
+
+    def wrap_list(self, w_itemT: W_Type, items: list) -> W_Object:
+        """
+        Wrap the given interp-level list into an app-level list with the desired
+        item type
+        """
+        # create the list type
+        vm = self
+        vm.import_("_list")
+        w_list = vm.lookup_global(FQN("_list::list"))
+        w_list_T = vm.getitem_w(w_list, w_itemT)
+        assert isinstance(w_list_T, W_Type)
+        fqn_push = w_list_T.fqn.join("_push")
+        w_push = vm.lookup_global(fqn_push)
+        # create an empty list
+        w_res = vm.call_w(w_list_T, [], color="red")
+        # push items
+        for item in items:
+            vm.call_w(w_push, [w_res, vm.wrap(item)], color="red")
+        return w_res
 
     def unwrap(self, w_value: W_Object) -> Any:
         """

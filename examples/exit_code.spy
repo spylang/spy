@@ -1,0 +1,6 @@
+def main(argv: list[str]) -> i32:
+    print("argv:")
+    for arg in argv:
+        print(arg)
+    print("exit code: 88")
+    return 88
