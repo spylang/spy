@@ -274,7 +274,7 @@ class TestVM:
         assert vm.find_file_on_path("py", allow_py_files=True) == tmpdir.join("py.py")
 
     def test_wrap_list(self):
-        from spy.vm.struct import unwrap_list  # XXX
+        from spy.vm.struct import unwrap_list
 
         vm = SPyVM()
         w_lst = vm.wrap_list(B.w_str, ["a", "bb", "ccc"])
