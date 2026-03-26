@@ -1,7 +1,5 @@
 import os
 
-import pytest
-
 from spy.errors import SPyError
 from spy.tests.support import CompilerTest, skip_backends
 
@@ -84,7 +82,7 @@ class TestPosix(CompilerTest):
         def foo(path: str) -> i32:
             return open(path, O_RDONLY)
         """)
-        with SPyError.raises("W_ValueError", match="No such file or directory"):
+        with SPyError.raises("W_OSError", match="No such file or directory"):
             mod.foo(str(tmp_path / "nonexistent.txt"))
 
     def test_read_invalid_fd(self):
@@ -94,7 +92,7 @@ class TestPosix(CompilerTest):
         def foo() -> str:
             return read(-1, 64)
         """)
-        with SPyError.raises("W_ValueError", match="Bad file descriptor"):
+        with SPyError.raises("W_OSError", match="Bad file descriptor"):
             mod.foo()
 
     def test_write_invalid_fd(self):
@@ -104,7 +102,7 @@ class TestPosix(CompilerTest):
         def foo() -> i32:
             return write(-1, "data")
         """)
-        with SPyError.raises("W_ValueError", match="Bad file descriptor"):
+        with SPyError.raises("W_OSError", match="Bad file descriptor"):
             mod.foo()
 
     def test_close_invalid_fd(self):
@@ -114,5 +112,5 @@ class TestPosix(CompilerTest):
         def foo() -> None:
             close(-1)
         """)
-        with SPyError.raises("W_ValueError", match="Bad file descriptor"):
+        with SPyError.raises("W_OSError", match="Bad file descriptor"):
             mod.foo()

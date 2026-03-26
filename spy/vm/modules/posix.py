@@ -72,7 +72,7 @@ def w_open(vm: "SPyVM", w_path: W_Str, w_flags: W_I32) -> W_I32:
     try:
         fd = os.open(path, flags)
     except OSError as e:
-        raise SPyError("W_ValueError", e.strerror)
+        raise SPyError("W_OSError", e.strerror)
     return W_I32(fd)
 
 
@@ -85,7 +85,7 @@ def w_read(vm: "SPyVM", w_fd: W_I32, w_count: W_I32) -> W_Str:
     try:
         data = os.read(fd, count)
     except OSError as e:
-        raise SPyError("W_ValueError", e.strerror)
+        raise SPyError("W_OSError", e.strerror)
     return W_Str(vm, data.decode("utf-8"))
 
 
@@ -98,7 +98,7 @@ def w_write(vm: "SPyVM", w_fd: W_I32, w_data: W_Str) -> W_I32:
     try:
         n = os.write(fd, data)
     except OSError as e:
-        raise SPyError("W_ValueError", e.strerror)
+        raise SPyError("W_OSError", e.strerror)
     return W_I32(n)
 
 
@@ -110,4 +110,4 @@ def w_close(vm: "SPyVM", w_fd: W_I32) -> None:
     try:
         os.close(fd)
     except OSError as e:
-        raise SPyError("W_ValueError", e.strerror)
+        raise SPyError("W_OSError", e.strerror)

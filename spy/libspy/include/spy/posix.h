@@ -48,7 +48,7 @@ spy_posix$open(spy_Str *path, int32_t flags) {
     int fd = open(cpath, flags);
     free(cpath);
     if (fd == -1) {
-        spy_panic("ValueError", strerror(errno), __FILE__, __LINE__);
+        spy_panic("OSError", strerror(errno), __FILE__, __LINE__);
     }
     return (int32_t)fd;
 }
@@ -58,7 +58,7 @@ spy_posix$read(int32_t fd, int32_t count) {
     spy_Str *result = spy_str_alloc((size_t)count);
     ssize_t n = read(fd, (void *)result->utf8, (size_t)count);
     if (n == -1) {
-        spy_panic("ValueError", strerror(errno), __FILE__, __LINE__);
+        spy_panic("OSError", strerror(errno), __FILE__, __LINE__);
     }
     // Adjust the length to what was actually read
     result->length = (size_t)n;
@@ -70,7 +70,7 @@ static inline int32_t
 spy_posix$write(int32_t fd, spy_Str *data) {
     ssize_t n = write(fd, data->utf8, data->length);
     if (n == -1) {
-        spy_panic("ValueError", strerror(errno), __FILE__, __LINE__);
+        spy_panic("OSError", strerror(errno), __FILE__, __LINE__);
     }
     return (int32_t)n;
 }
@@ -78,7 +78,7 @@ spy_posix$write(int32_t fd, spy_Str *data) {
 static inline void
 spy_posix$close(int32_t fd) {
     if (close(fd) == -1) {
-        spy_panic("ValueError", strerror(errno), __FILE__, __LINE__);
+        spy_panic("OSError", strerror(errno), __FILE__, __LINE__);
     }
 }
 
