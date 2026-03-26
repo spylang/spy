@@ -7,6 +7,7 @@ import py.path
 from spy.backend.c.cffiwriter import CFFIWriter
 from spy.backend.c.context import Context
 from spy.backend.c.cwriter import CFuncWriter
+from spy.errors import WIP
 from spy.fqn import FQN
 from spy.textbuilder import TextBuilder
 from spy.vm.b import B
@@ -155,7 +156,10 @@ class CModuleWriter:
         if self.is_main_mod and fqn_main in self.ctx.vm.globals_w:
             w_main = self.ctx.vm.globals_w[fqn_main]
             assert isinstance(w_main, W_ASTFunc)
-            w_restype, _has_argv = self.ctx.vm.typecheck_main(w_main)
+            w_restype, has_argv = self.ctx.vm.typecheck_main(w_main)
+            if has_argv:
+                raise WIP("`main(argv: list[str])` not supported by the C backend")
+
             if w_restype == B.w_i32:
                 self.tbc.wb(f"""
                 int main(void) {{
