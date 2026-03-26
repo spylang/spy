@@ -146,7 +146,7 @@ class TestMain:
         res = self.runner.invoke(app, [str(f)])
         assert res.exit_code == 1
         output = decolorize(res.output)
-        assert "main() return type must be None or i32, got `str`" in output
+        assert "`main` has the wrong signature" in output
 
     def test_timeit(self):
         _, stdout = self.run("--timeit", self.main_spy)
@@ -395,7 +395,7 @@ class TestMain:
         res = self.runner.invoke(app, [str(f)])
         assert res.exit_code == 1
         output = decolorize(res.output)
-        assert "main() parameter must be list[str]" in output
+        assert "`main` has the wrong signature" in output
 
     def test_main_too_many_params(self):
         src = """
@@ -406,4 +406,4 @@ class TestMain:
         res = self.runner.invoke(app, [str(f)])
         assert res.exit_code == 1
         output = decolorize(res.output)
-        assert "main() supports at most one parameter" in output
+        assert "`main` has the wrong signature" in output

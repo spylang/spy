@@ -14,13 +14,12 @@ from typing import (
 from spy.cli.commands.shared_args import Base_Args
 from spy.doppler import ErrorMode
 from spy.errors import SPyError
-from spy.fqn import FQN
 from spy.textbuilder import Color
-from spy.vm.b import TYPES, B
+from spy.vm.b import B
 from spy.vm.debugger.spdb import SPdb
-from spy.vm.function import FuncParam, W_ASTFunc, W_FuncType
+from spy.vm.function import W_ASTFunc
 from spy.vm.module import W_Module
-from spy.vm.object import W_Object, W_Type
+from spy.vm.object import W_Object
 from spy.vm.vm import SPyVM
 
 GLOBAL_VM: Optional[SPyVM] = None
@@ -90,34 +89,8 @@ def execute_spy_main(
         return
 
     assert isinstance(w_main, W_ASTFunc)
-    actual_functype = w_main.w_functype
-    main_func_param = actual_functype.params
-
-    # determine whether main() accepts an argument
-    has_args = False
-    if len(main_func_param) > 1:
-        raise SPyError("W_TypeError", "main() supports at most one parameter")
-    elif len(main_func_param) == 1:
-        fqn_str = str(main_func_param[0].w_T.fqn)
-        if not fqn_str.startswith("_list::list[str]"):
-            raise SPyError("W_TypeError", "main() parameter must be list[str]")
-        has_args = True
-
-    # determine expected return type (only None or i32 allowed)
-    has_exit_code = actual_functype.w_restype == B.w_i32
-    if not has_exit_code and actual_functype.w_restype != TYPES.w_NoneType:
-        got = actual_functype.w_restype.fqn.human_name
-        raise SPyError(
-            "W_TypeError", f"main() return type must be None or i32, got `{got}`"
-        )
-
-    # build the expected functype and typecheck
-    params = []
-    if has_args:
-        params = [FuncParam(main_func_param[0].w_T, main_func_param[0].kind)]
-    w_restype = B.w_i32 if has_exit_code else TYPES.w_NoneType
-    expected_functype = W_FuncType.new(params, w_restype)
-    vm.typecheck(w_main, expected_functype)
+    w_restype, has_args = vm.typecheck_main(w_main)
+    has_exit_code = w_restype == B.w_i32
 
     # find the redshifted version, if necessary
     if redshift:

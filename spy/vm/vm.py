@@ -526,6 +526,45 @@ class SPyVM:
             msg = f"Invalid cast. Expected `{exp}`, got `{got}`"
             raise SPyError("W_TypeError", msg)
 
+    def typecheck_main(self, w_main: W_ASTFunc) -> tuple[W_Type, bool]:
+        """
+        Validate the signature of main() and return (w_restype, has_argv).
+        """
+        funcdef = w_main.funcdef
+        functype = w_main.w_functype
+        params = functype.params
+        args = funcdef.args
+
+        # check parameters
+        has_argv = False
+        if len(params) == 1:
+            fqn_str = str(params[0].w_T.fqn)
+            if fqn_str.startswith("_list::list[str]"):
+                has_argv = True
+
+        if len(params) > 1 or (len(params) == 1 and not has_argv):
+            msg = "parameters must be `main(argv: list[str])`"
+            if len(args) > 1:
+                loc = Loc.combine(args[0].loc, args[-1].loc)
+            else:
+                loc = args[0].loc
+            err = SPyError("W_TypeError", "`main` has the wrong signature")
+            err.add("error", msg, loc)
+            raise err
+
+        # check return type
+        w_restype = functype.w_restype
+        if w_restype not in (TYPES.w_NoneType, B.w_i32):
+            err = SPyError("W_TypeError", "`main` has the wrong signature")
+            err.add(
+                "error",
+                "the only valid return types are `None`, `int` and `i32`",
+                funcdef.return_type.loc,
+            )
+            raise err
+
+        return (w_restype, has_argv)
+
     def is_type(self, w_obj: W_Object) -> bool:
         return self.isinstance(w_obj, B.w_type)
 
