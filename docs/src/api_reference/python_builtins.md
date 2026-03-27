@@ -7,7 +7,7 @@ h3 {
 }
 </style>
 
-## Implemented CPython-Like Built-ins 
+## Implemented CPython-Like Built-ins
 
 The following built-in functions work similarly to their equivalents in CPython; see the specific functions below for notes
 
@@ -43,7 +43,7 @@ The following built-in functions work similarly to their equivalents in CPython;
 ### __hash__(object) { data-toc-label='hash()' }
 :   Currently implemented for types: `i8`,`i32`, `u8`, `bool`, `str`.
 
-:   By default, instances of SPy structs are not hashable. As a planned future feature, structs will have auto-generated `__hash__` by default, but this is awaiting implementation. Currently, users can implement the `__hash__` function to permit hashing. 
+:   By default, instances of SPy structs are not hashable. As a planned future feature, structs will have auto-generated `__hash__` by default, but this is awaiting implementation. Currently, users can implement the `__hash__` function to permit hashing.
 
 ### __int__(object) { data-toc-label='int()' }
 
@@ -57,7 +57,7 @@ The following built-in functions work similarly to their equivalents in CPython;
 
 ### __list__\[type\]() { data-toc-label='list()' }
 
-:   The syntax `list[type]()` can be used to create a new empty list of the given type. The simpler syntax `l: list[membertype] = []` can also be used. Unlike CPython, this does not (currently) accept an Iterable to create a new list from. 
+:   The syntax `list[type]()` can be used to create a new empty list of the given type. The simpler syntax `l: list[membertype] = []` can also be used. Unlike CPython, this does not (currently) accept an Iterable to create a new list from.
 
 :   The implementation (in SPy) of `list` can be [viewed here](https://github.com/spylang/spy/blob/main/stdlib/_list.spy).
 
@@ -103,7 +103,7 @@ The following built-in functions work similarly to their equivalents in CPython;
 
 ### __tuple__()
 
-:   The syntax `tuple[t1, t2, ...](val1, val2 ...)` can be used to create a new tuple, with `t1` as the type of `val1`, etc. unlike CPython, this does not (currently) accept an Iterable to create a new tuple from. 
+:   The syntax `tuple[t1, t2, ...](val1, val2 ...)` can be used to create a new tuple, with `t1` as the type of `val1`, etc. unlike CPython, this does not (currently) accept an Iterable to create a new tuple from.
 
 :   The implementation (in SPy) of `tuple` can be [viewed here](https://github.com/spylang/spy/blob/main/stdlib/_tuple.spy).
 
@@ -111,7 +111,7 @@ The following built-in functions work similarly to their equivalents in CPython;
 
 :   Returns the type (i.e. the dynamic type at runtime) of an object
 
-## Not-Implemented CPython Built-ins 
+## Not-Implemented CPython Built-ins
 
 The following CPython built-ins are not currently implemented in SPy. Each category has a brief note about the current state of that category of object or function - some require additional internal mechanics, others are simply lower priority that other facets of the language to this point.
 
