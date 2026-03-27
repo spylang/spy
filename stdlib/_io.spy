@@ -50,3 +50,8 @@ class FileIO:
 
     def close(self) -> None:
         posix.close(self.__ll__.fd)
+
+
+def open(file: str, mode: str) -> FileIO:
+    """Open file and return a `_io.FileIO`.  Raise OSError upon failure."""
+    return FileIO(file, mode)

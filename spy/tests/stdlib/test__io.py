@@ -83,3 +83,19 @@ class TestIO(CompilerTest):
         """)
         with SPyError.raises("W_ValueError", match="invalid mode"):
             mod.open_file(str(fpath))
+
+
+@skip_backends("C", reason="WASI sandbox cannot access host filesystem paths")
+class TestOpen(CompilerTest):
+    def test_read(self, tmp_path):
+        fpath = tmp_path / "hello.txt"
+        fpath.write_text("hello world", encoding="utf-8")
+        mod = self.compile("""
+        def read_file(path: str, n: i32) -> str:
+            f = open(path, "r")
+            result: str = f.read(n)
+            f.close()
+            return result
+        """)
+        assert mod.read_file(str(fpath), 11) == "hello world"
+        assert mod.read_file(str(fpath), 5) == "hello"

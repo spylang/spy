@@ -73,6 +73,10 @@ The following built-in functions work similarly to their equivalents in CPython;
 
 :   `object` is implemented as a type, and can be used as a parameter or return type. "Plain" objects (i.e. `x = object()`) are not supported.
 
+### __open__(file: str, mode: str) { data-toc-label='open()' }
+
+:    Open file and return a `_io.FileIO`.  Raise OSError upon failure.
+
 ### __print__(obj) { data-toc-label='print()' }
 
 :   The print function is currently not variadic, in the sense that it only accepts a single argument. The built-in types are special-cased, and SPy can always print blue objects by pre-computing their string representation
@@ -151,4 +155,4 @@ Many of these types are not implemented yet; others are in active development.
 
 The I/O story is currently a high priority and is in active development.
 
-:   input(), open()
+:   input()
