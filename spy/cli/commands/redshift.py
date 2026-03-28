@@ -48,9 +48,9 @@ class _redshift_mixin:
 class Redshift_Args(
     Base_Args, _redshift_mixin, _execute_flag, _execute_options, Filename_Required_Args
 ):
-    extra_files: Annotated[
+    extra_dump: Annotated[
         Optional[list[Path]],
-        Argument(help="Additional modules to dump"),
+        Option("--dump", help="Additional modules to dump"),
     ] = None
 
 
@@ -62,7 +62,7 @@ async def redshift(args: Redshift_Args) -> None:
     modname = args.filename.stem
     vm = await init_vm(args)
 
-    extra_files = args.extra_files or []
+    extra_files = args.extra_dump or []
     extra_modnames = [f.stem for f in extra_files]
 
     for extra_file in extra_files:
