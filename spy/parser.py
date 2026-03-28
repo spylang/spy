@@ -165,6 +165,8 @@ class Parser:
     def from_py_stmt_FunctionDef(
         self, py_funcdef: py_ast.FunctionDef
     ) -> spy.ast.FuncDef:
+        if py_funcdef.type_params:
+            return self.desugar_pep695_FunctionDef(py_funcdef)
         color: spy.ast.Color = "red"
         func_kind: spy.ast.FuncKind = "plain"
         decorators: list[spy.ast.Expr] = []
@@ -227,6 +229,95 @@ class Parser:
             body=body,
             docstring=docstring,
             decorators=decorators,
+        )
+
+    def desugar_pep695_FunctionDef(
+        self, py_funcdef: py_ast.FunctionDef
+    ) -> spy.ast.FuncDef:
+        """
+        Desugar PEP 695 generic function syntax into the equivalent @blue form.
+
+        This transforms:
+            def my_func[T](a0: T, a1: T) -> T:
+                return a0 + a1
+
+        Into the SPy AST equivalent of:
+            @blue.generic
+            def my_func(T):
+                def _my_func(a0: T, a1: T) -> T:
+                    return a0 + a1
+                return _my_func
+        """
+        loc = py_funcdef.loc
+        inner_name = f"_{py_funcdef.name}"
+
+        # Build one outer FuncArg per type_param (all unannotated, i.e. Auto).
+        # Only py_ast.TypeVar is supported for now; ParamSpec / TypeVarTuple
+        # are rejected with a clear error.
+        outer_args: list[spy.ast.FuncArg] = []
+        for tp in py_funcdef.type_params:
+            if not isinstance(tp, py_ast.TypeVar):
+                self.unsupported(tp, "only TypeVar type parameters are supported")
+            outer_args.append(
+                spy.ast.FuncArg(
+                    loc=tp.loc,
+                    name=tp.name,
+                    type=spy.ast.Auto(tp.loc),
+                    kind="simple",
+                )
+            )
+
+        # Build the inner (red) function, identical to what was written but
+        # without type_params (those became the outer args).
+        inner_args = self.from_py_arguments("red", py_funcdef.args)
+        py_returns = py_funcdef.returns
+        if py_returns:
+            inner_return_type = self.from_py_expr(py_returns)
+        else:
+            if inner_args:
+                l = inner_args[-1].loc
+                retloc = l.replace(col_end=-1)
+            else:
+                retloc = loc.replace(line_end=loc.line_start, col_end=-1)
+            inner_return_type = spy.ast.Auto(retloc)
+
+        docstring, py_body = self.get_docstring_maybe(py_funcdef.body)
+        saved_seq = self.for_loop_seq
+        inner_body = self.from_py_body(py_body)
+        self.for_loop_seq = saved_seq
+
+        inner_funcdef = spy.ast.FuncDef(
+            loc=loc,
+            color="red",
+            kind="plain",
+            name=inner_name,
+            args=inner_args,
+            return_type=inner_return_type,
+            body=inner_body,
+            docstring=docstring,
+            decorators=[],
+        )
+
+        # The outer (blue) function body: define the inner function then
+        # return it.
+        return_inner = spy.ast.Return(
+            loc=loc,
+            value=spy.ast.Name(loc, inner_name),
+        )
+        outer_body: list[spy.ast.Stmt] = [inner_funcdef, return_inner]
+
+        outer_return_type = spy.ast.Auto(loc)
+
+        return spy.ast.FuncDef(
+            loc=loc,
+            color="blue",
+            kind="generic",
+            name=py_funcdef.name,
+            args=outer_args,
+            return_type=outer_return_type,
+            body=outer_body,
+            docstring=None,
+            decorators=[],
         )
 
     def from_py_arguments(

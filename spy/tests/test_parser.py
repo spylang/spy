@@ -369,6 +369,132 @@ class TestParser:
         """
         self.assert_dump(funcdef, expected)
 
+    def test_pep695_single_typevar(self):
+        """
+        PEP 695 syntax `def f[T](...)` is desugared into the @blue.generic wrapper
+        pattern at parse time.
+        """
+        mod = self.parse("""
+        def my_func[T](a0: T, a1: T) -> T:
+            return a0 + a1
+        """)
+        funcdef = mod.get_funcdef("my_func")
+        expected = """
+        FuncDef(
+            color='blue',
+            kind='generic',
+            name='my_func',
+            args=[
+                FuncArg(
+                    name='T',
+                    type=Auto(),
+                    kind='simple',
+                ),
+            ],
+            return_type=Auto(),
+            docstring=None,
+            body=[
+                FuncDef(
+                    color='red',
+                    kind='plain',
+                    name='_my_func',
+                    args=[
+                        FuncArg(
+                            name='a0',
+                            type=Name(id='T'),
+                            kind='simple',
+                        ),
+                        FuncArg(
+                            name='a1',
+                            type=Name(id='T'),
+                            kind='simple',
+                        ),
+                    ],
+                    return_type=Name(id='T'),
+                    docstring=None,
+                    body=[
+                        Return(
+                            value=BinOp(
+                                op='+',
+                                left=Name(id='a0'),
+                                right=Name(id='a1'),
+                            ),
+                        ),
+                    ],
+                    decorators=[],
+                ),
+                Return(
+                    value=Name(id='_my_func'),
+                ),
+            ],
+            decorators=[],
+        )
+        """
+        self.assert_dump(funcdef, expected)
+
+    def test_pep695_multiple_typevars(self):
+        """
+        Multiple type parameters each become an arg of the outer blue function.
+        """
+        mod = self.parse("""
+        def my_func[T, U](a: T, b: U) -> T:
+            return a
+        """)
+        funcdef = mod.get_funcdef("my_func")
+        expected = """
+        FuncDef(
+            color='blue',
+            kind='generic',
+            name='my_func',
+            args=[
+                FuncArg(
+                    name='T',
+                    type=Auto(),
+                    kind='simple',
+                ),
+                FuncArg(
+                    name='U',
+                    type=Auto(),
+                    kind='simple',
+                ),
+            ],
+            return_type=Auto(),
+            docstring=None,
+            body=[
+                FuncDef(
+                    color='red',
+                    kind='plain',
+                    name='_my_func',
+                    args=[
+                        FuncArg(
+                            name='a',
+                            type=Name(id='T'),
+                            kind='simple',
+                        ),
+                        FuncArg(
+                            name='b',
+                            type=Name(id='U'),
+                            kind='simple',
+                        ),
+                    ],
+                    return_type=Name(id='T'),
+                    docstring=None,
+                    body=[
+                        Return(
+                            value=Name(id='a'),
+                        ),
+                    ],
+                    decorators=[],
+                ),
+                Return(
+                    value=Name(id='_my_func'),
+                ),
+            ],
+            decorators=[],
+        )
+        """
+        self.assert_dump(funcdef, expected)
+
     def test_FuncDef_prototype_loc(self):
         # blue functions without return type, are parsed as if they had a
         # synthetic '-> dynamic' annotation. We also need to generate a
