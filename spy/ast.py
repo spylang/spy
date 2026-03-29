@@ -650,6 +650,21 @@ class Raise(Stmt):
 
 
 @astnode
+class ExceptHandler(Node):
+    exc_type: Optional[Expr]  # None means bare `except:`
+    name: Optional["StrConst"]  # the `as e` part, if present
+    body: list[Stmt]
+
+
+@astnode
+class Try(Stmt):
+    body: list[Stmt]
+    handlers: list[ExceptHandler]
+    orelse: list[Stmt]
+    finalbody: list[Stmt]
+
+
+@astnode
 class Assert(Stmt):
     test: Expr
     msg: Optional[Expr]

@@ -313,6 +313,34 @@ class SPyBackend:
                 for stmt in if_node.else_body:
                     self.emit_stmt(stmt)
 
+    def emit_stmt_Try(self, try_node: ast.Try) -> None:
+        self.wl("try:")
+        with self.out.indent():
+            for stmt in try_node.body:
+                self.emit_stmt(stmt)
+        for handler in try_node.handlers:
+            if handler.exc_type is not None:
+                exc_type = self.fmt_expr(handler.exc_type)
+                if handler.name is not None:
+                    self.wl(f"except {exc_type} as {handler.name.value}:")
+                else:
+                    self.wl(f"except {exc_type}:")
+            else:
+                self.wl("except:")
+            with self.out.indent():
+                for stmt in handler.body:
+                    self.emit_stmt(stmt)
+        if try_node.orelse:
+            self.wl("else:")
+            with self.out.indent():
+                for stmt in try_node.orelse:
+                    self.emit_stmt(stmt)
+        if try_node.finalbody:
+            self.wl("finally:")
+            with self.out.indent():
+                for stmt in try_node.finalbody:
+                    self.emit_stmt(stmt)
+
     def emit_stmt_Raise(self, raise_node: ast.Raise) -> None:
         exc = self.fmt_expr(raise_node.exc)
         self.wl(f"raise {exc}")

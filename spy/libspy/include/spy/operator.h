@@ -75,8 +75,18 @@ spy_operator$f32_to_i32(float x) {
 }
 
 static inline void
-spy_operator$raise(spy_Str *etype, spy_Str *message, spy_Str *fname, int32_t lineno) {
-    spy_panic(etype->utf8, message->utf8, fname->utf8, lineno);
+spy_operator$raise(const char * const *chain, spy_Str *message, spy_Str *fname, int32_t lineno) {
+    spy_exc_set(chain, message->utf8, fname->utf8, lineno);
+}
+
+static inline bool
+spy_Exception$__eq__(spy_Exception a, spy_Exception b) {
+    return strcmp(a.message, b.message) == 0;
+}
+
+static inline bool
+spy_Exception$__ne__(spy_Exception a, spy_Exception b) {
+    return strcmp(a.message, b.message) != 0;
 }
 
 static inline double

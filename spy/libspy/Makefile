@@ -16,7 +16,7 @@ endif
 
 EMCC_AVAILABLE := $(shell which emcc 2>/dev/null)
 
-SRCS = src/str.c src/builtins.c src/debug.c src/unsafe.c src/operator.c
+SRCS = src/str.c src/builtins.c src/debug.c src/unsafe.c src/operator.c src/exc.c
 
 # Base CFLAGS without optimization or debug settings
 #

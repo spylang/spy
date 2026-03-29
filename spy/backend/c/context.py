@@ -4,6 +4,7 @@ from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.textbuilder import TextBuilder
 from spy.vm.b import TYPES, B
+from spy.vm.exc import W_Exception
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.jsffi import JSFFI
 from spy.vm.modules.rawbuffer import RB
@@ -141,6 +142,12 @@ class Context:
     def w2c(self, w_T: W_Type) -> C_Type:
         if w_T in self._d:
             return self._d[w_T]
+
+        elif isinstance(w_T, W_Type) and issubclass(w_T.pyclass, W_Exception):
+            # All exception types share the same C struct layout.
+            c_type = C_Type("spy_Exception")
+            self._d[w_T] = c_type
+            return c_type
 
         elif isinstance(w_T, W_Type):
             # as soon as we split spy_structdefs into multiple files, here we
