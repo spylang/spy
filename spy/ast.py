@@ -646,7 +646,7 @@ class For(Stmt):
 
 @astnode
 class Raise(Stmt):
-    exc: Expr
+    exc: Optional[Expr]  # None means bare `raise` (re-raise current exception)
 
 
 @astnode

@@ -86,6 +86,40 @@ class TestException(CompilerTest):
         with SPyError.raises("W_IndexError", match="nope"):
             mod.foo()
 
+    def test_bare_raise(self):
+        mod = self.compile("""
+        def foo() -> i32:
+            try:
+                raise ValueError("original")
+            except ValueError:
+                raise
+            return 0
+        """)
+        with SPyError.raises("W_ValueError", match="original"):
+            mod.foo()
+
+    def test_bare_raise_preserves_type(self):
+        mod = self.compile("""
+        def foo(x: i32) -> i32:
+            try:
+                try:
+                    if x == 0:
+                        raise ValueError("v")
+                    else:
+                        raise IndexError("i")
+                except ValueError:
+                    raise
+            except IndexError:
+                return 2
+            return 0
+        """)
+        # ValueError is re-raised by the inner handler and not caught by the
+        # outer except IndexError, so it propagates out.
+        with SPyError.raises("W_ValueError", match="v"):
+            mod.foo(0)
+        # IndexError is not caught by inner handler, goes straight to outer.
+        assert mod.foo(1) == 2
+
     def test_try_except_else(self):
         mod = self.compile("""
         def foo(x: i32) -> i32:

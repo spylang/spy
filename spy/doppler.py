@@ -306,6 +306,9 @@ class DopplerFrame(ASTFrame):
         )]
 
     def shift_stmt_Raise(self, raise_node: ast.Raise) -> list[ast.Stmt]:
+        if raise_node.exc is None:
+            # Bare re-raise: inherently runtime, pass through for the C backend.
+            return [raise_node]
         self.exec_stmt(raise_node)
         w_opimpl = self.opimpl[raise_node]
         v_exc = self.shifted_expr[raise_node.exc]

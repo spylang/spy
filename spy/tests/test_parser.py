@@ -1141,11 +1141,10 @@ class TestParser:
         def foo() -> None:
             raise
         """
-        self.expect_errors(
-            src,
-            "not implemented yet: bare raise",
-            ("this is not supported", "raise"),
-        )
+        mod = self.parse(src)
+        raise_stmt = mod.get_funcdef("foo").body[0]
+        assert isinstance(raise_stmt, ast.Raise)
+        assert raise_stmt.exc is None
 
     def test_from_import(self):
         mod = self.parse("""

@@ -38,6 +38,7 @@ class CFuncWriter:
         self._try_counter: int = 0
         self._try_exc_label_stack: list[str] = []
         self._try_finally_stack: list[list[ast.Stmt]] = []
+        self._exc_reraise_stack: list[str] = []
         self._tmp_counter: int = 0
 
     def ppc(self) -> None:
@@ -239,6 +240,23 @@ class CFuncWriter:
         if isinstance(stmt.value, ast.Call):
             self._emit_exc_propagate(stmt.loc)
 
+    def emit_stmt_Raise(self, raise_node: ast.Raise) -> None:
+        # Non-bare raise is compiled by the doppler to StmtExpr(Call(w_raise,...)).
+        # Only bare `raise` reaches here.
+        assert raise_node.exc is None
+        assert self._exc_reraise_stack, "bare `raise` outside an except handler"
+        save_var = self._exc_reraise_stack[-1]
+        self.tbc.wl(f"SPY_exc = {save_var};")
+        if self._try_exc_label_stack:
+            outer = self._try_exc_label_stack[-1]
+            self.tbc.wl(f"goto {outer};")
+        else:
+            sentinel = self._sentinel_return()
+            if sentinel:
+                self.tbc.wl(f"return {sentinel};")
+            else:
+                self.tbc.wl("return;")
+
     def _c_str(self, s: str) -> str:
         return s.replace("\\", "\\\\").replace('"', '\\"')
 
@@ -308,7 +326,10 @@ class CFuncWriter:
                 self.emit_stmt(stmt)
         self.tbc.wl(f"goto {else_label};")
 
-        self.tbc.wl(f"{exc_label}:")
+        save_var = f"SPY_saved_exc_{n}"
+        self.tbc.wl(f"{exc_label}:;")
+        self.tbc.wl(f"spy_Exc {save_var} = SPY_exc;")
+        self._exc_reraise_stack.append(save_var)
         for handler in try_node.handlers:
             if handler.exc_type is None:
                 self.tbc.wl("{")
@@ -335,6 +356,8 @@ class CFuncWriter:
                     self.tbc.wl(f"goto {end_label};")
                 self.tbc.wl("}")
 
+        self._exc_reraise_stack.pop()
+
         # Exception not handled: save it, run finally, restore, return sentinel.
         # Saving before clear lets calls in the finally body use spy_exc_is_set()
         # normally.  After finally runs we restore so the caller's propagation
@@ -342,12 +365,14 @@ class CFuncWriter:
         if has_finally:
             self.tbc.wl("{")
             with self.tbc.indent():
-                self.tbc.wl("spy_Exc SPY_saved_exc = SPY_exc;")
+                self.tbc.wl(f"spy_Exc SPY_finally_exc_{n} = SPY_exc;")
                 self.tbc.wl("spy_exc_clear();")
                 for stmt in try_node.finalbody:
                     self.emit_stmt(stmt)
                 # Only restore if finally didn't raise a new exception.
-                self.tbc.wl("if (!spy_exc_is_set()) { SPY_exc = SPY_saved_exc; }")
+                self.tbc.wl(
+                    f"if (!spy_exc_is_set()) {{ SPY_exc = SPY_finally_exc_{n}; }}"
+                )
             self.tbc.wl("}")
 
         # If inside an outer try block, jump to its exc label so the outer

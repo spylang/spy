@@ -567,10 +567,7 @@ class Parser:
         if py_node.cause:
             self.unsupported(py_node, "raise ... from ...")
 
-        if py_node.exc is None:
-            self.unsupported(py_node, "bare raise")
-
-        exc = self.from_py_expr(py_node.exc)
+        exc = None if py_node.exc is None else self.from_py_expr(py_node.exc)
         return spy.ast.Raise(loc=py_node.loc, exc=exc)
 
     def from_py_stmt_Assert(self, py_node: py_ast.Assert) -> spy.ast.Assert:

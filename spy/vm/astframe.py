@@ -96,6 +96,7 @@ class AbstractFrame:
         self.specialized_assigns = {}
         self.specialized_assignexprs = {}
         self.desugared_fors = {}
+        self._active_exc_stack: list[SPyError] = []
 
     # overridden by DopplerFrame
     @property
@@ -752,8 +753,12 @@ class AbstractFrame:
                 if self._try_match_handler(err, handler):
                     if handler.name is not None:
                         self._bind_exception_var(handler.name, err)
-                    for stmt in handler.body:
-                        self.exec_stmt(stmt)
+                    self._active_exc_stack.append(err)
+                    try:
+                        for stmt in handler.body:
+                            self.exec_stmt(stmt)
+                    finally:
+                        self._active_exc_stack.pop()
                     break
             else:
                 raise
@@ -779,6 +784,9 @@ class AbstractFrame:
         self.store_local(varname, err.w_exc)
 
     def exec_stmt_Raise(self, raise_node: ast.Raise) -> None:
+        if raise_node.exc is None:
+            assert self._active_exc_stack, "bare `raise` outside an except handler"
+            raise self._active_exc_stack[-1]
         wam_exc = self.eval_expr(raise_node.exc)
         w_opimpl = self.vm.call_OP(raise_node.loc, OP.w_RAISE, [wam_exc])
         self.eval_opimpl(raise_node, w_opimpl, [wam_exc])
