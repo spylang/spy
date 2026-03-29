@@ -9,6 +9,7 @@ from spy.location import Loc
 from spy.textbuilder import TextBuilder
 from spy.util import magic_dispatch, shortrepr
 from spy.vm.b import TYPES
+from spy.vm.exc import W_Exception, exc_type_chain
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.irtag import IRTag
 from spy.vm.modules.unsafe.ptr import W_Ptr
@@ -34,6 +35,10 @@ class CFuncWriter:
         self.fqn = fqn
         self.w_func = w_func
         self.last_emitted_linenos = (-1, -1)  # see emit_lineno_maybe
+        self._try_counter: int = 0
+        self._try_exc_label_stack: list[str] = []
+        self._try_finally_stack: list[list[ast.Stmt]] = []
+        self._tmp_counter: int = 0
 
     def ppc(self) -> None:
         """
@@ -142,6 +147,34 @@ class CFuncWriter:
         self.tbc.wl("continue;")
 
     def emit_stmt_Return(self, ret: ast.Return) -> None:
+        # Emit each enclosing finally body (innermost first) before returning.
+        # If a finally body contains its own return, the original return value
+        # is discarded (the following code becomes unreachable but valid C).
+        # Clear the stack while emitting so that returns inside the finally
+        # bodies don't recurse back here.
+        if self._try_finally_stack:
+            finally_stack = self._try_finally_stack
+            self._try_finally_stack = []
+            for finally_body in reversed(finally_stack):
+                for stmt in finally_body:
+                    self.emit_stmt(stmt)
+            self._try_finally_stack = finally_stack
+
+        # For Return(Call(...)), use a temp var so we can check for exceptions
+        # after the call and add a traceback frame before propagating.
+        if (
+            isinstance(ret.value, ast.Call)
+            and self.w_func.w_functype.w_restype is not TYPES.w_NoneType
+        ):
+            c_type = str(self.ctx.w2c(self.w_func.w_functype.w_restype))
+            n = self._tmp_counter
+            self._tmp_counter += 1
+            v = self.fmt_expr(ret.value)
+            self.tbc.wl(f"{c_type} SPY_tmp_{n} = {v};")
+            self._emit_exc_propagate(ret.value.loc)
+            self.tbc.wl(f"return SPY_tmp_{n};")
+            return
+
         v = self.fmt_expr(ret.value)
         if v is C.Void():
             self.tbc.wl("return;")
@@ -203,6 +236,148 @@ class CFuncWriter:
             pass
         else:
             self.tbc.wl(f"{v};")
+        if isinstance(stmt.value, ast.Call):
+            self._emit_exc_propagate(stmt.loc)
+
+    def _c_str(self, s: str) -> str:
+        return s.replace("\\", "\\\\").replace('"', '\\"')
+
+    def _emit_exc_propagate(self, loc: Loc) -> None:
+        fqn = self._c_str(str(self.fqn))
+        filename = self._c_str(loc.filename)
+        line = loc.line_start
+        col_start = loc.col_start
+        col_end = loc.col_end
+        frame_push = (
+            f'spy_exc_push_frame("{fqn}", "{filename}", '
+            f"{line}, {col_start}, {col_end});"
+        )
+        if self._try_exc_label_stack:
+            exc_label = self._try_exc_label_stack[-1]
+            self.tbc.wl(
+                f"if (spy_exc_is_set()) {{ {frame_push} goto {exc_label}; }}"
+            )
+        else:
+            sentinel = self._sentinel_return()
+            if sentinel:
+                self.tbc.wl(
+                    f"if (spy_exc_is_set()) {{ {frame_push} return {sentinel}; }}"
+                )
+            else:
+                self.tbc.wl(f"if (spy_exc_is_set()) {{ {frame_push} return; }}")
+
+    def _sentinel_return(self) -> str:
+        w_restype = self.w_func.w_functype.w_restype
+        if w_restype is TYPES.w_NoneType:
+            return ""
+        c_type = str(self.ctx.w2c(w_restype))
+        # Primitives and pointer types accept 0 as a zero/null sentinel.
+        # Struct types need a compound-literal zero-initializer.
+        primitives = {"int8_t", "uint8_t", "int32_t", "uint32_t",
+                      "double", "float", "bool", "JsRef"}
+        if c_type.endswith("*") or c_type in primitives:
+            return "0"
+        return f"({c_type}){{0}}"
+
+    def emit_stmt_Try(self, try_node: ast.Try) -> None:
+        n = self._try_counter
+        self._try_counter += 1
+        exc_label = f"SPY_EXC_{n}"
+        end_label = f"SPY_END_{n}"
+        has_finally = bool(try_node.finalbody)
+        has_orelse = bool(try_node.orelse)
+        # Normal try completion jumps to else_label (runs the else body).
+        # Matched handlers jump directly to end_label, bypassing the else body,
+        # because else should only run when no exception was raised.
+        else_label = f"SPY_ELSE_{n}" if has_orelse else end_label
+
+        # Both stacks are pushed together: exceptions in the try body jump to
+        # exc_label, and returns are intercepted to run the finally body first.
+        self._try_exc_label_stack.append(exc_label)
+        if has_finally:
+            self._try_finally_stack.append(try_node.finalbody)
+        for stmt in try_node.body:
+            self.emit_stmt(stmt)
+        if has_finally:
+            self._try_finally_stack.pop()
+        self._try_exc_label_stack.pop()
+
+        # Normal fallthrough: emit finally body, then skip exception handling.
+        if has_finally:
+            for stmt in try_node.finalbody:
+                self.emit_stmt(stmt)
+        self.tbc.wl(f"goto {else_label};")
+
+        self.tbc.wl(f"{exc_label}:")
+        for handler in try_node.handlers:
+            if handler.exc_type is None:
+                self.tbc.wl("{")
+                with self.tbc.indent():
+                    self._emit_handler_binding(handler)
+                    for stmt in handler.body:
+                        self.emit_stmt(stmt)
+                    if has_finally:
+                        for stmt in try_node.finalbody:
+                            self.emit_stmt(stmt)
+                    self.tbc.wl(f"goto {end_label};")
+                self.tbc.wl("}")
+            else:
+                assert isinstance(handler.exc_type, ast.FQNConst)
+                exc_typename = handler.exc_type.fqn.symbol_name
+                self.tbc.wl(f'if (spy_exc_matches("{exc_typename}"))' + " {")
+                with self.tbc.indent():
+                    self._emit_handler_binding(handler)
+                    for stmt in handler.body:
+                        self.emit_stmt(stmt)
+                    if has_finally:
+                        for stmt in try_node.finalbody:
+                            self.emit_stmt(stmt)
+                    self.tbc.wl(f"goto {end_label};")
+                self.tbc.wl("}")
+
+        # Exception not handled: save it, run finally, restore, return sentinel.
+        # Saving before clear lets calls in the finally body use spy_exc_is_set()
+        # normally.  After finally runs we restore so the caller's propagation
+        # check fires correctly and the exception is not lost.
+        if has_finally:
+            self.tbc.wl("{")
+            with self.tbc.indent():
+                self.tbc.wl("spy_Exc SPY_saved_exc = SPY_exc;")
+                self.tbc.wl("spy_exc_clear();")
+                for stmt in try_node.finalbody:
+                    self.emit_stmt(stmt)
+                # Only restore if finally didn't raise a new exception.
+                self.tbc.wl("if (!spy_exc_is_set()) { SPY_exc = SPY_saved_exc; }")
+            self.tbc.wl("}")
+
+        # If inside an outer try block, jump to its exc label so the outer
+        # handlers can match the exception.  Otherwise return a sentinel so the
+        # caller's propagation check fires.
+        if self._try_exc_label_stack:
+            outer_exc_label = self._try_exc_label_stack[-1]
+            self.tbc.wl(f"goto {outer_exc_label};")
+        else:
+            sentinel = self._sentinel_return()
+            if sentinel:
+                self.tbc.wl(f"return {sentinel};")
+            else:
+                self.tbc.wl("return;")
+
+        if has_orelse:
+            self.tbc.wl(f"{else_label}:;")
+            for stmt in try_node.orelse:
+                self.emit_stmt(stmt)
+        self.tbc.wl(f"{end_label}:;")
+
+    def _emit_handler_binding(self, handler: ast.ExceptHandler) -> None:
+        if handler.name is not None:
+            varname = C_Ident(handler.name.value)
+            # Capture message before clearing, then build the exception value.
+            self.tbc.wl(f"const char *SPY_msg = SPY_exc.message;")
+            self.tbc.wl("spy_exc_clear();")
+            self.tbc.wl(f"{varname} = spy_exc_make(SPY_msg);")
+        else:
+            self.tbc.wl("spy_exc_clear();")
 
     def emit_stmt_If(self, if_node: ast.If) -> None:
         test = self.fmt_expr(if_node.test)
@@ -294,7 +469,10 @@ class CFuncWriter:
 
     def fmt_expr_FQNConst(self, const: ast.FQNConst) -> C.Expr:
         w_obj = self.ctx.vm.lookup_global(const.fqn)
-        if isinstance(w_obj, W_Ptr):
+        if isinstance(w_obj, W_Exception):
+            msg = self._c_str(w_obj.message)
+            return C.Literal(f'spy_exc_make("{msg}")')
+        elif isinstance(w_obj, W_Ptr):
             # for each PtrType, we emit the corresponding NULL define with the
             # appropriate fqn name, see Context.new_ptr_type
             assert w_obj.addr == 0, "only NULL ptrs can be constants"
@@ -489,6 +667,16 @@ class CFuncWriter:
             call.args.pop()  # remove it
             return self.fmt_generic_call(fqn, call)
 
+        elif fqn.modname == "builtins" and fqn.symbol_name in ("eq", "ne"):
+            # Exception __eq__/__ne__: map to the shared spy_Exception comparator.
+            assert len(call.args) == 2
+            l, r = [self.fmt_expr(arg) for arg in call.args]
+            c_name = f"spy_Exception$__{fqn.symbol_name}__"
+            return C.Call(c_name, [l, r])
+
+        elif fqn.modname == "operator" and fqn.symbol_name == "raise":
+            return self._fmt_raise_call(call)
+
         else:
             return self.fmt_generic_call(fqn, call)
 
@@ -498,6 +686,31 @@ class CFuncWriter:
         c_name = fqn.c_name
         c_args = [self.fmt_expr(arg) for arg in call.args]
         return C.Call(c_name, c_args)
+
+    def _fmt_raise_call(self, call: ast.Call) -> C.Expr:
+        # operator::raise(etype, message, fname, lineno) — all blue constants.
+        # Instead of passing the etype name as a spy_Str, build a static C array
+        # for the full MRO chain so spy_exc_matches needs no hardcoded table.
+        #
+        # The array must be 'static' so that SPY_exc.etype_chain remains a valid
+        # pointer after the function that raised returns (the host reads it later).
+        assert len(call.args) == 4
+        etype_arg = call.args[0]
+        assert isinstance(etype_arg, ast.StrConst)
+        chain = exc_type_chain(etype_arg.value)
+        chain_items = ", ".join(f'"{n}"' for n in chain) + ", NULL"
+        n = self._tmp_counter
+        self._tmp_counter += 1
+        chain_var = f"SPY_chain_{n}"
+        self.tbc.wl(
+            f"static const char * const {chain_var}[] = {{{chain_items}}};"
+        )
+        msg_c = self.fmt_expr(call.args[1])
+        fname_c = self.fmt_expr(call.args[2])
+        lineno_c = self.fmt_expr(call.args[3])
+        return C.Literal(
+            f"spy_operator$raise({chain_var}, {msg_c}, {fname_c}, {lineno_c})"
+        )
 
     def fmt_struct_make(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         c_structtype = self.ctx.c_restype_by_fqn(fqn)

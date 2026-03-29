@@ -333,3 +333,25 @@ class W_SPdbQuit(W_Exception):
     """
     Raised when doing 'quit' from (spdb) prompt
     """
+
+
+def exc_type_chain(etype: str) -> list[str]:
+    """
+    Return the MRO chain for an exception type name (without "W_" prefix),
+    from most-specific to W_Exception, e.g. "TypeError" → ["TypeError",
+    "StaticError", "Exception"].  Used by the C backend to emit a static
+    chain array so spy_exc_matches can work without a hardcoded table.
+    """
+    import sys
+    mod = sys.modules[__name__]
+    cls = getattr(mod, "W_" + etype, None)
+    if cls is None or not (isinstance(cls, type) and issubclass(cls, W_Exception)):
+        return [etype]
+    chain = []
+    for c in cls.__mro__:
+        if not (isinstance(c, type) and issubclass(c, W_Exception)):
+            break
+        name = c.__name__
+        if name.startswith("W_"):
+            chain.append(name[2:])
+    return chain

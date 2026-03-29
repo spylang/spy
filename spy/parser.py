@@ -551,6 +551,18 @@ class Parser:
             body=self.from_py_body(py_node.body),
         )
 
+    def from_py_stmt_Try(self, py_node: py_ast.Try) -> spy.ast.Try:
+        body = self.from_py_body(py_node.body)
+        handlers = []
+        for h in py_node.handlers:
+            exc_type = self.from_py_expr(h.type) if h.type is not None else None
+            name = spy.ast.StrConst(h.loc, h.name) if h.name is not None else None
+            handler_body = self.from_py_body(h.body)
+            handlers.append(spy.ast.ExceptHandler(h.loc, exc_type, name, handler_body))
+        orelse = self.from_py_body(py_node.orelse)
+        finalbody = self.from_py_body(py_node.finalbody)
+        return spy.ast.Try(py_node.loc, body, handlers, orelse, finalbody)
+
     def from_py_stmt_Raise(self, py_node: py_ast.Raise) -> spy.ast.Raise:
         if py_node.cause:
             self.unsupported(py_node, "raise ... from ...")

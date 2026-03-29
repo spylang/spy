@@ -41,6 +41,7 @@
 #include "spy/__spy__.h"
 #include "spy/builtins.h"
 #include "spy/debug.h"
+#include "spy/exc.h"
 #include "spy/gc.h"
 #include "spy/math.h"
 #include "spy/operator.h"

@@ -15,13 +15,12 @@ from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
 from spy.vm.modules.types import TYPES, W_Loc
-from spy.vm.object import W_Object
+from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import ArgSpec, W_OpImpl
 from spy.vm.opspec import W_MetaArg
 from spy.vm.struct import W_Struct
 
 if TYPE_CHECKING:
-    from spy.vm.object import W_Type
     from spy.vm.vm import SPyVM
 
 ErrorMode = Literal["eager", "lazy", "warn"]
@@ -279,6 +278,32 @@ class DopplerFrame(ASTFrame):
     def shift_stmt_For(self, for_node: ast.For) -> list[ast.Stmt]:
         init_iter, while_loop = self._desugar_For(for_node)
         return self.shift_stmt(init_iter) + self.shift_stmt(while_loop)
+
+    def shift_stmt_Try(self, try_node: ast.Try) -> list[ast.Stmt]:
+        new_body = self.shift_body(try_node.body)
+        new_handlers = []
+        for handler in try_node.handlers:
+            new_exc_type = None
+            if handler.exc_type is not None:
+                wam_exc_type = self.eval_expr(handler.exc_type)
+                new_exc_type = self.shifted_expr[handler.exc_type]
+                # pre-declare the exception variable so the handler body can use it
+                if handler.name is not None:
+                    varname = handler.name.value
+                    w_exc_type = wam_exc_type.w_val
+                    assert isinstance(w_exc_type, W_Type)
+                    if varname not in self.locals:
+                        self.declare_local(varname, "red", w_exc_type, handler.name.loc)
+            new_handler_body = self.shift_body(handler.body)
+            new_handlers.append(handler.replace(exc_type=new_exc_type, body=new_handler_body))
+        new_orelse = self.shift_body(try_node.orelse)
+        new_finalbody = self.shift_body(try_node.finalbody)
+        return [try_node.replace(
+            body=new_body,
+            handlers=new_handlers,
+            orelse=new_orelse,
+            finalbody=new_finalbody,
+        )]
 
     def shift_stmt_Raise(self, raise_node: ast.Raise) -> list[ast.Stmt]:
         self.exec_stmt(raise_node)

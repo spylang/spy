@@ -743,6 +743,41 @@ class AbstractFrame:
         )
         return init_iter, while_loop
 
+    def exec_stmt_Try(self, try_node: ast.Try) -> None:
+        try:
+            for stmt in try_node.body:
+                self.exec_stmt(stmt)
+        except SPyError as err:
+            for handler in try_node.handlers:
+                if self._try_match_handler(err, handler):
+                    if handler.name is not None:
+                        self._bind_exception_var(handler.name, err)
+                    for stmt in handler.body:
+                        self.exec_stmt(stmt)
+                    break
+            else:
+                raise
+        else:
+            for stmt in try_node.orelse:
+                self.exec_stmt(stmt)
+        finally:
+            for stmt in try_node.finalbody:
+                self.exec_stmt(stmt)
+
+    def _try_match_handler(self, err: SPyError, handler: ast.ExceptHandler) -> bool:
+        if handler.exc_type is None:
+            return True  # bare `except:`
+        wam = self.eval_expr(handler.exc_type)
+        assert isinstance(wam.w_val, W_Type)
+        return isinstance(err.w_exc, wam.w_val.pyclass)
+
+    def _bind_exception_var(self, name: ast.StrConst, err: SPyError) -> None:
+        varname = name.value
+        w_exc_type = self.vm.dynamic_type(err.w_exc)
+        if varname not in self.locals:
+            self.declare_local(varname, "red", w_exc_type, name.loc)
+        self.store_local(varname, err.w_exc)
+
     def exec_stmt_Raise(self, raise_node: ast.Raise) -> None:
         wam_exc = self.eval_expr(raise_node.exc)
         w_opimpl = self.vm.call_OP(raise_node.loc, OP.w_RAISE, [wam_exc])

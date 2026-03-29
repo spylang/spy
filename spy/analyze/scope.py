@@ -373,6 +373,24 @@ class ScopeAnalyzer:
                     new_sym = old_sym.replace(varkind="var")
                     self.scope._symbols[target.value] = new_sym
 
+    def declare_Try(self, trystmt: ast.Try) -> None:
+        for stmt in trystmt.body:
+            self.declare(stmt)
+        for handler in trystmt.handlers:
+            self.declare(handler)
+        for stmt in trystmt.orelse:
+            self.declare(stmt)
+        for stmt in trystmt.finalbody:
+            self.declare(stmt)
+
+    def declare_ExceptHandler(self, handler: ast.ExceptHandler) -> None:
+        if handler.name is not None:
+            varname = handler.name.value
+            type_loc = handler.exc_type.loc if handler.exc_type is not None else handler.loc
+            self.define_name(varname, "var", "auto", handler.name.loc, type_loc)
+        for stmt in handler.body:
+            self.declare(stmt)
+
     def declare_While(self, whilestmt: ast.While) -> None:
         # Increment loop depth before processing body
         self.loop_depth += 1
@@ -490,6 +508,24 @@ class ScopeAnalyzer:
     def flatten_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
         self.capture_maybe(assignexpr.target.value)
         self.flatten(assignexpr.value)
+
+    def flatten_Try(self, trystmt: ast.Try) -> None:
+        for stmt in trystmt.body:
+            self.flatten(stmt)
+        for handler in trystmt.handlers:
+            self.flatten(handler)
+        for stmt in trystmt.orelse:
+            self.flatten(stmt)
+        for stmt in trystmt.finalbody:
+            self.flatten(stmt)
+
+    def flatten_ExceptHandler(self, handler: ast.ExceptHandler) -> None:
+        if handler.exc_type is not None:
+            self.flatten(handler.exc_type)
+        if handler.name is not None:
+            self.capture_maybe(handler.name.value)
+        for stmt in handler.body:
+            self.flatten(stmt)
 
     def flatten_For(self, forstmt: ast.For) -> None:
         # capture the loop variable and flatten the iterator
