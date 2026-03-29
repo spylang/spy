@@ -30,8 +30,7 @@ spy_complex128_get_imag(spy_Complex128 x) {
 
 static inline spy_Complex128
 spy_complex128_conjugate(spy_Complex128 x) {
-    x.imag = -x.imag;
-    return x;
+    return (spy_Complex128){.real = x.real, .imag = -x.imag};
 }
 
 static inline spy_Complex128
@@ -91,9 +90,7 @@ spy_operator$complex128_ne(spy_Complex128 x, spy_Complex128 y) {
 
 static inline spy_Complex128
 spy_operator$complex128_neg(spy_Complex128 x) {
-    x.real = -x.real;
-    x.imag = -x.imag;
-    return x;
+    return (spy_Complex128){.real = -x.real, .imag = -x.imag};
 }
 
 #endif /* spy_complex_h */
