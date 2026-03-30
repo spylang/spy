@@ -38,6 +38,7 @@ int32_t WASM_EXPORT(spy_str_hash)(spy_Str *s);
 #define spy_operator$str_mul spy_str_mul
 #define spy_operator$str_eq spy_str_eq
 #define spy_operator$str_ne spy_str_ne
+#define spy_operator$str_to_complex128 spy_str_to_complex128
 #define spy_builtins$str$replace spy_str_replace
 #define spy_builtins$str$__getitem__ spy_str_getitem
 #define spy_builtins$str$__len__ spy_str_len
@@ -63,6 +64,6 @@ int8_t spy_operator$str_to_i8(spy_Str *s);
 
 uint8_t spy_operator$str_to_u8(spy_Str *s);
 
-spy_Complex128 spy_operator$str_to_complex128(spy_Str *s);
+spy_Complex128 WASM_EXPORT(spy_str_to_complex128)(spy_Str *s);
 
 #endif /* SPY_STR_H */

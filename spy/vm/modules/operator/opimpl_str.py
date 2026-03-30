@@ -87,9 +87,5 @@ def w_str_to_u8(vm: "SPyVM", w_s: W_Str) -> W_U8:
 
 @OP.builtin_func
 def w_str_to_complex128(vm: "SPyVM", w_x: W_Str) -> W_Complex128:
-    try:
-        val = complex(vm.unwrap_str(w_x))
-    except ValueError:
-        raise SPyError("W_ValueError", "complex() arg is a malformed string")
-
-    return vm.wrap(val)
+    res = vm.ll.call("spy_str_to_complex128", w_x.ptr)
+    return W_Complex128(complex(*res))

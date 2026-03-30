@@ -253,7 +253,7 @@ spy_operator$str_to_u8(spy_Str *s) {
 }
 
 spy_Complex128
-spy_operator$str_to_complex128(spy_Str *s) {
+spy_str_to_complex128(spy_Str *s) {
     char buf[128];
     size_t len = s->length;
     if (len == 0 || len >= sizeof(buf)) {
