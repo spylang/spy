@@ -1,0 +1,17 @@
+def write(path: str, data: str, mode: str) -> None:
+    file = open(path, mode)
+    file.write(data)
+    file.close()
+
+
+def main() -> None:
+    path = "/tmp/spy-io_open.txt"
+
+    write(path, "Like Python", "w")
+    write(path, ", but static\n", "a")
+
+    file = open(path, "r")
+    txt = file.read(11)
+    file.close()
+
+    assert txt == "Like Python"

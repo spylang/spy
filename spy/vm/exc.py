@@ -321,6 +321,11 @@ class W_KeyError(W_Exception):
     pass
 
 
+@BUILTINS.builtin_type("OSError")
+class W_OSError(W_Exception):
+    pass
+
+
 @BUILTINS.builtin_type("WIP")
 class W_WIP(W_Exception):
     """

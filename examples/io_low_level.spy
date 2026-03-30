@@ -1,0 +1,21 @@
+from posix import open, write, read, close, O_WRONLY, O_CREAT, O_TRUNC, O_RDONLY
+
+
+def write_file(path: str, data: str) -> i32:
+    fd: i32 = open(path, O_WRONLY | O_CREAT | O_TRUNC)
+    n: i32 = write(fd, data)
+    close(fd)
+    return n
+
+
+def read_file(path: str, n: i32) -> str:
+    fd: i32 = open(path, O_RDONLY)
+    result = read(fd, n)
+    close(fd)
+    return result
+
+
+def main() -> None:
+    path = "/tmp/spy-io_low_level.txt"
+    write_file(path, "hello world")
+    print(read_file(path, 64))

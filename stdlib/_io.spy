@@ -1,0 +1,49 @@
+"""
+SPy `_io` module.
+
+Provides a `FileIO` type for basic UTF-8 file I/O built on top of the
+low-level posix syscalls.  Only UTF-8 encoding is supported for now, since
+that is what SPy's `str` type uses internally.
+
+Supported modes (same meanings as Python's built-in open()):
+  "r"  - read-only (default)
+  "w"  - write, truncate
+  "a"  - write, append
+"""
+
+import posix
+
+from posix import O_RDONLY, O_WRONLY, O_CREAT, O_TRUNC, O_APPEND
+
+
+@struct
+class FileIO:
+    fd: i32
+
+    def __new__(path: str, mode: str) -> FileIO:
+        flags: i32 = 0
+        if mode == "r":
+            flags = O_RDONLY
+        elif mode == "w":
+            flags = O_WRONLY | O_CREAT | O_TRUNC
+        elif mode == "a":
+            flags = O_WRONLY | O_CREAT | O_APPEND
+        else:
+            raise ValueError("invalid mode")
+
+        fd: i32 = posix.open(path, flags)
+        return FileIO.__make__(fd)
+
+    def read(self, count: i32) -> str:
+        return posix.read(self.fd, count)
+
+    def write(self, data: str) -> i32:
+        return posix.write(self.fd, data)
+
+    def close(self) -> None:
+        posix.close(self.fd)
+
+
+def open(file: str, mode: str) -> FileIO:
+    """Open file and return a `_io.FileIO`.  Raise OSError upon failure."""
+    return FileIO(file, mode)
