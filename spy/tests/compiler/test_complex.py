@@ -64,7 +64,7 @@ class TestComplex(CompilerTest):
         assert mod.imag(2 + 8j) == 8.0
         assert mod.conj(2 + 8j) == 2 - 8j
 
-    def test_implicit_conversion(self, complex_type):
+    def test_mixed_types(self, complex_type):
         mod = self.compile(f"""
         T = {complex_type}
         def add_int(x: T, y: i32) -> T: return x + y
