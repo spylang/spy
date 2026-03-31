@@ -17,6 +17,19 @@ spy_posix$_fopen(spy_Str *filename) {
     return f;
 }
 
+spy_Str *
+spy_posix$_fread(FILE *f, int32_t size) {
+    spy_Str *res = spy_str_alloc(size);
+    size_t n = fread((char *)res->utf8, 1, size, f);
+    if (n < (size_t)size) {
+        // short read: reallocate to actual size
+        spy_Str *trimmed = spy_str_alloc(n);
+        memcpy((char *)trimmed->utf8, res->utf8, n);
+        res = trimmed;
+    }
+    return res;
+}
+
 void
 spy_posix$_fclose(FILE *f) {
     fclose(f);

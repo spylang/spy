@@ -19,15 +19,36 @@ class TestPosix(CompilerTest):
         assert columns >= 80
         assert lines >= 24
 
-    def test_fopen_fclose(self):
+    def test_fopen_fread(self):
         src = """
-        from posix import _fopen, _fclose
+        from posix import _fopen, _fread, _fclose
 
-        def foo(fname: str) -> None:
+        def foo(fname: str) -> tuple[str, str]:
             f = _fopen(fname)
+            a = _fread(f, 4)
+            b = _fread(f, 8)
             _fclose(f)
+            return a, b
         """
         mod = self.compile(src)
         f = self.tmpdir.join("foo.txt")
-        f.write("abcd123456f78")
-        assert mod.foo(str(f)) is None
+        f.write("abcd12345678")
+        tup = mod.foo(str(f))
+        assert tup == ("abcd", "12345678")
+
+    def test_fread_short_read(self):
+        src = """
+        from posix import _fopen, _fread, _fclose
+
+        def foo(fname: str) -> tuple[str, str]:
+            f = _fopen(fname)
+            a = _fread(f, 100)
+            b = _fread(f, 10)
+            _fclose(f)
+            return a, b
+        """
+        mod = self.compile(src)
+        f = self.tmpdir.join("foo.txt")
+        f.write("hello")
+        tup = mod.foo(str(f))
+        assert tup == ("hello", "")

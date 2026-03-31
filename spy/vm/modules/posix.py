@@ -77,6 +77,12 @@ def w__fopen(vm: "SPyVM", w_filename: W_Str) -> W__FILE:
 
 
 @POSIX.builtin_func
+def w__fread(vm: "SPyVM", w_f: W__FILE, w_size: W_I32) -> W_Str:
+    ptr = vm.ll.call("spy_posix$_fread", w_f.h, w_size.value)
+    return W_Str.from_ptr(vm, ptr)
+
+
+@POSIX.builtin_func
 def w__fclose(vm: "SPyVM", w_f: W__FILE) -> None:
     vm.ll.call("spy_posix$_fclose", w_f.h)
     return None

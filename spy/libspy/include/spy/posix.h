@@ -9,6 +9,7 @@
 #include <unistd.h>
 
 FILE *WASM_EXPORT(spy_posix$_fopen)(spy_Str *filename);
+spy_Str *WASM_EXPORT(spy_posix$_fread)(FILE *f, int32_t size);
 void WASM_EXPORT(spy_posix$_fclose)(FILE *f);
 
 // NOTE: this struct is also defined in vm/modules/posix.py, the two definitions must be
