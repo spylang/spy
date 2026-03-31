@@ -83,6 +83,18 @@ def w__fread(vm: "SPyVM", w_f: W__FILE, w_size: W_I32) -> W_Str:
 
 
 @POSIX.builtin_func
+def w___freadall_chunked(vm: "SPyVM", w_f: W__FILE) -> W_Str:
+    ptr = vm.ll.call("spy_posix$__freadall_chunked", w_f.h)
+    return W_Str.from_ptr(vm, ptr)
+
+
+@POSIX.builtin_func
+def w__freadall(vm: "SPyVM", w_f: W__FILE) -> W_Str:
+    ptr = vm.ll.call("spy_posix$_freadall", w_f.h)
+    return W_Str.from_ptr(vm, ptr)
+
+
+@POSIX.builtin_func
 def w__fclose(vm: "SPyVM", w_f: W__FILE) -> None:
     vm.ll.call("spy_posix$_fclose", w_f.h)
     return None

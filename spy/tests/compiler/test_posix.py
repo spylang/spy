@@ -52,3 +52,43 @@ class TestPosix(CompilerTest):
         f.write("hello")
         tup = mod.foo(str(f))
         assert tup == ("hello", "")
+
+    def test_freadall(self):
+        src = """
+        from posix import _fopen, _fread, _freadall, _fclose
+
+        def readall(fname: str) -> str:
+            f = _fopen(fname)
+            content = _freadall(f)
+            _fclose(f)
+            return content
+
+        def read_then_readall(fname: str) -> tuple[str, str, str]:
+            f = _fopen(fname)
+            head = _fread(f, 5)
+            rest = _freadall(f)
+            empty = _freadall(f)
+            _fclose(f)
+            return head, rest, empty
+        """
+        mod = self.compile(src)
+        f = self.tmpdir.join("foo.txt")
+        f.write("hello world")
+        assert mod.readall(str(f)) == "hello world"
+        tup = mod.read_then_readall(str(f))
+        assert tup == ("hello", " world", "")
+
+    def test_freadall_chunked(self):
+        src = """
+        from posix import _fopen, __freadall_chunked, _fclose
+
+        def foo(fname: str) -> str:
+            f = _fopen(fname)
+            content = __freadall_chunked(f)
+            _fclose(f)
+            return content
+        """
+        mod = self.compile(src)
+        f = self.tmpdir.join("foo.txt")
+        f.write("hello world")
+        assert mod.foo(str(f)) == "hello world"

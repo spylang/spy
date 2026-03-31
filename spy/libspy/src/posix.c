@@ -30,6 +30,66 @@ spy_posix$_fread(FILE *f, int32_t size) {
     return res;
 }
 
+spy_Str *
+spy_posix$__freadall_chunked(FILE *f) {
+    size_t capacity = 4096;
+    size_t total = 0;
+    char *buf = (char *)malloc(capacity);
+    while (1) {
+        size_t n = fread(buf + total, 1, capacity - total, f);
+        total += n;
+        if (n == 0)
+            break;
+        if (total == capacity) {
+            capacity *= 2;
+            buf = (char *)realloc(buf, capacity);
+        }
+    }
+    if (ferror(f)) {
+        free(buf);
+        spy_panic("OSError", "freadall: read error", __FILE__, __LINE__);
+        return NULL;
+    }
+    spy_Str *res = spy_str_alloc(total);
+    memcpy((char *)res->utf8, buf, total);
+    free(buf);
+    return res;
+}
+
+static bool
+spy_posix$_is_seekable(FILE *f) {
+    long cur = ftell(f);
+    if (cur < 0 || fseek(f, 0, SEEK_END) != 0)
+        return false;
+    fseek(f, cur, SEEK_SET);
+    return true;
+}
+
+spy_Str *
+spy_posix$_freadall(FILE *f) {
+    if (!spy_posix$_is_seekable(f))
+        return spy_posix$__freadall_chunked(f);
+
+    long cur = ftell(f);
+    fseek(f, 0, SEEK_END);
+    long end = ftell(f);
+    fseek(f, cur, SEEK_SET);
+    size_t size = end - cur;
+    spy_Str *res = spy_str_alloc(size);
+    size_t n = fread((char *)res->utf8, 1, size, f);
+    if (n < size) {
+        if (ferror(f)) {
+            spy_panic("OSError", "freadall: read error", __FILE__, __LINE__);
+            return NULL;
+        }
+        // EOF before expected: e.g. file was truncated concurrently
+        spy_Str *trimmed = spy_str_alloc(n);
+        memcpy((char *)trimmed->utf8, res->utf8, n);
+        res = trimmed;
+    }
+    return res;
+}
+
 void
 spy_posix$_fclose(FILE *f) {
     fclose(f);
