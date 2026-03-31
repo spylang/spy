@@ -518,8 +518,9 @@ class DopplerFrame(ASTFrame):
 
     def shift_expr_Tuple(self, tup: ast.Tuple, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[tup]
+        v_T = make_const(self.vm, tup.loc, wam.w_static_T)
         newitems_v = [self.shifted_expr[item] for item in tup.items]
-        return self.shift_opimpl(tup, w_opimpl, newitems_v, w_T=wam.w_static_T)
+        return self.shift_opimpl(tup, w_opimpl, [v_T] + newitems_v, w_T=wam.w_static_T)
 
     def shift_expr_Slice(self, op: ast.Slice, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]
