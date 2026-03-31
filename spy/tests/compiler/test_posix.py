@@ -18,3 +18,95 @@ class TestPosix(CompilerTest):
         # When running in pytest without a terminal, we get fallback values
         assert columns >= 80
         assert lines >= 24
+
+    def test_fopen_fread(self):
+        src = """
+        from posix import _fopen, _fread, _fclose
+
+        def foo(fname: str) -> tuple[str, str]:
+            f = _fopen(fname)
+            a = _fread(f, 4)
+            b = _fread(f, 8)
+            _fclose(f)
+            return a, b
+        """
+        mod = self.compile(src)
+        f = self.tmpdir.join("foo.txt")
+        f.write("abcd12345678")
+        tup = mod.foo(str(f))
+        assert tup == ("abcd", "12345678")
+
+    def test_fread_short_read(self):
+        src = """
+        from posix import _fopen, _fread, _fclose
+
+        def foo(fname: str) -> tuple[str, str]:
+            f = _fopen(fname)
+            a = _fread(f, 100)
+            b = _fread(f, 10)
+            _fclose(f)
+            return a, b
+        """
+        mod = self.compile(src)
+        f = self.tmpdir.join("foo.txt")
+        f.write("hello")
+        tup = mod.foo(str(f))
+        assert tup == ("hello", "")
+
+    def test_freadall(self):
+        src = """
+        from posix import _fopen, _fread, _freadall, _fclose
+
+        def readall(fname: str) -> str:
+            f = _fopen(fname)
+            content = _freadall(f)
+            _fclose(f)
+            return content
+
+        def read_then_readall(fname: str) -> tuple[str, str, str]:
+            f = _fopen(fname)
+            head = _fread(f, 5)
+            rest = _freadall(f)
+            empty = _freadall(f)
+            _fclose(f)
+            return head, rest, empty
+        """
+        mod = self.compile(src)
+        f = self.tmpdir.join("foo.txt")
+        f.write("hello world")
+        assert mod.readall(str(f)) == "hello world"
+        tup = mod.read_then_readall(str(f))
+        assert tup == ("hello", " world", "")
+
+    def test_freadall_chunked(self):
+        src = """
+        from posix import _fopen, __freadall_chunked, _fclose
+
+        def foo(fname: str) -> str:
+            f = _fopen(fname)
+            content = __freadall_chunked(f)
+            _fclose(f)
+            return content
+        """
+        mod = self.compile(src)
+        f = self.tmpdir.join("foo.txt")
+        f.write("hello world")
+        assert mod.foo(str(f)) == "hello world"
+
+    def test_freadline(self):
+        src = """
+        from posix import _fopen, _freadline, _fclose
+
+        def foo(fname: str) -> tuple[str, str, str]:
+            f = _fopen(fname)
+            a = _freadline(f)
+            b = _freadline(f)
+            c = _freadline(f)
+            _fclose(f)
+            return a, b, c
+        """
+        mod = self.compile(src)
+        f = self.tmpdir.join("foo.txt")
+        f.write("hello\nworld\n")
+        tup = mod.foo(str(f))
+        assert tup == ("hello\n", "world\n", "")

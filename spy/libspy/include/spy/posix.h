@@ -1,10 +1,19 @@
 #ifndef SPY_POSIX_H
 #define SPY_POSIX_H
 
+#include <stdio.h>
+
 #ifndef SPY_TARGET_WASI
 #  include <sys/ioctl.h>
 #endif
 #include <unistd.h>
+
+FILE *WASM_EXPORT(spy_posix$_fopen)(spy_Str *filename);
+spy_Str *WASM_EXPORT(spy_posix$_fread)(FILE *f, int32_t size);
+spy_Str *WASM_EXPORT(spy_posix$__freadall_chunked)(FILE *f);
+spy_Str *WASM_EXPORT(spy_posix$_freadall)(FILE *f);
+spy_Str *WASM_EXPORT(spy_posix$_freadline)(FILE *f);
+void WASM_EXPORT(spy_posix$_fclose)(FILE *f);
 
 // NOTE: this struct is also defined in vm/modules/posix.py, the two definitions must be
 // kept in sync
