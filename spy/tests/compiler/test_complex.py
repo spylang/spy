@@ -105,22 +105,20 @@ class TestComplex(CompilerTest):
         assert mod.str_to_complex("-4.5j") == -4.5j
         assert mod.str_to_complex("-1.23+4.5j") == -1.23 + 4.5j
         assert mod.str_to_complex("\t( -1.23+4.5J )\n") == -1.23 + 4.5j
-        with SPyError.raises(
-            "W_ValueError", match=r"complex\(\) arg is a malformed string"
+        for str_arg in (
+            " ",
+            "(",
+            "  )",
+            " (   ) ",
+            " ( -1.23+4.5j  } ",
+            "-4.5j+1.23",
+            "1 + 2j",
+            "-1.23*4.5j",
         ):
-            mod.str_to_complex(" ")
-        with SPyError.raises(
-            "W_ValueError", match=r"complex\(\) arg is a malformed string"
-        ):
-            mod.str_to_complex(" (   ) ")
-        with SPyError.raises(
-            "W_ValueError", match=r"complex\(\) arg is a malformed string"
-        ):
-            mod.str_to_complex("-4.5j+1.23")
-        with SPyError.raises(
-            "W_ValueError", match=r"complex\(\) arg is a malformed string"
-        ):
-            mod.str_to_complex("1 + 2j")
+            with SPyError.raises(
+                "W_ValueError", match=r"complex\(\) arg is a malformed string"
+            ):
+                mod.str_to_complex(str_arg)
         c = mod.str_to_complex("-Infinity+NaNj")
         assert isinf(c.real)
         assert isnan(c.imag)
