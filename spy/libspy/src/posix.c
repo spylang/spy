@@ -90,6 +90,26 @@ spy_posix$_freadall(FILE *f) {
     return res;
 }
 
+spy_Str *
+spy_posix$_freadline(FILE *f) {
+    char *line = NULL;
+    size_t bufsize = 0;
+    ssize_t n = getline(&line, &bufsize, f);
+    if (n < 0) {
+        free(line);
+        if (ferror(f)) {
+            spy_panic("OSError", "freadline: read error", __FILE__, __LINE__);
+            return NULL;
+        }
+        // EOF: return empty string
+        return spy_str_alloc(0);
+    }
+    spy_Str *res = spy_str_alloc(n);
+    memcpy((char *)res->utf8, line, n);
+    free(line);
+    return res;
+}
+
 void
 spy_posix$_fclose(FILE *f) {
     fclose(f);

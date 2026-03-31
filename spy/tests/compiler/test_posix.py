@@ -92,3 +92,21 @@ class TestPosix(CompilerTest):
         f = self.tmpdir.join("foo.txt")
         f.write("hello world")
         assert mod.foo(str(f)) == "hello world"
+
+    def test_freadline(self):
+        src = """
+        from posix import _fopen, _freadline, _fclose
+
+        def foo(fname: str) -> tuple[str, str, str]:
+            f = _fopen(fname)
+            a = _freadline(f)
+            b = _freadline(f)
+            c = _freadline(f)
+            _fclose(f)
+            return a, b, c
+        """
+        mod = self.compile(src)
+        f = self.tmpdir.join("foo.txt")
+        f.write("hello\nworld\n")
+        tup = mod.foo(str(f))
+        assert tup == ("hello\n", "world\n", "")
