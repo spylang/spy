@@ -18,3 +18,16 @@ class TestPosix(CompilerTest):
         # When running in pytest without a terminal, we get fallback values
         assert columns >= 80
         assert lines >= 24
+
+    def test_fopen_fclose(self):
+        src = """
+        from posix import _fopen, _fclose
+
+        def foo(fname: str) -> None:
+            f = _fopen(fname)
+            _fclose(f)
+        """
+        mod = self.compile(src)
+        f = self.tmpdir.join("foo.txt")
+        f.write("abcd123456f78")
+        assert mod.foo(str(f)) is None

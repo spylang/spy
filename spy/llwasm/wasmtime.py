@@ -116,6 +116,7 @@ def get_wasi_config() -> wt.WasiConfig:
     wasi_config.inherit_stdin()
     wasi_config.inherit_stdout()
     wasi_config.inherit_stderr()
+    wasi_config.preopen_dir("/", "/")
     return wasi_config
 
 
@@ -141,6 +142,13 @@ class LLWasmInstance(LLWasmInstanceBase):
             self.instance = linker.instantiate(self.store, self.llmod.mod)
         else:
             self.instance = instance
+        # WASI reactor modules export _initialize to set up the C runtime
+        # (e.g. preopened directory table). Must be called before any libc
+        # functions that depend on WASI state.
+        init = self.instance.exports(self.store).get("_initialize")
+        if init is not None:
+            assert isinstance(init, wt.Func)
+            init(self.store)
         memory = self.instance.exports(self.store).get("memory")
         assert isinstance(memory, wt.Memory)
         self.mem = LLWasmMemory(self.store, memory)
