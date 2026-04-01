@@ -57,7 +57,7 @@ class ModFrame(AbstractFrame):
         for decl in self.mod.decls:
             if isinstance(decl, ast.Import):
                 self.exec_Import(decl)
-            elif isinstance(decl, ast.GlobalFuncDef):
+            elif isinstance(decl, (ast.GlobalFuncDef, ast.GlobalGenericFuncDef)):
                 self.exec_stmt(decl.funcdef)
             elif isinstance(decl, ast.GlobalClassDef):
                 self.exec_stmt(decl.classdef)
