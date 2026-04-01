@@ -532,47 +532,29 @@ class TestScopeAnalyzer:
 
     def test_generic_args(self):
         scopes = self.analyze("""
-        @blue
-        def outer(T):
-            def inner(x: T) -> None:
-                pass
-            return inner
-
-        def outer_generic[T](x: T):
-            pass
+        def foo[T](x: T):
+            v: T = 1
         """)
 
-        for outer_name in ("outer", "outer_generic"):
-            if outer_name.endswith("generic"):
-                inner_name = "__impl"
-                generic_def = self.mod.get_generic_funcdef(outer_name)
-                inner_funcdef = generic_def.inner
-                outer_def: ast.FuncDef | ast.GenericFuncDef = generic_def
-            else:
-                inner_name = "inner"
-                plain_def = self.mod.get_funcdef(outer_name)
-                node = plain_def.body[0]
-                assert isinstance(node, ast.FuncDef)
-                inner_funcdef = node
-                outer_def = plain_def
+        generic_funcdef = self.mod.get_generic_funcdef("foo")
+        scope = scopes.by_funcdef(generic_funcdef)
+        assert scope.name == "test::foo"
+        assert scope.color == "blue"
+        assert scope._symbols == {
+            "T": MatchSymbol("T", "const", "blue-param"),
+            "__impl": MatchSymbol("__impl", "const", "funcdef"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+        }
 
-            scope = scopes.by_funcdef(outer_def)
-            assert scope.name == "test::" + outer_name
-            assert scope.color == "blue"
-            assert scope._symbols == {
-                "T": MatchSymbol("T", "const", "blue-param"),
-                inner_name: MatchSymbol(inner_name, "const", "funcdef"),
-                "@return": MatchSymbol("@return", "var", "auto"),
-            }
-
-            assert isinstance(inner_funcdef, ast.FuncDef)
-            inner_scope = scopes.by_funcdef(inner_funcdef)
-            assert inner_scope.name == f"test::{outer_name}::{inner_name}"
-            assert inner_scope.color == "red"
-            assert inner_scope._symbols == {
-                "x": MatchSymbol("x", "var", "red-param"),
-                "@return": MatchSymbol("@return", "var", "auto"),
-            }
+        inner_scope = scopes.by_funcdef(generic_funcdef.inner)
+        assert inner_scope.name == f"test::foo::__impl"
+        assert inner_scope.color == "red"
+        assert inner_scope._symbols == {
+            "x": MatchSymbol("x", "var", "red-param"),
+            "v": MatchSymbol("v", "const", "auto"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+            "T": MatchSymbol("T", "const", "blue-param", level=1),
+        }
 
     def test_symbol_not_found(self):
         scopes = self.analyze("""
