@@ -134,7 +134,11 @@ class Parser:
         for py_stmt in py_body:
             if isinstance(py_stmt, py_ast.FunctionDef):
                 funcdef = self.from_py_stmt_FunctionDef(py_stmt)
-                globfunc = spy.ast.GlobalFuncDef(funcdef.loc, funcdef)
+                globfunc: spy.ast.GlobalGenericFuncDef | spy.ast.GlobalFuncDef
+                if isinstance(funcdef, spy.ast.GenericFuncDef):
+                    globfunc = spy.ast.GlobalGenericFuncDef(funcdef.loc, funcdef)
+                else:
+                    globfunc = spy.ast.GlobalFuncDef(funcdef.loc, funcdef)
                 mod.decls.append(globfunc)
             elif isinstance(py_stmt, py_ast.ClassDef):
                 classdef = self.from_py_stmt_ClassDef(py_stmt)
@@ -164,7 +168,7 @@ class Parser:
 
     def from_py_stmt_FunctionDef(
         self, py_funcdef: py_ast.FunctionDef
-    ) -> spy.ast.FuncDef:
+    ) -> spy.ast.FuncDef | spy.ast.GenericFuncDef:
         color: spy.ast.Color = "red"
         func_kind: spy.ast.FuncKind = "plain"
         decorators: list[spy.ast.Expr] = []
@@ -183,9 +187,63 @@ class Parser:
             else:
                 # other decorators are stored as general decorators
                 decorators.append(self.from_py_expr(deco))
-        #
-        loc = py_funcdef.loc
-        name = py_funcdef.name
+
+        # generic arguments: def func[T]()
+        if py_funcdef.type_params:
+            if decorators:
+                self.error(
+                    "cannot use type parameters with decorators",
+                    "remove the decorators or the type parameters",
+                    py_funcdef.loc,
+                )
+            generic_args = self._parse_type_params(py_funcdef)
+            inner_funcdef = self._parse_py_funcdef(
+                py_funcdef, color="red", func_kind="plain", decorators=[]
+            )
+            inner_funcdef.name = "__impl"
+            return spy.ast.GenericFuncDef(
+                loc=py_funcdef.loc,
+                name=py_funcdef.name,
+                args=generic_args,
+                inner=inner_funcdef,
+            )
+
+        return self._parse_py_funcdef(py_funcdef, color, func_kind, decorators)
+
+    def _parse_type_params(
+        self, py_funcdef: py_ast.FunctionDef
+    ) -> list[spy.ast.FuncArg]:
+        generic_args = []
+        for tp in py_funcdef.type_params:
+            if not isinstance(tp, py_ast.TypeVar):
+                self.error(
+                    "only plain TypeVar type parameters are supported",
+                    "ParamSpec and TypeVarTuple are not supported yet",
+                    tp.loc,
+                )
+            if tp.bound is not None:
+                self.error(
+                    "bounded TypeVars are not supported yet",
+                    "remove the bound",
+                    tp.loc,
+                )
+            generic_args.append(
+                spy.ast.FuncArg(
+                    loc=tp.loc,
+                    name=tp.name,
+                    type=spy.ast.Auto(tp.loc),
+                    kind="simple",
+                )
+            )
+        return generic_args
+
+    def _parse_py_funcdef(
+        self,
+        py_funcdef: py_ast.FunctionDef,
+        color: spy.ast.Color,
+        func_kind: spy.ast.FuncKind,
+        decorators: list[spy.ast.Expr],
+    ) -> spy.ast.FuncDef:
         args = self.from_py_arguments(color, py_funcdef.args)
         #
         py_returns = py_funcdef.returns

@@ -190,6 +190,15 @@ class Module(Node):
                 return decl.funcdef
         raise KeyError(name)
 
+    def get_generic_funcdef(self, name: str) -> "GenericFuncDef":
+        """
+        Search for the GenericFuncDef with the given name.
+        """
+        for decl in self.decls:
+            if isinstance(decl, GlobalGenericFuncDef) and decl.funcdef.name == name:
+                return decl.funcdef
+        raise KeyError(name)
+
     def get_classdef(self, name: str) -> "ClassDef":
         """
         Search for the ClassDef with the given name.
@@ -207,6 +216,11 @@ class Decl(Node):
 @astnode
 class GlobalFuncDef(Decl):
     funcdef: "FuncDef"
+
+
+@astnode
+class GlobalGenericFuncDef(Decl):
+    funcdef: "GenericFuncDef"
 
 
 @astnode
@@ -541,6 +555,17 @@ class FuncDef(Stmt):
         'def' until the return type.
         """
         return Loc.combine(self.loc, self.return_type.loc)
+
+
+@astnode
+class GenericFuncDef(Stmt):
+    name: str
+    args: list[FuncArg]
+    inner: FuncDef
+    symtable: Any = field(repr=False, default=None)
+
+    def shortrepr(self) -> Optional[str]:
+        return self.name
 
 
 @astnode
