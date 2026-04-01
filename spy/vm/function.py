@@ -266,7 +266,7 @@ class W_Func(W_Object):
     # is 'plain' or 'generic'.
     @staticmethod
     def op_CALL(
-        vm: "SPyVM", wam_func: "W_MetaArg", *args_wam: "W_MetaArg"
+        vm: "SPyVM", wam_func: "W_MetaArg", *got_args_wam: "W_MetaArg"
     ) -> "W_OpSpec":
         """
         Return an OpSpec which directly calls this function.
@@ -276,11 +276,11 @@ class W_Func(W_Object):
         w_func = wam_func.w_blueval
         assert isinstance(w_func, W_Func)
         assert w_func.w_functype.kind != "metafunc"
-        return W_OpSpec(
-            w_func,
-            list(args_wam),
-            is_direct_call=True,
-        )
+
+        args_wam = list(got_args_wam)
+        if isinstance(w_func, W_ASTFunc):
+            args_wam = w_func._fill_defaults_maybe(vm, args_wam)
+        return W_OpSpec(w_func, args_wam, is_direct_call=True)
 
     @staticmethod
     def op_METACALL(
@@ -336,6 +336,7 @@ class W_Func(W_Object):
 class W_ASTFunc(W_Func):
     funcdef: ast.FuncDef
     closure: CLOSURE
+    defaults_w: list[W_Object]
 
     # types of local variables: this is non-None IIF the function has been
     # redshifted.
@@ -352,6 +353,7 @@ class W_ASTFunc(W_Func):
         fqn: FQN,
         funcdef: ast.FuncDef,
         closure: CLOSURE,
+        defaults_w: list[W_Object],
         *,
         locals_types_w: Optional[dict[str, W_Type]] = None,
     ) -> None:
@@ -360,6 +362,7 @@ class W_ASTFunc(W_Func):
         self.def_loc = funcdef.prototype_loc
         self.funcdef = funcdef
         self.closure = closure
+        self.defaults_w = defaults_w
         self.locals_types_w = locals_types_w
         self.w_redshifted_into = None
 
@@ -394,6 +397,35 @@ class W_ASTFunc(W_Func):
 
         frame = ASTFrame(vm, self, args_w)
         return frame.run(args_w)
+
+    def _fill_defaults_maybe(
+        self, vm: "SPyVM", got_args_wam: list["W_MetaArg"]
+    ) -> list["W_MetaArg"]:
+        """
+        If got_args_wam is not long enough and we have default values, add them.
+        """
+        from spy.vm.opspec import W_MetaArg
+
+        if not self.defaults_w:
+            return got_args_wam
+
+        n_params = len(self.w_functype.params)
+        n_got = len(got_args_wam)
+        n_defaults = len(self.defaults_w)
+        n_missing = n_params - n_got
+
+        if n_missing <= 0 or n_missing > n_defaults:
+            return got_args_wam
+
+        # defaults align to the end of the param list
+        args_wam = list(got_args_wam)
+        start = n_defaults - n_missing
+        defaults_w = self.defaults_w[start:]
+        default_locs = [d.loc for d in self.funcdef.defaults[start:]]
+        for w_default, loc in zip(defaults_w, default_locs):
+            wam = W_MetaArg.from_w_obj(vm, w_default, loc=loc)
+            args_wam.append(wam)
+        return args_wam
 
 
 class W_BuiltinFunc(W_Func):

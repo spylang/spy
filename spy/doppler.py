@@ -132,6 +132,7 @@ class DopplerFrame(ASTFrame):
             closure=new_closure,
             w_functype=w_newfunctype,
             funcdef=new_funcdef,
+            defaults_w=self.w_func.defaults_w,
             locals_types_w=self.get_locals_types_w(),
         )
         # mark the original function as invalid

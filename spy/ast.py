@@ -540,6 +540,7 @@ class FuncDef(Stmt):
     name: str
     args: list[FuncArg]
     return_type: "Expr"
+    defaults: list[Expr]
     docstring: Optional[str]
     body: list["Stmt"]
     decorators: list["Expr"]

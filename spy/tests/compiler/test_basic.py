@@ -1620,3 +1620,48 @@ class TestBasic(CompilerTest):
         assert w_T2 is B.w_type
         #
         assert mod.get_color_of_type_call(0) == "blue"
+
+    def test_default_args(self):
+        src = """
+        def add(x: int, y: int = 1) -> int:
+            return x + y
+
+        def foo(x: int) -> int:
+            return add(x)
+
+        def bar(x: int, y: int) -> int:
+            return add(x, y)
+        """
+        mod = self.compile(src)
+        assert mod.foo(5) == 6
+        assert mod.bar(5, 6) == 11
+
+    def test_default_args_too_few(self):
+        src = """
+        def add(x: int, y: int = 1) -> int:
+            return x + y
+
+        def foo() -> int:
+            return add()
+        """
+        errors = expect_errors(
+            "this function takes from 1 to 2 arguments but 0 arguments were supplied",
+            ("1 argument missing", "add"),
+            ("function defined here", "def add(x: int, y: int = 1) -> int"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    def test_default_args_too_many(self):
+        src = """
+        def add(x: int, y: int = 1) -> int:
+            return x + y
+
+        def foo() -> int:
+            return add(1, 2, 3)
+        """
+        errors = expect_errors(
+            "this function takes from 1 to 2 arguments but 3 arguments were supplied",
+            ("1 extra argument", "3"),
+            ("function defined here", "def add(x: int, y: int = 1) -> int"),
+        )
+        self.compile_raises(src, "foo", errors)

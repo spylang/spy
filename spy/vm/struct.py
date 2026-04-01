@@ -195,6 +195,7 @@ class W_StructType(W_Type):
                 ast.FuncArg(func_loc, "b", self_type, "simple"),
             ],
             return_type=ast.FQNConst(func_loc, B.w_bool.fqn),
+            defaults=[],
             docstring=None,
             body=[stmt],
             decorators=[],
@@ -214,7 +215,7 @@ class W_StructType(W_Type):
         params = [FuncParam(self, "simple"), FuncParam(self, "simple")]
         w_functype = W_FuncType.new(params, w_restype=B.w_bool)
         fqn = self.fqn.join(name)
-        return W_ASTFunc(w_functype, fqn, funcdef, closure=())
+        return W_ASTFunc(w_functype, fqn, funcdef, closure=(), defaults_w=[])
 
     def repr_hints(self) -> list[str]:
         return super().repr_hints() + ["struct"]

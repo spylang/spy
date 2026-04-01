@@ -56,6 +56,7 @@ class TestParser:
                         name='foo',
                         args=[],
                         return_type=Constant(value=None),
+                        defaults=[],
                         docstring=None,
                         body=[
                             Pass(),
@@ -97,6 +98,7 @@ class TestParser:
                             ),
                         ],
                         return_type=Constant(value=None),
+                        defaults=[],
                         docstring=None,
                         body=[
                             Pass(),
@@ -109,6 +111,42 @@ class TestParser:
         """
         self.assert_dump(mod, expected)
 
+    def test_FuncDef_default_args(self):
+        mod = self.parse("""
+        def foo(a: i32, b: i32 = 42) -> None:
+            pass
+        """)
+        funcdef = mod.get_funcdef("foo")
+        expected = """
+        FuncDef(
+            color='red',
+            kind='plain',
+            name='foo',
+            args=[
+                FuncArg(
+                    name='a',
+                    type=Name(id='i32'),
+                    kind='simple',
+                ),
+                FuncArg(
+                    name='b',
+                    type=Name(id='i32'),
+                    kind='simple',
+                ),
+            ],
+            return_type=Constant(value=None),
+            defaults=[
+                Constant(value=42),
+            ],
+            docstring=None,
+            body=[
+                Pass(),
+            ],
+            decorators=[],
+        )
+        """
+        self.assert_dump(funcdef, expected)
+
     def test_FuncDef_errors_3(self):
         src = """
         def foo(**kwargs) -> None:
@@ -118,17 +156,6 @@ class TestParser:
             src,
             "**kwargs is not supported yet",
             ("this is not supported", "kwargs"),
-        )
-
-    def test_FuncDef_errors_4(self):
-        src = """
-        def foo(a: i32 = 42) -> None:
-            pass
-        """
-        self.expect_errors(
-            src,
-            "default arguments are not supported yet",
-            ("this is not supported", "42"),
         )
 
     def test_FuncDef_errors_5(self):
@@ -167,6 +194,7 @@ class TestParser:
             name='foo',
             args=[],
             return_type=Constant(value=None),
+            defaults=[],
             docstring=None,
             body=[
                 Pass(),
@@ -194,6 +222,7 @@ class TestParser:
             name='foo',
             args=[],
             return_type=Constant(value=None),
+            defaults=[],
             docstring=None,
             body=[
                 Pass(),
@@ -231,6 +260,7 @@ class TestParser:
             name='foo',
             args=[],
             return_type=Name(id='i32'),
+            defaults=[],
             docstring=None,
             body=[
                 Return(
@@ -258,6 +288,7 @@ class TestParser:
             name='foo',
             args=[],
             return_type=Name(id='i32'),
+            defaults=[],
             docstring=None,
             body=[
                 Return(
@@ -283,6 +314,7 @@ class TestParser:
             name='foo',
             args=[],
             return_type=Name(id='i32'),
+            defaults=[],
             docstring='hello',
             body=[
                 Return(
@@ -308,6 +340,7 @@ class TestParser:
             name='foo',
             args=[],
             return_type=Name(id='i32'),
+            defaults=[],
             docstring=None,
             body=[
                 Return(
@@ -333,6 +366,7 @@ class TestParser:
             name='foo',
             args=[],
             return_type=Name(id='i32'),
+            defaults=[],
             docstring=None,
             body=[
                 Return(
@@ -377,6 +411,7 @@ class TestParser:
                     ),
                 ],
                 return_type=Name(id='T'),
+                defaults=[],
                 docstring=None,
                 body=[
                     Return(
@@ -403,6 +438,7 @@ class TestParser:
             name='foo',
             args=[],
             return_type=Name(id='i32'),
+            defaults=[],
             docstring=None,
             body=[
                 Return(
@@ -797,6 +833,7 @@ class TestParser:
             name='foo',
             args=[],
             return_type=Constant(value=None),
+            defaults=[],
             docstring=None,
             body=[
                 StmtExpr(
@@ -1304,6 +1341,7 @@ class TestParser:
                         name='foo',
                         args=[],
                         return_type=Auto(),
+                        defaults=[],
                         docstring=None,
                         body=[
                             FuncDef(
@@ -1312,6 +1350,7 @@ class TestParser:
                                 name='bar',
                                 args=[],
                                 return_type=Constant(value=None),
+                                defaults=[],
                                 docstring=None,
                                 body=[
                                     Pass(),
@@ -1507,6 +1546,7 @@ class TestParser:
                     name='foo',
                     args=[],
                     return_type=Constant(value=None),
+                    defaults=[],
                     docstring=None,
                     body=[
                         Pass(),
@@ -1543,6 +1583,7 @@ class TestParser:
                 ),
             ],
             return_type=Constant(value=None),
+            defaults=[],
             docstring=None,
             body=[
                 Pass(),

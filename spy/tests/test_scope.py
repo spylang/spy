@@ -681,6 +681,23 @@ class TestScopeAnalyzer:
             "@return": MatchSymbol("@return", "var", "auto"),
         }
 
+    def test_default_args(self):
+        scopes = self.analyze("""
+        MYCONST = 42
+
+        def outer() -> None:
+            def foo(b: i32 = MYCONST) -> None:
+                pass
+        """)
+        outer_def = self.mod.get_funcdef("outer")
+        outer_scope = scopes.by_funcdef(outer_def)
+        assert outer_scope._symbols == {
+            "foo": MatchSymbol("foo", "const", "funcdef"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+            "i32": MatchSymbol("i32", "const", "explicit", level=2),
+            "MYCONST": MatchSymbol("MYCONST", "const", "global-const", level=1),
+        }
+
     def test_list_literal(self):
         # using a string literal implicitly imports '_list'
         scopes = self.analyze("""
