@@ -2,13 +2,21 @@
 #include <stdio.h>
 
 FILE *
-spy_posix$_fopen(spy_Str *filename) {
+spy_posix$_fopen(spy_Str *filename, spy_Str *mode) {
+    // validate mode: only "r", "w", "a" are supported
+    if (mode->length != 1 ||
+        (mode->utf8[0] != 'r' && mode->utf8[0] != 'w' && mode->utf8[0] != 'a')) {
+        spy_panic("PanicError", "invalid mode for _fopen", __FILE__, __LINE__);
+        return NULL;
+    }
+    char cmode[2] = {mode->utf8[0], '\0'};
+
     // spy_Str is not null-terminated, make a temporary copy for fopen
     char *fname = (char *)malloc(filename->length + 1);
     memcpy(fname, filename->utf8, filename->length);
     fname[filename->length] = '\0';
 
-    FILE *f = fopen(fname, "r");
+    FILE *f = fopen(fname, cmode);
     free(fname);
     if (f == NULL) {
         spy_panic("OSError", "cannot open file", __FILE__, __LINE__);
@@ -108,6 +116,14 @@ spy_posix$_freadline(FILE *f) {
     memcpy((char *)res->utf8, line, n);
     free(line);
     return res;
+}
+
+void
+spy_posix$_fwrite(FILE *f, spy_Str *data) {
+    size_t n = fwrite(data->utf8, 1, data->length, f);
+    if (n < data->length) {
+        spy_panic("OSError", "fwrite: write error", __FILE__, __LINE__);
+    }
 }
 
 void

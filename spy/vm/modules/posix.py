@@ -71,8 +71,8 @@ class W__FILE(W_Object):
 
 
 @POSIX.builtin_func
-def w__fopen(vm: "SPyVM", w_filename: W_Str) -> W__FILE:
-    h = vm.ll.call("spy_posix$_fopen", w_filename.ptr)
+def w__fopen(vm: "SPyVM", w_filename: W_Str, w_mode: W_Str) -> W__FILE:
+    h = vm.ll.call("spy_posix$_fopen", w_filename.ptr, w_mode.ptr)
     return W__FILE(h)
 
 
@@ -98,6 +98,12 @@ def w__freadall(vm: "SPyVM", w_f: W__FILE) -> W_Str:
 def w__freadline(vm: "SPyVM", w_f: W__FILE) -> W_Str:
     ptr = vm.ll.call("spy_posix$_freadline", w_f.h)
     return W_Str.from_ptr(vm, ptr)
+
+
+@POSIX.builtin_func
+def w__fwrite(vm: "SPyVM", w_f: W__FILE, w_data: W_Str) -> None:
+    vm.ll.call("spy_posix$_fwrite", w_f.h, w_data.ptr)
+    return None
 
 
 @POSIX.builtin_func
