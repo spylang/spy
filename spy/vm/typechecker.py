@@ -82,9 +82,6 @@ def typecheck_opspec(
         wam_func = in_args_wam[0]
         call_loc = wam_func.loc
 
-    # fill in default arguments if needed
-    # out_args_wam = _fill_defaults(vm, w_opspec, out_args_wam)
-
     # check that the number of arguments match
     got_nargs = len(out_args_wam)
     exp_nargs = len(w_out_functype.params)
