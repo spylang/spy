@@ -530,6 +530,50 @@ class TestScopeAnalyzer:
             "deco": MatchSymbol("deco", "const", "funcdef", level=1),
         }
 
+    def test_generic_args(self):
+        scopes = self.analyze("""
+        @blue
+        def outer(T):
+            def inner(x: T) -> None:
+                pass
+            return inner
+
+        def outer_generic[T](x: T):
+            pass
+        """)
+
+        for outer_name in ("outer", "outer_generic"):
+            if outer_name.endswith("generic"):
+                inner_name = "__impl"
+                generic_def = self.mod.get_generic_funcdef(outer_name)
+                inner_funcdef = generic_def.inner
+                outer_def: ast.FuncDef | ast.GenericFuncDef = generic_def
+            else:
+                inner_name = "inner"
+                plain_def = self.mod.get_funcdef(outer_name)
+                node = plain_def.body[0]
+                assert isinstance(node, ast.FuncDef)
+                inner_funcdef = node
+                outer_def = plain_def
+
+            scope = scopes.by_funcdef(outer_def)
+            assert scope.name == "test::" + outer_name
+            assert scope.color == "blue"
+            assert scope._symbols == {
+                "T": MatchSymbol("T", "const", "blue-param"),
+                inner_name: MatchSymbol(inner_name, "const", "funcdef"),
+                "@return": MatchSymbol("@return", "var", "auto"),
+            }
+
+            assert isinstance(inner_funcdef, ast.FuncDef)
+            inner_scope = scopes.by_funcdef(inner_funcdef)
+            assert inner_scope.name == f"test::{outer_name}::{inner_name}"
+            assert inner_scope.color == "red"
+            assert inner_scope._symbols == {
+                "x": MatchSymbol("x", "var", "red-param"),
+                "@return": MatchSymbol("@return", "var", "auto"),
+            }
+
     def test_symbol_not_found(self):
         scopes = self.analyze("""
         def foo() -> None:
