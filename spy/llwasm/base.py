@@ -1,4 +1,5 @@
 import struct
+import weakref
 from typing import Any, Literal, Self
 
 import py.path
@@ -13,7 +14,22 @@ class HostModule:
     Each host module can provide one or more WASM import, used by link().
     """
 
-    ll: "LLWasmInstanceBase"  # this attribute is set by LLWasmInstance.__init__
+    # Use a weakref to avoid a reference cycle: LLWasmInstance sets
+    # hostmod.ll = self (see wasmtime.py), creating a cycle
+    # LLWasmInstance.libspy -> HostModule.ll -> LLWasmInstance.  Because
+    # wasmtime.Store is a C extension with __del__, the cyclic GC cannot
+    # break the cycle, so the Store (and its preopen_dir fd) would leak.
+    _ll_ref: "weakref.ref[LLWasmInstanceBase]"
+
+    @property
+    def ll(self) -> "LLWasmInstanceBase":
+        ll = self._ll_ref()
+        assert ll is not None
+        return ll
+
+    @ll.setter
+    def ll(self, value: "LLWasmInstanceBase") -> None:
+        self._ll_ref = weakref.ref(value)
 
 
 class LLWasmModuleBase:
