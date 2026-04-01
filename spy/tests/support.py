@@ -124,6 +124,14 @@ class CompilerTest:
         self.vm = SPyVM()
         self.vm.path.append(str(self.tmpdir))
 
+        # pytest keeps CompilerTest instances alive for the whole session, meaning that
+        # tmpdir and vm are collected only at the end of the process. This causes many
+        # problems, including a fd leak because each SPyVM opens a fd (to map '/' to '/'
+        # in wasmtime).  The following make sure to release them early.
+        yield
+        self.tmpdir = None
+        self.vm = None  # type: ignore
+
     def write_file(self, filename: str, src: str) -> Any:
         """
         Write the give source code to the specified filename, in the tmpdir.
