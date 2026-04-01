@@ -559,6 +559,16 @@ class FuncDef(Stmt):
 
 @astnode
 class GenericFuncDef(Stmt):
+    """
+    If you have this:
+
+        def add[T](x: T, y: T) -> T:
+            return x + y
+
+    Then GenericFuncDef represents the "outer" function. Its argument list contains "T".
+    The "inner" funcdef is "def __impl(x: T, y: T) -> T: ..."
+    """
+
     name: str
     args: list[FuncArg]
     inner: FuncDef
