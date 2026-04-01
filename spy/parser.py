@@ -142,7 +142,11 @@ class Parser:
                 mod.decls.append(globfunc)
             elif isinstance(py_stmt, py_ast.ClassDef):
                 classdef = self.from_py_stmt_ClassDef(py_stmt)
-                globclass = spy.ast.GlobalClassDef(classdef.loc, classdef)
+                globclass: spy.ast.GlobalGenericClassDef | spy.ast.GlobalClassDef
+                if isinstance(classdef, spy.ast.GenericClassDef):
+                    globclass = spy.ast.GlobalGenericClassDef(classdef.loc, classdef)
+                else:
+                    globclass = spy.ast.GlobalClassDef(classdef.loc, classdef)
                 mod.decls.append(globclass)
             elif isinstance(py_stmt, py_ast.AnnAssign):
                 vardef = self.from_py_AnnAssign(py_stmt)
@@ -218,10 +222,10 @@ class Parser:
         return self._parse_py_funcdef(py_funcdef, color, func_kind, decorators)
 
     def _parse_type_params(
-        self, py_funcdef: py_ast.FunctionDef
+        self, py_def: py_ast.FunctionDef | py_ast.ClassDef
     ) -> list[spy.ast.FuncArg]:
         generic_args = []
-        for tp in py_funcdef.type_params:
+        for tp in py_def.type_params:
             if not isinstance(tp, py_ast.TypeVar):
                 self.error(
                     "only plain TypeVar type parameters are supported",
@@ -339,7 +343,9 @@ class Parser:
             kind=kind,
         )
 
-    def from_py_stmt_ClassDef(self, py_classdef: py_ast.ClassDef) -> spy.ast.ClassDef:
+    def from_py_stmt_ClassDef(
+        self, py_classdef: py_ast.ClassDef
+    ) -> spy.ast.ClassDef | spy.ast.GenericClassDef:
         if py_classdef.bases:
             self.error(
                 "base classes not supported yet",
@@ -354,6 +360,21 @@ class Parser:
                 py_classdef.keywords[0].loc,
             )
 
+        # generic arguments: class Cls[T]()
+        if py_classdef.type_params:
+            generic_args = self._parse_type_params(py_classdef)
+            inner_classdef = self._parse_py_classdef(py_classdef)
+            inner_classdef.name = "__Impl"
+            return spy.ast.GenericClassDef(
+                loc=py_classdef.loc,
+                name=py_classdef.name,
+                args=generic_args,
+                inner=inner_classdef,
+            )
+
+        return self._parse_py_classdef(py_classdef)
+
+    def _parse_py_classdef(self, py_classdef: py_ast.ClassDef) -> spy.ast.ClassDef:
         # decorators are not supported yet, but @struct and @typelif are
         # special-cased
         struct_loc: Optional[Loc] = None

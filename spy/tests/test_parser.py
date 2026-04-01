@@ -424,6 +424,40 @@ class TestParser:
         """
         self.assert_dump(funcdef, expected)
 
+    def test_GenericClassDef(self):
+        mod = self.parse("""
+        @struct
+        class Point[T]:
+            x: T
+        """)
+        classdef = mod.get_generic_classdef("Point")
+        expected = """
+        GenericClassDef(
+            name='Point',
+            args=[
+                FuncArg(
+                    name='T',
+                    type=Auto(),
+                    kind='simple',
+                ),
+            ],
+            inner=ClassDef(
+                name='__Impl',
+                kind='struct',
+                docstring=None,
+                body=[
+                    VarDef(
+                        kind=None,
+                        name=StrConst(value='x'),
+                        type=Name(id='T'),
+                        value=None,
+                    ),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(classdef, expected)
+
     def test_blue_metafunc_FuncDef(self):
         mod = self.parse("""
         @blue.metafunc

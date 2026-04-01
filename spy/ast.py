@@ -208,6 +208,15 @@ class Module(Node):
                 return decl.classdef
         raise KeyError(name)
 
+    def get_generic_classdef(self, name: str) -> "GenericClassDef":
+        """
+        Search for the GenericClassDef with the given name.
+        """
+        for decl in self.decls:
+            if isinstance(decl, GlobalGenericClassDef) and decl.classdef.name == name:
+                return decl.classdef
+        raise KeyError(name)
+
 
 class Decl(Node):
     pass
@@ -231,6 +240,11 @@ class GlobalVarDef(Decl):
 @astnode
 class GlobalClassDef(Decl):
     classdef: "ClassDef"
+
+
+@astnode
+class GlobalGenericClassDef(Decl):
+    classdef: "GenericClassDef"
 
 
 @astnode
@@ -590,6 +604,28 @@ class ClassDef(Stmt):
 
     def shortrepr(self) -> Optional[str]:
         return f"{self.kind} {self.name}"
+
+
+@astnode
+class GenericClassDef(Stmt):
+    """
+    If you have this:
+
+        @struct
+        class Point[T]:
+            x: T
+            y: T
+
+    Then GenericClassDef represents the "outer" function. Its argument list contains "T".
+    """
+
+    name: str
+    args: list[FuncArg]
+    inner: ClassDef
+    symtable: Any = field(repr=False, default=None)
+
+    def shortrepr(self) -> Optional[str]:
+        return self.name
 
 
 @astnode
