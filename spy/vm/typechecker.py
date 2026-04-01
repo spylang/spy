@@ -158,10 +158,12 @@ def _fill_defaults(
         return out_args_wam
 
     # defaults align to the end of the param list
-    defaults_w = w_func.defaults_w[n_defaults - n_missing :]
+    start = n_defaults - n_missing
+    defaults_w = w_func.defaults_w[start:]
+    default_locs = [d.loc for d in w_func.funcdef.defaults[start:]]
     out_args_wam = list(out_args_wam)
-    for w_default in defaults_w:
-        wam = W_MetaArg.from_w_obj(vm, w_default, loc=w_func.def_loc)
+    for w_default, loc in zip(defaults_w, default_locs):
+        wam = W_MetaArg.from_w_obj(vm, w_default, loc=loc)
         out_args_wam.append(wam)
     return out_args_wam
 
