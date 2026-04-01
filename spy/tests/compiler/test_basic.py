@@ -1621,7 +1621,6 @@ class TestBasic(CompilerTest):
         #
         assert mod.get_color_of_type_call(0) == "blue"
 
-    @pytest.mark.skip("fixme")
     def test_default_args(self):
         src = """
         def add(x: int, y: int = 1) -> int:

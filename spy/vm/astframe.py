@@ -329,7 +329,10 @@ class AbstractFrame:
         if funcdef.decorators:
             fqn = fqn.with_suffix("__bare__")
 
-        w_func: W_Object = W_ASTFunc(w_functype, fqn, funcdef, closure)
+        defaults_w = [self.eval_expr(d).w_val for d in funcdef.defaults]
+        w_func: W_Object = W_ASTFunc(
+            w_functype, fqn, funcdef, closure, defaults_w=defaults_w
+        )
         self.vm.add_global(fqn, w_func)
 
         if funcdef.decorators:

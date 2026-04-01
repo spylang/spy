@@ -336,6 +336,7 @@ class W_Func(W_Object):
 class W_ASTFunc(W_Func):
     funcdef: ast.FuncDef
     closure: CLOSURE
+    defaults_w: list[W_Object]
 
     # types of local variables: this is non-None IIF the function has been
     # redshifted.
@@ -352,6 +353,7 @@ class W_ASTFunc(W_Func):
         fqn: FQN,
         funcdef: ast.FuncDef,
         closure: CLOSURE,
+        defaults_w: list[W_Object],
         *,
         locals_types_w: Optional[dict[str, W_Type]] = None,
     ) -> None:
@@ -360,6 +362,7 @@ class W_ASTFunc(W_Func):
         self.def_loc = funcdef.prototype_loc
         self.funcdef = funcdef
         self.closure = closure
+        self.defaults_w = defaults_w
         self.locals_types_w = locals_types_w
         self.w_redshifted_into = None
 
