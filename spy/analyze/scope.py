@@ -488,10 +488,12 @@ class ScopeAnalyzer:
         # decorators are evaluated in the outer scope
         for decorator in funcdef.decorators:
             self.flatten(decorator)
-        # the TYPES of the arguments are evaluated in the outer scope
+        # the TYPES of the arguments and defaults are evaluated in the outer scope
         self.flatten(funcdef.return_type)
         for arg in funcdef.args:
             self.flatten(arg)
+        for default in funcdef.defaults:
+            self.flatten(default)
         #
         # the statements of the function are evaluated in the inner scope
         inner_scope = self.by_funcdef(funcdef)
