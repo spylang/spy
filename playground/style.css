@@ -1,7 +1,11 @@
 /* SPy Playground Styles */
 
+:root {
+    --ui-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
 body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: var(--ui-font);
     margin: 0;
     padding: 0;
     background-color: #f5f5f5;
@@ -20,7 +24,7 @@ body {
     justify-content: center;
     align-items: center;
     z-index: 9999;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: var(--ui-font);
 }
 
 #loading-indicator img {
@@ -102,6 +106,12 @@ button.run-button:hover {
 
 button.run-button:active {
     background-color: #003d7a;
+}
+
+/* Prevent labels from shrinking below their text width in flex containers */
+.ltk-label {
+    min-width: max-content;
+    font-family: var(--ui-font);
 }
 
 /* Backend selector dropdown */
