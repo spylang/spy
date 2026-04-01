@@ -195,6 +195,7 @@ class W_StructType(W_Type):
                 ast.FuncArg(func_loc, "b", self_type, "simple"),
             ],
             return_type=ast.FQNConst(func_loc, B.w_bool.fqn),
+            defaults=[],
             docstring=None,
             body=[stmt],
             decorators=[],

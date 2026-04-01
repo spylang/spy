@@ -244,7 +244,7 @@ class Parser:
         func_kind: spy.ast.FuncKind,
         decorators: list[spy.ast.Expr],
     ) -> spy.ast.FuncDef:
-        args = self.from_py_arguments(color, py_funcdef.args)
+        args, defaults = self.from_py_arguments(color, py_funcdef.args)
         #
         py_returns = py_funcdef.returns
         if py_returns:
@@ -282,6 +282,7 @@ class Parser:
             name=py_funcdef.name,
             args=args,
             return_type=return_type,
+            defaults=defaults,
             body=body,
             docstring=docstring,
             decorators=decorators,
@@ -289,7 +290,7 @@ class Parser:
 
     def from_py_arguments(
         self, color: spy.ast.Color, py_args: py_ast.arguments
-    ) -> list[spy.ast.FuncArg]:
+    ) -> tuple[list[spy.ast.FuncArg], list[spy.ast.Expr]]:
         args = [self.from_py_arg(color, py_arg, "simple") for py_arg in py_args.args]
         if py_args.vararg:
             args.append(
@@ -301,12 +302,7 @@ class Parser:
                 "this is not supported",
                 py_args.kwarg.loc,
             )
-        if py_args.defaults:
-            self.error(
-                "default arguments are not supported yet",
-                "this is not supported",
-                py_args.defaults[0].loc,
-            )
+        defaults = [self.from_py_expr(d) for d in py_args.defaults]
         if py_args.posonlyargs:
             self.error(
                 "positional-only arguments are not supported yet",
@@ -320,7 +316,7 @@ class Parser:
                 py_args.kwonlyargs[0].loc,
             )
         assert not py_args.kw_defaults
-        return args
+        return args, defaults
 
     def from_py_arg(
         self, color: spy.ast.Color, py_arg: py_ast.arg, kind: spy.ast.FuncParamKind

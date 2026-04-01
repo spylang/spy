@@ -384,6 +384,7 @@ class AbstractFrame:
             name=gfuncdef.name,
             args=gfuncdef.args,
             return_type=ast.Auto(loc),
+            defaults=[],
             docstring=None,
             body=[gfuncdef.inner, return_stmt],
             decorators=[],
