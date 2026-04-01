@@ -83,7 +83,7 @@ def typecheck_opspec(
         call_loc = wam_func.loc
 
     # fill in default arguments if needed
-    out_args_wam = _fill_defaults(vm, w_opspec, out_args_wam)
+    # out_args_wam = _fill_defaults(vm, w_opspec, out_args_wam)
 
     # check that the number of arguments match
     got_nargs = len(out_args_wam)
@@ -143,38 +143,6 @@ def typecheck_opspec(
     # everything good!
     w_opimpl = W_OpImpl(w_in_functype, w_opspec._w_func, args)
     return w_opimpl
-
-
-def _fill_defaults(
-    vm: "SPyVM",
-    w_opspec: W_OpSpec,
-    out_args_wam: list[W_MetaArg],
-) -> list[W_MetaArg]:
-    """
-    If the call target is a W_ASTFunc with defaults and fewer args were
-    provided than params, pad out_args_wam with the default values.
-    """
-    w_func = w_opspec._w_func
-    if not isinstance(w_func, W_ASTFunc) or not w_func.defaults_w:
-        return out_args_wam
-
-    n_params = len(w_func.w_functype.params)
-    n_got = len(out_args_wam)
-    n_defaults = len(w_func.defaults_w)
-    n_missing = n_params - n_got
-
-    if n_missing <= 0 or n_missing > n_defaults:
-        return out_args_wam
-
-    # defaults align to the end of the param list
-    start = n_defaults - n_missing
-    defaults_w = w_func.defaults_w[start:]
-    default_locs = [d.loc for d in w_func.funcdef.defaults[start:]]
-    out_args_wam = list(out_args_wam)
-    for w_default, loc in zip(defaults_w, default_locs):
-        wam = W_MetaArg.from_w_obj(vm, w_default, loc=loc)
-        out_args_wam.append(wam)
-    return out_args_wam
 
 
 def functype_from_opargs(
