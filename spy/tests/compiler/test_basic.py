@@ -956,6 +956,21 @@ class TestBasic(CompilerTest):
         assert mod.foo() == 3
         assert mod.bar() == "hello world"
 
+    def test_generic_class(self):
+        mod = self.compile("""
+        @struct
+        class Point[T]:
+            x: T
+            y: T
+
+            def compute(self) -> T:
+                return self.x*self.x + self.y*self.y
+
+        def foo() -> i32:
+            return Point[i32](2, 4).compute()
+        """)
+        assert mod.foo() == 20
+
     def test_cannot_call_blue_generic(self):
         src = """
         @blue.generic
