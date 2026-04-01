@@ -1,15 +1,47 @@
 #include "spy.h"
 #include <stdio.h>
 
+// Parse a spy_Str mode into a C fopen mode string.
+// Valid modes contain exactly one of 'r', 'w', 'a', and optionally '+'.
+// Returns false if the mode is invalid; otherwise writes the normalized
+// mode into `out` (which must have room for at least 3 bytes).
+static bool
+spy_posix$_parse_mode(spy_Str *mode, char *out) {
+    char base = 0;
+    bool plus = false;
+    for (int32_t i = 0; i < mode->length; i++) {
+        char c = mode->utf8[i];
+        if (c == 'r' || c == 'w' || c == 'a') {
+            if (base != 0)
+                return false;
+            base = c;
+        } else if (c == '+') {
+            if (plus)
+                return false;
+            plus = true;
+        } else {
+            return false;
+        }
+    }
+    if (base == 0)
+        return false;
+    out[0] = base;
+    if (plus) {
+        out[1] = '+';
+        out[2] = '\0';
+    } else {
+        out[1] = '\0';
+    }
+    return true;
+}
+
 FILE *
 spy_posix$_fopen(spy_Str *filename, spy_Str *mode) {
-    // validate mode: only "r", "w", "a" are supported
-    if (mode->length != 1 ||
-        (mode->utf8[0] != 'r' && mode->utf8[0] != 'w' && mode->utf8[0] != 'a')) {
+    char cmode[3];
+    if (!spy_posix$_parse_mode(mode, cmode)) {
         spy_panic("PanicError", "invalid mode for _fopen", __FILE__, __LINE__);
         return NULL;
     }
-    char cmode[2] = {mode->utf8[0], '\0'};
 
     // spy_Str is not null-terminated, make a temporary copy for fopen
     char *fname = (char *)malloc(filename->length + 1);

@@ -194,3 +194,37 @@ class TestPosix(CompilerTest):
         f = self.tmpdir.join("foo.txt")
         f.write("hello world")
         assert mod.foo(str(f)) == ("world", "world", "rld")
+
+    def test_fopen_mode_read_write(self):
+        src = """
+        from posix import _fopen, _fread, _fwrite, _fseek, _fclose, SEEK_SET
+
+        def foo(fname: str) -> str:
+            f = _fopen(fname, 'r+')
+            _fwrite(f, 'HELLO')
+            _fseek(f, 0, SEEK_SET)
+            content = _fread(f, 11)
+            _fclose(f)
+            return content
+        """
+        mod = self.compile(src)
+        f = self.tmpdir.join("out.txt")
+        f.write("hello world")
+        assert mod.foo(str(f)) == "HELLO world"
+
+    def test_fopen_mode_read_append(self):
+        src = """
+        from posix import _fopen, _fread, _fwrite, _fseek, _fclose, SEEK_SET
+
+        def foo(fname: str) -> str:
+            f = _fopen(fname, 'a+')
+            _fwrite(f, ' world')
+            _fseek(f, 0, SEEK_SET)
+            content = _fread(f, 11)
+            _fclose(f)
+            return content
+        """
+        mod = self.compile(src)
+        f = self.tmpdir.join("out.txt")
+        f.write("hello")
+        assert mod.foo(str(f)) == "hello world"
