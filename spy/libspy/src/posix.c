@@ -1,14 +1,54 @@
 #include "spy.h"
 #include <stdio.h>
 
+// Parse a spy_Str mode into a C fopen mode string.
+// Valid modes contain exactly one of 'r', 'w', 'a', and optionally '+'.
+// Returns false if the mode is invalid; otherwise writes the normalized
+// mode into `out` (which must have room for at least 3 bytes).
+static bool
+spy_posix$_parse_mode(spy_Str *mode, char *out) {
+    char base = 0;
+    bool plus = false;
+    for (int32_t i = 0; i < mode->length; i++) {
+        char c = mode->utf8[i];
+        if (c == 'r' || c == 'w' || c == 'a') {
+            if (base != 0)
+                return false;
+            base = c;
+        } else if (c == '+') {
+            if (plus)
+                return false;
+            plus = true;
+        } else {
+            return false;
+        }
+    }
+    if (base == 0)
+        return false;
+    out[0] = base;
+    if (plus) {
+        out[1] = '+';
+        out[2] = '\0';
+    } else {
+        out[1] = '\0';
+    }
+    return true;
+}
+
 FILE *
-spy_posix$_fopen(spy_Str *filename) {
+spy_posix$_fopen(spy_Str *filename, spy_Str *mode) {
+    char cmode[3];
+    if (!spy_posix$_parse_mode(mode, cmode)) {
+        spy_panic("PanicError", "invalid mode for _fopen", __FILE__, __LINE__);
+        return NULL;
+    }
+
     // spy_Str is not null-terminated, make a temporary copy for fopen
     char *fname = (char *)malloc(filename->length + 1);
     memcpy(fname, filename->utf8, filename->length);
     fname[filename->length] = '\0';
 
-    FILE *f = fopen(fname, "r");
+    FILE *f = fopen(fname, cmode);
     free(fname);
     if (f == NULL) {
         spy_panic("OSError", "cannot open file", __FILE__, __LINE__);
@@ -108,6 +148,31 @@ spy_posix$_freadline(FILE *f) {
     memcpy((char *)res->utf8, line, n);
     free(line);
     return res;
+}
+
+int32_t
+spy_posix$_ftell(FILE *f) {
+    long pos = ftell(f);
+    if (pos < 0) {
+        spy_panic("OSError", "ftell failed", __FILE__, __LINE__);
+        return -1;
+    }
+    return (int32_t)pos;
+}
+
+void
+spy_posix$_fseek(FILE *f, int32_t offset, int32_t whence) {
+    if (fseek(f, offset, whence) != 0) {
+        spy_panic("OSError", "fseek failed", __FILE__, __LINE__);
+    }
+}
+
+void
+spy_posix$_fwrite(FILE *f, spy_Str *data) {
+    size_t n = fwrite(data->utf8, 1, data->length, f);
+    if (n < data->length) {
+        spy_panic("OSError", "fwrite: write error", __FILE__, __LINE__);
+    }
 }
 
 void
