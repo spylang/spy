@@ -154,3 +154,43 @@ class TestPosix(CompilerTest):
         f.write("hello")
         with SPyError.raises("W_PanicError", match="invalid mode"):
             mod.foo(str(f))
+
+    def test_ftell(self):
+        src = """
+        from posix import _fopen, _fread, _ftell, _fclose
+
+        def foo(fname: str) -> tuple[i32, i32]:
+            f = _fopen(fname, 'r')
+            pos0 = _ftell(f)
+            _fread(f, 5)
+            pos1 = _ftell(f)
+            _fclose(f)
+            return pos0, pos1
+        """
+        mod = self.compile(src)
+        f = self.tmpdir.join("foo.txt")
+        f.write("hello world")
+        assert mod.foo(str(f)) == (0, 5)
+
+    def test_fseek(self):
+        src = """
+        from posix import (
+            _fopen, _fread, _fseek, _ftell, _fclose,
+            SEEK_SET, SEEK_CUR, SEEK_END,
+        )
+
+        def foo(fname: str) -> tuple[str, str, str]:
+            f = _fopen(fname, 'r')
+            _fseek(f, 6, SEEK_SET)
+            a = _fread(f, 5)
+            _fseek(f, -5, SEEK_END)
+            b = _fread(f, 5)
+            _fseek(f, -3, SEEK_CUR)
+            c = _fread(f, 3)
+            _fclose(f)
+            return a, b, c
+        """
+        mod = self.compile(src)
+        f = self.tmpdir.join("foo.txt")
+        f.write("hello world")
+        assert mod.foo(str(f)) == ("world", "world", "rld")

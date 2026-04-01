@@ -13,6 +13,8 @@ spy_Str *WASM_EXPORT(spy_posix$_fread)(FILE *f, int32_t size);
 spy_Str *WASM_EXPORT(spy_posix$__freadall_chunked)(FILE *f);
 spy_Str *WASM_EXPORT(spy_posix$_freadall)(FILE *f);
 spy_Str *WASM_EXPORT(spy_posix$_freadline)(FILE *f);
+int32_t WASM_EXPORT(spy_posix$_ftell)(FILE *f);
+void WASM_EXPORT(spy_posix$_fseek)(FILE *f, int32_t offset, int32_t whence);
 void WASM_EXPORT(spy_posix$_fwrite)(FILE *f, spy_Str *data);
 void WASM_EXPORT(spy_posix$_fclose)(FILE *f);
 

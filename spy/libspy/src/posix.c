@@ -118,6 +118,23 @@ spy_posix$_freadline(FILE *f) {
     return res;
 }
 
+int32_t
+spy_posix$_ftell(FILE *f) {
+    long pos = ftell(f);
+    if (pos < 0) {
+        spy_panic("OSError", "ftell failed", __FILE__, __LINE__);
+        return -1;
+    }
+    return (int32_t)pos;
+}
+
+void
+spy_posix$_fseek(FILE *f, int32_t offset, int32_t whence) {
+    if (fseek(f, offset, whence) != 0) {
+        spy_panic("OSError", "fseek failed", __FILE__, __LINE__);
+    }
+}
+
 void
 spy_posix$_fwrite(FILE *f, spy_Str *data) {
     size_t n = fwrite(data->utf8, 1, data->length, f);
