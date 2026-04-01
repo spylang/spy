@@ -352,6 +352,46 @@ class AbstractFrame:
         self.declare_local(funcdef.name, "blue", w_T, funcdef.prototype_loc)
         self.store_local(funcdef.name, w_func)
 
+    def exec_stmt_GenericFuncDef(self, gfuncdef: ast.GenericFuncDef) -> None:
+        """
+        Desugar generic argument syntax sugar:
+
+            def add[T](a0: T, a1: T) -> T:
+                return a0 + a1
+
+        into the equivalent of:
+
+            @blue.generic
+            def add(T):
+                def __impl(a0: T, a1: T) -> T:
+                    return a0 + a1
+                return __impl
+        """
+        loc = gfuncdef.loc
+        assert gfuncdef.symtable is not None
+
+        # build synthetic return: return __impl
+        impl_symbol = gfuncdef.symtable.lookup("__impl")
+        return_stmt = ast.Return(
+            loc=loc,
+            value=ast.NameLocalDirect(loc=loc, sym=impl_symbol),
+        )
+
+        outer_funcdef = ast.FuncDef(
+            loc=loc,
+            color="blue",
+            kind="generic",
+            name=gfuncdef.name,
+            args=gfuncdef.args,
+            return_type=ast.Auto(loc),
+            docstring=None,
+            body=[gfuncdef.inner, return_stmt],
+            decorators=[],
+            symtable=gfuncdef.symtable,
+        )
+
+        self.exec_stmt_FuncDef(outer_funcdef)
+
     @staticmethod
     def metaclass_for_classdef(classdef: ast.ClassDef) -> type[W_Type]:
         if classdef.kind == "struct":

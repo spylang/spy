@@ -344,6 +344,51 @@ class TestParser:
         """
         self.assert_dump(funcdef, expected)
 
+    def test_GenericFuncDef(self):
+        mod = self.parse("""
+        def foo[T](x: T, y: T) -> T:
+            return x
+        """)
+        funcdef = mod.get_generic_funcdef("foo")
+        expected = """
+        GenericFuncDef(
+            name='foo',
+            args=[
+                FuncArg(
+                    name='T',
+                    type=Auto(),
+                    kind='simple',
+                ),
+            ],
+            inner=FuncDef(
+                color='red',
+                kind='plain',
+                name='__impl',
+                args=[
+                    FuncArg(
+                        name='x',
+                        type=Name(id='T'),
+                        kind='simple',
+                    ),
+                    FuncArg(
+                        name='y',
+                        type=Name(id='T'),
+                        kind='simple',
+                    ),
+                ],
+                return_type=Name(id='T'),
+                docstring=None,
+                body=[
+                    Return(
+                        value=Name(id='x'),
+                    ),
+                ],
+                decorators=[],
+            ),
+        )
+        """
+        self.assert_dump(funcdef, expected)
+
     def test_blue_metafunc_FuncDef(self):
         mod = self.parse("""
         @blue.metafunc

@@ -53,7 +53,7 @@ class ScopeAnalyzer:
 
     mod: ast.Module
     stack: list[SymTable]
-    inner_scopes: dict[ast.FuncDef | ast.ClassDef, SymTable]
+    inner_scopes: dict[ast.FuncDef | ast.GenericFuncDef | ast.ClassDef, SymTable]
     loop_depth: int
 
     def __init__(self, modname: str, mod: ast.Module) -> None:
@@ -85,6 +85,9 @@ class ScopeAnalyzer:
 
     def by_funcdef(self, funcdef: ast.FuncDef) -> SymTable:
         return self.inner_scopes[funcdef]
+
+    def by_generic_funcdef(self, gfuncdef: ast.GenericFuncDef) -> SymTable:
+        return self.inner_scopes[gfuncdef]
 
     def by_classdef(self, classdef: ast.ClassDef) -> SymTable:
         return self.inner_scopes[classdef]
@@ -309,6 +312,34 @@ class ScopeAnalyzer:
             self.declare(stmt)
         self.pop_scope()
 
+    def declare_GenericFuncDef(self, gfuncdef: ast.GenericFuncDef) -> None:
+        # declare the name in the outer scope, just like declare_FuncDef does
+        protoloc = gfuncdef.inner.prototype_loc
+        self.define_name(gfuncdef.name, "const", "funcdef", protoloc, protoloc)
+
+        # outer scope: blue, contains only the generic args (T, ...) and __impl
+        inner_scope = self.new_SymTable(gfuncdef.name, "blue", "function")
+        self.push_scope(inner_scope)
+        self.inner_scopes[gfuncdef] = inner_scope
+        for arg in gfuncdef.args:
+            self.define_name(arg.name, "const", "blue-param", arg.loc, arg.type.loc)
+        self.define_name(
+            "__impl",
+            "const",
+            "funcdef",
+            gfuncdef.inner.prototype_loc,
+            gfuncdef.inner.prototype_loc,
+        )
+        self.define_name(
+            "@return",
+            "var",
+            "auto",
+            gfuncdef.inner.return_type.loc,
+            gfuncdef.inner.return_type.loc,
+        )
+        self.declare(gfuncdef.inner)
+        self.pop_scope()
+
     def declare_ClassDef(self, classdef: ast.ClassDef) -> None:
         # declare the class in the "outer" scope
         self.define_name(
@@ -470,6 +501,15 @@ class ScopeAnalyzer:
         self.pop_scope()
         #
         funcdef.symtable = inner_scope
+
+    def flatten_GenericFuncDef(self, gfuncdef: ast.GenericFuncDef) -> None:
+        for arg in gfuncdef.args:
+            self.flatten(arg)
+        inner_scope = self.by_generic_funcdef(gfuncdef)
+        self.push_scope(inner_scope)
+        self.flatten_FuncDef(gfuncdef.inner)
+        self.pop_scope()
+        gfuncdef.symtable = inner_scope
 
     def flatten_ClassDef(self, classdef: ast.ClassDef) -> None:
         inner_scope = self.by_classdef(classdef)

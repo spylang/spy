@@ -1,9 +1,19 @@
+def add[T](x: T, y: T) -> T:
+    return x + y
+
+
+# the function above is syntax sugar for this
 @blue.generic
-def add(T):
-    def impl(x:T, y: T) -> T:
+def add2(T):
+    def impl(x: T, y: T) -> T:
         return x + y
+
     return impl
+
 
 def main() -> None:
     print(add[i32](1, 2))
-    print(add[str]('hello ', 'world'))
+    print(add[str]("hello ", "world"))
+
+    print(add2[i32](1, 2))
+    print(add2[str]("hello ", "world"))

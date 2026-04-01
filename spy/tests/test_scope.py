@@ -530,6 +530,32 @@ class TestScopeAnalyzer:
             "deco": MatchSymbol("deco", "const", "funcdef", level=1),
         }
 
+    def test_generic_args(self):
+        scopes = self.analyze("""
+        def foo[T](x: T):
+            v: T = 1
+        """)
+
+        gfuncdef = self.mod.get_generic_funcdef("foo")
+        scope = scopes.by_generic_funcdef(gfuncdef)
+        assert scope.name == "test::foo"
+        assert scope.color == "blue"
+        assert scope._symbols == {
+            "T": MatchSymbol("T", "const", "blue-param"),
+            "__impl": MatchSymbol("__impl", "const", "funcdef"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+        }
+
+        inner_scope = scopes.by_funcdef(gfuncdef.inner)
+        assert inner_scope.name == f"test::foo::__impl"
+        assert inner_scope.color == "red"
+        assert inner_scope._symbols == {
+            "x": MatchSymbol("x", "var", "red-param"),
+            "v": MatchSymbol("v", "const", "auto"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+            "T": MatchSymbol("T", "const", "blue-param", level=1),
+        }
+
     def test_symbol_not_found(self):
         scopes = self.analyze("""
         def foo() -> None:

@@ -942,6 +942,20 @@ class TestBasic(CompilerTest):
         assert mod.foo() == 3
         assert mod.bar() == "hello world"
 
+    def test_generic_args(self):
+        mod = self.compile("""
+        def add[T](x: T, y: T) -> T:
+            return x + y
+
+        def foo() -> i32:
+            return add[i32](1, 2)
+
+        def bar() -> str:
+            return add[str]('hello ', 'world')
+        """)
+        assert mod.foo() == 3
+        assert mod.bar() == "hello world"
+
     def test_cannot_call_blue_generic(self):
         src = """
         @blue.generic
