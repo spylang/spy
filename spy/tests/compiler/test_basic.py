@@ -1620,3 +1620,18 @@ class TestBasic(CompilerTest):
         assert w_T2 is B.w_type
         #
         assert mod.get_color_of_type_call(0) == "blue"
+
+    def test_default_args(self):
+        src = """
+        def add(x: int, y: int = 1) -> int:
+            return x + y
+
+        def foo(x: int) -> int:
+            return add(x)
+
+        def bar(x: int, y: int) -> int:
+            return add(x, y)
+        """
+        mod = self.compile(src)
+        assert mod.foo(5) == 6
+        assert mod.bar(5, 6) == 11
