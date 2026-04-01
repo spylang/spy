@@ -83,8 +83,11 @@ class ScopeAnalyzer:
     def by_module(self) -> SymTable:
         return self.mod_scope
 
-    def by_funcdef(self, funcdef: ast.FuncDef | ast.GenericFuncDef) -> SymTable:
+    def by_funcdef(self, funcdef: ast.FuncDef) -> SymTable:
         return self.inner_scopes[funcdef]
+
+    def by_generic_funcdef(self, gfuncdef: ast.GenericFuncDef) -> SymTable:
+        return self.inner_scopes[gfuncdef]
 
     def by_classdef(self, classdef: ast.ClassDef) -> SymTable:
         return self.inner_scopes[classdef]
@@ -502,7 +505,7 @@ class ScopeAnalyzer:
     def flatten_GenericFuncDef(self, gfuncdef: ast.GenericFuncDef) -> None:
         for arg in gfuncdef.args:
             self.flatten(arg)
-        inner_scope = self.by_funcdef(gfuncdef)
+        inner_scope = self.by_generic_funcdef(gfuncdef)
         self.push_scope(inner_scope)
         self.flatten_FuncDef(gfuncdef.inner)
         self.pop_scope()

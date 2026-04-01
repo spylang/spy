@@ -536,8 +536,8 @@ class TestScopeAnalyzer:
             v: T = 1
         """)
 
-        generic_funcdef = self.mod.get_generic_funcdef("foo")
-        scope = scopes.by_funcdef(generic_funcdef)
+        gfuncdef = self.mod.get_generic_funcdef("foo")
+        scope = scopes.by_generic_funcdef(gfuncdef)
         assert scope.name == "test::foo"
         assert scope.color == "blue"
         assert scope._symbols == {
@@ -546,7 +546,7 @@ class TestScopeAnalyzer:
             "@return": MatchSymbol("@return", "var", "auto"),
         }
 
-        inner_scope = scopes.by_funcdef(generic_funcdef.inner)
+        inner_scope = scopes.by_funcdef(gfuncdef.inner)
         assert inner_scope.name == f"test::foo::__impl"
         assert inner_scope.color == "red"
         assert inner_scope._symbols == {
