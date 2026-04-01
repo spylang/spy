@@ -1,16 +1,14 @@
+def add[T](x: T, y: T) -> T:
+    return x + y
+
+
+# the function above is syntax sugar for this
 @blue.generic
-def add(T):
+def add2(T):
     def impl(x: T, y: T) -> T:
         return x + y
 
     return impl
-
-
-# or (just syntactic sugar)
-
-
-def add2[T](x: T, y: T) -> T:
-    return x + y
 
 
 def main() -> None:
