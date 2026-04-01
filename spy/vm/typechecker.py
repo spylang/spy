@@ -271,8 +271,8 @@ def _call_error_wrong_argcount(
     #
     # if we know the call_loc, we can add more detailed errors
     if call_loc:
-        if got < exp:
-            diff = exp - got
+        if got < min_args:
+            diff = min_args - got
             arguments = maybe_plural(diff, "argument")
             err.add("error", f"{diff} {arguments} missing", call_loc)
         else:

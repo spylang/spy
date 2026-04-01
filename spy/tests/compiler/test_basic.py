@@ -1646,6 +1646,8 @@ class TestBasic(CompilerTest):
         """
         errors = expect_errors(
             "this function takes from 1 to 2 arguments but 0 arguments were supplied",
+            ("1 argument missing", "add"),
+            ("function defined here", "def add(x: int, y: int = 1) -> int"),
         )
         self.compile_raises(src, "foo", errors)
 
@@ -1659,5 +1661,7 @@ class TestBasic(CompilerTest):
         """
         errors = expect_errors(
             "this function takes from 1 to 2 arguments but 3 arguments were supplied",
+            ("1 extra argument", "3"),
+            ("function defined here", "def add(x: int, y: int = 1) -> int"),
         )
         self.compile_raises(src, "foo", errors)
