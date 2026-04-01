@@ -479,12 +479,12 @@ class TestScopeAnalyzer:
         assert scope.color == "blue"
         assert scope._symbols == {
             "T": MatchSymbol("T", "const", "blue-param"),
-            "__Impl": MatchSymbol("__Impl", "const", "classdef"),
+            "Self": MatchSymbol("Self", "const", "classdef"),
             "@return": MatchSymbol("@return", "var", "auto"),
         }
 
         inner_scope = scopes.by_classdef(gclassdef.inner)
-        assert inner_scope.name == "test::Foo::__Impl"
+        assert inner_scope.name == "test::Foo::Self"
         assert inner_scope._symbols == {
             "x": MatchSymbol("x", "var", "class-field"),
             "foo": MatchSymbol("foo", "const", "funcdef"),
