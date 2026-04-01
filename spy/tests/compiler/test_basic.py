@@ -1635,3 +1635,29 @@ class TestBasic(CompilerTest):
         mod = self.compile(src)
         assert mod.foo(5) == 6
         assert mod.bar(5, 6) == 11
+
+    def test_default_args_too_few(self):
+        src = """
+        def add(x: int, y: int = 1) -> int:
+            return x + y
+
+        def foo() -> int:
+            return add()
+        """
+        errors = expect_errors(
+            "this function takes from 1 to 2 arguments but 0 arguments were supplied",
+        )
+        self.compile_raises(src, "foo", errors)
+
+    def test_default_args_too_many(self):
+        src = """
+        def add(x: int, y: int = 1) -> int:
+            return x + y
+
+        def foo() -> int:
+            return add(1, 2, 3)
+        """
+        errors = expect_errors(
+            "this function takes from 1 to 2 arguments but 3 arguments were supplied",
+        )
+        self.compile_raises(src, "foo", errors)

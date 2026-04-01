@@ -88,9 +88,18 @@ def typecheck_opspec(
     # check that the number of arguments match
     got_nargs = len(out_args_wam)
     exp_nargs = len(w_out_functype.params)
+    n_defaults = 0
+    w_func = w_opspec._w_func
+    if isinstance(w_func, W_ASTFunc):
+        n_defaults = len(w_func.defaults_w)
     if not w_out_functype.is_argcount_ok(got_nargs):
         _call_error_wrong_argcount(
-            got_nargs, exp_nargs, out_args_wam, def_loc=def_loc, call_loc=call_loc
+            got_nargs,
+            exp_nargs,
+            out_args_wam,
+            n_defaults=n_defaults,
+            def_loc=def_loc,
+            call_loc=call_loc,
         )
 
     # build the argspec for the W_OpImpl
@@ -245,11 +254,16 @@ def _call_error_wrong_argcount(
     exp: int,
     args_wam: list[W_MetaArg],
     *,
+    n_defaults: int = 0,
     def_loc: Optional[Loc],
     call_loc: Optional[Loc],
 ) -> NoReturn:
     assert got != exp
-    takes = maybe_plural(exp, f"takes {exp} argument")
+    min_args = exp - n_defaults
+    if n_defaults > 0 and min_args != exp:
+        takes = f"takes from {min_args} to {exp} arguments"
+    else:
+        takes = maybe_plural(exp, f"takes {exp} argument")
     supplied = maybe_plural(
         got, f"1 argument was supplied", f"{got} arguments were supplied"
     )
