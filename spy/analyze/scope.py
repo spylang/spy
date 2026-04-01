@@ -366,13 +366,13 @@ class ScopeAnalyzer:
         loc = gclassdef.inner.loc
         self.define_name(gclassdef.name, "const", "funcdef", loc, loc)
 
-        # outer scope: blue, contains only the generic args (T, ...) and __Impl
+        # outer scope: blue, contains only the generic args (T, ...) and Self
         inner_scope = self.new_SymTable(gclassdef.name, "blue", "function")
         self.push_scope(inner_scope)
         self.inner_scopes[gclassdef] = inner_scope
         for arg in gclassdef.args:
             self.define_name(arg.name, "const", "blue-param", arg.loc, arg.type.loc)
-        self.define_name("__Impl", "const", "classdef", loc, loc)
+        self.define_name("Self", "const", "classdef", loc, loc)
         self.define_name("@return", "var", "auto", loc, loc)
         self.declare(gclassdef.inner)
         self.pop_scope()

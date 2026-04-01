@@ -364,7 +364,7 @@ class Parser:
         if py_classdef.type_params:
             generic_args = self._parse_type_params(py_classdef)
             inner_classdef = self._parse_py_classdef(py_classdef)
-            inner_classdef.name = "__Impl"
+            inner_classdef.name = "Self"
             return spy.ast.GenericClassDef(
                 loc=py_classdef.loc,
                 name=py_classdef.name,

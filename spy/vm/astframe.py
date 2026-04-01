@@ -449,15 +449,15 @@ class AbstractFrame:
             @blue.generic
             def Point(T):
                 @struct
-                class __Impl:
+                class Self:
                     x: T
-                return __Impl
+                return Self
         """
         loc = gclassdef.loc
         assert gclassdef.symtable is not None
 
-        # build synthetic return: return __Impl
-        impl_symbol = gclassdef.symtable.lookup("__Impl")
+        # build synthetic return: return Self
+        impl_symbol = gclassdef.symtable.lookup("Self")
         return_stmt = ast.Return(
             loc=loc,
             value=ast.NameLocalDirect(loc=loc, sym=impl_symbol),

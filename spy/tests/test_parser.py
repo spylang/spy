@@ -442,7 +442,7 @@ class TestParser:
                 ),
             ],
             inner=ClassDef(
-                name='__Impl',
+                name='Self',
                 kind='struct',
                 docstring=None,
                 body=[
