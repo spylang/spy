@@ -1,6 +1,5 @@
 import os
 import pickle
-import tempfile
 from collections import deque
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional, Union
@@ -12,7 +11,7 @@ from spy.analyze.scope import ScopeAnalyzer
 from spy.fqn import FQN
 from spy.parser import Parser
 from spy.textbuilder import ColorFormatter
-from spy.util import OrderedSet
+from spy.util import OrderedSet, save_pickle_atomic
 from spy.vm.modframe import ModFrame
 
 if TYPE_CHECKING:
@@ -180,19 +179,9 @@ class ImportAnalyzer:
         Save a module to cache file with version information.
         """
         try:
-            spyc_dir = spyc.dirpath()
-            spyc_dir.ensure(dir=True)
+            spyc.dirpath().ensure(dir=True)
             data = {"version": SPYC_VERSION, "module": mod}
-            # Write to a temp file then atomically rename so concurrent readers
-            # never see a partial pickle.
-            fd, tmp_path = tempfile.mkstemp(dir=str(spyc_dir), suffix=".spyc.tmp")
-            try:
-                with os.fdopen(fd, "wb") as f:
-                    pickle.dump(data, f)
-                os.replace(tmp_path, str(spyc))
-            except BaseException:
-                os.unlink(tmp_path)
-                raise
+            save_pickle_atomic(data, spyc)
         except Exception as e:
             # Record the error
             error = CacheError(

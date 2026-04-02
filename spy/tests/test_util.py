@@ -11,6 +11,7 @@ from spy.util import (
     extend,
     func_equals,
     magic_dispatch,
+    save_pickle_atomic,
     shortrepr,
 )
 
@@ -280,3 +281,37 @@ class Test_cleanup_spyc_files:
         captured = capsys.readouterr()
         # Should not print anything when not verbose
         assert captured.out == ""
+
+
+# ======= tests for save_pickle_atomic =======
+
+
+class Test_save_pickle_atomic:
+    def test_roundtrip(self, tmpdir):
+        import pickle
+
+        tmpdir = py.path.local(tmpdir)
+        dest = tmpdir.join("data.pkl")
+        save_pickle_atomic({"key": 42}, dest)
+        with dest.open("rb") as f:
+            assert pickle.load(f) == {"key": 42}
+
+    def test_no_partial_file_on_error(self, tmpdir):
+        tmpdir = py.path.local(tmpdir)
+        dest = tmpdir.join("data.pkl")
+        # Pass an unpicklable object to trigger a failure mid-save.
+        with pytest.raises(Exception):
+            save_pickle_atomic(lambda: None, dest)
+        assert not dest.exists()
+        # The temp file should also be cleaned up.
+        assert tmpdir.listdir() == []
+
+    def test_atomic_replace(self, tmpdir):
+        import pickle
+
+        tmpdir = py.path.local(tmpdir)
+        dest = tmpdir.join("data.pkl")
+        save_pickle_atomic("first", dest)
+        save_pickle_atomic("second", dest)
+        with dest.open("rb") as f:
+            assert pickle.load(f) == "second"
