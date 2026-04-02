@@ -372,7 +372,7 @@ class TestMain:
         res = self.runner.invoke(app, [str(f), "aaa", "bbb", "ccc"])
         assert res.exit_code == 0
         output = decolorize(res.output)
-        assert output.split() == ["aaa", "bbb", "ccc"]
+        assert output.split() == [str(f), "aaa", "bbb", "ccc"]
 
     def test_redshift_argv(self):
         src = """
@@ -384,7 +384,7 @@ class TestMain:
         res = self.runner.invoke(app, ["redshift", "-x", str(f), "aaa", "bbb", "ccc"])
         assert res.exit_code == 0
         output = decolorize(res.output)
-        assert output.split() == ["aaa", "bbb", "ccc"]
+        assert output.split() == [str(f), "aaa", "bbb", "ccc"]
 
     def test_main_wrong_param_type(self):
         src = """

@@ -81,7 +81,7 @@ async def redshift(args: Redshift_Args) -> None:
 
     if args.execute:
         w_mod = vm.modules_w[modname]
-        argv = args.argv or []
+        argv = [str(args.filename)] + (args.argv or [])
         execute_spy_main(vm, w_mod, argv, redshift=True, _timeit=args.timeit)
     else:
         all_files = [args.filename] + extra_files
