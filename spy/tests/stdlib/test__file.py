@@ -1,5 +1,6 @@
 import pytest
 
+from spy.errors import SPyError
 from spy.tests.support import CompilerTest
 
 
@@ -22,3 +23,32 @@ class TestFile(CompilerTest):
         s1 = tup._item1
         assert s0 == f"<spy open file '{f}', mode 'r'>"
         assert s1 == f"<spy closed file '{f}', mode 'r'>"
+
+    def test_read(self):
+        src = """
+        from _file import open
+
+        def foo(fname: str) -> tuple[str, str]:
+            f = open(fname)
+            a = f.read(5)
+            b = f.read()
+            f.close()
+            return a, b
+        """
+        mod = self.compile(src)
+        f = self.write_file("foo.txt", "hello world")
+        assert mod.foo(str(f)) == ("hello", " world")
+
+    def test_read_closed(self):
+        src = """
+        from _file import open
+
+        def foo(fname: str) -> str:
+            f = open(fname)
+            f.close()
+            return f.read()
+        """
+        mod = self.compile(src)
+        f = self.write_file("foo.txt", "hello")
+        with SPyError.raises("W_ValueError", match="I/O operation on closed file"):
+            mod.foo(str(f))

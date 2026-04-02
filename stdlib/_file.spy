@@ -24,6 +24,15 @@ class file:
         _fclose(self.__ll__.fp)
         self.__ll__.fp = _FILE_NULL
 
+    def read(self, n: int = -1) -> str:
+        fp = self.__ll__.fp
+        if fp == _FILE_NULL:
+            raise ValueError("I/O operation on closed file")
+        if n < 0:
+            return _freadall(fp)
+        else:
+            return _fread(fp, n)
+
     def __repr__(self) -> str:
         # XXX:
         #   1. rewrite this better as soon as we have f-strings
