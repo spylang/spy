@@ -156,9 +156,6 @@ class CModuleWriter:
         if self.is_main_mod and fqn_main in self.ctx.vm.globals_w:
             w_main = self.ctx.vm.globals_w[fqn_main]
             assert isinstance(w_main, W_ASTFunc)
-            w_restype, has_argv = self.ctx.vm.typecheck_main(w_main)
-            if has_argv:
-                raise WIP("`main(argv: list[str])` not supported by the C backend")
 
             needs_argv = len(w_main.w_functype.params) == 1
             returns_i32 = w_main.w_functype.w_restype == B.w_i32

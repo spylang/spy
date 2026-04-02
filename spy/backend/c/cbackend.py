@@ -211,7 +211,7 @@ class CBackend:
         # copy list.c into the build directory and prepend the generated header.
         list_c = spy.libspy.SRC.join("list.c")
         cfile = self.build_dir.join("src", "list.c")
-        cfile.write('#include "spy_structdefs.h"\n' + list_c.read())
+        cfile.write_binary(b'#include "spy_structdefs.h"\n' + list_c.read_binary())
         return cfile
 
     def write_build_script(self) -> None:
