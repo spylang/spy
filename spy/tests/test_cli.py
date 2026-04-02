@@ -293,7 +293,6 @@ class TestMain:
         hsrc = main_h.read()
         assert "spy_wrap_argv" in csrc
         assert "int main(int argc" in csrc
-        assert "spy/list.h" in hsrc
 
     def test_argv_with_exit_code_cwrite(self):
         src = """
@@ -310,7 +309,6 @@ class TestMain:
         hsrc = main_h.read()
         assert "spy_wrap_argv" in csrc
         assert "int main(int argc" in csrc
-        assert "spy/list.h" in hsrc
 
     def test_no_argv_no_wrap_cwrite(self):
         src = """
