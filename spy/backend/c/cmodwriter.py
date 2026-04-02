@@ -165,19 +165,6 @@ class CModuleWriter:
 
             if needs_argv:
                 self.tbh_includes.wl('#include "spy/list.h"')
-                self.tbc.wb(f"""
-                    spy_list_str spy_wrap_argv(int argc, const char *argv[]) {{
-                        spy_list_str lst = spy_list_str_new();
-                        for(int i = 0; i < argc; i++) {{
-                            size_t size_str = strlen(argv[i]);
-                            spy_Str *allo = spy_str_alloc(size_str);
-                            char *buf = (char *)allo->utf8;
-                            memcpy(buf, argv[i], size_str);
-                            lst = spy_list_str_push(lst, allo);
-                        }}
-                        return lst;
-                    }}
-                """)
 
             if needs_argv and returns_i32:
                 execution_code = f"""

@@ -2,6 +2,7 @@ from typing import Optional
 
 import py.path
 
+import spy.libspy
 from spy.backend.c.cffiwriter import CFFIWriter
 from spy.backend.c.cmodwriter import CModule, CModuleWriter
 from spy.backend.c.cstructwriter import CStructDefs, CStructWriter
@@ -188,6 +189,30 @@ class CBackend:
                 print()
                 print(f"---- {c_mod.cfile} ----")
                 print(highlight_src("C", c_mod.cfile.read()))  # type: ignore
+
+        argv_cfile = self._maybe_write_argv_helper()
+        if argv_cfile is not None:
+            self.cfiles.append(argv_cfile)
+
+    def _maybe_write_argv_helper(self) -> Optional[py.path.local]:
+        from spy.fqn import FQN
+
+        fqn_main = FQN([self.main_modname, "main"])
+        if fqn_main not in self.vm.globals_w:
+            return None
+        w_main = self.vm.globals_w[fqn_main]
+        if not isinstance(w_main, W_ASTFunc):
+            return None
+        if len(w_main.w_functype.params) != 1:
+            return None
+
+        # spy_wrap_argv depends on the generated _list.c and _list.h for the
+        # list[str] layout, so it can't be precompiled into libspy. Instead we
+        # copy list.c into the build directory and prepend the generated header.
+        list_c = spy.libspy.SRC.join("list.c")
+        cfile = self.build_dir.join("src", "list.c")
+        cfile.write('#include "spy_structdefs.h"\n' + list_c.read())
+        return cfile
 
     def write_build_script(self) -> None:
         assert self.cfiles != [], "call .cwrite() first"
