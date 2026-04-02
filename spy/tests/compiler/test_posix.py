@@ -212,6 +212,54 @@ class TestPosix(CompilerTest):
         f.write("hello world")
         assert mod.foo(str(f)) == "HELLO world"
 
+    def test_FILE_eq_self(self):
+        src = """
+        from posix import _fopen, _fclose, _FILE
+
+        def foo(fname: str) -> bool:
+            f: _FILE = _fopen(fname, 'r')
+            res = f == f
+            _fclose(f)
+            return res
+        """
+        mod = self.compile(src)
+        f = self.tmpdir.join("foo.txt")
+        f.write("hello")
+        assert mod.foo(str(f)) == True
+
+    def test_FILE_ne_NULL(self):
+        src = """
+        from posix import _fopen, _fclose, _FILE, _FILE_NULL
+
+        def foo(fname: str) -> bool:
+            f: _FILE = _fopen(fname, 'r')
+            res = f == _FILE_NULL
+            _fclose(f)
+            return res
+        """
+        mod = self.compile(src)
+        f = self.tmpdir.join("foo.txt")
+        f.write("hello")
+        assert mod.foo(str(f)) == False
+
+    def test_fflush(self):
+        src = """
+        from posix import _fopen, _fwrite, _fflush, _fclose, _fread
+
+        def foo(wname: str, rname: str) -> str:
+            wf = _fopen(wname, 'w')
+            _fwrite(wf, 'hello')
+            _fflush(wf)
+            rf = _fopen(rname, 'r')
+            content = _fread(rf, 100)
+            _fclose(rf)
+            _fclose(wf)
+            return content
+        """
+        mod = self.compile(src)
+        f = self.tmpdir.join("out.txt")
+        assert mod.foo(str(f), str(f)) == "hello"
+
     def test_fopen_mode_read_append(self):
         src = """
         from posix import _fopen, _fread, _fwrite, _fseek, _fclose, SEEK_SET
@@ -228,3 +276,34 @@ class TestPosix(CompilerTest):
         f = self.tmpdir.join("out.txt")
         f.write("hello")
         assert mod.foo(str(f)) == "hello world"
+
+    def test_fileno(self):
+        src = """
+        from posix import _fopen, _fclose, _fileno
+
+        def foo(fname: str) -> bool:
+            f = _fopen(fname, 'r')
+            fd = _fileno(f)
+            _fclose(f)
+            return fd >= 0
+        """
+        mod = self.compile(src)
+        f = self.tmpdir.join("foo.txt")
+        f.write("hello")
+        assert mod.foo(str(f)) == True
+
+    def test_isatty(self):
+        src = """
+        from posix import _fopen, _fclose, _fileno, _isatty
+
+        def foo(fname: str) -> bool:
+            f = _fopen(fname, 'r')
+            fd = _fileno(f)
+            res = _isatty(fd)
+            _fclose(f)
+            return res
+        """
+        mod = self.compile(src)
+        f = self.tmpdir.join("foo.txt")
+        f.write("hello")
+        assert mod.foo(str(f)) == False

@@ -82,6 +82,8 @@ def w_mem_write(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
 
 
 def generic_mem_read(vm: "SPyVM", addr: int, w_T: W_Type) -> W_Object:
+    from spy.vm.modules.posix import POSIX, W__FILE
+
     if w_T is B.w_i32:
         return vm.wrap(vm.ll.mem.read_i32(addr))
     elif w_T is B.w_f64:
@@ -90,6 +92,8 @@ def generic_mem_read(vm: "SPyVM", addr: int, w_T: W_Type) -> W_Object:
         v_addr, v_length = vm.ll.mem.read_ptr(addr)
         assert v_length == 1
         return W_Str.from_ptr(vm, v_addr)
+    elif w_T is POSIX.w__FILE:
+        return W__FILE(vm.ll.mem.read_i32(addr))
     elif isinstance(w_T, W_PtrType):
         v_addr, v_length = vm.ll.mem.read_ptr(addr)
         return W_Ptr(w_T, v_addr, v_length)
@@ -106,6 +110,8 @@ def generic_mem_read(vm: "SPyVM", addr: int, w_T: W_Type) -> W_Object:
 
 
 def generic_mem_write(vm: "SPyVM", addr: int, w_T: W_Type, w_val: W_Object) -> None:
+    from spy.vm.modules.posix import POSIX, W__FILE
+
     if w_T is B.w_i32:
         v = vm.unwrap_i32(w_val)
         vm.ll.mem.write_i32(addr, v)
@@ -117,6 +123,10 @@ def generic_mem_write(vm: "SPyVM", addr: int, w_T: W_Type, w_val: W_Object) -> N
         v = w_val.ptr
         assert 0 < v < 2**31 - 1
         vm.ll.mem.write_ptr(addr, v, 1)
+    elif w_T is POSIX.w__FILE:
+        assert isinstance(w_val, W__FILE)
+        v = w_val.h
+        vm.ll.mem.write_i32(addr, v)
     elif isinstance(w_T, W_PtrType):
         assert isinstance(w_val, W_Ptr)
         vm.ll.mem.write_ptr(addr, w_val.addr, w_val.length)

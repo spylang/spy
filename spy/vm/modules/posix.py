@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Annotated, Any
 
 from spy.vm.b import B
 from spy.vm.object import W_Object
-from spy.vm.primitive import W_I32
+from spy.vm.primitive import W_I32, W_Bool
 from spy.vm.registry import ModuleRegistry
 from spy.vm.str import W_Str
 from spy.vm.struct import W_Struct
@@ -75,6 +75,9 @@ class W__FILE(W_Object):
         return ("FILE *", self.h)
 
 
+POSIX.add("_FILE_NULL", W__FILE(0))
+
+
 @POSIX.builtin_func
 def w__fopen(vm: "SPyVM", w_filename: W_Str, w_mode: W_Str) -> W__FILE:
     h = vm.ll.call("spy_posix$_fopen", w_filename.ptr, w_mode.ptr)
@@ -121,6 +124,24 @@ def w__fseek(vm: "SPyVM", w_f: W__FILE, w_pos: W_I32, w_whence: W_I32) -> None:
 def w__fwrite(vm: "SPyVM", w_f: W__FILE, w_data: W_Str) -> None:
     vm.ll.call("spy_posix$_fwrite", w_f.h, w_data.ptr)
     return None
+
+
+@POSIX.builtin_func
+def w__fflush(vm: "SPyVM", w_f: W__FILE) -> None:
+    vm.ll.call("spy_posix$_fflush", w_f.h)
+    return None
+
+
+@POSIX.builtin_func
+def w__fileno(vm: "SPyVM", w_f: W__FILE) -> W_I32:
+    fd = vm.ll.call("spy_posix$_fileno", w_f.h)
+    return W_I32(fd)
+
+
+@POSIX.builtin_func
+def w__isatty(vm: "SPyVM", w_fd: W_I32) -> W_Bool:
+    res = vm.ll.call("spy_posix$_isatty", w_fd.value)
+    return vm.wrap(bool(res))
 
 
 @POSIX.builtin_func
