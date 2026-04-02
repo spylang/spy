@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 MODULE = Union[ast.Module, "W_Module", None]
 
 # Cache version: increment this when ast.Module or SymTable structure changes
-SPYC_VERSION = 3
+SPYC_VERSION = 4
 
 
 @dataclass
