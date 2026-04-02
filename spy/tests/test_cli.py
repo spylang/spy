@@ -235,6 +235,98 @@ class TestMain:
         csrc = main_c.read()
         assert csrc.startswith('#include "main.h"')
 
+    def test_return_exit_code_cwrite(self):
+        return_exit_code_src = """
+        def main() -> i32:
+            print("This main return 99 as exit code")
+            return 99
+        """
+        return_exit_code_file = self.tmpdir.join("return_exit_code_src.spy")
+        return_exit_code_file.write(textwrap.dedent(return_exit_code_src))
+
+        self.run(
+            "build", "--no-compile", "--build-dir", self.tmpdir, return_exit_code_file
+        )
+        main_c = self.tmpdir.join("src", "return_exit_code_src.c")
+        assert main_c.exists()
+        csrc = main_c.read()
+        assert "return 99;" in csrc
+
+    def test_nested_functions_exit_code_cwrite(self):
+        return_nested_exit_code_src = """
+        def actual_exit_code_return() -> i32:
+            return 88
+
+        def main() -> i32:
+            print("This main return 88 as exit code")
+            result = actual_exit_code_return()
+            return result
+        """
+        return_nested_exit_code_file = self.tmpdir.join(
+            "return_nested_exit_code_src.spy"
+        )
+        return_nested_exit_code_file.write(textwrap.dedent(return_nested_exit_code_src))
+        self.run(
+            "build",
+            "--no-compile",
+            "--build-dir",
+            self.tmpdir,
+            return_nested_exit_code_file,
+        )
+        main_c = self.tmpdir.join("src", "return_nested_exit_code_src.c")
+        assert main_c.exists()
+        csrc = main_c.read()
+        assert "return 88;" in csrc
+
+    def test_argv_no_exit_code_cwrite(self):
+        src = """
+        def main(argv: list[str]) -> None:
+            print(len(argv))
+        """
+        spy_file = self.tmpdir.join("argv_no_exit_code.spy")
+        spy_file.write(textwrap.dedent(src))
+        self.run("build", "--no-compile", "--build-dir", self.tmpdir, spy_file)
+        main_c = self.tmpdir.join("src", "argv_no_exit_code.c")
+        main_h = self.tmpdir.join("src", "argv_no_exit_code.h")
+        assert main_c.exists()
+        csrc = main_c.read()
+        hsrc = main_h.read()
+        assert "spy_wrap_argv" in csrc
+        assert "int main(int argc" in csrc
+        assert "spy/list.h" in hsrc
+
+    def test_argv_with_exit_code_cwrite(self):
+        src = """
+        def main(argv: list[str]) -> i32:
+            return len(argv)
+        """
+        spy_file = self.tmpdir.join("argv_with_exit_code.spy")
+        spy_file.write(textwrap.dedent(src))
+        self.run("build", "--no-compile", "--build-dir", self.tmpdir, spy_file)
+        main_c = self.tmpdir.join("src", "argv_with_exit_code.c")
+        main_h = self.tmpdir.join("src", "argv_with_exit_code.h")
+        assert main_c.exists()
+        csrc = main_c.read()
+        hsrc = main_h.read()
+        assert "spy_wrap_argv" in csrc
+        assert "int main(int argc" in csrc
+        assert "spy/list.h" in hsrc
+
+    def test_no_argv_no_wrap_cwrite(self):
+        src = """
+        def main() -> None:
+            print("hello")
+        """
+        spy_file = self.tmpdir.join("no_argv.spy")
+        spy_file.write(textwrap.dedent(src))
+        self.run("build", "--no-compile", "--build-dir", self.tmpdir, spy_file)
+        main_c = self.tmpdir.join("src", "no_argv.c")
+        assert main_c.exists()
+        csrc = main_c.read()
+        # spy_wrap_argv must not be emitted when main takes no parameter
+        assert "spy_wrap_argv" not in csrc
+        assert "int main(void)" in csrc
+
     @pytest.mark.parametrize(
         "target",
         [

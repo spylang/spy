@@ -160,19 +160,53 @@ class CModuleWriter:
             if has_argv:
                 raise WIP("`main(argv: list[str])` not supported by the C backend")
 
-            if w_restype == B.w_i32:
+            needs_argv = len(w_main.w_functype.params) == 1
+            returns_i32 = w_main.w_functype.w_restype == B.w_i32
+
+            if needs_argv:
+                self.tbh_includes.wl('#include "spy/list.h"')
                 self.tbc.wb(f"""
-                int main(void) {{
-                    return {fqn_main.c_name}();
-                }}
+                    spy_list_str spy_wrap_argv(int argc, const char *argv[]) {{
+                        spy_list_str lst = spy_list_str_new();
+                        for(int i = 0; i < argc; i++) {{
+                            size_t size_str = strlen(argv[i]);
+                            spy_Str *allo = spy_str_alloc(size_str);
+                            char *buf = (char *)allo->utf8;
+                            memcpy(buf, argv[i], size_str);
+                            lst = spy_list_str_push(lst, allo);
+                        }}
+                        return lst;
+                    }}
                 """)
+
+            if needs_argv and returns_i32:
+                execution_code = f"""
+                    int main(int argc, const char *argv[]) {{
+                        return {fqn_main.c_name}(spy_wrap_argv(argc, argv));
+                    }}
+                    """
+            elif needs_argv and not returns_i32:
+                execution_code = f"""
+                    int main(int argc, const char *argv[]) {{
+                        {fqn_main.c_name}(spy_wrap_argv(argc, argv));
+                        return 0;
+                    }}
+                    """
+            elif not needs_argv and returns_i32:
+                execution_code = f"""
+                    int main(void) {{
+                        return {fqn_main.c_name}();
+                    }}
+                    """
             else:
-                self.tbc.wb(f"""
-                int main(void) {{
-                    {fqn_main.c_name}();
-                    return 0;
-                }}
-                """)
+                execution_code = f"""
+                    int main(void) {{
+                        {fqn_main.c_name}();
+                        return 0;
+                    }}
+                    """
+
+            self.tbc.wb(execution_code)
 
     def emit_jsffi_error_maybe(self) -> None:
         if self.jsffi_error_emitted:
