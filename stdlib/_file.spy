@@ -45,6 +45,10 @@ class file:
             raise ValueError("I/O operation on closed file")
         return _freadline(fp)
 
+    def __fastiter__(self) -> file_iterator:
+        fp = self.__ll__.fp
+        return file_iterator(fp, _freadline(fp))
+
     def __repr__(self) -> str:
         # XXX:
         #   1. rewrite this better as soon as we have f-strings
@@ -63,6 +67,21 @@ class file:
             + data.mode
             + "'>"
         )
+
+
+@struct
+class file_iterator:
+    fp: _FILE
+    line: str
+
+    def __next__(self) -> file_iterator:
+        return file_iterator(self.fp, _freadline(self.fp))
+
+    def __item__(self) -> str:
+        return self.line
+
+    def __continue_iteration__(self) -> bool:
+        return self.line != ""
 
 
 def open(filename: str, mode: str = "r") -> file:

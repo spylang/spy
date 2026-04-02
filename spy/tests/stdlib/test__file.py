@@ -93,3 +93,28 @@ class TestFile(CompilerTest):
 
         with SPyError.raises("W_ValueError", match="I/O operation on closed file"):
             mod.do_write_closed(str(f))
+
+    def test_iter(self):
+        src = r"""
+        from _file import open
+
+        def foo(fname: str) -> str:
+            f = open(fname)
+            result = ''
+            for line in f:
+                if result != '':
+                    result = result + '---\n'
+                result = result + line
+            f.close()
+            return result
+        """
+        mod = self.compile(src)
+        f = self.write_file("foo.txt", "aaa\nbbb\nccc\n")
+        s = mod.foo(str(f))
+        assert s.splitlines() == [
+            "aaa",
+            "---",
+            "bbb",
+            "---",
+            "ccc",
+        ]
