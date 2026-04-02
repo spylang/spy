@@ -23,5 +23,5 @@ async def execute(args: Execute_Args) -> None:
     importer.import_all()
     w_mod = vm.modules_w[modname]
 
-    argv: list[str] = args.argv or []
+    argv: list[str] = [str(args.filename)] + (args.argv or [])
     execute_spy_main(vm, w_mod, argv, redshift=False, _timeit=args.timeit)
