@@ -1,5 +1,6 @@
 import os
 import pickle
+import tempfile
 from collections import deque
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional, Union
@@ -179,10 +180,19 @@ class ImportAnalyzer:
         Save a module to cache file with version information.
         """
         try:
-            spyc.dirpath().ensure(dir=True)
+            spyc_dir = spyc.dirpath()
+            spyc_dir.ensure(dir=True)
             data = {"version": SPYC_VERSION, "module": mod}
-            with spyc.open("wb") as f:
-                pickle.dump(data, f)
+            # Write to a temp file then atomically rename so concurrent readers
+            # never see a partial pickle.
+            fd, tmp_path = tempfile.mkstemp(dir=str(spyc_dir), suffix=".spyc.tmp")
+            try:
+                with os.fdopen(fd, "wb") as f:
+                    pickle.dump(data, f)
+                os.replace(tmp_path, str(spyc))
+            except BaseException:
+                os.unlink(tmp_path)
+                raise
         except Exception as e:
             # Record the error
             error = CacheError(
