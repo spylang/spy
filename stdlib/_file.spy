@@ -1,4 +1,4 @@
-from posix import _FILE, _FILE_NULL, _fopen, _fread, _freadall, _fclose
+from posix import _FILE, _FILE_NULL, _fopen, _fread, _freadall, _freadline, _fclose
 from unsafe import gc_ptr, gc_alloc
 
 
@@ -32,6 +32,12 @@ class file:
             return _freadall(fp)
         else:
             return _fread(fp, n)
+
+    def readline(self) -> str:
+        fp = self.__ll__.fp
+        if fp == _FILE_NULL:
+            raise ValueError("I/O operation on closed file")
+        return _freadline(fp)
 
     def __repr__(self) -> str:
         # XXX:
