@@ -212,6 +212,36 @@ class TestPosix(CompilerTest):
         f.write("hello world")
         assert mod.foo(str(f)) == "HELLO world"
 
+    def test_FILE_eq_self(self):
+        src = """
+        from posix import _fopen, _fclose, _FILE
+
+        def foo(fname: str) -> bool:
+            f: _FILE = _fopen(fname, 'r')
+            res = f == f
+            _fclose(f)
+            return res
+        """
+        mod = self.compile(src)
+        f = self.tmpdir.join("foo.txt")
+        f.write("hello")
+        assert mod.foo(str(f)) == True
+
+    def test_FILE_ne_NULL(self):
+        src = """
+        from posix import _fopen, _fclose, _FILE, _FILE_NULL
+
+        def foo(fname: str) -> bool:
+            f: _FILE = _fopen(fname, 'r')
+            res = f == _FILE_NULL
+            _fclose(f)
+            return res
+        """
+        mod = self.compile(src)
+        f = self.tmpdir.join("foo.txt")
+        f.write("hello")
+        assert mod.foo(str(f)) == False
+
     def test_fopen_mode_read_append(self):
         src = """
         from posix import _fopen, _fread, _fwrite, _fseek, _fclose, SEEK_SET

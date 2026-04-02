@@ -48,4 +48,14 @@ spy_posix$get_terminal_size(void) {
     return result;
 }
 
+static inline bool
+spy_posix$_FILE$__eq__(FILE *f0, FILE *f1) {
+    return f0 == f1;
+}
+
+static inline bool
+spy_posix$_FILE$__ne__(FILE *f0, FILE *f1) {
+    return f0 != f1;
+}
+
 #endif /* SPY_POSIX_H */

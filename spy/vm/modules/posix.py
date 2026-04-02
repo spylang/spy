@@ -75,6 +75,9 @@ class W__FILE(W_Object):
         return ("FILE *", self.h)
 
 
+POSIX.add("_FILE_NULL", W__FILE(0))
+
+
 @POSIX.builtin_func
 def w__fopen(vm: "SPyVM", w_filename: W_Str, w_mode: W_Str) -> W__FILE:
     h = vm.ll.call("spy_posix$_fopen", w_filename.ptr, w_mode.ptr)

@@ -11,6 +11,7 @@ from spy.util import magic_dispatch, shortrepr
 from spy.vm.b import TYPES
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.irtag import IRTag
+from spy.vm.modules.posix import W__FILE
 from spy.vm.modules.unsafe.ptr import W_Ptr
 
 if TYPE_CHECKING:
@@ -301,6 +302,9 @@ class CFuncWriter:
             return C.Literal(const.fqn.c_name)
         elif isinstance(w_obj, W_Func):
             return C.Literal(const.fqn.c_name)
+        elif isinstance(w_obj, W__FILE):
+            assert w_obj.h == 0, "only NULL _FILE can be a constant"
+            return C.Literal("NULL")
         else:
             assert False
 
