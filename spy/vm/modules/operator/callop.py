@@ -93,8 +93,8 @@ def default_callmethod(
         # cannot even write a test because we don't any way to inject
         # non-methods in the type dict
         assert isinstance(w_func, W_Func)
-        # call the w_func, passing wam_obj as the implicit self
-        w_opspec = W_OpSpec(w_func, [wam_obj] + list(args_wam))
-        return w_opspec
+        wam_func = W_MetaArg.from_w_obj(vm, w_func, color="blue")
+        new_args_wam = (wam_obj,) + args_wam
+        return W_Func.op_CALL(vm, wam_func, *new_args_wam)
     else:
         return W_OpSpec.NULL
