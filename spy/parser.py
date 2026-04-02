@@ -159,6 +159,13 @@ class Parser:
             elif isinstance(py_stmt, py_ast.Import):
                 importdecls = self.from_py_Import(py_stmt)
                 mod.decls += importdecls
+            elif (
+                isinstance(py_stmt, py_ast.Expr)
+                and isinstance(py_stmt.value, py_ast.Constant)
+                and isinstance(py_stmt.value.value, str)
+            ):
+                # this is an isolated module-level str
+                pass
             else:
                 msg = (
                     "only function and variable definitions are allowed at global scope"
