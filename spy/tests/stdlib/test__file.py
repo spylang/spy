@@ -71,3 +71,25 @@ class TestFile(CompilerTest):
 
         with SPyError.raises("W_ValueError", match="I/O operation on closed file"):
             mod.do_readline_closed(str(f))
+
+    def test_write(self):
+        src = """
+        from _file import open
+
+        def do_write(fname: str) -> None:
+            f = open(fname, 'w')
+            f.write('hello world')
+            f.close()
+
+        def do_write_closed(fname: str) -> None:
+            f = open(fname, 'w')
+            f.close()
+            f.write('hello')
+        """
+        mod = self.compile(src)
+        f = self.tmpdir.join("out.txt")
+        mod.do_write(str(f))
+        assert f.read() == "hello world"
+
+        with SPyError.raises("W_ValueError", match="I/O operation on closed file"):
+            mod.do_write_closed(str(f))
