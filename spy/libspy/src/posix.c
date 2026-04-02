@@ -180,6 +180,16 @@ spy_posix$_fflush(FILE *f) {
     fflush(f);
 }
 
+int32_t
+spy_posix$_fileno(FILE *f) {
+    return fileno(f);
+}
+
+bool
+spy_posix$_isatty(int32_t fd) {
+    return isatty(fd);
+}
+
 void
 spy_posix$_fclose(FILE *f) {
     fclose(f);

@@ -183,3 +183,40 @@ class TestFile(CompilerTest):
 
         with SPyError.raises("W_ValueError", match="I/O operation on closed file"):
             mod.do_flush_closed(str(f))
+
+    def test_fileno_isatty(self):
+        src = """
+        from _file import open
+
+        def do_fileno(fname: str) -> bool:
+            f = open(fname)
+            fd = f.fileno()
+            f.close()
+            return fd >= 0
+
+        def do_isatty(fname: str) -> bool:
+            f = open(fname)
+            res = f.isatty()
+            f.close()
+            return res
+
+        def do_fileno_closed(fname: str) -> i32:
+            f = open(fname)
+            f.close()
+            return f.fileno()
+
+        def do_isatty_closed(fname: str) -> bool:
+            f = open(fname)
+            f.close()
+            return f.isatty()
+        """
+        mod = self.compile(src)
+        f = self.write_file("foo.txt", "hello")
+        assert mod.do_fileno(str(f)) == True
+        assert mod.do_isatty(str(f)) == False
+
+        with SPyError.raises("W_ValueError", match="I/O operation on closed file"):
+            mod.do_fileno_closed(str(f))
+
+        with SPyError.raises("W_ValueError", match="I/O operation on closed file"):
+            mod.do_isatty_closed(str(f))

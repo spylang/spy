@@ -1,6 +1,6 @@
 from posix import (
     _FILE, _FILE_NULL, _fopen, _fread, _freadall, _freadline,
-    _fwrite, _ftell, _fseek, _fflush, _fclose, SEEK_SET,
+    _fwrite, _ftell, _fseek, _fflush, _fileno, _isatty, _fclose, SEEK_SET,
 )
 from unsafe import gc_ptr, gc_alloc
 
@@ -59,6 +59,18 @@ class file:
         if fp == _FILE_NULL:
             raise ValueError("I/O operation on closed file")
         _fseek(fp, offset, whence)
+
+    def fileno(self) -> i32:
+        fp = self.__ll__.fp
+        if fp == _FILE_NULL:
+            raise ValueError("I/O operation on closed file")
+        return _fileno(fp)
+
+    def isatty(self) -> bool:
+        fp = self.__ll__.fp
+        if fp == _FILE_NULL:
+            raise ValueError("I/O operation on closed file")
+        return _isatty(_fileno(fp))
 
     def flush(self) -> None:
         fp = self.__ll__.fp
