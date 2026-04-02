@@ -118,3 +118,42 @@ class TestFile(CompilerTest):
             "---",
             "ccc",
         ]
+
+    def test_tell_seek(self):
+        src = """
+        from posix import SEEK_SET, SEEK_CUR, SEEK_END
+        from _file import open
+
+        def do_tell_seek(fname: str) -> tuple[i32, i32, str, str, str]:
+            f = open(fname)
+            pos0 = f.tell()
+            f.read(5)
+            pos1 = f.tell()
+            f.seek(0)
+            a = f.read(5)
+            f.seek(6)
+            b = f.read()
+            f.seek(-5, SEEK_END)
+            c = f.read()
+            f.close()
+            return pos0, pos1, a, b, c
+
+        def do_tell_closed(fname: str) -> i32:
+            f = open(fname)
+            f.close()
+            return f.tell()
+
+        def do_seek_closed(fname: str) -> None:
+            f = open(fname)
+            f.close()
+            f.seek(0)
+        """
+        mod = self.compile(src)
+        f = self.write_file("foo.txt", "hello world")
+        assert mod.do_tell_seek(str(f)) == (0, 5, "hello", "world", "world")
+
+        with SPyError.raises("W_ValueError", match="I/O operation on closed file"):
+            mod.do_tell_closed(str(f))
+
+        with SPyError.raises("W_ValueError", match="I/O operation on closed file"):
+            mod.do_seek_closed(str(f))

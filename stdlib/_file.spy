@@ -1,4 +1,7 @@
-from posix import _FILE, _FILE_NULL, _fopen, _fread, _freadall, _freadline, _fwrite, _fclose
+from posix import (
+    _FILE, _FILE_NULL, _fopen, _fread, _freadall, _freadline,
+    _fwrite, _ftell, _fseek, _fclose, SEEK_SET,
+)
 from unsafe import gc_ptr, gc_alloc
 
 
@@ -44,6 +47,18 @@ class file:
         if fp == _FILE_NULL:
             raise ValueError("I/O operation on closed file")
         return _freadline(fp)
+
+    def tell(self) -> i32:
+        fp = self.__ll__.fp
+        if fp == _FILE_NULL:
+            raise ValueError("I/O operation on closed file")
+        return _ftell(fp)
+
+    def seek(self, offset: i32, whence: i32 = SEEK_SET) -> None:
+        fp = self.__ll__.fp
+        if fp == _FILE_NULL:
+            raise ValueError("I/O operation on closed file")
+        _fseek(fp, offset, whence)
 
     def __fastiter__(self) -> file_iterator:
         fp = self.__ll__.fp
