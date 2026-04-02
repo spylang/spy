@@ -1,0 +1,9 @@
+def main() -> None:
+    f = open("/tmp/foo.txt", "w")
+    for i in range(10):
+        f.write("hello " + str(i) + "\n")
+    f.close()
+
+    f2 = open("/tmp/foo.txt")
+    for line in f2:
+        print(line)
