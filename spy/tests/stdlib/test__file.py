@@ -8,13 +8,17 @@ class TestFile(CompilerTest):
         src = """
         from _file import open
 
-        def foo(fname: str) -> str:
+        def foo(fname: str) -> tuple[str, str]:
             f = open(fname)
-            s = str(f)
+            s0 = str(f)
             f.close()
-            return s
+            s1 = str(f)
+            return s0, s1
         """
         mod = self.compile(src)
         f = self.write_file("foo.txt", "hello")
-        s = mod.foo(str(f))
-        assert s == f"<spy file '{f}', mode 'r'>"
+        tup = mod.foo(str(f))
+        s0 = tup._item0
+        s1 = tup._item1
+        assert s0 == f"<spy open file '{f}', mode 'r'>"
+        assert s1 == f"<spy closed file '{f}', mode 'r'>"

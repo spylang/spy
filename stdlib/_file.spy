@@ -1,4 +1,4 @@
-from posix import _FILE, _fopen, _fread, _freadall, _fclose
+from posix import _FILE, _FILE_NULL, _fopen, _fread, _freadall, _fclose
 from unsafe import gc_ptr, gc_alloc
 
 
@@ -22,14 +22,26 @@ class file:
 
     def close(self) -> None:
         _fclose(self.__ll__.fp)
+        self.__ll__.fp = _FILE_NULL
 
     def __repr__(self) -> str:
         # XXX:
         #   1. rewrite this better as soon as we have f-strings
         #   2. use repr(str) as soon as we have it
-        #   3. report open/closed as soon as we can check for data.fp
         data = self.__ll__
-        return "<spy file '" + data.filename + "', mode '" + data.mode + "'>"
+        if data.fp == _FILE_NULL:
+            status = "closed"
+        else:
+            status = "open"
+        return (
+            "<spy "
+            + status
+            + " file '"
+            + data.filename
+            + "', mode '"
+            + data.mode
+            + "'>"
+        )
 
 
 def open(filename: str, mode: str = "r") -> file:
