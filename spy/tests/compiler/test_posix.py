@@ -242,6 +242,24 @@ class TestPosix(CompilerTest):
         f.write("hello")
         assert mod.foo(str(f)) == False
 
+    def test_fflush(self):
+        src = """
+        from posix import _fopen, _fwrite, _fflush, _fclose, _fread
+
+        def foo(wname: str, rname: str) -> str:
+            wf = _fopen(wname, 'w')
+            _fwrite(wf, 'hello')
+            _fflush(wf)
+            rf = _fopen(rname, 'r')
+            content = _fread(rf, 100)
+            _fclose(rf)
+            _fclose(wf)
+            return content
+        """
+        mod = self.compile(src)
+        f = self.tmpdir.join("out.txt")
+        assert mod.foo(str(f), str(f)) == "hello"
+
     def test_fopen_mode_read_append(self):
         src = """
         from posix import _fopen, _fread, _fwrite, _fseek, _fclose, SEEK_SET

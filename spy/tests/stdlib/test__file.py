@@ -157,3 +157,29 @@ class TestFile(CompilerTest):
 
         with SPyError.raises("W_ValueError", match="I/O operation on closed file"):
             mod.do_seek_closed(str(f))
+
+    def test_flush(self):
+        src = """
+        from _file import open
+
+        def do_flush(wname: str, rname: str) -> str:
+            wf = open(wname, 'w')
+            wf.write('hello')
+            wf.flush()
+            rf = open(rname)
+            content = rf.read()
+            rf.close()
+            wf.close()
+            return content
+
+        def do_flush_closed(fname: str) -> None:
+            f = open(fname, 'w')
+            f.close()
+            f.flush()
+        """
+        mod = self.compile(src)
+        f = self.tmpdir.join("out.txt")
+        assert mod.do_flush(str(f), str(f)) == "hello"
+
+        with SPyError.raises("W_ValueError", match="I/O operation on closed file"):
+            mod.do_flush_closed(str(f))

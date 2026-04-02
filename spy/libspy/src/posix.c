@@ -176,6 +176,11 @@ spy_posix$_fwrite(FILE *f, spy_Str *data) {
 }
 
 void
+spy_posix$_fflush(FILE *f) {
+    fflush(f);
+}
+
+void
 spy_posix$_fclose(FILE *f) {
     fclose(f);
 }

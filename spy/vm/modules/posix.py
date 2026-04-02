@@ -127,6 +127,12 @@ def w__fwrite(vm: "SPyVM", w_f: W__FILE, w_data: W_Str) -> None:
 
 
 @POSIX.builtin_func
+def w__fflush(vm: "SPyVM", w_f: W__FILE) -> None:
+    vm.ll.call("spy_posix$_fflush", w_f.h)
+    return None
+
+
+@POSIX.builtin_func
 def w__fclose(vm: "SPyVM", w_f: W__FILE) -> None:
     vm.ll.call("spy_posix$_fclose", w_f.h)
     return None
