@@ -42,6 +42,13 @@ class file:
             raise ValueError("I/O operation on closed file")
         _fwrite(fp, data)
 
+    def writelines(self, lines: list[str]) -> None:
+        fp = self.__ll__.fp
+        if fp == _FILE_NULL:
+            raise ValueError("I/O operation on closed file")
+        for line in lines:
+            _fwrite(fp, line)
+
     def readline(self) -> str:
         fp = self.__ll__.fp
         if fp == _FILE_NULL:
