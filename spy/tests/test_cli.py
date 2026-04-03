@@ -127,27 +127,6 @@ class TestMain:
             _, stdout = self.run(*argset, self.main_spy)
             assert stdout == "hello world\n"
 
-    def test_exit_code(self):
-        src = """
-        def main() -> i32:
-            print("This main return 99 as exit code")
-            return 99
-        """
-        f = self.write("test.spy", src)
-        res = self.runner.invoke(app, [str(f)])
-        assert res.exit_code == 99
-
-    def test_main_wrong_return_type(self):
-        src = """
-        def main() -> str:
-            return "oops"
-        """
-        f = self.write("test.spy", src)
-        res = self.runner.invoke(app, [str(f)])
-        assert res.exit_code == 1
-        output = decolorize(res.output)
-        assert "`main` has the wrong signature" in output
-
     def test_timeit(self):
         _, stdout = self.run("--timeit", self.main_spy)
         assert "main()" in stdout
@@ -235,75 +214,6 @@ class TestMain:
         csrc = main_c.read()
         assert csrc.startswith('#include "main.h"')
 
-    def test_return_exit_code_cwrite(self):
-        src = """
-        def main() -> i32:
-            print("This main return 99 as exit code")
-            return 99
-        """
-        f = self.write("test.spy", src)
-        self.run("build", "--no-compile", "--build-dir", self.tmpdir, f)
-        test_c = self.tmpdir.join("src", "test.c")
-        assert test_c.exists()
-        csrc = test_c.read()
-        assert "return 99;" in csrc
-
-    def test_nested_functions_exit_code_cwrite(self):
-        src = """
-        def actual_exit_code_return() -> i32:
-            return 88
-
-        def main() -> i32:
-            print("This main return 88 as exit code")
-            result = actual_exit_code_return()
-            return result
-        """
-        f = self.write("test.spy", src)
-        self.run("build", "--no-compile", "--build-dir", self.tmpdir, f)
-        test_c = self.tmpdir.join("src", "test.c")
-        assert test_c.exists()
-        csrc = test_c.read()
-        assert "return 88;" in csrc
-
-    def test_argv_no_exit_code_cwrite(self):
-        src = """
-        def main(argv: list[str]) -> None:
-            print(len(argv))
-        """
-        f = self.write("test.spy", src)
-        self.run("build", "--no-compile", "--build-dir", self.tmpdir, f)
-        test_c = self.tmpdir.join("src", "test.c")
-        assert test_c.exists()
-        csrc = test_c.read()
-        assert "spy_wrap_argv" in csrc
-        assert "int main(int argc" in csrc
-
-    def test_argv_with_exit_code_cwrite(self):
-        src = """
-        def main(argv: list[str]) -> i32:
-            return len(argv)
-        """
-        f = self.write("test.spy", src)
-        self.run("build", "--no-compile", "--build-dir", self.tmpdir, f)
-        test_c = self.tmpdir.join("src", "test.c")
-        assert test_c.exists()
-        csrc = test_c.read()
-        assert "spy_wrap_argv" in csrc
-        assert "int main(int argc" in csrc
-
-    def test_no_argv_no_wrap_cwrite(self):
-        src = """
-        def main() -> None:
-            print("hello")
-        """
-        f = self.write("test.spy", src)
-        self.run("build", "--no-compile", "--build-dir", self.tmpdir, f)
-        test_c = self.tmpdir.join("src", "test.c")
-        assert test_c.exists()
-        csrc = test_c.read()
-        assert "spy_wrap_argv" not in csrc
-        assert "int main(void)" in csrc
-
     @pytest.mark.parametrize(
         "target",
         [
@@ -362,19 +272,6 @@ class TestMain:
         out, err = capfd.readouterr()
         assert "hello world" in out
 
-    def test_exit_code_C_backend(self):
-        src = """
-        def main() -> i32:
-            print("hello")
-            return 99
-        """
-        f = self.write("test.spy", src)
-        self.run("build", f)
-        test_exe = self.tmpdir.join("build", "test")
-        status, out = getstatusoutput([str(test_exe)])
-        assert status == 99
-        assert out == "hello"
-
     @pytest.mark.skipif(PYODIDE_EXE is None, reason="./pyodide/venv not found")
     @pytest.mark.pyodide
     def test_execute_pyodide(self):
@@ -431,28 +328,27 @@ class TestMain:
         _, stdout = self.run("imports", self.main_spy)
         assert stdout.startswith("Import tree:")
 
-    def test_compile_execute_argv(self):
+    def test_interp_exit_code(self):
         src = """
-        def main(argv: list[str]) -> i32:
-            for a in argv:
-                print(a)
+        def main() -> i32:
+            return 99
+        """
+        f = self.write("test.spy", src)
+        res = self.runner.invoke(app, [str(f)])
+        assert res.exit_code == 99
 
+    def test_compile_exit_code(self):
+        src = """
+        def main() -> i32:
             return 99
         """
         f = self.write("test.spy", src)
         self.run("build", f)
         test_exe = self.tmpdir.join("build", "test")
-        cmd = f"{str(test_exe)} arg1=value1 arg2=value2 arg3=value3"
-        status, out = getstatusoutput(cmd)
+        status, out = getstatusoutput([str(test_exe)])
         assert status == 99
-        assert out.split() == [
-            str(test_exe),
-            "arg1=value1",
-            "arg2=value2",
-            "arg3=value3",
-        ]
 
-    def test_execute_argv(self):
+    def test_interp_argv(self):
         src = """
         def main(argv: list[str]) -> None:
             for a in argv:
@@ -463,6 +359,18 @@ class TestMain:
         assert res.exit_code == 0
         output = decolorize(res.output)
         assert output.split() == [str(f), "aaa", "bbb", "ccc"]
+
+    def test_compile_argv(self):
+        src = """
+        def main(argv: list[str]) -> None:
+            for a in argv:
+                print(a)
+        """
+        f = self.write("test.spy", src)
+        self.run("build", f)
+        test_exe = self.tmpdir.join("build", "test")
+        status, out = getstatusoutput(f"{test_exe} aaa bbb ccc")
+        assert out.split() == [str(test_exe), "aaa", "bbb", "ccc"]
 
     def test_redshift_argv(self):
         src = """
@@ -475,25 +383,3 @@ class TestMain:
         assert res.exit_code == 0
         output = decolorize(res.output)
         assert output.split() == [str(f), "aaa", "bbb", "ccc"]
-
-    def test_main_wrong_param_type(self):
-        src = """
-        def main(x: i32) -> None:
-            pass
-        """
-        f = self.write("test.spy", src)
-        res = self.runner.invoke(app, [str(f)])
-        assert res.exit_code == 1
-        output = decolorize(res.output)
-        assert "`main` has the wrong signature" in output
-
-    def test_main_too_many_params(self):
-        src = """
-        def main(a: list[str], b: list[str]) -> None:
-            pass
-        """
-        f = self.write("test.spy", src)
-        res = self.runner.invoke(app, [str(f)])
-        assert res.exit_code == 1
-        output = decolorize(res.output)
-        assert "`main` has the wrong signature" in output

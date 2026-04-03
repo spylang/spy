@@ -157,17 +157,18 @@ class CModuleWriter:
             w_main = self.ctx.vm.globals_w[fqn_main]
             assert isinstance(w_main, W_ASTFunc)
 
-            w_restype, needs_argv = self.ctx.vm.typecheck_main(w_main)
+            w_restype, has_argv = self.ctx.vm.typecheck_main(w_main)
             returns_i32 = w_restype == B.w_i32
 
-            if needs_argv:
+            if has_argv:
                 self.tbc.wb("""
+                    /* helper code for C->SPy argv wrapping */
+
                     #define spy_list_str spy__list$list__builtins$str$_ListImpl
                     #define spy_list_str_new spy__list$list__builtins$str$_ListImpl$__new__
                     #define spy_list_str_push spy__list$list__builtins$str$_ListImpl$_push
 
-                    spy_list_str
-                    spy_wrap_argv(int argc, const char *argv[]) {
+                    spy_list_str spy_wrap_argv(int argc, const char *argv[]) {
                         spy_list_str lst = spy_list_str_new();
                         for (int i = 0; i < argc; i++) {
                             size_t length = strlen(argv[i]);
@@ -178,22 +179,28 @@ class CModuleWriter:
                         }
                         return lst;
                     }
+
+                    #undef spy_list_str
+                    #undef spy_list_str_new
+                    #undef spy_list_str_push
+
+                    /* end of helper code */
                 """)
 
-            if needs_argv and returns_i32:
+            if has_argv and returns_i32:
                 main_src = f"""
                     int main(int argc, const char *argv[]) {{
                         return {fqn_main.c_name}(spy_wrap_argv(argc, argv));
                     }}
                     """
-            elif needs_argv and not returns_i32:
+            elif has_argv and not returns_i32:
                 main_src = f"""
                     int main(int argc, const char *argv[]) {{
                         {fqn_main.c_name}(spy_wrap_argv(argc, argv));
                         return 0;
                     }}
                     """
-            elif not needs_argv and returns_i32:
+            elif not has_argv and returns_i32:
                 main_src = f"""
                     int main(void) {{
                         return {fqn_main.c_name}();
