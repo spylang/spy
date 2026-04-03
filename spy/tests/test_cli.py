@@ -431,6 +431,27 @@ class TestMain:
         _, stdout = self.run("imports", self.main_spy)
         assert stdout.startswith("Import tree:")
 
+    def test_compile_execute_argv(self):
+        src = """
+        def main(argv: list[str]) -> i32:
+            for a in argv:
+                print(a)
+
+            return 99
+        """
+        f = self.write("test.spy", src)
+        self.run("build", f)
+        test_exe = self.tmpdir.join("build", "test")
+        cmd = f"{str(test_exe)} arg1=value1 arg2=value2 arg3=value3"
+        status, out = getstatusoutput(cmd)
+        assert status == 99
+        assert out.split() == [
+            str(test_exe),
+            "arg1=value1",
+            "arg2=value2",
+            "arg3=value3",
+        ]
+
     def test_execute_argv(self):
         src = """
         def main(argv: list[str]) -> None:
