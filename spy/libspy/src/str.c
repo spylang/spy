@@ -125,6 +125,56 @@ spy_str_len(spy_Str *s) {
     return (int32_t)s->length;
 }
 
+spy_Str *
+spy_str_repr(spy_Str *s) {
+    // Choose quote character: use double quotes if string contains ' but not "
+    char quote = '\'';
+    for (size_t i = 0; i < s->length; i++) {
+        if (s->utf8[i] == '\'') { quote = '"'; }
+        if (s->utf8[i] == '"')  { quote = '\''; break; }
+    }
+
+    // First pass: calculate the output length
+    size_t out_len = 2; // for the surrounding quotes
+    for (size_t i = 0; i < s->length; i++) {
+        unsigned char c = (unsigned char)s->utf8[i];
+        if (c == '\\' || c == quote) {
+            out_len += 2;
+        } else if (c == '\n' || c == '\r' || c == '\t') {
+            out_len += 2;
+        } else if (c < 0x20) {
+            out_len += 4; // \xNN
+        } else {
+            out_len += 1;
+        }
+    }
+
+    // Second pass: fill the buffer
+    spy_Str *res = spy_str_alloc(out_len);
+    char *buf = (char *)res->utf8;
+    *buf++ = quote;
+    for (size_t i = 0; i < s->length; i++) {
+        unsigned char c = (unsigned char)s->utf8[i];
+        if (c == '\\') {
+            *buf++ = '\\'; *buf++ = '\\';
+        } else if (c == quote) {
+            *buf++ = '\\'; *buf++ = quote;
+        } else if (c == '\n') {
+            *buf++ = '\\'; *buf++ = 'n';
+        } else if (c == '\r') {
+            *buf++ = '\\'; *buf++ = 'r';
+        } else if (c == '\t') {
+            *buf++ = '\\'; *buf++ = 't';
+        } else if (c < 0x20) {
+            buf += sprintf(buf, "\\x%02x", c);
+        } else {
+            *buf++ = c;
+        }
+    }
+    *buf++ = quote;
+    return res;
+}
+
 int32_t
 spy_str_hash(spy_Str *s) {
     if (s->hash != 0)

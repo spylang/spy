@@ -150,6 +150,33 @@ class TestStr(CompilerTest):
         mod = self.compile(src)
         assert mod.repr_blue() == "<spy type 'i32'>"
 
+    def test_repr_str(self):
+        src = """
+        def repr_str(s: str) -> str:
+            return repr(s)
+
+        def repr_str_foo() -> str:
+            return repr("foo")
+        """
+        mod = self.compile(src)
+        assert mod.repr_str_foo() == "'foo'"
+
+        test_cases = [
+            "foo",
+            "",
+            "hello\nworld",
+            "tab\there",
+            "cr\rhere",
+            "back\\slash",
+            "it's",
+            "\x00",
+            "\x1f",
+            "café",
+            "line1\nline2\ttabbed",
+        ]
+        for s in test_cases:
+            assert mod.repr_str(s) == repr(s)
+
     @skip_backends("C", reason="`type` type not supported")
     def test_repr_red(self):
         src = """
