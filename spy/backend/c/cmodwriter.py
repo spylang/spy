@@ -157,8 +157,8 @@ class CModuleWriter:
             w_main = self.ctx.vm.globals_w[fqn_main]
             assert isinstance(w_main, W_ASTFunc)
 
-            needs_argv = len(w_main.w_functype.params) == 1
-            returns_i32 = w_main.w_functype.w_restype == B.w_i32
+            w_restype, needs_argv = self.ctx.vm.typecheck_main(w_main)
+            returns_i32 = w_restype == B.w_i32
 
             if needs_argv:
                 self.tbc.wb("""
