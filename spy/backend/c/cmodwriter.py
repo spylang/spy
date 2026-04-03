@@ -161,7 +161,7 @@ class CModuleWriter:
             returns_i32 = w_main.w_functype.w_restype == B.w_i32
 
             if needs_argv:
-                self.tbh.wb("""
+                self.tbc.wb("""
                     #define spy_list_str spy__list$list__builtins$str$_ListImpl
                     #define spy_list_str_new spy__list$list__builtins$str$_ListImpl$__new__
                     #define spy_list_str_push spy__list$list__builtins$str$_ListImpl$_push
@@ -170,44 +170,44 @@ class CModuleWriter:
                     spy_wrap_argv(int argc, const char *argv[]) {
                         spy_list_str lst = spy_list_str_new();
                         for (int i = 0; i < argc; i++) {
-                            size_t size_str = strlen(argv[i]);
-                            spy_Str *allo = spy_str_alloc(size_str);
-                            char *buf = (char *)allo->utf8;
-                            memcpy(buf, argv[i], size_str);
-                            lst = spy_list_str_push(lst, allo);
+                            size_t length = strlen(argv[i]);
+                            spy_Str *s = spy_str_alloc(length);
+                            char *buf = (char *)s->utf8;
+                            memcpy(buf, argv[i], length);
+                            lst = spy_list_str_push(lst, s);
                         }
                         return lst;
                     }
                 """)
 
             if needs_argv and returns_i32:
-                execution_code = f"""
+                main_src = f"""
                     int main(int argc, const char *argv[]) {{
                         return {fqn_main.c_name}(spy_wrap_argv(argc, argv));
                     }}
                     """
             elif needs_argv and not returns_i32:
-                execution_code = f"""
+                main_src = f"""
                     int main(int argc, const char *argv[]) {{
                         {fqn_main.c_name}(spy_wrap_argv(argc, argv));
                         return 0;
                     }}
                     """
             elif not needs_argv and returns_i32:
-                execution_code = f"""
+                main_src = f"""
                     int main(void) {{
                         return {fqn_main.c_name}();
                     }}
                     """
             else:
-                execution_code = f"""
+                main_src = f"""
                     int main(void) {{
                         {fqn_main.c_name}();
                         return 0;
                     }}
                     """
 
-            self.tbc.wb(execution_code)
+            self.tbc.wb(main_src)
 
     def emit_jsffi_error_maybe(self) -> None:
         if self.jsffi_error_emitted:

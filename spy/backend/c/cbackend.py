@@ -2,7 +2,6 @@ from typing import Optional
 
 import py.path
 
-import spy.libspy
 from spy.backend.c.cffiwriter import CFFIWriter
 from spy.backend.c.cmodwriter import CModule, CModuleWriter
 from spy.backend.c.cstructwriter import CStructDefs, CStructWriter
