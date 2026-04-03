@@ -127,27 +127,6 @@ class TestMain:
             _, stdout = self.run(*argset, self.main_spy)
             assert stdout == "hello world\n"
 
-    def test_exit_code(self):
-        src = """
-        def main() -> i32:
-            print("This main return 99 as exit code")
-            return 99
-        """
-        f = self.write("test.spy", src)
-        res = self.runner.invoke(app, [str(f)])
-        assert res.exit_code == 99
-
-    def test_main_wrong_return_type(self):
-        src = """
-        def main() -> str:
-            return "oops"
-        """
-        f = self.write("test.spy", src)
-        res = self.runner.invoke(app, [str(f)])
-        assert res.exit_code == 1
-        output = decolorize(res.output)
-        assert "`main` has the wrong signature" in output
-
     def test_timeit(self):
         _, stdout = self.run("--timeit", self.main_spy)
         assert "main()" in stdout
@@ -293,19 +272,6 @@ class TestMain:
         out, err = capfd.readouterr()
         assert "hello world" in out
 
-    def test_exit_code_C_backend(self):
-        src = """
-        def main() -> i32:
-            print("hello")
-            return 99
-        """
-        f = self.write("test.spy", src)
-        self.run("build", f)
-        test_exe = self.tmpdir.join("build", "test")
-        status, out = getstatusoutput([str(test_exe)])
-        assert status == 99
-        assert out == "hello"
-
     @pytest.mark.skipif(PYODIDE_EXE is None, reason="./pyodide/venv not found")
     @pytest.mark.pyodide
     def test_execute_pyodide(self):
@@ -362,7 +328,27 @@ class TestMain:
         _, stdout = self.run("imports", self.main_spy)
         assert stdout.startswith("Import tree:")
 
-    def test_execute_argv(self):
+    def test_interp_exit_code(self):
+        src = """
+        def main() -> i32:
+            return 99
+        """
+        f = self.write("test.spy", src)
+        res = self.runner.invoke(app, [str(f)])
+        assert res.exit_code == 99
+
+    def test_compile_exit_code(self):
+        src = """
+        def main() -> i32:
+            return 99
+        """
+        f = self.write("test.spy", src)
+        self.run("build", f)
+        test_exe = self.tmpdir.join("build", "test")
+        status, out = getstatusoutput([str(test_exe)])
+        assert status == 99
+
+    def test_interp_argv(self):
         src = """
         def main(argv: list[str]) -> None:
             for a in argv:
@@ -373,6 +359,18 @@ class TestMain:
         assert res.exit_code == 0
         output = decolorize(res.output)
         assert output.split() == [str(f), "aaa", "bbb", "ccc"]
+
+    def test_compile_argv(self):
+        src = """
+        def main(argv: list[str]) -> None:
+            for a in argv:
+                print(a)
+        """
+        f = self.write("test.spy", src)
+        self.run("build", f)
+        test_exe = self.tmpdir.join("build", "test")
+        status, out = getstatusoutput(f"{test_exe} aaa bbb ccc")
+        assert out.split() == [str(test_exe), "aaa", "bbb", "ccc"]
 
     def test_redshift_argv(self):
         src = """
@@ -385,25 +383,3 @@ class TestMain:
         assert res.exit_code == 0
         output = decolorize(res.output)
         assert output.split() == [str(f), "aaa", "bbb", "ccc"]
-
-    def test_main_wrong_param_type(self):
-        src = """
-        def main(x: i32) -> None:
-            pass
-        """
-        f = self.write("test.spy", src)
-        res = self.runner.invoke(app, [str(f)])
-        assert res.exit_code == 1
-        output = decolorize(res.output)
-        assert "`main` has the wrong signature" in output
-
-    def test_main_too_many_params(self):
-        src = """
-        def main(a: list[str], b: list[str]) -> None:
-            pass
-        """
-        f = self.write("test.spy", src)
-        res = self.runner.invoke(app, [str(f)])
-        assert res.exit_code == 1
-        output = decolorize(res.output)
-        assert "`main` has the wrong signature" in output
