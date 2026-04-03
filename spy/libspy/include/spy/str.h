@@ -31,6 +31,8 @@ spy_Str *WASM_EXPORT(spy_str_getitem)(spy_Str *s, int32_t i);
 
 int32_t WASM_EXPORT(spy_str_len)(spy_Str *s);
 
+spy_Str *WASM_EXPORT(spy_str_repr)(spy_Str *s);
+
 int32_t WASM_EXPORT(spy_str_hash)(spy_Str *s);
 
 #define spy_operator$str_add spy_str_add
@@ -40,6 +42,7 @@ int32_t WASM_EXPORT(spy_str_hash)(spy_Str *s);
 #define spy_builtins$str$replace spy_str_replace
 #define spy_builtins$str$__getitem__ spy_str_getitem
 #define spy_builtins$str$__len__ spy_str_len
+#define spy_builtins$str$__repr__ spy_str_repr
 #define spy_builtins$hash_str spy_str_hash
 
 // __str__ methods of common builtin types
