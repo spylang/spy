@@ -833,7 +833,7 @@ class AbstractFrame:
         # unsupported literals are rejected directly by the parser, see
         # Parser.from_py_expr_Constant
         T = type(const.value)
-        assert T in (int, float, bool, NoneType)
+        assert T in (int, float, complex, bool, NoneType)
         w_val = self.vm.wrap(const.value)
         w_T = self.vm.dynamic_type(w_val)
         return W_MetaArg(self.vm, "blue", w_T, w_val, const.loc)

@@ -266,3 +266,4 @@ def w_setattr(
 # platform? Or maybe have some kind of "configure step"?
 BUILTINS.add("int", BUILTINS.w_i32)
 BUILTINS.add("float", BUILTINS.w_f64)
+BUILTINS.add("complex", BUILTINS.w_complex128)

@@ -490,19 +490,6 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
-    def test_unsupported_literal(self):
-        # Eventually this test should be killed, when we support all the
-        # literals
-        src = """
-        def foo() -> i32:
-            return 42j
-        """
-        self.expect_errors(
-            src,
-            "unsupported literal: 42j",
-            ("this is not supported yet", "42j"),
-        )
-
     def test_StrConst(self):
         mod = self.parse("""
         def foo() -> i32:

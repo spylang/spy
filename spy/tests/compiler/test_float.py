@@ -105,7 +105,7 @@ class TestFloat(CompilerTest):
         assert mod.cmp_gte(5.1, 5.1) is True
         assert mod.cmp_gte(6.2, 5.1) is True
 
-    def test_implicit_conversion(self, float_type):
+    def test_mixed_types(self, float_type):
         mod = self.compile(f"""
         T = {float_type}
         def add(x: T, y: i32) -> T: return x + y
@@ -118,7 +118,7 @@ class TestFloat(CompilerTest):
         assert mod.mul(1.5, 2) == 3.0
         assert mod.div(10, 0.5) == 20.0
 
-    def test_implicit_float_to_all_ints_conversion(self):
+    def test_float_to_all_ints_conversion(self):
         mod = self.compile("""
         def add_i8(x: f64, y: i8) -> f64: return x + y
         def add_u8(x: f64, y: u8) -> f64: return x + y

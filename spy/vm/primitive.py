@@ -6,6 +6,7 @@ import fixedint
 from spy.fqn import FQN
 from spy.vm.b import OP, TYPES, B
 from spy.vm.builtin import builtin_method
+from spy.vm.member import Member
 from spy.vm.object import W_Object, W_Type
 
 # fixedint/__init__.pyi overrides FixedInt and mypy thinks it's a
@@ -273,6 +274,67 @@ class W_F32(W_Object):
     def w_str(vm: "SPyVM", w_self: "W_F32") -> "W_Str":
         f = vm.unwrap_f32(w_self)
         return vm.wrap(f"{f:.7g}")
+
+
+@B.builtin_type("complex128", lazy_definition=True)
+class W_Complex128(W_Object):
+    __spy_storage_category__ = "value"
+    value: complex
+    w_real: Annotated[W_F64, Member("real")]
+    w_imag: Annotated[W_F64, Member("imag")]
+
+    def __init__(self, value: complex) -> None:
+        assert type(value) is complex
+        self.value = value
+        self.w_real = W_F64(value.real)
+        self.w_imag = W_F64(value.imag)
+
+    @builtin_method("__new__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_NEW(vm: "SPyVM", wam_cls: "W_MetaArg", *args_wam: "W_MetaArg") -> "W_OpSpec":
+        from spy.vm.opspec import W_OpSpec
+
+        # TODO: need to check for named args (real and/or imag) when available
+        match len(args_wam):
+            case 1:
+                wam_arg = args_wam[0]
+                match wam_arg.w_static_T:
+                    case B.w_str:
+                        return W_OpSpec(OP.w_str_to_complex128, [wam_arg])
+                    case B.w_i32:
+                        return W_OpSpec(OP.w_i32_to_complex128, [wam_arg])
+                    case B.w_f64:
+                        return W_OpSpec(OP.w_f64_to_complex128, [wam_arg])
+            case 2:
+                wam_arg_1, wam_arg_2 = args_wam[0], args_wam[1]
+                if wam_arg_1.w_static_T in (
+                    B.w_i32,
+                    B.w_f64,
+                ) and wam_arg_2.w_static_T in (B.w_i32, B.w_f64):
+                    return W_OpSpec(OP.w_f64_f64_to_complex128, [wam_arg_1, wam_arg_2])
+
+        return W_OpSpec.NULL
+
+    def __repr__(self) -> str:
+        return f"W_Complex128({self.value})"
+
+    def spy_unwrap(self, vm: "SPyVM") -> complex:
+        return self.value
+
+    def spy_key(self, vm: "SPyVM") -> complex:
+        return self.value
+
+    @builtin_method("__str__")
+    @staticmethod
+    def w_str(vm: "SPyVM", w_self: "W_Complex128") -> "W_Str":
+        c = vm.unwrap_complex128(w_self)
+        return vm.wrap(str(c))
+
+    @builtin_method("conjugate")
+    @staticmethod
+    def w_conjugate(vm: "SPyVM", w_self: "W_Complex128") -> "W_Complex128":
+        c = vm.unwrap_complex128(w_self)
+        return vm.wrap(c.conjugate())
 
 
 @B.builtin_type("bool", lazy_definition=True)

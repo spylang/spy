@@ -301,3 +301,118 @@ spy_operator$str_to_u8(spy_Str *s) {
     spy_check_range(val, 0LL, 255LL, "u8");
     return (uint8_t)val;
 }
+
+spy_Complex128
+spy_str_to_complex128(spy_Str *s) {
+    char buf[128];
+    size_t len = s->length;
+    if (len == 0 || len >= sizeof(buf)) {
+        spy_panic(
+            "ValueError", "complex() arg is a malformed string", __FILE__, __LINE__
+        );
+    }
+
+    memcpy(buf, s->utf8, len);
+    buf[len] = '\0';
+    char *start = buf;
+    char *end = start + len - 1;
+
+    while (isspace(*start))
+        start++;
+    while (end >= start && isspace(*end))
+        end--;
+
+    if (*start == '(') {
+        if (*end != ')') {
+            spy_panic(
+                "ValueError", "complex() arg is a malformed string", __FILE__, __LINE__
+            );
+        }
+
+        start++;
+        end--;
+    }
+
+    while (isspace(*start))
+        start++;
+    while (end >= start && isspace(*end))
+        end--;
+    *(end + 1) = '\0';
+
+    if (start >= end) {
+        spy_panic(
+            "ValueError", "complex() arg is a malformed string", __FILE__, __LINE__
+        );
+    }
+
+    /* a valid complex string usually takes one of the three forms:
+
+         <float>                  - real part only
+         <float>j                 - imaginary part only
+         <float><signed-float>j   - real and imaginary parts
+
+       where <float> represents any numeric string that's accepted by the
+       float constructor (including 'nan', 'inf', 'infinity', etc.), and
+       <signed-float> is any string of the form <float> whose first
+       character is '+' or '-'.
+    */
+    double real_val = 0.0;
+    double imag_val = 0.0;
+
+    char *floatEndPtr;
+    double val = strtod(start, &floatEndPtr);
+    if (floatEndPtr == start || errno == ERANGE) {
+        spy_panic(
+            "ValueError", "complex() arg is a malformed string", __FILE__, __LINE__
+        );
+    }
+
+    // <float>
+    real_val = val;
+
+    if (*floatEndPtr) {
+        if (*floatEndPtr == 'j' || *floatEndPtr == 'J') {
+            // if imag part only, then should hit null terminator
+            if (*(floatEndPtr + 1)) {
+                spy_panic(
+                    "ValueError", "complex() arg is a malformed string", __FILE__,
+                    __LINE__
+                );
+            }
+
+            // <float>j
+            imag_val = val;
+            real_val = 0.0;
+        } else {
+            // reject if any space between <float> <signed-float>j or
+            // <float>\t\t<signed-float>j
+            if (isspace(*floatEndPtr)) {
+                spy_panic(
+                    "ValueError", "complex() arg is a malformed string", __FILE__,
+                    __LINE__
+                );
+            }
+
+            start = floatEndPtr;
+            val = strtod(start, &floatEndPtr);
+            if (floatEndPtr == start || errno == ERANGE) {
+                spy_panic(
+                    "ValueError", "complex() arg is a malformed string", __FILE__,
+                    __LINE__
+                );
+            }
+
+            if (*floatEndPtr != 'j' && *floatEndPtr != 'J') {
+                spy_panic(
+                    "ValueError", "complex() arg is a malformed string", __FILE__,
+                    __LINE__
+                );
+            }
+
+            // <float><signed-float>j
+            imag_val = val;
+        }
+    }
+
+    return (spy_Complex128){.real = real_val, .imag = imag_val};
+}

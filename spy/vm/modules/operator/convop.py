@@ -8,7 +8,18 @@ from spy.vm.modules.operator import OP
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import W_OpImpl
 from spy.vm.opspec import W_MetaArg, W_OpSpec
-from spy.vm.primitive import W_F32, W_F64, W_I8, W_I32, W_U8, W_U32, W_Bool, W_Dynamic
+from spy.vm.primitive import (
+    W_F32,
+    W_F64,
+    W_I8,
+    W_I32,
+    W_U8,
+    W_U32,
+    W_Bool,
+    W_Complex128,
+    W_Dynamic,
+)
+from spy.vm.str import W_Str
 
 from . import OP
 from .multimethod import MultiMethodTable
@@ -167,6 +178,12 @@ def w_i32_to_f32(vm: "SPyVM", w_x: W_I32) -> W_F32:
 
 
 @OP.builtin_func
+def w_i32_to_complex128(vm: "SPyVM", w_x: W_I32) -> W_Complex128:
+    x = vm.unwrap_i32(w_x)
+    return vm.wrap(complex(x))
+
+
+@OP.builtin_func
 def w_u32_to_i32(vm: "SPyVM", w_x: W_U32) -> W_I32:
     return W_I32(w_x.value)
 
@@ -188,6 +205,19 @@ def w_f64_to_i32(vm: "SPyVM", w_x: W_F64) -> W_I32:
 def w_f64_to_f32(vm: "SPyVM", w_x: W_F64) -> W_F32:
     val = vm.unwrap_f64(w_x)
     return W_F32(val)
+
+
+@OP.builtin_func
+def w_f64_to_complex128(vm: "SPyVM", w_x: W_F64) -> W_Complex128:
+    x = vm.unwrap_f64(w_x)
+    return vm.wrap(complex(x))
+
+
+@OP.builtin_func
+def w_f64_f64_to_complex128(vm: "SPyVM", w_x: W_F64, w_y: W_F64) -> W_Complex128:
+    x = vm.unwrap_f64(w_x)
+    y = vm.unwrap_f64(w_y)
+    return vm.wrap(complex(x, y))
 
 
 @OP.builtin_func
@@ -241,6 +271,9 @@ MM.register("convert", "f32", "f64", OP.w_f32_to_f64)
 MM.register("convert", "f64", "f32", OP.w_f64_to_f32)
 MM.register("convert", "i32", "f32", OP.w_i32_to_f32)
 MM.register("convert", "i32", "bool", OP.w_i32_to_bool)
+MM.register("convert", "i32", "complex128", OP.w_i32_to_complex128)
+MM.register("convert", "f64", "complex128", OP.w_f64_to_complex128)
+MM.register("convert", "str", "complex128", OP.w_str_to_complex128)
 
 # this is wrong: we don't want implicit truncation from float to int. Maybe
 # eventually we will want a distinction between implicit and explicit

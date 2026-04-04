@@ -253,13 +253,16 @@ class CFuncWriter:
         # unsupported literals are rejected directly by the parser, see
         # Parser.from_py_expr_Constant
         T = type(const.value)
-        assert T in (int, float, bool, str, NoneType)
+        assert T in (int, float, complex, bool, str, NoneType)
         if T is NoneType:
             return C.Void()
-        elif T is int:
+        elif T in (int, float):
             return C.Literal(str(const.value))
-        elif T is float:
-            return C.Literal(str(const.value))
+        elif T is complex:
+            val = complex(str(const.value))
+            return C.Literal(
+                "(spy_Complex128) {" + str(val.real) + ", " + str(val.imag) + "}"
+            )
         elif T is bool:
             return C.Literal(str(const.value).lower())
         else:
