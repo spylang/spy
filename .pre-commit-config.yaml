@@ -14,6 +14,9 @@ repos:
         args:
           - --fix
       - id: ruff-format
+        args:
+          - --extension
+          - spy:python
   - repo: https://github.com/pre-commit/mirrors-clang-format
     rev: v21.1.5
     hooks:

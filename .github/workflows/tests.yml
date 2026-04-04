@@ -86,7 +86,7 @@ jobs:
 
       - name: Format check
         run: |
-          ruff format --check .
+          ruff format --check --extension spy:python .
 
       - name: Build libspy
         run: |
