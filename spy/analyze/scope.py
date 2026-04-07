@@ -365,18 +365,29 @@ class ScopeAnalyzer:
         self.declare(augassign.value)
 
     def declare_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
-        for target in unpack.targets:
-            self._declare_target_maybe(target, unpack.value)
+        self._declare_unpack_targets(unpack.targets, unpack.value)
         self.declare(unpack.value)
+
+    def _declare_unpack_targets(
+        self, targets: list[ast.Expr], value: ast.Expr
+    ) -> None:
+        for target in targets:
+            if isinstance(target, (ast.StrConst, ast.Name)):
+                self._declare_target_maybe(target, value)
+            elif isinstance(target, ast.Tuple):
+                self._declare_unpack_targets(target.items, value)
+            else:
+                assert False, "WTF?"
 
     def declare_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
         self._declare_target_maybe(assignexpr.target, assignexpr.value)
         self.declare(assignexpr.value)
 
-    def _declare_target_maybe(self, target: ast.StrConst, value: ast.Expr) -> None:
-        # if target name does not exist elsewhere, we treat it as an implicit
-        # declaration
-        level, scope, sym = self.lookup_ref(target.value)
+    def _declare_target_maybe(
+        self, target: ast.StrConst | ast.Name, value: ast.Expr
+    ) -> None:
+        varname = target.value if isinstance(target, ast.StrConst) else target.id
+        level, scope, sym = self.lookup_ref(varname)
         if sym is None:
             # First assignment: mark as const unless in a loop
             type_loc = value.loc
@@ -384,25 +395,26 @@ class ScopeAnalyzer:
                 varkind: VarKind = "var"
             else:
                 varkind = "const"
-            self.define_name(target.value, varkind, "auto", target.loc, type_loc)
+            self.define_name(varname, varkind, "auto", target.loc, type_loc)
         else:
             # possible second assignment: promote to var if needed
             self._promote_const_to_var_maybe(target)
 
-    def _promote_const_to_var_maybe(self, target: ast.StrConst) -> None:
-        level, scope, sym = self.lookup_ref(target.value)
+    def _promote_const_to_var_maybe(self, target: ast.StrConst | ast.Name) -> None:
+        varname = target.value if isinstance(target, ast.StrConst) else target.id
+        level, scope, sym = self.lookup_ref(varname)
         if (
             sym
             and sym.is_local
             and sym.varkind == "const"
             and sym.varkind_origin == "auto"
         ):
-            if target.value in self.scope._symbols:
+            if varname in self.scope._symbols:
                 # Second assignment to a local const: make it var
-                old_sym = self.scope._symbols[target.value]
+                old_sym = self.scope._symbols[varname]
                 if old_sym.varkind == "const":
                     new_sym = old_sym.replace(varkind="var")
-                    self.scope._symbols[target.value] = new_sym
+                    self.scope._symbols[varname] = new_sym
 
     def declare_While(self, whilestmt: ast.While) -> None:
         # Increment loop depth before processing body
@@ -553,9 +565,19 @@ class ScopeAnalyzer:
 
     def flatten_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         self.mod_scope.implicit_imports.add("_tuple")
-        for target in unpack.targets:
-            self.flatten(target)
+        self._flatten_unpack_targets(unpack.targets)
         self.flatten(unpack.value)
+
+    def _flatten_unpack_targets(self, targets: list[ast.Expr]) -> None:
+        for target in targets:
+            if isinstance(target, ast.StrConst):
+                self.capture_maybe(target.value)
+            elif isinstance(target, ast.Name):
+                self.capture_maybe(target.id)
+            elif isinstance(target, ast.Tuple):
+                self._flatten_unpack_targets(target.items)
+            else:
+                assert False, "WTF?"
 
     def flatten_Dict(self, dict: ast.Dict) -> None:
         self.mod_scope.implicit_imports.add("_dict")

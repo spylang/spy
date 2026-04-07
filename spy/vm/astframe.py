@@ -636,13 +636,23 @@ class AbstractFrame:
                 value=unpack.value,
                 args=[ast.Constant(loc=unpack.value.loc, value=i)],
             )
-            # fabricate an ast.Assign
-            # XXX: ideally we should cache the specialization instead of
-            # rebuilding it at every exec
-            assign = self._specialize_Assign(
-                ast.Assign(loc=unpack.loc, target=target, value=expr)
-            )
-            self.exec_stmt(assign)
+            if isinstance(target, ast.StrConst):
+                # fabricate an ast.Assign
+                # XXX: ideally we should cache the specialization instead of
+                # rebuilding it at every exec
+                assign = self._specialize_Assign(
+                    ast.Assign(loc=unpack.loc, target=target, value=expr)
+                )
+                self.exec_stmt(assign)
+            elif isinstance(target, ast.Tuple):
+                new_unpack = ast.UnpackAssign(
+                    loc=unpack.loc,
+                    targets=target.items,
+                    value=expr
+                )
+                self.exec_stmt_UnpackAssign(new_unpack)
+            else:
+                assert False, "WTF?"
 
     def exec_stmt_AugAssign(self, node: ast.AugAssign) -> None:
         # XXX: eventually we want to support things like __IADD__ etc, but for
