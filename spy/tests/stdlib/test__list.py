@@ -212,10 +212,16 @@ class TestList(CompilerTest):
                 lst = [1, 2, 3, 4, 5]
                 lst[1:4] = [10]
                 return lst
+
+            def test_delete() -> list[i32]:
+                lst = [1, 2, 3, 4, 5]
+                lst[1:3] = []
+                return lst
             """)
         assert mod.test_same_size() == [1, 10, 20, 4, 5]
         assert mod.test_grow() == [1, 10, 20, 30, 3, 4, 5]
         assert mod.test_shrink() == [1, 10, 5]
+        assert mod.test_delete() == [1, 4, 5]
 
     def test_pop(self):
         src = """
