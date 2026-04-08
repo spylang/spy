@@ -218,6 +218,52 @@ class TestList(CompilerTest):
         with SPyError.raises("W_IndexError"):
             mod.test_empty()
 
+    def test_pop_index(self):
+        src = """
+        from _list import list
+
+        def test_pop_first() -> tuple[i32, i32]:
+            lst = list[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.append(30)
+            x = lst.pop(0)
+            return x, len(lst)
+
+        def test_pop_middle() -> tuple[i32, i32, i32]:
+            lst = list[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.append(30)
+            x = lst.pop(1)
+            return x, lst[0], lst[1]
+
+        def test_pop_negative() -> int:
+            lst = list[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.append(30)
+            return lst.pop(-2)
+
+        def test_pop_out_of_bounds() -> int:
+            lst = list[int]()
+            lst.append(10)
+            return lst.pop(5)
+
+        def test_pop_negative_out_of_bounds() -> int:
+            lst = list[int]()
+            lst.append(10)
+            return lst.pop(-5)
+        """
+        mod = self.compile(src)
+        assert mod.test_pop_first() == (10, 2)
+        assert mod.test_pop_middle() == (20, 10, 30)
+        assert mod.test_pop_negative() == 20
+        with SPyError.raises("W_IndexError"):
+            mod.test_pop_out_of_bounds()
+        with SPyError.raises("W_IndexError"):
+            mod.test_pop_negative_out_of_bounds()
+
     def test_insert(self):
         src = """
         from _list import list

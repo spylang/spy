@@ -174,12 +174,23 @@ def list(T):
             else:
                 return OpSpec.NULL
 
-        def pop(self) -> T:
+        def pop(self, i: i32 = -1) -> T:
             ll = self.__ll__
             if ll.length == 0:
                 raise IndexError
+            if i < 0:
+                i = i + ll.length
+            if i < 0:
+                raise IndexError
+            if i >= ll.length:
+                raise IndexError
+            value = ll.items[i]
+            j = i
+            while j < ll.length - 1:
+                ll.items[j] = ll.items[j + 1]
+                j = j + 1
             ll.length = ll.length - 1
-            return ll.items[ll.length]
+            return value
 
         def insert(self, i: i32, item: T) -> None:
             ll = self.__ll__
