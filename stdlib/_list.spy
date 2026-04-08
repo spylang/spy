@@ -55,14 +55,16 @@ def list(T):
             m0: MetaArg
             if len(args_m) == 0:
                 return OpSpec(new, [])
-            elif len(args_m) == 1
+            elif len(args_m) == 1:
                 (m0,) = args_m
                 if m0.static_type == range:
+
                     def new_from_range(r: range) -> _ListImpl:
                         result = new()
                         for item in r:
                             result.append(item)
                         return result
+
                     return OpSpec(new_from_range, [m0])
 
             return OpSpec.NULL
