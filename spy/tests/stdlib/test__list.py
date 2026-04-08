@@ -174,7 +174,7 @@ class TestList(CompilerTest):
         mod = self.compile(src)
         assert mod.test() == 10
 
-    def test_setitem(self):
+    def test_setitem_int(self):
         src = """
         from _list import list
 

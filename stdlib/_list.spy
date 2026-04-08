@@ -155,78 +155,76 @@ def list(T):
                 )
 
         @blue.metafunc
-        def __setitem__(self, m_x: MetaArg, value: MetaArg):
+        def __setitem__(m_self, m_x: MetaArg, value: MetaArg):
             if m_x.static_type == i32:
-
-                def setitem_int(_self: _ListImpl, i: int, _value: T) -> None:
-                    ll = _self.__ll__
-                    if i < 0:
-                        i = i + ll.length
-                    if i < 0:
-                        raise IndexError
-                    if i >= ll.length:
-                        raise IndexError
-                    ll.items[i] = _value
-
-                return OpSpec(setitem_int)
+                return OpSpec(_ListImpl._setitem_int)
             elif m_x.static_type == Slice:
-
-                def setitem_slice(_self: _ListImpl, s: Slice, _value: _ListImpl) -> None:
-                    ll = _self.__ll__
-                    vll = _value.__ll__
-                    unpacked = _py_slice_unpack(ll.length, s)
-                    slice_len = _py_adjust_indexes(
-                        ll.length, unpacked.start, unpacked.stop, unpacked.step
-                    )
-                    indices = s.indices(ll.length)
-                    new_len = vll.length
-
-                    if indices.step != 1:
-                        if new_len != slice_len:
-                            raise ValueError
-                        cur: i32 = indices.start
-                        k = 0
-                        while k < new_len:
-                            ll.items[cur] = vll.items[k]
-                            cur = cur + indices.step
-                            k = k + 1
-                    else:
-                        start = indices.start
-                        diff = new_len - slice_len
-                        new_total = ll.length + diff
-
-                        if new_total > ll.capacity:
-                            new_cap = new_total * 2
-                            new_items = gc_alloc[T](new_cap)
-                            j = 0
-                            while j < ll.length:
-                                new_items[j] = ll.items[j]
-                                j = j + 1
-                            ll.items = new_items
-                            ll.capacity = new_cap
-
-                        if diff > 0:
-                            # shift right to make room
-                            j = ll.length - 1
-                            while j >= start + slice_len:
-                                ll.items[j + diff] = ll.items[j]
-                                j = j - 1
-                        elif diff < 0:
-                            # shift left to close gap
-                            j = start + slice_len
-                            while j < ll.length:
-                                ll.items[j + diff] = ll.items[j]
-                                j = j + 1
-
-                        k = 0
-                        while k < new_len:
-                            ll.items[start + k] = vll.items[k]
-                            k = k + 1
-                        ll.length = new_total
-
-                return OpSpec(setitem_slice)
+                return OpSpec(_ListImpl._setitem_slice)
             else:
                 return OpSpec.NULL
+
+        def _setitem_int(self, i: int, _value: T) -> None:
+            ll = self.__ll__
+            if i < 0:
+                i = i + ll.length
+            if i < 0:
+                raise IndexError
+            if i >= ll.length:
+                raise IndexError
+            ll.items[i] = _value
+
+        def _setitem_slice(self, s: Slice, _value: _ListImpl) -> None:
+            ll = self.__ll__
+            vll = _value.__ll__
+            unpacked = _py_slice_unpack(ll.length, s)
+            slice_len = _py_adjust_indexes(
+                ll.length, unpacked.start, unpacked.stop, unpacked.step
+            )
+            indices = s.indices(ll.length)
+            new_len = vll.length
+
+            if indices.step != 1:
+                if new_len != slice_len:
+                    raise ValueError
+                cur: i32 = indices.start
+                k = 0
+                while k < new_len:
+                    ll.items[cur] = vll.items[k]
+                    cur = cur + indices.step
+                    k = k + 1
+            else:
+                start = indices.start
+                diff = new_len - slice_len
+                new_total = ll.length + diff
+
+                if new_total > ll.capacity:
+                    new_cap = new_total * 2
+                    new_items = gc_alloc[T](new_cap)
+                    j = 0
+                    while j < ll.length:
+                        new_items[j] = ll.items[j]
+                        j = j + 1
+                    ll.items = new_items
+                    ll.capacity = new_cap
+
+                if diff > 0:
+                    # shift right to make room
+                    j = ll.length - 1
+                    while j >= start + slice_len:
+                        ll.items[j + diff] = ll.items[j]
+                        j = j - 1
+                elif diff < 0:
+                    # shift left to close gap
+                    j = start + slice_len
+                    while j < ll.length:
+                        ll.items[j + diff] = ll.items[j]
+                        j = j + 1
+
+                k = 0
+                while k < new_len:
+                    ll.items[start + k] = vll.items[k]
+                    k = k + 1
+                ll.length = new_total
 
         def pop(self, i: i32 = -1) -> T:
             ll = self.__ll__
