@@ -372,7 +372,7 @@ class ScopeAnalyzer:
         self, targets: list[ast.Expr], value: ast.Expr
     ) -> None:
         for target in targets:
-            if isinstance(target, (ast.StrConst, ast.Name)):
+            if isinstance(target, ast.StrConst):
                 self._declare_target_maybe(target, value)
             elif isinstance(target, ast.Tuple):
                 self._declare_unpack_targets(target.items, value)
@@ -384,9 +384,9 @@ class ScopeAnalyzer:
         self.declare(assignexpr.value)
 
     def _declare_target_maybe(
-        self, target: ast.StrConst | ast.Name, value: ast.Expr
+        self, target: ast.StrConst, value: ast.Expr
     ) -> None:
-        varname = target.value if isinstance(target, ast.StrConst) else target.id
+        varname = target.value
         level, scope, sym = self.lookup_ref(varname)
         if sym is None:
             # First assignment: mark as const unless in a loop
@@ -400,8 +400,8 @@ class ScopeAnalyzer:
             # possible second assignment: promote to var if needed
             self._promote_const_to_var_maybe(target)
 
-    def _promote_const_to_var_maybe(self, target: ast.StrConst | ast.Name) -> None:
-        varname = target.value if isinstance(target, ast.StrConst) else target.id
+    def _promote_const_to_var_maybe(self, target: ast.StrConst) -> None:
+        varname = target.value
         level, scope, sym = self.lookup_ref(varname)
         if (
             sym
@@ -572,8 +572,6 @@ class ScopeAnalyzer:
         for target in targets:
             if isinstance(target, ast.StrConst):
                 self.capture_maybe(target.value)
-            elif isinstance(target, ast.Name):
-                self.capture_maybe(target.id)
             elif isinstance(target, ast.Tuple):
                 self._flatten_unpack_targets(target.items)
             else:
