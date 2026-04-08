@@ -178,7 +178,7 @@ def list(T):
                     slice_len = _py_adjust_indexes(
                         ll.length, unpacked.start, unpacked.stop, unpacked.step
                     )
-                    indices = s.indices(slice_len)
+                    indices = s.indices(ll.length)
                     new_len = vll.length
 
                     if indices.step != 1:
