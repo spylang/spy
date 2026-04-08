@@ -495,7 +495,8 @@ class DopplerFrame(ASTFrame):
             return make_const(self.vm, lst.loc, SPY.w_empty_list)
 
         w_T = wam.w_static_T
-        fqn_new = w_T.fqn.join("__new__")
+        # `new` is defined in the list[T] generic scope
+        fqn_new = w_T.fqn.parent().join("new")
         fqn_push = w_T.fqn.join("_push")
 
         # instantiate an empty list

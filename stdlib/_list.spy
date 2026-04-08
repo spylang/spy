@@ -39,21 +39,38 @@ def list(T):
         def __continue_iteration__(self) -> bool:
             return self.i < self.lst.length
 
+    def new() -> _ListImpl:
+        data = gc_alloc[ListData](1)
+        data.length = 0
+        data.capacity = 4
+        data.items = gc_alloc[T](4)
+        return _ListImpl.__make__(data)
+
     @struct
     class _ListImpl:
         __ll__: gc_ptr[ListData]
 
-        def __new__() -> _ListImpl:
-            data = gc_alloc[ListData](1)
-            data.length = 0
-            data.capacity = 4
-            data.items = gc_alloc[T](4)
-            return _ListImpl.__make__(data)
+        @blue.metafunc
+        def __new__(m_cls, *args_m):
+            m0: MetaArg
+            if len(args_m) == 0:
+                return OpSpec(new, [])
+            elif len(args_m) == 1
+                (m0,) = args_m
+                if m0.static_type == range:
+                    def new_from_range(r: range) -> _ListImpl:
+                        result = new()
+                        for item in r:
+                            result.append(item)
+                        return result
+                    return OpSpec(new_from_range, [m0])
+
+            return OpSpec.NULL
 
         @blue.metafunc
         def __convert_from__(m_expT, m_gotT, m_obj):
             if m_gotT.blueval == EmptyListType:
-                return OpSpec(_ListImpl.__new__, [])
+                return OpSpec(new, [])
             return OpSpec.NULL
 
         def append(self, item: T) -> None:
@@ -309,8 +326,8 @@ def list(T):
         def __fastiter__(self) -> list_iterator:
             return list_iterator(self.__ll__, 0)
 
-        # this function CANNOT be called by user code, but it's used by astframe and
-        # doppler to evaluate list literals: they call it using its FQN
+        # like append, but can be chained. Used by astframe and doppler to evaluate list
+        # literals
         def _push(self, item: T) -> _ListImpl:
             self.append(item)
             return self
