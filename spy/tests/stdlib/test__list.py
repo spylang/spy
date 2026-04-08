@@ -196,14 +196,14 @@ class TestList(CompilerTest):
         with SPyError.raises("W_IndexError"):
             mod.test_error()
 
-    def test_setitem_slice_same_size(self):
+    def test_setitem_slice(self):
         mod = self.compile("""
-            def fn() -> list[i32]:
+            def test_same_size() -> list[i32]:
                 lst = [1, 2, 3, 4, 5]
                 lst[1:3] = [10, 20]
                 return lst
             """)
-        assert mod.fn() == [1, 10, 20, 4, 5]
+        assert mod.test_same_size() == [1, 10, 20, 4, 5]
 
     def test_pop(self):
         src = """
