@@ -362,6 +362,14 @@ class TestSPyBackend(CompilerTest):
         self.compile(src)
         self.assert_dump(src)
 
+    def test_nested_unpack_assign(self):
+        src = """
+        def foo() -> None:
+            a, (b, c) = x
+        """
+        self.compile(src)
+        self.assert_dump(src)
+
     def test_aug_assign(self):
         src = """
         def foo() -> None:
