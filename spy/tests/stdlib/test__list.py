@@ -222,12 +222,24 @@ class TestList(CompilerTest):
                 lst = [1, 2, 3]
                 lst[1:1] = [10, 20]
                 return lst
+
+            def test_extended() -> list[i32]:
+                lst = [1, 2, 3, 4, 5]
+                lst[::2] = [10, 20, 30]
+                return lst
+
+            def test_extended_wrong_size() -> None:
+                lst = [1, 2, 3, 4, 5]
+                lst[::2] = [10, 20]
             """)
         assert mod.test_same_size() == [1, 10, 20, 4, 5]
         assert mod.test_grow() == [1, 10, 20, 30, 3, 4, 5]
         assert mod.test_shrink() == [1, 10, 5]
         assert mod.test_delete() == [1, 4, 5]
         assert mod.test_insert() == [1, 10, 20, 2, 3]
+        assert mod.test_extended() == [10, 2, 20, 4, 30]
+        with SPyError.raises("W_ValueError"):
+            mod.test_extended_wrong_size()
 
     def test_pop(self):
         src = """

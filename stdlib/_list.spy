@@ -183,12 +183,7 @@ def list(T):
 
                     if indices.step != 1:
                         if new_len != slice_len:
-                            raise ValueError(
-                                "attempt to assign sequence of size "
-                                + str(new_len)
-                                + " to extended slice of size "
-                                + str(slice_len)
-                            )
+                            raise ValueError
                         cur: i32 = indices.start
                         k = 0
                         while k < new_len:
