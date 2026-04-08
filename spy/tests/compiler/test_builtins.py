@@ -262,6 +262,52 @@ class TestBuiltins(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
+    def test_hasattr(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo() -> bool:
+            p = Point(1, 2)
+            return hasattr(p, 'x')
+        """
+        mod = self.compile(src)
+        assert mod.foo() == True
+
+    def test_hasattr_false(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo() -> bool:
+            p = Point(1, 2)
+            return hasattr(p, 'z')
+        """
+        mod = self.compile(src)
+        assert mod.foo() == False
+
+    def test_hasattr_red(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo() -> bool:
+            var attr = "x"  # this is red
+            p = Point(1, 2)
+            return hasattr(p, attr)
+        """
+        errors = expect_errors(
+            "expected blue argument",
+            ("this is red", "attr"),
+        )
+        self.compile_raises(src, "foo", errors)
+
     @only_interp
     def test_dir(self):
         src = """
