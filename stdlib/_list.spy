@@ -11,7 +11,7 @@ from __spy__ import interp_list, EmptyListType
 from _slice import Slice, tuple3
 
 # In future, use something like sys.maxint when implemented
-max_i32: i32 = 2147483647 
+max_i32: i32 = 2147483647
 
 
 @blue.generic
@@ -39,21 +39,40 @@ def list(T):
         def __continue_iteration__(self) -> bool:
             return self.i < self.lst.length
 
+    def new() -> _ListImpl:
+        data = gc_alloc[ListData](1)
+        data.length = 0
+        data.capacity = 4
+        data.items = gc_alloc[T](4)
+        return _ListImpl.__make__(data)
+
     @struct
     class _ListImpl:
         __ll__: gc_ptr[ListData]
 
-        def __new__() -> _ListImpl:
-            data = gc_alloc[ListData](1)
-            data.length = 0
-            data.capacity = 4
-            data.items = gc_alloc[T](4)
-            return _ListImpl.__make__(data)
+        @blue.metafunc
+        def __new__(m_cls, *args_m):
+            m0: MetaArg
+            if len(args_m) == 0:
+                return OpSpec(new, [])
+            elif len(args_m) == 1:
+                (m0,) = args_m
+                if m0.static_type == range:
+
+                    def new_from_range(r: range) -> _ListImpl:
+                        result = new()
+                        for item in r:
+                            result.append(item)
+                        return result
+
+                    return OpSpec(new_from_range, [m0])
+
+            return OpSpec.NULL
 
         @blue.metafunc
         def __convert_from__(m_expT, m_gotT, m_obj):
             if m_gotT.blueval == EmptyListType:
-                return OpSpec(_ListImpl.__new__, [])
+                return OpSpec(new, [])
             return OpSpec.NULL
 
         def append(self, item: T) -> None:
@@ -76,11 +95,11 @@ def list(T):
 
         def __len__(self) -> i32:
             return self.__ll__.length
-        
 
         @blue.metafunc
         def __getitem__(self, m_x: MetaArg):
             if m_x.static_type == i32:
+
                 def getitem_int(_self: _ListImpl, i: int) -> T:
                     ll = _self.__ll__
                     if i < 0:
@@ -90,9 +109,11 @@ def list(T):
                     if i >= ll.length:
                         raise IndexError
                     return ll.items[i]
+
                 return OpSpec(getitem_int)
-            
+
             elif m_x.static_type == Slice:
+
                 def getitem_slice(_self: _ListImpl, s: Slice) -> _ListImpl:
                     ll = _self.__ll__
                     unpacked = _py_slice_unpack(ll.length, s)
@@ -101,7 +122,8 @@ def list(T):
                     )
                     indices = s.indices(new_length)
 
-                    if new_length <= 0: return []
+                    if new_length <= 0:
+                        return []
                     elif indices.step == 1:
                         new_data = gc_alloc[ListData](1)
                         new_data.length = new_length
@@ -117,23 +139,27 @@ def list(T):
                         new_data.length = new_length
                         new_data.capacity = new_length + 1
                         new_data.items = gc_alloc[T](ll.capacity)
-                        
+
                         cur: int = indices.start
                         for _i in range(new_length):
                             new_data.items[_i] = ll.items[cur]
                             cur += indices.step
 
                         return _ListImpl.__make__(new_data)
+
                 return OpSpec(getitem_slice)
-            
+
             else:
-                raise TypeError("Subscript to list must be i32 or Slice, got " + str(m_x))
+                raise TypeError(
+                    "Subscript to list must be i32 or Slice, got " + str(m_x)
+                )
 
         @blue.metafunc
         def __setitem__(self, m_x: MetaArg, value: MetaArg):
             if m_x.static_type == i32:
+
                 def setitem_int(_self: _ListImpl, i: int, _value: T) -> None:
-                    ll = _self.__ll__ 
+                    ll = _self.__ll__
                     if i < 0:
                         i = i + ll.length
                     if i < 0:
@@ -141,6 +167,7 @@ def list(T):
                     if i >= ll.length:
                         raise IndexError
                     ll.items[i] = _value
+
                 return OpSpec(setitem_int)
             elif m_x.static_type == slice:
                 raise StaticError("WIP: list.__setitem__(slice) is not implemented yet")
@@ -301,14 +328,14 @@ def list(T):
         def __fastiter__(self) -> list_iterator:
             return list_iterator(self.__ll__, 0)
 
-        # this function CANNOT be called by user code, but it's used by astframe and
-        # doppler to evaluate list literals: they call it using its FQN
+        # like append, but can be chained. Used by astframe and doppler to evaluate list
+        # literals
         def _push(self, item: T) -> _ListImpl:
             self.append(item)
             return self
 
-
     return _ListImpl
+
 
 def _py_adjust_indexes(length: i32, start: i32, stop: i32, step: i32) -> i32:
     """
@@ -338,7 +365,7 @@ def _py_adjust_indexes(length: i32, start: i32, stop: i32, step: i32) -> i32:
                 stop = 0
     elif stop >= length:
         if step < 0:
-            stop = length -1
+            stop = length - 1
         else:
             stop = length
 
@@ -349,10 +376,11 @@ def _py_adjust_indexes(length: i32, start: i32, stop: i32, step: i32) -> i32:
     else:
         if start < stop:
             val = int((stop - start - 1) / step) + 1
-        
+
     return val
-        
-def _py_slice_unpack(length:i32, s:Slice) -> tuple3:
+
+
+def _py_slice_unpack(length: i32, s: Slice) -> tuple3:
     _start: i32
     _stop: i32
     _step: i32
@@ -363,7 +391,7 @@ def _py_slice_unpack(length:i32, s:Slice) -> tuple3:
 
     if _step == 0:
         raise ValueError("slice step cannot be zero")
-    
+
     if s.start_is_none:
         if _step < 0:
             _start = max_i32
@@ -374,7 +402,7 @@ def _py_slice_unpack(length:i32, s:Slice) -> tuple3:
 
     if s.stop_is_none:
         if _step < 0:
-            _stop = - max_i32 - 1
+            _stop = -max_i32 - 1
         else:
             _stop = max_i32
     else:

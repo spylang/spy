@@ -693,3 +693,14 @@ class TestList(CompilerTest):
         assert mod.test_single_diff() == False
         assert mod.test_after_mutations() == True
         assert mod.test_f64() == True
+
+    def test_list_from_range(self):
+        src = """
+        from _list import list
+
+        def foo() -> list[i32]:
+            return list[i32](range(5))
+        """
+        mod = self.compile(src)
+        res = mod.foo()
+        assert res == [0, 1, 2, 3, 4]

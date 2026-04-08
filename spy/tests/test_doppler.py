@@ -271,7 +271,7 @@ class TestDoppler:
             return \
 `_list::list[i32]::_ListImpl::_push`(\
 `_list::list[i32]::_ListImpl::_push`(\
-`_list::list[i32]::_ListImpl::__new__`(), 1), 12)
+`_list::list[i32]::new`(), 1), 12)
         """)
 
     def test_type_conversion(self):
