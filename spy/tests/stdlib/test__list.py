@@ -174,7 +174,7 @@ class TestList(CompilerTest):
         mod = self.compile(src)
         assert mod.test() == 10
 
-    def test_setitem(self):
+    def test_setitem_int(self):
         src = """
         from _list import list
 
@@ -195,6 +195,51 @@ class TestList(CompilerTest):
         assert mod.test_set() == 99
         with SPyError.raises("W_IndexError"):
             mod.test_error()
+
+    def test_setitem_slice(self):
+        mod = self.compile("""
+            def test_same_size() -> list[i32]:
+                lst = [1, 2, 3, 4, 5]
+                lst[1:3] = [10, 20]
+                return lst
+
+            def test_grow() -> list[i32]:
+                lst = [1, 2, 3, 4, 5]
+                lst[1:2] = [10, 20, 30]
+                return lst
+
+            def test_shrink() -> list[i32]:
+                lst = [1, 2, 3, 4, 5]
+                lst[1:4] = [10]
+                return lst
+
+            def test_delete() -> list[i32]:
+                lst = [1, 2, 3, 4, 5]
+                lst[1:3] = []
+                return lst
+
+            def test_insert() -> list[i32]:
+                lst = [1, 2, 3]
+                lst[1:1] = [10, 20]
+                return lst
+
+            def test_extended() -> list[i32]:
+                lst = [1, 2, 3, 4, 5]
+                lst[::2] = [10, 20, 30]
+                return lst
+
+            def test_extended_wrong_size() -> None:
+                lst = [1, 2, 3, 4, 5]
+                lst[::2] = [10, 20]
+            """)
+        assert mod.test_same_size() == [1, 10, 20, 4, 5]
+        assert mod.test_grow() == [1, 10, 20, 30, 3, 4, 5]
+        assert mod.test_shrink() == [1, 10, 5]
+        assert mod.test_delete() == [1, 4, 5]
+        assert mod.test_insert() == [1, 10, 20, 2, 3]
+        assert mod.test_extended() == [10, 2, 20, 4, 30]
+        with SPyError.raises("W_ValueError"):
+            mod.test_extended_wrong_size()
 
     def test_pop(self):
         src = """
@@ -217,6 +262,52 @@ class TestList(CompilerTest):
         assert mod.test_pop() == 32  # 30 + 2
         with SPyError.raises("W_IndexError"):
             mod.test_empty()
+
+    def test_pop_index(self):
+        src = """
+        from _list import list
+
+        def test_pop_first() -> tuple[i32, i32]:
+            lst = list[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.append(30)
+            x = lst.pop(0)
+            return x, len(lst)
+
+        def test_pop_middle() -> tuple[i32, i32, i32]:
+            lst = list[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.append(30)
+            x = lst.pop(1)
+            return x, lst[0], lst[1]
+
+        def test_pop_negative() -> int:
+            lst = list[int]()
+            lst.append(10)
+            lst.append(20)
+            lst.append(30)
+            return lst.pop(-2)
+
+        def test_pop_out_of_bounds() -> int:
+            lst = list[int]()
+            lst.append(10)
+            return lst.pop(5)
+
+        def test_pop_negative_out_of_bounds() -> int:
+            lst = list[int]()
+            lst.append(10)
+            return lst.pop(-5)
+        """
+        mod = self.compile(src)
+        assert mod.test_pop_first() == (10, 2)
+        assert mod.test_pop_middle() == (20, 10, 30)
+        assert mod.test_pop_negative() == 20
+        with SPyError.raises("W_IndexError"):
+            mod.test_pop_out_of_bounds()
+        with SPyError.raises("W_IndexError"):
+            mod.test_pop_negative_out_of_bounds()
 
     def test_insert(self):
         src = """
