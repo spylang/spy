@@ -177,8 +177,13 @@ class CFuncWriter:
             # Blue tuple literal: directly assign each item to its target
             self._emit_unpack_tuple_literal(unpack.targets, unpack.value.items)
         else:
-            # Red tuple (struct): we save the result into a tmp variable and the assign
-            # all fields one by one.
+            # Red tuple (struct): we save the result into a tmp variable and then assign
+            # all fields one by one. For example:
+            # {
+            #   struct_type tmp = ...;
+            #   a = tmp._item0;
+            #   b = tmp._item1;
+            # }
             assert unpack.value.w_T is not None
             c_tuple_type = self.ctx.w2c(unpack.value.w_T)
             v = self.fmt_expr(unpack.value)
@@ -188,17 +193,15 @@ class CFuncWriter:
                 self._emit_unpack_struct(unpack.targets, C.Literal("tmp"))
             self.tbc.wl("}")
 
-    def _get_varname(self, target: ast.StrConst | ast.Name) -> str:
-        if isinstance(target, ast.StrConst):
-            return target.value
-        assert isinstance(target, ast.Name)
-        return target.id
+    def _get_varname(self, target: ast.StrConst) -> str:
+        assert isinstance(target, ast.StrConst)
+        return target.value
 
     def _emit_unpack_tuple_literal(
         self, targets: list[ast.Expr], items: list[ast.Expr]
     ) -> None:
         for target, item in zip(targets, items):
-            if isinstance(target, (ast.StrConst, ast.Name)):
+            if isinstance(target, ast.StrConst):
                 varname = self._get_varname(target)
                 c_target = C_Ident(varname)
                 v = self.fmt_expr(item)
@@ -212,7 +215,7 @@ class CFuncWriter:
     def _emit_unpack_struct(self, targets: list[ast.Expr], c_value: C.Expr) -> None:
         for i, target in enumerate(targets):
             c_item = C.Dot(c_value, f"_item{i}")
-            if isinstance(target, (ast.StrConst, ast.Name)):
+            if isinstance(target, ast.StrConst):
                 varname = self._get_varname(target)
                 c_target = C_Ident(varname)
                 self.tbc.wl(f"{c_target} = {c_item};")
