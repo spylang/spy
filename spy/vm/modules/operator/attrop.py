@@ -45,6 +45,37 @@ def w_GETATTR(vm: "SPyVM", wam_obj: W_MetaArg, wam_name: W_MetaArg) -> W_OpImpl:
     )
 
 
+@OP.builtin_func(color="blue")
+def w_HASATTR(vm: "SPyVM", wam_obj: W_MetaArg, wam_name: W_MetaArg) -> W_OpImpl:
+    from spy.vm.typechecker import typecheck_opspec
+
+    name = unwrap_name_maybe(vm, wam_name)
+
+    w_T = wam_obj.w_static_T
+    if w_T is B.w_dynamic:
+        w_opspec = W_OpSpec(OP.w_dynamic_hasattr)
+    elif w_getattribute := w_T.lookup_func("__getattribute__"):
+        w_opspec_inner = vm.fast_metacall(w_getattribute, [wam_obj, wam_name])
+        if w_opspec_inner.is_null():
+            w_opspec = W_OpSpec.const(B.w_False)
+        else:
+            w_opspec = W_OpSpec.const(B.w_True)
+    else:
+        w_opspec_inner = default_getattribute(vm, wam_obj, wam_name, name)
+        if w_opspec_inner.is_null():
+            w_opspec = W_OpSpec.const(B.w_False)
+        else:
+            w_opspec = W_OpSpec.const(B.w_True)
+
+    return typecheck_opspec(
+        vm,
+        w_opspec,
+        [wam_obj, wam_name],
+        dispatch="single",
+        errmsg="type `{0}` has no attribute '%s'" % name,
+    )
+
+
 def default_getattribute(
     vm: "SPyVM", wam_obj: W_MetaArg, wam_name: W_MetaArg, name: str
 ) -> W_OpSpec:

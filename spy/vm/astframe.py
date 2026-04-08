@@ -1102,7 +1102,7 @@ class AbstractFrame:
         args_wam = [self.eval_expr(arg) for arg in call.args]
         w_opimpl = self.vm.call_OP(call.loc, OP.w_CALL, [wam_func] + args_wam)
 
-        # special case getattr and setattr: if we arrive at this point it means that the
+        # special case getattr, hasattr and setattr: if we arrive at this point it means that the
         # call typed correctly (right number, type and color of arguments). The returned
         # opimpl is not supposed to be executed, see builtins.w_getattr.
         #
@@ -1112,6 +1112,11 @@ class AbstractFrame:
         if wam_func.color == "blue" and wam_func.w_blueval is B.w_getattr:
             self.special_calls[call] = "getattr"
             w_opimpl = self.vm.call_OP(call.loc, OP.w_GETATTR, args_wam)
+            return self.eval_opimpl(call, w_opimpl, args_wam)
+
+        elif wam_func.color == "blue" and wam_func.w_blueval is B.w_hasattr:
+            self.special_calls[call] = "hasattr"
+            w_opimpl = self.vm.call_OP(call.loc, OP.w_HASATTR, args_wam)
             return self.eval_opimpl(call, w_opimpl, args_wam)
 
         elif wam_func.color == "blue" and wam_func.w_blueval is B.w_setattr:
