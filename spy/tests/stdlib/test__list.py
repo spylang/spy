@@ -202,8 +202,14 @@ class TestList(CompilerTest):
                 lst = [1, 2, 3, 4, 5]
                 lst[1:3] = [10, 20]
                 return lst
+
+            def test_grow() -> list[i32]:
+                lst = [1, 2, 3, 4, 5]
+                lst[1:2] = [10, 20, 30]
+                return lst
             """)
         assert mod.test_same_size() == [1, 10, 20, 4, 5]
+        assert mod.test_grow() == [1, 10, 20, 30, 3, 4, 5]
 
     def test_pop(self):
         src = """
