@@ -925,6 +925,39 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
+    def test_NestedUnpackAssign(self):
+        mod = self.parse("""
+        def foo() -> None:
+            a, (b, c) = x
+        """)
+        stmt = mod.get_funcdef("foo").body[0]
+        expected = """
+        UnpackAssign(
+            targets=[
+                StrConst(value='a'),
+                Tuple(
+                    items=[
+                        StrConst(value='b'),
+                        StrConst(value='c'),
+                    ],
+                ),
+            ],
+            value=Name(id='x'),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    def test_UnpackAssign_error(self):
+        src = """
+        def foo() -> None:
+            a, b.c = x
+        """
+        self.expect_errors(
+            src,
+            "not implemented yet: complex unpacking target",
+            ("this is not supported", "b.c"),
+        )
+
     def test_Call(self):
         mod = self.parse("""
         def foo() -> i32:
