@@ -6,7 +6,7 @@ The reason it exists is to give a very rough idea of the past and future traject
 the project at the time of writing, but it can change at any time depending on the
 findings and the needs.
 
-**Last updated on 2026-01-08**.
+**Last updated on 2026-04-09**.
 
 
 The roadmap is divided into multiple pillars. Each pillar can be pursued more or less
@@ -42,6 +42,15 @@ Smaller goals: have enough features to:
 
   - write an efficient interpreter for a toy language.
 
+Done in Q4/2025:
+
+  - ✅ better debugging
+
+    - ✅ SPy-level tracebacks
+
+    - ✅ `breakpoint`
+
+  - ✅ `list` literals
 
 Done in Q3/2025:
 
@@ -54,16 +63,6 @@ Done in Q3/2025:
   - ✅ blue-time descriptor protocol
 
   - ✅ `for` loops, `range`, iterator protocol
-
-Done in Q4/2025:
-
-  - ✅ better debugging
-
-    - ✅ SPy-level tracebacks
-
-    - ✅ `breakpoint`
-
-  - ✅ `list` literals
 
 
 TODO: (loosely ordered by priority):
