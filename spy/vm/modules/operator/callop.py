@@ -95,6 +95,14 @@ def default_callmethod(
         assert isinstance(w_func, W_Func)
         wam_func = W_MetaArg.from_w_obj(vm, w_func, color="blue")
         new_args_wam = (wam_obj,) + args_wam
-        return W_Func.op_CALL(vm, wam_func, *new_args_wam)
+
+        kind = w_func.w_functype.kind
+        if kind == "plain":
+            return W_Func.op_CALL(vm, wam_func, *new_args_wam)  # type: ignore
+        elif kind == "metafunc":
+            return W_Func.op_METACALL(vm, wam_func, *new_args_wam)  # type: ignore
+        else:
+            return W_OpSpec.NULL
+
     else:
         return W_OpSpec.NULL
