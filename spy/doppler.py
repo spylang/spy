@@ -423,6 +423,9 @@ class DopplerFrame(ASTFrame):
     def _shift_opimpl_args(
         self, w_opimpl: W_OpImpl, orig_args: list[ast.Expr]
     ) -> list[ast.Expr]:
+        # sanity check
+        assert w_opimpl.w_functype.arity == len(orig_args)
+
         def getarg(spec: ArgSpec) -> ast.Expr:
             if isinstance(spec, ArgSpec.Arg):
                 return orig_args[spec.i]
@@ -526,11 +529,12 @@ class DopplerFrame(ASTFrame):
 
     def shift_expr_Slice(self, op: ast.Slice, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]
+        v_T = make_const(self.vm, op.loc, wam.w_static_T)
         v_start = self.shifted_expr[op.start]
         v_stop = self.shifted_expr[op.stop]
         v_step = self.shifted_expr[op.step]
         return self.shift_opimpl(
-            op, w_opimpl, [v_start, v_stop, v_step], w_T=wam.w_static_T
+            op, w_opimpl, [v_T, v_start, v_stop, v_step], w_T=wam.w_static_T
         )
 
     def shift_expr_Dict(self, dict: ast.Dict, wam: W_MetaArg) -> ast.Expr:

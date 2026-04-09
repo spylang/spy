@@ -131,9 +131,13 @@ class TestList(CompilerTest):
             def reverse_slice() -> list[i32]:
                 m = [1,2,3]
                 return m[::-1]
-            """)
 
+            def reverse_from(a: i32) -> list[i32]:
+                m = [1, 2, 3, 4, 5]
+                return m[a::-1]
+            """)
         assert mod.reverse_slice() == [3, 2, 1]
+        assert mod.reverse_from(3) == [4, 3, 2, 1]
 
     def test_fastiter(self):
         src = """
