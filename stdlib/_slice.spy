@@ -52,12 +52,6 @@ class Slice:
         TYPES = interp_tuple(
             m_start.static_type, m_stop.static_type, m_step.static_type
         )
-
-        # We can't use a normal list to hold the MetaArgs, since the _list module
-        # imports the _slice module (to use in list.__getitem__ and __setitem__)
-        # TO avoid a circular import, we use an interp_list
-        args_m = interp_list[MetaArg](m_start, m_stop, m_step)
-
         # For each of the 8 possible combinations of three variables which
         # can be either None and i32, create an mplementation with the
         # correct parameter types. Each implementation calls Slice.__make__
@@ -72,52 +66,52 @@ class Slice:
 
         elif TYPES == interp_tuple(NoneType, i32, i32):
 
-            def impl2(_start: NoneType, _stop: i32, _step: i32) -> Slice:
+            def impl2(_stop: i32, _step: i32) -> Slice:
                 return Slice.__make__(0, 1, _stop, 0, _step, 0)
 
-            return OpSpec(impl2, interp_list[MetaArg](m_start, m_stop, m_step))
+            return OpSpec(impl2, interp_list[MetaArg](m_stop, m_step))
 
         elif TYPES == interp_tuple(i32, NoneType, i32):
 
-            def impl3(_start: i32, _stop: NoneType, _step: i32) -> Slice:
+            def impl3(_start: i32, _step: i32) -> Slice:
                 return Slice.__make__(_start, 0, 0, 1, _step, 0)
 
-            return OpSpec(impl3, interp_list[MetaArg](m_start, m_stop, m_step))
+            return OpSpec(impl3, interp_list[MetaArg](m_start, m_step))
 
         elif TYPES == interp_tuple(i32, i32, NoneType):
 
-            def impl4(_start: i32, _stop: i32, _step: NoneType) -> Slice:
+            def impl4(_start: i32, _stop: i32) -> Slice:
                 return Slice.__make__(_start, 0, _stop, 0, 1, 1)
 
-            return OpSpec(impl4, interp_list[MetaArg](m_start, m_stop, m_step))
+            return OpSpec(impl4, interp_list[MetaArg](m_start, m_stop))
 
         elif TYPES == interp_tuple(NoneType, NoneType, i32):
 
-            def impl5(_start: NoneType, _stop: NoneType, _step: i32) -> Slice:
+            def impl5(_step: i32) -> Slice:
                 return Slice.__make__(0, 1, 0, 1, _step, 0)
 
-            return OpSpec(impl5, interp_list[MetaArg](m_start, m_stop, m_step))
+            return OpSpec(impl5, interp_list[MetaArg](m_step))
 
         elif TYPES == interp_tuple(NoneType, i32, NoneType):
 
-            def impl6(_start: None, _stop: i32, _step: None) -> Slice:
+            def impl6(_stop: i32) -> Slice:
                 return Slice.__make__(0, 1, _stop, 0, 1, 1)
 
-            return OpSpec(impl6, interp_list[MetaArg](m_start, m_stop, m_step))
+            return OpSpec(impl6, interp_list[MetaArg](m_stop))
 
         elif TYPES == interp_tuple(i32, NoneType, NoneType):
 
-            def impl7(_start: i32, _stop: None, _step: None) -> Slice:
+            def impl7(_start: i32) -> Slice:
                 return Slice.__make__(_start, 0, 0, 1, 1, 1)
 
-            return OpSpec(impl7, interp_list[MetaArg](m_start, m_stop, m_step))
+            return OpSpec(impl7, interp_list[MetaArg](m_start))
 
         elif TYPES == interp_tuple(NoneType, NoneType, NoneType):
 
-            def impl8(_start: NoneType, _stop: NoneType, _step: NoneType) -> Slice:
+            def impl8() -> Slice:
                 return Slice.__make__(0, 1, 0, 1, 1, 1)
 
-            return OpSpec(impl8, interp_list[MetaArg](m_start, m_stop, m_step))
+            return OpSpec(impl8, interp_list[MetaArg]())
 
         return OpSpec.NULL
 
