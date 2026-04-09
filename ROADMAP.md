@@ -76,7 +76,8 @@ Smaller goals: have enough features to:
 ✅ add support for default arguments
   - https://github.com/spylang/spy/pull/442
 
-✅ `complex` numbers
+✅ `f32` and `complex` types
+  - https://github.com/spylang/spy/pull/347
   - https://github.com/spylang/spy/pull/398
 
 
@@ -274,3 +275,25 @@ This task requires:
   - `SPy/C` integration (to be able wrap and call `Python.h` from SPy)
 
   - refcounting memory model
+
+
+## Documentation and tooling
+
+### DONE in Q1/2026
+
+✅ rework CLI using subcommands instead of flags
+  - https://github.com/spylang/spy/pull/332
+
+✅ docs skeleton and automation
+  - https://github.com/spylang/spy/pull/349
+
+✅ switch documentation to mkdocs-material
+  - https://github.com/spylang/spy/pull/372
+
+✅ HTML backend for AST visualization
+  - https://github.com/spylang/spy/pull/413
+  - https://github.com/spylang/spy/pull/414
+  - https://github.com/spylang/spy/pull/424
+
+✅ playground: share button and snippet links
+  - https://github.com/spylang/spy/pull/427
