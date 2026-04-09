@@ -42,121 +42,146 @@ Smaller goals: have enough features to:
 
   - write an efficient interpreter for a toy language.
 
-Done in Q4/2025:
+### Done in Q1/2026
 
-  - ✅ better debugging
+✅ `dict` literals
+  - https://github.com/spylang/spy/issues/342
 
-    - ✅ SPy-level tracebacks
+✅ support for CLI arguments:
+  - https://github.com/spylang/spy/issues/353
 
-    - ✅ `breakpoint`
+✅ support for preliminary file I/O
+  - https://github.com/spylang/spy/pull/447
 
-  - ✅ `list` literals
+✅ compile-time friendly `tuple`
+  - https://github.com/spylang/spy/pull/402
 
-Done in Q3/2025:
+✅ implement `is` and `is not`
+  - https://github.com/spylang/spy/pull/428
 
-  - ✅ better error messages (e.g. turn `AssertionErrror` into proper messages)
+✅ PEP 695 syntax sugar for `@blue.generic` functions
+  - https://github.com/spylang/spy/pull/437
 
-  - ✅ better blue/red checks (e.g. raise an error if we call a blue function with red arguments)
+✅ add support for default arguments
+  - https://github.com/spylang/spy/pull/442
 
-  - ✅ refactor `__dunder__` methods and introduce metafunctions
-
-  - ✅ blue-time descriptor protocol
-
-  - ✅ `for` loops, `range`, iterator protocol
+✅ `complex` numbers
+  - https://github.com/spylang/spy/pull/398
 
 
-TODO: (loosely ordered by priority):
+### Done in Q4/2025
 
-  - `dict` literals: https://github.com/spylang/spy/issues/342
+✅ better debugging
 
-  - support for CLI arguments: https://github.com/spylang/spy/issues/353
+  - ✅ SPy-level tracebacks
 
-  - support for preliminary file I/O: https://github.com/spylang/spy/issues/354
+  - ✅ `breakpoint`
 
-  - compile-time friendly `tuple`
+✅ `list` literals
 
-  - blue-time support for `*args` and `**kwargs`
+### Done in Q3/2025
 
-  - implement a `print()` with variable number of arguments (requires some kind of
-    macro-like functionality)
+✅ better error messages (e.g. turn `AssertionErrror` into proper messages)
 
-  - implement f-strings
+✅ better blue/red checks (e.g. raise an error if we call a blue function with red arguments)
 
-  - enough metaprogramming capabilities to implement e.g. `dataclasses`
+✅ refactor `__dunder__` methods and introduce metafunctions
 
-  - serialization of the "live image" after redshifting
+✅ blue-time descriptor protocol
 
-  - support for heap-allocated `class`es
+✅ `for` loops, `range`, iterator protocol
 
-  - support for `with` and context managers
 
-  - support for `try/catch` (currently all `raise` are turned into panics)
+### TODO: (loosely ordered by priority)
+
+- blue-time support for `*args` and `**kwargs`
+
+- implement a `print()` with variable number of arguments (requires some kind of
+  macro-like functionality)
+
+- implement f-strings
+
+- enough metaprogramming capabilities to implement e.g. `dataclasses`
+
+- serialization of the "live image" after redshifting
+
+- support for heap-allocated `class`es
+
+- support for `with` and context managers
+
+- support for `try/catch` (currently all `raise` are turned into panics)
 
 
 ## stdlib
 
-DONE in Q3/2025:
+### DONE in Q1/2026
 
-  - ✅ introduce the `stdlib` directory and add support for importing from there
+✅ preliminary `file` object:
+  - https://github.com/spylang/spy/pull/447
 
-  - ✅ `stdlib/_list.spy`
+✅ improve standard builtin types:
+  - add support for slices: https://github.com/spylang/spy/pull/345
+  - add `str.replace`: https://github.com/spylang/spy/pull/394
+  - https://github.com/spylang/spy/pull/460
 
-  - ✅ `stdlib/_dict.spy`
 
-  - ✅ `stdlib/array.spy`
+### DONE in Q3/2025
 
+✅ introduce the `stdlib` directory and add support for importing from there
 
-TODO:
+✅ `stdlib/_list.spy`
 
-  - preliminary I/O modules, using ad-hoc builtins
+✅ `stdlib/_dict.spy`
 
-    - (part of) `os`
+✅ `stdlib/array.spy`
 
-    - (part of) `io` / `file`
+### TODO
 
-    - (part of) `socket`
+- write `str` and `bytes` in pure SPy
 
-  - improve `list` and `dict` with the missing functionalities
+- preliminary `socket` support
 
-  - improve `array`, which is very limited and just a PoC by now
+- continue improving `list`, `dict` and other builtin types with the missing
+  functionalities
 
-  - more stdlib modules; the following is a non-exahustive list but gives an idea of what might be needed:
+- improve `array`, which is very limited and just a PoC by now
 
-    - `datetime`
+- more stdlib modules; the following is a non-exahustive list but gives an idea of what might be needed:
 
-    - `argparse`
+  - `datetime`
 
-    - `json`
+  - `argparse`
 
-  - full support for I/O, removing ad-hoc builtins and using a more general mechanism to
-    call C libraries provided by SPy/C
+  - `json`
+
+- full support for I/O, removing ad-hoc builtins and using a more general mechanism to
+  call C libraries provided by SPy/C
 
 
 ## Memory management
 
-Currently SPy doesn't have any GC and it just leaks memory.
+### DONE in Q1/2026
 
-TODO:
+✅ distinguish between `gc_alloc` and `raw_malloc:
+  - https://github.com/spylang/spy/pull/371
+  - https://github.com/spylang/spy/pull/383
 
-  - improve the `unsafe` module; currently we just have `gc_alloc` and `ptr`; we want:
+✅ introduce `gc_ref` and `raw_ref`
 
-    - distinguish between `gc_alloc` and `malloc/free`;
+✅ Add support for Boehm GC:
+  - https://github.com/spylang/spy/pull/383
 
-    - distinguish between pointer-to-object, pointer-to-unbounded-array and
-      pointer-to-bounded-array (similar to e.g. rust slices);
 
-    - introduce the concept of "reference", similarly to what `cffi` does. This is
-      needed mostly to read nested struct fields;
+### TODO
 
-  - add basic refcounting support. In pure-SPy configuration it will be basic
-    refcounting without any cycle detection; when SPy/Python integration is enabled, it
-    will map to `Py_IncRef/Py_DecRef` and rely on CPython's GC for cycle detection;
+- distinguish between pointer-to-object, pointer-to-unbounded-array and
+  pointer-to-bounded-array (similar to e.g. rust slices);
 
-  - use the boehm GC: this is easy when compiling to native C, but it's non
-    trivial for WASM targets, because we cannot easily walk the stack;
+- add basic refcounting support. In pure-SPy configuration it will be basic refcounting
+  without any cycle detection; when SPy/Python integration is enabled, it will map to
+  `Py_IncRef/Py_DecRef` and rely on CPython's GC for cycle detection;
 
-  - experiment with [Whippet](https://github.com/wingo/whippet/)
-
+- experiment with [Whippet](https://github.com/wingo/whippet/)
 
 
 ## SPy/C integration
