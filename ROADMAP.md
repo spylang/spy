@@ -42,6 +42,17 @@ Smaller goals: have enough features to:
 
   - write an efficient interpreter for a toy language.
 
+### Q2/2026
+
+- implement a `print()` with variable number of arguments (requires some kind of
+  macro-like functionality)
+
+- blue-time support for `*args` and `**kwargs`
+
+- implement f-strings
+
+
+
 ### Done in Q1/2026
 
 ✅ `dict` literals
@@ -94,13 +105,6 @@ Smaller goals: have enough features to:
 
 ### TODO: (loosely ordered by priority)
 
-- blue-time support for `*args` and `**kwargs`
-
-- implement a `print()` with variable number of arguments (requires some kind of
-  macro-like functionality)
-
-- implement f-strings
-
 - enough metaprogramming capabilities to implement e.g. `dataclasses`
 
 - serialization of the "live image" after redshifting
@@ -113,6 +117,11 @@ Smaller goals: have enough features to:
 
 
 ## stdlib
+
+### Q2/2026
+
+- write `str` and `bytes` in pure SPy
+
 
 ### DONE in Q1/2026
 
@@ -136,8 +145,6 @@ Smaller goals: have enough features to:
 ✅ `stdlib/array.spy`
 
 ### TODO
-
-- write `str` and `bytes` in pure SPy
 
 - preliminary `socket` support
 
@@ -200,6 +207,9 @@ Requirements/misc notes:
 
   - related work: [Zig's `@cImport`](https://zighelp.org/chapter-4/#cimport)
 
+### Q2/2026
+
+- start to experiment with it
 
 
 ## SPy/Python integration
