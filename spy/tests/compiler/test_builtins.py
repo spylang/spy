@@ -278,23 +278,14 @@ class TestBuiltins(CompilerTest):
         def foo() -> bool:
             p = Point(1, 2)
             return hasattr(p, 'x')
-        """
-        mod = self.compile(src)
-        assert mod.foo() == True
 
-    def test_hasattr_false(self):
-        src = """
-        @struct
-        class Point:
-            x: i32
-            y: i32
-
-        def foo() -> bool:
+        def bar() -> bool:
             p = Point(1, 2)
             return hasattr(p, 'z')
         """
         mod = self.compile(src)
-        assert mod.foo() == False
+        assert mod.foo() == True
+        assert mod.bar() == False
 
     def test_hasattr_red(self):
         src = """
@@ -315,7 +306,7 @@ class TestBuiltins(CompilerTest):
         self.compile_raises(src, "foo", errors)
 
     @skip_backends("C", reason="dynamic not supported in C backend")
-    def test_hasattr_dynamic_true(self):
+    def test_hasattr_dynamic(self):
         src = """
         @struct
         class Point:
@@ -325,24 +316,14 @@ class TestBuiltins(CompilerTest):
         def foo() -> bool:
             p: dynamic = Point(1, 2)
             return hasattr(p, 'x')
-        """
-        mod = self.compile(src)
-        assert mod.foo() == True
 
-    @skip_backends("C", reason="dynamic not supported in C backend")
-    def test_hasattr_dynamic_false(self):
-        src = """
-        @struct
-        class Point:
-            x: i32
-            y: i32
-
-        def foo() -> bool:
+        def bar() -> bool:
             p: dynamic = Point(1, 2)
             return hasattr(p, 'z')
         """
         mod = self.compile(src)
-        assert mod.foo() == False
+        assert mod.foo() == True
+        assert mod.bar() == False
 
     def test_hasattr_custom_getattribute(self):
         mod = self.compile("""
