@@ -80,6 +80,14 @@ class _execute_options(_timeit_mixin):
 
 
 @dataclass
+class _no_inline_mixin:
+    no_inline: Annotated[
+        bool,
+        Option("--no-inline", help="Skip @force_inline inlining pass (for inspection)"),
+    ] = False
+
+
+@dataclass
 class _execute_flag:
     execute: Annotated[
         bool, Option("-x", "--execute", help="Execute the given module")

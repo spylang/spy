@@ -14,6 +14,7 @@ from spy.cli.commands.shared_args import (
     Filename_Required_Args,
     _execute_flag,
     _execute_options,
+    _no_inline_mixin,
 )
 
 
@@ -46,7 +47,12 @@ class _redshift_mixin:
 
 @dataclass
 class Redshift_Args(
-    Base_Args, _redshift_mixin, _execute_flag, _execute_options, Filename_Required_Args
+    Base_Args,
+    _redshift_mixin,
+    _no_inline_mixin,
+    _execute_flag,
+    _execute_options,
+    Filename_Required_Args,
 ):
     extra_dump: Annotated[
         Optional[list[Path]],
@@ -77,7 +83,7 @@ async def redshift(args: Redshift_Args) -> None:
     importer.import_all()
 
     vm.ast_color_map = {}
-    vm.redshift(error_mode=args.error_mode)
+    vm.redshift(error_mode=args.error_mode, no_inline=args.no_inline)
 
     if args.execute:
         w_mod = vm.modules_w[modname]
