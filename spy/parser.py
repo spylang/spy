@@ -173,9 +173,10 @@ class Parser:
         func_kind: spy.ast.FuncKind = "plain"
         decorators: list[spy.ast.Expr] = []
 
+        is_force_inline = False
         for deco in py_funcdef.decorator_list:
             d = parse_special_decorator(deco)
-            # @blue.* are special cased
+            # @blue.* and @force_inline are special cased
             if d == "blue":
                 color = "blue"
             elif d == "blue.generic":
@@ -184,6 +185,8 @@ class Parser:
             elif d == "blue.metafunc":
                 color = "blue"
                 func_kind = "metafunc"
+            elif d == "force_inline":
+                is_force_inline = True
             else:
                 # other decorators are stored as general decorators
                 decorators.append(self.from_py_expr(deco))
@@ -208,7 +211,9 @@ class Parser:
                 inner=inner_funcdef,
             )
 
-        return self._parse_py_funcdef(py_funcdef, color, func_kind, decorators)
+        return self._parse_py_funcdef(
+            py_funcdef, color, func_kind, decorators, is_force_inline
+        )
 
     def _parse_type_params(
         self, py_funcdef: py_ast.FunctionDef
@@ -243,6 +248,7 @@ class Parser:
         color: spy.ast.Color,
         func_kind: spy.ast.FuncKind,
         decorators: list[spy.ast.Expr],
+        is_force_inline: bool = False,
     ) -> spy.ast.FuncDef:
         args, defaults = self.from_py_arguments(color, py_funcdef.args)
         #
@@ -286,6 +292,7 @@ class Parser:
             body=body,
             docstring=docstring,
             decorators=decorators,
+            is_force_inline=is_force_inline,
         )
 
     def from_py_arguments(

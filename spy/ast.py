@@ -544,6 +544,7 @@ class FuncDef(Stmt):
     docstring: Optional[str]
     body: list["Stmt"]
     decorators: list["Expr"]
+    is_force_inline: bool = False
     symtable: Any = field(repr=False, default=None)
 
     def shortrepr(self) -> Optional[str]:
