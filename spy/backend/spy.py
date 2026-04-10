@@ -108,6 +108,8 @@ class SPyBackend:
         else:
             ret = self.fmt_w_obj(w_functype.w_restype)
         self.scope_stack.append(w_func.funcdef.symtable)
+        if w_func.funcdef.is_force_inline:
+            self.wl("@force_inline")
         self.wl(f"def {name}({params}) -> {ret}:")
         with self.out.indent():
             for stmt in w_func.funcdef.body:
@@ -195,6 +197,8 @@ class SPyBackend:
         params = ", ".join(paramlist)
         ret = self.fmt_expr(funcdef.return_type)
         self.scope_stack.append(funcdef.symtable)
+        if funcdef.is_force_inline:
+            self.wl("@force_inline")
         self.wl(f"def {name}({params}) -> {ret}:")
         with self.out.indent():
             for stmt in funcdef.body:
