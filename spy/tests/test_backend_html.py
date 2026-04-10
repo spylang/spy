@@ -141,6 +141,7 @@ class TestHTMLBackend:
                     return_type: <Name: void> (expr, amber)
                         id: <'void'> (leaf, emerald)
                     body[0]: <Pass> (stmt, default)
+                    is_force_inline: <False> (leaf, emerald)
         """
         self.assert_dump(d, expected)
 
@@ -169,6 +170,7 @@ class TestHTMLBackend:
                         id: <'x'> (leaf, emerald)
                     right: <Constant: 1> (expr, amber)
                         value: <1> (leaf, emerald)
+            is_force_inline: <False> (leaf, emerald)
         """
         self.assert_dump(funcdef, expected)
 
@@ -206,6 +208,7 @@ class TestHTMLBackend:
                     right: <Constant: 1> (expr, amber)
                         | 1
                         value: <1> (leaf, emerald)
+            is_force_inline: <False> (leaf, emerald)
         """
         self.assert_dump(funcdef, expected, show_src=True)
 
