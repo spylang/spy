@@ -12,6 +12,7 @@ from spy.ast import Color, FuncKind
 from spy.doppler import ErrorMode, redshift
 from spy.errors import WIP, SPyError
 from spy.fqn import FQN, QUALIFIERS
+from spy.inliner import inline_all
 from spy.libspy import LLSPyInstance
 from spy.location import Loc
 from spy.util import func_equals
@@ -183,9 +184,11 @@ class SPyVM:
 
         return None
 
-    def redshift(self, error_mode: ErrorMode) -> None:
+    def redshift(self, error_mode: ErrorMode, *, no_inline: bool = False) -> None:
         """
         Perform a redshift on all W_ASTFunc.
+
+        If no_inline is True, skip the @force_inline inlining pass.
         """
 
         def should_redshift(w_func: W_ASTFunc) -> bool:
@@ -202,6 +205,9 @@ class SPyVM:
             if not funcs:
                 break
             self._redshift_some(funcs, error_mode)
+
+        if not no_inline:
+            inline_all(self)
 
     def _redshift_some(
         self,
