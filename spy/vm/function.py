@@ -367,8 +367,29 @@ class W_ASTFunc(W_Func):
         self.w_redshifted_into = None
 
     @property
+    def is_force_inline(self) -> bool:
+        return self.funcdef.is_force_inline
+
+    @property
     def redshifted(self) -> bool:
         return self.locals_types_w is not None
+
+    def check_force_inline_valid(self) -> None:
+        """
+        Validate that a @force_inline function is suitable for
+        inlining: exactly one statement which must be a Return.
+        Called after redshifting.
+        """
+        assert self.redshifted, "check_force_inline_valid requires a redshifted func"
+        body = self.funcdef.body
+        if len(body) != 1 or not isinstance(body[0], ast.Return):
+            raise SPyError.simple(
+                "W_TypeError",
+                "@force_inline requires a single-return body",
+                "this function cannot be inlined: "
+                "body must be a single `return <expr>` statement",
+                self.def_loc,
+            )
 
     @property
     def is_valid(self) -> bool:
