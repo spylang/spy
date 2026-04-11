@@ -181,8 +181,13 @@ class ImportAnalyzer:
         try:
             spyc.dirpath().ensure(dir=True)
             data = {"version": SPYC_VERSION, "module": mod}
-            with spyc.open("wb") as f:
+            # Write to a temp file first, then rename atomically so that
+            # concurrent readers (e.g. pytest-xdist workers) never see a
+            # partial write.
+            tmp = spyc.dirpath().join(f".{spyc.basename}.tmp")
+            with tmp.open("wb") as f:
                 pickle.dump(data, f)
+            tmp.rename(spyc)
         except Exception as e:
             # Record the error
             error = CacheError(
