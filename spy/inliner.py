@@ -160,7 +160,8 @@ def inline_expr(vm: "SPyVM", expr: ast.Expr) -> ast.Expr:
                 and w_callee.is_force_inline
                 and w_callee.redshifted
             ):
-                return _substitute(vm, w_callee, new_args, expr)
+                substituted = _substitute(vm, w_callee, new_args, expr)
+                return inline_expr(vm, substituted)
 
         # Not a force_inline call: rebuild if anything changed.
         if new_func is expr.func and all(n is o for n, o in zip(new_args, expr.args)):
