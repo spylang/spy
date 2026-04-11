@@ -42,13 +42,14 @@ class TestForceInline(CompilerTest):
     def test_inline_two_args(self):
         mod = self.compile("""
         @force_inline
-        def add(x: i32, y: i32) -> i32:
-            return x + y
+        def is_lower(x: i32, y: i32) -> bool:
+            return x < y
 
-        def foo(a: i32, b: i32) -> i32:
-            return add(a, b)
+        def is_larger(y: i32, x: i32) -> bool:
+            return not is_lower(y, x)
         """)
-        assert mod.foo(3, 4) == 7
+        assert not mod.is_larger(3, 4)
+        assert mod.is_larger(4, 3)
 
     def test_inline_called_multiple_times(self):
         mod = self.compile("""
@@ -101,19 +102,19 @@ class TestForceInline(CompilerTest):
     def test_dump_inline_two_args(self):
         self.compile("""
         @force_inline
-        def add(x: i32, y: i32) -> i32:
-            return x + y
+        def is_lower(x: i32, y: i32) -> bool:
+            return y > x
 
-        def foo(a: i32, b: i32) -> i32:
-            return add(a, b)
+        def is_larger(y: i32, x: i32) -> bool:
+            return not is_lower(y, x)
         """)
         self.assert_dump("""
         @force_inline
-        def add(x: i32, y: i32) -> i32:
-            return x + y
+        def is_lower(x: i32, y: i32) -> bool:
+            return y > x
 
-        def foo(a: i32, b: i32) -> i32:
-            return a + b
+        def is_larger(y: i32, x: i32) -> bool:
+            return `operator::bool_not`(x > y)
         """)
 
     def test_dump_inline_multiple_callsites(self):
