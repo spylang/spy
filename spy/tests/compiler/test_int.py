@@ -145,6 +145,32 @@ class TestInt(CompilerTest):
         assert mod.b_xor(16, 15) == 16 ^ 15
         assert mod.b_xor(16, 0) == 16 ^ 0
 
+    def test_pow(self, int_type):
+        mod = self.compile(f"""
+        T = {int_type}
+        def pow(x: T, y: T) -> T:
+            return x ** y
+        """)
+        assert mod.pow(2, 3) == 8
+        assert mod.pow(3, 2) == 9
+        assert mod.pow(5, 0) == 1
+        assert mod.pow(10, 2) == 100
+        assert mod.pow(0, 0) == 1
+        assert mod.pow(0, 5) == 0
+
+    def test_pow_negative_base(self, int_type):
+        if int_type.startswith("u"):
+            pytest.skip("Skipping negative base test for unsigned types")
+        mod = self.compile(f"""
+        T = {int_type}
+        def pow(x: T, y: T) -> T:
+            return x ** y
+        """)
+        assert mod.pow(-2, 3) == -8
+        assert mod.pow(-2, 2) == 4
+        assert mod.pow(-1, 5) == -1
+        assert mod.pow(-1, 4) == 1
+
     def test_cmp(self, int_type):
         mod = self.compile(f"""
         T = {int_type}

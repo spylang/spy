@@ -448,6 +448,7 @@ bool WASM_EXPORT(spy_operator$f32_lt)(float x, float y);
 bool WASM_EXPORT(spy_operator$f32_le)(float x, float y);
 bool WASM_EXPORT(spy_operator$f32_gt)(float x, float y);
 bool WASM_EXPORT(spy_operator$f32_ge)(float x, float y);
+float WASM_EXPORT(spy_operator$f32_pow)(float x, float y);
 float WASM_EXPORT(spy_operator$f32_neg)(float x);
 
 static inline bool

@@ -121,6 +121,11 @@ spy_operator$f32_ge(float x, float y) {
 }
 
 float
+spy_operator$f32_pow(float x, float y) {
+    return powf(x, y);
+}
+
+float
 spy_operator$f32_neg(float x) {
     return -x;
 }
