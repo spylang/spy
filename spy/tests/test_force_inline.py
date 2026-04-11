@@ -134,6 +134,39 @@ class TestForceInline(CompilerTest):
             return a * a + (a + 1) * (a + 1)
         """)
 
+    def test_dump_inline_blue_with_inlined(self):
+        self.compile("""
+        @force_inline
+        def func_a(arg: i32) -> i32:
+            return 2 * arg
+
+        @blue
+        def blue_b():
+
+            @force_inline
+            def func_b(arg: i32) -> i32:
+                return 4 + func_a(arg)
+
+            return func_b
+
+        def main() -> None:
+            var x = 2
+            print(blue_b()(x))
+        """)
+        self.assert_dump("""
+        @force_inline
+        def func_a(arg: i32) -> i32:
+            return 2 * arg
+
+        def main() -> None:
+            x: i32 = 2
+            print_i32(4 + 2 * x)
+
+        @force_inline
+        def `test::blue_b::func_b`(arg: i32) -> i32:
+            return 4 + 2 * arg
+        """)
+
     # ------------------------------------------------------------------ #
     # --no-inline: the flag must suppress inlining                       #
     # ------------------------------------------------------------------ #
