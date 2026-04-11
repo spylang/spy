@@ -34,6 +34,7 @@ def inline_all(vm: "SPyVM") -> None:
         if isinstance(w_func, W_ASTFunc) and w_func.redshifted:
             new_func = inline_func(vm, w_func)
             if new_func is not w_func:
+                w_func.invalidate(new_func)
                 vm.globals_w[fqn] = new_func
 
 
