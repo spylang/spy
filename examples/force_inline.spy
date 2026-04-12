@@ -1,0 +1,41 @@
+"""
+@force_inline is a special decorator (like the @blue family) that forces
+inlining of a red function at the end of redshift.
+
+The main use cases are:
+
+1. Readability: write small helper functions without polluting the
+   redshifted output with extra call sites.
+
+2. Predictable inlining: guarantee that the SPy compiler inlines a
+   function regardless of C compiler heuristics.
+
+Currently @force_inline only supports functions with a single `return`
+statement (no intermediate assignments).
+
+To inspect what inlining does, compare:
+
+  $ spy redshift force_inline.spy
+  $ spy redshift force_inline.spy --no-inline
+
+With inlining, the body of `polynomial` becomes a single expression:
+
+  def polynomial(a: i32) -> i32:
+      return a * a + (a + 1) * (a + 1) + 2 * (a + 2)
+"""
+
+
+@force_inline
+def square(x: i32) -> i32:
+    return x * x
+
+
+def polynomial(a: i32) -> i32:
+    return square(a) + square(a + 1)
+
+
+def main() -> None:
+    x = 2
+    assert polynomial(x) == x * x + (x + 1) * (x + 1)
+    # 4 + 9 -> 13
+    print(polynomial(x))
