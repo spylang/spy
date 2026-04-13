@@ -6,7 +6,7 @@ from spy.vm.exc import W_Exception
 from spy.vm.object import W_Type
 from spy.vm.opimpl import W_OpImpl
 from spy.vm.opspec import W_MetaArg, W_OpSpec
-from spy.vm.primitive import W_I32
+from spy.vm.primitive import W_F32, W_F64, W_I8, W_I32, W_U8, W_U32, W_Bool
 from spy.vm.str import W_Str
 
 from . import OP
@@ -19,6 +19,78 @@ if TYPE_CHECKING:
 def w_raise(
     vm: "SPyVM", w_etype: W_Str, w_message: W_Str, w_filename: W_Str, w_lineno: W_I32
 ) -> None:
+    etype = "W_" + vm.unwrap_str(w_etype)
+    msg = vm.unwrap_str(w_message)
+    raise SPyError(etype, msg)
+
+
+@OP.builtin_func
+def w_raise_i8(
+    vm: "SPyVM", w_etype: W_Str, w_message: W_Str, w_filename: W_Str, w_lineno: W_I32
+) -> W_I8:
+    etype = "W_" + vm.unwrap_str(w_etype)
+    msg = vm.unwrap_str(w_message)
+    raise SPyError(etype, msg)
+
+
+@OP.builtin_func
+def w_raise_u8(
+    vm: "SPyVM", w_etype: W_Str, w_message: W_Str, w_filename: W_Str, w_lineno: W_I32
+) -> W_U8:
+    etype = "W_" + vm.unwrap_str(w_etype)
+    msg = vm.unwrap_str(w_message)
+    raise SPyError(etype, msg)
+
+
+@OP.builtin_func
+def w_raise_i32(
+    vm: "SPyVM", w_etype: W_Str, w_message: W_Str, w_filename: W_Str, w_lineno: W_I32
+) -> W_I32:
+    etype = "W_" + vm.unwrap_str(w_etype)
+    msg = vm.unwrap_str(w_message)
+    raise SPyError(etype, msg)
+
+
+@OP.builtin_func
+def w_raise_u32(
+    vm: "SPyVM", w_etype: W_Str, w_message: W_Str, w_filename: W_Str, w_lineno: W_I32
+) -> W_U32:
+    etype = "W_" + vm.unwrap_str(w_etype)
+    msg = vm.unwrap_str(w_message)
+    raise SPyError(etype, msg)
+
+
+@OP.builtin_func
+def w_raise_f32(
+    vm: "SPyVM", w_etype: W_Str, w_message: W_Str, w_filename: W_Str, w_lineno: W_I32
+) -> W_F32:
+    etype = "W_" + vm.unwrap_str(w_etype)
+    msg = vm.unwrap_str(w_message)
+    raise SPyError(etype, msg)
+
+
+@OP.builtin_func
+def w_raise_f64(
+    vm: "SPyVM", w_etype: W_Str, w_message: W_Str, w_filename: W_Str, w_lineno: W_I32
+) -> W_F64:
+    etype = "W_" + vm.unwrap_str(w_etype)
+    msg = vm.unwrap_str(w_message)
+    raise SPyError(etype, msg)
+
+
+@OP.builtin_func
+def w_raise_str(
+    vm: "SPyVM", w_etype: W_Str, w_message: W_Str, w_filename: W_Str, w_lineno: W_I32
+) -> W_Str:
+    etype = "W_" + vm.unwrap_str(w_etype)
+    msg = vm.unwrap_str(w_message)
+    raise SPyError(etype, msg)
+
+
+@OP.builtin_func
+def w_raise_bool(
+    vm: "SPyVM", w_etype: W_Str, w_message: W_Str, w_filename: W_Str, w_lineno: W_I32
+) -> W_Bool:
     etype = "W_" + vm.unwrap_str(w_etype)
     msg = vm.unwrap_str(w_message)
     raise SPyError(etype, msg)

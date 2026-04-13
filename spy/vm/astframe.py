@@ -849,7 +849,7 @@ class AbstractFrame:
     def eval_expr_FQNConst(self, const: ast.FQNConst) -> W_MetaArg:
         w_value = self.vm.lookup_global(const.fqn)
         assert w_value is not None
-        return W_MetaArg.from_w_obj(self.vm, w_value)
+        return W_MetaArg.from_w_obj(self.vm, w_value, loc=const.loc)
 
     def eval_expr_Name(self, name: ast.Name) -> W_MetaArg:
         # see the comment in __init__ about specialized_names
