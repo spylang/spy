@@ -1,4 +1,5 @@
 import os
+import pickle
 from typing import Any, no_type_check
 
 import py.path
@@ -288,8 +289,6 @@ class Test_cleanup_spyc_files:
 
 class Test_save_pickle_atomic:
     def test_roundtrip(self, tmpdir):
-        import pickle
-
         tmpdir = py.path.local(tmpdir)
         dest = tmpdir.join("data.pkl")
         save_pickle_atomic({"key": 42}, dest)
@@ -307,8 +306,6 @@ class Test_save_pickle_atomic:
         assert tmpdir.listdir() == []
 
     def test_atomic_replace(self, tmpdir):
-        import pickle
-
         tmpdir = py.path.local(tmpdir)
         dest = tmpdir.join("data.pkl")
         save_pickle_atomic("first", dest)
