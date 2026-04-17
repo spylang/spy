@@ -178,7 +178,6 @@ class Test_func_equals:
 
 class Test_cleanup_spyc_files:
     def test_cleanup_basic(self, tmpdir, capsys):
-        tmpdir = py.path.local(tmpdir)
         pycache = tmpdir.join("__pycache__")
         pycache.mkdir()
         spyc1 = pycache.join("mod1.spyc")
@@ -194,8 +193,6 @@ class Test_cleanup_spyc_files:
         assert "2 file(s) removed" in captured.out
 
     def test_cleanup_with_subdirectories(self, tmpdir, capsys):
-        tmpdir = py.path.local(tmpdir)
-
         # Create nested __pycache__ directories
         pycache1 = tmpdir.join("__pycache__")
         pycache1.mkdir()
@@ -217,16 +214,12 @@ class Test_cleanup_spyc_files:
         assert "2 file(s) removed" in captured.out
 
     def test_cleanup_no_files(self, tmpdir, capsys):
-        tmpdir = py.path.local(tmpdir)
-
         cleanup_spyc_files(tmpdir, verbose=True)
 
         captured = capsys.readouterr()
         assert "No .spyc files found" in captured.out
 
     def test_cleanup_with_permission_errors(self, tmpdir, capsys):
-        tmpdir = py.path.local(tmpdir)
-
         # Create __pycache__ with a .spyc file we can delete
         pycache = tmpdir.join("__pycache__")
         pycache.mkdir()
@@ -260,7 +253,6 @@ class Test_cleanup_spyc_files:
             os.chmod(str(subdir), 0o755)
 
     def test_cleanup_not_a_directory(self, tmpdir, capsys):
-        tmpdir = py.path.local(tmpdir)
         file_path = tmpdir.join("not_a_dir.txt")
         file_path.write("content")
 
@@ -270,7 +262,6 @@ class Test_cleanup_spyc_files:
         assert "not a directory" in captured.out
 
     def test_cleanup_non_verbose(self, tmpdir, capsys):
-        tmpdir = py.path.local(tmpdir)
         pycache = tmpdir.join("__pycache__")
         pycache.mkdir()
         spyc1 = pycache.join("test.spyc")
@@ -289,14 +280,12 @@ class Test_cleanup_spyc_files:
 
 class Test_save_pickle_atomic:
     def test_roundtrip(self, tmpdir):
-        tmpdir = py.path.local(tmpdir)
         dest = tmpdir.join("data.pkl")
         save_pickle_atomic({"key": 42}, dest)
         with dest.open("rb") as f:
             assert pickle.load(f) == {"key": 42}
 
     def test_no_partial_file_on_error(self, tmpdir):
-        tmpdir = py.path.local(tmpdir)
         dest = tmpdir.join("data.pkl")
         # Pass an unpicklable object to trigger a failure mid-save.
         with pytest.raises(Exception):
@@ -306,7 +295,6 @@ class Test_save_pickle_atomic:
         assert tmpdir.listdir() == []
 
     def test_atomic_replace(self, tmpdir):
-        tmpdir = py.path.local(tmpdir)
         dest = tmpdir.join("data.pkl")
         save_pickle_atomic("first", dest)
         save_pickle_atomic("second", dest)
