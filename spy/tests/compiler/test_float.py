@@ -130,6 +130,19 @@ class TestFloat(CompilerTest):
         assert mod.add_u32(1.5, 2) == 3.5
         assert mod.add_f32(1.5, 2.0) == 3.5
 
+    def test_pow(self, float_type):
+        mod = self.compile(f"""
+        T = {float_type}
+        def pow(x: T, y: T) -> T:
+            return x ** y
+        """)
+        assert mod.pow(2.0, 3.0) == 8.0
+        assert mod.pow(3.0, 2.0) == 9.0
+        assert mod.pow(5.0, 0.0) == 1.0
+        assert math.isclose(mod.pow(2.0, 0.5), 1.4142135623730951, rel_tol=1e-6)
+        assert math.isclose(mod.pow(4.0, 0.5), 2.0, rel_tol=1e-6)
+        assert math.isclose(mod.pow(2.0, -1.0), 0.5, rel_tol=1e-6)
+
     def test_explicit_conversion(self):
         mod = self.compile("""
         def i32_to_f64(x: i32) -> f64: return f64(x)
