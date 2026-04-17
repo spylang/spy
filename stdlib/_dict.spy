@@ -38,6 +38,10 @@ MAX_FILL_RATIO = 2 / 3
 
 @blue.generic
 def dict(Key, Value):
+    # the current implementation of dict doesnt' work for e.g. dict[type, T], dict[T,
+    # type], dict[T, object] and dict[object, T]. As a temporary workaround, fallback to
+    # interp-dict for now. This mean that they cannot be translated, but it's fine as
+    # long as it's used only in blue code.
     if Key == type or Key == object or Value == type or Value == object:
         return interp_dict[Key, Value]
 
