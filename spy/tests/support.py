@@ -86,6 +86,10 @@ def only_interp(func):
     return parametrize_compiler_backend(["interp"], func)
 
 
+def only_doppler(func):
+    return parametrize_compiler_backend(["doppler"], func)
+
+
 def only_C(func):
     return parametrize_compiler_backend(["C"], func)
 
@@ -162,6 +166,7 @@ class CompilerTest:
         modname: str = "test",
         *,
         error_mode: ErrorMode = "eager",
+        no_inline: bool = False,
     ) -> Any:
         """
         Compile the W_Module into something which can be accessed and called by
@@ -194,7 +199,7 @@ class CompilerTest:
             return interp_mod
 
         # all backends apart 'interp' require redshifting
-        self.vm.redshift(error_mode=error_mode)
+        self.vm.redshift(error_mode=error_mode, no_inline=no_inline)
         if self.dump_redshift:
             self.dump_module(modname)
 

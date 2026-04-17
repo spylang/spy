@@ -108,6 +108,8 @@ class SPyBackend:
         else:
             ret = self.fmt_w_obj(w_functype.w_restype)
         self.scope_stack.append(w_func.funcdef.symtable)
+        if w_func.funcdef.is_force_inline:
+            self.wl("@force_inline")
         self.wl(f"def {name}({params}) -> {ret}:")
         with self.out.indent():
             for stmt in w_func.funcdef.body:
@@ -195,6 +197,8 @@ class SPyBackend:
         params = ", ".join(paramlist)
         ret = self.fmt_expr(funcdef.return_type)
         self.scope_stack.append(funcdef.symtable)
+        if funcdef.is_force_inline:
+            self.wl("@force_inline")
         self.wl(f"def {name}({params}) -> {ret}:")
         with self.out.indent():
             for stmt in funcdef.body:
@@ -368,42 +372,42 @@ class SPyBackend:
     def fmt_expr_BinOp(self, binop: ast.BinOp) -> str:
         l = self.fmt_expr(binop.left)
         r = self.fmt_expr(binop.right)
-        if binop.left.precedence < binop.precedence:
+        if self._effective_precedence(binop.left) < binop.precedence:
             l = f"({l})"
-        if binop.right.precedence < binop.precedence:
+        if self._effective_precedence(binop.right) < binop.precedence:
             r = f"({r})"
         return f"{l} {binop.op} {r}"
 
     def fmt_expr_CmpOp(self, op: ast.CmpOp) -> str:
         l = self.fmt_expr(op.left)
         r = self.fmt_expr(op.right)
-        if op.left.precedence < op.precedence:
+        if self._effective_precedence(op.left) < op.precedence:
             l = f"({l})"
-        if op.right.precedence < op.precedence:
+        if self._effective_precedence(op.right) < op.precedence:
             r = f"({r})"
         return f"{l} {op.op} {r}"
 
     def fmt_expr_And(self, op: ast.And) -> str:
         l = self.fmt_expr(op.left)
         r = self.fmt_expr(op.right)
-        if op.left.precedence < op.precedence:
+        if self._effective_precedence(op.left) < op.precedence:
             l = f"({l})"
-        if op.right.precedence < op.precedence:
+        if self._effective_precedence(op.right) < op.precedence:
             r = f"({r})"
         return f"{l} and {r}"
 
     def fmt_expr_Or(self, op: ast.Or) -> str:
         l = self.fmt_expr(op.left)
         r = self.fmt_expr(op.right)
-        if op.left.precedence < op.precedence:
+        if self._effective_precedence(op.left) < op.precedence:
             l = f"({l})"
-        if op.right.precedence < op.precedence:
+        if self._effective_precedence(op.right) < op.precedence:
             r = f"({r})"
         return f"{l} or {r}"
 
     def fmt_expr_UnaryOp(self, unary: ast.UnaryOp) -> str:
         v = self.fmt_expr(unary.value)
-        if unary.value.precedence < unary.precedence:
+        if self._effective_precedence(unary.value) < unary.precedence:
             v = f"({v})"
         return f"{unary.op}{v}"
 
@@ -457,6 +461,31 @@ class SPyBackend:
         FQN("operator::f64_gt"): ">",
         FQN("operator::f64_ge"): ">=",
     }
+
+    def _effective_precedence(self, expr: ast.Expr) -> int:
+        """
+        Return the effective precedence of an expression for parenthesisation.
+
+        For most nodes this is just expr.precedence, but ast.Call nodes that
+        pretty-print as binary operators (via pprint_call_maybe) must report
+        the precedence of that operator rather than the Call precedence (16),
+        so that their callers can correctly decide whether to wrap them in
+        parentheses.
+        """
+        if (
+            isinstance(expr, ast.Call)
+            and isinstance(expr.func, ast.FQNConst)
+            and expr.func.fqn in self.FQN2BinOp
+        ):
+            op = self.FQN2BinOp[expr.func.fqn]
+            return ast.BinOp._precedence[op]
+        if (
+            isinstance(expr, ast.Call)
+            and isinstance(expr.func, ast.FQNConst)
+            and expr.func.fqn in self.FQN2CmpOp
+        ):
+            return 6  # all cmp ops have precedence 6
+        return expr.precedence
 
     def pprint_call_maybe(self, call: ast.Call) -> Optional[str]:
         if not isinstance(call.func, ast.FQNConst):

@@ -62,6 +62,7 @@ class TestParser:
                             Pass(),
                         ],
                         decorators=[],
+                        is_force_inline=False,
                     ),
                 ),
             ],
@@ -104,6 +105,7 @@ class TestParser:
                             Pass(),
                         ],
                         decorators=[],
+                        is_force_inline=False,
                     ),
                 ),
             ],
@@ -143,6 +145,7 @@ class TestParser:
                 Pass(),
             ],
             decorators=[],
+            is_force_inline=False,
         )
         """
         self.assert_dump(funcdef, expected)
@@ -202,6 +205,7 @@ class TestParser:
             decorators=[
                 Name(id='mydecorator'),
             ],
+            is_force_inline=False,
         )
         """
         self.assert_dump(funcdef, expected)
@@ -240,6 +244,7 @@ class TestParser:
                     ],
                 ),
             ],
+            is_force_inline=False,
         )
         """
         self.assert_dump(funcdef, expected)
@@ -271,6 +276,7 @@ class TestParser:
                 Name(id='mydecorator'),
                 Name(id='another_deco'),
             ],
+            is_force_inline=False,
         )
         """
         self.assert_dump(funcdef, expected)
@@ -296,6 +302,7 @@ class TestParser:
                 ),
             ],
             decorators=[],
+            is_force_inline=False,
         )
         """
         self.assert_dump(funcdef, expected)
@@ -322,6 +329,7 @@ class TestParser:
                 ),
             ],
             decorators=[],
+            is_force_inline=False,
         )
         """
         self.assert_dump(funcdef, expected)
@@ -348,6 +356,7 @@ class TestParser:
                 ),
             ],
             decorators=[],
+            is_force_inline=False,
         )
         """
         self.assert_dump(funcdef, expected)
@@ -374,6 +383,7 @@ class TestParser:
                 ),
             ],
             decorators=[],
+            is_force_inline=False,
         )
         """
         self.assert_dump(funcdef, expected)
@@ -419,6 +429,7 @@ class TestParser:
                     ),
                 ],
                 decorators=[],
+                is_force_inline=False,
             ),
         )
         """
@@ -446,6 +457,7 @@ class TestParser:
                 ),
             ],
             decorators=[],
+            is_force_inline=False,
         )
         """
         self.assert_dump(funcdef, expected)
@@ -834,6 +846,7 @@ class TestParser:
                 ),
             ],
             decorators=[],
+            is_force_inline=False,
         )
         """
         self.assert_dump(funcdef, expected)
@@ -1343,9 +1356,11 @@ class TestParser:
                                     Pass(),
                                 ],
                                 decorators=[],
+                                is_force_inline=False,
                             ),
                         ],
                         decorators=[],
+                        is_force_inline=False,
                     ),
                 ),
             ],
@@ -1539,6 +1554,7 @@ class TestParser:
                         Pass(),
                     ],
                     decorators=[],
+                    is_force_inline=False,
                 ),
             ],
         )
@@ -1576,6 +1592,7 @@ class TestParser:
                 Pass(),
             ],
             decorators=[],
+            is_force_inline=False,
         )
         """
         self.assert_dump(funcdef, expected)
