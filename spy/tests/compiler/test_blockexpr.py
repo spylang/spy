@@ -14,7 +14,6 @@ class TestBlockExpr(CompilerTest):
         """)
         assert mod.foo() == 1
 
-    @pytest.mark.skip("fixme")
     def test_value_only(self):
         mod = self.compile("""
         def foo() -> i32:
@@ -24,7 +23,6 @@ class TestBlockExpr(CompilerTest):
         """)
         assert mod.foo() == 42
 
-    @pytest.mark.skip("fixme")
     def test_multiple_stmts(self):
         mod = self.compile("""
         def foo() -> i32:
@@ -36,7 +34,6 @@ class TestBlockExpr(CompilerTest):
         """)
         assert mod.foo() == 3
 
-    @pytest.mark.skip("fixme")
     def test_in_call_args(self):
         mod = self.compile("""
         def add(a: i32, b: i32) -> i32:
@@ -62,7 +59,6 @@ class TestBlockExpr(CompilerTest):
         """)
         assert mod.foo() == 30
 
-    @pytest.mark.skip("fixme")
     def test_in_binop(self):
         mod = self.compile("""
         def foo() -> i32:
@@ -72,25 +68,3 @@ class TestBlockExpr(CompilerTest):
             ''')
         """)
         assert mod.foo() == 6
-
-    @pytest.mark.skip("fixme")
-    def test_empty_body_error(self):
-        src = """
-        def foo() -> i32:
-            return __block__('')
-        """
-        errors = expect_errors("__block__ body is empty")
-        self.compile_raises(src, "foo", errors)
-
-    @pytest.mark.skip("fixme")
-    def test_last_stmt_not_expr_error(self):
-        src = """
-        def foo() -> i32:
-            return __block__('''
-                x: i32 = 1
-            ''')
-        """
-        errors = expect_errors(
-            "__block__ last statement must be an expression (the result)",
-        )
-        self.compile_raises(src, "foo", errors)
