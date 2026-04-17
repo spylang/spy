@@ -4,7 +4,6 @@ from spy.tests.support import CompilerTest, expect_errors
 
 
 class TestBlockExpr(CompilerTest):
-    @pytest.mark.skip("fixme")
     def test_simple(self):
         mod = self.compile("""
         def foo() -> i32:

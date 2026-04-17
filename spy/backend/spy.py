@@ -407,6 +407,15 @@ class SPyBackend:
             v = f"({v})"
         return f"{unary.op}{v}"
 
+    def fmt_expr_BlockExpr(self, block: ast.BlockExpr) -> str:
+        b = SPyBackend(self.vm, fqn_format=self.fqn_format)
+        b.vars_declared = set()
+        for stmt in block.body:
+            b.emit_stmt(stmt)
+        parts = [l for l in b.out.build().splitlines() if l]
+        parts.append(self.fmt_expr(block.value))
+        return "__block__(" + "; ".join(parts) + ")"
+
     def fmt_expr_AssignExpr(self, assignexpr: ast.AssignExpr) -> str:
         return self._fmt_assignexpr(
             assignexpr.target.value, assignexpr.value, assignexpr.precedence

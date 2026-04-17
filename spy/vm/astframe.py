@@ -963,6 +963,11 @@ class AbstractFrame:
         color: Color = "blue" if sym.varkind == "const" else "red"
         return W_MetaArg(self.vm, color, w_T, w_val, name.loc, sym=sym)
 
+    def eval_expr_BlockExpr(self, block: ast.BlockExpr) -> W_MetaArg:
+        for stmt in block.body:
+            self.exec_stmt(stmt)
+        return self.eval_expr(block.value)
+
     def eval_expr_AssignExpr(self, assignexpr: ast.AssignExpr) -> W_MetaArg:
         specialized = self.specialized_assignexprs.get(assignexpr)
         if specialized is None:
