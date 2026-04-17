@@ -55,30 +55,21 @@ Smaller goals: have enough features to:
 
 ### Done in Q1/2026
 
-✅ `dict` literals
-  - https://github.com/spylang/spy/issues/342
+✅ `dict` literals: https://github.com/spylang/spy/issues/342
 
-✅ support for CLI arguments:
-  - https://github.com/spylang/spy/issues/353
+✅ support for CLI arguments: https://github.com/spylang/spy/issues/353
 
-✅ support for preliminary file I/O
-  - https://github.com/spylang/spy/pull/447
+✅ support for preliminary file I/O: https://github.com/spylang/spy/pull/447
 
-✅ compile-time friendly `tuple`
-  - https://github.com/spylang/spy/pull/402
+✅ compile-time friendly `tuple`: https://github.com/spylang/spy/pull/402
 
-✅ implement `is` and `is not`
-  - https://github.com/spylang/spy/pull/428
+✅ implement `is` and `is not`: https://github.com/spylang/spy/pull/428
 
-✅ PEP 695 syntax sugar for `@blue.generic` functions
-  - https://github.com/spylang/spy/pull/437
+✅ PEP 695 syntax sugar for `@blue.generic` functions: https://github.com/spylang/spy/pull/437
 
-✅ add support for default arguments
-  - https://github.com/spylang/spy/pull/442
+✅ add support for default arguments: https://github.com/spylang/spy/pull/442
 
-✅ `f32` and `complex` types
-  - https://github.com/spylang/spy/pull/347
-  - https://github.com/spylang/spy/pull/398
+✅ `f32` and `complex` types: https://github.com/spylang/spy/pull/347 https://github.com/spylang/spy/pull/398
 
 
 ### Done in Q4/2025
@@ -126,8 +117,7 @@ Smaller goals: have enough features to:
 
 ### DONE in Q1/2026
 
-✅ preliminary `file` object:
-  - https://github.com/spylang/spy/pull/447
+✅ preliminary `file` object: https://github.com/spylang/spy/pull/447
 
 ✅ improve standard builtin types:
   - add support for slices: https://github.com/spylang/spy/pull/345
@@ -170,14 +160,11 @@ Smaller goals: have enough features to:
 
 ### DONE in Q1/2026
 
-✅ distinguish between `gc_alloc` and `raw_malloc:
-  - https://github.com/spylang/spy/pull/371
-  - https://github.com/spylang/spy/pull/383
+✅ distinguish between `gc_alloc` and `raw_malloc: https://github.com/spylang/spy/pull/371 https://github.com/spylang/spy/pull/383
 
 ✅ introduce `gc_ref` and `raw_ref`
 
-✅ Add support for Boehm GC:
-  - https://github.com/spylang/spy/pull/383
+✅ Add support for Boehm GC https://github.com/spylang/spy/pull/383
 
 
 ### TODO
@@ -281,19 +268,12 @@ This task requires:
 
 ### DONE in Q1/2026
 
-✅ rework CLI using subcommands instead of flags
-  - https://github.com/spylang/spy/pull/332
+✅ rework CLI using subcommands instead of flags: https://github.com/spylang/spy/pull/332
 
-✅ docs skeleton and automation
-  - https://github.com/spylang/spy/pull/349
+✅ docs skeleton and automation: https://github.com/spylang/spy/pull/349
 
-✅ switch documentation to mkdocs-material
-  - https://github.com/spylang/spy/pull/372
+✅ switch documentation to mkdocs-material: https://github.com/spylang/spy/pull/372
 
-✅ HTML backend for AST visualization
-  - https://github.com/spylang/spy/pull/413
-  - https://github.com/spylang/spy/pull/414
-  - https://github.com/spylang/spy/pull/424
+✅ HTML backend for AST visualization: https://github.com/spylang/spy/pull/413 https://github.com/spylang/spy/pull/414 https://github.com/spylang/spy/pull/424
 
-✅ playground: share button and snippet links
-  - https://github.com/spylang/spy/pull/427
+✅ playground: share button and snippet links: https://github.com/spylang/spy/pull/427
