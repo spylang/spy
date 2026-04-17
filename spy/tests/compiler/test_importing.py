@@ -6,7 +6,8 @@ class TestImporting(CompilerTest):
 
     def test_import(self):
         mod = self.compile("""
-        from builtins import abs as my_abs
+        # abs is implemented in stdlib/_builtins.spy
+        from _builtins import abs as my_abs
 
         def foo(x: i32) -> i32:
             return my_abs(x)
