@@ -91,6 +91,7 @@ class DopplerFrame(ASTFrame):
     """
 
     shifted_expr: dict[ast.Expr, ast.Expr]
+    shifted_block_bodies: dict[ast.BlockExpr, list[ast.Stmt]]
     opimpl: dict[ast.Node, W_OpImpl]
     error_mode: ErrorMode
 
@@ -98,6 +99,7 @@ class DopplerFrame(ASTFrame):
         assert w_func.color == "red"
         super().__init__(vm, w_func, args_w=None)
         self.shifted_expr = {}
+        self.shifted_block_bodies = {}
         self.opimpl = {}
         assert error_mode != "warn"
         self.error_mode = error_mode
@@ -600,6 +602,21 @@ class DopplerFrame(ASTFrame):
         return self.shift_opimpl(
             op, w_opimpl, [v_obj, v_meth] + newargs_v, w_T=wam.w_static_T
         )
+
+    def eval_expr_BlockExpr(self, block: ast.BlockExpr) -> W_MetaArg:
+        # XXX EXPLAIN
+
+        # shift_stmt both evaluates and shifts each statement, so we store
+        # the shifted body here for use in shift_expr_BlockExpr
+        self.shifted_block_bodies[block] = self.shift_body(block.body)
+        return self.eval_expr(block.value)
+
+    def shift_expr_BlockExpr(self, block: ast.BlockExpr, wam: W_MetaArg) -> ast.Expr:
+        # XXX EXPLAIN
+
+        new_body = self.shifted_block_bodies.pop(block)
+        new_value = self.shifted_expr[block.value]
+        return block.replace(body=new_body, value=new_value, w_T=wam.w_static_T)
 
     def shift_expr_AssignExpr(
         self, assignexpr: ast.AssignExpr, wam: W_MetaArg
