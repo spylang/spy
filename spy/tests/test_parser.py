@@ -1703,3 +1703,59 @@ class TestParser:
             )
             """,
         )
+
+    def test_BlockExpr(self):
+        mod = self.parse("""
+        def foo() -> i32:
+            return __block__('''
+                x = 1
+                x
+            ''')
+        """)
+        funcdef = mod.get_funcdef("foo")
+        ret = funcdef.body[0]
+        assert isinstance(ret, ast.Return)
+        self.assert_dump(
+            ret.value,
+            """
+            BlockExpr(
+                body=[
+                    Assign(
+                        target=StrConst(value='x'),
+                        value=Constant(value=1),
+                    ),
+                ],
+                value=Name(id='x'),
+            )
+            """,
+        )
+
+    def test_BlockExpr_errors(self):
+        src = """
+        def foo() -> i32:
+            return __block__(42)
+        """
+        self.expect_errors(
+            src,
+            "__block__ requires a single string literal argument",
+        )
+
+        src = """
+        def foo() -> i32:
+            return __block__('')
+        """
+        self.expect_errors(
+            src,
+            "__block__ body is empty",
+        )
+
+        src = """
+        def foo() -> i32:
+            return __block__('''
+                x = 1
+            ''')
+        """
+        self.expect_errors(
+            src,
+            "__block__ last statement must be an expression (the result)",
+        )

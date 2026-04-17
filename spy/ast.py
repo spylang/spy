@@ -773,3 +773,24 @@ class AssignExprCell(Expr):
     target: StrConst
     target_fqn: FQN
     value: Expr
+
+
+@astnode
+class BlockExpr(Expr):
+    """
+    A block of stmts which evaluates to a single Expr.
+
+    This Node is mostly produced by ASTFrame and Doppler as an internal IR node.
+
+    For testing purposes, you can use the special __block__ function:
+
+    myvar = __block__('''
+            x = 1
+            x += 3
+            x
+            ''')
+    """
+
+    precedence = 100
+    body: list[Stmt]
+    value: Expr

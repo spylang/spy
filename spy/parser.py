@@ -3,6 +3,7 @@
 # ================================================================
 
 import ast as py_ast
+import textwrap
 from types import NoneType
 from typing import NoReturn, Optional
 
@@ -781,7 +782,9 @@ class Parser:
 
     def from_py_expr_Call(
         self, py_node: py_ast.Call
-    ) -> spy.ast.Call | spy.ast.CallMethod:
+    ) -> spy.ast.Call | spy.ast.CallMethod | spy.ast.BlockExpr:
+        if isinstance(py_node.func, py_ast.Name) and py_node.func.id == "__block__":
+            return self._parse_block_expr(py_node)
         if py_node.keywords:
             self.unsupported(py_node.keywords[0], "keyword arguments")
         func = self.from_py_expr(py_node.func)
@@ -792,6 +795,38 @@ class Parser:
             )
         else:
             return spy.ast.Call(loc=py_node.loc, func=func, args=args)
+
+    def _parse_block_expr(self, py_node: py_ast.Call) -> spy.ast.BlockExpr:
+        if (
+            len(py_node.args) != 1
+            or not isinstance(py_node.args[0], py_ast.Constant)
+            or not isinstance(py_node.args[0].value, str)
+        ):
+            self.error(
+                "__block__ requires a single string literal argument",
+                "expected a triple-quoted string",
+                py_node.loc,
+            )
+        src = textwrap.dedent(py_node.args[0].value).strip()
+        inner_mod = magic_py_parse(src, filename=self.filename)
+        inner_mod.compute_all_locs(self.filename)
+        if not inner_mod.body:
+            self.error(
+                "__block__ body is empty",
+                "expected at least one expression",
+                py_node.loc,
+            )
+        py_body = inner_mod.body
+        last = py_body[-1]
+        if not isinstance(last, py_ast.Expr):
+            self.error(
+                "__block__ last statement must be an expression (the result)",
+                "this should be an expression",
+                last.loc,
+            )
+        body = self.from_py_body(py_body[:-1])
+        value = self.from_py_expr(last.value)
+        return spy.ast.BlockExpr(loc=py_node.loc, body=body, value=value)
 
     def from_py_expr_Slice(self, py_node: py_ast.Slice) -> spy.ast.Slice:
         def from_py_expr_or_none(py_node: py_ast.expr, attr: str) -> spy.ast.Expr:
