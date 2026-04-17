@@ -31,13 +31,6 @@ def w_STATIC_TYPE(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
 
 
 @BUILTINS.builtin_func
-def w_abs(vm: "SPyVM", w_x: W_I32) -> W_I32:
-    x = vm.unwrap_i32(w_x)
-    res = vm.ll.call("spy_builtins$abs", x)
-    return vm.wrap(res)
-
-
-@BUILTINS.builtin_func
 def w_max(vm: "SPyVM", w_x: W_I32, w_y: W_I32) -> W_I32:
     x = vm.unwrap_i32(w_x)
     y = vm.unwrap_i32(w_y)

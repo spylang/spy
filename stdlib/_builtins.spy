@@ -1,0 +1,14 @@
+from operator import OpSpec
+
+
+@blue.metafunc
+def abs(m_x):
+    """Return the absolute value of the argument."""
+    T = m_x.static_type
+    return OpSpec(_abs[T])
+
+
+def _abs[T](x: T) -> T:
+    if x < 0:
+        return -x
+    return x
