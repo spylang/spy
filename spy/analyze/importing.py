@@ -11,7 +11,7 @@ from spy.analyze.scope import ScopeAnalyzer
 from spy.fqn import FQN
 from spy.parser import Parser
 from spy.textbuilder import ColorFormatter
-from spy.util import OrderedSet
+from spy.util import OrderedSet, save_pickle_atomic
 from spy.vm.modframe import ModFrame
 
 if TYPE_CHECKING:
@@ -181,8 +181,7 @@ class ImportAnalyzer:
         try:
             spyc.dirpath().ensure(dir=True)
             data = {"version": SPYC_VERSION, "module": mod}
-            with spyc.open("wb") as f:
-                pickle.dump(data, f)
+            save_pickle_atomic(data, spyc)
         except Exception as e:
             # Record the error
             error = CacheError(
