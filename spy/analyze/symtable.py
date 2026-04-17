@@ -190,6 +190,7 @@ class SymTable:
             loc = w_obj.def_loc if isinstance(w_obj, W_BuiltinFunc) else None
             add_sym(attr, ImportRef("builtins", attr), loc)
 
+        add_sym("abs", ImportRef("_builtins", "abs"))
         add_sym("range", ImportRef("_range", "range"))
         add_sym("list", ImportRef("_list", "list"))
         add_sym("tuple", ImportRef("_tuple", "tuple"))
