@@ -591,16 +591,27 @@ class Parser:
             )
             self.error(msg, "this is not supported", forloc)
 
-        # Only support simple names as targets for now
-        if not isinstance(py_node.target, py_ast.Name):
-            self.unsupported(py_node.target, "complex for loop targets")
+        py_target = py_node.target
+        if isinstance(py_target, py_ast.Name):
+            target: spy.ast.StrConst | list[spy.ast.StrConst] = spy.ast.StrConst(
+                py_target.loc, py_target.id
+            )
+        elif isinstance(py_target, py_ast.Tuple):
+            targets = []
+            for item in py_target.elts:
+                if not isinstance(item, py_ast.Name):
+                    self.unsupported(item, "complex for loop targets")
+                targets.append(spy.ast.StrConst(item.loc, item.id))
+            target = targets
+        else:
+            self.unsupported(py_target, "complex for loop targets")
 
         seq = self.for_loop_seq
         self.for_loop_seq += 1
         return spy.ast.For(
             loc=py_node.loc,
             seq=seq,
-            target=spy.ast.StrConst(py_node.target.loc, py_node.target.id),
+            target=target,
             iter=self.from_py_expr(py_node.iter),
             body=self.from_py_body(py_node.body),
         )

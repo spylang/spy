@@ -418,3 +418,12 @@ class TestSPyBackend(CompilerTest):
         """
         self.compile(src)
         self.assert_dump(src)
+
+    def test_for_tuple_target(self):
+        src = """
+        def foo() -> None:
+            for i, j in pairs:
+                pass
+        """
+        self.compile(src)
+        self.assert_dump(src)
