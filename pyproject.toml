@@ -35,6 +35,10 @@ dev = [
     "rodney>=0.4.0",
 ]
 
+test-xdist = [
+    "pytest-xdist",
+]
+
 docs = [
     "mkdocs==1.6.1",
     "mkdocs-get-deps==0.2.0",
@@ -106,7 +110,7 @@ lint.ignore = ["C901"]
 line-length = 88
 indent-width = 4
 target-version = "py312"
-extend-exclude = ["*.pyi"]
+extend-exclude = ["*.pyi", ".pixi"]
 
 [tool.ruff.format]
 line-ending = "auto"
@@ -119,3 +123,30 @@ inline-quotes = "double"
 multiline-quotes = "double"
 docstring-quotes = "double"
 avoid-escape = true
+
+# Pixi settings
+[tool.pixi.workspace]
+channels = ["conda-forge"]
+platforms = ["linux-64", "osx-arm64"]
+
+[tool.pixi.pypi-dependencies]
+spylang = { path = ".", editable = true }
+
+[tool.pixi.environments]
+default = { features = ["dev"], solve-group = "default" }
+docs = { features = ["docs"], solve-group = "default" }
+test-xdist = { features = ["dev", "test-xdist"], solve-group = "default" }
+
+[tool.pixi.tasks]
+make-libspy = "make -C spy/libspy"
+test = "pytest spy/tests -v"
+check-lint = "ruff check ."
+check-fmt = "ruff format --check ."
+fmt-py = "ruff format ."
+
+[tool.pixi.feature.docs.tasks]
+doc-build = { cmd = "mkdocs build", cwd = "docs" }
+doc-serve = { cmd = "mkdocs serve", cwd = "docs" }
+
+[tool.pixi.feature.test-xdist.tasks]
+test-xdist = "pytest -n auto -m 'not mypy'"

@@ -1,0 +1,68 @@
+name: Run Tests Pixi
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: test-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    env:
+      SPY_WERROR: true
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - uses: prefix-dev/setup-pixi@v0.9.4
+        with:
+          pixi-version: v0.67.1
+          cache: true
+
+      - name: Check Pixi lock file
+        run: |
+          pixi lock --check
+
+      - name: Build libspy and install project
+        run: |
+          pixi run make-libspy
+
+      - name: List packages
+        run: |
+          pixi list
+
+      - name: Linter
+        run: |
+          pixi run check-lint
+
+      - name: Format check
+        run: |
+          pixi run check-fmt
+
+      - name: Run tests
+        run: |
+          pixi run -e test-xdist pytest -n auto -m "not mypy" --junit-xml=test-results.xml
+
+      - name: Run mypy
+        run: |
+          pixi run mypy
+
+      - name: Surface failing tests
+        if: always()
+        uses: pmeier/pytest-results-action@main
+        with:
+          path: test-results.xml
+          summary: true
+          display-options: fEX
+          fail-on-empty: true
+          title: Test Pixi results
