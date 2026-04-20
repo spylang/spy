@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 from spy import ast
 from spy.backend.c import c_ast as C
 from spy.backend.c.context import C_Ident, Context
+from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.textbuilder import TextBuilder
@@ -130,6 +131,15 @@ class CFuncWriter:
         #   - we cannot test NumericConv because the expressions are
         #     automatically converted by the C compiler anyway
         return magic_dispatch(self, "fmt_expr", expr)
+
+    def fmt_expr_BlockExpr(self, expr: ast.BlockExpr) -> C.Expr:
+        msg = (
+            "The C backend doesn't support ast.BlockExpr.\n"
+            + "This probably means that there is a bug in the compilation pipeline\n"
+            + "and that `linearize` was not called."
+        )
+        raise SPyError.simple("W_ValueError", msg, "", expr.loc)
+        # raise Exception(msg)
 
     # ===== statements =====
 

@@ -6,33 +6,33 @@ from spy.tests.support import CompilerTest, expect_errors
 class TestBlockExpr(CompilerTest):
     def test_simple(self):
         mod = self.compile("""
-        def foo() -> i32:
+        def foo(a: i32) -> i32:
             return __block__('''
-                x: i32 = 1
+                x: i32 = a
                 x
             ''')
         """)
-        assert mod.foo() == 1
+        assert mod.foo(1) == 1
 
     def test_value_only(self):
         mod = self.compile("""
-        def foo() -> i32:
+        def foo(a: i32) -> i32:
             return __block__('''
-                42
+                a
             ''')
         """)
-        assert mod.foo() == 42
+        assert mod.foo(42) == 42
 
     def test_multiple_stmts(self):
         mod = self.compile("""
-        def foo() -> i32:
+        def foo(a: i32, b: i32) -> i32:
             return __block__('''
-                x: i32 = 1
-                y: i32 = 2
+                x: i32 = a
+                y: i32 = b
                 x + y
             ''')
         """)
-        assert mod.foo() == 3
+        assert mod.foo(1, 2) == 3
 
     def test_in_call_args(self):
         mod = self.compile("""
@@ -61,10 +61,10 @@ class TestBlockExpr(CompilerTest):
 
     def test_in_binop(self):
         mod = self.compile("""
-        def foo() -> i32:
-            return 1 + __block__('''
-                x: i32 = 2
+        def foo(a: i32) -> i32:
+            return a + __block__('''
+                x: i32 = a
                 x + 3
             ''')
         """)
-        assert mod.foo() == 6
+        assert mod.foo(2) == 7
