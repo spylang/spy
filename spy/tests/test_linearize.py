@@ -3,7 +3,7 @@ import textwrap
 import pytest
 
 from spy.backend.spy import FQN_FORMAT, SPyBackend
-from spy.linearize import linearize as linearize
+from spy.linearize import linearize
 from spy.util import print_diff
 from spy.vm.function import W_ASTFunc
 from spy.vm.vm import SPyVM
@@ -35,18 +35,7 @@ class TestLinearize:
         ]
         parts = []
         for fqn, w_func in funcs:
-            result = linearize(w_func)
-            assert w_func.locals_types_w is not None
-            new_locals_types_w = dict(w_func.locals_types_w)
-            new_locals_types_w.update(result.extra_locals)
-            w_linearized = W_ASTFunc(
-                fqn=w_func.fqn,
-                closure=w_func.closure,
-                w_functype=w_func.w_functype,
-                funcdef=result.funcdef,
-                defaults_w=w_func.defaults_w,
-                locals_types_w=new_locals_types_w,
-            )
+            w_linearized = linearize(w_func)
             b = SPyBackend(self.vm, fqn_format=fqn_format)
             b.modname = "test"
             b.dump_w_func(fqn, w_linearized)

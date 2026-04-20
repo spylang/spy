@@ -61,7 +61,6 @@ branch without changing evaluation semantics, so we must materialize the
 branch as a proper conditional instead.
 """
 
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
 
 from spy import ast
@@ -72,27 +71,19 @@ if TYPE_CHECKING:
     from spy.vm.object import W_Type
 
 
-@dataclass
-class LinearizeResult:
-    funcdef: ast.FuncDef
-    extra_locals: dict[str, "W_Type"]
-
-
-def linearize(w_func: W_ASTFunc) -> LinearizeResult:
+def linearize(w_func: W_ASTFunc) -> W_ASTFunc:
     """
     Run the linearize pass on the given already-redshifted function.
-
-    Returns the rewritten FuncDef and any new locals introduced by spilling.
     """
     assert w_func.redshifted, "linearize must run after redshift"
-    lin = Linearizer(w_func.funcdef)
+    lin = Linearizer(w_func)
     return lin.linearize()
 
 
 class Linearizer:
-    funcdef: ast.FuncDef
+    w_func: W_ASTFunc
     # new local variables introduced by spilling, mapped to their type
-    extra_locals: dict[str, "W_Type"]
+    new_locals: dict[str, "W_Type"]
     # monotonically increasing counter for fresh temp names
     tmp_counter: int
     # the currently-open "hoisted statements" list: expression visitors
@@ -100,16 +91,29 @@ class Linearizer:
     # expression (either from a BlockExpr body, or from spilling)
     hoisted: list[ast.Stmt]
 
-    def __init__(self, funcdef: ast.FuncDef) -> None:
-        self.funcdef = funcdef
-        self.extra_locals = {}
+    def __init__(self, w_func: W_ASTFunc) -> None:
+        self.w_func = w_func
+        self.new_locals = {}
         self.tmp_counter = 0
         self.hoisted = []
 
-    def linearize(self) -> LinearizeResult:
-        new_body = self.visit_body(self.funcdef.body)
-        new_funcdef = self.funcdef.replace(body=new_body)
-        return LinearizeResult(funcdef=new_funcdef, extra_locals=self.extra_locals)
+    def linearize(self) -> W_ASTFunc:
+        funcdef = self.w_func.funcdef
+        new_body = self.visit_body(funcdef.body)
+        new_funcdef = funcdef.replace(body=new_body)
+
+        assert self.w_func.locals_types_w is not None
+        new_locals_types_w = dict(self.w_func.locals_types_w)
+        new_locals_types_w.update(self.new_locals)
+
+        return W_ASTFunc(
+            fqn=self.w_func.fqn,
+            closure=self.w_func.closure,
+            w_functype=self.w_func.w_functype,
+            funcdef=new_funcdef,
+            defaults_w=self.w_func.defaults_w,
+            locals_types_w=new_locals_types_w,
+        )
 
     # ==== helpers ====
 

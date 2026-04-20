@@ -6,6 +6,7 @@ from spy.backend.c import c_ast as C
 from spy.backend.c.context import C_Ident, Context
 from spy.errors import SPyError
 from spy.fqn import FQN
+from spy.linearize import linearize
 from spy.location import Loc
 from spy.textbuilder import TextBuilder
 from spy.util import magic_dispatch, shortrepr
@@ -24,6 +25,7 @@ class CFuncWriter:
     cmodw: "CModuleWriter"
     tbc: TextBuilder
     fqn: FQN
+    w_func_orig: W_ASTFunc
     w_func: W_ASTFunc
     last_emitted_linenos: tuple[int, int]
 
@@ -34,8 +36,13 @@ class CFuncWriter:
         self.cmodw = cmodw
         self.tbc = cmodw.tbc
         self.fqn = fqn
-        self.w_func = w_func
         self.last_emitted_linenos = (-1, -1)  # see emit_lineno_maybe
+
+        # w_func_orig is the original redshifted function; w_func is the linearized
+        # version, to ensure that expressions are evaluated left-to-right and BlockExpr
+        # are lowered.
+        self.w_func_orig = w_func
+        self.w_func = linearize(w_func)
 
     def ppc(self) -> None:
         """
@@ -313,7 +320,7 @@ class CFuncWriter:
             # appropriate fqn name, see Context.new_ptr_type
             assert w_obj.addr == 0, "only NULL ptrs can be constants"
             return C.Literal(const.fqn.c_name)
-        elif isinstance(w_obj, W_Func):
+        elif isinstance(w_obj, W_Funcq):
             return C.Literal(const.fqn.c_name)
         elif isinstance(w_obj, W__FILE):
             assert w_obj.h == 0, "only NULL _FILE can be a constant"
