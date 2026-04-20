@@ -13,6 +13,7 @@ from spy.doppler import ErrorMode, redshift
 from spy.errors import WIP, SPyError
 from spy.fqn import FQN, QUALIFIERS
 from spy.libspy import LLSPyInstance
+from spy.linearize import linearize
 from spy.location import Loc
 from spy.util import func_equals
 from spy.vm.b import B
@@ -214,6 +215,17 @@ class SPyVM:
             w_newfunc = redshift(self, w_func, error_mode)
             assert w_newfunc.redshifted
             self.globals_w[fqn] = w_newfunc
+
+    def linearize_all(self) -> None:
+        """
+        Apply the linearize pass to all redshifted W_ASTFuncs.
+
+        This is meant to be called only by tests and the CLI. The C backend
+        calls linearize on each function individually in CFuncWriter.
+        """
+        for fqn, w_obj in list(self.globals_w.items()):
+            if isinstance(w_obj, W_ASTFunc) and w_obj.redshifted:
+                self.globals_w[fqn] = linearize(w_obj)
 
     def register_module(self, w_mod: W_Module) -> None:
         assert w_mod.name not in self.modules_w

@@ -102,6 +102,14 @@ def no_C(func):
     return parametrize_compiler_backend(["interp", "doppler"], func)
 
 
+def with_additional_backends(backends):
+    def decorator(func):
+        all_backends = ALL_BACKENDS + tuple(backends)
+        return parametrize_compiler_backend(all_backends, func)
+
+    return decorator
+
+
 @pytest.mark.usefixtures("init")
 class CompilerTest:
     tmpdir: Any
@@ -190,7 +198,7 @@ class CompilerTest:
             pytest.fail("Cannot call self.compile() on @no_backend tests")
 
         if self.backend == "interp":
-            interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
+            interp_mod = InterpModuleWrapper(self.vm, self.w_mod, self.backend)
             return interp_mod
 
         # all backends apart 'interp' require redshifting
@@ -199,7 +207,12 @@ class CompilerTest:
             self.dump_module(modname)
 
         if self.backend == "doppler":
-            interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
+            interp_mod = InterpModuleWrapper(self.vm, self.w_mod, self.backend)
+            return interp_mod
+
+        if self.backend == "linearize":
+            self.vm.linearize_all()
+            interp_mod = InterpModuleWrapper(self.vm, self.w_mod, self.backend)
             return interp_mod
 
         if self.backend == "C":

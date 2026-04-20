@@ -15,8 +15,6 @@ from spy.cli.commands.shared_args import (
     _execute_flag,
     _execute_options,
 )
-from spy.linearize import linearize
-from spy.vm.function import W_ASTFunc
 
 
 @dataclass
@@ -87,10 +85,7 @@ async def redshift(args: Redshift_Args) -> None:
     vm.redshift(error_mode=args.error_mode)
 
     if args.linearize_:
-        for fqn, w_obj in list(vm.globals_w.items()):
-            if isinstance(w_obj, W_ASTFunc) and w_obj.redshifted:
-                w_new = linearize(w_obj)
-                vm.globals_w[fqn] = w_new
+        vm.linearize_all()
 
     if args.execute:
         w_mod = vm.modules_w[modname]
