@@ -1,9 +1,11 @@
+import re
 from types import NoneType
 from typing import TYPE_CHECKING
 
 from spy import ast
 from spy.backend.c import c_ast as C
 from spy.backend.c.context import C_Ident, Context
+from spy.backend.c.expr_sequencer import expr_sequencer
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.textbuilder import TextBuilder
@@ -16,6 +18,7 @@ from spy.vm.modules.unsafe.ptr import W_Ptr
 
 if TYPE_CHECKING:
     from spy.backend.c.cmodwriter import CModuleWriter
+    from spy.vm.object import W_Type
 
 
 class CFuncWriter:
@@ -25,6 +28,7 @@ class CFuncWriter:
     fqn: FQN
     w_func: W_ASTFunc
     last_emitted_linenos: tuple[int, int]
+    next_tmp_index: int
 
     def __init__(
         self, ctx: Context, cmodw: "CModuleWriter", fqn: FQN, w_func: W_ASTFunc
@@ -35,6 +39,7 @@ class CFuncWriter:
         self.fqn = fqn
         self.w_func = w_func
         self.last_emitted_linenos = (-1, -1)  # see emit_lineno_maybe
+        self.next_tmp_index = self._initial_tmp_index()
 
     def ppc(self) -> None:
         """
@@ -120,8 +125,39 @@ class CFuncWriter:
         self.last_emitted_linenos = (spyline, cline)
 
     def emit_stmt(self, stmt: ast.Stmt) -> None:
+        tmpvars, new_stmts, self.next_tmp_index = expr_sequencer(
+            stmt,
+            start_index=self.next_tmp_index,
+            is_pure_fqn=self._is_pure_fqn,
+        )
+        for varname, w_T in tmpvars:
+            self.declare_tmp_var(varname, w_T)
+        for new_stmt in new_stmts:
+            self.emit_stmt_unsequenced(new_stmt)
+
+    def emit_stmt_unsequenced(self, stmt: ast.Stmt) -> None:
         self.emit_lineno_maybe(stmt.loc)
         magic_dispatch(self, "emit_stmt", stmt)
+
+    def declare_tmp_var(self, varname: str, w_T: "W_Type") -> None:
+        c_type = self.ctx.w2c(w_T)
+        c_varname = C_Ident(varname)
+        self.tbc.wl(f"{c_type} {c_varname};")
+
+    def _initial_tmp_index(self) -> int:
+        # Make sure that the tmp variable names we generate here do not collide with local variables.
+        if self.w_func.locals_types_w is None:
+            return 0
+        max_index = -1
+        for name in self.w_func.locals_types_w:
+            match = re.fullmatch(r"spy_tmp(\d+)", name)
+            if match is not None:
+                max_index = max(max_index, int(match.group(1)))
+        return max_index + 1
+
+    def _is_pure_fqn(self, fqn: FQN) -> bool:
+        w_obj = self.ctx.vm.lookup_global_maybe(fqn)
+        return isinstance(w_obj, W_Func) and w_obj.is_pure()
 
     def fmt_expr(self, expr: ast.Expr) -> C.Expr:
         # XXX: here we should probably handle typeconv, if present.
@@ -210,13 +246,13 @@ class CFuncWriter:
         self.tbc.wl(f"if ({test})" + "{")
         with self.tbc.indent():
             for stmt in if_node.then_body:
-                self.emit_stmt(stmt)
+                self.emit_stmt_unsequenced(stmt)
         #
         if if_node.else_body:
             self.tbc.wl("} else {")
             with self.tbc.indent():
                 for stmt in if_node.else_body:
-                    self.emit_stmt(stmt)
+                    self.emit_stmt_unsequenced(stmt)
         #
         self.tbc.wl("}")
 
@@ -225,7 +261,7 @@ class CFuncWriter:
         self.tbc.wl(f"while ({test}) " + "{")
         with self.tbc.indent():
             for stmt in while_node.body:
-                self.emit_stmt(stmt)
+                self.emit_stmt_unsequenced(stmt)
         self.tbc.wl("}")
 
     def emit_stmt_Assert(self, assert_node: ast.Assert) -> None:
