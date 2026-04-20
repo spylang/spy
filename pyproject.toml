@@ -150,3 +150,6 @@ doc-serve = { cmd = "mkdocs serve", cwd = "docs" }
 
 [tool.pixi.feature.test-xdist.tasks]
 test-xdist = "pytest -n auto -m 'not mypy'"
+
+[tool.pixi.dependencies]
+bdw-gc = ">=8.2.12,<9"
