@@ -47,3 +47,18 @@ class TestLinearize:
         """
         self.linearize(src)
         self.assert_dump(src)
+
+    def test_blockexpr_simple(self):
+        src = """
+        def foo(a: i32) -> i32:
+            return __block__('''
+                x: i32 = a
+                x
+            ''')
+        """
+        self.linearize(src)
+        self.assert_dump("""
+        def foo(a: i32) -> i32:
+            x: i32 = a
+            return x
+        """)

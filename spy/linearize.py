@@ -4,6 +4,41 @@ expression evaluation order is explicit at the statement level.
 
 It runs AFTER doppler and BEFORE the C backend.
 
+The original problem is that Python and SPy guarantee left-to-right evaluation of
+expressions, while C doesn't most of the time.  Take this example:
+
+    def foo() -> int:
+        print('foo')
+        return 1
+
+    def bar() -> int:
+        print('bar')
+        return 2
+
+
+    def fn(a: int, b: int) -> int:
+        return a + b
+
+    def main() -> None:
+        fn(foo(), bar())
+
+SPy guarantees that `foo` is called before `bar`, and thus the output is always
+`foo\nbar`.
+
+However, C doesn't guarantee order of evaluation. So a naive C translation into
+`fn(foo(), bar())` might print `bar\nfoo`.
+
+The solution is to emit something like this:
+
+    int main(void) {
+        int $v0 = foo();
+        int $v1 = bar();
+        fn($v0, $v1);
+    }
+
+"Linearize" does exactly that, so that the C backend has an easier time to emit the
+correct C code.
+
 The pass enforces two invariants on the output AST:
 
 1. Flattening: ``ast.BlockExpr`` nodes are eliminated. Their ``body``
@@ -70,6 +105,7 @@ class Linearizer:
         new_body = self.visit_body(funcdef.body)
         new_funcdef = funcdef.replace(body=new_body)
 
+        # augment locals_types_w with the newly added tmp variables
         assert self.w_func.locals_types_w is not None
         new_locals_types_w = dict(self.w_func.locals_types_w)
         new_locals_types_w.update(self.new_locals)
@@ -87,9 +123,9 @@ class Linearizer:
 
     def fresh_tmp(self, w_T: "W_Type") -> str:
         """
-        Allocate a fresh local name of the given type.
+        Allocate a fresh local name of the given type: $v0, $v1, ...
         """
-        name = f"@tmp{self.tmp_counter}"
+        name = f"$v{self.tmp_counter}"
         self.tmp_counter += 1
         self.new_locals[name] = w_T
         return name
@@ -121,8 +157,17 @@ class Linearizer:
         Visit a statement. Returns a list because a single input stmt may
         expand into multiple output stmts (due to hoisted BlockExpr bodies
         and/or spilled temps).
+
+        Each visit_stmt_* gets a fresh empty ``self.hoisted`` and should not
+        worry about prepending it: the wrapper prepends whatever was hoisted
+        during expression visits, and restores the caller's list.
         """
-        return magic_dispatch(self, "visit_stmt", stmt)
+        saved = self.hoisted
+        self.hoisted = []
+        new_stmts = magic_dispatch(self, "visit_stmt", stmt)
+        hoisted = self.hoisted
+        self.hoisted = saved
+        return hoisted + new_stmts
 
     def visit_stmt_Pass(self, stmt: ast.Pass) -> list[ast.Stmt]:
         return [stmt]
@@ -134,12 +179,14 @@ class Linearizer:
         return [stmt]
 
     def visit_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
-        # XXX IMPLEMENT ME
-        raise NotImplementedError
+        new_value = self.visit_expr(ret.value)
+        return [ret.replace(value=new_value)]
 
     def visit_stmt_VarDef(self, vardef: ast.VarDef) -> list[ast.Stmt]:
-        # XXX IMPLEMENT ME
-        raise NotImplementedError
+        if vardef.value is None:
+            return [vardef]
+        new_value = self.visit_expr(vardef.value)
+        return [vardef.replace(value=new_value)]
 
     def visit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> list[ast.Stmt]:
         # XXX IMPLEMENT ME
@@ -199,11 +246,11 @@ class Linearizer:
 
     def visit_expr_BlockExpr(self, block: ast.BlockExpr) -> ast.Expr:
         """
-        Flatten a BlockExpr: emit its body into the current ``hoisted`` list,
+        Flatten a BlockExpr: hoist its body into the surrounding stmt list,
         then visit and return its value expression.
         """
-        # XXX IMPLEMENT ME
-        raise NotImplementedError
+        self.hoisted += self.visit_body(block.body)
+        return self.visit_expr(block.value)
 
     def visit_expr_Call(self, call: ast.Call) -> ast.Expr:
         """
