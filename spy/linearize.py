@@ -61,6 +61,7 @@ branch without changing evaluation semantics, so we must materialize the
 branch as a proper conditional instead.
 """
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Optional
 
 from spy import ast
@@ -69,22 +70,29 @@ from spy.vm.function import W_ASTFunc
 
 if TYPE_CHECKING:
     from spy.vm.object import W_Type
-    from spy.vm.vm import SPyVM
 
 
-def linearize(vm: "SPyVM", w_func: W_ASTFunc) -> W_ASTFunc:
+@dataclass
+class LinearizeResult:
+    funcdef: ast.FuncDef
+    extra_locals: dict[str, "W_Type"]
+
+
+def linearize(w_func: W_ASTFunc) -> LinearizeResult:
     """
     Run the linearize pass on the given already-redshifted function.
+
+    Returns the rewritten FuncDef and any new locals introduced by spilling.
     """
-    lin = Linearizer(vm, w_func)
+    assert w_func.redshifted, "linearize must run after redshift"
+    lin = Linearizer(w_func.funcdef)
     return lin.linearize()
 
 
 class Linearizer:
-    vm: "SPyVM"
-    w_func: W_ASTFunc
+    funcdef: ast.FuncDef
     # new local variables introduced by spilling, mapped to their type
-    new_locals: dict[str, "W_Type"]
+    extra_locals: dict[str, "W_Type"]
     # monotonically increasing counter for fresh temp names
     tmp_counter: int
     # the currently-open "hoisted statements" list: expression visitors
@@ -92,32 +100,16 @@ class Linearizer:
     # expression (either from a BlockExpr body, or from spilling)
     hoisted: list[ast.Stmt]
 
-    def __init__(self, vm: "SPyVM", w_func: W_ASTFunc) -> None:
-        assert w_func.redshifted, "linearize must run after redshift"
-        self.vm = vm
-        self.w_func = w_func
-        self.new_locals = {}
+    def __init__(self, funcdef: ast.FuncDef) -> None:
+        self.funcdef = funcdef
+        self.extra_locals = {}
         self.tmp_counter = 0
         self.hoisted = []
 
-    def linearize(self) -> W_ASTFunc:
-        funcdef = self.w_func.funcdef
-        new_body = self.visit_body(funcdef.body)
-        new_funcdef = funcdef.replace(body=new_body)
-
-        # augment locals_types_w with the newly added tmp variables
-        assert self.w_func.locals_types_w is not None
-        new_locals_types_w = dict(self.w_func.locals_types_w)
-        new_locals_types_w.update(self.new_locals)
-
-        return W_ASTFunc(
-            fqn=self.w_func.fqn,
-            closure=self.w_func.closure,
-            w_functype=self.w_func.w_functype,
-            funcdef=new_funcdef,
-            defaults_w=self.w_func.defaults_w,
-            locals_types_w=new_locals_types_w,
-        )
+    def linearize(self) -> LinearizeResult:
+        new_body = self.visit_body(self.funcdef.body)
+        new_funcdef = self.funcdef.replace(body=new_body)
+        return LinearizeResult(funcdef=new_funcdef, extra_locals=self.extra_locals)
 
     # ==== helpers ====
 
