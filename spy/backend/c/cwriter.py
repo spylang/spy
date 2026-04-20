@@ -320,7 +320,7 @@ class CFuncWriter:
             # appropriate fqn name, see Context.new_ptr_type
             assert w_obj.addr == 0, "only NULL ptrs can be constants"
             return C.Literal(const.fqn.c_name)
-        elif isinstance(w_obj, W_Funcq):
+        elif isinstance(w_obj, W_Func):
             return C.Literal(const.fqn.c_name)
         elif isinstance(w_obj, W__FILE):
             assert w_obj.h == 0, "only NULL _FILE can be a constant"

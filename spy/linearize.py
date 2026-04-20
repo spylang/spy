@@ -185,34 +185,40 @@ class Linearizer:
         return [vardef.replace(value=new_value)]
 
     def visit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> list[ast.Stmt]:
-        # XXX IMPLEMENT ME
-        raise NotImplementedError
+        new_value = self.visit_expr(assign.value)
+        return [assign.replace(value=new_value)]
 
     def visit_stmt_AssignCell(self, assign: ast.AssignCell) -> list[ast.Stmt]:
-        # XXX IMPLEMENT ME
-        raise NotImplementedError
+        new_value = self.visit_expr(assign.value)
+        return [assign.replace(value=new_value)]
 
     def visit_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> list[ast.Stmt]:
-        # XXX IMPLEMENT ME
-        raise NotImplementedError
+        new_value = self.visit_expr(unpack.value)
+        return [unpack.replace(value=new_value)]
 
     def visit_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> list[ast.Stmt]:
-        # XXX IMPLEMENT ME
-        raise NotImplementedError
+        new_value = self.visit_expr(stmt.value)
+        return [stmt.replace(value=new_value)]
 
     def visit_stmt_If(self, if_node: ast.If) -> list[ast.Stmt]:
-        # XXX IMPLEMENT ME
-        raise NotImplementedError
+        new_test = self.visit_expr(if_node.test)
+        new_then = self.visit_body(if_node.then_body)
+        new_else = self.visit_body(if_node.else_body)
+        return [if_node.replace(test=new_test, then_body=new_then, else_body=new_else)]
 
     def visit_stmt_While(self, while_node: ast.While) -> list[ast.Stmt]:
-        # XXX IMPLEMENT ME: note that hoisted stmts coming from the `test`
-        # expr need to be replicated both before the loop AND at the end of
-        # the body, so that they are re-evaluated each iteration.
-        raise NotImplementedError
+        # XXX TODO: if the test has hoisted stmts, they need to be replicated
+        # both before the loop AND at the end of the body.
+        new_test = self.visit_expr(while_node.test)
+        new_body = self.visit_body(while_node.body)
+        return [while_node.replace(test=new_test, body=new_body)]
 
     def visit_stmt_Assert(self, assert_node: ast.Assert) -> list[ast.Stmt]:
-        # XXX IMPLEMENT ME
-        raise NotImplementedError
+        new_test = self.visit_expr(assert_node.test)
+        new_msg = None
+        if assert_node.msg is not None:
+            new_msg = self.visit_expr(assert_node.msg)
+        return [assert_node.replace(test=new_test, msg=new_msg)]
 
     # ==== expressions ====
 
@@ -240,6 +246,13 @@ class Linearizer:
     def visit_expr_NameOuterCell(self, name: ast.NameOuterCell) -> ast.Expr:
         return name
 
+    def visit_expr_LocConst(self, const: ast.LocConst) -> ast.Expr:
+        return const
+
+    def visit_expr_Tuple(self, tup: ast.Tuple) -> ast.Expr:
+        new_items = [self.visit_expr(item) for item in tup.items]
+        return tup.replace(items=new_items)
+
     def visit_expr_BlockExpr(self, block: ast.BlockExpr) -> ast.Expr:
         """
         Flatten a BlockExpr: hoist its body into the surrounding stmt list,
@@ -249,34 +262,31 @@ class Linearizer:
         return self.visit_expr(block.value)
 
     def visit_expr_Call(self, call: ast.Call) -> ast.Expr:
-        """
-        Visit a Call, preserving left-to-right evaluation order for func and
-        args by spilling earlier operands when later ones have hoisted stmts.
-        """
-        # XXX IMPLEMENT ME
-        raise NotImplementedError
+        # XXX TODO: spill earlier operands when later ones have hoisted stmts
+        new_func = self.visit_expr(call.func)
+        new_args = [self.visit_expr(arg) for arg in call.args]
+        return call.replace(func=new_func, args=new_args)
 
     def visit_expr_CallMethod(self, op: ast.CallMethod) -> ast.Expr:
         # XXX IMPLEMENT ME
         raise NotImplementedError
 
     def visit_expr_And(self, op: ast.And) -> ast.Expr:
-        """
-        Short-circuit: if the RHS produces hoisted stmts, we cannot emit them
-        unconditionally. Instead, lower `a and b` into an ``if`` which writes
-        the result into a fresh temp, and return a Name referencing it.
-        """
-        # XXX IMPLEMENT ME
-        raise NotImplementedError
+        # XXX TODO: lower into if/else when RHS has hoisted stmts
+        new_left = self.visit_expr(op.left)
+        new_right = self.visit_expr(op.right)
+        return op.replace(left=new_left, right=new_right)
 
     def visit_expr_Or(self, op: ast.Or) -> ast.Expr:
-        # XXX IMPLEMENT ME: symmetric to visit_expr_And
-        raise NotImplementedError
+        # XXX TODO: lower into if/else when RHS has hoisted stmts
+        new_left = self.visit_expr(op.left)
+        new_right = self.visit_expr(op.right)
+        return op.replace(left=new_left, right=new_right)
 
     def visit_expr_AssignExprLocal(self, assignexpr: ast.AssignExprLocal) -> ast.Expr:
-        # XXX IMPLEMENT ME
-        raise NotImplementedError
+        new_value = self.visit_expr(assignexpr.value)
+        return assignexpr.replace(value=new_value)
 
     def visit_expr_AssignExprCell(self, assignexpr: ast.AssignExprCell) -> ast.Expr:
-        # XXX IMPLEMENT ME
-        raise NotImplementedError
+        new_value = self.visit_expr(assignexpr.value)
+        return assignexpr.replace(value=new_value)
