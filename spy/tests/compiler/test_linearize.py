@@ -41,6 +41,33 @@ class TestLinearize(CompilerTest):
             """
             self.assert_linearize("foo", expected)
 
+    @pytest.mark.skip("FIXME")
+    def test_call_order(self):
+        src = """
+        def foo() -> i32:
+            return 1
+
+        def bar() -> i32:
+            return 2
+
+        def add(a: i32, b: i32) -> i32:
+            return a + b
+
+        def main() -> i32:
+            return add(foo(), bar())
+        """
+        mod = self.compile(src)
+        assert mod.main() == 3
+        #
+        if self.backend == "linearize":
+            expected = """
+            def main() -> i32:
+                $v0: i32 = foo()
+                $v1: i32 = bar()
+                return add($v0, $v1)
+            """
+            self.assert_linearize("main", expected)
+
     def test_blockexpr_simple(self):
         src = """
         def foo(a: i32) -> i32:
