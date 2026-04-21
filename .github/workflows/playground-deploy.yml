@@ -59,6 +59,7 @@ jobs:
           cp spy/libspy/build/emscripten/release/libspy.wasm playground/
           cp dist/spylang-*.whl playground/
           cp -r assets playground/
+          python playground/create_symlinks_spy_files.py
 
       - name: Remove build files from playground
         run: rm -f playground/Makefile
