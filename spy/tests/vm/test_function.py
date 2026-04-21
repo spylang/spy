@@ -28,10 +28,10 @@ def make_FuncType(
     return W_FuncType.new(params, w_restype, color=color, kind=kind)
 
 
-def make_w_func(fqn: str | FQN, *, lowering_stage: str = "source") -> W_ASTFunc:
+def make_w_func(fqn_s: str, *, lowering_stage: str = "source") -> W_ASTFunc:
     loc = Loc.fake()
     w_functype = make_FuncType(B.w_i32, w_restype=B.w_i32)
-    fqn = FQN(fqn)
+    fqn = FQN(fqn_s)
     funcdef = ast.FuncDef(
         loc=loc,
         color="red",
