@@ -1829,7 +1829,7 @@ packages:
 - pypi: ./
   name: spylang
   version: 0.1.0
-  sha256: 77073ff903440fbe1d6edbc436d1d0372b4a177faa2ceba816b9d8e96093e7c9
+  sha256: 5d0ec5aaf6f350736a393cfb35cca0608d3eb2282e6139067c3d817cb6c5579a
   requires_dist:
   - build~=1.3
   - click==8.1.8

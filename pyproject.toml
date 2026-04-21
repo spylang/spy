@@ -137,6 +137,10 @@ default = { features = ["dev"], solve-group = "default" }
 docs = { features = ["docs"], solve-group = "default" }
 test-xdist = { features = ["dev", "test-xdist"], solve-group = "default" }
 
+[tool.pixi.activation.env]
+LIBRARY_PATH = "$PIXI_PROJECT_ROOT/.pixi/envs/default/lib:$LIBRARY_PATH"
+C_INCLUDE_PATH = "$PIXI_PROJECT_ROOT/.pixi/envs/default/include:$C_INCLUDE_PATH"
+
 [tool.pixi.tasks]
 make-libspy = "make -C spy/libspy"
 test = "pytest spy/tests -v"
