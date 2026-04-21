@@ -385,8 +385,8 @@ class Linearizer:
         assign_left = ast.AssignLocal(op.loc, target=tmp_name, value=new_left)
 
         if isinstance(op, ast.And):
-            then_body = rhs_hoisted + [assign_right]
-            else_body = [assign_left]
+            then_body: list[ast.Stmt] = rhs_hoisted + [assign_right]
+            else_body: list[ast.Stmt] = [assign_left]
         elif isinstance(op, ast.Or):
             then_body = [assign_left]
             else_body = rhs_hoisted + [assign_right]

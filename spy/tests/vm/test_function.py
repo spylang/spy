@@ -6,7 +6,7 @@ from spy import ast
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.vm.b import B
-from spy.vm.function import Color, FuncKind, FuncParam, W_ASTFunc
+from spy.vm.function import Color, FuncKind, FuncParam, LoweringStage, W_ASTFunc
 from spy.vm.object import W_Type
 from spy.vm.vm import SPyVM
 from spy.vm.w import W_FuncType
@@ -28,7 +28,7 @@ def make_FuncType(
     return W_FuncType.new(params, w_restype, color=color, kind=kind)
 
 
-def make_w_func(fqn_s: str, *, lowering_stage: str = "source") -> W_ASTFunc:
+def make_w_func(fqn_s: str, *, lowering_stage: LoweringStage = "source") -> W_ASTFunc:
     loc = Loc.fake()
     w_functype = make_FuncType(B.w_i32, w_restype=B.w_i32)
     fqn = FQN(fqn_s)

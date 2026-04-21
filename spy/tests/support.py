@@ -106,8 +106,8 @@ def no_C(func):
     return parametrize_compiler_backend(["interp", "doppler"], func)
 
 
-def with_additional_backends(backends):
-    def decorator(func):
+def with_additional_backends(backends: list[str]) -> Any:
+    def decorator(func: Any) -> Any:
         all_backends = ALL_BACKENDS + tuple(backends)
         return parametrize_compiler_backend(all_backends, func)
 
