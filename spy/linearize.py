@@ -340,10 +340,6 @@ class Linearizer:
         new_args = new_operands[1:]
         return call.replace(func=new_func, args=new_args)
 
-    def visit_expr_CallMethod(self, op: ast.CallMethod) -> ast.Expr:
-        # XXX IMPLEMENT ME
-        raise NotImplementedError
-
     def visit_expr_And(self, op: ast.And) -> ast.Expr:
         # XXX TODO: lower into if/else when RHS has hoisted stmts
         new_left = self.visit_expr(op.left)
