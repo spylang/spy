@@ -64,6 +64,8 @@ branch as a proper conditional instead.
 from typing import TYPE_CHECKING, Optional
 
 from spy import ast
+from spy.analyze.symtable import Symbol, SymTable
+from spy.location import Loc
 from spy.util import magic_dispatch
 from spy.vm.function import W_ASTFunc
 
@@ -94,13 +96,15 @@ class Linearizer:
     def __init__(self, w_func: W_ASTFunc) -> None:
         self.w_func = w_func
         self.new_locals = {}
+        self.new_symbols: list[Symbol] = []
         self.tmp_counter = 0
         self.hoisted = []
 
     def linearize(self) -> W_ASTFunc:
         funcdef = self.w_func.funcdef
         new_body = self.visit_body(funcdef.body)
-        new_funcdef = funcdef.replace(body=new_body)
+        new_symtable = self._copy_symtable(funcdef.symtable)
+        new_funcdef = funcdef.replace(body=new_body, symtable=new_symtable)
 
         assert self.w_func.locals_types_w is not None
         new_locals_types_w = dict(self.w_func.locals_types_w)
@@ -117,6 +121,14 @@ class Linearizer:
         )
 
     # ==== helpers ====
+
+    def _copy_symtable(self, symtable: SymTable) -> SymTable:
+        new_st = SymTable(symtable.name, symtable.color, symtable.kind)
+        new_st._symbols = dict(symtable._symbols)
+        new_st.implicit_imports = set(symtable.implicit_imports)
+        for sym in self.new_symbols:
+            new_st.add(sym)
+        return new_st
 
     def fresh_tmp(self, w_T: "W_Type") -> str:
         """
@@ -135,8 +147,58 @@ class Linearizer:
         Used to preserve left-to-right evaluation order when a later operand
         has side effects (or hoists stmts).
         """
-        # XXX IMPLEMENT ME
-        raise NotImplementedError
+        assert expr.w_T is not None
+        loc = expr.loc
+        name = self.fresh_tmp(expr.w_T)
+        sym = Symbol(
+            name,
+            "var",
+            "auto",
+            "direct",
+            loc=loc,
+            type_loc=loc,
+            level=0,
+        )
+        self.new_symbols.append(sym)
+        vardef = ast.VarDef(
+            loc=loc,
+            kind="var",
+            name=ast.StrConst(loc, name),
+            type=ast.FQNConst(loc, expr.w_T.fqn),
+            value=expr,
+        )
+        self.hoisted.append(vardef)
+        return ast.NameLocalDirect(loc=loc, sym=sym, w_T=expr.w_T)
+
+    def _is_trivial(self, expr: ast.Expr) -> bool:
+        """
+        Return True if expr is side-effect free and cheap (name or constant).
+        No need to spill these.
+        """
+        return isinstance(
+            expr,
+            (
+                ast.Constant,
+                ast.StrConst,
+                ast.FQNConst,
+                ast.NameLocalDirect,
+                ast.NameOuterCell,
+                ast.LocConst,
+            ),
+        )
+
+    def visit_exprs_with_spilling(self, exprs: list[ast.Expr]) -> list[ast.Expr]:
+        """
+        Visit a list of expressions left-to-right. If 2+ are non-trivial
+        (potentially side-effecting), spill all of them to temporaries to
+        guarantee left-to-right evaluation in C.
+        """
+        visited = [self.visit_expr(e) for e in exprs]
+        trivial = [self._is_trivial(v) for v in visited]
+        to_spill = trivial.count(False)
+        if to_spill >= 2:
+            visited = [v if t else self.spill(v) for v, t in zip(visited, trivial)]
+        return visited
 
     # ==== statements ====
 
@@ -263,9 +325,10 @@ class Linearizer:
         return self.visit_expr(block.value)
 
     def visit_expr_Call(self, call: ast.Call) -> ast.Expr:
-        # XXX TODO: spill earlier operands when later ones have hoisted stmts
-        new_func = self.visit_expr(call.func)
-        new_args = [self.visit_expr(arg) for arg in call.args]
+        all_operands = [call.func] + call.args
+        new_operands = self.visit_exprs_with_spilling(all_operands)
+        new_func = new_operands[0]
+        new_args = new_operands[1:]
         return call.replace(func=new_func, args=new_args)
 
     def visit_expr_CallMethod(self, op: ast.CallMethod) -> ast.Expr:

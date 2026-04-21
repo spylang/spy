@@ -71,8 +71,10 @@ class TestLinearize(CompilerTest):
         if self.backend == "linearize":
             expected = """
             def foo() -> i32:
-                $v0: i32 = f1()
-                res = `test::sub`($v0, f2())
+                $v0: i32 = `test::f1`()
+                $v1: i32 = `test::f2`()
+                res: i32
+                res = `test::sub`($v0, $v1)
                 return `test::log` * 10 + res
             """
             self.assert_linearize("foo", expected)
