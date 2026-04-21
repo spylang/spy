@@ -53,37 +53,76 @@ Explore SPy without installing it by exploring the [playground](https://spylang.
 At the moment, the only supported installation method for SPy is by doing an
 "editable install" of the Git repo checkout.
 
-The most up-to-date version of the requirements and the installation steps is the [GitHub action workflow](https://github.com/spylang/spy/blob/main/.github/workflows/tests.yml).
+Three methods are available: **pip**, **uv**, or **Pixi**. SPy requires two
+kinds of dependencies: Python dependencies (managed by pip/uv/Pixi) and a
+native library, [bdw-gc](https://www.hboehm.info/gc/) (the
+Boehm-Demers-Weiser garbage collector). With pip, both Python 3.12 and
+bdw-gc must be installed beforehand by other means. With uv, Python is
+managed automatically but bdw-gc still needs to be installed separately.
+With Pixi, all dependencies — including bdw-gc — are handled
+automatically, with no system packages required.
 
-Prerequisites:
+The most up-to-date version of the requirements and the installation steps is
+the [GitHub Actions workflow](https://github.com/spylang/spy/blob/main/.github/workflows/tests.yml).
 
-  - Python 3.12
+### pip
 
-Installation:
+**Prerequisites:** Python 3.12, and bdw-gc (`libgc-dev` on Debian/Ubuntu).
 
-  1. Install the `spy` package in editable mode:
-      ```
-      $ cd /path/to/spy/
-      $ pip install -e .[dev]
-      ```
+```sh
+cd /path/to/spy/
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -e .[dev]
+# build the `libspy` runtime library
+make -C spy/libspy
+```
 
-  2. Build the `libspy` runtime library:
-     ```
-     $ make -C spy/libspy
-     ```
+### uv
+
+**Prerequisite:** bdw-gc (`libgc-dev` on Debian/Ubuntu).
+
+```sh
+uv venv .venv -p 3.12
+. .venv/bin/activate
+uv pip install -e .[dev]
+make -C spy/libspy
+```
+
+### Pixi
+
+No prerequisites — [Pixi](https://pixi.sh) manages all dependencies,
+including bdw-gc.
+
+```sh
+pixi run make-libspy
+pixi shell
+```
+
+From outside the repo, you can also activate the environment with:
+
+```sh
+pixi shell -m ~/dev/spy
+```
+
+Other useful commands (with tab auto-completion):
+
+```sh
+pixi run fmt-py
+pixi run check-lint
+pixi run check-fmt
+pixi run doc-serve
+pixi run test-xdist
+```
+
+### Testing
 
 Run the test suite:
 
+```sh
+pytest
+pytest -n auto -v -x
 ```
-$ pytest
-```
-
-All the tests in `spy/tests/compiler/` are executed in three modes:
-
-  - `interp`: run the SPy code via the interpreter
-  - `doppler`: perform redshift, then run the redshifted code via the
-    interpreter
-  - `C`: generate C code, compile to WASM, then run it using `wasmtime`
 
 ## Basic usage examples
 
