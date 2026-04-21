@@ -222,7 +222,7 @@ class SPyVM:
         """
         for fqn, w_obj in list(self.globals_w.items()):
             if isinstance(w_obj, W_ASTFunc) and w_obj.lowering_stage == "redshift":
-                self.globals_w[fqn] = linearize(w_obj)
+                self.globals_w[fqn] = linearize(self, w_obj)
 
     def register_module(self, w_mod: W_Module) -> None:
         assert w_mod.name not in self.modules_w

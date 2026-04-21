@@ -79,6 +79,47 @@ class TestLinearize(CompilerTest):
             """
             self.assert_linearize("foo", expected)
 
+    def test_no_spill_for_pure_exprs(self):
+        src = """
+        def add(x: i32, y: i32) -> i32:
+            return x + y
+
+        def foo(x: i32) -> i32:
+            return add(x + 1, x + 2)
+        """
+        mod = self.compile(src)
+        assert mod.foo(10) == 23
+        #
+        if self.backend == "linearize":
+            expected = """
+            def foo(x: i32) -> i32:
+                return `test::add`(x + 1, x + 2)
+            """
+            self.assert_linearize("foo", expected)
+
+    def test_no_spill_for_pure_with_impure_args(self):
+        src = """
+        def f1() -> i32:
+            return 1
+
+        def f2() -> i32:
+            return 2
+
+        def foo() -> i32:
+            return f1() + f2()
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 3
+        #
+        if self.backend == "linearize":
+            expected = """
+            def foo() -> i32:
+                $v0: i32 = `test::f1`()
+                $v1: i32 = `test::f2`()
+                return $v0 + $v1
+            """
+            self.assert_linearize("foo", expected)
+
     def test_blockexpr_simple(self):
         src = """
         def foo(a: i32) -> i32:

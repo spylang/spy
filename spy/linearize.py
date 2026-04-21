@@ -67,18 +67,19 @@ from spy import ast
 from spy.analyze.symtable import Symbol, SymTable
 from spy.location import Loc
 from spy.util import magic_dispatch
-from spy.vm.function import W_ASTFunc
+from spy.vm.function import W_ASTFunc, W_Func
 
 if TYPE_CHECKING:
     from spy.vm.object import W_Type
+    from spy.vm.vm import SPyVM
 
 
-def linearize(w_func: W_ASTFunc) -> W_ASTFunc:
+def linearize(vm: "SPyVM", w_func: W_ASTFunc) -> W_ASTFunc:
     """
     Run the linearize pass on the given already-redshifted function.
     """
     assert w_func.lowering_stage == "redshift", "linearize must run after redshift"
-    lin = Linearizer(w_func)
+    lin = Linearizer(vm, w_func)
     return lin.linearize()
 
 
@@ -93,7 +94,8 @@ class Linearizer:
     # expression (either from a BlockExpr body, or from spilling)
     hoisted: list[ast.Stmt]
 
-    def __init__(self, w_func: W_ASTFunc) -> None:
+    def __init__(self, vm: "SPyVM", w_func: W_ASTFunc) -> None:
+        self.vm = vm
         self.w_func = w_func
         self.new_locals = {}
         self.new_symbols: list[Symbol] = []
@@ -172,10 +174,11 @@ class Linearizer:
 
     def _is_trivial(self, expr: ast.Expr) -> bool:
         """
-        Return True if expr is side-effect free and cheap (name or constant).
-        No need to spill these.
+        Return True if expr is side-effect free and doesn't need spilling.
+        This includes constants, names, and calls to pure functions with
+        trivial arguments.
         """
-        return isinstance(
+        if isinstance(
             expr,
             (
                 ast.Constant,
@@ -185,7 +188,13 @@ class Linearizer:
                 ast.NameOuterCell,
                 ast.LocConst,
             ),
-        )
+        ):
+            return True
+        if isinstance(expr, ast.Call) and isinstance(expr.func, ast.FQNConst):
+            w_func = self.vm.lookup_global(expr.func.fqn)
+            if isinstance(w_func, W_Func) and w_func.is_pure():
+                return True
+        return False
 
     def visit_exprs_with_spilling(self, exprs: list[ast.Expr]) -> list[ast.Expr]:
         """
