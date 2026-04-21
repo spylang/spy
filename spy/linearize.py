@@ -340,17 +340,70 @@ class Linearizer:
         new_args = new_operands[1:]
         return call.replace(func=new_func, args=new_args)
 
-    def visit_expr_And(self, op: ast.And) -> ast.Expr:
-        # XXX TODO: lower into if/else when RHS has hoisted stmts
+    def _lower_and_or(self, op: ast.Expr) -> ast.Expr:
+        """
+        Lower `a and b` or `a or b` into an if/else when the RHS produces
+        hoisted stmts (e.g. from a BlockExpr), to preserve short-circuit
+        semantics.
+
+        `a and b` becomes:
+            if a:
+                <hoisted from b>
+                $tmp = b
+            else:
+                $tmp = a
+            result: $tmp
+
+        `a or b` is the same but with swapped branches.
+        """
+        assert isinstance(op, (ast.And, ast.Or))
         new_left = self.visit_expr(op.left)
+        saved = self.hoisted
+        self.hoisted = []
         new_right = self.visit_expr(op.right)
-        return op.replace(left=new_left, right=new_right)
+        rhs_hoisted = self.hoisted
+        self.hoisted = saved
+        if not rhs_hoisted:
+            return op.replace(left=new_left, right=new_right)
+        assert op.w_T is not None
+        tmp = self.fresh_tmp(op.w_T)
+        sym = Symbol(
+            tmp,
+            "var",
+            "auto",
+            "direct",
+            loc=op.loc,
+            type_loc=op.loc,
+            level=0,
+        )
+        self.new_symbols.append(sym)
+        tmp_name = ast.StrConst(op.loc, tmp)
+        assign_right = ast.AssignLocal(op.loc, target=tmp_name, value=new_right)
+        assign_left = ast.AssignLocal(op.loc, target=tmp_name, value=new_left)
+
+        if isinstance(op, ast.And):
+            then_body = rhs_hoisted + [assign_right]
+            else_body = [assign_left]
+        elif isinstance(op, ast.Or):
+            then_body = [assign_left]
+            else_body = rhs_hoisted + [assign_right]
+        else:
+            assert False
+
+        if_stmt = ast.If(
+            loc=op.loc,
+            test=new_left,
+            then_body=then_body,
+            else_body=else_body,
+        )
+        self.hoisted.append(if_stmt)
+        return ast.NameLocalDirect(loc=op.loc, sym=sym, w_T=op.w_T)
+
+    def visit_expr_And(self, op: ast.And) -> ast.Expr:
+        return self._lower_and_or(op)
 
     def visit_expr_Or(self, op: ast.Or) -> ast.Expr:
-        # XXX TODO: lower into if/else when RHS has hoisted stmts
-        new_left = self.visit_expr(op.left)
-        new_right = self.visit_expr(op.right)
-        return op.replace(left=new_left, right=new_right)
+        return self._lower_and_or(op)
 
     def visit_expr_AssignExprLocal(self, assignexpr: ast.AssignExprLocal) -> ast.Expr:
         new_value = self.visit_expr(assignexpr.value)

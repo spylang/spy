@@ -119,6 +119,75 @@ class TestLinearize(CompilerTest):
             """
             self.assert_linearize("foo", expected)
 
+    def test_and(self, capfd):
+        # `and` is short-circuit: if the LHS is False, the RHS must NOT be
+        # evaluated. This becomes tricky in case RHS contains a BlockExpr or any other
+        # statement which must be hoisted: in that case, we must ensure to evaluate
+        # those statements only if LHS is True, by inserting an explicit if.
+        src = """
+        def side_effect() -> bool:
+            print('rhs')
+            return True
+
+        def foo(x: bool) -> bool:
+            return x and __block__('''
+                y: bool = side_effect()
+                y
+            ''')
+        """
+        mod = self.compile(src)
+        assert mod.foo(False) == False
+        if self.backend == "C":
+            mod.ll.call("spy_flush")
+        out, err = capfd.readouterr()
+        assert out == ""
+        #
+        if self.backend == "linearize":
+            expected = """
+            def foo(x: bool) -> bool:
+                if x:
+                    y: bool = `test::side_effect`()
+                    $v0: bool
+                    $v0 = y
+                else:
+                    $v0 = x
+                return $v0
+            """
+            self.assert_linearize("foo", expected)
+
+    def test_or(self, capfd):
+        # `or` is short-circuit: see also test_and
+        src = """
+        def side_effect() -> bool:
+            print('rhs')
+            return False
+
+        def foo(x: bool) -> bool:
+            return x or __block__('''
+                y: bool = side_effect()
+                y
+            ''')
+        """
+        mod = self.compile(src)
+        assert mod.foo(True) == True
+        if self.backend == "C":
+            mod.ll.call("spy_flush")
+        out, err = capfd.readouterr()
+        assert out == ""
+        #
+        if self.backend == "linearize":
+            expected = """
+            def foo(x: bool) -> bool:
+                if x:
+                    $v0: bool
+                    $v0 = x
+                else:
+                    y: bool = `test::side_effect`()
+                    $v0 = y
+                return $v0
+            """
+            self.assert_linearize("foo", expected)
+
     def test_blockexpr_simple(self):
         src = """
         def foo(a: i32) -> i32:
