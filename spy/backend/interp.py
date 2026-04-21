@@ -50,12 +50,13 @@ class InterpModuleWrapper:
             w_func = w_obj
             if not w_func.is_valid:
                 if self.backend == "linearize":
+                    # XXX FIX!
                     # linearize_all() replaced the redshifted func in globals_w
                     w_func = self.vm.lookup_global(w_func.fqn)
                 else:
-                    assert w_func.w_redshifted_into is not None
-                    w_func = w_func.w_redshifted_into
-                    assert w_func.redshifted
+                    assert w_func.w_replaced_by is not None
+                    w_func = w_func.w_replaced_by
+                    assert w_func.lowering_stage != "source"
                     assert self.vm.lookup_global(w_func.fqn) is w_func
             return InterpFuncWrapper(self.vm, w_func)
         elif isinstance(w_obj, W_Func):

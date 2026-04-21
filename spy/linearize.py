@@ -75,7 +75,7 @@ def linearize(w_func: W_ASTFunc) -> W_ASTFunc:
     """
     Run the linearize pass on the given already-redshifted function.
     """
-    assert w_func.redshifted, "linearize must run after redshift"
+    assert w_func.lowering_stage == "redshift", "linearize must run after redshift"
     lin = Linearizer(w_func)
     return lin.linearize()
 
@@ -112,6 +112,7 @@ class Linearizer:
             w_functype=self.w_func.w_functype,
             funcdef=new_funcdef,
             defaults_w=self.w_func.defaults_w,
+            lowering_stage="linearize",
             locals_types_w=new_locals_types_w,
         )
 

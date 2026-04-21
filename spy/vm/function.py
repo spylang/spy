@@ -376,9 +376,11 @@ class W_ASTFunc(W_Func):
         self.lowering_stage = lowering_stage
         self.w_replaced_by = None
 
-    @property
-    def lowered(self) -> bool:
-        return self.locals_types_w is not None
+        # sanity check
+        if lowering_stage == "source":
+            assert self.locals_types_w is None
+        else:
+            assert self.locals_types_w is not None
 
     @property
     def is_valid(self) -> bool:
@@ -391,6 +393,12 @@ class W_ASTFunc(W_Func):
         assert self.fqn == w_func.fqn
         assert self.w_replaced_by is None
         self.w_replaced_by = w_func
+
+    def get_most_lowered_version(self) -> "W_ASTFunc":
+        w_func = self
+        while w_func.w_replaced_by is not None:
+            w_func = w_func.w_replaced_by
+        return w_func
 
     def __repr__(self) -> str:
         extras = []

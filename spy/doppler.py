@@ -110,7 +110,7 @@ class DopplerFrame(ASTFrame):
         return True
 
     def redshift(self) -> W_ASTFunc:
-        assert not self.w_func.redshifted, "cannot redshit twice"
+        assert self.w_func.lowering_stage == "source", "cannot redshift twice"
         self.declare_arguments()
         funcdef = self.w_func.funcdef
         new_body = []
@@ -135,10 +135,11 @@ class DopplerFrame(ASTFrame):
             w_functype=w_newfunctype,
             funcdef=new_funcdef,
             defaults_w=self.w_func.defaults_w,
+            lowering_stage="redshift",
             locals_types_w=self.get_locals_types_w(),
         )
         # mark the original function as invalid
-        self.w_func.invalidate(w_newfunc)
+        self.w_func.replace_with(w_newfunc)
         return w_newfunc
 
     # =========
