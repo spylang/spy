@@ -1,4 +1,4 @@
-name: Run Tests with Pixi
+name: Run Pixi Tests
 
 on:
   push:
