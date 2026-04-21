@@ -112,7 +112,7 @@ class Linearizer:
         new_locals_types_w = dict(self.w_func.locals_types_w)
         new_locals_types_w.update(self.new_locals)
 
-        return W_ASTFunc(
+        w_newfunc = W_ASTFunc(
             fqn=self.w_func.fqn,
             closure=self.w_func.closure,
             w_functype=self.w_func.w_functype,
@@ -121,6 +121,9 @@ class Linearizer:
             lowering_stage="linearize",
             locals_types_w=new_locals_types_w,
         )
+        # mark the original function as invalid
+        self.w_func.replace_with(w_newfunc)
+        return w_newfunc
 
     # ==== helpers ====
 
