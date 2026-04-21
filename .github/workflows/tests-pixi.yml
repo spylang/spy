@@ -51,7 +51,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pixi run -e test-xdist pytest -n auto -m "not mypy" --junit-xml=test-results.xml
+          pixi run pytest -n auto -m "not mypy" --junit-xml=test-results.xml
 
       - name: Run mypy
         run: |

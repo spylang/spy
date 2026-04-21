@@ -22,6 +22,7 @@ dependencies = [
 dev = [
     "pdbpp>=0.11.7",
     "pytest==8.3.4",
+    "pytest-xdist==3.8.0",
     "ruff~=0.14.0",
     "mypy==1.15.0",
     "types-pexpect==4.9.0.20250516; sys_platform != 'emscripten'",
@@ -33,10 +34,6 @@ dev = [
     "pyodide-py==0.27.2; sys_platform != 'emscripten'",
     "pre-commit==4.3.0",
     "rodney>=0.4.0",
-]
-
-test-xdist = [
-    "pytest-xdist",
 ]
 
 docs = [
@@ -129,13 +126,16 @@ avoid-escape = true
 channels = ["conda-forge"]
 platforms = ["linux-64", "osx-arm64"]
 
+[tool.pixi.dependencies]
+# conda-forge packages
+bdw-gc = ">=8.2.12,<9"
+
 [tool.pixi.pypi-dependencies]
 spylang = { path = ".", editable = true }
 
 [tool.pixi.environments]
 default = { features = ["dev"], solve-group = "default" }
 docs = { features = ["docs"], solve-group = "default" }
-test-xdist = { features = ["dev", "test-xdist"], solve-group = "default" }
 
 [tool.pixi.activation.env]
 LIBRARY_PATH = "$PIXI_PROJECT_ROOT/.pixi/envs/default/lib:$LIBRARY_PATH"
@@ -144,6 +144,7 @@ C_INCLUDE_PATH = "$PIXI_PROJECT_ROOT/.pixi/envs/default/include:$C_INCLUDE_PATH"
 [tool.pixi.tasks]
 make-libspy = "make -C spy/libspy"
 test = "pytest spy/tests -v"
+test-xdist = "pytest -n auto -m 'not mypy'"
 check-lint = "ruff check ."
 check-fmt = "ruff format --check ."
 fmt-py = "ruff format ."
@@ -151,9 +152,3 @@ fmt-py = "ruff format ."
 [tool.pixi.feature.docs.tasks]
 doc-build = { cmd = "mkdocs build", cwd = "docs" }
 doc-serve = { cmd = "mkdocs serve", cwd = "docs" }
-
-[tool.pixi.feature.test-xdist.tasks]
-test-xdist = "pytest -n auto -m 'not mypy'"
-
-[tool.pixi.dependencies]
-bdw-gc = ">=8.2.12,<9"
