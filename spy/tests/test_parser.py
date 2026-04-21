@@ -717,7 +717,7 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
-    def test_AugAssign_attribute(self, op):
+    def test_AugSetAttr(self, op):
         mod = self.parse(f"""
         def foo() -> None:
             a = obj()
@@ -725,23 +725,17 @@ class TestParser:
         """)
         stmt = mod.get_funcdef("foo").body[1]
         expected = f"""
-        SetAttr(
+        AugSetAttr(
             target=Name(id='a'),
             attr=StrConst(value='b'),
-            value=BinOp(
-                op='{op}',
-                left=GetAttr(
-                    value=Name(id='a'),
-                    attr=StrConst(value='b'),
-                ),
-                right=Constant(value=42),
-            ),
+            op='{op}',
+            value=Constant(value=42),
         )
         """
         self.assert_dump(stmt, expected)
 
     @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
-    def test_AugAssign_subscript(self, op):
+    def test_AugSetItem(self, op):
         mod = self.parse(f"""
         def foo() -> None:
             arr = [1, 2, 3]
@@ -749,27 +743,19 @@ class TestParser:
         """)
         stmt = mod.get_funcdef("foo").body[1]
         expected = f"""
-        SetItem(
+        AugSetItem(
             target=Name(id='arr'),
             args=[
                 Constant(value=1),
             ],
-            value=BinOp(
-                op='{op}',
-                left=GetItem(
-                    value=Name(id='arr'),
-                    args=[
-                        Constant(value=1),
-                    ],
-                ),
-                right=Constant(value=42),
-            ),
+            op='{op}',
+            value=Constant(value=42),
         )
         """
         self.assert_dump(stmt, expected)
 
     @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
-    def test_AugAssign_subscript_multiple_indices(self, op):
+    def test_AugSetItem_multiple_indices(self, op):
         mod = self.parse(f"""
         def foo() -> None:
             matrix = [[1, 2], [3, 4]]
@@ -779,23 +765,14 @@ class TestParser:
         """)
         stmt = mod.get_funcdef("foo").body[3]
         expected = f"""
-        SetItem(
+        AugSetItem(
             target=Name(id='matrix'),
             args=[
                 Name(id='i'),
                 Name(id='j'),
             ],
-            value=BinOp(
-                op='{op}',
-                left=GetItem(
-                    value=Name(id='matrix'),
-                    args=[
-                        Name(id='i'),
-                        Name(id='j'),
-                    ],
-                ),
-                right=Constant(value=1),
-            ),
+            op='{op}',
+            value=Constant(value=1),
         )
         """
         self.assert_dump(stmt, expected)
