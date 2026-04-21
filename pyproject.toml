@@ -129,6 +129,7 @@ platforms = ["linux-64", "osx-arm64"]
 [tool.pixi.dependencies]
 # conda-forge packages
 bdw-gc = ">=8.2.12,<9"
+python = "3.12.*"
 
 [tool.pixi.pypi-dependencies]
 spylang = { path = ".", editable = true }
@@ -138,8 +139,9 @@ default = { features = ["dev"], solve-group = "default" }
 docs = { features = ["docs"], solve-group = "default" }
 
 [tool.pixi.activation.env]
-LIBRARY_PATH = "$PIXI_PROJECT_ROOT/.pixi/envs/default/lib:$LIBRARY_PATH"
 C_INCLUDE_PATH = "$PIXI_PROJECT_ROOT/.pixi/envs/default/include:$C_INCLUDE_PATH"
+LIBRARY_PATH = "$PIXI_PROJECT_ROOT/.pixi/envs/default/lib:$LIBRARY_PATH"
+DYLD_LIBRARY_PATH = "$PIXI_PROJECT_ROOT/.pixi/envs/default/lib:$DYLD_LIBRARY_PATH"
 
 [tool.pixi.tasks]
 make-libspy = "make -C spy/libspy"
