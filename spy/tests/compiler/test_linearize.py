@@ -215,6 +215,13 @@ class TestLinearize(CompilerTest):
             ''')
         """)
         assert mod.foo(42) == 42
+        #
+        if self.backend == "linearize":
+            expected = """
+            def foo(a: i32) -> i32:
+                return a
+            """
+            self.assert_linearize("foo", expected)
 
     def test_blockepxr_multiple_stmts(self):
         mod = self.compile("""
@@ -226,6 +233,15 @@ class TestLinearize(CompilerTest):
             ''')
         """)
         assert mod.foo(1, 2) == 3
+        #
+        if self.backend == "linearize":
+            expected = """
+            def foo(a: i32, b: i32) -> i32:
+                x: i32 = a
+                y: i32 = b
+                return x + y
+            """
+            self.assert_linearize("foo", expected)
 
     def test_blockexpr_in_call_args(self):
         mod = self.compile("""
@@ -251,13 +267,30 @@ class TestLinearize(CompilerTest):
             )
         """)
         assert mod.foo() == 30
+        #
+        if self.backend == "linearize":
+            expected = """
+            def foo() -> i32:
+                a: i32 = `test::f`()
+                b: i32 = `test::g`()
+                return `test::add`(a, b)
+            """
+            self.assert_linearize("foo", expected)
 
     def test_blockexpr_in_binop(self):
         mod = self.compile("""
-        def foo(a: i32) -> i32:
+        def foo(a: i32, b: i32) -> i32:
             return a + __block__('''
-                x: i32 = a
+                x: i32 = b
                 x + 3
             ''')
         """)
-        assert mod.foo(2) == 7
+        assert mod.foo(2, 5) == 10
+        #
+        if self.backend == "linearize":
+            expected = """
+            def foo(a: i32, b: i32) -> i32:
+                x: i32 = b
+                return a + x + 3
+            """
+            self.assert_linearize("foo", expected)
