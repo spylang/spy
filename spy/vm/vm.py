@@ -219,9 +219,6 @@ class SPyVM:
     def linearize_all(self) -> None:
         """
         Apply the linearize pass to all redshifted W_ASTFuncs.
-
-        This is meant to be called only by tests and the CLI. The C backend
-        calls linearize on each function individually in CFuncWriter.
         """
         for fqn, w_obj in list(self.globals_w.items()):
             if isinstance(w_obj, W_ASTFunc) and w_obj.lowering_stage == "redshift":

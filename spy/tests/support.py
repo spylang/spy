@@ -183,11 +183,14 @@ class CompilerTest:
                      InterpModuleWrapper object.
         - `C`: compiles the module to C and then builds it to a WASM and wraps the
                result in a WasmModuleWrapper object.
-        unless while using @only_emscripten decorator, in which case the following
-        backend is used:
+
+        In test_linearize.py we add a new backend:
+        - `linearize`: like `doppler`, but also run the linearize step (which is
+          normally only done by the C backend)
+
+        If you use the @only_emscripten decorator, the following backend is used:
         - `emscripten`: compiles the module to C and then builds it to a JS
                         executable, wrapping the result in an ExeWrapper object.
-
         """
         self.write_file(f"{modname}.spy", src)
         self.w_mod = self.vm.import_(modname)

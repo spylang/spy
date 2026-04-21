@@ -6,7 +6,6 @@ from spy.backend.c import c_ast as C
 from spy.backend.c.context import C_Ident, Context
 from spy.errors import SPyError
 from spy.fqn import FQN
-from spy.linearize import linearize
 from spy.location import Loc
 from spy.textbuilder import TextBuilder
 from spy.util import magic_dispatch, shortrepr
@@ -25,7 +24,6 @@ class CFuncWriter:
     cmodw: "CModuleWriter"
     tbc: TextBuilder
     fqn: FQN
-    w_func_orig: W_ASTFunc
     w_func: W_ASTFunc
     last_emitted_linenos: tuple[int, int]
 
@@ -38,11 +36,8 @@ class CFuncWriter:
         self.fqn = fqn
         self.last_emitted_linenos = (-1, -1)  # see emit_lineno_maybe
 
-        # w_func_orig is the original redshifted function; w_func is the linearized
-        # version, to ensure that expressions are evaluated left-to-right and BlockExpr
-        # are lowered.
-        self.w_func_orig = w_func
-        self.w_func = linearize(w_func)
+        assert w_func.lowering_stage == "linearize"
+        self.w_func = w_func
 
     def ppc(self) -> None:
         """
