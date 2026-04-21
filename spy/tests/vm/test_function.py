@@ -28,9 +28,16 @@ def make_FuncType(
     return W_FuncType.new(params, w_restype, color=color, kind=kind)
 
 
-def make_w_func(fqn_s: str, *, lowering_stage: LoweringStage = "source") -> W_ASTFunc:
+def make_w_func(
+    fqn_s: str,
+    *,
+    lowering_stage: LoweringStage = "source",
+) -> W_ASTFunc:
     loc = Loc.fake()
     w_functype = make_FuncType(B.w_i32, w_restype=B.w_i32)
+    locals_types_w: dict[str, W_Type] | None = None
+    if lowering_stage != "source":
+        locals_types_w = {}
     fqn = FQN(fqn_s)
     funcdef = ast.FuncDef(
         loc=loc,
@@ -55,6 +62,7 @@ def make_w_func(fqn_s: str, *, lowering_stage: LoweringStage = "source") -> W_AS
         closure=(),
         defaults_w=[],
         lowering_stage=lowering_stage,
+        locals_types_w=locals_types_w,
     )
 
 
