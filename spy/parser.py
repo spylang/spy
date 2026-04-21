@@ -506,20 +506,12 @@ class Parser:
             )
         elif isinstance(py_target, py_ast.Attribute):
             # Attribute access: a.b += 1
-            return spy.ast.SetAttr(
+            return spy.ast.AugSetAttr(
                 loc=py_node.loc,
+                op=op,
                 target=self.from_py_expr(py_target.value),
                 attr=spy.ast.StrConst(py_target.loc, py_target.attr),
-                value=spy.ast.BinOp(
-                    loc=py_node.loc,
-                    op=op,
-                    left=spy.ast.GetAttr(
-                        loc=py_node.loc,
-                        value=self.from_py_expr(py_target.value),
-                        attr=spy.ast.StrConst(py_target.loc, py_target.attr),
-                    ),
-                    right=self.from_py_expr(py_node.value),
-                ),
+                value=self.from_py_expr(py_node.value),
             )
         elif isinstance(py_target, py_ast.Subscript):
             # Subscript access: arr[i] += 1
@@ -531,20 +523,12 @@ class Parser:
             else:
                 args = [index]
 
-            return spy.ast.SetItem(
+            return spy.ast.AugSetItem(
                 loc=py_node.loc,
+                op=op,
                 target=target,
                 args=args,
-                value=spy.ast.BinOp(
-                    loc=py_node.loc,
-                    op=op,
-                    left=spy.ast.GetItem(
-                        loc=py_target.loc,
-                        value=target,
-                        args=args,
-                    ),
-                    right=self.from_py_expr(py_node.value),
-                ),
+                value=self.from_py_expr(py_node.value),
             )
         else:
             self.unsupported(py_target, "assign to complex expressions")

@@ -601,9 +601,25 @@ class SetAttr(Stmt):
 
 
 @astnode
+class AugSetAttr(Stmt):
+    target: Expr
+    attr: StrConst
+    op: str
+    value: Expr
+
+
+@astnode
 class SetItem(Stmt):
     target: Expr
     args: list[Expr]
+    value: Expr
+
+
+@astnode
+class AugSetItem(Stmt):
+    target: Expr
+    args: list[Expr]
+    op: str
     value: Expr
 
 
