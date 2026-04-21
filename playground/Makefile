@@ -37,6 +37,7 @@ local:
 	cp $(BUILD_DIR)/libspy.mjs .
 	cp $(BUILD_DIR)/libspy.wasm .
 	cp $(DIST_DIR)/spylang-*.whl .
+	python create_symlinks_spy_files.py
 
 	@echo "Copying assets..."
 	cp -rv $(ROOT_DIR)/assets .
@@ -47,3 +48,4 @@ local:
 clean:
 	rm -f libspy.mjs libspy.wasm spylang-*.whl
 	rm -rf assets
+	rm -f *.spy

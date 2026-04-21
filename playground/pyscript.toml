@@ -3,8 +3,8 @@ packages = [ "micropip"]
 
 [files]
 "pyscript.toml" = ""
-"hello.spy" = "examples/"
-"bluefunc.spy" = "examples/"
+"hello_add.spy" = "examples/"
+"bluefunc_adder.spy" = "examples/"
 "point.spy" = "examples/"
 "myarray.spy" = "examples/"
 "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/jquery.py" = "ltk/jquery.py"
