@@ -6,8 +6,13 @@ from typing import (
     Any,
     Callable,
     Iterable,
+    Optional,
     Sequence,
 )
+
+# On emscripten, spy_command uses asyncio.create_task() instead of asyncio.run().
+# This variable holds the last task created, so callers can await it if needed.
+last_task: Optional[asyncio.Task] = None  # type: ignore[type-arg]
 
 import click
 import typer
@@ -140,8 +145,10 @@ class SpyTyper(typer.Typer):
         def syncify(f: Callable[["Base_Args"], Any]) -> Callable[["Base_Args"], Any]:
             @wraps(f)
             def inner(args: "Base_Args") -> Any:
+                global last_task
                 if sys.platform == "emscripten":
-                    return asyncio.create_task(_pyodide_main(f, args))
+                    last_task = asyncio.create_task(_pyodide_main(f, args))
+                    return last_task
                 else:
                     return asyncio.run(_run_command(f, args))
 

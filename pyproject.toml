@@ -66,6 +66,7 @@ include = ["spy*", "stdlib"]
 # https://setuptools.pypa.io/en/latest/userguide/datafiles.html#interplay-between-these-keywords
 [tool.setuptools.package-data]
 stdlib = ["*.spy"]
+"spy.backend" = ["spyast.js"]
 
 [tool.pytest.ini_options]
 testpaths = ["spy"]

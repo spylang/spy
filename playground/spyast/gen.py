@@ -6,6 +6,7 @@ THIS FILE IS NOT A FUNCTIONAL PART OF SPy
 
 import dataclasses
 import json
+import pathlib
 
 from toyast import EXAMPLE, Expr, Module, Node, UnaryOp
 
@@ -80,6 +81,8 @@ def to_dict(node):
     return result
 
 
+here = pathlib.Path(__file__).parent
+spyast_js = (here / "../../spy/backend/spyast.js").read_text()
 ast_json = json.dumps(to_dict(EXAMPLE))
 
 html = f"""<!DOCTYPE html>
@@ -91,15 +94,14 @@ html = f"""<!DOCTYPE html>
 <body style="background:#f8fafc; padding:20px; font-family:sans-serif;">
   <h2>AST: EXAMPLE</h2>
   <svg id="diagram"></svg>
-  <script src="spyast.js"></script>
+  <script>
+{spyast_js}
+</script>
   <script>SPyAstViz.render(document.getElementById('diagram'), {ast_json});</script>
 </body>
 </html>
 """
 
-import pathlib
-
-here = pathlib.Path(__file__).parent
 with open(here / "output.html", "w") as f:
     f.write(html)
 
