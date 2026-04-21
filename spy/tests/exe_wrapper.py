@@ -12,10 +12,10 @@ class ExeWrapper:
 
     def run(self, *args: str) -> str:
         if self.f.ext == ".mjs":
-            # run with node
-            cmdline = ["node", str(self.f)]
-            cmdline += list(args)
-            out = subprocess.check_output(cmdline)
-            return out.decode("utf-8")
+            cmdline = ["node"]  # run with node
         else:
-            raise NotImplementedError
+            cmdline = []
+        cmdline += [str(self.f)]
+        cmdline += list(args)
+        out = subprocess.check_output(cmdline)
+        return out.decode("utf-8")

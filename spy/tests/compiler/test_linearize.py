@@ -41,32 +41,41 @@ class TestLinearize(CompilerTest):
             """
             self.assert_linearize("foo", expected)
 
-    @pytest.mark.skip("FIXME")
     def test_call_order(self):
+        # see also the related TestNative.test_call_order.
+        #
+        # In C, call order is not specified. This test happened to pass "by chance" when
+        # compiled to WASM (the default for the C backend), but to fail when compiled to
+        # x86_64, which is what we test in TestNative.
         src = """
+        var log: i32 = 0
+
+        def f1() -> i32:
+            log = log * 10 + 1
+            return 10
+
+        def f2() -> i32:
+            log = log * 10 + 2
+            return 3
+
+        def sub(a: i32, b: i32) -> i32:
+            return a - b
+
         def foo() -> i32:
-            return 1
-
-        def bar() -> i32:
-            return 2
-
-        def add(a: i32, b: i32) -> i32:
-            return a + b
-
-        def main() -> i32:
-            return add(foo(), bar())
+            res = sub(f1(), f2())
+            return log * 10 + res
         """
         mod = self.compile(src)
-        assert mod.main() == 3
+        assert mod.foo() == 127
         #
         if self.backend == "linearize":
             expected = """
-            def main() -> i32:
-                $v0: i32 = foo()
-                $v1: i32 = bar()
-                return add($v0, $v1)
+            def foo() -> i32:
+                $v0: i32 = f1()
+                res = `test::sub`($v0, f2())
+                return `test::log` * 10 + res
             """
-            self.assert_linearize("main", expected)
+            self.assert_linearize("foo", expected)
 
     def test_blockexpr_simple(self):
         src = """
