@@ -41,41 +41,40 @@ class TestLinearize(CompilerTest):
             """
             self.assert_linearize("foo", expected)
 
-    def test_call_order(self):
+    def test_call_order(self, capfd):
         # see also the related TestNative.test_call_order.
         #
         # In C, call order is not specified. This test happened to pass "by chance" when
         # compiled to WASM (the default for the C backend), but to fail when compiled to
         # x86_64, which is what we test in TestNative.
         src = """
-        var log: i32 = 0
-
         def f1() -> i32:
-            log = log * 10 + 1
+            print('f1')
             return 10
 
         def f2() -> i32:
-            log = log * 10 + 2
+            print('f2')
             return 3
 
         def sub(a: i32, b: i32) -> i32:
             return a - b
 
         def foo() -> i32:
-            res = sub(f1(), f2())
-            return log * 10 + res
+            return sub(f1(), f2())
         """
         mod = self.compile(src)
-        assert mod.foo() == 127
+        assert mod.foo() == 7
+        if self.backend == "C":
+            mod.ll.call("spy_flush")
+        out, err = capfd.readouterr()
+        assert out.splitlines() == ["f1", "f2"]
         #
         if self.backend == "linearize":
             expected = """
             def foo() -> i32:
                 $v0: i32 = `test::f1`()
                 $v1: i32 = `test::f2`()
-                res: i32
-                res = `test::sub`($v0, $v1)
-                return `test::log` * 10 + res
+                return `test::sub`($v0, $v1)
             """
             self.assert_linearize("foo", expected)
 
