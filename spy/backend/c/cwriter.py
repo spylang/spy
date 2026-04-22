@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 from spy import ast
 from spy.backend.c import c_ast as C
 from spy.backend.c.context import C_Ident, Context
+from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.textbuilder import TextBuilder
@@ -309,7 +310,14 @@ class CFuncWriter:
             assert w_obj.h == 0, "only NULL _FILE can be a constant"
             return C.Literal("NULL")
         else:
-            assert False
+            w_T = self.ctx.vm.dynamic_type(w_obj)
+            t = w_T.fqn.human_name
+            raise SPyError.simple(
+                "W_WIP",
+                f"Prebuilt constant of type `{t}` are not supported by the C backend",
+                f"This is `{t}`",
+                const.loc,
+            )
 
     def fmt_expr_Name(self, name: ast.Name) -> C.Expr:
         assert False, "ast.Name nodes should not survive redshifting"
