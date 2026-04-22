@@ -1,0 +1,3 @@
+argv:
+/home/users/augier3pi/dev/spy/examples/exit_code.spy
+exit code: 88

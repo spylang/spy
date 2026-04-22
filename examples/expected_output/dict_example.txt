@@ -1,0 +1,2 @@
+20
+<spy struct _dict::dict[i32, i32]::_dict({'__ll__': W_Ptr('gc', _dict::dict[i32, i32]::DictData, 0x1001460, length=1)})>

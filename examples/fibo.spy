@@ -10,9 +10,10 @@ def fibo(n: int) -> int:
 
 def main() -> None:
     a = time.time()
-    fibo(40)
+    result = fibo(15)
     b = time.time()
-    print(b - a)
+    print(result)
+    print("# " + str(b - a))
 
 
 # main()
