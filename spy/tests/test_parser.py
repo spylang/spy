@@ -1708,6 +1708,6 @@ class TestParser:
         mod = self.parse("""
         "The docstring"
         a = 1
-        "A module-level string"
+        "This string will be ignored"
         """)
         assert mod.docstring == "The docstring"
