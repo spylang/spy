@@ -1,6 +1,5 @@
-
-from pathlib import Path
 import tomllib
+from pathlib import Path
 
 path_playground = Path(__file__).parent.absolute()
 path_examples = path_playground.parent / "examples"
