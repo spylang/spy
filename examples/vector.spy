@@ -2,6 +2,7 @@
 
 from unsafe import gc_alloc, gc_ptr
 
+
 @struct
 class Vector:
     capacity: i32
@@ -16,12 +17,14 @@ class Vector:
 #     v = gc_alloc[Vector](1)   # allocate a new Vector
 #     v.capacity  # read the field "capacity" of the Vector "v"
 
+
 def vector_new(capacity: i32) -> gc_ptr[Vector]:
     v: gc_ptr[Vector] = gc_alloc[Vector](1)
     v.capacity = capacity
     v.length = 0
     v.items = gc_alloc[i32](capacity)
     return v
+
 
 def vector_append(v: gc_ptr[Vector], item: i32) -> None:
     if v.length >= v.capacity:
@@ -30,11 +33,12 @@ def vector_append(v: gc_ptr[Vector], item: i32) -> None:
         i = 0
         while i < v.length:
             new_items[i] = v.items[i]
-            i = i+1
+            i = i + 1
         v.items = new_items
         v.capacity = new_capacity
     v.items[v.length] = item
-    v.length = v.length+1
+    v.length = v.length + 1
+
 
 def vector_get(v: gc_ptr[Vector], index: i32) -> i32:
     if index < 0:
@@ -42,6 +46,7 @@ def vector_get(v: gc_ptr[Vector], index: i32) -> i32:
     if index >= v.length:
         print("Index out of bounds")
     return v.items[index]
+
 
 def vector_set(v: gc_ptr[Vector], index: i32, item: i32) -> None:
     if index < 0:
@@ -51,14 +56,17 @@ def vector_set(v: gc_ptr[Vector], index: i32, item: i32) -> None:
         print("Index out of bounds")
     v.items[index] = item
 
+
 def vector_len(v: gc_ptr[Vector]) -> i32:
     return v.length
+
 
 def vector_print(v: gc_ptr[Vector]) -> None:
     i = 0
     while i < v.length:
         print(v.items[i])
-        i = i+1
+        i = i + 1
+
 
 def test_vector() -> None:
     v = vector_new(2)
@@ -87,7 +95,7 @@ def test_vector() -> None:
     if vector_get(v, 1) != 25:
         print("Test failed: Second item should be 25 after set")
 
-    #vector_get(v, 5) # PANIC
+    # vector_get(v, 5) # PANIC
 
     print("All tests completed")
 
@@ -96,10 +104,11 @@ def test_squares(n: i32) -> None:
     v = vector_new(n)
     i = 0
     while i < n:
-        vector_append(v, i*i)
-        i = i+1
+        vector_append(v, i * i)
+        i = i + 1
     vector_print(v)
 
+
 def main() -> None:
-    #test_vector()
+    # test_vector()
     test_squares(100)

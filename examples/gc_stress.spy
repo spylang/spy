@@ -6,6 +6,7 @@ from unsafe import gc_alloc, gc_ptr
 # With --gc=none, RAM usage grows unbounded because allocations are never freed.
 # With --gc=bdwgc, the Boehm GC reclaims unused memory, so RAM stays bounded.
 
+
 def allocate_and_discard(size: i32, iterations: i32) -> i32:
     result: i32 = 0
     i: i32 = 0
@@ -20,6 +21,7 @@ def allocate_and_discard(size: i32, iterations: i32) -> i32:
         # buf goes out of scope here -- with GC it can be reclaimed
         i = i + 1
     return result
+
 
 def main() -> None:
     # Each iteration allocates 1M i32s = 4 MB
