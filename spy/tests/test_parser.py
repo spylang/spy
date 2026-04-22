@@ -786,6 +786,90 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
+    @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
+    def test_AugAssign_attribute(self, op):
+        mod = self.parse(f"""
+        def foo() -> None:
+            a = obj()
+            a.b {op}= 42
+        """)
+        stmt = mod.get_funcdef("foo").body[1]
+        expected = f"""
+        SetAttr(
+            target=Name(id='a'),
+            attr=StrConst(value='b'),
+            value=BinOp(
+                op='{op}',
+                left=GetAttr(
+                    value=Name(id='a'),
+                    attr=StrConst(value='b'),
+                ),
+                right=Constant(value=42),
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
+    def test_AugAssign_subscript(self, op):
+        mod = self.parse(f"""
+        def foo() -> None:
+            arr = [1, 2, 3]
+            arr[1] {op}= 42
+        """)
+        stmt = mod.get_funcdef("foo").body[1]
+        expected = f"""
+        SetItem(
+            target=Name(id='arr'),
+            args=[
+                Constant(value=1),
+            ],
+            value=BinOp(
+                op='{op}',
+                left=GetItem(
+                    value=Name(id='arr'),
+                    args=[
+                        Constant(value=1),
+                    ],
+                ),
+                right=Constant(value=42),
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
+    def test_AugAssign_subscript_multiple_indices(self, op):
+        mod = self.parse(f"""
+        def foo() -> None:
+            matrix = [[1, 2], [3, 4]]
+            i = 0
+            j = 1
+            matrix[i, j] {op}= 1
+        """)
+        stmt = mod.get_funcdef("foo").body[3]
+        expected = f"""
+        SetItem(
+            target=Name(id='matrix'),
+            args=[
+                Name(id='i'),
+                Name(id='j'),
+            ],
+            value=BinOp(
+                op='{op}',
+                left=GetItem(
+                    value=Name(id='matrix'),
+                    args=[
+                        Name(id='i'),
+                        Name(id='j'),
+                    ],
+                ),
+                right=Constant(value=1),
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
     @pytest.mark.parametrize("op", "+ - ~ not".split())
     def test_UnaryOp(self, op):
         mod = self.parse(f"""
