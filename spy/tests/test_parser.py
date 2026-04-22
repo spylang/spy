@@ -1703,3 +1703,11 @@ class TestParser:
             )
             """,
         )
+
+    def test_module_level_str(self):
+        mod = self.parse("""
+        "The docstring"
+        a = 1
+        "This string will be ignored"
+        """)
+        assert mod.docstring == "The docstring"
