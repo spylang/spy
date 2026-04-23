@@ -294,8 +294,7 @@ class DopplerFrame(ASTFrame):
         self.exec_stmt(raise_node)
         w_opimpl = self.opimpl[raise_node]
         v_exc = self.shifted_expr[raise_node.exc]
-        w_resT = w_opimpl.w_functype.w_restype
-        call = self.shift_opimpl(raise_node, w_opimpl, [v_exc], w_T=w_resT)
+        call = self.shift_opimpl(raise_node, w_opimpl, [v_exc])
         return [ast.StmtExpr(raise_node.loc, call)]
 
     def shift_stmt_Assert(self, assert_node: ast.Assert) -> list[ast.Stmt]:
@@ -381,12 +380,10 @@ class DopplerFrame(ASTFrame):
             lv = self.locals[varname]
             expT = make_const(self.vm, lv.decl_loc, lv.w_T)
             gotT = make_const(self.vm, wam.loc, wam.w_static_T)
-            w_resT = w_typeconv_opimpl.w_functype.w_restype
             new_expr = self.shift_opimpl(
                 expr,
                 w_typeconv_opimpl,
                 [expT, gotT, new_expr],
-                w_T=w_resT,
             )
 
         self.shifted_expr[expr] = new_expr
@@ -423,8 +420,6 @@ class DopplerFrame(ASTFrame):
         op: ast.Node,
         w_opimpl: W_OpImpl,
         orig_args: list[ast.Expr],
-        *,
-        w_T: "W_Type",
     ) -> ast.Expr:
         if w_opimpl.is_const():
             assert w_opimpl.w_const is not None
@@ -433,6 +428,7 @@ class DopplerFrame(ASTFrame):
         assert w_opimpl.is_func_call()
         func = make_const(self.vm, op.loc, w_opimpl.w_func)
         real_args = self._shift_opimpl_args(w_opimpl, orig_args)
+        w_T = w_opimpl.w_functype.w_restype
         return ast.Call(op.loc, func, real_args, w_T=w_T)
 
     def _shift_opimpl_args(
@@ -450,13 +446,7 @@ class DopplerFrame(ASTFrame):
                 expT = getarg(spec.expT)
                 gotT = getarg(spec.gotT)
                 arg = getarg(spec.arg)
-                w_resT = spec.w_conv_opimpl.w_functype.w_restype
-                return self.shift_opimpl(
-                    arg,
-                    spec.w_conv_opimpl,
-                    [expT, gotT, arg],
-                    w_T=w_resT,
-                )
+                return self.shift_opimpl(arg, spec.w_conv_opimpl, [expT, gotT, arg])
             else:
                 assert False
 
@@ -488,13 +478,13 @@ class DopplerFrame(ASTFrame):
         w_opimpl = self.opimpl[binop]
         l = self.shifted_expr[binop.left]
         r = self.shifted_expr[binop.right]
-        return self.shift_opimpl(binop, w_opimpl, [l, r], w_T=wam.w_static_T)
+        return self.shift_opimpl(binop, w_opimpl, [l, r])
 
     def shift_expr_CmpOp(self, op: ast.CmpOp, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]
         l = self.shifted_expr[op.left]
         r = self.shifted_expr[op.right]
-        return self.shift_opimpl(op, w_opimpl, [l, r], w_T=wam.w_static_T)
+        return self.shift_opimpl(op, w_opimpl, [l, r])
 
     def shift_expr_And(self, op: ast.And, wam: W_MetaArg) -> ast.Expr:
         l = self.shifted_expr[op.left]
@@ -509,7 +499,7 @@ class DopplerFrame(ASTFrame):
     def shift_expr_UnaryOp(self, unop: ast.UnaryOp, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[unop]
         v = self.shifted_expr[unop.value]
-        return self.shift_opimpl(unop, w_opimpl, [v], w_T=wam.w_static_T)
+        return self.shift_opimpl(unop, w_opimpl, [v])
 
     def shift_expr_List(self, lst: ast.List, wam: W_MetaArg) -> ast.Expr:
         # this logic is equivalent to what we have in eval_expr_List. Instead of
@@ -546,7 +536,7 @@ class DopplerFrame(ASTFrame):
         w_opimpl = self.opimpl[tup]
         v_T = make_const(self.vm, tup.loc, wam.w_static_T)
         newitems_v = [self.shifted_expr[item] for item in tup.items]
-        return self.shift_opimpl(tup, w_opimpl, [v_T] + newitems_v, w_T=wam.w_static_T)
+        return self.shift_opimpl(tup, w_opimpl, [v_T] + newitems_v)
 
     def shift_expr_Slice(self, op: ast.Slice, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]
@@ -554,9 +544,7 @@ class DopplerFrame(ASTFrame):
         v_start = self.shifted_expr[op.start]
         v_stop = self.shifted_expr[op.stop]
         v_step = self.shifted_expr[op.step]
-        return self.shift_opimpl(
-            op, w_opimpl, [v_T, v_start, v_stop, v_step], w_T=wam.w_static_T
-        )
+        return self.shift_opimpl(op, w_opimpl, [v_T, v_start, v_stop, v_step])
 
     def shift_expr_Dict(self, dict: ast.Dict, wam: W_MetaArg) -> ast.Expr:
         if len(dict.items) == 0:
@@ -592,13 +580,13 @@ class DopplerFrame(ASTFrame):
         w_opimpl = self.opimpl[op]
         v = self.shifted_expr[op.value]
         args = [self.shifted_expr[arg] for arg in op.args]
-        return self.shift_opimpl(op, w_opimpl, [v] + args, w_T=wam.w_static_T)
+        return self.shift_opimpl(op, w_opimpl, [v] + args)
 
     def shift_expr_GetAttr(self, op: ast.GetAttr, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]
         v = self.shifted_expr[op.value]
         v_attr = self.shifted_expr[op.attr]
-        return self.shift_opimpl(op, w_opimpl, [v, v_attr], w_T=wam.w_static_T)
+        return self.shift_opimpl(op, w_opimpl, [v, v_attr])
 
     def shift_expr_Call(self, call: ast.Call, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[call]
@@ -607,20 +595,16 @@ class DopplerFrame(ASTFrame):
 
         if self.special_calls.get(call) in ("getattr", "setattr"):
             # see also the corresponding code in ASTFrame.eval_expr_Call.
-            return self.shift_opimpl(call, w_opimpl, newargs, w_T=wam.w_static_T)
+            return self.shift_opimpl(call, w_opimpl, newargs)
         else:
-            return self.shift_opimpl(
-                call, w_opimpl, [newfunc] + newargs, w_T=wam.w_static_T
-            )
+            return self.shift_opimpl(call, w_opimpl, [newfunc] + newargs)
 
     def shift_expr_CallMethod(self, op: ast.CallMethod, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]
         v_obj = self.shifted_expr[op.target]
         v_meth = self.shifted_expr[op.method]
         newargs_v = [self.shifted_expr[arg] for arg in op.args]
-        return self.shift_opimpl(
-            op, w_opimpl, [v_obj, v_meth] + newargs_v, w_T=wam.w_static_T
-        )
+        return self.shift_opimpl(op, w_opimpl, [v_obj, v_meth] + newargs_v)
 
     def eval_expr_BlockExpr(self, block: ast.BlockExpr) -> W_MetaArg:
         # XXX EXPLAIN
