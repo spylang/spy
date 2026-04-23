@@ -511,24 +511,30 @@ class DopplerFrame(ASTFrame):
         w_T = wam.w_static_T
         # `new` is defined in the list[T] generic scope
         fqn_new = w_T.fqn.parent().join("new")
+        w_new = self.vm.lookup_global(fqn_new)
+        node_new = make_const(self.vm, lst.loc, w_new)
+        #
         fqn_push = w_T.fqn.join("_push")
+        w_push = self.vm.lookup_global(fqn_push)
+        node_push = make_const(self.vm, lst.loc, w_push)
 
         # instantiate an empty list
         newlst: ast.Expr = ast.Call(
             loc=lst.loc,
-            func=ast.FQNConst(loc=lst.loc, fqn=fqn_new),
+            func=node_new,
             args=[],
+            w_T=w_T,
         )
 
         # add a call to push() for each item
         for i, item in enumerate(lst.items):
             shifted_item = self.shifted_expr[item]
-            is_last = i == len(lst.items) - 1
+            # is_last = i == len(lst.items) - 1
             newlst = ast.Call(
                 item.loc,
-                func=ast.FQNConst(loc=item.loc, fqn=fqn_push),
+                func=node_push,
                 args=[newlst, shifted_item],
-                w_T=w_T if is_last else None,
+                w_T=w_T,
             )
         return newlst
 
