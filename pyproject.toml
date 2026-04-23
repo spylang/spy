@@ -139,8 +139,10 @@ default = { features = ["dev"], solve-group = "default" }
 docs = { features = ["docs"], solve-group = "default" }
 
 [tool.pixi.activation.env]
+# to be able to link libgc (bdw-gc)
 C_INCLUDE_PATH = "$PIXI_PROJECT_ROOT/.pixi/envs/default/include:$C_INCLUDE_PATH"
 LIBRARY_PATH = "$PIXI_PROJECT_ROOT/.pixi/envs/default/lib:$LIBRARY_PATH"
+# only useful for macOS
 DYLD_LIBRARY_PATH = "$PIXI_PROJECT_ROOT/.pixi/envs/default/lib:$DYLD_LIBRARY_PATH"
 
 [tool.pixi.tasks]
