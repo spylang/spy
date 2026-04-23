@@ -1319,11 +1319,11 @@ class TestParser:
             mod.assert_fully_typed()
         #
         for expr in mod.walk(ast.Expr):
-            expr.w_T = B.w_i32
+            expr.w_T = B.w_i32  # type: ignore
         mod.assert_fully_typed()
         #
         one = mod.find(ast.Constant, src="1")
-        one.w_T = None
+        one.w_T = None  # type: ignore
         with pytest.raises(Exception, match="Constant.*is untyped"):
             mod.assert_fully_typed()
 

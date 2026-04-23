@@ -224,7 +224,7 @@ class DopplerFrame(ASTFrame):
             if sym.is_local:
                 self.record_node_color(assign, self.locals[varname].color)
             specialized = self.specialized_assigns[assign]
-            newtarget = specialized.target.as_typed_node()
+            newtarget = assign.target.as_typed_node()
             newvalue = self.shifted_expr[assign.value]
             return [specialized.replace(target=newtarget, value=newvalue)]
 
@@ -636,7 +636,7 @@ class DopplerFrame(ASTFrame):
         self, assignexpr: ast.AssignExpr, wam: W_MetaArg
     ) -> ast.Expr:
         specialized = self.specialized_assignexprs[assignexpr]
-        new_target = specialized.target.as_typed_node()
+        new_target = assignexpr.target.as_typed_node()
         new_value = self.shifted_expr[assignexpr.value]
         return specialized.replace(
             target=new_target,
