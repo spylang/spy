@@ -294,3 +294,33 @@ class TestLinearize(CompilerTest):
                 return a + x + 3
             """
             self.assert_linearize("foo", expected)
+
+    def test_spill_implicit_conversion(self):
+        # when doppler inserts an implicit conversion call (e.g. the
+        # gc_ref->value deref), the resulting Call must carry a w_T so that
+        # linearize can spill it to a temp if needed.
+        src = """
+        from unsafe import gc_alloc, gc_ptr
+
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def idx(x: i32) -> i32:
+            return x
+
+        def foo() -> Point:
+            p: gc_ptr[Point] = gc_alloc[Point](2)
+            p[0] = Point(10, 20)
+            p[1] = Point(30, 40)
+
+            # complicated way to do p[0] = p[1] but:
+            #   1. idx(1) must be spilled
+            #   2. there is an implicit conversion between gc_ref[Point] and Point
+            p[idx(0)] = p[idx(1)]
+            return p[0]
+        """
+        mod = self.compile(src)
+        p = mod.foo()
+        assert p == (30, 40)
