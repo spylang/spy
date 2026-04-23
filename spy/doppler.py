@@ -528,9 +528,8 @@ class DopplerFrame(ASTFrame):
         )
 
         # add a call to push() for each item
-        for i, item in enumerate(lst.items):
+        for item in lst.items:
             shifted_item = self.shifted_expr[item]
-            # is_last = i == len(lst.items) - 1
             newlst = ast.Call(
                 item.loc,
                 func=node_push,
@@ -561,24 +560,29 @@ class DopplerFrame(ASTFrame):
         # instantiate an empty dict
         w_T = wam.w_static_T
         fqn_new = w_T.fqn.join("__new__")
+        w_new = self.vm.lookup_global(fqn_new)
+        node_new = make_const(self.vm, dict.loc, w_new)
+        #
         fqn_push = w_T.fqn.join("_push")
+        w_push = self.vm.lookup_global(fqn_push)
+        node_push = make_const(self.vm, dict.loc, w_push)
 
         newdict: ast.Expr = ast.Call(
             loc=dict.loc,
-            func=ast.FQNConst(loc=dict.loc, fqn=fqn_new),
+            func=node_new,
             args=[],
+            w_T=w_T,
         )
 
         # add a call to push() for each item (key, value)
-        for i, pair in enumerate(dict.items):
+        for pair in dict.items:
             shifted_key = self.shifted_expr[pair.key]
             shifted_val = self.shifted_expr[pair.value]
-            is_last = i == len(dict.items) - 1
             newdict = ast.Call(
                 loc=pair.loc,
-                func=ast.FQNConst(loc=pair.loc, fqn=fqn_push),
+                func=node_push,
                 args=[newdict, shifted_key, shifted_val],
-                w_T=w_T if is_last else None,
+                w_T=w_T,
             )
 
         return newdict
