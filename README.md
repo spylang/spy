@@ -8,10 +8,6 @@
 
 **Community calls**: Monthly on the first Wednesday of the month at 17:30 CET (Europe time). [Google calendar](https://calendar.app.google/5qMsCibGVH8kAkcs7) and [Discord Event](https://discord.com/events/1378402660914429992/1433058515311919245)
 
-
-
-
-
 ## What is SPy?
 
 TL;DR: SPy is a variant of Python specifically designed to be
@@ -108,9 +104,9 @@ pixi shell -m ~/dev/spy
 Other useful commands (with tab auto-completion):
 
 ```sh
-pixi run fmt-py
-pixi run check-lint
-pixi run check-fmt
+pixi run ruff-format
+pixi run ruff-format-check
+pixi run ruff-check
 pixi run doc-serve
 pixi run test-xdist
 ```
