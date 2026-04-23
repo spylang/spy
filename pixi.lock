@@ -1665,7 +1665,7 @@ packages:
 - pypi: ./
   name: spylang
   version: 0.1.0
-  sha256: 97f911973223c0d45a1a39427dc004174c19e181098fcd757c374af6cf7e8e08
+  sha256: 0f27aa25a89c42b3b9534d0095c622b709383c2000efb7c41f232e0d426b3ac3
   requires_dist:
   - build~=1.3
   - click==8.1.8
