@@ -1777,3 +1777,11 @@ class TestParser:
             src,
             "__block__ last statement must be an expression (the result)",
         )
+
+    def test_module_level_str(self):
+        mod = self.parse("""
+        "The docstring"
+        a = 1
+        "This string will be ignored"
+        """)
+        assert mod.docstring == "The docstring"
