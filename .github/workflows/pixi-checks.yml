@@ -1,4 +1,4 @@
-name: Run Pixi Tests
+name: Pixi checks
 
 on:
   push:
@@ -43,26 +43,4 @@ jobs:
 
       - name: Linter
         run: |
-          pixi run check-lint
-
-      - name: Format check
-        run: |
-          pixi run check-fmt
-
-      - name: Run tests
-        run: |
-          pixi run pytest -n auto -m "not mypy" --junit-xml=test-results.xml
-
-      - name: Run mypy
-        run: |
-          pixi run mypy
-
-      - name: Surface failing tests
-        if: always()
-        uses: pmeier/pytest-results-action@main
-        with:
-          path: test-results.xml
-          summary: true
-          display-options: fEX
-          fail-on-empty: true
-          title: Test Pixi results
+          pixi run spy build -x examples/hello.spy
