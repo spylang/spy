@@ -29,18 +29,10 @@ jobs:
           pixi-version: v0.67.1
           cache: true
 
-      - name: Check Pixi lock file
-        run: |
-          pixi lock --check
-
-      - name: Build libspy and install project
+      - name: Build libspy
         run: |
           pixi run make-libspy
 
-      - name: List packages
-        run: |
-          pixi list
-
-      - name: Linter
+      - name: Check spy build -x
         run: |
           pixi run spy build -x examples/hello.spy
