@@ -149,9 +149,9 @@ DYLD_LIBRARY_PATH = "$PIXI_PROJECT_ROOT/.pixi/envs/default/lib:$DYLD_LIBRARY_PAT
 make-libspy = "make -C spy/libspy"
 test = "pytest spy/tests -v"
 test-xdist = "pytest -n auto -m 'not mypy'"
-check-lint = "ruff check ."
-check-fmt = "ruff format --check ."
-fmt-py = "ruff format ."
+ruff-check = "ruff check ."
+ruff-format-check = "ruff format --check ."
+ruff-format = "ruff format ."
 
 [tool.pixi.feature.docs.tasks]
 doc-build = { cmd = "mkdocs build", cwd = "docs" }
