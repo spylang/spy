@@ -335,6 +335,12 @@ class StrConst(Expr):
     def shortrepr(self) -> Optional[str]:
         return repr(self.value)
 
+    def as_typed_node(self) -> "StrConst":
+        from spy.vm.b import B
+
+        assert self.w_T is None
+        return self.replace(w_T=B.w_str)
+
 
 @astnode
 class LocConst(Expr):

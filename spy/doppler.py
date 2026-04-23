@@ -198,7 +198,7 @@ class DopplerFrame(ASTFrame):
             # redshift away assignments to blue locals
             return []
 
-        newname = vardef.name.replace(w_T=B.w_str)
+        newname = vardef.name.as_typed_node()
         if is_auto:
             # use the actual type computed during type inference
             w_T = self.locals[varname].w_T
@@ -224,7 +224,7 @@ class DopplerFrame(ASTFrame):
             if sym.is_local:
                 self.record_node_color(assign, self.locals[varname].color)
             specialized = self.specialized_assigns[assign]
-            newtarget = specialized.target.replace(w_T=B.w_str)
+            newtarget = specialized.target.as_typed_node()
             newvalue = self.shifted_expr[assign.value]
             return [specialized.replace(target=newtarget, value=newvalue)]
 
@@ -243,9 +243,10 @@ class DopplerFrame(ASTFrame):
         return self.shift_stmt_Assign(assign)
 
     def shift_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> list[ast.Stmt]:
+        newtargets = [target.as_typed_node() for target in unpack.targets]
         self.exec_stmt_UnpackAssign(unpack)
         newvalue = self.shifted_expr[unpack.value]
-        return [unpack.replace(value=newvalue)]
+        return [unpack.replace(targets=newtargets, value=newvalue)]
 
     def shift_stmt_SetAttr(self, node: ast.SetAttr) -> list[ast.Stmt]:
         self.exec_stmt(node)
@@ -631,7 +632,7 @@ class DopplerFrame(ASTFrame):
         self, assignexpr: ast.AssignExpr, wam: W_MetaArg
     ) -> ast.Expr:
         specialized = self.specialized_assignexprs[assignexpr]
-        new_target = specialized.target.replace(w_T=B.w_str)
+        new_target = specialized.target.as_typed_node()
         new_value = self.shifted_expr[assignexpr.value]
         return specialized.replace(
             target=new_target,
