@@ -8,6 +8,7 @@ from spy.ast_dump import dump
 from spy.parser import Parser
 from spy.tests.support import MatchAnnotation, expect_errors
 from spy.util import print_diff
+from spy.vm.b import B
 
 
 @pytest.mark.usefixtures("init")
@@ -1308,6 +1309,23 @@ class TestParser:
         nodes3 = list(mod.walk(ast.Expr))
         expected3 = [node for node in nodes if isinstance(node, ast.Expr)]
         assert nodes3 == expected3
+
+    def test_assert_fully_typed(self):
+        mod = self.parse("""
+        def foo() -> None:
+            x = 1 + 2
+        """)
+        with pytest.raises(Exception, match="Constant.*is untyped"):
+            mod.assert_fully_typed()
+        #
+        for expr in mod.walk(ast.Expr):
+            expr.w_T = B.w_i32
+        mod.assert_fully_typed()
+        #
+        one = mod.find(ast.Constant, src="1")
+        one.w_T = None
+        with pytest.raises(Exception, match="Constant.*is untyped"):
+            mod.assert_fully_typed()
 
     def test_inner_FuncDef(self):
         mod = self.parse("""

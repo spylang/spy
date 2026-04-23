@@ -152,6 +152,19 @@ class Node:
         """
         return None
 
+    def assert_fully_typed(self, extra_msg: str = "") -> None:
+        """
+        Check that all Expr descendants (including self, if it is an Expr)
+        have a non-None w_T. Raise an Exception otherwise.
+        """
+        for node in self.walk(Expr):
+            assert isinstance(node, Expr)
+            if node.w_T is None:
+                msg = f"Node `{node.__class__.__name__}` is untyped"
+                if extra_msg:
+                    msg = f"{msg}: {extra_msg}"
+                raise Exception(msg)
+
     def visit(self, prefix: str, visitor: Any, *args: Any) -> None:
         """
         Generic visitor algorithm.

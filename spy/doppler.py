@@ -148,7 +148,11 @@ class DopplerFrame(ASTFrame):
 
     def shift_stmt(self, stmt: ast.Stmt) -> list[ast.Stmt]:
         try:
-            return magic_dispatch(self, "shift_stmt", stmt)
+            stmts = magic_dispatch(self, "shift_stmt", stmt)
+            # sanity check: after redshifting, ALL nodes should be typed
+            for stmt in stmts:
+                stmt.assert_fully_typed("this is probably a bug in redshift")
+            return stmts
         except SPyError as err:
             if self.error_mode == "lazy" and err.match(W_StaticError):
                 # turn the exception into a lazy "raise" statement
@@ -194,6 +198,7 @@ class DopplerFrame(ASTFrame):
             # redshift away assignments to blue locals
             return []
 
+        newname = vardef.name.replace(w_T=B.w_str)
         if is_auto:
             # use the actual type computed during type inference
             w_T = self.locals[varname].w_T
@@ -205,7 +210,7 @@ class DopplerFrame(ASTFrame):
             newvalue = None
         else:
             newvalue = self.shifted_expr[vardef.value]
-        return [vardef.replace(type=newtype, value=newvalue)]
+        return [vardef.replace(name=newname, type=newtype, value=newvalue)]
 
     def shift_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
         self.exec_stmt_Assign(assign)
@@ -219,8 +224,9 @@ class DopplerFrame(ASTFrame):
             if sym.is_local:
                 self.record_node_color(assign, self.locals[varname].color)
             specialized = self.specialized_assigns[assign]
+            newtarget = specialized.target.replace(w_T=B.w_str)
             newvalue = self.shifted_expr[assign.value]
-            return [specialized.replace(value=newvalue)]
+            return [specialized.replace(target=newtarget, value=newvalue)]
 
     def shift_stmt_AssignLocal(self, assign: ast.AssignLocal) -> list[ast.Stmt]:
         # specialized stmts such as AssignLocal and AssignCell are present
@@ -288,7 +294,8 @@ class DopplerFrame(ASTFrame):
         self.exec_stmt(raise_node)
         w_opimpl = self.opimpl[raise_node]
         v_exc = self.shifted_expr[raise_node.exc]
-        call = self.shift_opimpl(raise_node, w_opimpl, [v_exc])
+        w_resT = w_opimpl.w_functype.w_restype
+        call = self.shift_opimpl(raise_node, w_opimpl, [v_exc], w_T=w_resT)
         return [ast.StmtExpr(raise_node.loc, call)]
 
     def shift_stmt_Assert(self, assert_node: ast.Assert) -> list[ast.Stmt]:
@@ -374,8 +381,12 @@ class DopplerFrame(ASTFrame):
             lv = self.locals[varname]
             expT = make_const(self.vm, lv.decl_loc, lv.w_T)
             gotT = make_const(self.vm, wam.loc, wam.w_static_T)
+            w_resT = w_typeconv_opimpl.w_functype.w_restype
             new_expr = self.shift_opimpl(
-                expr, w_typeconv_opimpl, [expT, gotT, new_expr]
+                expr,
+                w_typeconv_opimpl,
+                [expT, gotT, new_expr],
+                w_T=w_resT,
             )
 
         self.shifted_expr[expr] = new_expr
@@ -412,7 +423,8 @@ class DopplerFrame(ASTFrame):
         op: ast.Node,
         w_opimpl: W_OpImpl,
         orig_args: list[ast.Expr],
-        w_T: Optional["W_Type"] = None,
+        *,
+        w_T: "W_Type",
     ) -> ast.Expr:
         if w_opimpl.is_const():
             assert w_opimpl.w_const is not None
@@ -438,7 +450,13 @@ class DopplerFrame(ASTFrame):
                 expT = getarg(spec.expT)
                 gotT = getarg(spec.gotT)
                 arg = getarg(spec.arg)
-                return self.shift_opimpl(arg, spec.w_conv_opimpl, [expT, gotT, arg])
+                w_resT = spec.w_conv_opimpl.w_functype.w_restype
+                return self.shift_opimpl(
+                    arg,
+                    spec.w_conv_opimpl,
+                    [expT, gotT, arg],
+                    w_T=w_resT,
+                )
             else:
                 assert False
 
@@ -623,5 +641,10 @@ class DopplerFrame(ASTFrame):
         self, assignexpr: ast.AssignExpr, wam: W_MetaArg
     ) -> ast.Expr:
         specialized = self.specialized_assignexprs[assignexpr]
+        new_target = specialized.target.replace(w_T=B.w_str)
         new_value = self.shifted_expr[assignexpr.value]
-        return specialized.replace(value=new_value, w_T=wam.w_static_T)
+        return specialized.replace(
+            target=new_target,
+            value=new_value,
+            w_T=wam.w_static_T,
+        )
