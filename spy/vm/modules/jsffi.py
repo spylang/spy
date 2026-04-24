@@ -51,6 +51,8 @@ class W_JsRef(W_Object):
             return W_OpSpec(JSFFI.w_js_string)
         elif w_gotT is B.w_i32:
             return W_OpSpec(JSFFI.w_js_i32)
+        elif w_gotT is B.w_f64:
+            return W_OpSpec(JSFFI.w_js_f64)
         elif isinstance(w_gotT, W_FuncType):
             assert w_gotT == W_FuncType.parse("def() -> None")
             return W_OpSpec(JSFFI.w_js_wrap_func)
@@ -86,6 +88,11 @@ def w_js_string(vm: "SPyVM", w_str: W_Str) -> W_JsRef:
 
 @JSFFI.builtin_func
 def w_js_i32(vm: "SPyVM", w_i: W_I32) -> W_JsRef:
+    raise NotImplementedError
+
+
+@JSFFI.builtin_func
+def w_js_f64(vm: "SPyVM", w_i: W_F64) -> W_JsRef:
     raise NotImplementedError
 
 

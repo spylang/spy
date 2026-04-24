@@ -14,6 +14,7 @@ JsRef WASM_EXPORT(jsffi_debug)(const char *ptr);
 void WASM_EXPORT(jsffi_init)(void);
 JsRef WASM_EXPORT(jsffi_string)(const char *ptr);
 JsRef WASM_EXPORT(jsffi_i32)(int32_t x);
+JsRef WASM_EXPORT(jsffi_f64)(double x);
 JsRef WASM_EXPORT(jsffi_wrap_func)(em_callback_func cfunc);
 JsRef WASM_EXPORT(jsffi_call_method_1)(
     JsRef c_target,
@@ -72,6 +73,11 @@ spy_jsffi$js_string(spy_Str *s) {
 static inline JsRef
 spy_jsffi$js_i32(int32_t x) {
     return jsffi_i32(x);
+}
+
+static inline JsRef
+spy_jsffi$js_f64(double x) {
+    return jsffi_f64(x);
 }
 
 static inline JsRef
