@@ -1,14 +1,16 @@
 title: The Main Function
 ---
 
-All SPy programs must have a `main` function. The main function is the entry point of the program, and it is where the execution of the program begins.
+All SPy programs that are run in the interpreter or compiled must have a `main` function. The main function is the entry point of the program, and it is where the execution of the program begins.
 
 ```py
 def main() -> None:
     print("Hello world")
 ```
 
-Not every `.spy` module needs a main function, but the module invoked by, e.g. `spy execute foo.spy` must contain a main function.
+Not every `.spy` module needs a main function, but the module invoked by, e.g. `spy foo.spy` `spy build foo.spy` must contain a main function.
+
+Modules which are compiled as a library (e.g. `spy build --target lib foo.spy` or `--target py-cffi`) do not need a main function.
 
 ## Return Codes
 
@@ -26,9 +28,9 @@ $ echo $?
 ```
 
 
-## Passed Arguments (Interpretter Only)
+## Accessing Command Line Arguments
 
-If the `main` function accepts a list of strings as an argument, the SPy program will accept arguments from the command line, both when running in interpretted
+If the `main` function accepts a list of strings as an argument, the SPy program will accept arguments from the command line, both when running in interpreted
 
 ```py
 #args.spy
@@ -40,11 +42,11 @@ $ uv run spy args.spy 999
 999
 ```
 
-As with CPython, args[0] is the name of the string passed to the uv runtime:
+As with CPython, args[0] is the name of the string passed to the uv runtime. This is the equivalent of CPython's `sys.argv`:
 
 ```py
 #argname.spy
-def main(args: list[str]) -> None:
+def main(argv: list[str]) -> None:
     print(args[0])
 ```
 ```
