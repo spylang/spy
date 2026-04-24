@@ -49,8 +49,6 @@ markdown_extensions:
 nav:
   - Home: index.md
   - contributing.md
-  - Language Features:
-    - howto/main_function.md
   - API Reference:
     - api_reference/python_builtins.md
   - Unsorted notes:
