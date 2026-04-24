@@ -1,5 +1,20 @@
-from fasthtml.common import H1, Body, Canvas, Div, Head, Html, Input
-from fasthtml.common import Label, Link, Meta, NotStr, P, Script, Span, Title
+from fasthtml.common import (
+    H1,
+    Body,
+    Canvas,
+    Div,
+    Head,
+    Html,
+    Input,
+    Label,
+    Link,
+    Meta,
+    NotStr,
+    P,
+    Script,
+    Span,
+    Title,
+)
 
 
 def slider(id, label, min, max, value, step, display_suffix=""):

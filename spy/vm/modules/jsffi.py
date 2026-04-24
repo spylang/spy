@@ -2,10 +2,11 @@ from typing import TYPE_CHECKING
 
 from spy.vm.b import B
 from spy.vm.builtin import builtin_method
+from spy.vm.modules.unsafe.ptr import W_Ptr
 from spy.vm.opspec import W_MetaArg, W_OpSpec
-from spy.vm.primitive import W_I32
+from spy.vm.primitive import W_F64, W_I32
 from spy.vm.registry import ModuleRegistry
-from spy.vm.w import W_Func, W_FuncType, W_Object, W_Str, W_Type
+from spy.vm.w import W_Func, W_FuncType, W_Object, W_Str
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -33,6 +34,10 @@ class W_JsRef(W_Object):
         n = len(args_wam)
         if n == 1:
             return W_OpSpec(JSFFI.w_js_call_method_1)
+        elif n == 2:
+            return W_OpSpec(JSFFI.w_js_call_method_2)
+        elif n == 3:
+            return W_OpSpec(JSFFI.w_js_call_method_3)
         else:
             raise Exception(f"unsupported number of arguments for __call_method__: {n}")
 
@@ -93,4 +98,50 @@ def w_js_wrap_func(vm: "SPyVM", w_fn: W_Func) -> W_JsRef:
 def w_js_call_method_1(
     vm: "SPyVM", w_target: W_JsRef, name: W_Str, arg0: W_JsRef
 ) -> W_JsRef:
+    raise NotImplementedError
+
+
+@JSFFI.builtin_func
+def w_js_call_method_2(
+    vm: "SPyVM", w_target: W_JsRef, name: W_Str, arg0: W_JsRef, arg1: W_JsRef
+) -> W_JsRef:
+    raise NotImplementedError
+
+
+@JSFFI.builtin_func
+def w_js_call_method_3(
+    vm: "SPyVM",
+    w_target: W_JsRef,
+    name: W_Str,
+    arg0: W_JsRef,
+    arg1: W_JsRef,
+    arg2: W_JsRef,
+) -> W_JsRef:
+    raise NotImplementedError
+
+
+@JSFFI.builtin_func
+def w_js_u8array_from_ptr(vm: "SPyVM", w_ptr: W_Ptr, w_length: W_I32) -> W_JsRef:
+    raise NotImplementedError
+
+
+@JSFFI.builtin_func
+def w_js_new_ImageData(
+    vm: "SPyVM", w_array: W_JsRef, w_width: W_I32, w_height: W_I32
+) -> W_JsRef:
+    raise NotImplementedError
+
+
+@JSFFI.builtin_func
+def w_js_to_i32(vm: "SPyVM", w_ref: W_JsRef) -> W_I32:
+    raise NotImplementedError
+
+
+@JSFFI.builtin_func
+def w_js_to_f64(vm: "SPyVM", w_ref: W_JsRef) -> W_F64:
+    raise NotImplementedError
+
+
+@JSFFI.builtin_func
+def w_js_request_animation_frame(vm: "SPyVM", w_fn: W_Func) -> None:
     raise NotImplementedError

@@ -1,7 +1,7 @@
 #include "spy.h"
 #include <emscripten.h>
 
-EM_JS_DEPS(jsffi, "$UTF8ToString,$wasmTable");
+EM_JS_DEPS(jsffi, "$UTF8ToString,$wasmTable,$wasmMemory");
 
 // see the corresponding comment in jsffi.h
 void jsffi_force_include(void) {};
@@ -49,6 +49,27 @@ EM_JS(JsRef, jsffi_call_method_1, (JsRef c_target, const char *c_name, JsRef c_a
     return jsffi.to_jsref(res);
 });
 
+EM_JS(JsRef, jsffi_call_method_2, (JsRef c_target, const char *c_name,
+                                    JsRef c_arg0, JsRef c_arg1), {
+    let target = jsffi.from_jsref(c_target);
+    let name = UTF8ToString(c_name);
+    let res = target[name].call(target,
+        jsffi.from_jsref(c_arg0),
+        jsffi.from_jsref(c_arg1));
+    return jsffi.to_jsref(res);
+});
+
+EM_JS(JsRef, jsffi_call_method_3, (JsRef c_target, const char *c_name,
+                                    JsRef c_arg0, JsRef c_arg1, JsRef c_arg2), {
+    let target = jsffi.from_jsref(c_target);
+    let name = UTF8ToString(c_name);
+    let res = target[name].call(target,
+        jsffi.from_jsref(c_arg0),
+        jsffi.from_jsref(c_arg1),
+        jsffi.from_jsref(c_arg2));
+    return jsffi.to_jsref(res);
+});
+
 EM_JS(JsRef, jsffi_getattr, (JsRef c_target, const char *c_name), {
     let target = jsffi.from_jsref(c_target);
     let name = UTF8ToString(c_name);
@@ -61,4 +82,26 @@ EM_JS(void, jsffi_setattr, (JsRef c_target, const char *c_name, JsRef c_val), {
     let name = UTF8ToString(c_name);
     let val = jsffi.from_jsref(c_val);
     target[name] = val;
+});
+
+EM_JS(JsRef, jsffi_u8array_from_ptr, (void *ptr, int32_t length), {
+    let view = new Uint8ClampedArray(wasmMemory.buffer, ptr, length);
+    return jsffi.to_jsref(view);
+});
+
+EM_JS(JsRef, jsffi_new_ImageData, (JsRef c_array, int32_t width, int32_t height), {
+    let array = jsffi.from_jsref(c_array);
+    return jsffi.to_jsref(new ImageData(array, width, height));
+});
+
+EM_JS(int32_t, jsffi_to_i32, (JsRef c_ref), {
+    return jsffi.from_jsref(c_ref)|0;
+});
+
+EM_JS(double, jsffi_to_f64, (JsRef c_ref), {
+    return +jsffi.from_jsref(c_ref);
+});
+
+EM_JS(void, jsffi_request_animation_frame, (em_callback_func cfunc), {
+    requestAnimationFrame(wasmTable.get(cfunc));
 });
