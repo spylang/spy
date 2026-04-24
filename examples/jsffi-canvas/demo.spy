@@ -1,0 +1,46 @@
+
+from jsffi import init as js_init, get_GlobalThis, js_i32, get_Console
+from jsffi import js_u8array_from_ptr, js_new_ImageData, js_request_animation_frame, js_to_f64
+
+from unsafe import gc_alloc, gc_ptr
+
+WIDTH: i32 = 800
+HEIGHT: i32 = 600
+SIZE: i32 = WIDTH * HEIGHT * 4
+
+
+def simulate_step(buf: gc_ptr[u8], speed: f64) -> None:
+    for idx in range(SIZE):
+        buf[idx] = 100
+
+
+def frame(timestamp: f64, buf: gc_ptr[u8]) -> None:
+
+    console = get_Console()
+    console.log("hello")
+
+    window = get_GlobalThis()
+    speed = js_to_f64(window.document.getElementById("speed").value)
+    simulate_step(buf, speed)
+    u8arr = js_u8array_from_ptr(buf, SIZE)
+    image_data = js_new_ImageData(u8arr, WIDTH, HEIGHT)
+
+    canvas = window.document.getElementById("canvas")
+    ctx = canvas.getContext("2d")
+    ctx.putImageData(image_data, js_i32(0), js_i32(0))
+
+    # def _frame(_timestamp: f64) -> None:
+    #     frame(_timestamp, buf)
+
+    # js_request_animation_frame(_frame)
+
+def main() -> None:
+    js_init()
+    buf = gc_alloc[u8](SIZE)
+
+    frame(1.25, buf)
+
+    # def _frame(timestamp: f64) -> None:
+    #     frame(timestamp, buf)
+
+    # js_request_animation_frame(_frame)

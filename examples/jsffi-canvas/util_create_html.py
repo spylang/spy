@@ -45,7 +45,7 @@ def slider(id, label, min, max, value, step, display_suffix=""):
 def demo_page(lang):
     if lang == "JS":
         script = Script(src="demo.js", defer=True)
-    elif lang == "spy":
+    elif lang == "SPy":
         script = Script(src="build/demo.mjs", type="module")
     else:
         raise NotImplementedError
@@ -110,7 +110,12 @@ canvas { display: block; }
                 Div(
                     # Canvas
                     Div(
-                        Canvas(id="demoCanvas", cls="w-full h-full rounded-xl"),
+                        Canvas(
+                            id="canvas",
+                            cls="w-full h-full rounded-xl",
+                            width="800",
+                            height="600",
+                        ),
                         cls="rounded-2xl overflow-hidden border border-base-300 shrink-0",
                         style="width:600px; height:400px; background:#0f172a;",
                     ),
