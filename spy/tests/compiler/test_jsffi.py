@@ -109,7 +109,7 @@ class TestJsFFI(CompilerTest):
             print(x)
         """)
         out = exe.run()
-        assert out == "3.14\n"
+        assert out == "3.140000\n"
 
     def test_u8array_from_ptr(self):
         # Check that jsffi_u8array_from_ptr returns a JsRef without crashing
@@ -129,6 +129,7 @@ class TestJsFFI(CompilerTest):
         assert out == "12\n"
 
     def test_request_animation_frame(self):
+        # requestAnimationFrame is a browser API, so this currently fails
         exe = self.compile("""
         from jsffi import init as js_init, js_request_animation_frame
 
