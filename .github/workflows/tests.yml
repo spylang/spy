@@ -20,7 +20,7 @@ jobs:
   test:
     name: test-${{ matrix.os }}-${{ matrix.python-version}}
     runs-on: ${{ matrix.os }}
-    env: 
+    env:
       SPY_WERROR: true
 
     strategy:
@@ -95,7 +95,6 @@ jobs:
 
       - name: Run tests
         run: |
-          pip install pytest-xdist
           pytest -n auto -m "not mypy" --junit-xml=test-results.xml
 
       - name: Run mypy

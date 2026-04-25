@@ -155,7 +155,7 @@ def unbuffer_run(cmdline_s: Sequence[str]) -> subprocess.CompletedProcess:
         cmd = cmdline_s[0]
         args = list(cmdline_s[1:])
         child = pexpect.spawn(command=cmd, args=args)
-        child.expect(pexpect.EOF)
+        child.expect(pexpect.EOF, timeout=60)
         child.wait()  # avoid a race condition on child.exitstatus
 
         # child.exitstatus is never None if child.wait() finished
