@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from fasthtml.common import (
     H1,
     Body,
@@ -17,7 +19,7 @@ from fasthtml.common import (
 )
 
 
-def slider(id, label, min, max, value, step, display_suffix=""):
+def slider(id, label, min, max, value, step=1, display_suffix=""):
     return Div(
         Div(
             Label(label, cls="label-text text-base-content/70 text-sm font-medium"),
@@ -45,16 +47,34 @@ def slider(id, label, min, max, value, step, display_suffix=""):
 def demo_page(lang):
     if lang == "JS":
         script = Script(src="demo.js", defer=True)
+        lang_label = "JavaScript"
+        hljs_lang = "javascript"
+        filename = "demo.js"
+        sliders = [
+            slider("nParticles", "Particles", 2, 80, 20, 1),
+            slider("speed", "Speed", 1, 10, 3, 0.5, " px/f"),
+            slider("radius", "Radius", 2, 20, 6, 1, " px"),
+        ]
     elif lang == "SPy":
         script = Script(src="build/demo.mjs", type="module")
+        lang_label = "SPy"
+        hljs_lang = "python"
+        filename = "demo.spy"
+        sliders = [
+            slider("red", "Red", 0, 255, 255),
+            slider("green", "Green", 0, 255, 255),
+            slider("blue", "Blue", 0, 255, 0),
+        ]
     else:
         raise NotImplementedError
+
+    source = Path(filename).read_text(encoding="utf-8")
 
     return Html(
         Head(
             Meta(charset="utf-8"),
             Meta(name="viewport", content="width=device-width, initial-scale=1"),
-            Title("SPy — Particle Demo"),
+            Title(f"{lang} — Canvas Demo"),
             Link(
                 rel="stylesheet",
                 href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css",
@@ -62,6 +82,14 @@ def demo_page(lang):
             Link(
                 rel="stylesheet",
                 href="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/base.min.css",
+            ),
+            # highlight.js — atom-one-dark fits the night theme perfectly
+            Link(
+                rel="stylesheet",
+                href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css",
+            ),
+            Script(
+                src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"
             ),
             # Inline the minimal Tailwind utilities DaisyUI depends on
             NotStr(
@@ -72,7 +100,9 @@ def demo_page(lang):
 .flex-row { flex-direction: row; }
 .gap-6 { gap: 1.5rem; }
 .gap-8 { gap: 2rem; }
+.gap-2 { gap: 0.5rem; }
 .p-8 { padding: 2rem; }
+.p-4 { padding: 1rem; }
 .pb-2 { padding-bottom: 0.5rem; }
 .min-h-screen { min-height: 100vh; }
 .w-full { width: 100%; }
@@ -83,15 +113,22 @@ def demo_page(lang):
 .font-mono { font-family: ui-monospace, monospace; }
 .text-3xl { font-size: 1.875rem; line-height: 2.25rem; }
 .text-sm { font-size: 0.875rem; line-height: 1.25rem; }
+.text-xs { font-size: 0.75rem; line-height: 1rem; }
 .text-base { font-size: 1rem; }
 .rounded-xl { border-radius: 0.75rem; }
 .rounded-2xl { border-radius: 1rem; }
 .overflow-hidden { overflow: hidden; }
+.overflow-x-auto { overflow-x: auto; }
 .shrink-0 { flex-shrink: 0; }
 .items-start { align-items: flex-start; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
 .border { border-width: 1px; }
 .border-base-300 { border-color: oklch(var(--b3) / 1); }
 canvas { display: block; }
+/* Override hljs background to blend with card */
+.hljs { background: transparent !important; padding: 0 !important; }
+pre { margin: 0; }
 </style>"""
             ),
         ),
@@ -99,9 +136,9 @@ canvas { display: block; }
             Div(
                 # Header
                 Div(
-                    H1("SPy Particle Demo", cls="text-3xl font-bold text-primary"),
+                    H1(f"{lang} Demo", cls="text-3xl font-bold text-primary"),
                     P(
-                        "Bouncing particles — placeholder for a future SPy/WASM simulation.",
+                        "Placeholder for a future SPy/WASM demo.",
                         cls="text-sm text-base-content/50 pb-2",
                     ),
                     cls="flex flex-col gap-1",
@@ -126,18 +163,43 @@ canvas { display: block; }
                                 "Parameters",
                                 cls="text-base font-bold text-base-content/80",
                             ),
-                            slider("nParticles", "Particles", 2, 80, 20, 1),
-                            slider("speed", "Speed", 1, 10, 3, 0.5, " px/f"),
-                            slider("radius", "Radius", 2, 20, 6, 1, " px"),
+                            *sliders,
                             cls="flex flex-col gap-6",
                         ),
                         cls="card bg-base-200 p-8 flex flex-col gap-6 w-full",
                     ),
                     cls="flex flex-row gap-8 items-start",
                 ),
+                # Source code display
+                Div(
+                    Div(
+                        Div(
+                            Span(
+                                filename, cls="font-mono text-sm text-base-content/70"
+                            ),
+                            Span(
+                                lang_label, cls="badge badge-primary badge-sm font-mono"
+                            ),
+                            cls="flex items-center justify-between",
+                        ),
+                        NotStr(
+                            f'<div class="overflow-x-auto"><pre><code class="language-{hljs_lang}">'
+                            + source.replace("&", "&amp;")
+                            .replace("<", "&lt;")
+                            .replace(">", "&gt;")
+                            + "</code></pre></div>"
+                        ),
+                        cls="flex flex-col gap-2 p-4",
+                    ),
+                    cls="card bg-base-200 border border-base-300 overflow-hidden rounded-2xl",
+                ),
                 cls="flex flex-col gap-6 p-8 max-w-5xl mx-auto min-h-screen",
             ),
             script,
+            # Initialise highlight.js after DOM is ready
+            Script(
+                "document.addEventListener('DOMContentLoaded', () => hljs.highlightAll());"
+            ),
             **{"data-theme": "night"},
         ),
         lang="en",
