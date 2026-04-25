@@ -427,13 +427,18 @@ class ScopeAnalyzer:
         # What is the "type_loc" of i? It's an implicit declaration, and its
         # value depends on the iterator returned by range. So we use
         # "range(10)" as the type_loc.
-        self.define_name(
-            forstmt.target.value,
-            "var",
-            "auto",
-            forstmt.target.loc,
-            forstmt.iter.loc,
-        )
+        if isinstance(forstmt.target, ast.StrConst):
+            targets = [forstmt.target]
+        else:
+            targets = forstmt.target
+        for target in targets:
+            self.define_name(
+                target.value,
+                "var",
+                "auto",
+                target.loc,
+                forstmt.iter.loc,
+            )
 
         # Increment loop depth before processing body
         self.loop_depth += 1
@@ -535,7 +540,12 @@ class ScopeAnalyzer:
 
     def flatten_For(self, forstmt: ast.For) -> None:
         # capture the loop variable and flatten the iterator
-        self.capture_maybe(forstmt.target.value)
+        if isinstance(forstmt.target, ast.StrConst):
+            self.capture_maybe(forstmt.target.value)
+        else:
+            self.mod_scope.implicit_imports.add("_tuple")
+            for target in forstmt.target:
+                self.capture_maybe(target.value)
         self.flatten(forstmt.iter)
         # flatten the body
         for stmt in forstmt.body:
