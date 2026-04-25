@@ -50,6 +50,7 @@ jobs:
 
   deploy-preview:
     runs-on: ubuntu-latest
+    needs: [build-preview]
     env: 
       DEPLOY_DESTINATION: ${{ needs.build-preview.outputs.deploy_destination }}
     steps:
