@@ -31,16 +31,15 @@ jobs:
         run: |
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
-          pwd
-          ls
-          ls docs/site
-          git status
 
       - name: Build and deploy mkdocs
         run: |
           mike deploy preview --config-file docs/mkdocs.yml --update-aliases -b main --allow-empty
           mike set-default preview --config-file docs/mkdocs.yml -b main
           ls
+          ls docs
+          ls docs/site
+          git status
           
       - name: Deploy PR Preview
         uses: rossjrw/pr-preview-action@v1.8.1
