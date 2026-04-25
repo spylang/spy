@@ -8,6 +8,7 @@ on:
       - opened
       - synchronize
       - reopened
+      - closed
 
 jobs:
   build-preview:
@@ -42,28 +43,8 @@ jobs:
           mike deploy --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml --update-aliases preview
           mike set-default preview --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml
 
-      - name: Get PR Info
-        id: get_info
-        env:
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          destination="pr-${PR_NUMBER}"
-          echo "deploy_destination=$destination" >> "$GITHUB_OUTPUT"
-
-      - name: "Deploy PR preview site"
-        uses: peaceiris/actions-gh-pages@e9c66a37f080288a11235e32cbe2dc5fb3a679cc # v4
+      - name: Deploy PR Preview
+        uses: rossjrw/pr-preview-action@v1.8.1
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: $GITHUB_WORKSPACE/docs/site
-          publish_branch: gh-pages
-          destination_dir: ${{ steps.setup.outputs.deploy_destination}}
-          keep_files: true
-          force_orphan: false
-          commit_message: "Publish PR preview #${{ github.event.pull_request.number }}"
-
-      - name: "Comment PR Preview URL"
-        uses: peter-evans/create-or-update-comment@v5.0.0
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: |
-            Preview deployed: https://${{ github.repository_owner }}.github.io/${${{ github.repository }}/pr-${{ github.event.pull_request.number }}/
+          source-dir: ./docs/site
+          preview-branch: gh-pages
