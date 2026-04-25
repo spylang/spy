@@ -63,6 +63,6 @@ jobs:
       - name: "Comment PR Preview URL"
         uses: peter-evans/create-or-update-comment@v5.0.0
         with:
-          issue_number: ${{ github.event.pull_request.number }}
+          issue-number: ${{ github.event.pull_request.number }}
           body: |
             Preview deployed: https://${{ github.repository_owner }}.github.io/${${{ github.repository }}/pr-${{ github.event.pull_request.number }}/
