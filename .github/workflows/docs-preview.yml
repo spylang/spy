@@ -31,6 +31,7 @@ jobs:
         run: |
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+          pwd
           ls docs/site
           git status
 
