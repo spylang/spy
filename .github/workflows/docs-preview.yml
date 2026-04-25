@@ -19,7 +19,7 @@ jobs:
 
       - name: Clone docs repository
         run: |
-          git clone https://github.com/jeffersglass/spy.git /tmp/spy-docs
+          git clone https://github.com/jeffersglass/spy.git
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -32,13 +32,11 @@ jobs:
            pip install .[docs]
 
       - name: Configure Git in docs repository
-        working-directory: /tmp/spy-docs
         run: |
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
 
       - name: Build and deploy mkdocs
-        working-directory: /tmp/spy-docs
         run: |
           mike set-default preview --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml
           mike deploy --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml --update-aliases preview -b main --allow-empty
