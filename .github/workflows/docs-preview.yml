@@ -34,8 +34,7 @@ jobs:
 
       - name: Build and deploy mkdocs
         run: |
-          mike deploy --config-file docs/mkdocs.yml --update-aliases preview -b main --allow-empty
-          mike set-default preview --config-file docs/mkdocs.yml
+          mike deploy preview --config-file docs/mkdocs.yml --update-aliases  -b main --allow-empty
           
       - name: Deploy PR Preview
         uses: rossjrw/pr-preview-action@v1.8.1
