@@ -715,6 +715,41 @@ class TestScopeAnalyzer:
         scope = scopes.by_module()
         assert scope.implicit_imports == {"_tuple"}
 
+    def test_unpack_assign(self):
+        scopes = self.analyze("""
+        def foo() -> None:
+            a, b = (1, 2)
+            c, (d, e) = (3, (4, 5))
+            f, (g, (h, i)) = (6, (7, (8, 9)))
+        """)
+        funcdef = self.mod.get_funcdef("foo")
+        scope = scopes.by_funcdef(funcdef)
+        assert scope._symbols["a"] == MatchSymbol("a", "const", "auto")
+        assert scope._symbols["b"] == MatchSymbol("b", "const", "auto")
+        assert scope._symbols["c"] == MatchSymbol("c", "const", "auto")
+        assert scope._symbols["d"] == MatchSymbol("d", "const", "auto")
+        assert scope._symbols["e"] == MatchSymbol("e", "const", "auto")
+        assert scope._symbols["f"] == MatchSymbol("f", "const", "auto")
+        assert scope._symbols["g"] == MatchSymbol("g", "const", "auto")
+        assert scope._symbols["h"] == MatchSymbol("h", "const", "auto")
+        assert scope._symbols["i"] == MatchSymbol("i", "const", "auto")
+
+    def test_unpack_assign_var(self):
+        scopes = self.analyze("""
+        def foo() -> None:
+            a, b = (1, 2)
+            a, b = (3, 4)
+            c, (d, e) = (5, (6, 7))
+            d = 8
+        """)
+        funcdef = self.mod.get_funcdef("foo")
+        scope = scopes.by_funcdef(funcdef)
+        assert scope._symbols["a"] == MatchSymbol("a", "var", "auto")
+        assert scope._symbols["b"] == MatchSymbol("b", "var", "auto")
+        assert scope._symbols["c"] == MatchSymbol("c", "const", "auto")
+        assert scope._symbols["d"] == MatchSymbol("d", "var", "auto")
+        assert scope._symbols["e"] == MatchSymbol("e", "const", "auto")
+
     def test_dict_literal(self):
         scopes = self.analyze("""
         def foo() -> None:

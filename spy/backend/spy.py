@@ -249,9 +249,18 @@ class SPyBackend:
         self.wl(f"{varname} {op}= {v}")
 
     def emit_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
-        targets = ", ".join([t.value for t in unpack.targets])
+        targets = ", ".join([self.fmt_unpack_target(t) for t in unpack.targets])
         v = self.fmt_expr(unpack.value)
         self.wl(f"{targets} = {v}")
+
+    def fmt_unpack_target(self, target: ast.Expr) -> str:
+        if isinstance(target, ast.StrConst):
+            return target.value
+        elif isinstance(target, ast.Tuple):
+            items = [self.fmt_unpack_target(t) for t in target.items]
+            return "(" + ", ".join(items) + ")"
+        else:
+            assert False, "WTF?"
 
     def emit_stmt_SetAttr(self, node: ast.SetAttr) -> None:
         t = self.fmt_expr(node.target)

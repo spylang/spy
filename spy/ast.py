@@ -627,7 +627,7 @@ class Assign(Stmt):
 
 @astnode
 class UnpackAssign(Stmt):
-    targets: list[StrConst]
+    targets: list[StrConst | Tuple]
     value: Expr
 
 

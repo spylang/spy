@@ -1,0 +1,6 @@
+def f() -> None:
+    print("f called")
+    return (1, 2)
+
+def main() -> None:
+    a, b = f()

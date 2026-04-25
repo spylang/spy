@@ -546,15 +546,21 @@ class Parser:
                 value=value,
             )
         elif isinstance(py_target, py_ast.Tuple):
-            targets = []
-            for item in py_target.elts:
-                assert isinstance(item, py_ast.Name)
-                targets.append(spy.ast.StrConst(item.loc, item.id))
+            targets = [self._from_py_unpack_target(item) for item in py_target.elts]
             return spy.ast.UnpackAssign(
                 loc=py_node.loc, targets=targets, value=self.from_py_expr(py_node.value)
             )
         else:
             self.unsupported(py_target, "assign to complex expressions")
+
+    def _from_py_unpack_target(self, py_node: py_ast.expr) -> spy.ast.Expr:
+        if isinstance(py_node, py_ast.Name):
+            return spy.ast.StrConst(py_node.loc, py_node.id)
+        elif isinstance(py_node, py_ast.Tuple):
+            items = [self._from_py_unpack_target(item) for item in py_node.elts]
+            return spy.ast.Tuple(py_node.loc, items)
+        else:
+            self.unsupported(py_node, "complex unpacking target")
 
     def from_py_stmt_AugAssign(self, py_node: py_ast.AugAssign) -> spy.ast.AugAssign:
         py_target = py_node.target

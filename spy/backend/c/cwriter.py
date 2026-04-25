@@ -176,17 +176,14 @@ class CFuncWriter:
     def emit_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         if isinstance(unpack.value, ast.Tuple):
             # Blue tuple literal: directly assign each item to its target
-            for target, item in zip(unpack.targets, unpack.value.items):
-                c_target = C_Ident(target.value)
-                v = self.fmt_expr(item)
-                self.tbc.wl(f"{c_target} = {v};")
+            self._emit_unpack_tuple_literal(unpack.targets, unpack.value.items)
         else:
-            # Red tuple (struct): we save the result into a tmp variable and the assign
-            # all fields one by one. The code look like this more or less:
+            # Red tuple (struct): we save the result into a tmp variable and then assign
+            # all fields one by one. For example:
             # {
-            #     T tmp = some_expression()
-            #     a = tmp._item0;
-            #     b = tmp._item1;
+            #   struct_type tmp = ...;
+            #   a = tmp._item0;
+            #   b = tmp._item1;
             # }
             assert unpack.value.w_T is not None
             c_tuple_type = self.ctx.w2c(unpack.value.w_T)
@@ -194,10 +191,39 @@ class CFuncWriter:
             self.tbc.wl("{")
             with self.tbc.indent():
                 self.tbc.wl(f"{c_tuple_type} tmp = {v};")
-                for i, target in enumerate(unpack.targets):
-                    c_target = C_Ident(target.value)
-                    self.tbc.wl(f"{c_target} = tmp._item{i};")
+                self._emit_unpack_struct(unpack.targets, C.Literal("tmp"))
             self.tbc.wl("}")
+
+    def _get_varname(self, target: ast.StrConst) -> str:
+        assert isinstance(target, ast.StrConst)
+        return target.value
+
+    def _emit_unpack_tuple_literal(
+        self, targets: list[ast.Expr], items: list[ast.Expr]
+    ) -> None:
+        for target, item in zip(targets, items):
+            if isinstance(target, ast.StrConst):
+                varname = self._get_varname(target)
+                c_target = C_Ident(varname)
+                v = self.fmt_expr(item)
+                self.tbc.wl(f"{c_target} = {v};")
+            elif isinstance(target, ast.Tuple):
+                assert isinstance(item, ast.Tuple)
+                self._emit_unpack_tuple_literal(target.items, item.items)
+            else:
+                assert False, "WTF?"
+
+    def _emit_unpack_struct(self, targets: list[ast.Expr], c_value: C.Expr) -> None:
+        for i, target in enumerate(targets):
+            c_item = C.Dot(c_value, f"_item{i}")
+            if isinstance(target, ast.StrConst):
+                varname = self._get_varname(target)
+                c_target = C_Ident(varname)
+                self.tbc.wl(f"{c_target} = {c_item};")
+            elif isinstance(target, ast.Tuple):
+                self._emit_unpack_struct(target.items, c_item)
+            else:
+                assert False, "WTF?"
 
     def emit_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
         v = self.fmt_expr(stmt.value)
