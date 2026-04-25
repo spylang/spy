@@ -1,0 +1,79 @@
+name: Preview Docs Builds
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+jobs:
+  build-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Clone docs repository
+        run: |
+          git clone ${{ vars.SPY_DOCS_REPOSITORY }} /tmp/spy-docs
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+           pip install .[docs]
+
+      - name: Configure Git in docs repository
+        working-directory: /tmp/spy-docs
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+
+      - name: Build and deploy mkdocs
+        working-directory: /tmp/spy-docs
+        run: |
+          mike deploy --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml -b main --push --update-aliases preview
+
+      - name: setup
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          destination="pr-${PR_NUMBER}"
+          echo "deploy_destination=$destination" >> "$GITHUB_OUTPUT"
+
+  deploy-preview:
+    runs-on: ubuntu-latest
+    env: 
+      DEPLOY_DESTINATION: ${{ needs.build-preview.outputs.deploy_destination }}
+    steps:
+      - name: "Deploy PR preview site"
+        uses: peaceiris/actions-gh-pages@e9c66a37f080288a11235e32cbe2dc5fb3a679cc # v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          publish_branch: gh-pages
+          destination_dir: ${{ env.DEPLOY_DESTINATION }}
+          keep_files: true
+          force_orphan: false
+          commit_message: "Publish PR preview #${{ github.event.pull_request.number }}"
+
+      - name: "Comment PR preview URL"
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const previewUrl = `https://${owner}.github.io/${repo}/${process.env.DEPLOY_DESTINATION}/`;
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: context.issue.number,
+              body: `Preview deployed: ${previewUrl}`,
+            });
