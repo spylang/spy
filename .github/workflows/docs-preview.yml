@@ -49,6 +49,7 @@ jobs:
           if-no-files-found: error
           retention-days: 21
           include-hidden-files: true
+          archive: false
 
       - name: "Comment PR preview URL"
         uses: actions/github-script@v7
