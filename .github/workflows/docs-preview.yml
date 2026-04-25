@@ -36,6 +36,7 @@ jobs:
         run: |
           mike deploy preview --config-file docs/mkdocs.yml --update-aliases -b main --allow-empty
           mike set-default preview --config-file docs/mkdocs.yml -b main
+          git reset HEAD~1
           ls
           ls docs
           ls docs/site
@@ -44,6 +45,6 @@ jobs:
       - name: Deploy PR Preview
         uses: rossjrw/pr-preview-action@v1.8.1
         with:
-          source-dir: ./docs/site/
+          source-dir: docs/site/
           preview-branch: gh-pages
           qr-code: false
