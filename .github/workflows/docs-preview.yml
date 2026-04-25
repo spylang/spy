@@ -40,11 +40,12 @@ jobs:
       - name: Build and deploy mkdocs
         working-directory: /tmp/spy-docs
         run: |
-          mike deploy --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml --update-aliases preview -b main
           mike set-default preview --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml
-
+          mike deploy --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml --update-aliases preview -b main --allow-empty
+          
       - name: Deploy PR Preview
         uses: rossjrw/pr-preview-action@v1.8.1
         with:
           source-dir: ./docs/site
           preview-branch: gh-pages
+          qr-code: false
