@@ -41,16 +41,24 @@ jobs:
         run: |
           mike deploy --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml -b main --update-aliases preview
 
-      - name: "Upload site artifact"
-        id: artifact-upload-step
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+      - name: setup
+        id: setup
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          destination="pr-${PR_NUMBER}"
+          echo "deploy_destination=$destination" >> "$GITHUB_OUTPUT"
+
+      - name: "Deploy PR preview site"
+        uses: peaceiris/actions-gh-pages@e9c66a37f080288a11235e32cbe2dc5fb3a679cc # v4
         with:
-          name: site
-          path: docs/site
-          if-no-files-found: error
-          retention-days: 21
-          include-hidden-files: true
-          archive: false
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          publish_branch: gh-pages
+          destination_dir: ${{ steps.setup.outputs.deploy_destination}}
+          keep_files: true
+          force_orphan: false
+          commit_message: "Publish PR preview #${{ github.event.pull_request.number }}"
 
       - name: "Comment PR preview URL"
         uses: actions/github-script@v7
@@ -58,7 +66,7 @@ jobs:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const previewUrl = `${{ steps.artifact-upload-step.outputs.artifact-url }}'`;
+            const previewUrl = `https://${owner}.github.io/${repo}/${steps.setup.outputs.deploy_destination}/`;
             await github.rest.issues.createComment({
               owner,
               repo,
