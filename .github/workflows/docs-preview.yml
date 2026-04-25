@@ -18,7 +18,7 @@ jobs:
 
       - name: Clone docs repository
         run: |
-          git clone /docs /tmp/spy-docs
+          git clone https://github.com/jeffersglass/spy.git /tmp/spy-docs
 
       - name: Set up Python
         uses: actions/setup-python@v5
