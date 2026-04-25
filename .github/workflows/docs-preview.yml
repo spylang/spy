@@ -66,7 +66,8 @@ jobs:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const previewUrl = `https://${owner}.github.io/${repo}/${steps.setup.outputs.deploy_destination}/`;
+            const dest = steps.setup.outputs.deploy_destination
+            const previewUrl = `https://${owner}.github.io/${repo}/${dest}/`;
             await github.rest.issues.createComment({
               owner,
               repo,
