@@ -39,8 +39,8 @@ jobs:
       - name: Build and deploy mkdocs
         working-directory:
         run: |
-          mike deploy --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml -b main --update-aliases preview --make-default
-          mike make-default 
+          mike deploy --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml -b main --update-aliases preview
+          mike set-default preview
 
       - name: Get PR Info
         id: get_info
