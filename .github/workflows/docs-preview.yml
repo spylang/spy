@@ -40,7 +40,7 @@ jobs:
       - name: Build and deploy mkdocs
         working-directory: /tmp/spy-docs
         run: |
-          mike deploy --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml --update-aliases preview
+          mike deploy --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml --update-aliases preview -b main
           mike set-default preview --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml
 
       - name: Deploy PR Preview
