@@ -18,7 +18,7 @@ jobs:
 
       - name: Clone docs repository
         run: |
-          git clone ${{ vars.SPY_DOCS_REPOSITORY }} /tmp/spy-docs
+          git clone /docs /tmp/spy-docs
 
       - name: Set up Python
         uses: actions/setup-python@v5
