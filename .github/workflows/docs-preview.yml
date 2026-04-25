@@ -36,10 +36,9 @@ jobs:
         run: |
           mike deploy preview --config-file docs/mkdocs.yml --update-aliases -b main --allow-empty
           mike set-default preview --config-file docs/mkdocs.yml -b main
+          git checkout main
+          git status
           git reset HEAD~1
-          ls
-          ls docs
-          ls docs/site
           git status
           
       - name: Deploy PR Preview
