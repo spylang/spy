@@ -42,6 +42,7 @@ jobs:
           mike deploy --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml -b main --update-aliases preview
 
       - name: "Upload site artifact"
+        id: artifact-upload-step
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: site
