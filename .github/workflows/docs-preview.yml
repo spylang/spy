@@ -39,7 +39,7 @@ jobs:
       - name: Build and deploy mkdocs
         working-directory: /tmp/spy-docs
         run: |
-          mike deploy --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml -b main --push --update-aliases preview
+          mike deploy --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml --update-aliases preview
 
       - name: setup
         env:
