@@ -12,3 +12,7 @@ serve:
 
 html_js:
 	uv run python make_html_js.py
+
+format:
+	ruff format
+	ruff check --fix
