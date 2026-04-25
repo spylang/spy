@@ -37,9 +37,10 @@ jobs:
           git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
 
       - name: Build and deploy mkdocs
-        working-directory: /tmp/spy-docs
+        working-directory:
         run: |
-          mike deploy --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml -b main --update-aliases preview
+          mike deploy --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml -b main --update-aliases preview --make-default
+          mike make-default 
 
       - name: Get PR Info
         id: get_info
