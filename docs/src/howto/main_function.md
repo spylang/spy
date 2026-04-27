@@ -1,6 +1,8 @@
 title: The Main Function
 ---
 
+FOOOO FFOFOFOFOOOOOOOOOOOO
+
 All SPy programs that are run in the interpreter or compiled must have a `main` function. The main function is the entry point of the program, and it is where the execution of the program begins.
 
 ```py
