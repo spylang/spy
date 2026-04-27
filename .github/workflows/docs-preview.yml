@@ -1,5 +1,6 @@
 name: Preview Docs Builds
 
+# When a new udpate is made to this PR, cancel any still-running builds from previous pushes
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true

@@ -70,4 +70,6 @@ Once you're happy with your changes, add them to your git branch and push them t
   git push origin feature/your-change
 ```
 
-Finally, open a Pull Request on the [SPy GitHub page](https://github.com/spylang/spy).
+Open a Pull Request on the [SPy GitHub page](https://github.com/spylang/spy).
+
+Once the pull request is open, a preview build of the documentation site with your changes will be generated automatically. Click on the generated link that appears in a comment on your PR, and give your documentation one final review to ensure everything still looks correct after it's been built in CI.
