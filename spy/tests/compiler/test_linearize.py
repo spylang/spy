@@ -276,6 +276,60 @@ class TestLinearize(CompilerTest):
             """
             self.assert_linearize("foo", expected)
 
+    def test_assignexpr_local(self):
+        # AssignExprLocal is side-effecting: it must be spilled, and Names
+        # seen before it must be spilled too so they capture the PRE-assignment
+        # value. The Name use AFTER must see the POST-assignment value, so it
+        # stays un-spilled and reads the (now updated) local.
+        src = """
+        def g() -> i32:
+            return 7
+
+        def foo3(a: i32, b: i32, c: i32) -> i32:
+            return a * 100 + b * 10 + c
+
+        def foo(x: i32) -> i32:
+            return foo3(x, (x := g()), x)
+        """
+        mod = self.compile(src)
+        assert mod.foo(5) == 577
+        #
+        if self.backend == "linearize":
+            expected = """
+            def foo(x: i32) -> i32:
+                $v0: i32 = x
+                $v1: i32 = `test::g`()
+                $v2: i32 = x := $v1
+                return `test::foo3`($v0, $v2, x)
+            """
+            self.assert_linearize("foo", expected)
+
+    def test_assignexpr_cell(self):
+        src = """
+        var V: i32 = 5
+
+        def g() -> i32:
+            return 7
+
+        def foo3(a: i32, b: i32, c: i32) -> i32:
+            return a * 100 + b * 10 + c
+
+        def foo() -> i32:
+            return foo3(V, (V := g()), V)
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 577
+        #
+        if self.backend == "linearize":
+            expected = """
+            def foo() -> i32:
+                $v0: i32 = `test::V`
+                $v1: i32 = `test::g`()
+                $v2: i32 = `test::V` := $v1
+                return `test::foo3`($v0, $v2, `test::V`)
+            """
+            self.assert_linearize("foo", expected)
+
     def test_blockexpr_simple(self):
         src = """
         def foo(a: i32) -> i32:

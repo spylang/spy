@@ -348,6 +348,18 @@ class Linearizer:
         new_args = [self.rewrite_expr(a, to_spill) for a in call.args]
         return call.replace(func=new_func, args=new_args)
 
+    def rewrite_expr_AssignExprLocal(
+        self, assign: ast.AssignExprLocal, to_spill: set[ast.Expr]
+    ) -> ast.Expr:
+        new_value = self.rewrite_expr(assign.value, to_spill)
+        return assign.replace(value=new_value)
+
+    def rewrite_expr_AssignExprCell(
+        self, assign: ast.AssignExprCell, to_spill: set[ast.Expr]
+    ) -> ast.Expr:
+        new_value = self.rewrite_expr(assign.value, to_spill)
+        return assign.replace(value=new_value)
+
     def rewrite_expr_FQNConst(
         self, const: ast.FQNConst, to_spill: set[ast.Expr]
     ) -> ast.Expr:
