@@ -55,6 +55,21 @@ class TestJsFFI(CompilerTest):
         out = exe.run()
         assert out == "hello from callback\n"
 
+    def test_call_method_0_1(self):
+        exe = self.compile("""
+        from jsffi import init as js_init, get_GlobalThis
+
+        def main() -> None:
+            js_init()
+            globalThis = get_GlobalThis()
+            arr = globalThis.Array()
+            arr.push(42)
+            result = arr.pop()
+            globalThis.console.log(result)
+        """)
+        out = exe.run()
+        assert out == "42\n"
+
     def test_call_method_2(self):
         exe = self.compile("""
         from jsffi import init as js_init, get_GlobalThis
@@ -80,6 +95,42 @@ class TestJsFFI(CompilerTest):
         """)
         out = exe.run()
         assert out == "1\n"
+
+    def test_call_method_4(self):
+        exe = self.compile("""
+        from jsffi import init as js_init, get_GlobalThis
+
+        def main() -> None:
+            js_init()
+            globalThis = get_GlobalThis()
+            globalThis.console.log(1, 2, 3, 4)
+        """)
+        out = exe.run()
+        assert out == "1 2 3 4\n"
+
+    def test_call_method_5(self):
+        exe = self.compile("""
+        from jsffi import init as js_init, get_GlobalThis
+
+        def main() -> None:
+            js_init()
+            globalThis = get_GlobalThis()
+            globalThis.console.log(1, 2, 3, 4, 5)
+        """)
+        out = exe.run()
+        assert out == "1 2 3 4 5\n"
+
+    def test_call_method_6(self):
+        exe = self.compile("""
+        from jsffi import init as js_init, get_GlobalThis
+
+        def main() -> None:
+            js_init()
+            globalThis = get_GlobalThis()
+            globalThis.console.log(1, 2, 3, 4, 5, 6)
+        """)
+        out = exe.run()
+        assert out == "1 2 3 4 5 6\n"
 
     def test_to_i32(self):
         exe = self.compile("""
@@ -112,8 +163,6 @@ class TestJsFFI(CompilerTest):
         assert out == "3.140000\n"
 
     def test_u8array_from_ptr(self):
-        # Check that jsffi_u8array_from_ptr returns a JsRef without crashing
-        # and that the Uint8ClampedArray has the expected length.
         exe = self.compile("""
         from jsffi import init as js_init, get_GlobalThis, js_u8array_from_ptr
         from unsafe import gc_alloc

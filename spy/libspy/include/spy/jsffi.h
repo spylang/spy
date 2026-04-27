@@ -18,6 +18,8 @@ JsRef WASM_EXPORT(jsffi_f64)(double x);
 JsRef WASM_EXPORT(jsffi_wrap_func)(em_callback_func cfunc);
 JsRef WASM_EXPORT(jsffi_wrap_func_f64)(em_callback_func cfunc);
 typedef void (*jsffi_frame_func)(double);
+
+JsRef WASM_EXPORT(jsffi_call_method_0)(JsRef c_target, const char *c_name);
 JsRef WASM_EXPORT(jsffi_call_method_1)(
     JsRef c_target,
     const char *c_name,
@@ -36,6 +38,37 @@ JsRef WASM_EXPORT(jsffi_call_method_3)(
     JsRef c_arg1,
     JsRef c_arg2
 );
+
+JsRef WASM_EXPORT(jsffi_call_method_4)(
+    JsRef c_target,
+    const char *c_name,
+    JsRef c_arg0,
+    JsRef c_arg1,
+    JsRef c_arg2,
+    JsRef c_arg3
+);
+
+JsRef WASM_EXPORT(jsffi_call_method_5)(
+    JsRef c_target,
+    const char *c_name,
+    JsRef c_arg0,
+    JsRef c_arg1,
+    JsRef c_arg2,
+    JsRef c_arg3,
+    JsRef c_arg4
+);
+
+JsRef WASM_EXPORT(jsffi_call_method_6)(
+    JsRef c_target,
+    const char *c_name,
+    JsRef c_arg0,
+    JsRef c_arg1,
+    JsRef c_arg2,
+    JsRef c_arg3,
+    JsRef c_arg4,
+    JsRef c_arg5
+);
+
 JsRef WASM_EXPORT(jsffi_getattr)(JsRef c_target, const char *c_name);
 void WASM_EXPORT(jsffi_setattr)(JsRef c_target, const char *c_name, JsRef c_val);
 
@@ -91,6 +124,11 @@ spy_jsffi$js_wrap_func_f64(jsffi_frame_func fn) {
 }
 
 static inline JsRef
+spy_jsffi$js_call_method_0(JsRef target, spy_Str *name) {
+    return jsffi_call_method_0(target, name->utf8);
+}
+
+static inline JsRef
 spy_jsffi$js_call_method_1(JsRef target, spy_Str *name, JsRef arg0) {
     return jsffi_call_method_1(target, name->utf8, arg0);
 }
@@ -103,6 +141,27 @@ spy_jsffi$js_call_method_2(JsRef target, spy_Str *name, JsRef arg0, JsRef arg1) 
 static inline JsRef
 spy_jsffi$js_call_method_3(JsRef target, spy_Str *name, JsRef arg0, JsRef arg1, JsRef arg2) {
     return jsffi_call_method_3(target, name->utf8, arg0, arg1, arg2);
+}
+
+static inline JsRef
+spy_jsffi$js_call_method_4(JsRef target, spy_Str *name,
+                            JsRef arg0, JsRef arg1, JsRef arg2, JsRef arg3) {
+    return jsffi_call_method_4(target, name->utf8, arg0, arg1, arg2, arg3);
+}
+
+static inline JsRef
+spy_jsffi$js_call_method_5(JsRef target, spy_Str *name,
+                            JsRef arg0, JsRef arg1, JsRef arg2,
+                            JsRef arg3, JsRef arg4) {
+    return jsffi_call_method_5(target, name->utf8, arg0, arg1, arg2, arg3, arg4);
+}
+
+static inline JsRef
+spy_jsffi$js_call_method_6(JsRef target, spy_Str *name,
+                            JsRef arg0, JsRef arg1, JsRef arg2,
+                            JsRef arg3, JsRef arg4, JsRef arg5) {
+    return jsffi_call_method_6(target, name->utf8,
+                               arg0, arg1, arg2, arg3, arg4, arg5);
 }
 
 static inline JsRef
