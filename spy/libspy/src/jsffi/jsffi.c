@@ -43,6 +43,8 @@ EM_JS(JsRef, jsffi_f64, (double x), { return jsffi.to_jsref(x); });
 
 EM_JS(JsRef, jsffi_wrap_func, (em_callback_func cfunc), { return jsffi.to_jsref(wasmTable.get(cfunc)); });
 
+EM_JS(JsRef, jsffi_wrap_func_f64, (em_callback_func cfunc), { return jsffi.to_jsref(wasmTable.get(cfunc)); });
+
 EM_JS(JsRef, jsffi_call_method_1, (JsRef c_target, const char *c_name, JsRef c_arg0), {
     let target = jsffi.from_jsref(c_target);
     let name = UTF8ToString(c_name);
@@ -102,8 +104,4 @@ EM_JS(int32_t, jsffi_to_i32, (JsRef c_ref), {
 
 EM_JS(double, jsffi_to_f64, (JsRef c_ref), {
     return +jsffi.from_jsref(c_ref);
-});
-
-EM_JS(void, jsffi_request_animation_frame, (em_callback_func cfunc), {
-    requestAnimationFrame(wasmTable.get(cfunc));
 });
