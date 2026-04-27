@@ -1,21 +1,36 @@
 
-build: html_spy build-wasm
+ifeq ($(RELEASE),1)
+RELEASE_FLAG=--release
+else
+RELEASE_FLAG=
+endif
 
-html_spy:
-	uv run python make_html_spy.py
+build: html-spy-image_data build-wasm-image_data
 
-build-wasm:
-	uv run spy build --target emscripten demo.spy
+html-spy-image_data:
+	uv run python -c 'from util_create_html import create_html as c; c("image_data", "SPy")'
 
-build-wasm-release:
-	uv run spy build --release --target emscripten demo.spy
+html-spy-particles:
+	uv run python -c 'from util_create_html import create_html as c; c("particles", "SPy")'
+
+build-wasm-image_data:
+	uv run spy build ${RELEASE_FLAG} --target emscripten demo_image_data.spy
+
+build-wasm-particles:
+	uv run spy build ${RELEASE_FLAG} --target emscripten demo_particles.spy
 
 serve:
 	uv run python -m http.server
 
-html_js:
-	uv run python make_html_js.py
+html-js-particles:
+	uv run python -c 'from util_create_html import create_html as c; c("image_data", "JS")'
+
+html-js-image_data:
+	uv run python -c 'from util_create_html import create_html as c; c("particles", "JS")'
 
 format:
 	ruff format
 	ruff check --fix
+
+clean:
+	rm -rf build *.html
