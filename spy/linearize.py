@@ -135,6 +135,9 @@ class Linearizer:
             new_st.add(sym)
         return new_st
 
+    def visit_body(self, body: list[ast.Stmt]) -> list[ast.Stmt]:
+        return list(body)
+
     def fresh_tmp(self, w_T: "W_Type") -> str:
         """
         Allocate a fresh local name of the given type: $v0, $v1, ...
