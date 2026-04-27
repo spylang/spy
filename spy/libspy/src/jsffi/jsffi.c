@@ -11,6 +11,11 @@ EM_JS(JsRef, jsffi_debug, (const char *ptr), {
     console.log(s);
 });
 
+EM_JS(void, jsffi_debug_n_jsrefs, (void), {
+    let n = Object.keys(jsffi.objects).length;
+    console.log("Number of JsRef", n);
+});
+
 EM_JS(void, jsffi_init, (void), {
     let jsffi = {
         objects: {}
