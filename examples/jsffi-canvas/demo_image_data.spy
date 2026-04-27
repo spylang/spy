@@ -15,8 +15,10 @@ and js_new_ImageData).
 
 from jsffi import init as js_init, JsRef, get_GlobalThis, get_Console
 from jsffi import js_u8array_from_ptr, js_new_ImageData
+from jsffi import _debug_n_jsrefs
 
 from unsafe import gc_alloc, gc_ptr
+from time import time
 
 WIDTH: i32 = 800
 HEIGHT: i32 = 600
@@ -33,10 +35,15 @@ def simulate_step(buf: gc_ptr[u8], red: i32, green: i32, blue: i32) -> None:
         inc *= -1
     counter = counter + inc
 
+    # improve perf when compiling without --release
+    _red: u8 = (red * counter) // 255
+    _green: u8 = (green * counter) // 255
+    _blue: u8 = (blue * counter) // 255
+
     for idx in range(WIDTH * HEIGHT):
-        buf[idx * 4 + 0] = (red * counter) // 255
-        buf[idx * 4 + 1] = (green * counter) // 255
-        buf[idx * 4 + 2] = (blue * counter) // 255
+        buf[idx * 4 + 0] = _red
+        buf[idx * 4 + 1] = _green
+        buf[idx * 4 + 2] = _blue
         buf[idx * 4 + 3] = counter
 
 
@@ -62,14 +69,17 @@ def sync_slider_callback[id]() -> None:
 
 
 def frame(timestamp: f64) -> None:
-    # console = get_Console()
+    console = get_Console()
     window = get_GlobalThis()
 
     red = getattr(PARAMS[0], "red")
     green = getattr(PARAMS[0], "green")
     blue = getattr(PARAMS[0], "blue")
-
+    t_start = time()
     simulate_step(BUF, red, green, blue)
+    console.log("simulate_step done in", time() - t_start, "s")
+    _debug_n_jsrefs()
+
     u8arr = js_u8array_from_ptr(BUF, SIZE)
     image_data = js_new_ImageData(u8arr, WIDTH, HEIGHT)
 

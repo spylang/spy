@@ -5,9 +5,13 @@ Known missing vs JS version:
 - math.random not yet available: particles initialized deterministically
 """
 
-from jsffi import init as js_init, JsRef, get_GlobalThis
-from unsafe import gc_alloc, gc_ptr
 import math
+
+from jsffi import init as js_init, JsRef, get_GlobalThis
+from jsffi import _debug_n_jsrefs, get_Console
+
+from unsafe import gc_alloc, gc_ptr
+from time import time
 
 WIDTH: i32 = 800
 HEIGHT: i32 = 600
@@ -130,7 +134,11 @@ def sync_radius() -> None:
 
 def frame(timestamp: f64) -> None:
     window = get_GlobalThis()
+    console = get_Console()
+    t_start = time()
     simulate_step(PARAMS[0].n, PARAMS[0].speed, PARAMS[0].radius)
+    console.log("simulate_step done in", time() - t_start, "s")
+    _debug_n_jsrefs()
     window.requestAnimationFrame(frame)
 
 

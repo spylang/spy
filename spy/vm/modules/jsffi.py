@@ -85,6 +85,11 @@ def w_init(vm: "SPyVM") -> None:
 
 
 @JSFFI.builtin_func
+def w__debug_n_jsrefs(vm: "SPyVM") -> None:
+    raise NotImplementedError
+
+
+@JSFFI.builtin_func
 def w_get_GlobalThis(vm: "SPyVM") -> W_JsRef:
     raise NotImplementedError
 
