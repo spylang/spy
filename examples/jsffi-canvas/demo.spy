@@ -1,13 +1,28 @@
-from jsffi import init as js_init, get_GlobalThis, JsRef, js_i32, get_Console
+"""
+We are strongly limited by SPy immaturity.
+
+- Closures are not yet supported in red function so we have to use global variables.
+- `var` global variables can be only simple types and NULL pointer.
+
+Note that module level code is quite particular in SPy:
+- evaluated at import time (i.e. during compilation).
+- variables are by default constant (hence the keyword `var`).
+
+jsffi is also currently very limited. In particular, there is no equivalent to the
+`new` JS keyword, so we need to rely on function helpers (like js_u8array_from_ptr
+and js_new_ImageData).
+
+Finally, for `js_request_animation_frame`, we should just use `window.requestAnimationFrame`.
+"""
+
+from jsffi import init as js_init, JsRef, get_GlobalThis, get_Console, js_to_i32
 from jsffi import (
     js_u8array_from_ptr,
     js_new_ImageData,
     js_request_animation_frame,
-    js_to_i32,
 )
 
 from unsafe import gc_alloc, gc_ptr
-from _list import list
 
 WIDTH: i32 = 800
 HEIGHT: i32 = 600
@@ -15,7 +30,6 @@ SIZE: i32 = WIDTH * HEIGHT * 4
 
 var counter: i32 = 0
 var inc: i32 = 5
-
 
 
 def simulate_step(buf: gc_ptr[u8], red: i32, green: i32, blue: i32) -> None:
@@ -35,20 +49,31 @@ def simulate_step(buf: gc_ptr[u8], red: i32, green: i32, blue: i32) -> None:
 var BUF: gc_ptr[u8] = gc_ptr[u8].NULL
 
 
-def get_value_from_slider(id: str, window: JsRef) -> i32:
-    value = js_to_i32(window.document.getElementById(id).value)
+@struct
+class Params:
+    red: i32
+    green: i32
+    blue: i32
+
+
+var PARAMS:  gc_ptr[Params] = gc_ptr[Params].NULL
+
+
+def sync_slider_callback[id]() -> None:
+    window = get_GlobalThis()
     span = window.document.getElementById(id + "Val")
-    span.textContent = str(value)
-    return value
+    value = window.document.getElementById(id).value
+    span.textContent = value
+    setattr(PARAMS[0], id, js_to_i32(value))
 
 
 def frame(timestamp: f64) -> None:
     # console = get_Console()
     window = get_GlobalThis()
 
-    red: i32 = get_value_from_slider("red", window)
-    green: i32 = get_value_from_slider("green", window)
-    blue: i32 = get_value_from_slider("blue", window)
+    red = getattr(PARAMS[0], "red")
+    green = getattr(PARAMS[0], "green")
+    blue = getattr(PARAMS[0], "blue")
 
     simulate_step(BUF, red, green, blue)
     u8arr = js_u8array_from_ptr(BUF, SIZE)
@@ -58,6 +83,7 @@ def frame(timestamp: f64) -> None:
     ctx = canvas.getContext("2d")
     ctx.putImageData(image_data, 0, 0)
 
+    # should work but currently fails
     # window.requestAnimationFrame(frame)
     js_request_animation_frame(frame)
 
@@ -67,6 +93,23 @@ def main() -> None:
     BUF = gc_alloc[u8](SIZE)
     for idx in range(SIZE):
         BUF[idx] = 255
+
+    window = get_GlobalThis()
+
+    PARAMS = gc_alloc[Params](1)
+
+    # will use: for color in unroll(["red", "green", "blue"]):
+    elem = window.document.getElementById("red")
+    setattr(PARAMS[0], "red", js_to_i32(elem.value))
+    elem.addEventListener('input', sync_slider_callback["red"])
+
+    elem = window.document.getElementById("green")
+    setattr(PARAMS[0], "green", js_to_i32(elem.value))
+    elem.addEventListener('input', sync_slider_callback["green"])
+
+    elem = window.document.getElementById("blue")
+    setattr(PARAMS[0], "blue", js_to_i32(elem.value))
+    elem.addEventListener('input', sync_slider_callback["blue"])
 
     # should work but currently fails
     # window = get_GlobalThis()
