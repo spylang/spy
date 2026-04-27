@@ -121,6 +121,12 @@ class Node:
         for node in self.get_children():
             yield from node.walk(cls)
 
+    def walk_postorder(self, cls: Optional[type] = None) -> Iterator["Node"]:
+        for node in self.get_children():
+            yield from node.walk_postorder(cls)
+        if cls is None or isinstance(self, cls):
+            yield self
+
     def get_children(self) -> Iterator["Node"]:
         for f in self.__dataclass_fields__.values():
             value = getattr(self, f.name)

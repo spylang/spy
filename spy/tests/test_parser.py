@@ -1310,6 +1310,37 @@ class TestParser:
         expected3 = [node for node in nodes if isinstance(node, ast.Expr)]
         assert nodes3 == expected3
 
+    def test_walk_postorder(self):
+        def isclass(x: Any, name: str) -> bool:
+            return x.__class__.__name__ == name
+
+        mod = self.parse("""
+        def foo() -> None:
+            if True:
+                x = y + 1
+        """)
+        nodes: list[Any] = list(mod.walk_postorder())
+        assert isclass(nodes[0], "Constant") and nodes[0].value is None
+        assert isclass(nodes[1], "Constant") and nodes[1].value is True
+        assert isclass(nodes[2], "StrConst") and nodes[2].value == "x"
+        assert isclass(nodes[3], "Name") and nodes[3].id == "y"
+        assert isclass(nodes[4], "Constant") and nodes[4].value == 1
+        assert isclass(nodes[5], "BinOp")
+        assert isclass(nodes[6], "Assign")
+        assert isclass(nodes[7], "If")
+        assert isclass(nodes[8], "FuncDef")
+        assert isclass(nodes[9], "GlobalFuncDef")
+        assert isclass(nodes[10], "Module")
+        assert len(nodes) == 11
+        #
+        nodes2 = list(mod.walk_postorder(ast.Stmt))
+        expected2 = [node for node in nodes if isinstance(node, ast.Stmt)]
+        assert nodes2 == expected2
+        #
+        nodes3 = list(mod.walk_postorder(ast.Expr))
+        expected3 = [node for node in nodes if isinstance(node, ast.Expr)]
+        assert nodes3 == expected3
+
     def test_assert_fully_typed(self):
         mod = self.parse("""
         def foo() -> None:
