@@ -6,8 +6,8 @@ concurrency:
 
 on:
   pull_request:
-    branches:
-      - main
+    paths:
+      - 'docs/**'
     types:
       - opened
       - synchronize
