@@ -40,8 +40,16 @@ jobs:
           ls
           
       - name: Deploy PR Preview
+        id: deploy-preview-site
         uses: rossjrw/pr-preview-action@v1.8.1
         with:
           source-dir: ./docs/site
           preview-branch: gh-pages
           qr-code: false
+
+      - name: Add PR Comment
+        needs: deploy-preview-site
+        uses: mshick/add-pr-comment@v3.11.0
+        with:
+          message: |
+            Documentation preview published at ${{ steps.deploy-preview-site.outputs.preview-url }} :disguised_face:
