@@ -168,13 +168,13 @@ class Linearizer:
         return new_body
 
     def rewrite_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
-        self.to_spill = self.mark_to_spill([ret.value])
-        new_value = self.rewrite_expr(ret.value)
+        to_spill = self.mark_to_spill([ret.value])
+        new_value = self.rewrite_expr(ret.value, to_spill)
         return [ret.replace(value=new_value)]
 
     def rewrite_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> list[ast.Stmt]:
-        self.to_spill = self.mark_to_spill([stmt.value])
-        new_value = self.rewrite_expr(stmt.value)
+        to_spill = self.mark_to_spill([stmt.value])
+        new_value = self.rewrite_expr(stmt.value, to_spill)
         return [stmt.replace(value=new_value)]
 
     # ==== pass 1: mark ====
@@ -239,31 +239,43 @@ class Linearizer:
 
     # ==== pass 2: rewrite ====
 
-    def rewrite_expr(self, expr: ast.Expr) -> ast.Expr:
-        new_expr = magic_dispatch(self, "rewrite_expr", expr)
-        if expr in self.to_spill:
+    def rewrite_expr(self, expr: ast.Expr, to_spill: set[ast.Expr]) -> ast.Expr:
+        new_expr = magic_dispatch(self, "rewrite_expr", expr, to_spill)
+        if expr in to_spill:
             return self.spill(new_expr)
         return new_expr
 
-    def rewrite_expr_Call(self, call: ast.Call) -> ast.Expr:
-        new_func = self.rewrite_expr(call.func)
-        new_args = [self.rewrite_expr(a) for a in call.args]
+    def rewrite_expr_Call(self, call: ast.Call, to_spill: set[ast.Expr]) -> ast.Expr:
+        new_func = self.rewrite_expr(call.func, to_spill)
+        new_args = [self.rewrite_expr(a, to_spill) for a in call.args]
         return call.replace(func=new_func, args=new_args)
 
-    def rewrite_expr_FQNConst(self, const: ast.FQNConst) -> ast.Expr:
+    def rewrite_expr_FQNConst(
+        self, const: ast.FQNConst, to_spill: set[ast.Expr]
+    ) -> ast.Expr:
         return const
 
-    def rewrite_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> ast.Expr:
+    def rewrite_expr_NameLocalDirect(
+        self, name: ast.NameLocalDirect, to_spill: set[ast.Expr]
+    ) -> ast.Expr:
         return name
 
-    def rewrite_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> ast.Expr:
+    def rewrite_expr_NameOuterDirect(
+        self, name: ast.NameOuterDirect, to_spill: set[ast.Expr]
+    ) -> ast.Expr:
         return name
 
-    def rewrite_expr_NameOuterCell(self, name: ast.NameOuterCell) -> ast.Expr:
+    def rewrite_expr_NameOuterCell(
+        self, name: ast.NameOuterCell, to_spill: set[ast.Expr]
+    ) -> ast.Expr:
         return name
 
-    def rewrite_expr_StrConst(self, const: ast.StrConst) -> ast.Expr:
+    def rewrite_expr_StrConst(
+        self, const: ast.StrConst, to_spill: set[ast.Expr]
+    ) -> ast.Expr:
         return const
 
-    def rewrite_expr_Constant(self, const: ast.Constant) -> ast.Expr:
+    def rewrite_expr_Constant(
+        self, const: ast.Constant, to_spill: set[ast.Expr]
+    ) -> ast.Expr:
         return const
