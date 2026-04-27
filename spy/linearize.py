@@ -191,6 +191,14 @@ class Linearizer:
         new_value = self.rewrite_expr(assign.value, to_spill)
         return [assign.replace(value=new_value)]
 
+    def rewrite_stmt_AssignCell(self, assign: ast.AssignCell) -> list[ast.Stmt]:
+        to_spill = self.mark_to_spill([assign.value])
+        new_value = self.rewrite_expr(assign.value, to_spill)
+        return [assign.replace(value=new_value)]
+
+    def rewrite_stmt_Pass(self, stmt: ast.Pass) -> list[ast.Stmt]:
+        return [stmt]
+
     def rewrite_stmt_If(self, if_node: ast.If) -> list[ast.Stmt]:
         to_spill = self.mark_to_spill([if_node.test])
         new_test = self.rewrite_expr(if_node.test, to_spill)
