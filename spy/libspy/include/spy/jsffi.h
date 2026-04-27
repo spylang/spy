@@ -16,6 +16,8 @@ JsRef WASM_EXPORT(jsffi_string)(const char *ptr);
 JsRef WASM_EXPORT(jsffi_i32)(int32_t x);
 JsRef WASM_EXPORT(jsffi_f64)(double x);
 JsRef WASM_EXPORT(jsffi_wrap_func)(em_callback_func cfunc);
+JsRef WASM_EXPORT(jsffi_wrap_func_f64)(em_callback_func cfunc);
+typedef void (*jsffi_frame_func)(double);
 JsRef WASM_EXPORT(jsffi_call_method_1)(
     JsRef c_target,
     const char *c_name,
@@ -41,9 +43,6 @@ JsRef WASM_EXPORT(jsffi_u8array_from_ptr)(void *ptr, int32_t length);
 JsRef WASM_EXPORT(jsffi_new_ImageData)(JsRef c_array, int32_t width, int32_t height);
 int32_t WASM_EXPORT(jsffi_to_i32)(JsRef c_ref);
 double WASM_EXPORT(jsffi_to_f64)(JsRef c_ref);
-void WASM_EXPORT(jsffi_request_animation_frame)(em_callback_func cfunc);
-typedef void (*jsffi_frame_func)(double);
-
 
 // SPy JSFFI module
 static inline void
@@ -84,6 +83,11 @@ spy_jsffi$js_f64(double x) {
 static inline JsRef
 spy_jsffi$js_wrap_func(em_callback_func fn) {
     return jsffi_wrap_func(fn);
+}
+
+static inline JsRef
+spy_jsffi$js_wrap_func_f64(jsffi_frame_func fn) {
+    return jsffi_wrap_func_f64((em_callback_func)fn);
 }
 
 static inline JsRef
@@ -128,11 +132,6 @@ spy_jsffi$js_to_i32(JsRef ref) {
 static inline double
 spy_jsffi$js_to_f64(JsRef ref) {
     return jsffi_to_f64(ref);
-}
-
-static inline void
-spy_jsffi$js_request_animation_frame(jsffi_frame_func fn) {
-    jsffi_request_animation_frame((em_callback_func)fn);
 }
 
 /* This is a workaround for an emscripten bug/limitation which triggers in the

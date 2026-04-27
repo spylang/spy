@@ -13,7 +13,6 @@ from jsffi import (
     get_GlobalThis,
     js_to_i32,
     js_to_f64,
-    js_request_animation_frame,
 )
 from unsafe import gc_alloc, gc_ptr
 import math
@@ -127,8 +126,9 @@ def sync_radius() -> None:
 # ---
 
 def frame(timestamp: f64) -> None:
+    window = get_GlobalThis()
     simulate_step(PARAMS[0].n, PARAMS[0].speed, PARAMS[0].radius)
-    js_request_animation_frame(frame)
+    window.requestAnimationFrame(frame)
 
 
 def init_particles(n: i32, speed: f64, radius: i32) -> None:
@@ -172,4 +172,4 @@ def main() -> None:
     elem.addEventListener('input', sync_radius)
 
     init_particles(PARAMS[0].n, PARAMS[0].speed, PARAMS[0].radius)
-    js_request_animation_frame(frame)
+    window.requestAnimationFrame(frame)

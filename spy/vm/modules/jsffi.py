@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING
 
+from spy.errors import WIP
 from spy.vm.b import B
 from spy.vm.builtin import builtin_method
 from spy.vm.modules.unsafe.ptr import W_Ptr
@@ -54,8 +55,12 @@ class W_JsRef(W_Object):
         elif w_gotT is B.w_f64:
             return W_OpSpec(JSFFI.w_js_f64)
         elif isinstance(w_gotT, W_FuncType):
-            assert w_gotT == W_FuncType.parse("def() -> None")
-            return W_OpSpec(JSFFI.w_js_wrap_func)
+            if w_gotT == W_FuncType.parse("def() -> None"):
+                return W_OpSpec(JSFFI.w_js_wrap_func)
+            elif w_gotT == W_FuncType.parse("def(f64) -> None"):
+                return W_OpSpec(JSFFI.w_js_wrap_func_f64)
+            else:
+                raise WIP("Only simple callbacks are supported")
         else:
             return W_OpSpec.NULL
 
@@ -98,6 +103,11 @@ def w_js_f64(vm: "SPyVM", w_i: W_F64) -> W_JsRef:
 
 @JSFFI.builtin_func
 def w_js_wrap_func(vm: "SPyVM", w_fn: W_Func) -> W_JsRef:
+    raise NotImplementedError
+
+
+@JSFFI.builtin_func
+def w_js_wrap_func_f64(vm: "SPyVM", w_fn: W_Func) -> W_JsRef:
     raise NotImplementedError
 
 
@@ -146,9 +156,4 @@ def w_js_to_i32(vm: "SPyVM", w_ref: W_JsRef) -> W_I32:
 
 @JSFFI.builtin_func
 def w_js_to_f64(vm: "SPyVM", w_ref: W_JsRef) -> W_F64:
-    raise NotImplementedError
-
-
-@JSFFI.builtin_func
-def w_js_request_animation_frame(vm: "SPyVM", w_fn: W_Func) -> None:
     raise NotImplementedError

@@ -45,7 +45,6 @@ def slider(id, label, min, max, value, step=1, display_suffix=""):
 
 
 def demo_page(name, lang):
-
     demo_names = ["particles", "image_data"]
     if name not in demo_names:
         raise ValueError(f"{name} must be in {demo_names}")
@@ -216,7 +215,6 @@ pre { margin: 0; }
 
 
 def create_html(name, lang):
-
     if lang == "JS":
         path_output = f"demo_{name}.html"
     else:

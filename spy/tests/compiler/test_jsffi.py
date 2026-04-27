@@ -127,18 +127,3 @@ class TestJsFFI(CompilerTest):
         """)
         out = exe.run()
         assert out == "12\n"
-
-    def test_request_animation_frame(self):
-        # requestAnimationFrame is a browser API, so this currently fails
-        exe = self.compile("""
-        from jsffi import init as js_init, js_request_animation_frame
-
-        def on_frame() -> None:
-            print("1")
-
-        def main() -> None:
-            js_init()
-            js_request_animation_frame(on_frame)
-        """)
-        out = exe.run()
-        assert out == "1\n"
