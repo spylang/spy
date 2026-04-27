@@ -48,7 +48,6 @@ jobs:
           qr-code: false
 
       - name: Add PR Comment
-        needs: deploy-preview-site
         uses: mshick/add-pr-comment@v3.11.0
         with:
           message: |
