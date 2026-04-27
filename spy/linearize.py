@@ -191,9 +191,8 @@ class Linearizer:
     #   - side-effecting (impure Call, or anything not whitelisted): acts
     #     as a sequence point. Promote ``pending_spills`` into ``to_spill``
     #     and mark self for spill.
+
     PURE_EXPRS = (ast.Constant, ast.StrConst, ast.FQNConst)
-    # Name references: side-effect free, but their value may be invalidated
-    # by a later side-effecting expr. They go into ``pending_spills``.
     NAME_EXPRS = (ast.NameLocalDirect, ast.NameOuterDirect, ast.NameOuterCell)
 
     def is_pure(self, expr: ast.Expr) -> bool:
