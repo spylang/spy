@@ -34,14 +34,14 @@ jobs:
 
       - name: Build and deploy mkdocs
         run: |
-          mkdocs build --config-file docs/mkdocs.yml -d ./site
+          mkdocs build --config-file docs/mkdocs.yml --site-dir ./site -v
           ls
-          cd ./site
+          cd ./docs/site
           ls
           
       - name: Deploy PR Preview
         uses: rossjrw/pr-preview-action@v1.8.1
         with:
-          source-dir: ./site
+          source-dir: ./docs/site
           preview-branch: gh-pages
           qr-code: false
