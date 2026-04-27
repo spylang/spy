@@ -220,14 +220,10 @@ class Linearizer:
         E.g. for `fn(1, 2, 3)` we evaluate them as `1, 2, 3, fn(...)`.
 
         This is like `ast.Node.walk_postorder(ast.Expr)`, but with a special case for
-        `BlockExpr`: its body is a separate sequence-point scope (it will be
-        re-linearized when rewritten), so we don't descend into it. We only yield the
-        BlockExpr's value (recursively) and the BlockExpr itself.
+        `BlockExpr`, which is always treated as an opaque node with side effects (the
+        .body and .value of BlockExpr will be re-linearized when rewritten).
         """
-        if isinstance(top, ast.BlockExpr):
-            # ignore .body (for now), just visit .value.
-            yield from self.walk_postorder(top.value)
-        else:
+        if not isinstance(top, ast.BlockExpr):
             for child in top.get_children():
                 if isinstance(child, ast.Expr):
                     yield from self.walk_postorder(child)

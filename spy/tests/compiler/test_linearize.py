@@ -239,75 +239,77 @@ class TestLinearize(CompilerTest):
             """
             self.assert_linearize("foo", expected)
 
-    ## def test_blockexpr_single_value(self):
-    ##     mod = self.compile("""
-    ##     def foo(a: i32) -> i32:
-    ##         return __block__('''
-    ##             a
-    ##         ''')
-    ##     """)
-    ##     assert mod.foo(42) == 42
-    ##     #
-    ##     if self.backend == "linearize":
-    ##         expected = """
-    ##         def foo(a: i32) -> i32:
-    ##             return a
-    ##         """
-    ##         self.assert_linearize("foo", expected)
+    def test_blockexpr_single_value(self):
+        mod = self.compile("""
+        def foo(a: i32) -> i32:
+            return __block__('''
+                a
+            ''')
+        """)
+        assert mod.foo(42) == 42
+        #
+        if self.backend == "linearize":
+            expected = """
+            def foo(a: i32) -> i32:
+                return a
+            """
+            self.assert_linearize("foo", expected)
 
-    ## def test_blockepxr_multiple_stmts(self):
-    ##     mod = self.compile("""
-    ##     def foo(a: i32, b: i32) -> i32:
-    ##         return __block__('''
-    ##             x: i32 = a
-    ##             y: i32 = b
-    ##             x + y
-    ##         ''')
-    ##     """)
-    ##     assert mod.foo(1, 2) == 3
-    ##     #
-    ##     if self.backend == "linearize":
-    ##         expected = """
-    ##         def foo(a: i32, b: i32) -> i32:
-    ##             x: i32 = a
-    ##             y: i32 = b
-    ##             return x + y
-    ##         """
-    ##         self.assert_linearize("foo", expected)
+    def test_blockepxr_multiple_stmts(self):
+        mod = self.compile("""
+        def foo(a: i32, b: i32) -> i32:
+            return __block__('''
+                x: i32 = a
+                y: i32 = b
+                x + y
+            ''')
+        """)
+        assert mod.foo(1, 2) == 3
+        #
+        if self.backend == "linearize":
+            expected = """
+            def foo(a: i32, b: i32) -> i32:
+                x: i32 = a
+                y: i32 = b
+                return x + y
+            """
+            self.assert_linearize("foo", expected)
 
-    ## def test_blockexpr_in_call_args(self):
-    ##     mod = self.compile("""
-    ##     def add(a: i32, b: i32) -> i32:
-    ##         return a + b
+    def test_blockexpr_in_call_args(self):
+        mod = self.compile("""
+        def add(a: i32, b: i32) -> i32:
+            return a + b
 
-    ##     def f() -> i32:
-    ##         return 10
+        def f() -> i32:
+            return 10
 
-    ##     def g() -> i32:
-    ##         return 20
+        def g() -> i32:
+            return 20
 
-    ##     def foo() -> i32:
-    ##         return add(
-    ##             __block__('''
-    ##                 a: i32 = f()
-    ##                 a
-    ##             '''),
-    ##             __block__('''
-    ##                 b: i32 = g()
-    ##                 b
-    ##             '''),
-    ##         )
-    ##     """)
-    ##     assert mod.foo() == 30
-    ##     #
-    ##     if self.backend == "linearize":
-    ##         expected = """
-    ##         def foo() -> i32:
-    ##             a: i32 = `test::f`()
-    ##             b: i32 = `test::g`()
-    ##             return `test::add`(a, b)
-    ##         """
-    ##         self.assert_linearize("foo", expected)
+        def foo() -> i32:
+            return add(
+                __block__('''
+                    a: i32 = f()
+                    a
+                '''),
+                __block__('''
+                    b: i32 = g()
+                    b
+                '''),
+            )
+        """)
+        assert mod.foo() == 30
+        #
+        if self.backend == "linearize":
+            expected = """
+            def foo() -> i32:
+                a: i32 = `test::f`()
+                $v0: i32 = a
+                b: i32 = `test::g`()
+                $v1: i32 = b
+                return `test::add`($v0, $v1)
+            """
+            self.assert_linearize("foo", expected)
 
     ## def test_blockexpr_in_binop(self):
     ##     mod = self.compile("""
