@@ -5,13 +5,7 @@ Known missing vs JS version:
 - math.random not yet available: particles initialized deterministically
 """
 
-from jsffi import (
-    init as js_init,
-    JsRef,
-    get_GlobalThis,
-    js_to_i32,
-    js_to_f64,
-)
+from jsffi import init as js_init, JsRef, get_GlobalThis
 from unsafe import gc_alloc, gc_ptr
 import math
 
@@ -114,21 +108,21 @@ def sync_n() -> None:
     window = get_GlobalThis()
     elem = window.document.getElementById("nParticles")
     window.document.getElementById("nParticlesVal").textContent = elem.value
-    PARAMS[0].n = js_to_i32(elem.value)
+    PARAMS[0].n = elem.value
 
 
 def sync_speed() -> None:
     window = get_GlobalThis()
     elem = window.document.getElementById("speed")
     window.document.getElementById("speedVal").textContent = elem.value
-    PARAMS[0].speed = js_to_f64(elem.value)
+    PARAMS[0].speed = elem.value
 
 
 def sync_radius() -> None:
     window = get_GlobalThis()
     elem = window.document.getElementById("radius")
     window.document.getElementById("radiusVal").textContent = elem.value
-    PARAMS[0].radius = js_to_i32(elem.value)
+    PARAMS[0].radius = elem.value
 
 
 # ---
@@ -167,15 +161,15 @@ def main() -> None:
     PARAMS[0].radius = 6
 
     elem = window.document.getElementById("nParticles")
-    PARAMS[0].n = js_to_i32(elem.value)
+    PARAMS[0].n = elem.value
     elem.addEventListener("input", sync_n)
 
     elem = window.document.getElementById("speed")
-    PARAMS[0].speed = js_to_f64(elem.value)
+    PARAMS[0].speed = elem.value
     elem.addEventListener("input", sync_speed)
 
     elem = window.document.getElementById("radius")
-    PARAMS[0].radius = js_to_i32(elem.value)
+    PARAMS[0].radius = elem.value
     elem.addEventListener("input", sync_radius)
 
     init_particles(PARAMS[0].n, PARAMS[0].speed, PARAMS[0].radius)

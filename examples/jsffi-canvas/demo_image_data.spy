@@ -13,7 +13,7 @@ jsffi is also currently very limited. In particular, there is no equivalent to t
 and js_new_ImageData).
 """
 
-from jsffi import init as js_init, JsRef, get_GlobalThis, get_Console, js_to_i32
+from jsffi import init as js_init, JsRef, get_GlobalThis, get_Console
 from jsffi import js_u8array_from_ptr, js_new_ImageData
 
 from unsafe import gc_alloc, gc_ptr
@@ -58,7 +58,7 @@ def sync_slider_callback[id]() -> None:
     span = window.document.getElementById(id + "Val")
     value = window.document.getElementById(id).value
     span.textContent = value
-    setattr(PARAMS[0], id, js_to_i32(value))
+    setattr(PARAMS[0], id, value)
 
 
 def frame(timestamp: f64) -> None:
@@ -92,15 +92,15 @@ def main() -> None:
 
     # will use: for color in unroll(["red", "green", "blue"]):
     elem = window.document.getElementById("red")
-    setattr(PARAMS[0], "red", js_to_i32(elem.value))
+    setattr(PARAMS[0], "red", elem.value)
     elem.addEventListener('input', sync_slider_callback["red"])
 
     elem = window.document.getElementById("green")
-    setattr(PARAMS[0], "green", js_to_i32(elem.value))
+    setattr(PARAMS[0], "green", elem.value)
     elem.addEventListener('input', sync_slider_callback["green"])
 
     elem = window.document.getElementById("blue")
-    setattr(PARAMS[0], "blue", js_to_i32(elem.value))
+    setattr(PARAMS[0], "blue", elem.value)
     elem.addEventListener('input', sync_slider_callback["blue"])
 
     window.requestAnimationFrame(frame)
