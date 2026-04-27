@@ -168,12 +168,12 @@ class Linearizer:
         return new_body
 
     def rewrite_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
-        self.to_spill = self.mark_to_spill(ret.value)
+        self.to_spill = self.mark_to_spill([ret.value])
         new_value = self.rewrite_expr(ret.value)
         return [ret.replace(value=new_value)]
 
     def rewrite_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> list[ast.Stmt]:
-        self.to_spill = self.mark_to_spill(stmt.value)
+        self.to_spill = self.mark_to_spill([stmt.value])
         new_value = self.rewrite_expr(stmt.value)
         return [stmt.replace(value=new_value)]
 
@@ -201,23 +201,38 @@ class Linearizer:
             return isinstance(w_obj, W_Func) and w_obj.is_pure()
         return False
 
-    def mark_to_spill(self, expr: ast.Expr) -> set[ast.Expr]:
+    def mark_to_spill(self, top_exprs: list[ast.Expr]) -> set[ast.Expr]:
+        """
+        Walk all the given exprs and determine which sub-exprs are to spill.
+
+        If the stmt has only ONE top-level expr (e.g. Return, StmtExpr), that expr is at
+        a sequence point w.r.t. the containing stmt and is never spilled.  This is just
+        a minor cosmetic optimization to avoid things like:
+            v2 = ...;
+            return v2;
+
+        we can directly do:
+            return ...;
+        """
+        to_skip = top_exprs[0] if len(top_exprs) == 1 else None
         pending_spills: set[ast.Expr] = set()
         to_spill: set[ast.Expr] = set()
-        for node in expr.walk_postorder(ast.Expr):
-            assert isinstance(node, ast.Expr)
-            if self.is_pure(node):
-                continue
-            if isinstance(node, ast.NameLocalDirect):
-                pending_spills.add(node)
-                continue
-            # side-effecting: flush pending into to_spill and mark self
-            to_spill |= pending_spills
-            pending_spills.clear()
-            to_spill.add(node)
-        # the outermost expr is at a sequence point already (it's the value
-        # of a stmt): no need to spill it into a temp.
-        to_spill.discard(expr)
+        for top in top_exprs:
+            # walk_postorder is the same order as normal Python/SPy evaluation
+            # order. E.g. fn(1, 2, 3) we evaluate them as 1, 2, 3, fn(...)
+            for node in top.walk_postorder(ast.Expr):
+                assert isinstance(node, ast.Expr)
+                if node is to_skip:
+                    continue
+                if self.is_pure(node):
+                    continue
+                if isinstance(node, ast.NameLocalDirect):
+                    pending_spills.add(node)
+                    continue
+                # side-effecting: flush pending into to_spill and mark self
+                to_spill |= pending_spills
+                pending_spills.clear()
+                to_spill.add(node)
         return to_spill
 
     # ==== pass 2: rewrite ====
