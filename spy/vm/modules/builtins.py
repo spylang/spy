@@ -249,7 +249,7 @@ def w_setattr(
     # ensure that wam_name is blue; raise TypeError if not
     name = wam_name.blue_unwrap_str(vm)
 
-    @vm.register_builtin_func("builtins", "getattr", [name])
+    @vm.register_builtin_func("builtins", "setattr", [name])
     def w_fn(vm: "SPyVM", w_obj: W_Object, w_name: W_Str, w_val: W_Object) -> W_Object:
         assert False, (
             "this function shouldn't be called, it's special cased by astframe"
