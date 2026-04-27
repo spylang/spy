@@ -22,10 +22,10 @@ build-wasm-particles:
 serve:
 	uv run python -m http.server
 
-html-js-particles:
+html-js-image_data:
 	uv run python -c 'from util_create_html import create_html as c; c("image_data", "JS")'
 
-html-js-image_data:
+html-js-particles:
 	uv run python -c 'from util_create_html import create_html as c; c("particles", "JS")'
 
 format:
