@@ -34,16 +34,11 @@ jobs:
 
       - name: Build and deploy mkdocs
         run: |
-          mike deploy preview --config-file docs/mkdocs.yml --update-aliases -b main --allow-empty
-          mike set-default preview --config-file docs/mkdocs.yml -b main
-          git checkout main
-          git status
-          git reset HEAD~1
-          git status
+          mkdocs build --config-file docs/mkdocs.yml -d site
           
       - name: Deploy PR Preview
         uses: rossjrw/pr-preview-action@v1.8.1
         with:
-          source-dir: docs/site/
+          source-dir: ./site
           preview-branch: gh-pages
           qr-code: false
