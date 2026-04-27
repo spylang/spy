@@ -186,6 +186,18 @@ class Linearizer:
         new_value = self.rewrite_expr(vardef.value, to_spill)
         return [vardef.replace(value=new_value)]
 
+    def rewrite_stmt_AssignLocal(self, assign: ast.AssignLocal) -> list[ast.Stmt]:
+        to_spill = self.mark_to_spill([assign.value])
+        new_value = self.rewrite_expr(assign.value, to_spill)
+        return [assign.replace(value=new_value)]
+
+    def rewrite_stmt_If(self, if_node: ast.If) -> list[ast.Stmt]:
+        to_spill = self.mark_to_spill([if_node.test])
+        new_test = self.rewrite_expr(if_node.test, to_spill)
+        new_then = self.rewrite_body(if_node.then_body)
+        new_else = self.rewrite_body(if_node.else_body)
+        return [if_node.replace(test=new_test, then_body=new_then, else_body=new_else)]
+
     # ==== pass 1: mark ====
     #
     # Determine which expressions should be spilled to guarantee the right order of
