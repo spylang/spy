@@ -215,6 +215,9 @@ class Linearizer:
             to_spill |= pending_spills
             pending_spills.clear()
             to_spill.add(node)
+        # the outermost expr is at a sequence point already (it's the value
+        # of a stmt): no need to spill it into a temp.
+        to_spill.discard(expr)
         return to_spill
 
     # ==== pass 2: rewrite ====

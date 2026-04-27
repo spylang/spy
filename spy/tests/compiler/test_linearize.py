@@ -74,8 +74,7 @@ class TestLinearize(CompilerTest):
             def foo() -> i32:
                 $v0: i32 = `test::f1`()
                 $v1: i32 = `test::f2`()
-                $v2: i32 = `test::sub`($v0, $v1)
-                return $v2
+                return `test::sub`($v0, $v1)
             """
             self.assert_linearize("foo", expected)
 
