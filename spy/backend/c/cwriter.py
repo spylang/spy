@@ -89,7 +89,11 @@ class CFuncWriter:
                 and varname not in param_names
             ):
                 c_varname = C_Ident(varname)
-                self.tbc.wl(f"{c_type} {c_varname};")
+                if w_T is TYPES.w_NoneType:
+                    # we emit a "void myname;" fake declaration for readability
+                    self.tbc.wl(f"/* {c_type} {c_varname}; */")
+                else:
+                    self.tbc.wl(f"{c_type} {c_varname};")
 
     # ==============
 
@@ -176,7 +180,10 @@ class CFuncWriter:
         target = assign.target.value
         v = self.fmt_expr(assign.value)
         c_varname = C_Ident(target)
-        self.tbc.wl(f"{c_varname} = {v};")
+        if assign.value.w_T is TYPES.w_NoneType:
+            self.tbc.wl(f"/* {c_varname} = */ {v};")
+        else:
+            self.tbc.wl(f"{c_varname} = {v};")
 
     def emit_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
         v = self.fmt_expr(assign.value)
@@ -335,7 +342,10 @@ class CFuncWriter:
 
     def fmt_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> C.Expr:
         varname = C_Ident(name.sym.name)
-        return C.Literal(f"{varname}")
+        if name.w_T is TYPES.w_NoneType:
+            return C.Literal(f"/* {varname} */")
+        else:
+            return C.Literal(f"{varname}")
 
     def fmt_expr_NameOuterCell(self, name: ast.NameOuterCell) -> C.Expr:
         return C.Literal(name.fqn.c_name)

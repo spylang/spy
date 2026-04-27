@@ -1665,3 +1665,18 @@ class TestBasic(CompilerTest):
             ("function defined here", "def add(x: int, y: int = 1) -> int"),
         )
         self.compile_raises(src, "foo", errors)
+
+    def test_void_local(self):
+        src = """
+        var N: i32 = 0
+
+        def bar() -> None:
+            N = N + 1
+
+        def foo() -> i32:
+            x = bar()
+            y = x
+            return N
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 1
