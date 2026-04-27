@@ -91,8 +91,8 @@ EM_JS(JsRef, jsffi_u8array_from_ptr, (void *ptr, int32_t length), {
     return jsffi.to_jsref(view);
 });
 
-EM_JS(JsRef, jsffi_new_ImageData, (JsRef c_array, int32_t width, int32_t height), {
-    let array = jsffi.from_jsref(c_array);
+EM_JS(JsRef, jsffi_new_ImageData, (JsRef ref_array, int32_t width, int32_t height), {
+    let array = jsffi.from_jsref(ref_array);
     return jsffi.to_jsref(new ImageData(array, width, height));
 });
 

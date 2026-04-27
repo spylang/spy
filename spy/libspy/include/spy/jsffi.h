@@ -111,9 +111,7 @@ spy_jsffi$JsRef$__setattr__(JsRef target, spy_Str *name, JsRef val) {
     jsffi_setattr(target, name->utf8, val);
 }
 
-// Use a macro so it works with any ptr type (gc_ptr, raw_ptr) — the C backend
-// generates a concrete struct type that is not known at jsffi.h compile time.
-// The macro extracts the raw .p field before passing to jsffi_u8array_from_ptr.
+// Use a macro so it works with any ptr type (gc_ptr, raw_ptr)
 #define spy_jsffi$js_u8array_from_ptr(ptr, length) \
     jsffi_u8array_from_ptr((void *)(ptr).p, length)
 
