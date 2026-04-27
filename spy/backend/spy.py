@@ -171,7 +171,7 @@ class SPyBackend:
 
     # statements
 
-    def emit_declare_var_maybe(self, varname: str) -> None:
+    def get_vartype_to_declare_maybe(self, varname: str) -> Optional[str]:
         symtable = self.scope_stack[-1]
         sym = symtable.lookup(varname)
         if (
@@ -182,8 +182,9 @@ class SPyBackend:
             assert self.w_func.locals_types_w is not None
             w_T = self.w_func.locals_types_w[varname]
             t = self.fmt_w_obj(w_T)
-            self.wl(f"{varname}: {t}")
             self.vars_declared.add(varname)
+            return t
+        return None
 
     def emit_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
         name = funcdef.name
@@ -227,15 +228,21 @@ class SPyBackend:
 
     def emit_stmt_Assign(self, assign: ast.Assign) -> None:
         varname = assign.target.value
-        self.emit_declare_var_maybe(varname)
+        t = self.get_vartype_to_declare_maybe(varname)
         v = self.fmt_expr(assign.value)
-        self.wl(f"{varname} = {v}")
+        if t is not None:
+            self.wl(f"{varname}: {t} = {v}")
+        else:
+            self.wl(f"{varname} = {v}")
 
     def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
         varname = assign.target.value
-        self.emit_declare_var_maybe(varname)
+        t = self.get_vartype_to_declare_maybe(varname)
         v = self.fmt_expr(assign.value)
-        self.wl(f"{varname} = {v}")
+        if t is not None:
+            self.wl(f"{varname}: {t} = {v}")
+        else:
+            self.wl(f"{varname} = {v}")
 
     def emit_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
         varname = self.fmt_fqn(assign.target_fqn)
