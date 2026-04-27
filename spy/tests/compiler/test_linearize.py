@@ -220,24 +220,24 @@ class TestLinearize(CompilerTest):
     ##         """
     ##         self.assert_linearize("foo", expected)
 
-    ## def test_blockexpr_simple(self):
-    ##     src = """
-    ##     def foo(a: i32) -> i32:
-    ##         return __block__('''
-    ##             x: i32 = a
-    ##             x
-    ##         ''')
-    ##     """
-    ##     mod = self.compile(src)
-    ##     assert mod.foo(7) == 7
-    ##     #
-    ##     if self.backend == "linearize":
-    ##         expected = """
-    ##         def foo(a: i32) -> i32:
-    ##             x: i32 = a
-    ##             return x
-    ##         """
-    ##         self.assert_linearize("foo", expected)
+    def test_blockexpr_simple(self):
+        src = """
+        def foo(a: i32) -> i32:
+            return __block__('''
+                x: i32 = a
+                x
+            ''')
+        """
+        mod = self.compile(src)
+        assert mod.foo(7) == 7
+        #
+        if self.backend == "linearize":
+            expected = """
+            def foo(a: i32) -> i32:
+                x: i32 = a
+                return x
+            """
+            self.assert_linearize("foo", expected)
 
     ## def test_blockexpr_single_value(self):
     ##     mod = self.compile("""

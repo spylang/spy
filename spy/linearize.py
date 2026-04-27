@@ -61,7 +61,7 @@ branch without changing evaluation semantics, so we must materialize the
 branch as a proper conditional instead.
 """
 
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Iterator, Optional
 
 from spy import ast
 from spy.analyze.symtable import Symbol, SymTable
@@ -160,11 +160,13 @@ class Linearizer:
         return name, sym
 
     def rewrite_body(self, body: list[ast.Stmt]) -> list[ast.Stmt]:
+        outer = self.hoisted
         new_body: list[ast.Stmt] = []
         for stmt in body:
             self.hoisted = []
             new_stmts = magic_dispatch(self, "rewrite_stmt", stmt)
             new_body += self.hoisted + new_stmts
+        self.hoisted = outer
         return new_body
 
     def rewrite_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
@@ -176,6 +178,13 @@ class Linearizer:
         to_spill = self.mark_to_spill([stmt.value])
         new_value = self.rewrite_expr(stmt.value, to_spill)
         return [stmt.replace(value=new_value)]
+
+    def rewrite_stmt_VarDef(self, vardef: ast.VarDef) -> list[ast.Stmt]:
+        if vardef.value is None:
+            return [vardef]
+        to_spill = self.mark_to_spill([vardef.value])
+        new_value = self.rewrite_expr(vardef.value, to_spill)
+        return [vardef.replace(value=new_value)]
 
     # ==== pass 1: mark ====
     #
@@ -203,6 +212,27 @@ class Linearizer:
             return isinstance(w_obj, W_Func) and w_obj.is_pure()
         return False
 
+    def walk_postorder(self, top: ast.Expr) -> "Iterator[ast.Expr]":
+        """
+        Visit children of the given expr in postorder, which is the same order as
+        normal Python/SPy evaluation order.
+
+        E.g. for `fn(1, 2, 3)` we evaluate them as `1, 2, 3, fn(...)`.
+
+        This is like `ast.Node.walk_postorder(ast.Expr)`, but with a special case for
+        `BlockExpr`: its body is a separate sequence-point scope (it will be
+        re-linearized when rewritten), so we don't descend into it. We only yield the
+        BlockExpr's value (recursively) and the BlockExpr itself.
+        """
+        if isinstance(top, ast.BlockExpr):
+            # ignore .body (for now), just visit .value.
+            yield from self.walk_postorder(top.value)
+        else:
+            for child in top.get_children():
+                if isinstance(child, ast.Expr):
+                    yield from self.walk_postorder(child)
+        yield top
+
     def mark_to_spill(self, top_exprs: list[ast.Expr]) -> set[ast.Expr]:
         """
         Walk all the given exprs and determine which sub-exprs are to spill.
@@ -220,10 +250,7 @@ class Linearizer:
         pending_spills: set[ast.Expr] = set()
         to_spill: set[ast.Expr] = set()
         for top in top_exprs:
-            # walk_postorder is the same order as normal Python/SPy evaluation
-            # order. E.g. fn(1, 2, 3) we evaluate them as 1, 2, 3, fn(...)
-            for node in top.walk_postorder(ast.Expr):
-                assert isinstance(node, ast.Expr)
+            for node in self.walk_postorder(top):
                 if node is to_skip:
                     continue
                 if self.is_pure(node):
@@ -244,6 +271,14 @@ class Linearizer:
         if expr in to_spill:
             return self.spill(new_expr)
         return new_expr
+
+    def rewrite_expr_BlockExpr(
+        self, block: ast.BlockExpr, to_spill: set[ast.Expr]
+    ) -> ast.Expr:
+        # hoist the body into the surrounding stmt context (each body
+        # stmt is itself linearized) and return the rewritten value.
+        self.hoisted += self.rewrite_body(block.body)
+        return self.rewrite_expr(block.value, to_spill)
 
     def rewrite_expr_Call(self, call: ast.Call, to_spill: set[ast.Expr]) -> ast.Expr:
         new_func = self.rewrite_expr(call.func, to_spill)
