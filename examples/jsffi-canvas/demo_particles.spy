@@ -39,10 +39,9 @@ class Params:
 
 var PARTICLES: gc_ptr[Particle] = gc_ptr[Particle].NULL
 var PARAMS: gc_ptr[Params] = gc_ptr[Params].NULL
-var CTX: JsRef = JsRef.NULL
 
 
-def draw_particle(p: Particle, radius: i32) -> None:
+def draw_particle(p: Particle, radius: i32, ctx: JsRef) -> None:
     r_f: f64 = float(radius)
     hue_i: i32 = int(p.hue) % 360
     hue_s: str = str(hue_i)
@@ -50,18 +49,18 @@ def draw_particle(p: Particle, radius: i32) -> None:
     core_color: str = "hsl(" + hue_s + ", 100%, 75%)"
     transparent: str = "hsla(" + hue_s + ", 100%, 50%, 0)"
 
-    grd = CTX.createRadialGradient(p.x, p.y, 0.0, p.x, p.y, r_f * 2.5)
+    grd = ctx.createRadialGradient(p.x, p.y, 0.0, p.x, p.y, r_f * 2.5)
     grd.addColorStop(0.0, glow_color)
     grd.addColorStop(1.0, transparent)
-    CTX.fillStyle = grd
-    CTX.beginPath()
-    CTX.arc(p.x, p.y, r_f * 2.5, 0.0, TWO_PI)
-    CTX.fill()
+    ctx.fillStyle = grd
+    ctx.beginPath()
+    ctx.arc(p.x, p.y, r_f * 2.5, 0.0, TWO_PI)
+    ctx.fill()
 
-    CTX.fillStyle = core_color
-    CTX.beginPath()
-    CTX.arc(p.x, p.y, r_f, 0.0, TWO_PI)
-    CTX.fill()
+    ctx.fillStyle = core_color
+    ctx.beginPath()
+    ctx.arc(p.x, p.y, r_f, 0.0, TWO_PI)
+    ctx.fill()
 
 
 def simulate_step(n: i32, speed: f64, radius: i32) -> None:
@@ -69,39 +68,47 @@ def simulate_step(n: i32, speed: f64, radius: i32) -> None:
     w_f: f64 = float(WIDTH)
     h_f: f64 = float(HEIGHT)
 
-    CTX.fillStyle = "rgba(15, 23, 42, 0.25)"
-    CTX.fillRect(0.0, 0.0, w_f, h_f)
+    window = get_GlobalThis()
+    canvas = window.document.getElementById("canvas")
+    ctx = canvas.getContext("2d")
+    ctx.fillStyle = "rgba(15, 23, 42, 0.25)"
+    ctx.fillRect(0.0, 0.0, w_f, h_f)
 
     for i in range(n):
         p: Particle = PARTICLES[i]
 
         mag: f64 = math.sqrt(p.vx * p.vx + p.vy * p.vy)
         if mag > 0.0001:
-            p.vx = p.vx / mag * speed
-            p.vy = p.vy / mag * speed
+            vx = p.vx / mag * speed
+            vy = p.vy / mag * speed
+            p = Particle(p.x, p.y, vx, vy, p.hue)
 
-        p.x = p.x + p.vx
-        p.y = p.y + p.vy
+        x = p.x + p.vx
+        y = p.y + p.vy
+        vx = p.vx
+        vy = p.vy
 
-        if p.x - r_f < 0.0:
-            p.x = r_f
-            p.vx = -p.vx
-        if p.x + r_f > w_f:
-            p.x = w_f - r_f
-            p.vx = -p.vx
-        if p.y - r_f < 0.0:
-            p.y = r_f
-            p.vy = -p.vy
-        if p.y + r_f > h_f:
-            p.y = h_f - r_f
-            p.vy = -p.vy
+        if x - r_f < 0.0:
+            x = r_f
+            vx = -p.vx
+        if x + r_f > w_f:
+            x = w_f - r_f
+            vx = -vx
+        if y - r_f < 0.0:
+            y = r_f
+            vy = -vy
+        if y + r_f > h_f:
+            y = h_f - r_f
+            vy = -vy
 
-        p.hue = (p.hue + 0.4) % 360.0
-        draw_particle(p, radius)
+        hue = (p.hue + 0.4) % 360.0
+        p = Particle(x, y, vx, vy, hue)
+        draw_particle(p, radius, ctx)
         PARTICLES[i] = p
 
 
 # --- Slider sync callbacks ---
+
 
 def sync_n() -> None:
     window = get_GlobalThis()
@@ -109,11 +116,13 @@ def sync_n() -> None:
     window.document.getElementById("nParticlesVal").textContent = elem.value
     PARAMS[0].n = js_to_i32(elem.value)
 
+
 def sync_speed() -> None:
     window = get_GlobalThis()
     elem = window.document.getElementById("speed")
     window.document.getElementById("speedVal").textContent = elem.value
     PARAMS[0].speed = js_to_f64(elem.value)
+
 
 def sync_radius() -> None:
     window = get_GlobalThis()
@@ -121,7 +130,9 @@ def sync_radius() -> None:
     window.document.getElementById("radiusVal").textContent = elem.value
     PARAMS[0].radius = js_to_i32(elem.value)
 
+
 # ---
+
 
 def frame(timestamp: f64) -> None:
     window = get_GlobalThis()
@@ -150,8 +161,6 @@ def main() -> None:
     PARAMS = gc_alloc[Params](1)
 
     window = get_GlobalThis()
-    canvas = window.document.getElementById("canvas")
-    CTX = canvas.getContext("2d")
 
     PARAMS[0].n = 20
     PARAMS[0].speed = 3.0
@@ -159,15 +168,15 @@ def main() -> None:
 
     elem = window.document.getElementById("nParticles")
     PARAMS[0].n = js_to_i32(elem.value)
-    elem.addEventListener('input', sync_n)
+    elem.addEventListener("input", sync_n)
 
     elem = window.document.getElementById("speed")
     PARAMS[0].speed = js_to_f64(elem.value)
-    elem.addEventListener('input', sync_speed)
+    elem.addEventListener("input", sync_speed)
 
     elem = window.document.getElementById("radius")
     PARAMS[0].radius = js_to_i32(elem.value)
-    elem.addEventListener('input', sync_radius)
+    elem.addEventListener("input", sync_radius)
 
     init_particles(PARAMS[0].n, PARAMS[0].speed, PARAMS[0].radius)
     window.requestAnimationFrame(frame)
