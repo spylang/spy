@@ -127,28 +127,29 @@ class TestLinearize(CompilerTest):
             """
             self.assert_linearize("foo", expected)
 
-    ## def test_no_spill_for_pure_with_impure_args(self):
-    ##     src = """
-    ##     def f1() -> i32:
-    ##         return 1
+    def test_dont_spill_name_variants(self):
+        # exercise the various ast.Name* variants which survive after
+        # redshift: NameLocalDirect (plain param), NameOuterDirect (module
+        # const), NameOuterCell (module var).
+        src = """
+        K: i32 = 100
+        var V: i32 = 200
 
-    ##     def f2() -> i32:
-    ##         return 2
+        def foo4(a: i32, b: i32, c: i32, d: i32) -> i32:
+            return a + b + c + d
 
-    ##     def foo() -> i32:
-    ##         return f1() + f2()
-    ##     """
-    ##     mod = self.compile(src)
-    ##     assert mod.foo() == 3
-    ##     #
-    ##     if self.backend == "linearize":
-    ##         expected = """
-    ##         def foo() -> i32:
-    ##             $v0: i32 = `test::f1`()
-    ##             $v1: i32 = `test::f2`()
-    ##             return $v0 + $v1
-    ##         """
-    ##         self.assert_linearize("foo", expected)
+        def foo(a: i32) -> i32:
+            return foo4(a, K, V, a)
+        """
+        mod = self.compile(src)
+        assert mod.foo(1) == 1 + 100 + 200 + 1
+        #
+        if self.backend == "linearize":
+            expected = """
+            def foo(a: i32) -> i32:
+                return `test::foo4`(a, 100, `test::V`, a)
+            """
+            self.assert_linearize("foo", expected)
 
     ## def test_and(self, capfd):
     ##     # `and` is short-circuit: if the LHS is False, the RHS must NOT be

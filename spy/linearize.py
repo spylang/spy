@@ -192,6 +192,9 @@ class Linearizer:
     #     as a sequence point. Promote ``pending_spills`` into ``to_spill``
     #     and mark self for spill.
     PURE_EXPRS = (ast.Constant, ast.StrConst, ast.FQNConst)
+    # Name references: side-effect free, but their value may be invalidated
+    # by a later side-effecting expr. They go into ``pending_spills``.
+    NAME_EXPRS = (ast.NameLocalDirect, ast.NameOuterDirect, ast.NameOuterCell)
 
     def is_pure(self, expr: ast.Expr) -> bool:
         if isinstance(expr, self.PURE_EXPRS):
@@ -226,7 +229,7 @@ class Linearizer:
                     continue
                 if self.is_pure(node):
                     continue
-                if isinstance(node, ast.NameLocalDirect):
+                if isinstance(node, self.NAME_EXPRS):
                     pending_spills.add(node)
                     continue
                 # side-effecting: flush pending into to_spill and mark self
@@ -252,6 +255,12 @@ class Linearizer:
         return const
 
     def rewrite_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> ast.Expr:
+        return name
+
+    def rewrite_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> ast.Expr:
+        return name
+
+    def rewrite_expr_NameOuterCell(self, name: ast.NameOuterCell) -> ast.Expr:
         return name
 
     def rewrite_expr_StrConst(self, const: ast.StrConst) -> ast.Expr:
