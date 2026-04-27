@@ -3,8 +3,6 @@ SPy particle simulation using the canvas 2D API directly.
 
 Known missing vs JS version:
 - math.random not yet available: particles initialized deterministically
-
-This needs evident additions in jsffi, in particular js_call_method_0, 4, 5 and 6!
 """
 
 from jsffi import (

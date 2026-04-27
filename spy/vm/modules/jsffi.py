@@ -33,14 +33,9 @@ class W_JsRef(W_Object):
         vm: "SPyVM", wam_obj: W_MetaArg, wam_method: W_MetaArg, *args_wam: W_MetaArg
     ) -> W_OpSpec:
         n = len(args_wam)
-        if n == 1:
-            return W_OpSpec(JSFFI.w_js_call_method_1)
-        elif n == 2:
-            return W_OpSpec(JSFFI.w_js_call_method_2)
-        elif n == 3:
-            return W_OpSpec(JSFFI.w_js_call_method_3)
-        else:
-            raise Exception(f"unsupported number of arguments for __call_method__: {n}")
+        if n > 6:
+            raise WIP(f"unsupported number of arguments for __call_method__: {n}")
+        return W_OpSpec(getattr(JSFFI, f"w_js_call_method_{n}"))
 
     @builtin_method("__convert_from__", color="blue", kind="metafunc")
     @staticmethod
@@ -112,6 +107,11 @@ def w_js_wrap_func_f64(vm: "SPyVM", w_fn: W_Func) -> W_JsRef:
 
 
 @JSFFI.builtin_func
+def w_js_call_method_0(vm: "SPyVM", w_target: W_JsRef, name: W_Str) -> W_JsRef:
+    raise NotImplementedError
+
+
+@JSFFI.builtin_func
 def w_js_call_method_1(
     vm: "SPyVM", w_target: W_JsRef, name: W_Str, arg0: W_JsRef
 ) -> W_JsRef:
@@ -133,6 +133,48 @@ def w_js_call_method_3(
     arg0: W_JsRef,
     arg1: W_JsRef,
     arg2: W_JsRef,
+) -> W_JsRef:
+    raise NotImplementedError
+
+
+@JSFFI.builtin_func
+def w_js_call_method_4(
+    vm: "SPyVM",
+    w_target: W_JsRef,
+    name: W_Str,
+    arg0: W_JsRef,
+    arg1: W_JsRef,
+    arg2: W_JsRef,
+    arg3: W_JsRef,
+) -> W_JsRef:
+    raise NotImplementedError
+
+
+@JSFFI.builtin_func
+def w_js_call_method_5(
+    vm: "SPyVM",
+    w_target: W_JsRef,
+    name: W_Str,
+    arg0: W_JsRef,
+    arg1: W_JsRef,
+    arg2: W_JsRef,
+    arg3: W_JsRef,
+    arg4: W_JsRef,
+) -> W_JsRef:
+    raise NotImplementedError
+
+
+@JSFFI.builtin_func
+def w_js_call_method_6(
+    vm: "SPyVM",
+    w_target: W_JsRef,
+    name: W_Str,
+    arg0: W_JsRef,
+    arg1: W_JsRef,
+    arg2: W_JsRef,
+    arg3: W_JsRef,
+    arg4: W_JsRef,
+    arg5: W_JsRef,
 ) -> W_JsRef:
     raise NotImplementedError
 
