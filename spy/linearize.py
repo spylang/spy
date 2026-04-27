@@ -104,7 +104,7 @@ class Linearizer:
 
     def linearize(self) -> W_ASTFunc:
         funcdef = self.w_func.funcdef
-        new_body = self.visit_body(funcdef.body)
+        new_body = self.rewrite_body(funcdef.body)
         new_symtable = self._copy_symtable(funcdef.symtable)
         new_funcdef = funcdef.replace(body=new_body, symtable=new_symtable)
 
@@ -135,14 +135,109 @@ class Linearizer:
             new_st.add(sym)
         return new_st
 
-    def visit_body(self, body: list[ast.Stmt]) -> list[ast.Stmt]:
-        return list(body)
+    def spill(self, expr: ast.Expr) -> ast.Expr:
+        assert expr.w_T is not None
+        loc = expr.loc
+        name, sym = self.fresh_tmp(expr.w_T, loc)
+        self.hoisted.append(
+            ast.AssignLocal(
+                loc=loc,
+                target=ast.StrConst(loc, name),
+                value=expr,
+            )
+        )
+        return ast.NameLocalDirect(loc=loc, sym=sym, w_T=expr.w_T)
 
-    def fresh_tmp(self, w_T: "W_Type") -> str:
+    def fresh_tmp(self, w_T: "W_Type", loc: Loc) -> tuple[str, Symbol]:
         """
         Allocate a fresh local name of the given type: $v0, $v1, ...
         """
         name = f"$v{self.tmp_counter}"
         self.tmp_counter += 1
         self.new_locals[name] = w_T
+        sym = Symbol(name, "var", "auto", "direct", loc=loc, type_loc=loc, level=0)
+        self.new_symbols.append(sym)
+        return name, sym
+
+    def rewrite_body(self, body: list[ast.Stmt]) -> list[ast.Stmt]:
+        new_body: list[ast.Stmt] = []
+        for stmt in body:
+            self.hoisted = []
+            new_stmts = magic_dispatch(self, "rewrite_stmt", stmt)
+            new_body += self.hoisted + new_stmts
+        return new_body
+
+    def rewrite_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
+        self.to_spill = self.mark_to_spill(ret.value)
+        new_value = self.rewrite_expr(ret.value)
+        return [ret.replace(value=new_value)]
+
+    def rewrite_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> list[ast.Stmt]:
+        self.to_spill = self.mark_to_spill(stmt.value)
+        new_value = self.rewrite_expr(stmt.value)
+        return [stmt.replace(value=new_value)]
+
+    # ==== pass 1: mark ====
+    #
+    # Determine which expressions should be spilled to guarantee the right order of
+    # evaluation.
+    #
+    # Expressions can be:
+    #   - pure: no side effects, no dependence on mutable state; never spilled.
+    #
+    #   - names: trivially side-effect free, but they are not pure because earlier calls
+    #     might modifiy their value. The gets added to `pending_spills`
+    #
+    #   - side-effecting (impure Call, or anything not whitelisted): acts
+    #     as a sequence point. Promote ``pending_spills`` into ``to_spill``
+    #     and mark self for spill.
+    PURE_EXPRS = (ast.Constant, ast.StrConst, ast.FQNConst)
+
+    def is_pure(self, expr: ast.Expr) -> bool:
+        if isinstance(expr, self.PURE_EXPRS):
+            return True
+        if isinstance(expr, ast.Call) and isinstance(expr.func, ast.FQNConst):
+            w_obj = self.vm.lookup_global(expr.func.fqn)
+            return isinstance(w_obj, W_Func) and w_obj.is_pure()
+        return False
+
+    def mark_to_spill(self, expr: ast.Expr) -> set[ast.Expr]:
+        pending_spills: set[ast.Expr] = set()
+        to_spill: set[ast.Expr] = set()
+        for node in expr.walk_postorder(ast.Expr):
+            assert isinstance(node, ast.Expr)
+            if self.is_pure(node):
+                continue
+            if isinstance(node, ast.NameLocalDirect):
+                pending_spills.add(node)
+                continue
+            # side-effecting: flush pending into to_spill and mark self
+            to_spill |= pending_spills
+            pending_spills.clear()
+            to_spill.add(node)
+        return to_spill
+
+    # ==== pass 2: rewrite ====
+
+    def rewrite_expr(self, expr: ast.Expr) -> ast.Expr:
+        new_expr = magic_dispatch(self, "rewrite_expr", expr)
+        if expr in self.to_spill:
+            return self.spill(new_expr)
+        return new_expr
+
+    def rewrite_expr_Call(self, call: ast.Call) -> ast.Expr:
+        new_func = self.rewrite_expr(call.func)
+        new_args = [self.rewrite_expr(a) for a in call.args]
+        return call.replace(func=new_func, args=new_args)
+
+    def rewrite_expr_FQNConst(self, const: ast.FQNConst) -> ast.Expr:
+        return const
+
+    def rewrite_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> ast.Expr:
         return name
+
+    def rewrite_expr_StrConst(self, const: ast.StrConst) -> ast.Expr:
+        return const
+
+    def rewrite_expr_Constant(self, const: ast.Constant) -> ast.Expr:
+        return const
