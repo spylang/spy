@@ -44,27 +44,36 @@ def slider(id, label, min, max, value, step=1, display_suffix=""):
     )
 
 
-def demo_page(lang):
-    if lang == "JS":
-        script = Script(src="demo.js", defer=True)
-        lang_label = "JavaScript"
-        hljs_lang = "javascript"
-        filename = "demo.js"
+def demo_page(name, lang):
+
+    demo_names = ["particles", "image_data"]
+    if name not in demo_names:
+        raise ValueError(f"{name} must be in {demo_names}")
+    elif name == "particles":
         sliders = [
             slider("nParticles", "Particles", 2, 80, 20, 1),
             slider("speed", "Speed", 1, 10, 3, 0.5, " px/f"),
             slider("radius", "Radius", 2, 20, 6, 1, " px"),
         ]
-    elif lang == "SPy":
-        script = Script(src="build/demo.mjs", type="module")
-        lang_label = "SPy"
-        hljs_lang = "python"
-        filename = "demo.spy"
+    else:
         sliders = [
             slider("red", "Red", 0, 255, 255),
             slider("green", "Green", 0, 255, 255),
             slider("blue", "Blue", 0, 255, 0),
         ]
+
+    ext_src = ".spy" if lang == "SPy" else ".js"
+    base_finename = "demo_" + name
+    filename = base_finename + ext_src
+
+    if lang == "JS":
+        script = Script(src=filename, defer=True)
+        lang_label = "JavaScript"
+        hljs_lang = "javascript"
+    elif lang == "SPy":
+        script = Script(src=f"build/{base_finename}.mjs", type="module")
+        lang_label = "SPy"
+        hljs_lang = "python"
     else:
         raise NotImplementedError
 
@@ -204,3 +213,14 @@ pre { margin: 0; }
         ),
         lang="en",
     )
+
+
+def create_html(name, lang):
+
+    if lang == "JS":
+        path_output = f"demo_{name}.html"
+    else:
+        path_output = "index.html"
+
+    Path(path_output).write_text(str(demo_page(name, lang)), encoding="utf-8")
+    print(f"Written {path_output}")
