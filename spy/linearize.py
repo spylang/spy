@@ -280,6 +280,53 @@ class Linearizer:
             return self.spill(new_expr)
         return new_expr
 
+    def rewrite_expr_And(self, and_: ast.And, to_spill: set[ast.Expr]) -> ast.Expr:
+        return self._rewrite_short_circuit(and_, "and")
+
+    def rewrite_expr_Or(self, or_: ast.Or, to_spill: set[ast.Expr]) -> ast.Expr:
+        return self._rewrite_short_circuit(or_, "or")
+
+    def _rewrite_short_circuit(self, op: "ast.And | ast.Or", kind: str) -> ast.Expr:
+        # Rewrite the LHS normally: its hoists go to the outer scope (LHS
+        # is always evaluated).
+        to_spill_left = self.mark_to_spill([op.left])
+        new_left = self.rewrite_expr(op.left, to_spill_left)
+
+        # Rewrite the RHS in a sandboxed hoisted scope so we can see
+        # whether it produces any hoisted stmts. If it doesn't, we can
+        # keep the And/Or expr as-is.
+        saved = self.hoisted
+        self.hoisted = []
+        to_spill_right = self.mark_to_spill([op.right])
+        new_right = self.rewrite_expr(op.right, to_spill_right)
+        rhs_hoisted = self.hoisted
+        self.hoisted = saved
+
+        if not rhs_hoisted:
+            return op.replace(left=new_left, right=new_right)
+
+        # RHS has hoists: lower to an explicit if/else so that the hoists
+        # only run on the short-circuit path.
+        loc = op.loc
+        assert op.w_T is not None
+        name, sym = self.fresh_tmp(op.w_T, loc)
+        target = ast.StrConst(loc, name)
+        assign_rhs = ast.AssignLocal(loc=loc, target=target, value=new_right)
+        assign_left = ast.AssignLocal(loc=loc, target=target, value=new_left)
+
+        if kind == "and":
+            then_body: list[ast.Stmt] = rhs_hoisted + [assign_rhs]
+            else_body: list[ast.Stmt] = [assign_left]
+        else:  # or
+            then_body = [assign_left]
+            else_body = rhs_hoisted + [assign_rhs]
+
+        if_stmt = ast.If(
+            loc=loc, test=new_left, then_body=then_body, else_body=else_body
+        )
+        self.hoisted.append(if_stmt)
+        return ast.NameLocalDirect(loc=loc, sym=sym, w_T=op.w_T)
+
     def rewrite_expr_BlockExpr(
         self, block: ast.BlockExpr, to_spill: set[ast.Expr]
     ) -> ast.Expr:
