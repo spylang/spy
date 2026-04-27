@@ -96,6 +96,37 @@ class TestLinearize(CompilerTest):
             """
             self.assert_linearize("foo", expected)
 
+    def test_spill_names_before_call(self, capfd):
+        # in this test "a" is spilled because of the later g(), while "c" and "d" don't
+        # need spilling
+        src = """
+        def g() -> i32:
+            print('g')
+            return 100
+
+        def bar(a: i32, b: i32, c: i32, d: i32) -> i32:
+            print('bar')
+            return a + b + c + d
+
+        def foo(a: i32, c: i32, d: i32) -> i32:
+            return bar(a, 1 + g(), c, d)
+        """
+        mod = self.compile(src)
+        assert mod.foo(1, 3, 4) == 1 + 101 + 3 + 4
+        if self.backend == "C":
+            mod.ll.call("spy_flush")
+        out, err = capfd.readouterr()
+        assert out.splitlines() == ["g", "bar"]
+        #
+        if self.backend == "linearize":
+            expected = """
+            def foo(a: i32, c: i32, d: i32) -> i32:
+                $v0: i32 = a
+                $v1: i32 = `test::g`()
+                return `test::bar`($v0, 1 + $v1, c, d)
+            """
+            self.assert_linearize("foo", expected)
+
     ## def test_no_spill_for_pure_with_impure_args(self):
     ##     src = """
     ##     def f1() -> i32:
