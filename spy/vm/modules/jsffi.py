@@ -59,6 +59,19 @@ class W_JsRef(W_Object):
         else:
             return W_OpSpec.NULL
 
+    @builtin_method("__convert_to__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_CONVERT_TO(
+        vm: "SPyVM", wam_expT: W_MetaArg, wam_gotT: W_MetaArg, wam_x: W_MetaArg
+    ) -> W_OpSpec:
+        w_expT = wam_expT.w_blueval
+        if w_expT is B.w_i32:
+            return W_OpSpec(JSFFI.w_js_to_f64)
+        elif w_expT is B.w_f64:
+            return W_OpSpec(JSFFI.w_js_to_i32)
+        else:
+            raise WIP(f"Cannot convert a JsRef into a {w_expT}")
+
 
 @JSFFI.builtin_func
 def w_debug(vm: "SPyVM", w_str: W_Str) -> None:
