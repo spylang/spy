@@ -178,7 +178,19 @@ pre { margin: 0; }
                     ),
                     cls="flex flex-row gap-8 items-start",
                 ),
-                # Source code display
+                # Source code explanation + display
+                Div(
+                    P(
+                        f"The {lang_label} source code below is what drives the animation above. "
+                        + (
+                            "It is compiled to WebAssembly by the SPy compiler and runs directly in your browser — no Python runtime, no PyScript, no Pyodide."
+                            if lang == "SPy"
+                            else "It runs natively in your browser via a standard script tag."
+                        ),
+                        cls="text-sm text-base-content/60",
+                    ),
+                    cls="px-1",
+                ),
                 Div(
                     Div(
                         Div(
