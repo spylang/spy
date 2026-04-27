@@ -34,7 +34,10 @@ jobs:
 
       - name: Build and deploy mkdocs
         run: |
-          mkdocs build --config-file docs/mkdocs.yml -d site
+          mkdocs build --config-file docs/mkdocs.yml -d ./site
+          ls
+          cd ./site
+          ls
           
       - name: Deploy PR Preview
         uses: rossjrw/pr-preview-action@v1.8.1
