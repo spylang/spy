@@ -311,23 +311,25 @@ class TestLinearize(CompilerTest):
             """
             self.assert_linearize("foo", expected)
 
-    ## def test_blockexpr_in_binop(self):
-    ##     mod = self.compile("""
-    ##     def foo(a: i32, b: i32) -> i32:
-    ##         return a + __block__('''
-    ##             x: i32 = b
-    ##             x + 3
-    ##         ''')
-    ##     """)
-    ##     assert mod.foo(2, 5) == 10
-    ##     #
-    ##     if self.backend == "linearize":
-    ##         expected = """
-    ##         def foo(a: i32, b: i32) -> i32:
-    ##             x: i32 = b
-    ##             return a + x + 3
-    ##         """
-    ##         self.assert_linearize("foo", expected)
+    def test_blockexpr_in_binop(self):
+        mod = self.compile("""
+        def foo(a: i32, b: i32) -> i32:
+            return a + __block__('''
+                x: i32 = b
+                x + 3
+            ''')
+        """)
+        assert mod.foo(2, 5) == 10
+        #
+        if self.backend == "linearize":
+            expected = """
+            def foo(a: i32, b: i32) -> i32:
+                $v0: i32 = a
+                x: i32 = b
+                $v1: i32 = x + 3
+                return $v0 + $v1
+            """
+            self.assert_linearize("foo", expected)
 
     ## def test_spill_implicit_conversion(self):
     ##     # when doppler inserts an implicit conversion call (e.g. the
