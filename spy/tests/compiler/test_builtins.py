@@ -1,6 +1,12 @@
 import pytest
 
-from spy.tests.support import CompilerTest, expect_errors, no_C, only_interp
+from spy.tests.support import (
+    CompilerTest,
+    expect_errors,
+    no_C,
+    only_interp,
+    skip_backends,
+)
 from spy.vm.builtin import builtin_method
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_I32, W_Dynamic
@@ -261,6 +267,89 @@ class TestBuiltins(CompilerTest):
             ("this is red", "attr"),
         )
         self.compile_raises(src, "foo", errors)
+
+    def test_hasattr(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo() -> bool:
+            p = Point(1, 2)
+            return hasattr(p, 'x')
+
+        def bar() -> bool:
+            p = Point(1, 2)
+            return hasattr(p, 'z')
+        """
+        mod = self.compile(src)
+        assert mod.foo() == True
+        assert mod.bar() == False
+
+    def test_hasattr_red(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo() -> bool:
+            var attr = "x"  # this is red
+            p = Point(1, 2)
+            return hasattr(p, attr)
+        """
+        errors = expect_errors(
+            "expected blue argument",
+            ("this is red", "attr"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    @skip_backends("C", reason="dynamic not supported in C backend")
+    def test_hasattr_dynamic(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo() -> bool:
+            p: dynamic = Point(1, 2)
+            return hasattr(p, 'x')
+
+        def bar() -> bool:
+            p: dynamic = Point(1, 2)
+            return hasattr(p, 'z')
+        """
+        mod = self.compile(src)
+        assert mod.foo() == True
+        assert mod.bar() == False
+
+    def test_hasattr_custom_getattribute(self):
+        mod = self.compile("""
+        from operator import OpSpec
+
+        @struct
+        class MyClass:
+
+            @blue.metafunc
+            def __getattribute__(m_self, m_name):
+                if m_name.blueval == 'x':
+                    def impl(obj: MyClass, name: str) -> i32:
+                        return 42
+                    return OpSpec(impl)
+                return OpSpec.NULL
+
+        def foo() -> bool:
+            obj = MyClass()
+            return hasattr(obj, 'x')
+
+        def bar() -> bool:
+            obj = MyClass()
+            return hasattr(obj, 'z')
+        """)
+        assert mod.foo() == True
+        assert mod.bar() == False
 
     @only_interp
     def test_dir(self):
