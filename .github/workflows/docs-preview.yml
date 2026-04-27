@@ -1,5 +1,9 @@
 name: Preview Docs Builds
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 on:
   pull_request:
     branches:
@@ -27,17 +31,9 @@ jobs:
         run: |
            pip install .[docs]
 
-      - name: Configure Git in docs repository
-        run: |
-          git config user.name "${{ github.actor }}"
-          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
-
       - name: Build and deploy mkdocs
         run: |
           mkdocs build --config-file docs/mkdocs.yml --site-dir ./site -v
-          ls
-          cd ./docs/site
-          ls
           
       - name: Deploy PR Preview
         id: deploy-preview-site
