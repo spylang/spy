@@ -67,7 +67,9 @@ from spy import ast
 from spy.analyze.symtable import Symbol, SymTable
 from spy.location import Loc
 from spy.util import magic_dispatch
+from spy.vm.b import B
 from spy.vm.function import W_ASTFunc, W_Func
+from spy.vm.modules.operator import OP
 
 if TYPE_CHECKING:
     from spy.vm.object import W_Type
@@ -198,6 +200,47 @@ class Linearizer:
 
     def rewrite_stmt_Pass(self, stmt: ast.Pass) -> list[ast.Stmt]:
         return [stmt]
+
+    def rewrite_stmt_While(self, while_node: ast.While) -> list[ast.Stmt]:
+        # Rewrite the test in a sandboxed hoisted scope. If it produces no
+        # hoisted stmts, keep the While as-is. Otherwise lower to:
+        #     while True:
+        #         <test-hoisted>
+        #         if not <test>:
+        #             break
+        #         <body>
+        # so that the test's hoisted stmts re-run on every iteration.
+        saved = self.hoisted
+        self.hoisted = []
+        to_spill = self.mark_to_spill([while_node.test])
+        new_test = self.rewrite_expr(while_node.test, to_spill)
+        test_hoisted = self.hoisted
+        self.hoisted = saved
+
+        new_body = self.rewrite_body(while_node.body)
+
+        if not test_hoisted:
+            return [while_node.replace(test=new_test, body=new_body)]
+
+        loc = while_node.loc
+        true_const = ast.Constant(loc=loc, value=True, w_T=B.w_bool)
+        not_test = ast.Call(
+            loc=loc,
+            func=ast.FQNConst(loc=loc, fqn=OP.w_bool_not.fqn, w_T=B.w_dynamic),
+            args=[new_test],
+            w_T=B.w_bool,
+        )
+        break_if = ast.If(
+            loc=loc,
+            test=not_test,
+            then_body=[ast.Break(loc=loc)],
+            else_body=[],
+        )
+        return [
+            while_node.replace(
+                test=true_const, body=test_hoisted + [break_if] + new_body
+            )
+        ]
 
     def rewrite_stmt_If(self, if_node: ast.If) -> list[ast.Stmt]:
         to_spill = self.mark_to_spill([if_node.test])

@@ -276,6 +276,70 @@ class TestLinearize(CompilerTest):
             """
             self.assert_linearize("foo", expected)
 
+    def test_while_simple(self):
+        # when the `while` test has no hoisted stmts, it's a plain passthrough
+        src = """
+        def foo(n: i32) -> i32:
+            i: i32 = 0
+            while i < n:
+                i = i + 1
+            return i
+        """
+        mod = self.compile(src)
+        assert mod.foo(5) == 5
+        #
+        if self.backend == "linearize":
+            expected = """
+            def foo(n: i32) -> i32:
+                i: i32 = 0
+                while i < n:
+                    i = i + 1
+                return i
+            """
+            self.assert_linearize("foo", expected)
+
+    def test_while_with_hoists(self, capfd):
+        # when the `while` test has hoisted stmts (e.g. an impure call that
+        # gets spilled), those hoisted stmts must re-run on every iteration.
+        # We lower to:
+        #     while True:
+        #         <hoisted>
+        #         if <test>:
+        #             <body>
+        #         else:
+        #             break
+        src = """
+        var N: i32 = 0
+
+        def tick() -> i32:
+            N = N + 1
+            return N
+
+        def foo() -> i32:
+            while tick() < 3:
+                print(N)
+            return N
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 3
+        if self.backend == "C":
+            mod.ll.call("spy_flush")
+        out, err = capfd.readouterr()
+        # tick() returns 1, 2, 3; body runs with N=1 and N=2.
+        assert out.splitlines() == ["1", "2"]
+        #
+        if self.backend == "linearize":
+            expected = """
+            def foo() -> i32:
+                while True:
+                    $v0: i32 = `test::tick`()
+                    if `operator::bool_not`($v0 < 3):
+                        break
+                    print_i32(`test::N`)
+                return `test::N`
+            """
+            self.assert_linearize("foo", expected)
+
     def test_assignexpr_local(self):
         # AssignExprLocal is side-effecting: it must be spilled, and Names
         # seen before it must be spilled too so they capture the PRE-assignment
