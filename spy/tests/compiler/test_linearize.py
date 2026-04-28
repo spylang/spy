@@ -505,6 +505,37 @@ class TestLinearize(CompilerTest):
             """
             self.assert_linearize("foo", expected)
 
+    def test_no_spill_memloc(self):
+        # raw_ref[T] and gc_ref[T] cannot be materialized as C locals, so
+        # they must never be spilled. They don't have side effects anyway.
+        mod = self.compile("""
+        from unsafe import raw_alloc, raw_ptr
+
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo() -> i32:
+            arr: raw_ptr[Point] = raw_alloc[Point](1)
+            arr[0].x = 42
+            return arr[0].x
+        """)
+        assert mod.foo() == 42
+        #
+        if self.backend == "linearize":
+            # arr[0] produces a raw_ref[Point], which must NOT be spilled
+            # (no $v temp of raw_ref type should appear)
+            fqn = FQN("test::foo")
+            w_func = self.vm.lookup_global(fqn)
+            from spy.vm.modules.unsafe.ptr import W_RefType
+
+            assert w_func.locals_types_w is not None
+            for name, w_T in w_func.locals_types_w.items():
+                assert not isinstance(w_T, W_RefType), (
+                    f"spilled a raw_ref/gc_ref into temp {name!r}"
+                )
+
     ## def test_spill_implicit_conversion(self):
     ##     # when doppler inserts an implicit conversion call (e.g. the
     ##     # gc_ref->value deref), the resulting Call must carry a w_T so that

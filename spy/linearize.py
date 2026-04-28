@@ -71,6 +71,7 @@ from spy.util import magic_dispatch
 from spy.vm.b import B
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.operator import OP
+from spy.vm.modules.unsafe.ptr import W_RefType
 
 if TYPE_CHECKING:
     from spy.vm.object import W_Type
@@ -154,8 +155,15 @@ class Linearizer:
         finally:
             self.hoisted = outer
 
+    def is_spillable_type(self, w_T: "W_Type") -> bool:
+        # raw_ref/gc_ref are C pointer-like views that cannot be materialized
+        # as standalone local variables
+        return not isinstance(w_T, W_RefType)
+
     def spill(self, expr: ast.Expr) -> ast.Expr:
         assert expr.w_T is not None
+        if not self.is_spillable_type(expr.w_T):
+            return expr
         loc = expr.loc
         name, sym = self.fresh_tmp(expr.w_T, loc)
         self.hoisted.append(
