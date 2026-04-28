@@ -404,6 +404,12 @@ class Linearizer:
         name, sym = self.fresh_tmp(op.w_T, loc)
         target = ast.StrConst(loc, name)
         assign_rhs = ast.AssignLocal(loc=loc, target=target, value=new_right)
+
+        # new_left is used as both the if-test and the value for the
+        # short-circuit branch; spill it if needed so it is only evaluated once.
+        # Names are safe to reuse without spilling (reading a name is not a call).
+        if not isinstance(new_left, self.NAME_EXPRS):
+            new_left = self.spill(new_left)
         assign_left = ast.AssignLocal(loc=loc, target=target, value=new_left)
 
         if kind == "and":

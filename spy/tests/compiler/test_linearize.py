@@ -276,6 +276,25 @@ class TestLinearize(CompilerTest):
             """
             self.assert_linearize("foo", expected)
 
+    def test_or_lhs_not_evaluated_twice(self, capfd):
+        src = """
+        def side_effect() -> bool:
+            print('lhs')
+            return True
+
+        def bar() -> bool:
+            return True
+
+        def foo() -> bool:
+            return side_effect() or (bar() == True)
+        """
+        mod = self.compile(src)
+        mod.foo()
+        if self.backend == "C":
+            mod.ll.call("spy_flush")
+        out, _ = capfd.readouterr()
+        assert out.splitlines() == ["lhs"]
+
     def test_while_simple(self):
         # when the `while` test has no hoisted stmts, it's a plain passthrough
         src = """
