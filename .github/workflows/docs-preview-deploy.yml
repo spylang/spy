@@ -76,7 +76,7 @@ jobs:
           number: ${{ steps.pr.outputs.pr_number }}
           header: pr-preview
           message: |
-            [Documentation Preview](https://jeffersglass.github.io/spy/pr-preview/pr-${{ steps.pr.outputs.pr_number }})
+            [Documentation Preview](https://spylang.github.io/spy/pr-preview/pr-${{ steps.pr.outputs.pr_number }})
             :---:
             Preview documentation for PR #${{ steps.pr.outputs.pr_number }}.
             Last Updated: ${{ steps.ts.outputs.utc }}
