@@ -208,6 +208,11 @@ class Linearizer:
         new_value = self.rewrite_expr(assign.value, to_spill)
         return [assign.replace(value=new_value)]
 
+    def rewrite_stmt_UnpackAssign(self, assign: ast.UnpackAssign) -> list[ast.Stmt]:
+        to_spill = self.mark_to_spill([assign.value])
+        new_value = self.rewrite_expr(assign.value, to_spill)
+        return [assign.replace(value=new_value)]
+
     def rewrite_stmt_AssignCell(self, assign: ast.AssignCell) -> list[ast.Stmt]:
         to_spill = self.mark_to_spill([assign.value])
         new_value = self.rewrite_expr(assign.value, to_spill)
@@ -430,6 +435,10 @@ class Linearizer:
     ) -> ast.Expr:
         new_value = self.rewrite_expr(assign.value, to_spill)
         return assign.replace(value=new_value)
+
+    def rewrite_expr_Tuple(self, tup: ast.Tuple, to_spill: set[ast.Expr]) -> ast.Expr:
+        new_items = [self.rewrite_expr(item, to_spill) for item in tup.items]
+        return tup.replace(items=new_items)
 
     def rewrite_expr_FQNConst(
         self, const: ast.FQNConst, to_spill: set[ast.Expr]
