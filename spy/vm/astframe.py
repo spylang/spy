@@ -436,6 +436,49 @@ class AbstractFrame:
         w_T.define_from_classbody(self.vm, body)
         assert w_T.is_defined()
 
+    def exec_stmt_GenericClassDef(self, gclassdef: ast.GenericClassDef) -> None:
+        """
+        Desugar generic argument syntax sugar:
+
+            @struct
+            class Point[T]:
+                x: T
+
+        into the equivalent of:
+
+            @blue.generic
+            def Point(T):
+                @struct
+                class Self:
+                    x: T
+                return Self
+        """
+        loc = gclassdef.loc
+        assert gclassdef.symtable is not None
+
+        # build synthetic return: return Self
+        impl_symbol = gclassdef.symtable.lookup("Self")
+        return_stmt = ast.Return(
+            loc=loc,
+            value=ast.NameLocalDirect(loc=loc, sym=impl_symbol),
+        )
+
+        outer_funcdef = ast.FuncDef(
+            loc=loc,
+            color="blue",
+            kind="generic",
+            name=gclassdef.name,
+            args=gclassdef.args,
+            return_type=ast.Auto(loc),
+            defaults=[],
+            docstring=None,
+            body=[gclassdef.inner, return_stmt],
+            decorators=[],
+            symtable=gclassdef.symtable,
+        )
+
+        self.exec_stmt_FuncDef(outer_funcdef)
+
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         # Possible cases:
         #   declaration    (not is_auto and not value):  [var] x: i32
