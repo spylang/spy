@@ -295,7 +295,7 @@ class Linearizer:
     #     as a sequence point. Promote ``pending_spills`` into ``to_spill``
     #     and mark self for spill.
 
-    PURE_EXPRS = (ast.Constant, ast.StrConst, ast.FQNConst)
+    PURE_EXPRS = (ast.Constant, ast.StrConst, ast.FQNConst, ast.LocConst)
     NAME_EXPRS = (ast.NameLocalDirect, ast.NameOuterDirect, ast.NameOuterCell)
 
     def is_pure(self, expr: ast.Expr) -> bool:
@@ -458,5 +458,10 @@ class Linearizer:
 
     def rewrite_expr_Constant(
         self, const: ast.Constant, to_spill: set[ast.Expr]
+    ) -> ast.Expr:
+        return const
+
+    def rewrite_expr_LocConst(
+        self, const: ast.LocConst, to_spill: set[ast.Expr]
     ) -> ast.Expr:
         return const
