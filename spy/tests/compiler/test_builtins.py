@@ -262,6 +262,24 @@ class TestBuiltins(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
+    def test_setattr_getattr(self):
+        src = """
+        from unsafe import gc_alloc
+
+        @struct
+        class Point:
+            x: i32
+
+        def foo() -> i32:
+            ptr = gc_alloc[Point](1)
+            setattr(ptr[0], "x", 2)
+
+            p = Point(42)
+            return getattr(p, "x")
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 42
+
     @only_interp
     def test_dir(self):
         src = """
