@@ -11,22 +11,26 @@
 
 from unsafe import gc_ptr, gc_alloc
 
+
 @struct
 class Point:
     x: f64
     y: f64
 
+
 # eventually structs will get an automatic ctor, like dataclasses
 def new_point(x: f64, y: f64) -> gc_ptr[Point]:
-    p = gc_alloc[Point](1) # allocate 1 Point
+    p = gc_alloc[Point](1)  # allocate 1 Point
     p.x = x
     p.y = y
     return p
 
+
 def squared_distance(p0: gc_ptr[Point], p1: gc_ptr[Point]) -> f64:
     dx = p0.x - p1.x
     dy = p0.y - p1.y
-    return dx*dx + dy*dy
+    return dx * dx + dy * dy
+
 
 def main() -> None:
     p0 = new_point(1, 2)
