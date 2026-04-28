@@ -216,6 +216,25 @@ class Linearizer:
     def rewrite_stmt_Pass(self, stmt: ast.Pass) -> list[ast.Stmt]:
         return [stmt]
 
+    def rewrite_stmt_Break(self, stmt: ast.Break) -> list[ast.Stmt]:
+        return [stmt]
+
+    def rewrite_stmt_Continue(self, stmt: ast.Continue) -> list[ast.Stmt]:
+        return [stmt]
+
+    def rewrite_stmt_Assert(self, assert_node: ast.Assert) -> list[ast.Stmt]:
+        exprs: list[ast.Expr] = [assert_node.test]
+        if assert_node.msg is not None:
+            exprs.append(assert_node.msg)
+        to_spill = self.mark_to_spill(exprs)
+        new_test = self.rewrite_expr(assert_node.test, to_spill)
+        new_msg = (
+            self.rewrite_expr(assert_node.msg, to_spill)
+            if assert_node.msg is not None
+            else None
+        )
+        return [assert_node.replace(test=new_test, msg=new_msg)]
+
     def rewrite_stmt_While(self, while_node: ast.While) -> list[ast.Stmt]:
         # Rewrite the test in a sandboxed hoisted scope. If it produces no
         # hoisted stmts, keep the While as-is. Otherwise lower to:
