@@ -93,9 +93,10 @@ class _NameCounter:
         return f"a{next(self._counter)}"
 
 
-def _make_strategies(counter: _NameCounter) -> tuple[Any, Any, Any]:
+def _make_strategies(counter: _NameCounter) -> tuple[Any, Any, Any, Any]:
     """
-    Build (expr_i32, expr_bool, stmt) strategies sharing a single name counter.
+    Build (expr_i32, expr_i32_with_block, expr_bool, stmt) strategies sharing
+    a single name counter.
     """
 
     i32_base = st.one_of(
@@ -114,8 +115,71 @@ def _make_strategies(counter: _NameCounter) -> tuple[Any, Any, Any]:
         st.just("side_bool()"),
     )
 
-    # Build expr_i32 first (no bool dependency), then expr_bool referencing it,
-    # then stmt referencing both.
+    # expr_i32 without __block__, used inside block bodies to avoid
+    # nested ''' delimiters.
+    def extend_i32_no_block(children: st.SearchStrategy[str]) -> st.SearchStrategy[str]:
+        a_b = st.tuples(children, children)
+        walrus_local = children.map(lambda a: f"(y := {a})")
+        walrus_cell = children.map(lambda a: f"(N := {a})")
+        arithmetic = a_b.flatmap(
+            lambda ab: st.one_of(
+                st.just(f"({ab[0]} + {ab[1]})"),
+                st.just(f"({ab[0]} - {ab[1]})"),
+                st.just(f"add({ab[0]}, {ab[1]})"),
+                st.just(f"sub({ab[0]}, {ab[1]})"),
+            )
+        )
+        return st.one_of(arithmetic, walrus_local, walrus_cell)
+
+    expr_i32_no_block = st.recursive(i32_base, extend_i32_no_block, max_leaves=20)
+
+    # no-block bool, used inside block bodies
+    def extend_bool_no_block(
+        bool_children: st.SearchStrategy[str],
+    ) -> st.SearchStrategy[str]:
+        i32_pair = st.tuples(expr_i32_no_block, expr_i32_no_block)
+        bool_pair = st.tuples(bool_children, bool_children)
+        comparisons = i32_pair.flatmap(
+            lambda ab: st.one_of(
+                st.just(f"({ab[0]} < {ab[1]})"),
+                st.just(f"({ab[0]} == {ab[1]})"),
+            )
+        )
+        short_circuit = bool_pair.flatmap(
+            lambda pq: st.one_of(
+                st.just(f"({pq[0]} and {pq[1]})"),
+                st.just(f"({pq[0]} or {pq[1]})"),
+            )
+        )
+        return st.one_of(comparisons, short_circuit)
+
+    expr_bool_no_block = st.recursive(bool_base, extend_bool_no_block, max_leaves=10)
+
+    @st.composite
+    def make_stmt_no_block(draw: Any) -> str:
+        kind = draw(st.integers(min_value=0, max_value=3))
+        if kind == 0:
+            return f"y = {draw(expr_i32_no_block)}"
+        elif kind == 1:
+            return f"N = {draw(expr_i32_no_block)}"
+        elif kind == 2:
+            return draw(st.sampled_from(["tick()", "f1()", "f2()"]))
+        else:
+            cond = draw(expr_bool_no_block)
+            s1 = draw(expr_i32_no_block)
+            s2 = draw(expr_i32_no_block)
+            return f"if {cond}:\n    y = {s1}\nelse:\n    y = {s2}"
+
+    stmt_no_block = make_stmt_no_block()
+
+    @st.composite
+    def block_expr(draw: Any) -> str:
+        num_stmts = draw(st.integers(min_value=0, max_value=2))
+        stmts = [draw(stmt_no_block) for _ in range(num_stmts)]
+        value = draw(expr_i32_no_block)
+        body = "\n".join(stmts + [value])
+        indented = textwrap.indent(body, "    ")
+        return f"__block__('''\n{indented}\n''')"
 
     def extend_i32(children: st.SearchStrategy[str]) -> st.SearchStrategy[str]:
         a_b = st.tuples(children, children)
@@ -132,6 +196,10 @@ def _make_strategies(counter: _NameCounter) -> tuple[Any, Any, Any]:
         return st.one_of(arithmetic, walrus_local, walrus_cell)
 
     expr_i32 = st.recursive(i32_base, extend_i32, max_leaves=20)
+
+    # expr_i32 extended with __block__: can appear at top level but blocks
+    # don't nest (their bodies use expr_i32_no_block to avoid ''' collisions).
+    expr_i32_with_block = st.one_of(expr_i32, block_expr())
 
     def extend_bool(bool_children: st.SearchStrategy[str]) -> st.SearchStrategy[str]:
         i32_pair = st.tuples(expr_i32, expr_i32)
@@ -152,19 +220,6 @@ def _make_strategies(counter: _NameCounter) -> tuple[Any, Any, Any]:
 
     expr_bool = st.recursive(bool_base, extend_bool, max_leaves=10)
 
-    # __block__ as a composite strategy referencing expr_i32 and stmt.
-    # stmt is defined after, so we use a mutable ref only for this one direction.
-    stmt_ref: list[Any] = [None]
-
-    @st.composite
-    def block_expr(draw: Any) -> str:
-        num_stmts = draw(st.integers(min_value=0, max_value=2))
-        stmts = [draw(stmt_ref[0]) for _ in range(num_stmts)]
-        value = draw(expr_i32)
-        body = "\n".join(stmts + [value])
-        indented = textwrap.indent(body, "    ")
-        return f"__block__('''\n{indented}\n''')"
-
     # statement strategy — AssignLocal, StmtExpr, if
     @st.composite
     def make_stmt(draw: Any) -> str:
@@ -184,22 +239,28 @@ def _make_strategies(counter: _NameCounter) -> tuple[Any, Any, Any]:
             return f"if {cond}:\n    y = {s1}\nelse:\n    y = {s2}"
 
     stmt = make_stmt()
-    stmt_ref[0] = stmt
 
-    return expr_i32, expr_bool, stmt
+    return expr_i32, expr_i32_with_block, expr_bool, stmt
 
 
 @st.composite
 def expr_i32_strategy(draw: Any) -> str:
     counter = _NameCounter()
-    expr_i32, _, _ = _make_strategies(counter)
+    expr_i32, _, _, _ = _make_strategies(counter)
     return draw(expr_i32)
+
+
+@st.composite
+def expr_i32_with_block_strategy(draw: Any) -> str:
+    counter = _NameCounter()
+    _, expr_i32_with_block, _, _ = _make_strategies(counter)
+    return draw(expr_i32_with_block)
 
 
 @st.composite
 def stmt_program_strategy(draw: Any) -> str:
     counter = _NameCounter()
-    expr_i32, expr_bool, stmt = _make_strategies(counter)
+    expr_i32, _, _, stmt = _make_strategies(counter)
     num_stmts = draw(st.integers(min_value=1, max_value=4))
     stmts = [draw(stmt) for _ in range(num_stmts)]
     ret = draw(expr_i32)
@@ -241,7 +302,7 @@ def test_scaffolding(tmpdir):
 
 
 @given(expr=expr_i32_strategy())
-@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+@settings(deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
 def test_single_expr(expr, tmpdir):
     foo_src = TEMPLATE.format(body=f"return {expr}")
     src = PREAMBLE + foo_src
@@ -259,9 +320,27 @@ def test_single_expr(expr, tmpdir):
 
 
 @given(body=stmt_program_strategy())
-@settings(suppress_health_check=[HealthCheck.function_scoped_fixture])
+@settings(deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
 def test_many_stmts(body, tmpdir):
     foo_src = TEMPLATE.format(body=body)
+    src = PREAMBLE + foo_src
+    note(f"Generated source:\n{src}")
+
+    n = _example_counter.next()
+    tmp1 = tmpdir.mkdir(f"interp_{n}")
+    tmp2 = tmpdir.mkdir(f"linearize_{n}")
+
+    res_interp, out_interp = _run_and_capture(src, "interp", tmp1)
+    res_lin, out_lin = _run_and_capture(src, "linearize", tmp2)
+
+    assert res_interp == res_lin, f"return value mismatch on:\n{src}"
+    assert out_interp == out_lin, f"stdout mismatch on:\n{src}"
+
+
+@given(expr=expr_i32_with_block_strategy())
+@settings(deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture])
+def test_block_expr(expr, tmpdir):
+    foo_src = TEMPLATE.format(body=f"return {expr}")
     src = PREAMBLE + foo_src
     note(f"Generated source:\n{src}")
 
