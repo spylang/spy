@@ -61,6 +61,7 @@ branch without changing evaluation semantics, so we must materialize the
 branch as a proper conditional instead.
 """
 
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Iterator, Optional
 
 from spy import ast
@@ -137,6 +138,22 @@ class Linearizer:
             new_st.add(sym)
         return new_st
 
+    @contextmanager
+    def capture_hoisted(self) -> "Iterator[list[ast.Stmt]]":
+        """
+        Open a fresh hoisted scope: within the ``with``-block, any stmt
+        appended to ``self.hoisted`` is captured into the yielded list
+        instead of leaking to the outer scope. On exit, the outer
+        ``self.hoisted`` is restored.
+        """
+        captured: list[ast.Stmt] = []
+        outer = self.hoisted
+        self.hoisted = captured
+        try:
+            yield captured
+        finally:
+            self.hoisted = outer
+
     def spill(self, expr: ast.Expr) -> ast.Expr:
         assert expr.w_T is not None
         loc = expr.loc
@@ -162,13 +179,11 @@ class Linearizer:
         return name, sym
 
     def rewrite_body(self, body: list[ast.Stmt]) -> list[ast.Stmt]:
-        outer = self.hoisted
         new_body: list[ast.Stmt] = []
         for stmt in body:
-            self.hoisted = []
-            new_stmts = magic_dispatch(self, "rewrite_stmt", stmt)
-            new_body += self.hoisted + new_stmts
-        self.hoisted = outer
+            with self.capture_hoisted() as hoisted:
+                new_stmts = magic_dispatch(self, "rewrite_stmt", stmt)
+            new_body += hoisted + new_stmts
         return new_body
 
     def rewrite_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
@@ -210,12 +225,9 @@ class Linearizer:
         #             break
         #         <body>
         # so that the test's hoisted stmts re-run on every iteration.
-        saved = self.hoisted
-        self.hoisted = []
-        to_spill = self.mark_to_spill([while_node.test])
-        new_test = self.rewrite_expr(while_node.test, to_spill)
-        test_hoisted = self.hoisted
-        self.hoisted = saved
+        with self.capture_hoisted() as test_hoisted:
+            to_spill = self.mark_to_spill([while_node.test])
+            new_test = self.rewrite_expr(while_node.test, to_spill)
 
         new_body = self.rewrite_body(while_node.body)
 
@@ -346,12 +358,9 @@ class Linearizer:
         # Rewrite the RHS in a sandboxed hoisted scope so we can see
         # whether it produces any hoisted stmts. If it doesn't, we can
         # keep the And/Or expr as-is.
-        saved = self.hoisted
-        self.hoisted = []
-        to_spill_right = self.mark_to_spill([op.right])
-        new_right = self.rewrite_expr(op.right, to_spill_right)
-        rhs_hoisted = self.hoisted
-        self.hoisted = saved
+        with self.capture_hoisted() as rhs_hoisted:
+            to_spill_right = self.mark_to_spill([op.right])
+            new_right = self.rewrite_expr(op.right, to_spill_right)
 
         if not rhs_hoisted:
             return op.replace(left=new_left, right=new_right)
