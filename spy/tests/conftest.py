@@ -11,6 +11,7 @@ from pytest_pyodide import get_global_config
 from spy.util import cleanup_spyc_files
 
 hypothesis.settings.register_profile("default", deadline=400, max_examples=10)
+hypothesis.settings.register_profile("dev", max_examples=1, database=None)
 
 ROOT = py.path.local(__file__).dirpath()
 HAVE_EMCC = shutil.which("emcc") is not None
