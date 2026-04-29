@@ -104,7 +104,7 @@ def w_init(vm: "SPyVM") -> None:
 
 
 @JSFFI.builtin_func
-def w__debug_n_jsrefs(vm: "SPyVM") -> None:
+def w__debug_n_jsrefs(vm: "SPyVM") -> W_I32:
     raise NotImplementedError
 
 

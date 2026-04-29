@@ -11,9 +11,10 @@ EM_JS(JsRef, jsffi_debug, (const char *ptr), {
     console.log(s);
 });
 
-EM_JS(void, jsffi_debug_n_jsrefs, (void), {
+EM_JS(int32_t, jsffi_debug_n_jsrefs, (void), {
     let n = Object.keys(jsffi.objects).length;
     console.log("Number of JsRef", n);
+    return n;
 });
 
 EM_JS(void, jsffi_init, (void), {
@@ -36,6 +37,7 @@ EM_JS(void, jsffi_init, (void), {
 
     jsffi.to_jsref = function(jsval) {
         let n = Object.keys(jsffi.objects).length;
+        // console.log(`to_jsref, jsval: ${ jsval }`);
         jsffi.objects[n] = jsval;
         return n;
     };

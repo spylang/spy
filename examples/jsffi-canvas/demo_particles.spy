@@ -36,6 +36,41 @@ class Params:
 
 var PARTICLES: gc_ptr[Particle] = gc_ptr[Particle].NULL
 var PARAMS: gc_ptr[Params] = gc_ptr[Params].NULL
+var n_jsrefs: i32 = 0
+
+var JS_REFS: gc_ptr[JsRef] = gc_ptr[JsRef].NULL
+CTX_IDX: i32 = 0
+
+
+def get_ctx() -> JsRef:
+    return JS_REFS[CTX_IDX]
+
+
+# --- Slider sync callbacks ---
+
+
+def sync_n() -> None:
+    document = jsffi.get_Document()
+    elem = document.getElementById("nParticles")
+    document.getElementById("nParticlesVal").textContent = elem.value
+    PARAMS[0].n = elem.value
+
+
+def sync_speed() -> None:
+    document = jsffi.get_Document()
+    elem = document.getElementById("speed")
+    document.getElementById("speedVal").textContent = elem.value
+    PARAMS[0].speed = elem.value
+
+
+def sync_radius() -> None:
+    document = jsffi.get_Document()
+    elem = document.getElementById("radius")
+    document.getElementById("radiusVal").textContent = elem.value
+    PARAMS[0].radius = elem.value
+
+
+# ---
 
 
 def draw_particle(p: Particle, radius: i32, ctx: JsRef) -> None:
@@ -65,9 +100,7 @@ def simulate_step(n: i32, speed: f64, radius: i32) -> None:
     w_f: f64 = float(WIDTH)
     h_f: f64 = float(HEIGHT)
 
-    document = jsffi.get_Document()
-    canvas = document.getElementById("canvas")
-    ctx = canvas.getContext("2d")
+    ctx = get_ctx()
     ctx.fillStyle = "rgba(15, 23, 42, 0.25)"
     ctx.fillRect(0.0, 0.0, w_f, h_f)
 
@@ -104,40 +137,18 @@ def simulate_step(n: i32, speed: f64, radius: i32) -> None:
         PARTICLES[i] = p
 
 
-# --- Slider sync callbacks ---
-
-
-def sync_n() -> None:
-    document = jsffi.get_Document()
-    elem = document.getElementById("nParticles")
-    document.getElementById("nParticlesVal").textContent = elem.value
-    PARAMS[0].n = elem.value
-
-
-def sync_speed() -> None:
-    document = jsffi.get_Document()
-    elem = document.getElementById("speed")
-    document.getElementById("speedVal").textContent = elem.value
-    PARAMS[0].speed = elem.value
-
-
-def sync_radius() -> None:
-    document = jsffi.get_Document()
-    elem = document.getElementById("radius")
-    document.getElementById("radiusVal").textContent = elem.value
-    PARAMS[0].radius = elem.value
-
-
-# ---
-
-
 def frame(timestamp: f64) -> None:
     window = jsffi.get_GlobalThis()
     console = jsffi.get_Console()
     t_start = time()
     simulate_step(PARAMS[0].n, PARAMS[0].speed, PARAMS[0].radius)
     console.log("simulate_step done in", time() - t_start, "s")
-    jsffi._debug_n_jsrefs()
+
+    n_tmp = jsffi._debug_n_jsrefs()
+    n_per_frame = n_tmp - n_jsrefs
+    n_jsrefs = n_tmp
+
+    console.log("n_per_frame:", n_per_frame, "; per part: ", n_per_frame / PARAMS[0].n)
     window.requestAnimationFrame(frame)
 
 
@@ -160,6 +171,14 @@ def main() -> None:
 
     PARTICLES = gc_alloc[Particle](MAX_PARTICLES)
     PARAMS = gc_alloc[Params](1)
+
+    JS_REFS = gc_alloc[JsRef](1)
+
+    document = jsffi.get_Document()
+    canvas = document.getElementById("canvas")
+    ctx = canvas.getContext("2d")
+
+    JS_REFS[CTX_IDX] = ctx
 
     window = jsffi.get_GlobalThis()
     document = jsffi.get_Document()

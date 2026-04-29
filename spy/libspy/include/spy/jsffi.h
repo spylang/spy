@@ -11,7 +11,7 @@ typedef struct {
 
 // jsffi C interface
 JsRef WASM_EXPORT(jsffi_debug)(const char *ptr);
-void WASM_EXPORT(jsffi_debug_n_jsrefs)(void);
+int32_t WASM_EXPORT(jsffi_debug_n_jsrefs)(void);
 void WASM_EXPORT(jsffi_init)(void);
 JsRef WASM_EXPORT(jsffi_string)(const char *ptr);
 JsRef WASM_EXPORT(jsffi_i32)(int32_t x);
@@ -36,9 +36,9 @@ spy_jsffi$debug(spy_Str *s) {
     jsffi_debug(s->utf8);
 }
 
-static inline void
+static inline int32_t
 spy_jsffi$_debug_n_jsrefs(void) {
-    jsffi_debug_n_jsrefs();
+    return jsffi_debug_n_jsrefs();
 }
 
 static inline void
