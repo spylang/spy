@@ -30,9 +30,10 @@ class InterpModuleWrapper:
     vm: SPyVM
     w_mod: W_Module
 
-    def __init__(self, vm: SPyVM, w_mod: W_Module) -> None:
+    def __init__(self, vm: SPyVM, w_mod: W_Module, backend: str) -> None:
         self.vm = vm
         self.w_mod = w_mod
+        self.backend = backend
 
     def __dir__(self) -> list[str]:
         return ["vm", "w_mod"] + list(self.w_mod.keys())
@@ -48,10 +49,9 @@ class InterpModuleWrapper:
         if isinstance(w_obj, W_ASTFunc):
             w_func = w_obj
             if not w_func.is_valid:
-                # let's find the redshifted version
-                assert w_func.w_redshifted_into is not None
-                w_func = w_func.w_redshifted_into
-                assert w_func.redshifted
+                assert w_func.w_replaced_by is not None
+                w_func = w_func.get_most_lowered_version()
+                assert w_func.lowering_stage != "source"
                 assert self.vm.lookup_global(w_func.fqn) is w_func
             return InterpFuncWrapper(self.vm, w_func)
         elif isinstance(w_obj, W_Func):

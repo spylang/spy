@@ -24,6 +24,11 @@ class _redshift_mixin:
         Option("--full-fqn", help="Show full FQNs in redshifted modules"),
     ] = False
 
+    linearize_: Annotated[
+        bool,
+        Option("--linearize", help="Apply linearize pass before dumping"),
+    ] = False
+
     format: Annotated[
         str,
         Option(
@@ -78,6 +83,9 @@ async def redshift(args: Redshift_Args) -> None:
 
     vm.ast_color_map = {}
     vm.redshift(error_mode=args.error_mode)
+
+    if args.linearize_:
+        vm.linearize_all()
 
     if args.execute:
         w_mod = vm.modules_w[modname]

@@ -91,6 +91,7 @@ class DopplerFrame(ASTFrame):
     """
 
     shifted_expr: dict[ast.Expr, ast.Expr]
+    shifted_block_bodies: dict[ast.BlockExpr, list[ast.Stmt]]
     opimpl: dict[ast.Node, W_OpImpl]
     error_mode: ErrorMode
 
@@ -98,6 +99,7 @@ class DopplerFrame(ASTFrame):
         assert w_func.color == "red"
         super().__init__(vm, w_func, args_w=None)
         self.shifted_expr = {}
+        self.shifted_block_bodies = {}
         self.opimpl = {}
         assert error_mode != "warn"
         self.error_mode = error_mode
@@ -108,7 +110,7 @@ class DopplerFrame(ASTFrame):
         return True
 
     def redshift(self) -> W_ASTFunc:
-        assert not self.w_func.redshifted, "cannot redshit twice"
+        assert self.w_func.lowering_stage == "source", "cannot redshift twice"
         self.declare_arguments()
         funcdef = self.w_func.funcdef
         new_body = []
@@ -133,10 +135,11 @@ class DopplerFrame(ASTFrame):
             w_functype=w_newfunctype,
             funcdef=new_funcdef,
             defaults_w=self.w_func.defaults_w,
+            lowering_stage="redshift",
             locals_types_w=self.get_locals_types_w(),
         )
         # mark the original function as invalid
-        self.w_func.invalidate(w_newfunc)
+        self.w_func.replace_with(w_newfunc)
         return w_newfunc
 
     # =========
@@ -145,7 +148,11 @@ class DopplerFrame(ASTFrame):
 
     def shift_stmt(self, stmt: ast.Stmt) -> list[ast.Stmt]:
         try:
-            return magic_dispatch(self, "shift_stmt", stmt)
+            stmts = magic_dispatch(self, "shift_stmt", stmt)
+            # sanity check: after redshifting, ALL nodes should be typed
+            for stmt in stmts:
+                stmt.assert_fully_typed("this is probably a bug in redshift")
+            return stmts
         except SPyError as err:
             if self.error_mode == "lazy" and err.match(W_StaticError):
                 # turn the exception into a lazy "raise" statement
@@ -191,6 +198,7 @@ class DopplerFrame(ASTFrame):
             # redshift away assignments to blue locals
             return []
 
+        newname = vardef.name.as_typed_node()
         if is_auto:
             # use the actual type computed during type inference
             w_T = self.locals[varname].w_T
@@ -202,7 +210,7 @@ class DopplerFrame(ASTFrame):
             newvalue = None
         else:
             newvalue = self.shifted_expr[vardef.value]
-        return [vardef.replace(type=newtype, value=newvalue)]
+        return [vardef.replace(name=newname, type=newtype, value=newvalue)]
 
     def shift_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
         self.exec_stmt_Assign(assign)
@@ -216,8 +224,9 @@ class DopplerFrame(ASTFrame):
             if sym.is_local:
                 self.record_node_color(assign, self.locals[varname].color)
             specialized = self.specialized_assigns[assign]
+            newtarget = assign.target.as_typed_node()
             newvalue = self.shifted_expr[assign.value]
-            return [specialized.replace(value=newvalue)]
+            return [specialized.replace(target=newtarget, value=newvalue)]
 
     def shift_stmt_AssignLocal(self, assign: ast.AssignLocal) -> list[ast.Stmt]:
         # specialized stmts such as AssignLocal and AssignCell are present
@@ -234,9 +243,10 @@ class DopplerFrame(ASTFrame):
         return self.shift_stmt_Assign(assign)
 
     def shift_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> list[ast.Stmt]:
+        newtargets = [target.as_typed_node() for target in unpack.targets]
         self.exec_stmt_UnpackAssign(unpack)
         newvalue = self.shifted_expr[unpack.value]
-        return [unpack.replace(value=newvalue)]
+        return [unpack.replace(targets=newtargets, value=newvalue)]
 
     def shift_stmt_SetAttr(self, node: ast.SetAttr) -> list[ast.Stmt]:
         self.exec_stmt(node)
@@ -372,7 +382,9 @@ class DopplerFrame(ASTFrame):
             expT = make_const(self.vm, lv.decl_loc, lv.w_T)
             gotT = make_const(self.vm, wam.loc, wam.w_static_T)
             new_expr = self.shift_opimpl(
-                expr, w_typeconv_opimpl, [expT, gotT, new_expr]
+                expr,
+                w_typeconv_opimpl,
+                [expT, gotT, new_expr],
             )
 
         self.shifted_expr[expr] = new_expr
@@ -409,7 +421,6 @@ class DopplerFrame(ASTFrame):
         op: ast.Node,
         w_opimpl: W_OpImpl,
         orig_args: list[ast.Expr],
-        w_T: Optional["W_Type"] = None,
     ) -> ast.Expr:
         if w_opimpl.is_const():
             assert w_opimpl.w_const is not None
@@ -418,6 +429,7 @@ class DopplerFrame(ASTFrame):
         assert w_opimpl.is_func_call()
         func = make_const(self.vm, op.loc, w_opimpl.w_func)
         real_args = self._shift_opimpl_args(w_opimpl, orig_args)
+        w_T = w_opimpl.w_functype.w_restype
         return ast.Call(op.loc, func, real_args, w_T=w_T)
 
     def _shift_opimpl_args(
@@ -467,13 +479,13 @@ class DopplerFrame(ASTFrame):
         w_opimpl = self.opimpl[binop]
         l = self.shifted_expr[binop.left]
         r = self.shifted_expr[binop.right]
-        return self.shift_opimpl(binop, w_opimpl, [l, r], w_T=wam.w_static_T)
+        return self.shift_opimpl(binop, w_opimpl, [l, r])
 
     def shift_expr_CmpOp(self, op: ast.CmpOp, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]
         l = self.shifted_expr[op.left]
         r = self.shifted_expr[op.right]
-        return self.shift_opimpl(op, w_opimpl, [l, r], w_T=wam.w_static_T)
+        return self.shift_opimpl(op, w_opimpl, [l, r])
 
     def shift_expr_And(self, op: ast.And, wam: W_MetaArg) -> ast.Expr:
         l = self.shifted_expr[op.left]
@@ -488,7 +500,7 @@ class DopplerFrame(ASTFrame):
     def shift_expr_UnaryOp(self, unop: ast.UnaryOp, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[unop]
         v = self.shifted_expr[unop.value]
-        return self.shift_opimpl(unop, w_opimpl, [v], w_T=wam.w_static_T)
+        return self.shift_opimpl(unop, w_opimpl, [v])
 
     def shift_expr_List(self, lst: ast.List, wam: W_MetaArg) -> ast.Expr:
         # this logic is equivalent to what we have in eval_expr_List. Instead of
@@ -500,24 +512,29 @@ class DopplerFrame(ASTFrame):
         w_T = wam.w_static_T
         # `new` is defined in the list[T] generic scope
         fqn_new = w_T.fqn.parent().join("new")
+        w_new = self.vm.lookup_global(fqn_new)
+        node_new = make_const(self.vm, lst.loc, w_new)
+        #
         fqn_push = w_T.fqn.join("_push")
+        w_push = self.vm.lookup_global(fqn_push)
+        node_push = make_const(self.vm, lst.loc, w_push)
 
         # instantiate an empty list
         newlst: ast.Expr = ast.Call(
             loc=lst.loc,
-            func=ast.FQNConst(loc=lst.loc, fqn=fqn_new),
+            func=node_new,
             args=[],
+            w_T=w_T,
         )
 
         # add a call to push() for each item
-        for i, item in enumerate(lst.items):
+        for item in lst.items:
             shifted_item = self.shifted_expr[item]
-            is_last = i == len(lst.items) - 1
             newlst = ast.Call(
                 item.loc,
-                func=ast.FQNConst(loc=item.loc, fqn=fqn_push),
+                func=node_push,
                 args=[newlst, shifted_item],
-                w_T=w_T if is_last else None,
+                w_T=w_T,
             )
         return newlst
 
@@ -525,7 +542,7 @@ class DopplerFrame(ASTFrame):
         w_opimpl = self.opimpl[tup]
         v_T = make_const(self.vm, tup.loc, wam.w_static_T)
         newitems_v = [self.shifted_expr[item] for item in tup.items]
-        return self.shift_opimpl(tup, w_opimpl, [v_T] + newitems_v, w_T=wam.w_static_T)
+        return self.shift_opimpl(tup, w_opimpl, [v_T] + newitems_v)
 
     def shift_expr_Slice(self, op: ast.Slice, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]
@@ -533,9 +550,7 @@ class DopplerFrame(ASTFrame):
         v_start = self.shifted_expr[op.start]
         v_stop = self.shifted_expr[op.stop]
         v_step = self.shifted_expr[op.step]
-        return self.shift_opimpl(
-            op, w_opimpl, [v_T, v_start, v_stop, v_step], w_T=wam.w_static_T
-        )
+        return self.shift_opimpl(op, w_opimpl, [v_T, v_start, v_stop, v_step])
 
     def shift_expr_Dict(self, dict: ast.Dict, wam: W_MetaArg) -> ast.Expr:
         if len(dict.items) == 0:
@@ -545,24 +560,29 @@ class DopplerFrame(ASTFrame):
         # instantiate an empty dict
         w_T = wam.w_static_T
         fqn_new = w_T.fqn.join("__new__")
+        w_new = self.vm.lookup_global(fqn_new)
+        node_new = make_const(self.vm, dict.loc, w_new)
+        #
         fqn_push = w_T.fqn.join("_push")
+        w_push = self.vm.lookup_global(fqn_push)
+        node_push = make_const(self.vm, dict.loc, w_push)
 
         newdict: ast.Expr = ast.Call(
             loc=dict.loc,
-            func=ast.FQNConst(loc=dict.loc, fqn=fqn_new),
+            func=node_new,
             args=[],
+            w_T=w_T,
         )
 
         # add a call to push() for each item (key, value)
-        for i, pair in enumerate(dict.items):
+        for pair in dict.items:
             shifted_key = self.shifted_expr[pair.key]
             shifted_val = self.shifted_expr[pair.value]
-            is_last = i == len(dict.items) - 1
             newdict = ast.Call(
                 loc=pair.loc,
-                func=ast.FQNConst(loc=pair.loc, fqn=fqn_push),
+                func=node_push,
                 args=[newdict, shifted_key, shifted_val],
-                w_T=w_T if is_last else None,
+                w_T=w_T,
             )
 
         return newdict
@@ -571,13 +591,13 @@ class DopplerFrame(ASTFrame):
         w_opimpl = self.opimpl[op]
         v = self.shifted_expr[op.value]
         args = [self.shifted_expr[arg] for arg in op.args]
-        return self.shift_opimpl(op, w_opimpl, [v] + args, w_T=wam.w_static_T)
+        return self.shift_opimpl(op, w_opimpl, [v] + args)
 
     def shift_expr_GetAttr(self, op: ast.GetAttr, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]
         v = self.shifted_expr[op.value]
         v_attr = self.shifted_expr[op.attr]
-        return self.shift_opimpl(op, w_opimpl, [v, v_attr], w_T=wam.w_static_T)
+        return self.shift_opimpl(op, w_opimpl, [v, v_attr])
 
     def shift_expr_Call(self, call: ast.Call, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[call]
@@ -586,24 +606,40 @@ class DopplerFrame(ASTFrame):
 
         if self.special_calls.get(call) in ("getattr", "setattr"):
             # see also the corresponding code in ASTFrame.eval_expr_Call.
-            return self.shift_opimpl(call, w_opimpl, newargs, w_T=wam.w_static_T)
+            return self.shift_opimpl(call, w_opimpl, newargs)
         else:
-            return self.shift_opimpl(
-                call, w_opimpl, [newfunc] + newargs, w_T=wam.w_static_T
-            )
+            return self.shift_opimpl(call, w_opimpl, [newfunc] + newargs)
 
     def shift_expr_CallMethod(self, op: ast.CallMethod, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]
         v_obj = self.shifted_expr[op.target]
         v_meth = self.shifted_expr[op.method]
         newargs_v = [self.shifted_expr[arg] for arg in op.args]
-        return self.shift_opimpl(
-            op, w_opimpl, [v_obj, v_meth] + newargs_v, w_T=wam.w_static_T
-        )
+        return self.shift_opimpl(op, w_opimpl, [v_obj, v_meth] + newargs_v)
+
+    def eval_expr_BlockExpr(self, block: ast.BlockExpr) -> W_MetaArg:
+        # XXX EXPLAIN
+
+        # shift_stmt both evaluates and shifts each statement, so we store
+        # the shifted body here for use in shift_expr_BlockExpr
+        self.shifted_block_bodies[block] = self.shift_body(block.body)
+        return self.eval_expr(block.value)
+
+    def shift_expr_BlockExpr(self, block: ast.BlockExpr, wam: W_MetaArg) -> ast.Expr:
+        # XXX EXPLAIN
+
+        new_body = self.shifted_block_bodies.pop(block)
+        new_value = self.shifted_expr[block.value]
+        return block.replace(body=new_body, value=new_value, w_T=wam.w_static_T)
 
     def shift_expr_AssignExpr(
         self, assignexpr: ast.AssignExpr, wam: W_MetaArg
     ) -> ast.Expr:
         specialized = self.specialized_assignexprs[assignexpr]
+        new_target = assignexpr.target.as_typed_node()
         new_value = self.shifted_expr[assignexpr.value]
-        return specialized.replace(value=new_value, w_T=wam.w_static_T)
+        return specialized.replace(
+            target=new_target,
+            value=new_value,
+            w_T=wam.w_static_T,
+        )

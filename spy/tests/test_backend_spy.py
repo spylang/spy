@@ -418,3 +418,16 @@ class TestSPyBackend(CompilerTest):
         """
         self.compile(src)
         self.assert_dump(src)
+
+    def test_blockexpr(self):
+        self.compile("""
+        def foo() -> i32:
+            return __block__('''
+                x: i32 = 1
+                x
+            ''')
+        """)
+        self.assert_dump("""
+        def foo() -> i32:
+            return __block__(x: i32 = 1; x)
+        """)

@@ -167,6 +167,7 @@ class CBackend:
         """
         Convert all non-builtins modules into .c files
         """
+        self.vm.linearize_all()
         self.split_fqns()
 
         # Emit structdefs.h

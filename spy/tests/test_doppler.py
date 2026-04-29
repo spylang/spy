@@ -155,10 +155,8 @@ class TestDoppler:
             return x + 1
 
         def foo() -> i32:
-            x: i32
-            x = 0
-            y: i32
-            y = `test::inc`(x := 1)
+            x: i32 = 0
+            y: i32 = `test::inc`(x := 1)
             return x + y
         """)
 
@@ -179,8 +177,7 @@ class TestDoppler:
             pass
 
         def main() -> None:
-            x: i32
-            x = 0
+            x: i32 = 0
             `test::foo`(x := 1)
             `test::foo`(2)
             print_i32(x)
@@ -321,10 +318,8 @@ class TestDoppler:
         """)
         self.assert_dump("""
         def foo() -> None:
-            x: i32
-            x = `test::add[i32]::impl`(1, 2)
-            y: str
-            y = `test::add[str]::impl`('a', 'b')
+            x: i32 = `test::add[i32]::impl`(1, 2)
+            y: str = `test::add[str]::impl`('a', 'b')
 
         def `test::add[i32]::impl`(x: i32, y: i32) -> i32:
             return x + y

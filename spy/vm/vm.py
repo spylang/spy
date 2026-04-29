@@ -13,6 +13,7 @@ from spy.doppler import ErrorMode, redshift
 from spy.errors import WIP, SPyError
 from spy.fqn import FQN, QUALIFIERS
 from spy.libspy import LLSPyInstance
+from spy.linearize import linearize
 from spy.location import Loc
 from spy.util import func_equals
 from spy.vm.b import B
@@ -190,7 +191,7 @@ class SPyVM:
 
         def should_redshift(w_func: W_ASTFunc) -> bool:
             # we don't want to redshift @blue functions
-            return w_func.color != "blue" and not w_func.redshifted
+            return w_func.color != "blue" and w_func.lowering_stage == "source"
 
         def get_funcs() -> Iterable[tuple[FQN, W_ASTFunc]]:
             for fqn, w_func in self.globals_w.items():
@@ -210,10 +211,18 @@ class SPyVM:
     ) -> None:
         for fqn, w_func in funcs:
             assert w_func.color != "blue"
-            assert not w_func.redshifted
+            assert w_func.lowering_stage == "source"
             w_newfunc = redshift(self, w_func, error_mode)
-            assert w_newfunc.redshifted
+            assert w_newfunc.lowering_stage == "redshift"
             self.globals_w[fqn] = w_newfunc
+
+    def linearize_all(self) -> None:
+        """
+        Apply the linearize pass to all redshifted W_ASTFuncs.
+        """
+        for fqn, w_obj in list(self.globals_w.items()):
+            if isinstance(w_obj, W_ASTFunc) and w_obj.lowering_stage == "redshift":
+                self.globals_w[fqn] = linearize(self, w_obj)
 
     def register_module(self, w_mod: W_Module) -> None:
         assert w_mod.name not in self.modules_w
@@ -435,7 +444,7 @@ class SPyVM:
             # already have
             w_func = self.lookup_global(w_val.fqn)
             assert isinstance(w_func, W_ASTFunc)
-            assert w_func.redshifted
+            assert w_func.lowering_stage != "source"
             return w_val.fqn
         elif isinstance(w_val, W_BuiltinFunc):
             # ideally, I'd like ALL builtin funcs to be created with
