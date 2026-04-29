@@ -34,10 +34,11 @@ def _sync_slider_callback[id](
     params[id] = value
 
 
-def init_slider[color](windows: JsRef, params: dict[str, i32]):
-    value_container = window.document.getElementById(color)
+def init_slider[color](params: dict[str, i32]):
+    document = jsffi.get_Document()
+    value_container = document.getElementById(color)
     params[color] = value_container.value
-    span = window.document.getElementById(color + "Val")
+    span = document.getElementById(color + "Val")
     sync_slider_callback = jsffi.wrap_func_partial(
         _sync_slider_callback, span, value_container, params
     )
@@ -69,14 +70,15 @@ def simulate_step(array: ndarray[u8, 3], params: dict[str, i32]) -> None:
 
 
 def _frame(
-    windows: JsRef,
-    console: JsRef,
     ctx: JsRef,
     image_data: JsRef,
     params: dict[str, i32],
     array: ndarray[u8, 3],
     timestamp: f64,
 ) -> None:
+    window = jsffi.get_GlobalThis()
+    console = jsffi.get_Console()
+
     t_start = time()
     simulate_step(array, params)
     console.log("simulate_step done in", time() - t_start, "s")
@@ -100,17 +102,15 @@ def main() -> None:
     u8arr = js_u8array_from_ptr(arr, SIZE)
     image_data = js_new_ImageData(u8arr, WIDTH, HEIGHT)
 
-    window = jsffi.get_GlobalThis()
-    console = jsffi.get_Console()
-
     params: dict[str, i32] = {"red": 0, "green": 255, "blue": 255}
 
     # will use: for color in unroll(["red", "green", "blue"]):
-    init_slider["red"](windows, params)
-    init_slider["green"](windows, params)
-    init_slider["blue"](windows, params)
+    init_slider["red"](params)
+    init_slider["green"](params)
+    init_slider["blue"](params)
 
     frame = jsffi.wrap_func_partial(
-        _frame, windows, console, ctx, image_data, params, array
+        _frame, ctx, image_data, params, array
     )
+    window = jsffi.get_GlobalThis()
     window.requestAnimationFrame(frame)
