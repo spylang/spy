@@ -32,8 +32,8 @@ does exactly that.
 import ast as py_ast
 from dataclasses import dataclass
 from io import BytesIO
-from tokenize import NAME, TokenError, TokenInfo, tokenize
-from typing import Literal
+from tokenize import DEDENT, NAME, TokenError, TokenInfo, tokenize
+from typing import Literal, cast
 
 from spy.errors import SPyError
 from spy.location import Loc
@@ -79,6 +79,89 @@ def magic_py_parse(src: str, filename: str = "<string>") -> py_ast.Module:
 def get_tokens(src: str) -> list[TokenInfo]:
     readline = BytesIO(src.encode("utf-8")).readline
     return list(tokenize(readline))
+
+
+def _update_scope_stack(
+    tokens: list[TokenInfo], i: int, scope_stack: list[str]
+) -> bool:
+    tok = tokens[i]
+    if tok.type == NAME and (
+        (tok.string == "def" and i + 1 < len(tokens) and tokens[i + 1].type == NAME)
+        or tok.string in ("while", "for", "if", "else")
+    ):
+        scope_stack.append(f"{tok.string}-{tokens[i + 1].string}")
+        return True
+
+    if tok.type == DEDENT and len(scope_stack) > 1:
+        scope_stack.pop()
+
+    return False
+
+
+def _make_identifier(scope_stack: list[str], name: str, occurrence: int) -> str:
+    return f"{'_'.join(scope_stack)}__{name}__occurance-{occurrence}"
+
+
+def construct_SPy_specific_grammar(src: str) -> dict[str, VarKind]:
+    tokens = get_tokens(src)
+    n_tokens = len(tokens)
+    i = 0
+
+    scope_stack = ["module"]
+    spy_grammar_tracker: dict[str, VarKind] = {}
+    occurrences: dict[str, int] = {}
+    while i < n_tokens:
+        if _update_scope_stack(tokens, i, scope_stack):
+            i += 1
+            continue
+
+        if (
+            i > 0
+            and tokens[i].type == NAME
+            and tokens[i - 1].string in ("const", "var")
+        ):
+            prefix = f"{'_'.join(scope_stack)}__{tokens[i].string}"
+            occurrence = occurrences.get(prefix, 1)
+            occurrences[prefix] = occurrence + 1
+
+            identifier = _make_identifier(scope_stack, tokens[i].string, occurrence)
+            if identifier not in spy_grammar_tracker:
+                string = tokens[i - 1].string
+                spy_grammar_tracker[identifier] = tokens[i - 1]._replace(
+                    string=string + " "
+                )
+
+        i += 1
+
+    return spy_grammar_tracker
+
+
+def reinsert_spy_specific_grammar(
+    src: str, spy_grammar_tracker: dict[str, VarKind]
+) -> list[TokenInfo]:
+    tokens = get_tokens(src)
+    n_tokens = len(tokens)
+    i = 0
+
+    scope_stack = ["module"]
+    occurrences: dict[str, int] = {}
+    while i < n_tokens:
+        if _update_scope_stack(tokens, i, scope_stack):
+            i += 1
+            continue
+
+        if tokens[i].type == NAME:
+            prefix = f"{'_'.join(scope_stack)}__{tokens[i].string}"
+            occurrence = occurrences.get(prefix, 1)
+            occurrences[prefix] = occurrence + 1
+
+            identifier = _make_identifier(scope_stack, tokens[i].string, occurrence)
+            if identifier in spy_grammar_tracker:
+                tokens.insert(i, spy_grammar_tracker[identifier])
+
+        i += 1
+
+    return tokens
 
 
 def preprocess(
