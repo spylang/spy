@@ -7,6 +7,7 @@ def sizeof(w_T: W_Type) -> int:
     from spy.vm.modules.posix import POSIX
     from spy.vm.modules.unsafe.ptr import W_PtrType
     from spy.vm.struct import W_StructType
+    from spy.vm.modules.jsffi import W_JsRef
 
     if w_T in (B.w_i8, B.w_u8):
         return 1
@@ -25,5 +26,7 @@ def sizeof(w_T: W_Type) -> int:
         return 4 + 4  # in debug mode we store both addr and length
     elif w_T is POSIX.w__FILE:
         return 4  # XXX
+    elif w_T.pyclass is W_JsRef:
+        return 4
     else:
         raise WIP(f"sizeof({w_T}) not implemented")
