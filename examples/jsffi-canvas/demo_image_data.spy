@@ -13,9 +13,10 @@ jsffi is also currently very limited. In particular, there is no equivalent to t
 and js_new_ImageData).
 """
 
-from jsffi import init as js_init, JsRef, get_GlobalThis, get_Console
+import jsffi
+
+from jsffi import JsRef
 from jsffi import js_u8array_from_ptr, js_new_ImageData
-from jsffi import _debug_n_jsrefs
 
 from unsafe import gc_alloc, gc_ptr
 from time import time
@@ -24,8 +25,31 @@ WIDTH: i32 = 800
 HEIGHT: i32 = 600
 SIZE: i32 = WIDTH * HEIGHT * 4
 
+
+@struct
+class Params:
+    red: i32
+    green: i32
+    blue: i32
+
+
 var counter: i32 = 0
 var inc: i32 = 5
+var BUF: gc_ptr[u8] = gc_ptr[u8].NULL
+var PARAMS:  gc_ptr[Params] = gc_ptr[Params].NULL
+var n_jsrefs: i32 = 0
+
+var JS_REFS: gc_ptr[JsRef] = gc_ptr[JsRef].NULL
+CTX_IDX: i32 = 0
+IMAGE_DATA_IDX: i32 = 1
+
+
+def get_ctx() -> JsRef:
+    return JS_REFS[CTX_IDX]
+
+
+def get_image_data() -> JsRef:
+    return JS_REFS[IMAGE_DATA_IDX]
 
 
 def simulate_step(buf: gc_ptr[u8], red: i32, green: i32, blue: i32) -> None:
@@ -47,70 +71,70 @@ def simulate_step(buf: gc_ptr[u8], red: i32, green: i32, blue: i32) -> None:
         buf[idx * 4 + 3] = counter
 
 
-var BUF: gc_ptr[u8] = gc_ptr[u8].NULL
-
-
-@struct
-class Params:
-    red: i32
-    green: i32
-    blue: i32
-
-
-var PARAMS:  gc_ptr[Params] = gc_ptr[Params].NULL
-
-
 def sync_slider_callback[id]() -> None:
-    window = get_GlobalThis()
-    span = window.document.getElementById(id + "Val")
-    value = window.document.getElementById(id).value
+    document = jsffi.get_Document()
+    span = document.getElementById(id + "Val")
+    elem = document.getElementById(id)
+    value = elem.value
     span.textContent = value
     setattr(PARAMS[0], id, value)
+    # jsffi.release(span)
+    # jsffi.release(elem)
+    # jsffi.release(value)
 
 
 def frame(timestamp: f64) -> None:
-    console = get_Console()
-    window = get_GlobalThis()
+    console = jsffi.get_Console()
 
-    red = getattr(PARAMS[0], "red")
-    green = getattr(PARAMS[0], "green")
-    blue = getattr(PARAMS[0], "blue")
+    params = PARAMS[0]
+
     t_start = time()
-    simulate_step(BUF, red, green, blue)
+    simulate_step(BUF, params.red, params.green, params.blue)
     console.log("simulate_step done in", time() - t_start, "s")
-    _debug_n_jsrefs()
+
+    get_ctx().putImageData(get_image_data(), 0, 0)
+
+    n_tmp = jsffi._debug_n_jsrefs()
+    n_per_frame = n_tmp - n_jsrefs
+    n_jsrefs = n_tmp
+
+    console.log("n_per_frame:", n_per_frame)
+
+    jsffi.get_GlobalThis().requestAnimationFrame(frame)
+
+
+def main() -> None:
+    jsffi.init()
+    BUF = gc_alloc[u8](SIZE)
+    for idx in range(SIZE):
+        BUF[idx] = 255
+
+    window = jsffi.get_GlobalThis()
+    document = jsffi.get_Document()
+
+    PARAMS = gc_alloc[Params](1)
+
+    # will use: for color in unroll(["red", "green", "blue"]):
+    elem = document.getElementById("red")
+    setattr(PARAMS[0], "red", elem.value)
+    elem.addEventListener("input", sync_slider_callback["red"])
+
+    elem = document.getElementById("green")
+    setattr(PARAMS[0], "green", elem.value)
+    elem.addEventListener("input", sync_slider_callback["green"])
+
+    elem = document.getElementById("blue")
+    setattr(PARAMS[0], "blue", elem.value)
+    elem.addEventListener("input", sync_slider_callback["blue"])
 
     u8arr = js_u8array_from_ptr(BUF, SIZE)
     image_data = js_new_ImageData(u8arr, WIDTH, HEIGHT)
 
     canvas = window.document.getElementById("canvas")
     ctx = canvas.getContext("2d")
-    ctx.putImageData(image_data, 0, 0)
 
-    window.requestAnimationFrame(frame)
-
-
-def main() -> None:
-    js_init()
-    BUF = gc_alloc[u8](SIZE)
-    for idx in range(SIZE):
-        BUF[idx] = 255
-
-    window = get_GlobalThis()
-
-    PARAMS = gc_alloc[Params](1)
-
-    # will use: for color in unroll(["red", "green", "blue"]):
-    elem = window.document.getElementById("red")
-    setattr(PARAMS[0], "red", elem.value)
-    elem.addEventListener('input', sync_slider_callback["red"])
-
-    elem = window.document.getElementById("green")
-    setattr(PARAMS[0], "green", elem.value)
-    elem.addEventListener('input', sync_slider_callback["green"])
-
-    elem = window.document.getElementById("blue")
-    setattr(PARAMS[0], "blue", elem.value)
-    elem.addEventListener('input', sync_slider_callback["blue"])
+    JS_REFS = gc_alloc[JsRef](2)
+    JS_REFS[CTX_IDX] = ctx
+    JS_REFS[IMAGE_DATA_IDX] = image_data
 
     window.requestAnimationFrame(frame)
