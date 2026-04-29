@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING
+import inspect
+from typing import TYPE_CHECKING, Any, Callable
 
 from spy.errors import WIP
 from spy.vm.b import B
@@ -13,6 +14,16 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 JSFFI = ModuleRegistry("jsffi")
+
+
+VOID_METHODS = {
+    0: {"beginPath", "fill", "stroke", "closePath"},
+    1: {"requestAnimationFrame", "addEventListener", "log"},
+    2: {"addEventListener", "moveTo", "lineTo", "addColorStop"},
+    3: {"putImageData"},
+    4: {"fillRect", "clearRect"},
+    5: {"arc"},
+}
 
 
 @JSFFI.builtin_type("JsRef")
@@ -35,7 +46,15 @@ class W_JsRef(W_Object):
         n = len(args_wam)
         if n > 6:
             raise WIP(f"unsupported number of arguments for __call_method__: {n}")
-        return W_OpSpec(getattr(JSFFI, f"w_js_call_method_{n}"))
+        method_name = wam_method.w_blueval.spy_unwrap(vm)
+        # void versions: no JsRef created for return value
+        suffix = "_void" if method_name in VOID_METHODS.get(n, set()) else ""
+
+        if suffix and all(wam.w_static_T is B.w_f64 for wam in args_wam):
+            # no JsRef created for arguments
+            suffix = "_f64_void"
+
+        return W_OpSpec(getattr(JSFFI, f"w_js_call_method_{n}{suffix}"))
 
     @builtin_method("__convert_from__", color="blue", kind="metafunc")
     @staticmethod
@@ -124,77 +143,36 @@ def w_js_wrap_func_f64(vm: "SPyVM", w_fn: W_Func) -> W_JsRef:
     raise NotImplementedError
 
 
-@JSFFI.builtin_func
-def w_js_call_method_0(vm: "SPyVM", w_target: W_JsRef, name: W_Str) -> W_JsRef:
-    raise NotImplementedError
+def _make_call_method(
+    n: int, suffix: str, ret: Any, arg_type: type
+) -> Callable[..., Any]:
+    def w_js_call_method(vm: "SPyVM", *args: Any) -> Any:
+        raise NotImplementedError
+
+    P_OR_K = inspect.Parameter.POSITIONAL_OR_KEYWORD
+    params = [inspect.Parameter("vm", P_OR_K, annotation="SPyVM")]
+    params.append(inspect.Parameter("w_target", P_OR_K, annotation=W_JsRef))
+    params.append(inspect.Parameter("name", P_OR_K, annotation=W_Str))
+    for i in range(n):
+        params.append(inspect.Parameter(f"arg{i}", P_OR_K, annotation=arg_type))
+    w_js_call_method.__signature__ = inspect.Signature(  # type: ignore[attr-defined]
+        params, return_annotation=ret
+    )
+    w_js_call_method.__name__ = f"w_js_call_method_{n}{suffix}"
+    return w_js_call_method
 
 
-@JSFFI.builtin_func
-def w_js_call_method_1(
-    vm: "SPyVM", w_target: W_JsRef, name: W_Str, arg0: W_JsRef
-) -> W_JsRef:
-    raise NotImplementedError
+for _n in range(7):
+    _fn = _make_call_method(_n, "", W_JsRef, W_JsRef)
+    JSFFI.builtin_func(_fn)
+
+    _fn = _make_call_method(_n, "_void", None, W_JsRef)
+    JSFFI.builtin_func(_fn)
 
 
-@JSFFI.builtin_func
-def w_js_call_method_2(
-    vm: "SPyVM", w_target: W_JsRef, name: W_Str, arg0: W_JsRef, arg1: W_JsRef
-) -> W_JsRef:
-    raise NotImplementedError
-
-
-@JSFFI.builtin_func
-def w_js_call_method_3(
-    vm: "SPyVM",
-    w_target: W_JsRef,
-    name: W_Str,
-    arg0: W_JsRef,
-    arg1: W_JsRef,
-    arg2: W_JsRef,
-) -> W_JsRef:
-    raise NotImplementedError
-
-
-@JSFFI.builtin_func
-def w_js_call_method_4(
-    vm: "SPyVM",
-    w_target: W_JsRef,
-    name: W_Str,
-    arg0: W_JsRef,
-    arg1: W_JsRef,
-    arg2: W_JsRef,
-    arg3: W_JsRef,
-) -> W_JsRef:
-    raise NotImplementedError
-
-
-@JSFFI.builtin_func
-def w_js_call_method_5(
-    vm: "SPyVM",
-    w_target: W_JsRef,
-    name: W_Str,
-    arg0: W_JsRef,
-    arg1: W_JsRef,
-    arg2: W_JsRef,
-    arg3: W_JsRef,
-    arg4: W_JsRef,
-) -> W_JsRef:
-    raise NotImplementedError
-
-
-@JSFFI.builtin_func
-def w_js_call_method_6(
-    vm: "SPyVM",
-    w_target: W_JsRef,
-    name: W_Str,
-    arg0: W_JsRef,
-    arg1: W_JsRef,
-    arg2: W_JsRef,
-    arg3: W_JsRef,
-    arg4: W_JsRef,
-    arg5: W_JsRef,
-) -> W_JsRef:
-    raise NotImplementedError
+for _n in range(2, 6):
+    _fn = _make_call_method(_n, "_f64_void", None, W_F64)
+    JSFFI.builtin_func(_fn)
 
 
 @JSFFI.builtin_func
