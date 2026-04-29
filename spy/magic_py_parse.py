@@ -102,13 +102,13 @@ def _make_identifier(scope_stack: list[str], name: str, occurrence: int) -> str:
     return f"{'_'.join(scope_stack)}__{name}__occurance-{occurrence}"
 
 
-def construct_SPy_specific_grammar(src: str) -> dict[str, VarKind]:
+def construct_SPy_specific_grammar(src: str) -> dict[str, TokenInfo]:
     tokens = get_tokens(src)
     n_tokens = len(tokens)
     i = 0
 
     scope_stack = ["module"]
-    spy_grammar_tracker: dict[str, VarKind] = {}
+    spy_grammar_tracker: dict[str, TokenInfo] = {}
     occurrences: dict[str, int] = {}
     while i < n_tokens:
         if _update_scope_stack(tokens, i, scope_stack):
@@ -137,7 +137,7 @@ def construct_SPy_specific_grammar(src: str) -> dict[str, VarKind]:
 
 
 def reinsert_spy_specific_grammar(
-    src: str, spy_grammar_tracker: dict[str, VarKind]
+    src: str, spy_grammar_tracker: dict[str, TokenInfo]
 ) -> list[TokenInfo]:
     tokens = get_tokens(src)
     n_tokens = len(tokens)
