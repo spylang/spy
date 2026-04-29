@@ -50,7 +50,7 @@ class W_JsRef(W_Object):
         # void versions: no JsRef created for return value
         suffix = "_void" if method_name in VOID_METHODS.get(n, set()) else ""
 
-        if suffix and all(wam.w_static_T is B.w_f64 for wam in args_wam):
+        if suffix and n and all(wam.w_static_T is B.w_f64 for wam in args_wam):
             # no JsRef created for arguments
             suffix = "_f64_void"
 

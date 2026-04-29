@@ -27,7 +27,7 @@ SIZE: i32 = WIDTH * HEIGHT * 4
 
 
 def _sync_slider_callback[id](
-    windows: JsRef, span: JsRef, value_container: JsRef, params: dict[str, i32]
+    span: JsRef, value_container: JsRef, params: dict[str, i32]
 ) -> None:
     value = value_container.value
     span.textContent = value
@@ -39,7 +39,7 @@ def init_slider[color](windows: JsRef, params: dict[str, i32]):
     params[color] = value_container.value
     span = window.document.getElementById(color + "Val")
     sync_slider_callback = jsffi.wrap_func_partial(
-        _sync_slider_callback, windows, span, value_container, params
+        _sync_slider_callback, span, value_container, params
     )
     value_container.addEventListener("input", sync_slider_callback)
 
