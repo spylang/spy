@@ -328,6 +328,23 @@ class TestMain:
         _, stdout = self.run("imports", self.main_spy)
         assert stdout.startswith("Import tree:")
 
+    def test_fmt_file(self):
+        mod = textwrap.dedent(
+            """def main( ) -> None:
+                print( \"hello world\" )
+            """
+        )
+        f = self.write("ugly.spy", mod)
+
+        self.run("fmt", f)
+        expected = textwrap.dedent(
+            """def main() -> None:
+    print("hello world")
+            """
+        )
+
+        assert f.read() == expected
+
     def test_interp_exit_code(self):
         src = """
         def main() -> i32:
