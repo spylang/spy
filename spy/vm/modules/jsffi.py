@@ -119,6 +119,11 @@ def w_get_Console(vm: "SPyVM") -> W_JsRef:
 
 
 @JSFFI.builtin_func
+def w_get_Document(vm: "SPyVM") -> W_JsRef:
+    raise NotImplementedError
+
+
+@JSFFI.builtin_func
 def w_js_string(vm: "SPyVM", w_str: W_Str) -> W_JsRef:
     raise NotImplementedError
 

@@ -23,6 +23,7 @@ EM_JS(void, jsffi_init, (void), {
     globalThis.jsffi = jsffi;
     jsffi.objects[0] = globalThis;
     jsffi.objects[1] = console;
+    jsffi.objects[2] = globalThis.document;
 
     jsffi.from_jsref = function(idval) {
         if (idval in jsffi.objects) {

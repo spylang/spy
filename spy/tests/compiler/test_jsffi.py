@@ -195,3 +195,17 @@ class TestJsFFI(CompilerTest):
             assert out == ""
         finally:
             jsffi_module.VOID_METHODS = original
+
+    def test_getDocument(self):
+        exe = self.compile("""
+        import jsffi
+
+        def main() -> None:
+            jsffi.init()
+            globalThis = jsffi.get_GlobalThis()
+            document = jsffi.get_Document()
+            globalThis.console.log(document)
+        """)
+        out = exe.run()
+        # without browser, document is undefined
+        assert out == "undefined\n"

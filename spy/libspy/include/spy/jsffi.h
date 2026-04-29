@@ -57,6 +57,11 @@ spy_jsffi$get_Console(void) {
 }
 
 static inline JsRef
+spy_jsffi$get_Document(void) {
+    return (JsRef){2};
+}
+
+static inline JsRef
 spy_jsffi$js_string(spy_Str *s) {
     return jsffi_string(s->utf8);
 }
