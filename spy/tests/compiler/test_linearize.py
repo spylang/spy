@@ -584,3 +584,46 @@ class TestLinearize(CompilerTest):
     ##     mod = self.compile(src)
     ##     p = mod.foo()
     ##     assert p == (30, 40)
+
+    def test_blockexpr_blue_value_preserves_body(self, capfd):
+        src = """
+        def foo() -> None:
+            print('hello')
+
+        @blue
+        def bar() -> i32:
+            return 52
+
+        def main() -> i32:
+            return __block__('''
+                foo()
+                bar()
+            ''')
+        """
+        mod = self.compile(src)
+        res = mod.main()
+        captured = capfd.readouterr()
+        assert res == 52
+        assert captured.out == "hello\n"
+
+    def test_blockexpr_blue_assign_preserves_body(self, capfd):
+        src = """
+        def foo() -> None:
+            print('hello')
+
+        @blue
+        def bar() -> i32:
+            return 52
+
+        def main() -> i32:
+            x = __block__('''
+                foo()
+                bar()
+            ''')
+            return x
+        """
+        mod = self.compile(src)
+        res = mod.main()
+        captured = capfd.readouterr()
+        assert res == 52
+        assert captured.out == "hello\n"

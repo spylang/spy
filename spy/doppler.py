@@ -218,7 +218,11 @@ class DopplerFrame(ASTFrame):
         sym = self.symtable.lookup(varname)
         if sym.is_local and self.locals[varname].color == "blue":
             self.record_node_color(assign, "blue")
-            # redshift away assignments to blue locals
+            # redshift away assignments to blue locals, but preserve
+            # any side effects from BlockExpr bodies
+            shifted_value = self.shifted_expr[assign.value]
+            if isinstance(shifted_value, ast.BlockExpr):
+                return shifted_value.body
             return []
         else:
             if sym.is_local:
@@ -408,7 +412,7 @@ class DopplerFrame(ASTFrame):
 
         "wam" is the result of "eval_expr(expr)".
         """
-        if wam.color == "blue":
+        if wam.color == "blue" and not isinstance(expr, ast.BlockExpr):
             return make_const(self.vm, expr.loc, wam.w_val)
         else:
             res = magic_dispatch(self, "shift_expr", expr, wam)
