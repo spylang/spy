@@ -5,6 +5,7 @@ from spy.cli.commands.build import build
 from spy.cli.commands.cleanup import cleanup
 from spy.cli.commands.colorize import colorize
 from spy.cli.commands.execute import execute
+from spy.cli.commands.fmt import fmt
 from spy.cli.commands.imports import imports
 from spy.cli.commands.parse import parse
 from spy.cli.commands.pyparse import pyparse
@@ -30,3 +31,4 @@ app.spy_command(pyparse, name="pyparse")
 app.spy_command(imports, name="imports")
 app.spy_command(symtable, name="symtable")
 app.spy_command(cleanup, name="cleanup")
+app.spy_command(fmt, name="fmt")
