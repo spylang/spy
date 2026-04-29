@@ -1,0 +1,13 @@
+[project]
+name = "jsffi-canvas"
+version = "0.1.0"
+description = "Demo website without Pyscript and JS"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "python-fasthtml>=0.13.4",
+    "spylang",
+]
+
+[tool.uv.sources]
+spylang = { path = "../..", editable = true }

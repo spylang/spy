@@ -11,22 +11,82 @@ typedef struct {
 
 // jsffi C interface
 JsRef WASM_EXPORT(jsffi_debug)(const char *ptr);
+void WASM_EXPORT(jsffi_debug_n_jsrefs)(void);
 void WASM_EXPORT(jsffi_init)(void);
 JsRef WASM_EXPORT(jsffi_string)(const char *ptr);
 JsRef WASM_EXPORT(jsffi_i32)(int32_t x);
+JsRef WASM_EXPORT(jsffi_f64)(double x);
 JsRef WASM_EXPORT(jsffi_wrap_func)(em_callback_func cfunc);
+JsRef WASM_EXPORT(jsffi_wrap_func_f64)(em_callback_func cfunc);
+typedef void (*jsffi_frame_func)(double);
+
+JsRef WASM_EXPORT(jsffi_call_method_0)(JsRef c_target, const char *c_name);
 JsRef WASM_EXPORT(jsffi_call_method_1)(
     JsRef c_target,
     const char *c_name,
     JsRef c_arg0
 );
+JsRef WASM_EXPORT(jsffi_call_method_2)(
+    JsRef c_target,
+    const char *c_name,
+    JsRef c_arg0,
+    JsRef c_arg1
+);
+JsRef WASM_EXPORT(jsffi_call_method_3)(
+    JsRef c_target,
+    const char *c_name,
+    JsRef c_arg0,
+    JsRef c_arg1,
+    JsRef c_arg2
+);
+
+JsRef WASM_EXPORT(jsffi_call_method_4)(
+    JsRef c_target,
+    const char *c_name,
+    JsRef c_arg0,
+    JsRef c_arg1,
+    JsRef c_arg2,
+    JsRef c_arg3
+);
+
+JsRef WASM_EXPORT(jsffi_call_method_5)(
+    JsRef c_target,
+    const char *c_name,
+    JsRef c_arg0,
+    JsRef c_arg1,
+    JsRef c_arg2,
+    JsRef c_arg3,
+    JsRef c_arg4
+);
+
+JsRef WASM_EXPORT(jsffi_call_method_6)(
+    JsRef c_target,
+    const char *c_name,
+    JsRef c_arg0,
+    JsRef c_arg1,
+    JsRef c_arg2,
+    JsRef c_arg3,
+    JsRef c_arg4,
+    JsRef c_arg5
+);
+
 JsRef WASM_EXPORT(jsffi_getattr)(JsRef c_target, const char *c_name);
 void WASM_EXPORT(jsffi_setattr)(JsRef c_target, const char *c_name, JsRef c_val);
+
+JsRef WASM_EXPORT(jsffi_u8array_from_ptr)(void *ptr, int32_t length);
+JsRef WASM_EXPORT(jsffi_new_ImageData)(JsRef c_array, int32_t width, int32_t height);
+int32_t WASM_EXPORT(jsffi_to_i32)(JsRef c_ref);
+double WASM_EXPORT(jsffi_to_f64)(JsRef c_ref);
 
 // SPy JSFFI module
 static inline void
 spy_jsffi$debug(spy_Str *s) {
     jsffi_debug(s->utf8);
+}
+
+static inline void
+spy_jsffi$_debug_n_jsrefs(void) {
+    jsffi_debug_n_jsrefs();
 }
 
 static inline void
@@ -55,13 +115,59 @@ spy_jsffi$js_i32(int32_t x) {
 }
 
 static inline JsRef
+spy_jsffi$js_f64(double x) {
+    return jsffi_f64(x);
+}
+
+static inline JsRef
 spy_jsffi$js_wrap_func(em_callback_func fn) {
     return jsffi_wrap_func(fn);
 }
 
 static inline JsRef
+spy_jsffi$js_wrap_func_f64(jsffi_frame_func fn) {
+    return jsffi_wrap_func_f64((em_callback_func)fn);
+}
+
+static inline JsRef
+spy_jsffi$js_call_method_0(JsRef target, spy_Str *name) {
+    return jsffi_call_method_0(target, name->utf8);
+}
+
+static inline JsRef
 spy_jsffi$js_call_method_1(JsRef target, spy_Str *name, JsRef arg0) {
     return jsffi_call_method_1(target, name->utf8, arg0);
+}
+
+static inline JsRef
+spy_jsffi$js_call_method_2(JsRef target, spy_Str *name, JsRef arg0, JsRef arg1) {
+    return jsffi_call_method_2(target, name->utf8, arg0, arg1);
+}
+
+static inline JsRef
+spy_jsffi$js_call_method_3(JsRef target, spy_Str *name, JsRef arg0, JsRef arg1, JsRef arg2) {
+    return jsffi_call_method_3(target, name->utf8, arg0, arg1, arg2);
+}
+
+static inline JsRef
+spy_jsffi$js_call_method_4(JsRef target, spy_Str *name,
+                            JsRef arg0, JsRef arg1, JsRef arg2, JsRef arg3) {
+    return jsffi_call_method_4(target, name->utf8, arg0, arg1, arg2, arg3);
+}
+
+static inline JsRef
+spy_jsffi$js_call_method_5(JsRef target, spy_Str *name,
+                            JsRef arg0, JsRef arg1, JsRef arg2,
+                            JsRef arg3, JsRef arg4) {
+    return jsffi_call_method_5(target, name->utf8, arg0, arg1, arg2, arg3, arg4);
+}
+
+static inline JsRef
+spy_jsffi$js_call_method_6(JsRef target, spy_Str *name,
+                            JsRef arg0, JsRef arg1, JsRef arg2,
+                            JsRef arg3, JsRef arg4, JsRef arg5) {
+    return jsffi_call_method_6(target, name->utf8,
+                               arg0, arg1, arg2, arg3, arg4, arg5);
 }
 
 static inline JsRef
@@ -72,6 +178,25 @@ spy_jsffi$JsRef$__getattribute__(JsRef target, spy_Str *name) {
 static inline void
 spy_jsffi$JsRef$__setattr__(JsRef target, spy_Str *name, JsRef val) {
     jsffi_setattr(target, name->utf8, val);
+}
+
+// Use a macro so it works with any ptr type (gc_ptr, raw_ptr)
+#define spy_jsffi$js_u8array_from_ptr(ptr, length) \
+    jsffi_u8array_from_ptr((void *)(ptr).p, length)
+
+static inline JsRef
+spy_jsffi$js_new_ImageData(JsRef array, int32_t width, int32_t height) {
+    return jsffi_new_ImageData(array, width, height);
+}
+
+static inline int32_t
+spy_jsffi$js_to_i32(JsRef ref) {
+    return jsffi_to_i32(ref);
+}
+
+static inline double
+spy_jsffi$js_to_f64(JsRef ref) {
+    return jsffi_to_f64(ref);
 }
 
 /* This is a workaround for an emscripten bug/limitation which triggers in the

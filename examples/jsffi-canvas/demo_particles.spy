@@ -1,0 +1,184 @@
+"""
+SPy particle simulation using the canvas 2D API directly.
+
+Known missing vs JS version:
+- math.random not yet available: particles initialized deterministically
+"""
+
+import math
+
+from jsffi import init as js_init, JsRef, get_GlobalThis
+from jsffi import _debug_n_jsrefs, get_Console
+
+from unsafe import gc_alloc, gc_ptr
+from time import time
+
+WIDTH: i32 = 800
+HEIGHT: i32 = 600
+MAX_PARTICLES: i32 = 80
+TWO_PI: f64 = 2.0 * math.pi
+
+
+@struct
+class Particle:
+    x: f64
+    y: f64
+    vx: f64
+    vy: f64
+    hue: f64
+
+
+@struct
+class Params:
+    n: i32
+    speed: f64
+    radius: i32
+
+
+var PARTICLES: gc_ptr[Particle] = gc_ptr[Particle].NULL
+var PARAMS: gc_ptr[Params] = gc_ptr[Params].NULL
+
+
+def draw_particle(p: Particle, radius: i32, ctx: JsRef) -> None:
+    r_f: f64 = float(radius)
+    hue_i: i32 = int(p.hue) % 360
+    hue_s: str = str(hue_i)
+    glow_color: str = "hsla(" + hue_s + ", 100%, 60%, 0.6)"
+    core_color: str = "hsl(" + hue_s + ", 100%, 75%)"
+    transparent: str = "hsla(" + hue_s + ", 100%, 50%, 0)"
+
+    grd = ctx.createRadialGradient(p.x, p.y, 0.0, p.x, p.y, r_f * 2.5)
+    grd.addColorStop(0.0, glow_color)
+    grd.addColorStop(1.0, transparent)
+    ctx.fillStyle = grd
+    ctx.beginPath()
+    ctx.arc(p.x, p.y, r_f * 2.5, 0.0, TWO_PI)
+    ctx.fill()
+
+    ctx.fillStyle = core_color
+    ctx.beginPath()
+    ctx.arc(p.x, p.y, r_f, 0.0, TWO_PI)
+    ctx.fill()
+
+
+def simulate_step(n: i32, speed: f64, radius: i32) -> None:
+    r_f: f64 = float(radius)
+    w_f: f64 = float(WIDTH)
+    h_f: f64 = float(HEIGHT)
+
+    window = get_GlobalThis()
+    canvas = window.document.getElementById("canvas")
+    ctx = canvas.getContext("2d")
+    ctx.fillStyle = "rgba(15, 23, 42, 0.25)"
+    ctx.fillRect(0.0, 0.0, w_f, h_f)
+
+    for i in range(n):
+        p: Particle = PARTICLES[i]
+
+        mag: f64 = math.sqrt(p.vx * p.vx + p.vy * p.vy)
+        if mag > 0.0001:
+            vx = p.vx / mag * speed
+            vy = p.vy / mag * speed
+            p = Particle(p.x, p.y, vx, vy, p.hue)
+
+        x = p.x + p.vx
+        y = p.y + p.vy
+        vx = p.vx
+        vy = p.vy
+
+        if x - r_f < 0.0:
+            x = r_f
+            vx = -p.vx
+        if x + r_f > w_f:
+            x = w_f - r_f
+            vx = -vx
+        if y - r_f < 0.0:
+            y = r_f
+            vy = -vy
+        if y + r_f > h_f:
+            y = h_f - r_f
+            vy = -vy
+
+        hue = (p.hue + 0.4) % 360.0
+        p = Particle(x, y, vx, vy, hue)
+        draw_particle(p, radius, ctx)
+        PARTICLES[i] = p
+
+
+# --- Slider sync callbacks ---
+
+
+def sync_n() -> None:
+    window = get_GlobalThis()
+    elem = window.document.getElementById("nParticles")
+    window.document.getElementById("nParticlesVal").textContent = elem.value
+    PARAMS[0].n = elem.value
+
+
+def sync_speed() -> None:
+    window = get_GlobalThis()
+    elem = window.document.getElementById("speed")
+    window.document.getElementById("speedVal").textContent = elem.value
+    PARAMS[0].speed = elem.value
+
+
+def sync_radius() -> None:
+    window = get_GlobalThis()
+    elem = window.document.getElementById("radius")
+    window.document.getElementById("radiusVal").textContent = elem.value
+    PARAMS[0].radius = elem.value
+
+
+# ---
+
+
+def frame(timestamp: f64) -> None:
+    window = get_GlobalThis()
+    console = get_Console()
+    t_start = time()
+    simulate_step(PARAMS[0].n, PARAMS[0].speed, PARAMS[0].radius)
+    console.log("simulate_step done in", time() - t_start, "s")
+    _debug_n_jsrefs()
+    window.requestAnimationFrame(frame)
+
+
+def init_particles(n: i32, speed: f64, radius: i32) -> None:
+    """Deterministic sunburst init — replace with random angles once math.random exists."""
+    cx: f64 = float(WIDTH) / 2.0
+    cy: f64 = float(HEIGHT) / 2.0
+    for i in range(n):
+        angle: f64 = float(i) * TWO_PI / float(n)
+        spd: f64 = speed * (0.5 + float(i % 5) * 0.1)
+        PARTICLES[i].x = cx
+        PARTICLES[i].y = cy
+        PARTICLES[i].vx = math.cos(angle) * spd
+        PARTICLES[i].vy = math.sin(angle) * spd
+        PARTICLES[i].hue = float(i * 360 // n)
+
+
+def main() -> None:
+    js_init()
+
+    PARTICLES = gc_alloc[Particle](MAX_PARTICLES)
+    PARAMS = gc_alloc[Params](1)
+
+    window = get_GlobalThis()
+
+    PARAMS[0].n = 20
+    PARAMS[0].speed = 3.0
+    PARAMS[0].radius = 6
+
+    elem = window.document.getElementById("nParticles")
+    PARAMS[0].n = elem.value
+    elem.addEventListener("input", sync_n)
+
+    elem = window.document.getElementById("speed")
+    PARAMS[0].speed = elem.value
+    elem.addEventListener("input", sync_speed)
+
+    elem = window.document.getElementById("radius")
+    PARAMS[0].radius = elem.value
+    elem.addEventListener("input", sync_radius)
+
+    init_particles(PARAMS[0].n, PARAMS[0].speed, PARAMS[0].radius)
+    window.requestAnimationFrame(frame)

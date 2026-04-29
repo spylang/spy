@@ -54,3 +54,125 @@ class TestJsFFI(CompilerTest):
         """)
         out = exe.run()
         assert out == "hello from callback\n"
+
+    def test_call_method_0_1(self):
+        exe = self.compile("""
+        from jsffi import init as js_init, get_GlobalThis
+
+        def main() -> None:
+            js_init()
+            globalThis = get_GlobalThis()
+            arr = globalThis.Array()
+            arr.push(42)
+            result = arr.pop()
+            globalThis.console.log(result)
+        """)
+        out = exe.run()
+        assert out == "42\n"
+
+    def test_call_method_2(self):
+        exe = self.compile("""
+        from jsffi import init as js_init, get_GlobalThis
+
+        def main() -> None:
+            js_init()
+            globalThis = get_GlobalThis()
+            result = globalThis.Math.max(3, 7)
+            globalThis.console.log(result)
+        """)
+        out = exe.run()
+        assert out == "7\n"
+
+    def test_call_method_3(self):
+        exe = self.compile("""
+        from jsffi import init as js_init, get_GlobalThis
+
+        def main() -> None:
+            js_init()
+            globalThis = get_GlobalThis()
+            result = globalThis.Math.min(3, 7, 1)
+            globalThis.console.log(result)
+        """)
+        out = exe.run()
+        assert out == "1\n"
+
+    def test_call_method_4(self):
+        exe = self.compile("""
+        from jsffi import init as js_init, get_GlobalThis
+
+        def main() -> None:
+            js_init()
+            globalThis = get_GlobalThis()
+            globalThis.console.log(1, 2, 3, 4)
+        """)
+        out = exe.run()
+        assert out == "1 2 3 4\n"
+
+    def test_call_method_5(self):
+        exe = self.compile("""
+        from jsffi import init as js_init, get_GlobalThis
+
+        def main() -> None:
+            js_init()
+            globalThis = get_GlobalThis()
+            globalThis.console.log(1, 2, 3, 4, 5)
+        """)
+        out = exe.run()
+        assert out == "1 2 3 4 5\n"
+
+    def test_call_method_6(self):
+        exe = self.compile("""
+        from jsffi import init as js_init, get_GlobalThis
+
+        def main() -> None:
+            js_init()
+            globalThis = get_GlobalThis()
+            globalThis.console.log(1, 2, 3, 4, 5, 6)
+        """)
+        out = exe.run()
+        assert out == "1 2 3 4 5 6\n"
+
+    def test_to_i32(self):
+        exe = self.compile("""
+        from jsffi import init as js_init, get_GlobalThis, js_to_i32
+
+        def main() -> None:
+            js_init()
+            globalThis = get_GlobalThis()
+            globalThis.testVal = 42
+            ref = globalThis.testVal
+            x: i32 = js_to_i32(ref)
+            print(x)
+        """)
+        out = exe.run()
+        assert out == "42\n"
+
+    def test_to_f64(self):
+        exe = self.compile("""
+        from jsffi import init as js_init, get_GlobalThis, js_to_f64
+
+        def main() -> None:
+            js_init()
+            globalThis = get_GlobalThis()
+            globalThis.testVal = 3.14
+            ref = globalThis.testVal
+            x: f64 = js_to_f64(ref)
+            print(x)
+        """)
+        out = exe.run()
+        assert out == "3.140000\n"
+
+    def test_u8array_from_ptr(self):
+        exe = self.compile("""
+        from jsffi import init as js_init, get_GlobalThis, js_u8array_from_ptr
+        from unsafe import gc_alloc
+
+        def main() -> None:
+            js_init()
+            globalThis = get_GlobalThis()
+            buf = gc_alloc[u8](12)
+            arr = js_u8array_from_ptr(buf, 12)
+            globalThis.console.log(arr.length)
+        """)
+        out = exe.run()
+        assert out == "12\n"

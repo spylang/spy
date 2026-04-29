@@ -1,0 +1,116 @@
+"""
+We are strongly limited by SPy immaturity.
+
+- Closures are not yet supported in red function so we have to use global variables.
+- `var` global variables can be only simple types and NULL pointer.
+
+Note that module level code is quite particular in SPy:
+- evaluated at import time (i.e. during compilation).
+- variables are by default constant (hence the keyword `var`).
+
+jsffi is also currently very limited. In particular, there is no equivalent to the
+`new` JS keyword, so we need to rely on function helpers (like js_u8array_from_ptr
+and js_new_ImageData).
+"""
+
+from jsffi import init as js_init, JsRef, get_GlobalThis, get_Console
+from jsffi import js_u8array_from_ptr, js_new_ImageData
+from jsffi import _debug_n_jsrefs
+
+from unsafe import gc_alloc, gc_ptr
+from time import time
+
+WIDTH: i32 = 800
+HEIGHT: i32 = 600
+SIZE: i32 = WIDTH * HEIGHT * 4
+
+var counter: i32 = 0
+var inc: i32 = 5
+
+
+def simulate_step(buf: gc_ptr[u8], red: i32, green: i32, blue: i32) -> None:
+    if inc > 0 and counter + inc > 255:
+        inc *= -1
+    elif inc < 0 and counter + inc < 0:
+        inc *= -1
+    counter = counter + inc
+
+    # improve perf when compiling without --release
+    _red: u8 = (red * counter) // 255
+    _green: u8 = (green * counter) // 255
+    _blue: u8 = (blue * counter) // 255
+
+    for idx in range(WIDTH * HEIGHT):
+        buf[idx * 4 + 0] = _red
+        buf[idx * 4 + 1] = _green
+        buf[idx * 4 + 2] = _blue
+        buf[idx * 4 + 3] = counter
+
+
+var BUF: gc_ptr[u8] = gc_ptr[u8].NULL
+
+
+@struct
+class Params:
+    red: i32
+    green: i32
+    blue: i32
+
+
+var PARAMS:  gc_ptr[Params] = gc_ptr[Params].NULL
+
+
+def sync_slider_callback[id]() -> None:
+    window = get_GlobalThis()
+    span = window.document.getElementById(id + "Val")
+    value = window.document.getElementById(id).value
+    span.textContent = value
+    setattr(PARAMS[0], id, value)
+
+
+def frame(timestamp: f64) -> None:
+    console = get_Console()
+    window = get_GlobalThis()
+
+    red = getattr(PARAMS[0], "red")
+    green = getattr(PARAMS[0], "green")
+    blue = getattr(PARAMS[0], "blue")
+    t_start = time()
+    simulate_step(BUF, red, green, blue)
+    console.log("simulate_step done in", time() - t_start, "s")
+    _debug_n_jsrefs()
+
+    u8arr = js_u8array_from_ptr(BUF, SIZE)
+    image_data = js_new_ImageData(u8arr, WIDTH, HEIGHT)
+
+    canvas = window.document.getElementById("canvas")
+    ctx = canvas.getContext("2d")
+    ctx.putImageData(image_data, 0, 0)
+
+    window.requestAnimationFrame(frame)
+
+
+def main() -> None:
+    js_init()
+    BUF = gc_alloc[u8](SIZE)
+    for idx in range(SIZE):
+        BUF[idx] = 255
+
+    window = get_GlobalThis()
+
+    PARAMS = gc_alloc[Params](1)
+
+    # will use: for color in unroll(["red", "green", "blue"]):
+    elem = window.document.getElementById("red")
+    setattr(PARAMS[0], "red", elem.value)
+    elem.addEventListener('input', sync_slider_callback["red"])
+
+    elem = window.document.getElementById("green")
+    setattr(PARAMS[0], "green", elem.value)
+    elem.addEventListener('input', sync_slider_callback["green"])
+
+    elem = window.document.getElementById("blue")
+    setattr(PARAMS[0], "blue", elem.value)
+    elem.addEventListener('input', sync_slider_callback["blue"])
+
+    window.requestAnimationFrame(frame)

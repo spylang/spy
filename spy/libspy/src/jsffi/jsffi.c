@@ -1,7 +1,7 @@
 #include "spy.h"
 #include <emscripten.h>
 
-EM_JS_DEPS(jsffi, "$UTF8ToString,$wasmTable");
+EM_JS_DEPS(jsffi, "$UTF8ToString,$wasmTable,$wasmMemory");
 
 // see the corresponding comment in jsffi.h
 void jsffi_force_include(void) {};
@@ -9,6 +9,11 @@ void jsffi_force_include(void) {};
 EM_JS(JsRef, jsffi_debug, (const char *ptr), {
     let s = UTF8ToString(ptr);
     console.log(s);
+});
+
+EM_JS(void, jsffi_debug_n_jsrefs, (void), {
+    let n = Object.keys(jsffi.objects).length;
+    console.log("Number of JsRef", n);
 });
 
 EM_JS(void, jsffi_init, (void), {
@@ -39,13 +44,87 @@ EM_JS(JsRef, jsffi_string, (const char *ptr), { return jsffi.to_jsref(UTF8ToStri
 
 EM_JS(JsRef, jsffi_i32, (int32_t x), { return jsffi.to_jsref(x); });
 
+EM_JS(JsRef, jsffi_f64, (double x), { return jsffi.to_jsref(x); });
+
 EM_JS(JsRef, jsffi_wrap_func, (em_callback_func cfunc), { return jsffi.to_jsref(wasmTable.get(cfunc)); });
+
+EM_JS(JsRef, jsffi_wrap_func_f64, (em_callback_func cfunc), { return jsffi.to_jsref(wasmTable.get(cfunc)); });
+
+
+EM_JS(JsRef, jsffi_call_method_0, (JsRef c_target, const char *c_name), {
+    let target = jsffi.from_jsref(c_target);
+    let name = UTF8ToString(c_name);
+    let res = target[name].call(target);
+    return jsffi.to_jsref(res);
+});
 
 EM_JS(JsRef, jsffi_call_method_1, (JsRef c_target, const char *c_name, JsRef c_arg0), {
     let target = jsffi.from_jsref(c_target);
     let name = UTF8ToString(c_name);
     let arg0 = jsffi.from_jsref(c_arg0);
     let res = target[name].call(target, arg0);
+    return jsffi.to_jsref(res);
+});
+
+EM_JS(JsRef, jsffi_call_method_2, (JsRef c_target, const char *c_name,
+                                    JsRef c_arg0, JsRef c_arg1), {
+    let target = jsffi.from_jsref(c_target);
+    let name = UTF8ToString(c_name);
+    let res = target[name].call(target,
+        jsffi.from_jsref(c_arg0),
+        jsffi.from_jsref(c_arg1));
+    return jsffi.to_jsref(res);
+});
+
+EM_JS(JsRef, jsffi_call_method_3, (JsRef c_target, const char *c_name,
+                                    JsRef c_arg0, JsRef c_arg1, JsRef c_arg2), {
+    let target = jsffi.from_jsref(c_target);
+    let name = UTF8ToString(c_name);
+    let res = target[name].call(target,
+        jsffi.from_jsref(c_arg0),
+        jsffi.from_jsref(c_arg1),
+        jsffi.from_jsref(c_arg2));
+    return jsffi.to_jsref(res);
+});
+
+EM_JS(JsRef, jsffi_call_method_4, (JsRef c_target, const char *c_name,
+                                    JsRef c_arg0, JsRef c_arg1, JsRef c_arg2, JsRef c_arg3), {
+    let target = jsffi.from_jsref(c_target);
+    let name = UTF8ToString(c_name);
+    let res = target[name].call(target,
+        jsffi.from_jsref(c_arg0),
+        jsffi.from_jsref(c_arg1),
+        jsffi.from_jsref(c_arg2),
+        jsffi.from_jsref(c_arg3));
+    return jsffi.to_jsref(res);
+});
+
+EM_JS(JsRef, jsffi_call_method_5, (JsRef c_target, const char *c_name,
+                                    JsRef c_arg0, JsRef c_arg1, JsRef c_arg2,
+                                    JsRef c_arg3, JsRef c_arg4), {
+    let target = jsffi.from_jsref(c_target);
+    let name = UTF8ToString(c_name);
+    let res = target[name].call(target,
+        jsffi.from_jsref(c_arg0),
+        jsffi.from_jsref(c_arg1),
+        jsffi.from_jsref(c_arg2),
+        jsffi.from_jsref(c_arg3),
+        jsffi.from_jsref(c_arg4));
+    return jsffi.to_jsref(res);
+});
+
+EM_JS(JsRef, jsffi_call_method_6, (JsRef c_target, const char *c_name,
+                                    JsRef c_arg0, JsRef c_arg1, JsRef c_arg2,
+                                    JsRef c_arg3, JsRef c_arg4, JsRef c_arg5), {
+    let target = jsffi.from_jsref(c_target);
+    let name = UTF8ToString(c_name);
+    let res = target[name].call(target,
+        jsffi.from_jsref(c_arg0),
+        jsffi.from_jsref(c_arg1),
+        jsffi.from_jsref(c_arg2),
+        jsffi.from_jsref(c_arg3),
+        jsffi.from_jsref(c_arg4),
+        jsffi.from_jsref(c_arg5));
     return jsffi.to_jsref(res);
 });
 
@@ -61,4 +140,22 @@ EM_JS(void, jsffi_setattr, (JsRef c_target, const char *c_name, JsRef c_val), {
     let name = UTF8ToString(c_name);
     let val = jsffi.from_jsref(c_val);
     target[name] = val;
+});
+
+EM_JS(JsRef, jsffi_u8array_from_ptr, (void *ptr, int32_t length), {
+    let view = new Uint8ClampedArray(wasmMemory.buffer, ptr, length);
+    return jsffi.to_jsref(view);
+});
+
+EM_JS(JsRef, jsffi_new_ImageData, (JsRef ref_array, int32_t width, int32_t height), {
+    let array = jsffi.from_jsref(ref_array);
+    return jsffi.to_jsref(new ImageData(array, width, height));
+});
+
+EM_JS(int32_t, jsffi_to_i32, (JsRef c_ref), {
+    return jsffi.from_jsref(c_ref)|0;
+});
+
+EM_JS(double, jsffi_to_f64, (JsRef c_ref), {
+    return +jsffi.from_jsref(c_ref);
 });
