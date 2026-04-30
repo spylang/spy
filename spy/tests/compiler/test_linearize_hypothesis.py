@@ -6,7 +6,7 @@ then compares return values and stdout. Any discrepancy indicates a bug in the
 linearize pass's observational transparency.
 
 To enable stress testing use:
-$ pytest --hypothesis-profile=stress -s spy/tests/compiler/test_linearize_hypothesis.py
+$ pytest --hypothesis-profile=stress -v -s spy/tests/compiler/test_linearize_hypothesis.py
 
 """
 
@@ -51,11 +51,16 @@ def add(a: i32, b: i32) -> i32:
 
 def sub(a: i32, b: i32) -> i32:
     return a - b
+
+@blue
+def blue_i32() -> i32:
+    return 42
 """
 
 TEMPLATE = """
 def foo(x: i32) -> i32:
     y: i32 = 0
+    _i: i32 = 0
     {body}
 """
 
@@ -107,6 +112,7 @@ def _make_strategies(counter: _NameCounter) -> tuple[Any, Any, Any, Any]:
         st.just("f1()"),
         st.just("f2()"),
         st.just("tick()"),
+        st.just("blue_i32()"),
     )
 
     bool_base = st.one_of(
@@ -157,18 +163,24 @@ def _make_strategies(counter: _NameCounter) -> tuple[Any, Any, Any, Any]:
 
     @st.composite
     def make_stmt_no_block(draw: Any) -> str:
-        kind = draw(st.integers(min_value=0, max_value=3))
+        kind = draw(st.integers(min_value=0, max_value=4))
         if kind == 0:
             return f"y = {draw(expr_i32_no_block)}"
         elif kind == 1:
             return f"N = {draw(expr_i32_no_block)}"
         elif kind == 2:
             return draw(st.sampled_from(["tick()", "f1()", "f2()"]))
-        else:
+        elif kind == 3:
             cond = draw(expr_bool_no_block)
             s1 = draw(expr_i32_no_block)
             s2 = draw(expr_i32_no_block)
             return f"if {cond}:\n    y = {s1}\nelse:\n    y = {s2}"
+        else:
+            cond = draw(expr_bool_no_block)
+            body_stmt = draw(st.sampled_from(["tick()", "f1()", "f2()"]))
+            return (
+                f"_i = 0\nwhile ({cond}) and _i < 3:\n    _i = _i + 1\n    {body_stmt}"
+            )
 
     stmt_no_block = make_stmt_no_block()
 
@@ -223,7 +235,7 @@ def _make_strategies(counter: _NameCounter) -> tuple[Any, Any, Any, Any]:
     # statement strategy — AssignLocal, StmtExpr, if
     @st.composite
     def make_stmt(draw: Any) -> str:
-        kind = draw(st.integers(min_value=0, max_value=3))
+        kind = draw(st.integers(min_value=0, max_value=4))
         if kind == 0:
             return f"y = {draw(expr_i32)}"
         elif kind == 1:
@@ -231,12 +243,18 @@ def _make_strategies(counter: _NameCounter) -> tuple[Any, Any, Any, Any]:
         elif kind == 2:
             # StmtExpr: bare call with side effects
             return draw(st.sampled_from(["tick()", "f1()", "f2()"]))
-        else:
+        elif kind == 3:
             # if <bool>: y = <expr> else: y = <expr>
             cond = draw(expr_bool)
             s1 = draw(expr_i32)
             s2 = draw(expr_i32)
             return f"if {cond}:\n    y = {s1}\nelse:\n    y = {s2}"
+        else:
+            cond = draw(expr_bool)
+            body_stmt = draw(st.sampled_from(["tick()", "f1()", "f2()"]))
+            return (
+                f"_i = 0\nwhile ({cond}) and _i < 3:\n    _i = _i + 1\n    {body_stmt}"
+            )
 
     stmt = make_stmt()
 
