@@ -30,7 +30,7 @@ class W_JsVal(W_Object):
             return W_OpSpec(JSFFI.w_jsval_from_i32)
         elif w_gotT is B.w_str:
             return W_OpSpec(JSFFI.w_jsval_from_str)
-        elif w_gotT.pyclass is W_JsRef:
+        elif w_gotT.pyclass is W_JsRef:  # type: ignore
             return W_OpSpec(JSFFI.w_jsval_from_jsref)
         elif isinstance(w_gotT, W_FuncType):
             if w_gotT == W_FuncType.parse("def() -> None"):
@@ -90,7 +90,7 @@ class W_JsRef(W_Object):
             return W_OpSpec(JSFFI.w_js_to_f64)
         elif w_expT is B.w_f64:
             return W_OpSpec(JSFFI.w_js_to_i32)
-        elif w_expT.pyclass is W_JsVal:
+        elif w_expT.pyclass is W_JsVal:  # type: ignore
             return W_OpSpec(JSFFI.w_jsval_from_jsref)
         else:
             raise WIP(f"Cannot convert a JsRef into a {w_expT}")
