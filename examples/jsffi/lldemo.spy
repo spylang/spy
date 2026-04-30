@@ -1,54 +1,37 @@
-# -*- mode: python -*-
+import operator
 
-from jsffi import (
-    init as js_init,
-    debug as js_debug,
-    get_GlobalThis,
-    get_Console,
-    js_string,
-    js_wrap_func,
-    js_call_method_1,
-    js_getattr,
-    js_setattr)
+from jsffi import init as js_init
+from jsffi import JsRef, get_GlobalThis, get_Console, js_call_method_1
+from jsffi import jsval_from_jsref, jsval_from_str, jsval_from_func
+
+var counter: i32 = 0
 
 
 def onclick() -> None:
-    console = get_Console()
-    js_call_method_1(console, "log", js_string("onclick!"))
+    counter = counter + 1
+    window = get_GlobalThis()
+    document = window.document
+    message = js_call_method_1(
+        document,
+        "getElementById",
+        jsval_from_str("message"),
+    )
+    message.innerText = jsval_from_str(operator.str_add("onclick ", str(counter)))
+
 
 def main() -> None:
     js_init()
-    js_debug("hello world")
     window = get_GlobalThis()
     console = get_Console()
+    document = window.document
 
-    js_msg = js_string("hello from SPy (lldemo)")
-    js_call_method_1(console, "log", js_msg)
-
-    document = js_getattr(window, "document")
-    #js_call_method_1(console, "log", document)
-
-    div_title = js_call_method_1(
-        document,
-        "getElementById",
-        js_string("title")
+    js_call_method_1(console, "log", jsval_from_str("Hello SPy"))
+    div_title = js_call_method_1(document, "getElementById", jsval_from_str("title"))
+    js_call_method_1(console, "log", jsval_from_jsref(div_title))
+    div_message = js_call_method_1(
+        document, "getElementById", jsval_from_str("message")
     )
-    js_call_method_1(console, "log", div_title)
+    btn = js_call_method_1(document, "getElementById", jsval_from_str("btn"))
 
-    js_setattr(
-        div_title,
-        "innerText",
-        js_string("hello HTML from SPy (lldemo)")
-    )
-
-    btn = js_call_method_1(
-        document,
-        "getElementById",
-        js_string("btn")
-    )
-
-    js_setattr(
-        btn,
-        "onclick",
-        js_wrap_func(onclick)
-    )
+    div_title.innerText = jsval_from_str("Hello HTML from SPy")
+    btn.onclick = jsval_from_func(onclick)
