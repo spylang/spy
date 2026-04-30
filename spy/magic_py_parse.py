@@ -89,7 +89,7 @@ def _update_scope_stack(
 
 
 def _make_identifier(scope_stack: list[str], name: str, occurrence: int) -> str:
-    return f"{'_'.join(scope_stack)}__{name}__occurance-{occurrence}"
+    return f"{'_'.join(scope_stack)}__{name}__occurrence-{occurrence}"
 
 
 def construct_SPy_specific_grammar(src: str) -> dict[str, TokenInfo]:

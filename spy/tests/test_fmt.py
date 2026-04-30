@@ -25,14 +25,27 @@ class TestFmt:
     def _assert_name_tokens_match(
         got: list[TokenInfo], expected: list[TokenInfo]
     ) -> None:
-        assert len(got) == len(expected)
-        for index in range(len(got)):
+        got_name_tokens = [
+            token
+            for token in got
+            if token.type == NAME and token.string.strip() in ("const", "var")
+        ]
+        expected_name_tokens = [
+            token
+            for token in expected
+            if token.type == NAME and token.string.strip() in ("const", "var")
+        ]
+        # breakpoint()
+        assert len(got_name_tokens) == len(expected_name_tokens)
+        for got_token, expected_token in zip(got_name_tokens, expected_name_tokens):
             # After ruff formatting. There are possibly new nodes
             # like `\n` or removed(INDENT) regarding ruff rules.
             # But nodes (NAME type) we focus now are `const`, `var`.
-            if got[index].type == NAME:
-                assert got[index].type == expected[index].type
-                assert got[index].string.strip() == expected[index].string.strip()
+            assert got_token.type == expected_token.type
+            assert got_token.string.strip() == expected_token.string.strip()
+            assert got_token.line.strip().replace(
+                " ", ""
+            ) == expected_token.line.strip().replace(" ", "")
 
     def test_construct_SPy_specific_grammar_happy_path_1(self):
         mod = textwrap.dedent(
@@ -45,10 +58,10 @@ class TestFmt:
 
         got = construct_SPy_specific_grammar(mod)
         expected = {
-            "module_def-foo__x__occurance-1": TokenInfo(
+            "module_def-foo__x__occurrence-1": TokenInfo(
                 type=1, string="var ", start=(3, 4), end=(3, 7), line="    var x = 1\n"
             ),
-            "module_def-foo__x__occurance-2": TokenInfo(
+            "module_def-foo__x__occurrence-2": TokenInfo(
                 type=1,
                 string="const ",
                 start=(4, 4),
@@ -72,17 +85,17 @@ class TestFmt:
 
         got = construct_SPy_specific_grammar(mod)
         expected = {
-            "module_def-foo__x__occurance-1": TokenInfo(
+            "module_def-foo__x__occurrence-1": TokenInfo(
                 type=1, string="var ", start=(3, 4), end=(3, 7), line="    var x = 1\n"
             ),
-            "module_def-foo__x__occurance-2": TokenInfo(
+            "module_def-foo__x__occurrence-2": TokenInfo(
                 type=1,
                 string="const ",
                 start=(4, 4),
                 end=(4, 9),
                 line="    const x = 2\n",
             ),
-            "module_def-foo_def-alevel__allow_u__occurance-1": TokenInfo(
+            "module_def-foo_def-alevel__allow_u__occurrence-1": TokenInfo(
                 type=1,
                 string="const ",
                 start=(7, 8),
@@ -118,21 +131,21 @@ class TestFmt:
 
         got = construct_SPy_specific_grammar(mod)
         expected = {
-            "module_def-foo__listA__occurance-1": TokenInfo(
+            "module_def-foo__listA__occurrence-1": TokenInfo(
                 type=1,
                 string="var ",
                 start=(3, 4),
                 end=(3, 7),
                 line="    var listA: list[int]  = [5, 2, 6, 8]\n",
             ),
-            "module_def-foo__dictA__occurance-1": TokenInfo(
+            "module_def-foo__dictA__occurrence-1": TokenInfo(
                 type=1,
                 string="const ",
                 start=(4, 4),
                 end=(4, 9),
                 line="    const dictA: dict[int, int] = {0: 555, 10: 888}\n",
             ),
-            "module_def-foo__tupleA__occurance-1": TokenInfo(
+            "module_def-foo__tupleA__occurrence-1": TokenInfo(
                 type=1,
                 string="var ",
                 start=(5, 4),

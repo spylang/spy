@@ -14,7 +14,7 @@ from spy.vm.vm import SPyVM
 
 def format_python_source_with_ruff(source: str) -> str:
     repo_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
-    fd, tmp_path = tempfile.mkstemp(dir=repo_root, suffix=".py")
+    fd, tmp_path = tempfile.mkstemp(suffix=".py")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             f.write(source)
@@ -59,5 +59,5 @@ class SPyFormatter:
         tokens = reinsert_spy_specific_grammar(formatted_py_src, spy_grammar_tracker)
         formatted_spy_src = untokenize.untokenize(tokens)
 
-        with open(spyfile, "w", encoding="utf-8") as f:
+        with open(str(spyfile), "w", encoding="utf-8") as f:
             f.write(formatted_spy_src)
