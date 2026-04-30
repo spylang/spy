@@ -19,6 +19,11 @@ jobs:
   cleanup-repo:
     runs-on: ubuntu-latest
     steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.SPYLANG_DOCS_DEPLOY_KEY }}
+
       - name: Clone docs repository
         run: |
           git clone ${{ vars.SPY_DOCS_REPOSITORY }} /tmp/spy-docs
@@ -29,7 +34,7 @@ jobs:
           git config user.name "${{ github.actor }}"
           git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
 
-      - name: Remove PR Preview folder using GitHub Pages Deploy Action
+      - name: Remove PR Preview folder
         working-directory: /tmp/spy-docs
         run: |
           ls ./pr-preview
