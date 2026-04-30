@@ -13,34 +13,46 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  check:
+  cleanup-repo:
     runs-on: ubuntu-latest
-    id: check
-    uses: peter-evans/find-comment@v4.0.0
-    with:
-      issue-number: ${{ github.event.pull_request.number }} # Works for pull request number as well
-      body-includes: <!-- Sticky Pull Request Commentpr-preview -->
-
-  cleanup:
-    runs-on: ubuntu-latest
-    if: >
-      steps.check.outputs.comment-id != ""
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Clone docs repository
+        run: |
+          git clone ${{ vars.SPY_DOCS_REPOSITORY }} /tmp/spy-docs
 
-      - name: Create empty deploy folder
-        run: mkdir -p empty
+      - name: Configure Git in docs repository
+        working-directory: /tmp/spy-docs
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
 
       - name: Remove PR Preview folder using GitHub Pages Deploy Action
-        uses: JamesIves/github-pages-deploy-action@v4
-        with:
-          branch: gh-pages
-          folder: ./empty
-          target-folder: pr-preview/pr-${{ github.event.pull_request.number }}
-          token: ${{ secrets.GITHUB_TOKEN }}
-          clean: true
+        working-directory: /tmp/spy-docs
+        run: |
+          ls ./pr-preview
+          ls ./pr-preview/pr-${{ github.event.pull_request.number }}
+          rm -rf ./pr-preview/pr-${{ github.event.pull_request.number }}
+          git commit -am "Removed preview files from closed PR ${{ github.event.pull_request.number }}"
+          git push
+          ls ./pr-preview
 
+  check-comment:
+    runs-on: ubuntu-latest
+    outputs:
+      comment-id: ${{ steps.has-sticky.outputs.comment-id }}
+    steps:
+      - name: Check if PR has Sticky Comment
+        id: has-sticky
+        uses: peter-evans/find-comment@v4.0.0
+        with:
+          issue-number: ${{ github.event.pull_request.number }} # Works for pull request number as well
+          body-includes: <!-- Sticky Pull Request Commentpr-preview -->
+
+  cleanup-comment:
+    runs-on: ubuntu-latest
+    needs: check-comment
+    if: needs.check-comment.outputs.comment-id != ""
+    steps:
       - name: Get timestamp (UTC)
         id: ts
         run: echo "utc=$(date -u '+%Y-%m-%d %H:%M UTC')" >> "$GITHUB_OUTPUT"
