@@ -84,6 +84,8 @@ JsRef WASM_EXPORT(jsffi_new_ImageData)(JsRef c_array, int32_t width, int32_t hei
 int32_t WASM_EXPORT(jsffi_to_i32)(JsRef c_ref);
 double WASM_EXPORT(jsffi_to_f64)(JsRef c_ref);
 
+void WASM_EXPORT(jsffi_request_animation_frame)(em_callback_func cfunc);
+
 // SPy JSFFI module
 static inline void
 spy_jsffi$debug(spy_Str *s) {
@@ -162,6 +164,11 @@ spy_jsffi$js_to_i32(JsRef ref) {
 static inline double
 spy_jsffi$js_to_f64(JsRef ref) {
     return jsffi_to_f64(ref);
+}
+
+static inline void
+spy_jsffi$request_animation_frame(jsffi_frame_func fn) {
+    jsffi_request_animation_frame((em_callback_func)fn);
 }
 
 /* This is a workaround for an emscripten bug/limitation which triggers in the

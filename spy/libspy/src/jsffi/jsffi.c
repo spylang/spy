@@ -104,6 +104,10 @@ EM_JS(double, jsffi_to_f64, (JsRef c_ref), {
     return +jsffi.from_jsref(c_ref);
 });
 
+EM_JS(void, jsffi_request_animation_frame, (em_callback_func cfunc), {
+    requestAnimationFrame(wasmTable.get(cfunc));
+});
+
 /*
  * jsffi_call_method.c is included so that all EM_JS
  * functions share the same translation unit and can access the `jsffi`

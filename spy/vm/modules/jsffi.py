@@ -126,6 +126,13 @@ def w_jsval_from_func_f64(vm: "SPyVM", w_fn: W_Func) -> W_JsVal:
     raise NotImplementedError
 
 
+@JSFFI.builtin_func
+def w_request_animation_frame(vm: "SPyVM", w_fn: W_Func) -> None:
+    # useful helper function equivalent to
+    # jsffi.drop_ref(jsffi.get_GlobalThis().requestAnimationFrame(frame))
+    raise NotImplementedError
+
+
 #
 
 

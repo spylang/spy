@@ -100,8 +100,9 @@ def frame(timestamp: f64) -> None:
 
     console.log("n_per_frame:", n_per_frame)
 
-    n_frame = jsffi.get_GlobalThis().requestAnimationFrame(frame)
-    jsffi.drop_ref(n_frame)
+    jsffi.request_animation_frame(frame)
+    # this is equivalent to
+    # jsffi.drop_ref(jsffi.get_GlobalThis().requestAnimationFrame(frame))
 
 
 def main() -> None:

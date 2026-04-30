@@ -139,7 +139,6 @@ def simulate_step(n: i32, speed: f64, radius: i32) -> None:
 
 
 def frame(timestamp: f64) -> None:
-    window = jsffi.get_GlobalThis()
     console = jsffi.get_Console()
     t_start = time()
     simulate_step(PARAMS[0].n, PARAMS[0].speed, PARAMS[0].radius)
@@ -151,7 +150,9 @@ def frame(timestamp: f64) -> None:
 
     console.log("n_per_frame:", n_per_frame, "; per part: ", n_per_frame / PARAMS[0].n)
 
-    jsffi.drop_ref(window.requestAnimationFrame(frame))
+    jsffi.request_animation_frame(frame)
+    # this is equivalent to
+    # jsffi.drop_ref(jsffi.get_GlobalThis().requestAnimationFrame(frame))
 
 
 def init_particles(n: i32, speed: f64, radius: i32) -> None:

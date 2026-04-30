@@ -190,3 +190,16 @@ class TestJsFFI(CompilerTest):
         out = exe.run()
         # without browser, document is undefined
         assert out == "undefined\n"
+
+    def test_request_animation_frame(self):
+        exe = self.compile("""
+        import jsffi
+
+        def on_frame(time: f64) -> None:
+            print(time)
+
+        def main() -> None:
+            jsffi.init()
+            jsffi.request_animation_frame(on_frame)
+        """)
+        # requestAnimationFrame is a browser API, so this cannot run
