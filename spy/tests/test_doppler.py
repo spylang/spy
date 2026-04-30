@@ -540,30 +540,3 @@ class TestDoppler:
         """,
             funcname="foo",
         )
-
-    def test_call_method_2_f64_void(self):
-        from spy.vm.modules import jsffi as jsffi_module
-
-        original = jsffi_module.VOID_METHODS.copy()
-        try:
-            jsffi_module.VOID_METHODS[2] = original[2] | {"hypot"}
-
-            self.redshift("""
-                from jsffi import init as js_init, get_GlobalThis
-
-                def main() -> None:
-                    js_init()
-                    globalThis = get_GlobalThis()
-                    globalThis.Math.hypot(3.0, 4.0)
-                """)
-
-            self.assert_dump("""
-                def main() -> None:
-                    `jsffi::init`()
-                    globalThis: `jsffi::JsRef`
-                    globalThis = `jsffi::get_GlobalThis`()
-                    `jsffi::js_call_method_2_f64_void`(`jsffi::JsRef::__getattribute__`(globalThis, 'Math'), 'hypot', 3.0, 4.0)
-            """)
-
-        finally:
-            jsffi_module.VOID_METHODS = original

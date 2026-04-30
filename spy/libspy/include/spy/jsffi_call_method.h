@@ -6,7 +6,7 @@
  * WASM_EXPORT declarations and spy_jsffi$ inline wrappers for all
  * call_method variants. Included by jsffi.h.
  *
- * Three families — see jsffi_call_method.c for details.
+ * See jsffi_call_method.c for details.
  */
 
 /* ------------------------------------------------------------------ */
@@ -30,36 +30,6 @@ JsRef WASM_EXPORT(jsffi_call_method_5)(JsRef c_target, const char *c_name,
 JsRef WASM_EXPORT(jsffi_call_method_6)(JsRef c_target, const char *c_name,
                                         JsRef c_arg0, JsRef c_arg1, JsRef c_arg2,
                                         JsRef c_arg3, JsRef c_arg4, JsRef c_arg5);
-
-/* Void */
-void WASM_EXPORT(jsffi_call_method_0_void)(JsRef c_target, const char *c_name);
-void WASM_EXPORT(jsffi_call_method_1_void)(JsRef c_target, const char *c_name,
-                                            JsRef c_arg0);
-void WASM_EXPORT(jsffi_call_method_2_void)(JsRef c_target, const char *c_name,
-                                            JsRef c_arg0, JsRef c_arg1);
-void WASM_EXPORT(jsffi_call_method_3_void)(JsRef c_target, const char *c_name,
-                                            JsRef c_arg0, JsRef c_arg1, JsRef c_arg2);
-void WASM_EXPORT(jsffi_call_method_4_void)(JsRef c_target, const char *c_name,
-                                            JsRef c_arg0, JsRef c_arg1,
-                                            JsRef c_arg2, JsRef c_arg3);
-void WASM_EXPORT(jsffi_call_method_5_void)(JsRef c_target, const char *c_name,
-                                            JsRef c_arg0, JsRef c_arg1, JsRef c_arg2,
-                                            JsRef c_arg3, JsRef c_arg4);
-void WASM_EXPORT(jsffi_call_method_6_void)(JsRef c_target, const char *c_name,
-                                            JsRef c_arg0, JsRef c_arg1, JsRef c_arg2,
-                                            JsRef c_arg3, JsRef c_arg4, JsRef c_arg5);
-
-/* f64-void */
-void WASM_EXPORT(jsffi_call_method_2_f64_void)(JsRef c_target, const char *c_name,
-                                                double a0, double a1);
-void WASM_EXPORT(jsffi_call_method_3_f64_void)(JsRef c_target, const char *c_name,
-                                                double a0, double a1, double a2);
-void WASM_EXPORT(jsffi_call_method_4_f64_void)(JsRef c_target, const char *c_name,
-                                                double a0, double a1,
-                                                double a2, double a3);
-void WASM_EXPORT(jsffi_call_method_5_f64_void)(JsRef c_target, const char *c_name,
-                                                double a0, double a1, double a2,
-                                                double a3, double a4);
 
 /* ------------------------------------------------------------------ */
 /* spy_jsffi$ inline wrappers                                           */
@@ -105,75 +75,6 @@ spy_jsffi$js_call_method_6(JsRef target, spy_Str *name,
                             JsRef arg0, JsRef arg1, JsRef arg2,
                             JsRef arg3, JsRef arg4, JsRef arg5) {
     return jsffi_call_method_6(target, name->utf8, arg0, arg1, arg2, arg3, arg4, arg5);
-}
-
-/* Void */
-static inline void
-spy_jsffi$js_call_method_0_void(JsRef target, spy_Str *name) {
-    jsffi_call_method_0_void(target, name->utf8);
-}
-
-static inline void
-spy_jsffi$js_call_method_1_void(JsRef target, spy_Str *name, JsRef arg0) {
-    jsffi_call_method_1_void(target, name->utf8, arg0);
-}
-
-static inline void
-spy_jsffi$js_call_method_2_void(JsRef target, spy_Str *name, JsRef arg0, JsRef arg1) {
-    jsffi_call_method_2_void(target, name->utf8, arg0, arg1);
-}
-
-static inline void
-spy_jsffi$js_call_method_3_void(JsRef target, spy_Str *name,
-                                 JsRef arg0, JsRef arg1, JsRef arg2) {
-    jsffi_call_method_3_void(target, name->utf8, arg0, arg1, arg2);
-}
-
-static inline void
-spy_jsffi$js_call_method_4_void(JsRef target, spy_Str *name,
-                                 JsRef arg0, JsRef arg1, JsRef arg2, JsRef arg3) {
-    jsffi_call_method_4_void(target, name->utf8, arg0, arg1, arg2, arg3);
-}
-
-static inline void
-spy_jsffi$js_call_method_5_void(JsRef target, spy_Str *name,
-                                 JsRef arg0, JsRef arg1, JsRef arg2,
-                                 JsRef arg3, JsRef arg4) {
-    jsffi_call_method_5_void(target, name->utf8, arg0, arg1, arg2, arg3, arg4);
-}
-
-static inline void
-spy_jsffi$js_call_method_6_void(JsRef target, spy_Str *name,
-                                 JsRef arg0, JsRef arg1, JsRef arg2,
-                                 JsRef arg3, JsRef arg4, JsRef arg5) {
-    jsffi_call_method_6_void(target, name->utf8, arg0, arg1, arg2, arg3, arg4, arg5);
-}
-
-/* f64-void */
-static inline void
-spy_jsffi$js_call_method_2_f64_void(JsRef target, spy_Str *name,
-                                     double a0, double a1) {
-    jsffi_call_method_2_f64_void(target, name->utf8, a0, a1);
-}
-
-static inline void
-spy_jsffi$js_call_method_3_f64_void(JsRef target, spy_Str *name,
-                                     double a0, double a1, double a2) {
-    jsffi_call_method_3_f64_void(target, name->utf8, a0, a1, a2);
-}
-
-static inline void
-spy_jsffi$js_call_method_4_f64_void(JsRef target, spy_Str *name,
-                                     double a0, double a1,
-                                     double a2, double a3) {
-    jsffi_call_method_4_f64_void(target, name->utf8, a0, a1, a2, a3);
-}
-
-static inline void
-spy_jsffi$js_call_method_5_f64_void(JsRef target, spy_Str *name,
-                                     double a0, double a1, double a2,
-                                     double a3, double a4) {
-    jsffi_call_method_5_f64_void(target, name->utf8, a0, a1, a2, a3, a4);
 }
 
 #endif /* SPY_JSFFI_CALL_METHOD_H */

@@ -177,25 +177,6 @@ class TestJsFFI(CompilerTest):
         out = exe.run()
         assert out == "12\n"
 
-    def test_call_method_2_f64_void(self):
-        from spy.vm.modules import jsffi as jsffi_module
-
-        original = jsffi_module.VOID_METHODS.copy()
-        try:
-            jsffi_module.VOID_METHODS[2] = original[2] | {"hypot"}
-            exe = self.compile("""
-            from jsffi import init as js_init, get_GlobalThis
-
-            def main() -> None:
-                js_init()
-                globalThis = get_GlobalThis()
-                globalThis.Math.hypot(3.0, 4.0)
-            """)
-            out = exe.run()
-            assert out == ""
-        finally:
-            jsffi_module.VOID_METHODS = original
-
     def test_getDocument(self):
         exe = self.compile("""
         import jsffi
