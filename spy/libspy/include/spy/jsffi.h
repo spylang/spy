@@ -64,6 +64,8 @@ typedef void (*jsffi_frame_func)(double);
 
 #include "jsffi_call_method.h"
 
+void WASM_EXPORT(jsffi_drop_ref)(JsRef c_target);
+
 JsRef WASM_EXPORT(jsffi_getattr)(JsRef c_target, const char *c_name);
 void WASM_EXPORT(jsffi_setattr)(JsRef c_target, const char *c_name, int32_t tag0, double val0);
 
@@ -126,6 +128,11 @@ spy_jsffi$js_wrap_func(em_callback_func fn) {
 static inline JsRef
 spy_jsffi$js_wrap_func_f64(jsffi_frame_func fn) {
     return jsffi_wrap_func_f64((em_callback_func)fn);
+}
+
+static inline void
+spy_jsffi$drop_ref(JsRef target) {
+    jsffi_drop_ref(target);
 }
 
 static inline JsRef

@@ -76,10 +76,10 @@ def sync_radius() -> None:
 def draw_particle(p: Particle, radius: i32, ctx: JsRef) -> None:
     r_f: f64 = float(radius)
     hue_i: i32 = int(p.hue) % 360
-    hue_s: str = str(hue_i)
-    glow_color: str = "hsla(" + hue_s + ", 100%, 60%, 0.6)"
-    core_color: str = "hsl(" + hue_s + ", 100%, 75%)"
-    transparent: str = "hsla(" + hue_s + ", 100%, 50%, 0)"
+    hue_s = str(hue_i)
+    glow_color = "hsla(" + hue_s + ", 100%, 60%, 0.6)"
+    core_color = "hsl(" + hue_s + ", 100%, 75%)"
+    transparent = "hsla(" + hue_s + ", 100%, 50%, 0)"
 
     grd = ctx.createRadialGradient(p.x, p.y, 0.0, p.x, p.y, r_f * 2.5)
     grd.addColorStop(0.0, glow_color)
@@ -93,6 +93,7 @@ def draw_particle(p: Particle, radius: i32, ctx: JsRef) -> None:
     ctx.beginPath()
     ctx.arc(p.x, p.y, r_f, 0.0, TWO_PI)
     ctx.fill()
+    jsffi.drop_ref(grd)
 
 
 def simulate_step(n: i32, speed: f64, radius: i32) -> None:
@@ -149,7 +150,8 @@ def frame(timestamp: f64) -> None:
     n_jsrefs = n_tmp
 
     console.log("n_per_frame:", n_per_frame, "; per part: ", n_per_frame / PARAMS[0].n)
-    window.requestAnimationFrame(frame)
+
+    jsffi.drop_ref(window.requestAnimationFrame(frame))
 
 
 def init_particles(n: i32, speed: f64, radius: i32) -> None:

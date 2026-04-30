@@ -78,9 +78,9 @@ def sync_slider_callback[id]() -> None:
     value = elem.value
     span.textContent = value
     setattr(PARAMS[0], id, value)
-    # jsffi.release(span)
-    # jsffi.release(elem)
-    # jsffi.release(value)
+    jsffi.drop_ref(span)
+    jsffi.drop_ref(elem)
+    jsffi.drop_ref(value)
 
 
 def frame(timestamp: f64) -> None:
@@ -100,7 +100,8 @@ def frame(timestamp: f64) -> None:
 
     console.log("n_per_frame:", n_per_frame)
 
-    jsffi.get_GlobalThis().requestAnimationFrame(frame)
+    n_frame = jsffi.get_GlobalThis().requestAnimationFrame(frame)
+    jsffi.drop_ref(n_frame)
 
 
 def main() -> None:

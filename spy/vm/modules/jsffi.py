@@ -198,6 +198,11 @@ for _n in range(7):
 
 
 @JSFFI.builtin_func
+def w_drop_ref(vm: "SPyVM", w_target: W_JsRef) -> None:
+    raise NotImplementedError
+
+
+@JSFFI.builtin_func
 def w_js_u8array_from_ptr(vm: "SPyVM", w_ptr: W_Ptr, w_length: W_I32) -> W_JsRef:
     raise NotImplementedError
 

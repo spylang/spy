@@ -71,6 +71,10 @@ EM_JS(JsRef, jsffi_wrap_func, (em_callback_func cfunc), { return jsffi.to_jsref(
 
 EM_JS(JsRef, jsffi_wrap_func_f64, (em_callback_func cfunc), { return jsffi.to_jsref(wasmTable.get(cfunc)); });
 
+EM_JS(void, jsffi_drop_ref, (JsRef c_ref), {
+    delete jsffi.objects[c_ref];
+});
+
 EM_JS(JsRef, jsffi_getattr, (JsRef c_target, const char *c_name), {
     let target = jsffi.from_jsref(c_target);
     let name = UTF8ToString(c_name);
