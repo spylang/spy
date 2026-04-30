@@ -49,6 +49,16 @@ EM_JS(void, jsffi_init, (void), {
         jsffi.objects[n] = jsval;
         return n;
     };
+
+    jsffi.from_jsval = function(tag, val) {
+        switch(tag) {
+            case 0: return jsffi.from_jsref(val);  // JSVAL_JSREF
+            case 1: return val;                    // JSVAL_F64
+            case 2: return val;                    // JSVAL_I32
+            case 3: return UTF8ToString(val);      // JSVAL_STR
+            case 4: return val !== 0;              // JSVAL_BOOL
+        }
+    };
 });
 
 EM_JS(JsRef, jsffi_string, (const char *ptr), { return jsffi.to_jsref(UTF8ToString(ptr)); });
@@ -68,12 +78,12 @@ EM_JS(JsRef, jsffi_getattr, (JsRef c_target, const char *c_name), {
     return jsffi.to_jsref(res);
 });
 
-EM_JS(void, jsffi_setattr, (JsRef c_target, const char *c_name, JsRef c_val), {
+EM_JS(void, jsffi_setattr, (JsRef c_target, const char *c_name,
+                             int32_t tag, double val), {
     let target = jsffi.from_jsref(c_target);
-    let name = UTF8ToString(c_name);
-    let val = jsffi.from_jsref(c_val);
-    target[name] = val;
+    target[UTF8ToString(c_name)] = jsffi.from_jsval(tag, val);
 });
+
 
 EM_JS(JsRef, jsffi_u8array_from_ptr, (void *ptr, int32_t length), {
     let view = new Uint8ClampedArray(wasmMemory.buffer, ptr, length);

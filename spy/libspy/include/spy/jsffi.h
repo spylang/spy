@@ -9,6 +9,48 @@ typedef struct {
     int id;
 } JsRef;
 
+
+// Def JsVal, used for arguments
+
+typedef enum {
+    JSVAL_JSREF = 0,
+    JSVAL_F64   = 1,
+    JSVAL_I32   = 2,
+    JSVAL_STR   = 3,   // const char* into WASM memory, valid for call duration
+    JSVAL_BOOL  = 4,
+} JsValTag;
+
+typedef struct {
+    JsValTag tag;
+    union {
+        int         jsref_id;
+        double      f64;
+        int32_t     i32;
+        const char *str;
+        int         bool_;
+    };
+} JsVal;
+
+// Constructors
+static inline JsVal spy_jsffi$jsval_from_jsref(JsRef r)  { return (JsVal){JSVAL_JSREF, .jsref_id = r.id}; }
+static inline JsVal spy_jsffi$jsval_from_f64(double x)   { return (JsVal){JSVAL_F64,   .f64 = x};         }
+static inline JsVal spy_jsffi$jsval_from_i32(int32_t x)  { return (JsVal){JSVAL_I32,   .i32 = x};         }
+static inline JsVal spy_jsffi$jsval_from_str(spy_Str *s) { return (JsVal){JSVAL_STR,   .str = s->utf8};   }
+static inline JsVal spy_jsffi$jsval_from_bool(int x)     { return (JsVal){JSVAL_BOOL,  .bool_ = x};       }
+
+// Extract numeric payload as f64 for passing as two C args to EM_JS
+static inline double jsval_payload(JsVal v) {
+    switch (v.tag) {
+        case JSVAL_F64:   return v.f64;
+        case JSVAL_I32:   return (double)v.i32;
+        case JSVAL_STR:   return (double)(uintptr_t)v.str;
+        case JSVAL_BOOL:  return (double)v.bool_;
+        case JSVAL_JSREF: return (double)v.jsref_id;
+        default:          return 0.0;
+    }
+}
+
+
 // jsffi C interface
 JsRef WASM_EXPORT(jsffi_debug)(const char *ptr);
 int32_t WASM_EXPORT(jsffi_debug_n_jsrefs)(void);
@@ -23,7 +65,7 @@ typedef void (*jsffi_frame_func)(double);
 #include "jsffi_call_method.h"
 
 JsRef WASM_EXPORT(jsffi_getattr)(JsRef c_target, const char *c_name);
-void WASM_EXPORT(jsffi_setattr)(JsRef c_target, const char *c_name, JsRef c_val);
+void WASM_EXPORT(jsffi_setattr)(JsRef c_target, const char *c_name, int32_t tag0, double val0);
 
 JsRef WASM_EXPORT(jsffi_u8array_from_ptr)(void *ptr, int32_t length);
 JsRef WASM_EXPORT(jsffi_new_ImageData)(JsRef c_array, int32_t width, int32_t height);
@@ -92,8 +134,8 @@ spy_jsffi$JsRef$__getattribute__(JsRef target, spy_Str *name) {
 }
 
 static inline void
-spy_jsffi$JsRef$__setattr__(JsRef target, spy_Str *name, JsRef val) {
-    jsffi_setattr(target, name->utf8, val);
+spy_jsffi$JsRef$__setattr__(JsRef target, spy_Str *name, JsVal val) {
+    jsffi_setattr(target, name->utf8, val.tag, jsval_payload(val));
 }
 
 // Use a macro so it works with any ptr type (gc_ptr, raw_ptr)
