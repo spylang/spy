@@ -5,7 +5,10 @@ on:
     types: [closed]
 
 permissions:
-  contents: read
+  actions: read
+  contents: write
+  pages: write
+  id-token: write
   pull-requests: write
 
 concurrency:
