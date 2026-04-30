@@ -290,7 +290,7 @@ def stmt_program_strategy(draw: Any) -> str:
 
 
 class ExampleCounter:
-    def __init__(self):
+    def __init__(self) -> None:
         self.n = 0
 
     def next(self) -> int:
@@ -298,7 +298,7 @@ class ExampleCounter:
         self.n += 1
         return self.n
 
-    def log_iteration(self):
+    def log_iteration(self) -> None:
         if self.n % 10 == 0:
             sys.stdout.write(str(self.n))
         sys.stdout.write(".")
