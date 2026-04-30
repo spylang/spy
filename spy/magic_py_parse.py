@@ -105,17 +105,17 @@ def construct_SPy_specific_grammar(src: str) -> dict[str, TokenInfo]:
             i += 1
             continue
 
-        if (
-            i > 0
-            and tokens[i].type == NAME
-            and tokens[i - 1].string in ("const", "var")
-        ):
+        if tokens[i].type == NAME:
             prefix = f"{'_'.join(scope_stack)}__{tokens[i].string}"
             occurrence = occurrences.get(prefix, 1)
             occurrences[prefix] = occurrence + 1
 
             identifier = _make_identifier(scope_stack, tokens[i].string, occurrence)
-            if identifier not in spy_grammar_tracker:
+            if (
+                i > 0
+                and tokens[i - 1].string in ("const", "var")
+                and identifier not in spy_grammar_tracker
+            ):
                 string = tokens[i - 1].string
                 spy_grammar_tracker[identifier] = tokens[i - 1]._replace(
                     string=string + " "
