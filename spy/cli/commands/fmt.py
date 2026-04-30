@@ -15,7 +15,8 @@ class Fmt_Args(Base_Args):
 
 
 async def fmt(args: Fmt_Args) -> None:
-    """Format SPy file or directory"""
+    """Format SPy file"""
+    # TODO: implement directory formatting.
     if args.filename.suffix != ".spy":
         print(
             f"Error: {args.filename} is not a .spy file or directory.",

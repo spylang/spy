@@ -64,14 +64,22 @@ def get_tokens(src: str) -> list[TokenInfo]:
 
 
 def _update_scope_stack(
-    tokens: list[TokenInfo], i: int, scope_stack: list[str]
+    tokens: list[TokenInfo],
+    i: int,
+    scope_stack: list[str],
+    keyword_counts: dict[str, int],
 ) -> bool:
     tok = tokens[i]
     if tok.type == NAME and (
-        (tok.string == "def" and i + 1 < len(tokens) and tokens[i + 1].type == NAME)
-        or tok.string in ("while", "for", "if", "else")
+        tok.string == "def" and i + 1 < len(tokens) and tokens[i + 1].type == NAME
     ):
         scope_stack.append(f"{tok.string}-{tokens[i + 1].string}")
+        return True
+
+    if tok.type == NAME and tok.string in ("while", "for", "if", "else"):
+        count = keyword_counts.get(tok.string, 0) + 1
+        keyword_counts[tok.string] = count
+        scope_stack.append(f"{tok.string}-{count}")
         return True
 
     if tok.type == DEDENT and len(scope_stack) > 1:
@@ -93,7 +101,7 @@ def construct_SPy_specific_grammar(src: str) -> dict[str, TokenInfo]:
     spy_grammar_tracker: dict[str, TokenInfo] = {}
     occurrences: dict[str, int] = {}
     while i < n_tokens:
-        if _update_scope_stack(tokens, i, scope_stack):
+        if _update_scope_stack(tokens, i, scope_stack, occurrences):
             i += 1
             continue
 
@@ -128,7 +136,7 @@ def reinsert_spy_specific_grammar(
     scope_stack = ["module"]
     occurrences: dict[str, int] = {}
     while i < n_tokens:
-        if _update_scope_stack(tokens, i, scope_stack):
+        if _update_scope_stack(tokens, i, scope_stack, occurrences):
             i += 1
             continue
 
@@ -139,10 +147,40 @@ def reinsert_spy_specific_grammar(
 
             identifier = _make_identifier(scope_stack, tokens[i].string, occurrence)
             if identifier in spy_grammar_tracker:
-                tokens.insert(i, spy_grammar_tracker[identifier])
+                cur = tokens[i]
+                string = spy_grammar_tracker[identifier].string
+                offset = len(string)
+                line_no, col = cur.start
+                new_tok = spy_grammar_tracker[identifier]._replace(
+                    start=(line_no, col),
+                    end=(line_no, col + offset),
+                    line=cur.line,
+                )
+                # build the reconstructed line so untokenize can use it for
+                # whitespace slicing (it does line[last_col:start_col])
+                new_line = cur.line[:col] + string + cur.line[col:]
+                tokens[i] = new_tok._replace(line=new_line)
+                # propagate new_line backward to tokens on the same line
+                # (e.g. INDENT) so their line field is consistent
+                k = i - 1
+                while k >= 0 and tokens[k].start[0] == line_no:
+                    tokens[k] = tokens[k]._replace(line=new_line)
+                    k -= 1
+                # shift all remaining tokens on the same line to account for
+                # the inserted `const `/`var ` prefix
+                offset = len(string)
+                j = i + 1
+                while j < len(tokens) and tokens[j].start[0] == line_no:
+                    t = tokens[j]
+                    tokens[j] = t._replace(
+                        start=(line_no, t.start[1] + offset),
+                        end=(line_no, t.end[1] + offset),
+                        line=new_line,
+                    )
+                    j += 1
 
         i += 1
-
+    # print(spy_grammar_tracker)
     return tokens
 
 def preprocess(src: str, filename: str = "<string>") -> str:
