@@ -8,10 +8,10 @@ endif
 build: html-spy-image_data build-wasm-image_data
 
 html-spy-image_data:
-	uv run python -c 'from util_create_html import create_html as c; c("image_data", "SPy")'
+	uv run python create_html.py image_data SPy
 
 html-spy-particles:
-	uv run python -c 'from util_create_html import create_html as c; c("particles", "SPy")'
+	uv run python create_html.py particles SPy
 
 build-wasm-image_data:
 	uv run spy build ${RELEASE_FLAG} --target emscripten demo_image_data.spy
@@ -23,10 +23,10 @@ serve:
 	uv run python -m http.server
 
 html-js-image_data:
-	uv run python -c 'from util_create_html import create_html as c; c("image_data", "JS")'
+	uv run python create_html.py image_data JS
 
 html-js-particles:
-	uv run python -c 'from util_create_html import create_html as c; c("particles", "JS")'
+	uv run python create_html.py particles JS
 
 format:
 	ruff format

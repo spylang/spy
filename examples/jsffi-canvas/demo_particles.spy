@@ -3,6 +3,20 @@ SPy particle simulation using the canvas 2D API directly.
 
 Known missing vs JS version:
 - math.random not yet available: particles initialized deterministically
+
+Note that closures are not yet supported in red function so we have to use few global
+variables.
+
+However, module level code is quite particular in SPy:
+
+- It is evaluated at import time (i.e. during compilation).
+- Global variables are by default constant and a keyword `var` is used to indicate that they
+  are real variables.
+- Moreover, currently `var` global variables can be only simple types and NULL pointers.
+
+jsffi is also currently very limited. In particular, there is no equivalent to the
+`new` JS keyword, so we need to rely on function helpers (like js_u8array_from_ptr
+and js_new_ImageData).
 """
 
 import math
@@ -29,15 +43,14 @@ class Particle:
 
 @struct
 class Params:
-    n: i32
+    n_particles: i32
     speed: f64
     radius: i32
 
 
+var n_jsrefs: i32 = 0
 var PARTICLES: gc_ptr[Particle] = gc_ptr[Particle].NULL
 var PARAMS: gc_ptr[Params] = gc_ptr[Params].NULL
-var n_jsrefs: i32 = 0
-
 var JS_REFS: gc_ptr[JsRef] = gc_ptr[JsRef].NULL
 CTX_IDX: i32 = 0
 
@@ -46,31 +59,17 @@ def get_ctx() -> JsRef:
     return JS_REFS[CTX_IDX]
 
 
-# --- Slider sync callbacks ---
-
-
-def sync_n() -> None:
+def sync_slider[id]() -> None:
     document = jsffi.get_Document()
-    elem = document.getElementById("nParticles")
-    document.getElementById("nParticlesVal").textContent = elem.value
-    PARAMS[0].n = elem.value
-
-
-def sync_speed() -> None:
-    document = jsffi.get_Document()
-    elem = document.getElementById("speed")
-    document.getElementById("speedVal").textContent = elem.value
-    PARAMS[0].speed = elem.value
-
-
-def sync_radius() -> None:
-    document = jsffi.get_Document()
-    elem = document.getElementById("radius")
-    document.getElementById("radiusVal").textContent = elem.value
-    PARAMS[0].radius = elem.value
-
-
-# ---
+    span = document.getElementById(id + "Val")
+    elem = document.getElementById(id)
+    value = elem.value
+    span.textContent = value
+    setattr(PARAMS[0], id, value)
+    # SPy has currently no destructor
+    jsffi.drop_ref(span)
+    jsffi.drop_ref(elem)
+    jsffi.drop_ref(value)
 
 
 def draw_particle(p: Particle, radius: i32, ctx: JsRef) -> None:
@@ -140,33 +139,36 @@ def simulate_step(n: i32, speed: f64, radius: i32) -> None:
 
 def frame(timestamp: f64) -> None:
     console = jsffi.get_Console()
+
+    params = PARAMS[0]
+
     t_start = time()
-    simulate_step(PARAMS[0].n, PARAMS[0].speed, PARAMS[0].radius)
+    simulate_step(params.n_particles, params.speed, params.radius)
     console.log("simulate_step done in", time() - t_start, "s")
 
     n_tmp = jsffi._debug_n_jsrefs()
     n_per_frame = n_tmp - n_jsrefs
     n_jsrefs = n_tmp
 
-    console.log("n_per_frame:", n_per_frame, "; per part: ", n_per_frame / PARAMS[0].n)
+    console.log("n_per_frame:", n_per_frame, "; per part: ", n_per_frame / params.n_particles)
 
     jsffi.request_animation_frame(frame)
     # this is equivalent to
     # jsffi.drop_ref(jsffi.get_GlobalThis().requestAnimationFrame(frame))
 
 
-def init_particles(n: i32, speed: f64, radius: i32) -> None:
+def init_particles(speed: f64, radius: i32) -> None:
     """Deterministic sunburst init — replace with random angles once math.random exists."""
     cx: f64 = float(WIDTH) / 2.0
     cy: f64 = float(HEIGHT) / 2.0
-    for i in range(n):
-        angle: f64 = float(i) * TWO_PI / float(n)
+    for i in range(MAX_PARTICLES):
+        angle: f64 = float(i) * TWO_PI / MAX_PARTICLES
         spd: f64 = speed * (0.5 + float(i % 5) * 0.1)
         PARTICLES[i].x = cx
         PARTICLES[i].y = cy
         PARTICLES[i].vx = math.cos(angle) * spd
         PARTICLES[i].vy = math.sin(angle) * spd
-        PARTICLES[i].hue = float(i * 360 // n)
+        PARTICLES[i].hue = float(i * 360 // MAX_PARTICLES)
 
 
 def main() -> None:
@@ -186,21 +188,22 @@ def main() -> None:
     window = jsffi.get_GlobalThis()
     document = jsffi.get_Document()
 
-    PARAMS[0].n = 20
+    PARAMS[0].n_particles = 20
     PARAMS[0].speed = 3.0
     PARAMS[0].radius = 6
 
-    elem = document.getElementById("nParticles")
-    PARAMS[0].n = elem.value
-    elem.addEventListener("input", sync_n)
+    # will use: for color in unroll(["n_particles", "speed", "radius"]):
+    elem = document.getElementById("n_particles")
+    PARAMS[0].n_particles = elem.value
+    elem.addEventListener("input", sync_slider["n_particles"])
 
     elem = document.getElementById("speed")
     PARAMS[0].speed = elem.value
-    elem.addEventListener("input", sync_speed)
+    elem.addEventListener("input", sync_slider["speed"])
 
     elem = document.getElementById("radius")
     PARAMS[0].radius = elem.value
-    elem.addEventListener("input", sync_radius)
+    elem.addEventListener("input", sync_slider["radius"])
 
-    init_particles(PARAMS[0].n, PARAMS[0].speed, PARAMS[0].radius)
+    init_particles(PARAMS[0].speed, PARAMS[0].radius)
     window.requestAnimationFrame(frame)

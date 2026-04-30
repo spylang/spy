@@ -1,4 +1,9 @@
+# type: ignore
+
+import sys
+
 from pathlib import Path
+
 
 from fasthtml.common import (
     H1,
@@ -50,7 +55,7 @@ def demo_page(name, lang):
         raise ValueError(f"{name} must be in {demo_names}")
     elif name == "particles":
         sliders = [
-            slider("nParticles", "Particles", 2, 80, 20, 1),
+            slider("n_particles", "Particles", 2, 80, 20, 1),
             slider("speed", "Speed", 1, 10, 3, 0.5, " px/f"),
             slider("radius", "Radius", 2, 20, 6, 1, " px"),
         ]
@@ -146,7 +151,7 @@ pre { margin: 0; }
                 Div(
                     H1(f"{lang} Demo", cls="text-3xl font-bold text-primary"),
                     P(
-                        "Placeholder for a future SPy/WASM demo.",
+                        "Tiny SPy/WASM demo.",
                         cls="text-sm text-base-content/50 pb-2",
                     ),
                     cls="flex flex-col gap-1",
@@ -234,3 +239,7 @@ def create_html(name, lang):
 
     Path(path_output).write_text(str(demo_page(name, lang)), encoding="utf-8")
     print(f"Written {path_output}")
+
+
+if __name__ == "__main__":
+    create_html(sys.argv[-2], sys.argv[-1])

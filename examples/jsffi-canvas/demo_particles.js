@@ -17,7 +17,7 @@ function syncLabel(id, displayId, suffix = '') {
     el.addEventListener('input', () => { lbl.textContent = el.value + suffix; });
 }
 
-syncLabel('nParticles', 'nParticlesVal');
+syncLabel('n_particles', 'n_particlesVal');
 syncLabel('speed',      'speedVal',  ' px/f');
 syncLabel('radius',     'radiusVal', ' px');
 
@@ -25,7 +25,7 @@ syncLabel('radius',     'radiusVal', ' px');
 let particles = [];
 
 function initParticles() {
-    const n = getInt('nParticles');
+    const n = getInt('n_particles');
     const speed = getFloat('speed');
     const r = getInt('radius');
     particles = Array.from({ length: n }, () => {
@@ -90,7 +90,7 @@ function restart() {
     initParticles();
 }
 
-document.getElementById('nParticles').addEventListener('change', restart);
+document.getElementById('n_particles').addEventListener('change', restart);
 document.getElementById('radius').addEventListener('change', restart);
 
 restart();
