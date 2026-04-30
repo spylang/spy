@@ -25,6 +25,10 @@ EM_JS(void, jsffi_init, (void), {
     jsffi.objects[0] = globalThis;
     jsffi.objects[1] = console;
     jsffi.objects[2] = globalThis.document;
+    jsffi.objects[3] = undefined;
+    jsffi.objects[4] = null;
+    jsffi.objects[5] = true;
+    jsffi.objects[6] = false;
 
     jsffi.from_jsref = function(idval) {
         if (idval in jsffi.objects) {
@@ -36,6 +40,10 @@ EM_JS(void, jsffi_init, (void), {
     };
 
     jsffi.to_jsref = function(jsval) {
+        if (jsval === undefined) return 3;
+        if (jsval === null)      return 4;
+        if (jsval === true)      return 5;
+        if (jsval === false)     return 6;
         let n = Object.keys(jsffi.objects).length;
         // console.log(`to_jsref, jsval: ${ jsval }`);
         jsffi.objects[n] = jsval;
