@@ -65,11 +65,10 @@ jobs:
 
       - name: Download artifact
         uses: dawidd6/action-download-artifact@v3
-        working-directory: /tmp/docs
         with:
           run_id: ${{ github.event.workflow_run.id }}
           name: pr-preview-docs-${{ steps.pr.outputs.pr_number }}
-          path: pr-preview/pr-${{ steps.pr.outputs.pr_number }}
+          path: /tmp/docs/pr-preview/pr-${{ steps.pr.outputs.pr_number }}
 
       - name: Commit artifact
         working-directory: /tmp/docs
