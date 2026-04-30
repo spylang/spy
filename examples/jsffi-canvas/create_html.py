@@ -1,9 +1,7 @@
 # type: ignore
 
 import sys
-
 from pathlib import Path
-
 
 from fasthtml.common import (
     H1,
