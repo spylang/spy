@@ -57,6 +57,7 @@ EM_JS(void, jsffi_init, (void), {
             case 2: return val;                    // JSVAL_I32
             case 3: return UTF8ToString(val);      // JSVAL_STR
             case 4: return val !== 0;              // JSVAL_BOOL
+            case 5: return wasmTable.get(val);     // JSVAL_FUNCPTR
         }
     };
 });
@@ -66,10 +67,6 @@ EM_JS(JsRef, jsffi_string, (const char *ptr), { return jsffi.to_jsref(UTF8ToStri
 EM_JS(JsRef, jsffi_i32, (int32_t x), { return jsffi.to_jsref(x); });
 
 EM_JS(JsRef, jsffi_f64, (double x), { return jsffi.to_jsref(x); });
-
-EM_JS(JsRef, jsffi_wrap_func, (em_callback_func cfunc), { return jsffi.to_jsref(wasmTable.get(cfunc)); });
-
-EM_JS(JsRef, jsffi_wrap_func_f64, (em_callback_func cfunc), { return jsffi.to_jsref(wasmTable.get(cfunc)); });
 
 EM_JS(void, jsffi_drop_ref, (JsRef c_ref), {
     delete jsffi.objects[c_ref];

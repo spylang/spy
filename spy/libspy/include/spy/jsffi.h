@@ -18,6 +18,7 @@ typedef enum {
     JSVAL_I32   = 2,
     JSVAL_STR   = 3,   // const char* into WASM memory, valid for call duration
     JSVAL_BOOL  = 4,
+    JSVAL_FUNCPTR = 5,
 } JsValTag;
 
 typedef struct {
@@ -37,6 +38,17 @@ static inline JsVal spy_jsffi$jsval_from_f64(double x)   { return (JsVal){JSVAL_
 static inline JsVal spy_jsffi$jsval_from_i32(int32_t x)  { return (JsVal){JSVAL_I32,   .i32 = x};         }
 static inline JsVal spy_jsffi$jsval_from_str(spy_Str *s) { return (JsVal){JSVAL_STR,   .str = s->utf8};   }
 static inline JsVal spy_jsffi$jsval_from_bool(int x)     { return (JsVal){JSVAL_BOOL,  .bool_ = x};       }
+static inline JsVal jsval_from_funcptr(em_callback_func fn) { return (JsVal){JSVAL_FUNCPTR, .i32 = (int32_t)fn}; }
+
+typedef void (*jsffi_frame_func)(double);
+
+static inline JsVal spy_jsffi$jsval_from_func(em_callback_func fn) {
+    return jsval_from_funcptr(fn);
+}
+
+static inline JsVal spy_jsffi$jsval_from_func_f64(jsffi_frame_func fn) {
+    return jsval_from_funcptr((em_callback_func)fn);
+}
 
 // Extract numeric payload as f64 for passing as two C args to EM_JS
 static inline double jsval_payload(JsVal v) {
@@ -46,6 +58,7 @@ static inline double jsval_payload(JsVal v) {
         case JSVAL_STR:   return (double)(uintptr_t)v.str;
         case JSVAL_BOOL:  return (double)v.bool_;
         case JSVAL_JSREF: return (double)v.jsref_id;
+        case JSVAL_FUNCPTR: return (double)v.i32;
         default:          return 0.0;
     }
 }
@@ -58,9 +71,6 @@ void WASM_EXPORT(jsffi_init)(void);
 JsRef WASM_EXPORT(jsffi_string)(const char *ptr);
 JsRef WASM_EXPORT(jsffi_i32)(int32_t x);
 JsRef WASM_EXPORT(jsffi_f64)(double x);
-JsRef WASM_EXPORT(jsffi_wrap_func)(em_callback_func cfunc);
-JsRef WASM_EXPORT(jsffi_wrap_func_f64)(em_callback_func cfunc);
-typedef void (*jsffi_frame_func)(double);
 
 #include "jsffi_call_method.h"
 
@@ -118,16 +128,6 @@ spy_jsffi$js_i32(int32_t x) {
 static inline JsRef
 spy_jsffi$js_f64(double x) {
     return jsffi_f64(x);
-}
-
-static inline JsRef
-spy_jsffi$js_wrap_func(em_callback_func fn) {
-    return jsffi_wrap_func(fn);
-}
-
-static inline JsRef
-spy_jsffi$js_wrap_func_f64(jsffi_frame_func fn) {
-    return jsffi_wrap_func_f64((em_callback_func)fn);
 }
 
 static inline void

@@ -30,8 +30,15 @@ class W_JsVal(W_Object):
             return W_OpSpec(JSFFI.w_jsval_from_i32)
         elif w_gotT is B.w_str:
             return W_OpSpec(JSFFI.w_jsval_from_str)
-        elif w_gotT.pyclass is W_JsRef or isinstance(w_gotT, W_FuncType):
+        elif w_gotT.pyclass is W_JsRef:
             return W_OpSpec(JSFFI.w_jsval_from_jsref)
+        elif isinstance(w_gotT, W_FuncType):
+            if w_gotT == W_FuncType.parse("def() -> None"):
+                return W_OpSpec(JSFFI.w_jsval_from_func)
+            elif w_gotT == W_FuncType.parse("def(f64) -> None"):
+                return W_OpSpec(JSFFI.w_jsval_from_func_f64)
+            else:
+                raise WIP("Only simple callbacks are supported")
         else:
             return W_OpSpec.NULL
 
@@ -70,13 +77,6 @@ class W_JsRef(W_Object):
             return W_OpSpec(JSFFI.w_js_i32)
         elif w_gotT is B.w_f64:
             return W_OpSpec(JSFFI.w_js_f64)
-        elif isinstance(w_gotT, W_FuncType):
-            if w_gotT == W_FuncType.parse("def() -> None"):
-                return W_OpSpec(JSFFI.w_js_wrap_func)
-            elif w_gotT == W_FuncType.parse("def(f64) -> None"):
-                return W_OpSpec(JSFFI.w_js_wrap_func_f64)
-            else:
-                raise WIP("Only simple callbacks are supported")
         else:
             return W_OpSpec.NULL
 
@@ -113,6 +113,16 @@ def w_jsval_from_str(vm: "SPyVM", w_x: W_Str) -> W_JsVal:
 
 @JSFFI.builtin_func
 def w_jsval_from_jsref(vm: "SPyVM", w_x: W_JsRef) -> W_JsVal:
+    raise NotImplementedError
+
+
+@JSFFI.builtin_func
+def w_jsval_from_func(vm: "SPyVM", w_fn: W_Func) -> W_JsVal:
+    raise NotImplementedError
+
+
+@JSFFI.builtin_func
+def w_jsval_from_func_f64(vm: "SPyVM", w_fn: W_Func) -> W_JsVal:
     raise NotImplementedError
 
 
@@ -162,16 +172,6 @@ def w_js_i32(vm: "SPyVM", w_i: W_I32) -> W_JsRef:
 
 @JSFFI.builtin_func
 def w_js_f64(vm: "SPyVM", w_i: W_F64) -> W_JsRef:
-    raise NotImplementedError
-
-
-@JSFFI.builtin_func
-def w_js_wrap_func(vm: "SPyVM", w_fn: W_Func) -> W_JsRef:
-    raise NotImplementedError
-
-
-@JSFFI.builtin_func
-def w_js_wrap_func_f64(vm: "SPyVM", w_fn: W_Func) -> W_JsRef:
     raise NotImplementedError
 
 
