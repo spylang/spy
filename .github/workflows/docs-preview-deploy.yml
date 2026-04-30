@@ -68,10 +68,10 @@ jobs:
         with:
           run_id: ${{ github.event.workflow_run.id }}
           name: pr-preview-docs-${{ steps.pr.outputs.pr_number }}
-          path: /tmp/docs/pr-preview/pr-${{ steps.pr.outputs.pr_number }}
+          path: /tmp/spy-docs/pr-preview/pr-${{ steps.pr.outputs.pr_number }}
 
       - name: Commit artifact
-        working-directory: /tmp/docs
+        working-directory: /tmp/spy-docs
         run: |
           git add pr-preview
           git commit -m "Added preview build for PR ${{ steps.pr.outputs.pr_number }}"
