@@ -10,4 +10,4 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-spylang = { path = "../..", editable = true }
+spylang = { path = "../../..", editable = true }
