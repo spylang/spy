@@ -675,7 +675,7 @@ class While(Stmt):
 @astnode
 class For(Stmt):
     seq: int  # unique id within a funcdef
-    target: StrConst
+    target: StrConst | list[StrConst]
     iter: Expr
     body: list[Stmt]
 

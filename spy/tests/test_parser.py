@@ -1115,16 +1115,38 @@ class TestParser:
             ("this is not supported", "for"),
         )
 
+    def test_for_tuple_target(self):
+        mod = self.parse("""
+        def foo() -> None:
+            for i, j in pairs:
+                pass
+        """)
+        stmt = mod.get_funcdef("foo").body[0]
+        expected = """
+        For(
+            seq=0,
+            target=[
+                StrConst(value='i'),
+                StrConst(value='j'),
+            ],
+            iter=Name(id='pairs'),
+            body=[
+                Pass(),
+            ],
+        )
+        """
+        self.assert_dump(stmt, expected)
+
     def test_For_complex_target_unsupported(self):
         src = """
         def foo() -> None:
-            for i, j in pairs:
+            for (i, (j, k)) in pairs:
                 pass
         """
         self.expect_errors(
             src,
             "not implemented yet: complex for loop targets",
-            ("this is not supported", "i, j"),
+            ("this is not supported", "(j, k)"),
         )
 
     def test_multiple_For(self):

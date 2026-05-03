@@ -753,16 +753,29 @@ class AbstractFrame:
             ),
         )
         # i = it.__item__()
-        assign_item = ast.Assign(
-            loc=for_node.loc,
-            target=for_node.target,
-            value=ast.CallMethod(
+        if isinstance(for_node.target, ast.StrConst):
+            assign_item: ast.Stmt = ast.Assign(
                 loc=for_node.loc,
-                target=ast.NameLocalDirect(for_node.loc, iter_sym),
-                method=ast.StrConst(for_node.loc, "__item__"),
-                args=[],
-            ),
-        )
+                target=for_node.target,
+                value=ast.CallMethod(
+                    loc=for_node.loc,
+                    target=ast.NameLocalDirect(for_node.loc, iter_sym),
+                    method=ast.StrConst(for_node.loc, "__item__"),
+                    args=[],
+                ),
+            )
+        else:
+            assign_item = ast.UnpackAssign(
+                loc=for_node.loc,
+                targets=for_node.target,
+                value=ast.CallMethod(
+                    loc=for_node.loc,
+                    target=ast.NameLocalDirect(for_node.loc, iter_sym),
+                    method=ast.StrConst(for_node.loc, "__item__"),
+                    args=[],
+                ),
+            )
+
         # it = it.__next__()
         advance_iter = ast.Assign(
             loc=for_node.loc,
