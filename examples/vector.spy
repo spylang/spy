@@ -110,5 +110,5 @@ def test_squares(n: i32) -> None:
 
 
 def main() -> None:
-    # test_vector()
-    test_squares(100)
+    test_vector()
+    test_squares(10)
