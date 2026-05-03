@@ -33,7 +33,7 @@ def _normalize_output(output: str) -> str:
     """
     import re
 
-    cwd = str(Path.cwd())
+    cwd = str(Path(__file__).absolute().parent)
 
     lines = []
     for line in output.splitlines(keepends=True):
