@@ -318,15 +318,14 @@ class TestLinearize(CompilerTest):
             self.assert_linearize("foo", expected)
 
     def test_while_with_hoists(self, capfd):
-        # when the `while` test has hoisted stmts (e.g. an impure call that
-        # gets spilled), those hoisted stmts must re-run on every iteration.
+        # when the `while` test has hoisted stmts (e.g. an impure call in
+        # the condition), those hoisted stmts must re-run on every iteration.
         # We lower to:
         #     while True:
         #         <hoisted>
-        #         if <test>:
-        #             <body>
-        #         else:
+        #         if not <test>:
         #             break
+        #         <body>
         src = """
         var N: i32 = 0
 
