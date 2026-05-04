@@ -622,16 +622,12 @@ class DopplerFrame(ASTFrame):
         return self.shift_opimpl(op, w_opimpl, [v_obj, v_meth] + newargs_v)
 
     def eval_expr_BlockExpr(self, block: ast.BlockExpr) -> W_MetaArg:
-        # XXX EXPLAIN
-
         # shift_stmt both evaluates and shifts each statement, so we store
         # the shifted body here for use in shift_expr_BlockExpr
         self.shifted_block_bodies[block] = self.shift_body(block.body)
         return self.eval_expr(block.value)
 
     def shift_expr_BlockExpr(self, block: ast.BlockExpr, wam: W_MetaArg) -> ast.Expr:
-        # XXX EXPLAIN
-
         new_body = self.shifted_block_bodies.pop(block)
         new_value = self.shifted_expr[block.value]
         return block.replace(body=new_body, value=new_value, w_T=wam.w_static_T)
