@@ -22,9 +22,9 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 42
         if self.backend == "interp":
-            assert not mod.foo.w_func.redshifted
+            assert mod.foo.w_func.lowering_stage == "source"
         elif self.backend == "doppler":
-            assert mod.foo.w_func.redshifted
+            assert mod.foo.w_func.lowering_stage == "redshift"
 
     def test_return_None(self):
         mod = self.compile("""
@@ -1665,3 +1665,18 @@ class TestBasic(CompilerTest):
             ("function defined here", "def add(x: int, y: int = 1) -> int"),
         )
         self.compile_raises(src, "foo", errors)
+
+    def test_void_local(self):
+        src = """
+        var N: i32 = 0
+
+        def bar() -> None:
+            N = N + 1
+
+        def foo() -> i32:
+            x = bar()
+            y = x
+            return N
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 1

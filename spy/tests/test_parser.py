@@ -8,6 +8,7 @@ from spy.ast_dump import dump
 from spy.parser import Parser
 from spy.tests.support import MatchAnnotation, expect_errors
 from spy.util import print_diff
+from spy.vm.b import B
 
 
 @pytest.mark.usefixtures("init")
@@ -1309,6 +1310,54 @@ class TestParser:
         expected3 = [node for node in nodes if isinstance(node, ast.Expr)]
         assert nodes3 == expected3
 
+    def test_walk_postorder(self):
+        def isclass(x: Any, name: str) -> bool:
+            return x.__class__.__name__ == name
+
+        mod = self.parse("""
+        def foo() -> None:
+            if True:
+                x = y + 1
+        """)
+        nodes: list[Any] = list(mod.walk_postorder())
+        assert isclass(nodes[0], "Constant") and nodes[0].value is None
+        assert isclass(nodes[1], "Constant") and nodes[1].value is True
+        assert isclass(nodes[2], "StrConst") and nodes[2].value == "x"
+        assert isclass(nodes[3], "Name") and nodes[3].id == "y"
+        assert isclass(nodes[4], "Constant") and nodes[4].value == 1
+        assert isclass(nodes[5], "BinOp")
+        assert isclass(nodes[6], "Assign")
+        assert isclass(nodes[7], "If")
+        assert isclass(nodes[8], "FuncDef")
+        assert isclass(nodes[9], "GlobalFuncDef")
+        assert isclass(nodes[10], "Module")
+        assert len(nodes) == 11
+        #
+        nodes2 = list(mod.walk_postorder(ast.Stmt))
+        expected2 = [node for node in nodes if isinstance(node, ast.Stmt)]
+        assert nodes2 == expected2
+        #
+        nodes3 = list(mod.walk_postorder(ast.Expr))
+        expected3 = [node for node in nodes if isinstance(node, ast.Expr)]
+        assert nodes3 == expected3
+
+    def test_assert_fully_typed(self):
+        mod = self.parse("""
+        def foo() -> None:
+            x = 1 + 2
+        """)
+        with pytest.raises(Exception, match="Constant.*is untyped"):
+            mod.assert_fully_typed()
+        #
+        for expr in mod.walk(ast.Expr):
+            expr.w_T = B.w_i32  # type: ignore
+        mod.assert_fully_typed()
+        #
+        one = mod.find(ast.Constant, src="1")
+        one.w_T = None  # type: ignore
+        with pytest.raises(Exception, match="Constant.*is untyped"):
+            mod.assert_fully_typed()
+
     def test_inner_FuncDef(self):
         mod = self.parse("""
         @blue
@@ -1702,6 +1751,62 @@ class TestParser:
                 value=Constant(value=1),
             )
             """,
+        )
+
+    def test_BlockExpr(self):
+        mod = self.parse("""
+        def foo() -> i32:
+            return __block__('''
+                x = 1
+                x
+            ''')
+        """)
+        funcdef = mod.get_funcdef("foo")
+        ret = funcdef.body[0]
+        assert isinstance(ret, ast.Return)
+        self.assert_dump(
+            ret.value,
+            """
+            BlockExpr(
+                body=[
+                    Assign(
+                        target=StrConst(value='x'),
+                        value=Constant(value=1),
+                    ),
+                ],
+                value=Name(id='x'),
+            )
+            """,
+        )
+
+    def test_BlockExpr_errors(self):
+        src = """
+        def foo() -> i32:
+            return __block__(42)
+        """
+        self.expect_errors(
+            src,
+            "__block__ requires a single string literal argument",
+        )
+
+        src = """
+        def foo() -> i32:
+            return __block__('')
+        """
+        self.expect_errors(
+            src,
+            "__block__ body is empty",
+        )
+
+        src = """
+        def foo() -> i32:
+            return __block__('''
+                x = 1
+            ''')
+        """
+        self.expect_errors(
+            src,
+            "__block__ last statement must be an expression (the result)",
         )
 
     def test_module_level_str(self):

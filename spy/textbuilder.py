@@ -94,7 +94,12 @@ class TextBuilder:
     def write(
         self, s: str, *, color: Optional[str] = None, bg: Optional[str] = None
     ) -> None:
-        assert "\n" not in s
+        if "\n" in s:
+            parts = s.split("\n")
+            for part in parts[:-1]:
+                self.writeline(part, color=color, bg=bg)
+            self.write(parts[-1], color=color, bg=bg)
+            return
         assert isinstance(self.lines[-1], str)
 
         # Get current color context and override with any explicit values

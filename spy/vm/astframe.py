@@ -218,7 +218,7 @@ class AbstractFrame:
                 # sanity check. After redshifting, all type conversions should be
                 # explicit. If w_typeconv is not None here, it means that Doppler failed
                 # to insert the appropriate conversion
-                assert not self.w_func.redshifted
+                assert self.w_func.lowering_stage == "source"
 
             # apply the conversion
             assert varname is not None
@@ -331,7 +331,12 @@ class AbstractFrame:
 
         defaults_w = [self.eval_expr(d).w_val for d in funcdef.defaults]
         w_func: W_Object = W_ASTFunc(
-            w_functype, fqn, funcdef, closure, defaults_w=defaults_w
+            w_functype,
+            fqn,
+            funcdef,
+            closure,
+            defaults_w=defaults_w,
+            lowering_stage="source",
         )
         self.vm.add_global(fqn, w_func)
 
@@ -963,6 +968,11 @@ class AbstractFrame:
         color: Color = "blue" if sym.varkind == "const" else "red"
         return W_MetaArg(self.vm, color, w_T, w_val, name.loc, sym=sym)
 
+    def eval_expr_BlockExpr(self, block: ast.BlockExpr) -> W_MetaArg:
+        for stmt in block.body:
+            self.exec_stmt(stmt)
+        return self.eval_expr(block.value)
+
     def eval_expr_AssignExpr(self, assignexpr: ast.AssignExpr) -> W_MetaArg:
         specialized = self.specialized_assignexprs.get(assignexpr)
         if specialized is None:
@@ -1311,9 +1321,8 @@ class ASTFrame(AbstractFrame):
         self, vm: "SPyVM", w_func: W_ASTFunc, args_w: Optional[Sequence[W_Object]]
     ) -> None:
         assert w_func.funcdef.symtable.kind == "function"
-        # if w_func was redshifted, automatically use the new version
-        if w_func.w_redshifted_into:
-            w_func = w_func.w_redshifted_into
+        # if w_func was lowered, automatically use the most lowered version
+        w_func = w_func.get_most_lowered_version()
         assert isinstance(w_func, W_ASTFunc)
         ns = self.compute_ns(w_func, args_w)
         super().__init__(
@@ -1324,8 +1333,8 @@ class ASTFrame(AbstractFrame):
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
-        if self.w_func.redshifted:
-            extra = " (redshifted)"
+        if self.w_func.lowering_stage != "source":
+            extra = f" ({self.w_func.lowering_stage})"
         elif self.w_func.color == "blue":
             extra = " (blue)"
         else:

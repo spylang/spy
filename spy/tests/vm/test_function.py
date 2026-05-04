@@ -1,8 +1,12 @@
 from typing import no_type_check
 
+import pytest
+
+from spy import ast
 from spy.fqn import FQN
+from spy.location import Loc
 from spy.vm.b import B
-from spy.vm.function import Color, FuncKind, FuncParam, W_ASTFunc
+from spy.vm.function import Color, FuncKind, FuncParam, LoweringStage, W_ASTFunc
 from spy.vm.object import W_Type
 from spy.vm.vm import SPyVM
 from spy.vm.w import W_FuncType
@@ -22,6 +26,44 @@ def make_FuncType(
     if varargs:
         params[-1] = FuncParam(types_w[-1], "var_positional")
     return W_FuncType.new(params, w_restype, color=color, kind=kind)
+
+
+def make_w_func(
+    fqn_s: str,
+    *,
+    lowering_stage: LoweringStage = "source",
+) -> W_ASTFunc:
+    loc = Loc.fake()
+    w_functype = make_FuncType(B.w_i32, w_restype=B.w_i32)
+    locals_types_w: dict[str, W_Type] | None = None
+    if lowering_stage != "source":
+        locals_types_w = {}
+    fqn = FQN(fqn_s)
+    funcdef = ast.FuncDef(
+        loc=loc,
+        color="red",
+        kind="plain",
+        name=fqn.symbol_name,
+        args=[
+            ast.FuncArg(
+                loc=loc, name="x", type=ast.Constant(loc=loc, value=0), kind="simple"
+            )
+        ],
+        return_type=ast.Constant(loc=loc, value=0),
+        defaults=[],
+        docstring=None,
+        body=[],
+        decorators=[],
+    )
+    return W_ASTFunc(
+        w_functype=w_functype,
+        fqn=fqn,
+        funcdef=funcdef,
+        closure=(),
+        defaults_w=[],
+        lowering_stage=lowering_stage,
+        locals_types_w=locals_types_w,
+    )
 
 
 class TestFunction:
@@ -75,3 +117,30 @@ class TestFunction:
         )
         assert w_t5.fqn == FQN("builtins::def[i32, builtins::__varargs__[f64], str]")
         assert w_t5.fqn.human_name == "def(i32, *f64) -> str"
+
+    def test_W_ASTFunc_replace_with(self):
+        w_f1 = make_w_func("test::foo")
+        assert w_f1.is_valid
+        w_f2 = make_w_func("test::foo", lowering_stage="redshift")
+        w_f1.replace_with(w_f2)
+        assert not w_f1.is_valid
+        assert w_f1.w_replaced_by is w_f2
+
+    def test_W_ASTFunc_replace_with_wrong_fqn(self):
+        w_f1 = make_w_func("test::foo")
+        w_f2 = make_w_func("test::bar")
+        with pytest.raises(AssertionError):
+            w_f1.replace_with(w_f2)
+
+    def test_W_ASTFunc_repr(self):
+        w_f1 = make_w_func("test::foo")
+        assert repr(w_f1) == "<spy function 'test::foo'>"
+        #
+        w_f2 = make_w_func("test::foo", lowering_stage="redshift")
+        w_f1.replace_with(w_f2)
+        assert repr(w_f1) == "<spy function 'test::foo' (invalid)>"
+        assert repr(w_f2) == "<spy function 'test::foo' (redshift)>"
+        #
+        w_f3 = make_w_func("test::foo", lowering_stage="linearize")
+        w_f2.replace_with(w_f3)
+        assert repr(w_f2) == "<spy function 'test::foo' (redshift, invalid)>"

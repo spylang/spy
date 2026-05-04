@@ -147,6 +147,23 @@ class TestMain:
         _, stdout = self.run("redshift", self.main_spy)
         assert stdout.startswith("def main() -> None:")
 
+    def test_redshift_linearize(self):
+        src = """
+        def foo(a: i32) -> i32:
+            return __block__('''
+                x: i32 = a
+                x
+            ''')
+        """
+        f = self.write("test_lin.spy", src)
+        _, stdout = self.run("redshift", "--linearize", f)
+        expected = textwrap.dedent("""
+        def foo(a: i32) -> i32:
+            x: i32 = a
+            return x
+        """)
+        assert stdout.strip() == expected.strip()
+
     def test_colorize_ast(self):
         _, stdout = self.run("colorize", "--format", "ast", self.main_spy)
         assert stdout.startswith("Module(")

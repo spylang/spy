@@ -3,11 +3,16 @@
 import shutil
 import sys
 
+import hypothesis
 import py
 import pytest
 from pytest_pyodide import get_global_config
 
 from spy.util import cleanup_spyc_files
+
+# pytest --hypothesis-profile=...
+hypothesis.settings.register_profile("dev", max_examples=1, database=None)
+hypothesis.settings.register_profile("stress", max_examples=500)
 
 ROOT = py.path.local(__file__).dirpath()
 HAVE_EMCC = shutil.which("emcc") is not None
