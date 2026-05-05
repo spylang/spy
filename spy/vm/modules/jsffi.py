@@ -127,16 +127,6 @@ def w_jsval_from_func_f64(vm: "SPyVM", w_fn: W_Func) -> W_JsVal:
 
 
 @JSFFI.builtin_func
-def w_request_animation_frame(vm: "SPyVM", w_fn: W_Func) -> None:
-    # useful helper function equivalent to
-    # jsffi.drop_ref(jsffi.get_GlobalThis().requestAnimationFrame(frame))
-    raise NotImplementedError
-
-
-#
-
-
-@JSFFI.builtin_func
 def w_debug(vm: "SPyVM", w_str: W_Str) -> None:
     s = vm.unwrap_str(w_str)
     print("[JSFFI debug]", s)
@@ -182,6 +172,16 @@ def w_js_f64(vm: "SPyVM", w_i: W_F64) -> W_JsRef:
     raise NotImplementedError
 
 
+@JSFFI.builtin_func
+def w_js_to_i32(vm: "SPyVM", w_ref: W_JsRef) -> W_I32:
+    raise NotImplementedError
+
+
+@JSFFI.builtin_func
+def w_js_to_f64(vm: "SPyVM", w_ref: W_JsRef) -> W_F64:
+    raise NotImplementedError
+
+
 def _make_call_method(n: int) -> Callable[..., W_JsRef]:
     def w_js_call_method(vm: "SPyVM", *args: W_JsVal) -> W_JsRef:
         raise NotImplementedError
@@ -222,10 +222,7 @@ def w_js_new_ImageData(
 
 
 @JSFFI.builtin_func
-def w_js_to_i32(vm: "SPyVM", w_ref: W_JsRef) -> W_I32:
-    raise NotImplementedError
-
-
-@JSFFI.builtin_func
-def w_js_to_f64(vm: "SPyVM", w_ref: W_JsRef) -> W_F64:
+def w_request_animation_frame(vm: "SPyVM", w_fn: W_Func) -> None:
+    # useful helper function equivalent to
+    # jsffi.drop_ref(jsffi.get_GlobalThis().requestAnimationFrame(frame))
     raise NotImplementedError
