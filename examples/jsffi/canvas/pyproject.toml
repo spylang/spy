@@ -1,7 +1,7 @@
 [project]
 name = "jsffi-canvas"
 version = "0.1.0"
-description = "Demo website without Pyscript and JS"
+description = "Demo web without Pyscript and JS"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
