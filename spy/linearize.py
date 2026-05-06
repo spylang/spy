@@ -132,9 +132,7 @@ class Linearizer:
     # ==== helpers ====
 
     def _copy_symtable(self, symtable: SymTable) -> SymTable:
-        new_st = SymTable(symtable.name, symtable.color, symtable.kind)
-        new_st._symbols = dict(symtable._symbols)
-        new_st.implicit_imports = set(symtable.implicit_imports)
+        new_st = symtable.copy()
         for sym in self.new_symbols:
             new_st.add(sym)
         return new_st

@@ -111,8 +111,10 @@ class DopplerFrame(ASTFrame):
 
     def redshift(self) -> W_ASTFunc:
         assert self.w_func.lowering_stage == "source", "cannot redshift twice"
+        self.w_func.lowering_stage = "redshift_in_progress"
         self.declare_arguments()
         funcdef = self.w_func.funcdef
+        new_symtable = funcdef.symtable.copy()
         new_body = []
         # fwdecl of types
         for stmt in funcdef.body:
@@ -122,13 +124,14 @@ class DopplerFrame(ASTFrame):
         for stmt in funcdef.body:
             new_body += self.shift_stmt(stmt)
 
-        new_funcdef = funcdef.replace(body=new_body)
+        new_funcdef = funcdef.replace(body=new_body, symtable=new_symtable)
         #
         new_fqn = self.w_func.fqn
         # all the non-local lookups are redshifted into constants, so the
         # closure will be empty
         new_closure = ()
         w_newfunctype = self.w_func.w_functype
+        locals_types_w = self.get_locals_types_w()
         w_newfunc = W_ASTFunc(
             fqn=new_fqn,
             closure=new_closure,
@@ -136,7 +139,8 @@ class DopplerFrame(ASTFrame):
             funcdef=new_funcdef,
             defaults_w=self.w_func.defaults_w,
             lowering_stage="redshift",
-            locals_types_w=self.get_locals_types_w(),
+            locals_types_w=locals_types_w,
+            is_force_inline=self.w_func.is_force_inline,
         )
         # mark the original function as invalid
         self.w_func.replace_with(w_newfunc)

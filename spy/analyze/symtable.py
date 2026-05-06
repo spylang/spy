@@ -241,6 +241,12 @@ class SymTable:
                 f"{indent}    [{sym.level}] {sym.varkind:5s} {sym_name} {storage} {impref}"
             )
 
+    def copy(self) -> "SymTable":
+        new_st = SymTable(self.name, self.color, self.kind)
+        new_st._symbols = dict(self._symbols)
+        new_st.implicit_imports = set(self.implicit_imports)
+        return new_st
+
     def add(self, sym: Symbol) -> None:
         assert sym.name not in self._symbols
         self._symbols[sym.name] = sym
