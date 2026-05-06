@@ -92,7 +92,7 @@ class ImportRef:
         return f"<ImportRef {n}>"
 
 
-@dataclass
+@dataclass(frozen=True)
 class Symbol:
     name: str
     varkind: VarKind
