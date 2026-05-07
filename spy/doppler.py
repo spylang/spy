@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Literal, Optional
 from fixedint import FixedInt
 
 from spy import ast
-from spy.analyze.symtable import Color
+from spy.analyze.symtable import Color, Symbol
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.location import Loc
@@ -103,6 +103,9 @@ class DopplerFrame(ASTFrame):
         self.opimpl = {}
         assert error_mode != "warn"
         self.error_mode = error_mode
+        self._inline_counter = 0
+        self._new_symbols: list["Symbol"] = []
+        self._new_locals_types_w: dict[str, "W_Type"] = {}
 
     # overridden
     @property
@@ -114,7 +117,6 @@ class DopplerFrame(ASTFrame):
         self.w_func.lowering_stage = "redshift_in_progress"
         self.declare_arguments()
         funcdef = self.w_func.funcdef
-        new_symtable = funcdef.symtable.copy()
         new_body = []
         # fwdecl of types
         for stmt in funcdef.body:
@@ -124,6 +126,9 @@ class DopplerFrame(ASTFrame):
         for stmt in funcdef.body:
             new_body += self.shift_stmt(stmt)
 
+        new_symtable = funcdef.symtable.copy()
+        for sym in self._new_symbols:
+            new_symtable.add(sym)
         new_funcdef = funcdef.replace(body=new_body, symtable=new_symtable)
         #
         new_fqn = self.w_func.fqn
@@ -131,7 +136,7 @@ class DopplerFrame(ASTFrame):
         # closure will be empty
         new_closure = ()
         w_newfunctype = self.w_func.w_functype
-        locals_types_w = self.get_locals_types_w()
+        locals_types_w = {**self.get_locals_types_w(), **self._new_locals_types_w}
         w_newfunc = W_ASTFunc(
             fqn=new_fqn,
             closure=new_closure,
@@ -435,10 +440,45 @@ class DopplerFrame(ASTFrame):
             return make_const(self.vm, op.loc, w_opimpl.w_const)
 
         assert w_opimpl.is_func_call()
-        func = make_const(self.vm, op.loc, w_opimpl.w_func)
         real_args = self._shift_opimpl_args(w_opimpl, orig_args)
         w_T = w_opimpl.w_functype.w_restype
+
+        w_func = w_opimpl.w_func
+        if isinstance(w_func, W_ASTFunc) and w_func.is_force_inline:
+            return self._inline_call(op, w_func, real_args)
+
+        func = make_const(self.vm, op.loc, w_func)
         return ast.Call(op.loc, func, real_args, w_T=w_T)
+
+    def _inline_call(
+        self,
+        op: ast.Node,
+        w_func: W_ASTFunc,
+        real_args: list[ast.Expr],
+    ) -> ast.Expr:
+        from spy.force_inline import inline_call
+
+        w_callee = w_func.get_most_lowered_version()
+        stage = w_callee.lowering_stage
+        if stage == "redshift_in_progress":
+            err = SPyError(
+                "W_TypeError",
+                f"cannot inline a recursive call to @force_inline function"
+                f" `{w_callee.fqn.human_name}`",
+            )
+            err.add("error", "recursive inline call", op.loc)
+            raise err
+        if stage == "source":
+            self.vm._redshift_some([(w_callee.fqn, w_callee)], self.error_mode)
+            w_callee = w_callee.get_most_lowered_version()
+        assert w_callee.lowering_stage == "redshift"
+
+        n = self._inline_counter
+        self._inline_counter += 1
+        result = inline_call(self.vm, op, w_callee, real_args, n)
+        self._new_symbols.extend(result.new_symbols)
+        self._new_locals_types_w.update(result.new_locals_types_w)
+        return result.block
 
     def _shift_opimpl_args(
         self, w_opimpl: W_OpImpl, orig_args: list[ast.Expr]

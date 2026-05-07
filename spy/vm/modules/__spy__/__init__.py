@@ -5,7 +5,6 @@ SPy `__spy__` module.
 from typing import TYPE_CHECKING, Annotated, Any
 
 from spy.errors import SPyError
-from spy.force_inline import validate_force_inline
 from spy.vm.b import B
 from spy.vm.builtin import builtin_method
 from spy.vm.function import W_ASTFunc
@@ -106,6 +105,8 @@ SPY.add("empty_dict", W_EmptyDictType.__new__(W_EmptyDictType))
 
 @SPY.builtin_func(color="blue")
 def w_force_inline(vm: "SPyVM", w_func: W_Object) -> W_Object:
+    from spy.force_inline import validate_force_inline
+
     if not isinstance(w_func, W_ASTFunc):
         err = SPyError(
             "W_TypeError",

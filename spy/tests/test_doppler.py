@@ -8,6 +8,7 @@ from spy.analyze.symtable import Color
 from spy.backend.spy import FQN_FORMAT, SPyBackend
 from spy.fqn import FQN
 from spy.util import print_diff
+from spy.vm.function import W_ASTFunc
 from spy.vm.vm import SPyVM
 
 
@@ -30,9 +31,23 @@ class TestDoppler:
         self.import_src(src)
         self.vm.redshift(error_mode="eager")
 
-    def assert_dump(self, expected: str, *, fqn_format: FQN_FORMAT = "short") -> None:
+    def assert_dump(
+        self,
+        expected: str,
+        *,
+        fqn_format: FQN_FORMAT = "short",
+        funcname: Optional[str] = None,
+    ) -> None:
         b = SPyBackend(self.vm, fqn_format=fqn_format)
-        got = b.dump_mod("test").strip()
+        if funcname is not None:
+            fqn = FQN(f"test::{funcname}")
+            w_func = self.vm.globals_w[fqn]
+            assert isinstance(w_func, W_ASTFunc)
+            b.modname = "test"
+            b.dump_w_func(fqn, w_func)
+            got = b.out.build().strip()
+        else:
+            got = b.dump_mod("test").strip()
         expected = textwrap.dedent(expected).strip()
         if got != expected:
             print_diff(expected, got, "expected", "got")
@@ -418,3 +433,37 @@ class TestDoppler:
 
         dumper._dump_node(blue_node, "test", [], text_color="turquoise")
         mock_write.assert_any_call("test", color=None, bg="blue")
+
+    def test_force_inline_replaces_call(self):
+        self.redshift("""
+        from __spy__ import force_inline
+
+        @force_inline
+        def add1(x: i32) -> i32:
+            return x + 1
+
+        def foo() -> i32:
+            return add1(10)
+        """)
+        expected = """
+        def foo() -> i32:
+            return __block__(x$0: i32 = 10; x$0 + 1)
+        """
+        self.assert_dump(expected, funcname="foo")
+
+    def test_force_inline_multiple_sites_unique_names(self):
+        self.redshift("""
+        from __spy__ import force_inline
+
+        @force_inline
+        def add1(x: i32) -> i32:
+            return x + 1
+
+        def foo(a: i32, b: i32) -> i32:
+            return add1(a) + add1(b)
+        """)
+        expected = """
+        def foo(a: i32, b: i32) -> i32:
+            return __block__(x$0: i32 = a; x$0 + 1) + __block__(x$1: i32 = b; x$1 + 1)
+        """
+        self.assert_dump(expected, funcname="foo")

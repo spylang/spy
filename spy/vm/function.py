@@ -409,8 +409,9 @@ class W_ASTFunc(W_Func):
         extras = []
         if self.color == "blue":
             extras.append("blue")
-        if self.lowering_stage != "source":
-            extras.append(self.lowering_stage)
+        stage = self.lowering_stage
+        if stage not in ("source", "redshift_in_progress"):
+            extras.append(stage)
         if not self.is_valid:
             extras.append("invalid")
 
