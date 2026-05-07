@@ -120,6 +120,23 @@ class TestForceInline(CompilerTest):
         )
         self.compile_raises(src, "foo", errors, error_reporting="eager")
 
+    @skip_backends("interp", reason="recursion detected at redshift time, not interp")
+    def test_error_recursive_inline(self):
+        src = """
+        from __spy__ import force_inline
+
+        @force_inline
+        def fact(n: i32) -> i32:
+            return fact(n - 1)
+
+        def foo() -> i32:
+            return fact(5)
+        """
+        errors = expect_errors(
+            "cannot inline a recursive call to @force_inline function `test::fact#__bare__`",
+        )
+        self.compile_raises(src, "foo", errors, error_reporting="eager")
+
     def test_binop_cmpop_unaryop(self):
         mod = self.compile("""
         from __spy__ import force_inline
