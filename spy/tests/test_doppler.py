@@ -489,3 +489,24 @@ class TestDoppler:
             return __block__(x$0: i32 = 21; x$0 + x$0)
         """
         self.assert_dump(expected, funcname="foo")
+
+    def test_nested_force_inline(self):
+        self.redshift("""
+        from __spy__ import force_inline
+
+        @force_inline
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        @force_inline
+        def add2(x: i32) -> i32:
+            return inc(inc(x))
+
+        def foo() -> i32:
+            return add2(10)
+        """)
+        expected = """
+        def foo() -> i32:
+            return __block__(x$0: i32 = 10; __block__(x$1$0: i32 = __block__(x$0$0: i32 = x$0; x$0$0 + 1); x$1$0 + 1))
+        """
+        self.assert_dump(expected, funcname="foo")
