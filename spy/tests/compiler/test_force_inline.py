@@ -146,7 +146,7 @@ class TestForceInline(CompilerTest):
 
         @force_inline
         def compute(x: i32) -> bool:
-            var y = x + 1
+            y: i32 = x + 1
             y = y * 2
             return not (y == x - 1)
 
@@ -277,7 +277,7 @@ class TestForceInline(CompilerTest):
             while i < n:
                 if i > 1:
                     result = i
-                    i = n
+                    break
                 i = i + 1
             return result
 
