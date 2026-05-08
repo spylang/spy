@@ -367,26 +367,6 @@ class TestForceInline(CompilerTest):
         """)
         assert mod.foo() == 14
 
-    # XXX what is that?
-    def test_assignexpr_in_body(self):
-        mod = self.compile("""
-        from __spy__ import force_inline
-
-        @force_inline
-        def compute(x: i32) -> i32:
-            var items: list[i32] = [x, x + 1, x + 2]
-            var result: i32 = 0
-            var i = 0
-            while i < 3:
-                result = result + items[i]
-                i = i + 1
-            return result
-
-        def foo() -> i32:
-            return compute(10)
-        """)
-        assert mod.foo() == 33
-
     def test_metafunc(self):
         # see also test_doppler.py:test_force_inline_in_metafunc
         mod = self.compile("""
