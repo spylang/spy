@@ -7,8 +7,10 @@ The first half is in vm/b.py. See its docstring for more details.
 from typing import TYPE_CHECKING
 
 from spy.errors import SPyError
+from spy.fqn import FQN
 from spy.vm.b import BUILTINS, TYPES, B
 from spy.vm.function import W_FuncType
+from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_list import (
     W_StrInterpList,
     make_str_interp_list,
@@ -16,13 +18,11 @@ from spy.vm.modules.__spy__.interp_list import (
 )
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opspec import W_MetaArg, W_OpSpec
-from spy.vm.primitive import W_F64, W_I8, W_I32, W_U8, W_Bool, W_Dynamic, W_NoneType
+from spy.vm.primitive import W_F64, W_I8, W_I32, W_U8, W_Bool
 from spy.vm.str import W_Str
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-
-PY_PRINT = print  # type: ignore
 
 
 @BUILTINS.builtin_func(color="blue", kind="metafunc")
@@ -56,70 +56,18 @@ def w_min(vm: "SPyVM", w_x: W_I32, w_y: W_I32) -> W_I32:
 @BUILTINS.builtin_func(color="blue", kind="metafunc")
 def w_print(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
     w_T = wam_obj.w_static_T
-    if w_T is B.w_i32:
-        return W_OpSpec(B.w_print_i32)
-    elif w_T is B.w_f64:
-        return W_OpSpec(B.w_print_f64)
-    elif w_T is B.w_bool:
-        return W_OpSpec(B.w_print_bool)
-    elif w_T is TYPES.w_NoneType:
-        return W_OpSpec(B.w_print_NoneType)
-    elif w_T is B.w_str:
-        return W_OpSpec(B.w_print_str)
-    elif w_T is B.w_dynamic:
-        return W_OpSpec(B.w_print_dynamic)
+    vm.import_("_print")
+    w_print_one = vm.lookup_global(FQN("_print::_print_one"))
+    w_func = vm.getitem_w(w_print_one, w_T)
 
-    elif wam_obj.color == "blue":
-        # if we print something of unsupported type BUT it's a blue object, we
-        # can precompute its repr now and just print it as a string. This
-        # allows to print things like types even with the C backend.
-        wam_s = vm.str_wam(wam_obj, loc=wam_obj.loc)
-        return W_OpSpec(w_print_str, [wam_s])
+    ## elif wam_obj.color == "blue":
+    ##     # if we print something of unsupported type BUT it's a blue object, we
+    ##     # can precompute its repr now and just print it as a string. This
+    ##     # allows to print things like types even with the C backend.
+    ##     wam_s = vm.str_wam(wam_obj, loc=wam_obj.loc)
+    ##     return W_OpSpec(w_print_str, [wam_s])
 
-    else:
-        # printing a red value of unsupported type. As a fallback, we just use
-        # w_print_object, but this will not work in the C backend.
-        return W_OpSpec(B.w_print_object)
-
-    t = w_T.fqn.human_name
-    raise SPyError.simple(
-        "W_TypeError", f"cannot call print(`{t}`)", f"this is `{t}`", wam_obj.loc
-    )
-
-
-@BUILTINS.builtin_func
-def w_print_i32(vm: "SPyVM", w_x: W_I32) -> None:
-    PY_PRINT(vm.unwrap(w_x))
-
-
-@BUILTINS.builtin_func
-def w_print_f64(vm: "SPyVM", w_x: W_F64) -> None:
-    PY_PRINT(vm.unwrap(w_x))
-
-
-@BUILTINS.builtin_func
-def w_print_bool(vm: "SPyVM", w_x: W_Bool) -> None:
-    PY_PRINT(vm.unwrap(w_x))
-
-
-@BUILTINS.builtin_func
-def w_print_NoneType(vm: "SPyVM", w_x: W_NoneType) -> None:
-    PY_PRINT(vm.unwrap(w_x))
-
-
-@BUILTINS.builtin_func
-def w_print_str(vm: "SPyVM", w_x: W_Str) -> None:
-    PY_PRINT(vm.unwrap(w_x))
-
-
-@BUILTINS.builtin_func
-def w_print_dynamic(vm: "SPyVM", w_x: W_Dynamic) -> None:
-    PY_PRINT(vm.unwrap(w_x))
-
-
-@BUILTINS.builtin_func
-def w_print_object(vm: "SPyVM", w_x: W_Object) -> None:
-    PY_PRINT(str(w_x))
+    return W_OpSpec(w_func)
 
 
 @BUILTINS.builtin_func(color="blue", kind="metafunc")

@@ -12,6 +12,7 @@ from spy.vm.object import W_Object
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_Bool
 from spy.vm.registry import ModuleRegistry
+from spy.vm.str import W_Str
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -123,3 +124,8 @@ def w_force_inline(vm: "SPyVM", w_func: W_Object) -> W_Object:
     validate_force_inline(w_func)
     w_func.is_force_inline = True
     return w_func
+
+
+@SPY.builtin_func
+def w__stdio_write(vm: "SPyVM", w_s: W_Str) -> None:
+    print(vm.unwrap(w_s))

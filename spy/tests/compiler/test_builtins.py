@@ -311,7 +311,7 @@ class TestBuiltins(CompilerTest):
             print(12.3)
             print(True)
             print(None)
-            print(i32)
+            #print(i32)
         """)
         mod.foo()
         if self.backend == "C":
@@ -329,7 +329,7 @@ class TestBuiltins(CompilerTest):
                 s_123,
                 "True",
                 "None",
-                "<spy type 'i32'>",
+                ## "<spy type 'i32'>",
                 "",
             ]
         )

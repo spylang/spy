@@ -1,0 +1,7 @@
+from __spy__ import _stdio_write
+
+@blue.generic
+def _print_one(T):
+    def impl(x: T) -> None:
+        _stdio_write(str(x))
+    return impl
