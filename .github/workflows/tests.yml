@@ -112,3 +112,90 @@ jobs:
           display-options: fEX
           fail-on-empty: true
           title: Test results
+  
+  pyodide-test:
+    name: pyodide-test-${{ matrix.os }}-${{ matrix.python-version}}
+    runs-on: ${{ matrix.os }}
+    env:
+      SPY_WERROR: true
+      HYPOTHESIS_PROFILE: ci
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.12"]
+
+    steps:
+      - name: Setup tmate session
+        uses: mxschmitt/action-tmate@v3
+        with:
+          detached: true
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.debug_enabled }}
+
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "pip"
+
+      - name: Display versions
+        run: |
+          echo PATH="$PATH"
+          echo
+          echo python && python --version && echo
+          echo pip && pip --version && echo
+          echo clang && clang --version && echo
+          echo gcc && gcc --version && echo
+
+      - name: Install system dependencies
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update && sudo apt-get install -y libgc-dev
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            brew install bdw-gc
+          fi
+
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev]
+
+      - name: Linter
+        run: |
+          ruff check .
+
+      - name: Format check
+        run: |
+          ruff format --check .
+
+      - name: Build libspy
+        run: |
+          cd spy/libspy
+          make
+      
+      - name: Install pyodide
+        run: |
+          npm --prefix pyodide install
+
+      - name: Run tests
+        run: |
+          pip install pytest-xdist
+          pytest -n auto -m pyodide --junit-xml=pyodide-test-results.xml
+
+      # - name: Run mypy
+      #   run: |
+      #     mypy
+
+      - name: Surface failing tests
+        if: always()
+        uses: pmeier/pytest-results-action@main
+        with:
+          path: pyodide-test-results.xml
+          summary: true
+          display-options: fEX
+          fail-on-empty: true
+          title: Test results
