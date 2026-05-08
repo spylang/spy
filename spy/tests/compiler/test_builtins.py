@@ -315,18 +315,13 @@ class TestBuiltins(CompilerTest):
         """)
         mod.foo()
         if self.backend == "C":
-            # NOTE: float formatting is done by printf and it's different than
-            # the one that we get by Python in interp-mode. Too bad for now.
-            s_123 = "12.300000"
             mod.ll.call("spy_flush")
-        else:
-            s_123 = "12.3"
         out, err = capfd.readouterr()
         assert out == "\n".join(
             [
                 "hello world",
                 "42",
-                s_123,
+                "12.3",
                 "True",
                 "None",
                 "<spy type 'i32'>",
