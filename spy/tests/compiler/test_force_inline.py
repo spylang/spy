@@ -76,14 +76,17 @@ class TestForceInline(CompilerTest):
         mod = self.compile("""
         from __spy__ import force_inline
 
-        @force_inline
-        def greet(x: i32) -> None:
-            print(x)
+        var calls: i32 = 0
 
-        def foo() -> None:
-            greet(42)
+        @force_inline
+        def inc(x: i32) -> None:
+            calls = calls + x
+
+        def foo() -> i32:
+            inc(42)
+            return calls
         """)
-        mod.foo()
+        assert mod.foo() == 42
 
     def test_error_missing_return(self):
         src = """
