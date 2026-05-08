@@ -200,6 +200,14 @@ class TestStr(CompilerTest):
         mod = self.compile(src)
         assert mod.str_blue() == mod.repr_blue()
 
+    def test_str_of_str(self):
+        src = """
+        def foo(s: str) -> str:
+            return str(s)
+        """
+        mod = self.compile(src)
+        assert mod.foo("hello") == "hello"
+
     def test_str_none(self):
         src = """
         def foo() -> str:
