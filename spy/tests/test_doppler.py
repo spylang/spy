@@ -467,3 +467,25 @@ class TestDoppler:
             return __block__(x$0: i32 = a; x$0 + 1) + __block__(x$1: i32 = b; x$1 + 1)
         """
         self.assert_dump(expected, funcname="foo")
+
+    def test_force_inline_in_metafunc(self):
+        # see also test_force_inline.py:test_metafunc
+        self.redshift("""
+        from __spy__ import force_inline
+        from operator import OpSpec
+
+        @blue.metafunc
+        def double(m_x):
+            @force_inline
+            def impl(x: i32) -> i32:
+                return x + x
+            return OpSpec(impl)
+
+        def foo() -> i32:
+            return double(21)
+        """)
+        expected = """
+        def foo() -> i32:
+            return __block__(x$0: i32 = 21; x$0 + x$0)
+        """
+        self.assert_dump(expected, funcname="foo")

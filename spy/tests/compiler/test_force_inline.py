@@ -416,3 +416,21 @@ class TestForceInline(CompilerTest):
             return compute(10)
         """)
         assert mod.foo() == 33
+
+    def test_metafunc(self):
+        # see also test_doppler.py:test_force_inline_in_metafunc
+        mod = self.compile("""
+        from __spy__ import force_inline
+        from operator import OpSpec
+
+        @blue.metafunc
+        def double(m_x):
+            @force_inline
+            def impl(x: i32) -> i32:
+                return x + x
+            return OpSpec(impl)
+
+        def foo() -> i32:
+            return double(21)
+        """)
+        assert mod.foo() == 42
