@@ -64,6 +64,7 @@ class SPyBackend:
                 isinstance(w_obj, W_ASTFunc)
                 and w_obj.color == "red"
                 and w_obj.fqn != expected_fqn
+                and not w_obj.is_force_inline
             ):
                 aliases.append((attr, w_obj))
         for attr, w_obj in aliases:
@@ -78,6 +79,7 @@ class SPyBackend:
             if isinstance(w_obj, W_ASTFunc)
             and w_obj.color == "red"
             and w_obj.fqn == fqn
+            and not w_obj.is_force_inline
         ]
         for i, (fqn, w_obj) in enumerate(funcs):
             self.dump_w_func(fqn, w_obj)

@@ -434,6 +434,23 @@ class TestDoppler:
         dumper._dump_node(blue_node, "test", [], text_color="turquoise")
         mock_write.assert_any_call("test", color=None, bg="blue")
 
+    def test_force_inline_not_dumped(self):
+        self.redshift("""
+        from __spy__ import force_inline
+
+        @force_inline
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        def foo() -> i32:
+            return inc(10)
+        """)
+        expected = """
+        def foo() -> i32:
+            return __block__(x$0: i32 = 10; x$0 + 1)
+        """
+        self.assert_dump(expected)
+
     def test_force_inline_replaces_call(self):
         self.redshift("""
         from __spy__ import force_inline
