@@ -339,7 +339,7 @@ class W_Func(W_Object):
 # versions of the function. Once a function has been lowered it becomes "invalid", and
 # we set the `w_replaced_by` field.
 
-LoweringStage = Literal["source", "redshift", "linearize"]
+LoweringStage = Literal["source", "redshift_in_progress", "redshift", "linearize"]
 
 
 class W_ASTFunc(W_Func):
@@ -355,6 +355,9 @@ class W_ASTFunc(W_Func):
     lowering_stage: LoweringStage
     w_replaced_by: Optional["W_ASTFunc"]
 
+    # set by the @force_inline decorator
+    is_force_inline: bool
+
     def __init__(
         self,
         w_functype: W_FuncType,
@@ -365,6 +368,7 @@ class W_ASTFunc(W_Func):
         *,
         lowering_stage: LoweringStage,
         locals_types_w: Optional[dict[str, W_Type]] = None,
+        is_force_inline: bool = False,
     ) -> None:
         self.w_functype = w_functype
         self.fqn = fqn
@@ -375,9 +379,10 @@ class W_ASTFunc(W_Func):
         self.locals_types_w = locals_types_w
         self.lowering_stage = lowering_stage
         self.w_replaced_by = None
+        self.is_force_inline = is_force_inline
 
         # sanity check
-        if lowering_stage == "source":
+        if lowering_stage in ("source", "redshift_in_progress"):
             assert self.locals_types_w is None
         else:
             assert self.locals_types_w is not None
@@ -404,8 +409,9 @@ class W_ASTFunc(W_Func):
         extras = []
         if self.color == "blue":
             extras.append("blue")
-        if self.lowering_stage != "source":
-            extras.append(self.lowering_stage)
+        stage = self.lowering_stage
+        if stage not in ("source", "redshift_in_progress"):
+            extras.append(stage)
         if not self.is_valid:
             extras.append("invalid")
 

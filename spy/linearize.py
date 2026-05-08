@@ -124,6 +124,7 @@ class Linearizer:
             defaults_w=self.w_func.defaults_w,
             lowering_stage="linearize",
             locals_types_w=new_locals_types_w,
+            is_force_inline=self.w_func.is_force_inline,
         )
         # mark the original function as invalid
         self.w_func.replace_with(w_newfunc)
@@ -132,9 +133,7 @@ class Linearizer:
     # ==== helpers ====
 
     def _copy_symtable(self, symtable: SymTable) -> SymTable:
-        new_st = SymTable(symtable.name, symtable.color, symtable.kind)
-        new_st._symbols = dict(symtable._symbols)
-        new_st.implicit_imports = set(symtable.implicit_imports)
+        new_st = symtable.copy()
         for sym in self.new_symbols:
             new_st.add(sym)
         return new_st

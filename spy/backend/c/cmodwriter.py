@@ -239,8 +239,8 @@ class CModuleWriter:
 
         # ==== functions ====
         if isinstance(w_obj, W_ASTFunc):
-            # emit red functions, ignore blue ones
-            if w_obj.color == "red":
+            # emit red functions, ignore blue ones and @force_inline (no call sites)
+            if w_obj.color == "red" and not w_obj.is_force_inline:
                 self.emit_func(fqn, w_obj)
 
         elif isinstance(w_obj, W_BuiltinFunc):

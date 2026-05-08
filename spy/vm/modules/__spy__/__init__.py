@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Annotated, Any
 from spy.errors import SPyError
 from spy.vm.b import B
 from spy.vm.builtin import builtin_method
+from spy.vm.function import W_ASTFunc
 from spy.vm.object import W_Object
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_Bool
@@ -100,3 +101,25 @@ class W_EmptyDictType(W_Object):
 
 SPY.add("empty_list", W_EmptyListType.__new__(W_EmptyListType))
 SPY.add("empty_dict", W_EmptyDictType.__new__(W_EmptyDictType))
+
+
+@SPY.builtin_func(color="blue")
+def w_force_inline(vm: "SPyVM", w_func: W_Object) -> W_Object:
+    from spy.force_inline import validate_force_inline
+
+    if not isinstance(w_func, W_ASTFunc):
+        err = SPyError(
+            "W_TypeError",
+            "@force_inline can only be applied to def'd functions",
+        )
+        raise err
+    if w_func.color != "red":
+        err = SPyError(
+            "W_TypeError",
+            "@force_inline cannot be applied to @blue functions",
+        )
+        err.add("error", "this is not a red function", w_func.def_loc)
+        raise err
+    validate_force_inline(w_func)
+    w_func.is_force_inline = True
+    return w_func

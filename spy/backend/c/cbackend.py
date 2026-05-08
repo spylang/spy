@@ -225,6 +225,7 @@ class CBackend:
                 if (
                     isinstance(w_obj, W_ASTFunc)
                     and w_obj.color == "red"
+                    and not w_obj.is_force_inline
                     or isinstance(w_obj, W_Cell)
                 )
             ]
