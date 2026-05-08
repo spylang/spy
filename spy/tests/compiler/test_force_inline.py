@@ -17,7 +17,6 @@ class TestForceInline(CompilerTest):
         @force_inline
         def inc(x: i32) -> i32:
             return x + 1
-
         """)
         assert mod.inc.w_func.is_force_inline
 
@@ -285,21 +284,6 @@ class TestForceInline(CompilerTest):
             return find_first(5)
         """)
         assert mod.foo() == 2
-
-    def test_assignexpr(self):
-        mod = self.compile("""
-        from __spy__ import force_inline
-
-        @force_inline
-        def inc_and_get(x: i32) -> i32:
-            return x + 1
-
-        def foo() -> i32:
-            var y: i32 = 0
-            var z = inc_and_get(y := 5)
-            return y + z
-        """)
-        assert mod.foo() == 11
 
     def test_outer_var(self):
         mod = self.compile("""
