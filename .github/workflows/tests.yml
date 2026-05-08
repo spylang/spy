@@ -171,15 +171,25 @@ jobs:
       - name: Format check
         run: |
           ruff format --check .
+      
+      - name: Install EMCC
+        run: |
+          git clone https://github.com/emscripten-core/emsdk.git
+          cd emsdk
+          ./emsdk install 3.1.58
+          ./emsdk activate 3.1.58
+          source ./emsdk_env.sh
+          echo "$PWD/upstream/emscripten" >> $GITHUB_PATH
+          echo "EMSDK=$PWD" >> $GITHUB_ENV
+      
+      - name: Install pyodide
+        run: |
+          npm --prefix pyodide install
 
       - name: Build libspy
         run: |
           cd spy/libspy
           make
-      
-      - name: Install pyodide
-        run: |
-          npm --prefix pyodide install
 
       - name: Run tests
         run: |
