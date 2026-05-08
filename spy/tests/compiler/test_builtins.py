@@ -302,3 +302,45 @@ class TestBuiltins(CompilerTest):
         dm = mod.dir_math()
         assert "acos" in dm
         assert "pi" in dm
+
+    def test_print(self, capfd):
+        mod = self.compile("""
+        def foo() -> None:
+            print("hello world")
+            print(42)
+            print(12.3)
+            print(True)
+            print(None)
+            print(i32)
+        """)
+        mod.foo()
+        if self.backend == "C":
+            # NOTE: float formatting is done by printf and it's different than
+            # the one that we get by Python in interp-mode. Too bad for now.
+            s_123 = "12.300000"
+            mod.ll.call("spy_flush")
+        else:
+            s_123 = "12.3"
+        out, err = capfd.readouterr()
+        assert out == "\n".join(
+            [
+                "hello world",
+                "42",
+                s_123,
+                "True",
+                "None",
+                "<spy type 'i32'>",
+                "",
+            ]
+        )
+
+    @no_C
+    def test_print_object(self, capfd):
+        mod = self.compile("""
+        def foo() -> None:
+            x = i32   # force i32 to be a red value
+            print(x)
+        """)
+        mod.foo()
+        out, err = capfd.readouterr()
+        assert out == "<spy type 'i32'>\n"
