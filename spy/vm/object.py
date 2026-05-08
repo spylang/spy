@@ -710,6 +710,11 @@ class W_Type(W_Object):
         """
         return vm.dynamic_type(w_obj)
 
+    @builtin_method("__repr__")
+    @staticmethod
+    def w_repr(vm: "SPyVM", w_self: "W_Type") -> "W_Str":
+        return vm.wrap(repr(w_self))
+
     # this is the equivalent of CPython's typeobject.c:type_getattro
     @builtin_method("__getattribute__", color="blue", kind="metafunc")
     @staticmethod
