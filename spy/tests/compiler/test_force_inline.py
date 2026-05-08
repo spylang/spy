@@ -9,6 +9,18 @@ from spy.tests.support import (
 
 
 class TestForceInline(CompilerTest):
+    @only_interp
+    def test_decorator(self):
+        mod = self.compile("""
+        from __spy__ import force_inline
+
+        @force_inline
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        """)
+        assert mod.inc.w_func.is_force_inline
+
     def test_simple_tail_return(self):
         mod = self.compile("""
         from __spy__ import force_inline
@@ -21,18 +33,6 @@ class TestForceInline(CompilerTest):
             return inc(x) + inc(x)
         """)
         assert mod.foo(10) == 22
-
-    @only_interp
-    def test_decorator(self):
-        mod = self.compile("""
-        from __spy__ import force_inline
-
-        @force_inline
-        def inc(x: i32) -> i32:
-            return x + 1
-
-        """)
-        assert mod.inc.w_func.is_force_inline
 
     def test_arg_evaluated_once(self):
         # arg expressions are bound via VarDef so they run exactly once
