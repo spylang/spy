@@ -14,11 +14,11 @@ class TestForceInline(CompilerTest):
         from __spy__ import force_inline
 
         @force_inline
-        def add1(x: i32) -> i32:
+        def inc(x: i32) -> i32:
             return x + 1
 
         def foo(x: i32) -> i32:
-            return add1(x) + add1(x)
+            return inc(x) + inc(x)
         """)
         assert mod.foo(10) == 22
 
@@ -368,12 +368,12 @@ class TestForceInline(CompilerTest):
         from __spy__ import force_inline
 
         @force_inline
-        def add1(x: i32) -> i32:
+        def inc(x: i32) -> i32:
             return x + 1
 
         @force_inline
         def add2(x: i32) -> i32:
-            return add1(add1(x))
+            return inc(inc(x))
 
         def foo() -> i32:
             return add2(10)

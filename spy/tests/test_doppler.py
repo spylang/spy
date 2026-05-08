@@ -439,11 +439,11 @@ class TestDoppler:
         from __spy__ import force_inline
 
         @force_inline
-        def add1(x: i32) -> i32:
+        def inc(x: i32) -> i32:
             return x + 1
 
         def foo() -> i32:
-            return add1(10)
+            return inc(10)
         """)
         expected = """
         def foo() -> i32:
@@ -456,11 +456,11 @@ class TestDoppler:
         from __spy__ import force_inline
 
         @force_inline
-        def add1(x: i32) -> i32:
+        def inc(x: i32) -> i32:
             return x + 1
 
         def foo(a: i32, b: i32) -> i32:
-            return add1(a) + add1(b)
+            return inc(a) + inc(b)
         """)
         expected = """
         def foo(a: i32, b: i32) -> i32:
