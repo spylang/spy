@@ -367,7 +367,7 @@ class TestForceInline(CompilerTest):
         """)
         assert mod.foo() == 12
 
-    def test_assignexpr_walrus_in_body(self):
+    def test_assignexpr(self):
         mod = self.compile("""
         from __spy__ import force_inline
 
@@ -385,6 +385,7 @@ class TestForceInline(CompilerTest):
         """)
         assert mod.foo() == 14
 
+    # XXX what is that?
     def test_assignexpr_in_body(self):
         mod = self.compile("""
         from __spy__ import force_inline
