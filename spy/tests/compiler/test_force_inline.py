@@ -265,26 +265,6 @@ class TestForceInline(CompilerTest):
         """)
         assert mod.foo() == 10
 
-    def test_loop_with_break(self):
-        mod = self.compile("""
-        from __spy__ import force_inline
-
-        @force_inline
-        def find_first(n: i32) -> i32:
-            var i = 0
-            var result = -1
-            while i < n:
-                if i > 1:
-                    result = i
-                    break
-                i = i + 1
-            return result
-
-        def foo() -> i32:
-            return find_first(5)
-        """)
-        assert mod.foo() == 2
-
     def test_outer_var(self):
         mod = self.compile("""
         from __spy__ import force_inline
@@ -319,20 +299,22 @@ class TestForceInline(CompilerTest):
         from __spy__ import force_inline
 
         @force_inline
-        def count_odd(n: i32) -> i32:
+        def sum_odd_up_to(n: i32) -> i32:
             var result = 0
             var i = 0
             while i < n:
                 i = i + 1
                 if i % 2 == 0:
                     continue
-                result = result + 1
+                if i > 4:
+                    break
+                result = result + i
             return result
 
         def foo() -> i32:
-            return count_odd(6)
+            return sum_odd_up_to(10)
         """)
-        assert mod.foo() == 3
+        assert mod.foo() == 4  # 1 + 3
 
     def test_raise(self):
         src = """
