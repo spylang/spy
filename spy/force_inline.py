@@ -112,9 +112,6 @@ class AlphaRenamer:
     def rename_stmt_Continue(self, stmt: ast.Continue) -> ast.Stmt:
         return stmt
 
-    def rename_stmt_Raise(self, stmt: ast.Raise) -> ast.Stmt:
-        return stmt
-
     def rename_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> ast.Stmt:
         return stmt.replace(value=self.rename_expr(stmt.value))
 
@@ -122,9 +119,6 @@ class AlphaRenamer:
 
     def rename_expr_NameLocalDirect(self, expr: ast.NameLocalDirect) -> ast.Expr:
         return expr.replace(sym=self.newsym(expr.sym))
-
-    def rename_expr_NameOuterDirect(self, expr: ast.NameOuterDirect) -> ast.Expr:
-        return expr
 
     def rename_expr_NameOuterCell(self, expr: ast.NameOuterCell) -> ast.Expr:
         return expr
@@ -137,27 +131,6 @@ class AlphaRenamer:
 
     def rename_expr_StrConst(self, expr: ast.StrConst) -> ast.Expr:
         return expr
-
-    def rename_expr_BinOp(self, expr: ast.BinOp) -> ast.Expr:
-        return expr.replace(
-            left=self.rename_expr(expr.left),
-            right=self.rename_expr(expr.right),
-        )
-
-    def rename_expr_CmpOp(self, expr: ast.CmpOp) -> ast.Expr:
-        return expr.replace(
-            left=self.rename_expr(expr.left),
-            right=self.rename_expr(expr.right),
-        )
-
-    def rename_expr_UnaryOp(self, expr: ast.UnaryOp) -> ast.Expr:
-        return expr.replace(value=self.rename_expr(expr.value))
-
-    def rename_expr_GetItem(self, expr: ast.GetItem) -> ast.Expr:
-        return expr.replace(
-            value=self.rename_expr(expr.value),
-            args=[self.rename_expr(a) for a in expr.args],
-        )
 
     def rename_expr_And(self, expr: ast.And) -> ast.Expr:
         return expr.replace(
@@ -185,12 +158,6 @@ class AlphaRenamer:
         return expr.replace(
             body=self.rename_stmts(expr.body),
             value=self.rename_expr(expr.value),
-        )
-
-    def rename_expr_CallMethod(self, expr: ast.CallMethod) -> ast.Expr:
-        return expr.replace(
-            target=self.rename_expr(expr.target),
-            args=[self.rename_expr(a) for a in expr.args],
         )
 
 
