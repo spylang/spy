@@ -225,6 +225,38 @@ class TestStr(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == "\nBall"
 
+    def test_str_of_str(self):
+        src = """
+        def foo(s: str) -> str:
+            return str(s)
+        """
+        mod = self.compile(src)
+        assert mod.foo("hello") == "hello"
+
+    @skip_backends("C", reason="dynamic not supported")
+    def test_str_of_dynamic(self):
+        src = """
+        def dyn(x: dynamic) -> dynamic:
+            return x
+
+        def foo_str() -> str:
+            return str(dyn("hello"))
+
+        def foo_i32() -> str:
+            return str(dyn(42))
+
+        def foo_f64() -> str:
+            return str(dyn(12.3))
+
+        def foo_bool() -> str:
+            return str(dyn(True))
+        """
+        mod = self.compile(src)
+        assert mod.foo_str() == "hello"
+        assert mod.foo_i32() == "42"
+        assert mod.foo_f64() == "12.3"
+        assert mod.foo_bool() == "True"
+
     def test_str_replace(self):
         mod = self.compile("""
         def foo(s: str, old: str, new: str) -> str:
