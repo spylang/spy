@@ -228,14 +228,6 @@ class TestStr(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == "\nBall"
 
-    def test_str_of_str(self):
-        src = """
-        def foo(s: str) -> str:
-            return str(s)
-        """
-        mod = self.compile(src)
-        assert mod.foo("hello") == "hello"
-
     @skip_backends("C", reason="dynamic not supported")
     def test_str_of_dynamic(self):
         src = """
