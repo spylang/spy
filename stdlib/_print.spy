@@ -1,7 +1,10 @@
-from __spy__ import _stdio_write
+from __spy__ import _stdio_write, force_inline
+
 
 @blue.generic
 def _print_one(T):
+    @force_inline
     def impl(x: T) -> None:
         _stdio_write(str(x))
+
     return impl

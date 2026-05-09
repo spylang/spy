@@ -56,18 +56,23 @@ def w_min(vm: "SPyVM", w_x: W_I32, w_y: W_I32) -> W_I32:
 @BUILTINS.builtin_func(color="blue", kind="metafunc")
 def w_print(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
     vm.import_("_print")
-    w_T = wam_obj.w_static_T
     w_print_one = vm.lookup_global(FQN("_print::_print_one"))
-    w_func = vm.getitem_w(w_print_one, w_T)
 
-    ## elif wam_obj.color == "blue":
-    ##     # if we print something of unsupported type BUT it's a blue object, we
-    ##     # can precompute its repr now and just print it as a string. This
-    ##     # allows to print things like types even with the C backend.
-    ##     wam_s = vm.str_wam(wam_obj, loc=wam_obj.loc)
-    ##     return W_OpSpec(w_print_str, [wam_s])
+    if wam_obj.color == "blue":
+        # precompute eagerly the str() of blue objects.  This makes it possible to print
+        # e.g. types (like in `print(int)`), even if they are not currently supported by
+        # the C backend.
+        wam_s = vm.str_wam(wam_obj, loc=wam_obj.loc)
+        if wam_s.color != "blue":
+            wam_s = W_MetaArg.from_w_obj(vm, wam_s.w_val)
 
-    return W_OpSpec(w_func)
+        w_print_one_impl = vm.getitem_w(w_print_one, B.w_str)
+        return W_OpSpec(w_print_one_impl, [wam_s])
+
+    else:
+        w_T = wam_obj.w_static_T
+        w_print_one_impl = vm.getitem_w(w_print_one, w_T)
+        return W_OpSpec(w_print_one_impl)
 
 
 @BUILTINS.builtin_func(color="blue", kind="metafunc")
