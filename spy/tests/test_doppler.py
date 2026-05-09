@@ -195,8 +195,8 @@ class TestDoppler:
             x: i32 = 0
             `test::foo`(x := 1)
             `test::foo`(2)
-            print_i32(x)
-            print_i32(2)
+            `_print::_print_one[i32]::impl`(x)
+            `_print::_print_one[str]::impl`('2')
         """)
 
     def test_call_blue_closure(self):
@@ -238,7 +238,7 @@ class TestDoppler:
             `test::make_foo::foo`()
 
         def `test::make_foo::fn`() -> None:
-            print_str('fn')
+            `_print::_print_one[str]::impl`('fn')
 
         def `test::make_foo::foo`() -> None:
             `test::make_foo::fn`()
