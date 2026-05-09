@@ -12,7 +12,7 @@ spy___spy__$is_compiled(void) {
 
 static inline void
 spy___spy__$_stdio_write(spy_Str *s) {
-    for (int32_t i = 0; i < s->length; i++)
+    for (size_t i = 0; i < s->length; i++)
         putchar(s->utf8[i]);
     putchar('\n');
 }
