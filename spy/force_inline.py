@@ -49,20 +49,25 @@ class AlphaRenamer:
     by appending suffix (e.g. "$0") to its name.
     """
 
-    def __init__(self, suffix: str) -> None:
+    def __init__(self, funcdef: ast.FuncDef, suffix: str) -> None:
+        self.funcdef = funcdef
         self.suffix = suffix
         self.sym_map: dict[Symbol, Symbol] = {}
-        self.new_symbols: list[Symbol] = []
+        for sym in funcdef.symtable._symbols.values():
+            if sym.is_local:
+                new_name = f"{sym.name}{self.suffix}"
+                self.sym_map[sym] = sym.replace(name=new_name)
 
-    def newsym(self, old_sym: Symbol) -> Symbol:
-        if old_sym not in self.sym_map:
-            new_name = f"{old_sym.name}{self.suffix}"
-            new_sym = old_sym.replace(name=new_name)
-            self.sym_map[old_sym] = new_sym
-            self.new_symbols.append(new_sym)
+    def get_new_symbols(self) -> list[Symbol]:
+        return list(self.sym_map.values())
+
+    def rename_sym(self, old_sym: Symbol) -> Symbol:
         return self.sym_map[old_sym]
 
-    def rename_stmts(self, stmts: list[ast.Stmt]) -> list[ast.Stmt]:
+    def rename_body(self) -> list[ast.Stmt]:
+        return self._rename_stmts(self.funcdef.body)
+
+    def _rename_stmts(self, stmts: list[ast.Stmt]) -> list[ast.Stmt]:
         return [self.rename_stmt(s) for s in stmts]
 
     def rename_stmt(self, stmt: ast.Stmt) -> ast.Stmt:
@@ -93,14 +98,14 @@ class AlphaRenamer:
     def rename_stmt_If(self, stmt: ast.If) -> ast.Stmt:
         return stmt.replace(
             test=self.rename_expr(stmt.test),
-            then_body=self.rename_stmts(stmt.then_body),
-            else_body=self.rename_stmts(stmt.else_body),
+            then_body=self._rename_stmts(stmt.then_body),
+            else_body=self._rename_stmts(stmt.else_body),
         )
 
     def rename_stmt_While(self, stmt: ast.While) -> ast.Stmt:
         return stmt.replace(
             test=self.rename_expr(stmt.test),
-            body=self.rename_stmts(stmt.body),
+            body=self._rename_stmts(stmt.body),
         )
 
     def rename_stmt_Pass(self, stmt: ast.Pass) -> ast.Stmt:
@@ -118,7 +123,7 @@ class AlphaRenamer:
     # ---- expressions ----
 
     def rename_expr_NameLocalDirect(self, expr: ast.NameLocalDirect) -> ast.Expr:
-        return expr.replace(sym=self.newsym(expr.sym))
+        return expr.replace(sym=self.rename_sym(expr.sym))
 
     def rename_expr_NameOuterCell(self, expr: ast.NameOuterCell) -> ast.Expr:
         return expr
@@ -156,7 +161,7 @@ class AlphaRenamer:
 
     def rename_expr_BlockExpr(self, expr: ast.BlockExpr) -> ast.Expr:
         return expr.replace(
-            body=self.rename_stmts(expr.body),
+            body=self._rename_stmts(expr.body),
             value=self.rename_expr(expr.value),
         )
 
@@ -219,8 +224,8 @@ def inline_call(
         if new_name not in new_locals_types_w:
             new_locals_types_w[new_name] = w_T
 
-    renamer = AlphaRenamer(suffix)
-    renamed_body = renamer.rename_stmts(w_callee.funcdef.body)
+    renamer = AlphaRenamer(w_callee.funcdef, suffix)
+    renamed_body = renamer.rename_body()
 
     last_stmt = renamed_body[-1] if renamed_body else None
     if isinstance(last_stmt, ast.Return):
@@ -237,4 +242,4 @@ def inline_call(
         value=result_value,
         w_T=w_callee.w_functype.w_restype,
     )
-    return InlineResult(block, renamer.new_symbols, new_locals_types_w)
+    return InlineResult(block, renamer.get_new_symbols(), new_locals_types_w)
