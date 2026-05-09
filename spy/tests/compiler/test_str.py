@@ -225,6 +225,14 @@ class TestStr(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == "\nBall"
 
+    def test_str_of_str(self):
+        src = """
+        def foo(s: str) -> str:
+            return str(s)
+        """
+        mod = self.compile(src)
+        assert mod.foo("hello") == "hello"
+
     def test_str_replace(self):
         mod = self.compile("""
         def foo(s: str, old: str, new: str) -> str:

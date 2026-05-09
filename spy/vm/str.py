@@ -109,6 +109,11 @@ class W_Str(W_Object):
         length = vm.ll.call("spy_str_len", w_s.ptr)
         return vm.wrap(length)
 
+    @builtin_method("__str__")
+    @staticmethod
+    def w_str(vm: "SPyVM", w_s: "W_Str") -> "W_Str":
+        return w_s
+
     @builtin_method("__repr__")
     @staticmethod
     def w_repr(vm: "SPyVM", w_s: "W_Str") -> "W_Str":
