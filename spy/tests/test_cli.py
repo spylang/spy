@@ -141,7 +141,7 @@ class TestMain:
 
     def test_redshift_full_fqn(self):
         _, stdout = self.run("redshift", "--full-fqn", self.main_spy)
-        assert "builtins::print_str" in stdout
+        assert "_print::_print_one[str]::impl" in stdout
 
     def test_redshift_spy_output(self):
         _, stdout = self.run("redshift", self.main_spy)

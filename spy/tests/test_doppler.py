@@ -195,8 +195,8 @@ class TestDoppler:
             x: i32 = 0
             `test::foo`(x := 1)
             `test::foo`(2)
-            print_i32(x)
-            print_i32(2)
+            `_print::_print_one[i32]::impl`(x)
+            `_print::_print_one[str]::impl`('2')
         """)
 
     def test_call_blue_closure(self):
@@ -238,7 +238,7 @@ class TestDoppler:
             `test::make_foo::foo`()
 
         def `test::make_foo::fn`() -> None:
-            print_str('fn')
+            `_print::_print_one[str]::impl`('fn')
 
         def `test::make_foo::foo`() -> None:
             `test::make_foo::fn`()
@@ -527,3 +527,16 @@ class TestDoppler:
             return __block__(x$0: i32 = 10; __block__(x$1$0: i32 = __block__(x$0$0: i32 = x$0; x$0$0 + 1); x$1$0 + 1))
         """
         self.assert_dump(expected, funcname="foo")
+
+    def test_pure_builtin_method(self):
+        self.redshift("""
+        def foo() -> str:
+            return str(True)
+        """)
+        self.assert_dump(
+            """
+        def foo() -> str:
+            return 'True'
+        """,
+            funcname="foo",
+        )

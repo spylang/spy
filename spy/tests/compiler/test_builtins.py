@@ -302,3 +302,55 @@ class TestBuiltins(CompilerTest):
         dm = mod.dir_math()
         assert "acos" in dm
         assert "pi" in dm
+
+    def test_print_red(self, capfd):
+        mod = self.compile("""
+        from __spy__ import as_red
+
+        def foo() -> None:
+            print(as_red("hello world"))
+            print(as_red(42))
+            print(as_red(12.3))
+            print(as_red(True))
+            print(as_red(None))
+        """)
+        mod.foo()
+        if self.backend == "C":
+            mod.ll.call("spy_flush")
+        out, err = capfd.readouterr()
+        assert out == "\n".join(
+            [
+                "hello world",
+                "42",
+                "12.3",
+                "True",
+                "None",
+                "",
+            ]
+        )
+
+    def test_print_blue(self, capfd):
+        mod = self.compile("""
+        def foo() -> None:
+            print("hello world")
+            print(42)
+            print(12.3)
+            print(True)
+            print(None)
+            print(i32)
+        """)
+        mod.foo()
+        if self.backend == "C":
+            mod.ll.call("spy_flush")
+        out, err = capfd.readouterr()
+        assert out == "\n".join(
+            [
+                "hello world",
+                "42",
+                "12.3",
+                "True",
+                "None",
+                "<spy type 'i32'>",
+                "",
+            ]
+        )

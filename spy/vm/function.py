@@ -234,6 +234,8 @@ class W_Func(W_Object):
         # this is a hack, but good enough to constant-fold arithmetic ops and other
         # selected ops.
         is_op = self.fqn.modname == "operator" and self.fqn.symbol_name != "raise"
+        if isinstance(self, W_BuiltinFunc) and self._is_pure:
+            return True
         return is_op or self.fqn in self._pure_fqns
 
     _pure_fqns = {
@@ -465,13 +467,21 @@ class W_BuiltinFunc(W_Func):
 
     pyfunc: Callable
 
-    def __init__(self, w_functype: W_FuncType, fqn: FQN, pyfunc: Callable) -> None:
+    def __init__(
+        self,
+        w_functype: W_FuncType,
+        fqn: FQN,
+        pyfunc: Callable,
+        *,
+        is_pure: bool = False,
+    ) -> None:
         self.w_functype = w_functype
         self.fqn = fqn
         self.def_loc = Loc.from_pyfunc(pyfunc)
         # _pyfunc should NEVER be called directly, because it bypasses the
         # bluecache
         self._pyfunc = pyfunc
+        self._is_pure = is_pure
 
     def __repr__(self) -> str:
         return f"<spy function '{self.fqn}' (builtin)>"
