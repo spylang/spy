@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.b import BUILTINS, TYPES, B
-from spy.vm.function import W_FuncType
+from spy.vm.function import W_Func, W_FuncType
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_list import (
     W_StrInterpList,
@@ -67,11 +67,13 @@ def w_print(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
             wam_s = W_MetaArg.from_w_obj(vm, wam_s.w_val)
 
         w_print_one_impl = vm.getitem_w(w_print_one, B.w_str)
+        assert isinstance(w_print_one_impl, W_Func)
         return W_OpSpec(w_print_one_impl, [wam_s])
 
     else:
         w_T = wam_obj.w_static_T
         w_print_one_impl = vm.getitem_w(w_print_one, w_T)
+        assert isinstance(w_print_one_impl, W_Func)
         return W_OpSpec(w_print_one_impl)
 
 

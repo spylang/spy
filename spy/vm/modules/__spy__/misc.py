@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Any
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.builtin import builtin_method
-from spy.vm.function import W_ASTFunc
+from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.object import W_Object
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_Bool
@@ -26,7 +26,8 @@ def w_as_red(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
     vm.import_("_identity")
     w_T = wam_obj.w_static_T
     w_id_fn = vm.lookup_global(FQN("_identity::identity"))
-    w_id_impl = vm.fast_call(w_id_fn, [w_T])
+    w_id_impl = vm.getitem_w(w_id_fn, w_T)
+    assert isinstance(w_id_impl, W_Func)
     return W_OpSpec(w_id_impl)
 
 
