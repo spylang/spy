@@ -527,3 +527,16 @@ class TestDoppler:
             return __block__(x$0: i32 = 10; __block__(x$1$0: i32 = __block__(x$0$0: i32 = x$0; x$0$0 + 1); x$1$0 + 1))
         """
         self.assert_dump(expected, funcname="foo")
+
+    def test_pure_builtin_method(self):
+        self.redshift("""
+        def foo() -> str:
+            return str(True)
+        """)
+        self.assert_dump(
+            """
+        def foo() -> str:
+            return 'True'
+        """,
+            funcname="foo",
+        )

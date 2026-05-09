@@ -78,7 +78,11 @@ if TYPE_CHECKING:
 
 
 def builtin_method(
-    name: str, *, color: Color = "red", kind: "FuncKind" = "plain"
+    name: str,
+    *,
+    color: Color = "red",
+    kind: "FuncKind" = "plain",
+    is_pure: bool = False,
 ) -> Any:
     """
     Turn an interp-level method into an app-level one.
@@ -89,14 +93,18 @@ def builtin_method(
 
     def decorator(fn: Callable) -> Callable:
         assert isinstance(fn, staticmethod), "missing @staticmethod"
-        fn.spy_builtin_method = (name, color, kind, "method")  # type: ignore
+        fn.spy_builtin_method = (name, color, kind, "method", is_pure)  # type: ignore
         return fn
 
     return decorator
 
 
 def builtin_staticmethod(
-    name: str, *, color: Color = "red", kind: "FuncKind" = "plain"
+    name: str,
+    *,
+    color: Color = "red",
+    kind: "FuncKind" = "plain",
+    is_pure: bool = False,
 ) -> Any:
     """
     Turn an interp-level staticmethod into an app-level staticmethod.
@@ -107,14 +115,18 @@ def builtin_staticmethod(
 
     def decorator(fn: Callable) -> Callable:
         assert isinstance(fn, staticmethod), "missing @staticmethod"
-        fn.spy_builtin_method = (name, color, kind, "staticmethod")  # type: ignore
+        fn.spy_builtin_method = (name, color, kind, "staticmethod", is_pure)  # type: ignore
         return fn
 
     return decorator
 
 
 def builtin_classmethod(
-    name: str, *, color: Color = "red", kind: "FuncKind" = "plain"
+    name: str,
+    *,
+    color: Color = "red",
+    kind: "FuncKind" = "plain",
+    is_pure: bool = False,
 ) -> Any:
     """
     Turn an interp-level staticmethod into an app-level classmethod.
@@ -125,14 +137,18 @@ def builtin_classmethod(
 
     def decorator(fn: Callable) -> Callable:
         assert isinstance(fn, staticmethod), "missing @staticmethod"
-        fn.spy_builtin_method = (name, color, kind, "classmethod")  # type: ignore
+        fn.spy_builtin_method = (name, color, kind, "classmethod", is_pure)  # type: ignore
         return fn
 
     return decorator
 
 
 def builtin_property(
-    name: str, *, color: Color = "red", kind: "FuncKind" = "plain"
+    name: str,
+    *,
+    color: Color = "red",
+    kind: "FuncKind" = "plain",
+    is_pure: bool = False,
 ) -> Any:
     """
     Turn an interp-level getter method into an app-level property.
@@ -143,7 +159,7 @@ def builtin_property(
 
     def decorator(fn: Callable) -> Callable:
         assert isinstance(fn, staticmethod), "missing @staticmethod"
-        fn.spy_builtin_method = (name, color, kind, "property")  # type: ignore
+        fn.spy_builtin_method = (name, color, kind, "property", is_pure)  # type: ignore
         return fn
 
     return decorator
@@ -575,7 +591,7 @@ class W_Type(W_Object):
         from spy.vm.str import W_Str
 
         pyfunc = statmeth.__func__
-        appname, color, kind, what = statmeth.spy_builtin_method  # type: ignore
+        appname, color, kind, what, is_pure = statmeth.spy_builtin_method  # type: ignore
         assert what in ("method", "staticmethod", "classmethod", "property")
 
         # create the W_BuiltinFunc. Make it possible to use the string
@@ -596,6 +612,7 @@ class W_Type(W_Object):
             color=color,
             kind=kind,
             extra_types=extra_types,
+            is_pure=is_pure,
         )
         if what == "method":
             self.dict_w[appname] = w_func

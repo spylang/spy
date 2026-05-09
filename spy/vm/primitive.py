@@ -368,7 +368,7 @@ class W_Bool(W_Object):
         else:
             return B.w_True
 
-    @builtin_method("__str__")
+    @builtin_method("__str__", is_pure=True)
     @staticmethod
     def w_str(vm: "SPyVM", w_self: "W_Bool") -> "W_Str":
         b = vm.unwrap(w_self)
