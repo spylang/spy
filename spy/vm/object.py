@@ -251,26 +251,18 @@ class W_Object:
         from spy.vm.opspec import W_OpSpec
         from spy.vm.str import W_Str
 
-        if wam_self.color == "blue":
-            assert False, "do we need this?"
-            w_self = wam_self.w_blueval
-            w_s = vm.wrap(repr(w_self))
-            return W_OpSpec.const(w_s)
+        w_T = wam_self.w_static_T
+        T = Annotated[W_Object, w_T]
+        irtag = IRTag("object.repr", w_T=w_T)
 
-        else:
-            # fallback
-            w_T = wam_self.w_static_T
-            T = Annotated[W_Object, w_T]
-            irtag = IRTag("object.repr", w_T=w_T)
+        @vm.register_builtin_func(w_T.fqn, "__generic_repr__", irtag=irtag)
+        def w_generic_repr(vm: "SPyVM", w_obj: T) -> W_Str:
+            tname = w_T.fqn.human_name
+            addr = f"0x{id(w_obj):x}"
+            s = f"<spy `{tname}` object at {addr}>"
+            return vm.wrap(s)
 
-            @vm.register_builtin_func(w_T.fqn, "__generic_repr__", irtag=irtag)
-            def w_generic_repr(vm: "SPyVM", w_obj: T) -> W_Str:
-                tname = w_T.fqn.human_name
-                addr = f"0x{id(w_obj):x}"
-                s = f"<spy `{tname}` object at {addr}>"
-                return vm.wrap(s)
-
-            return W_OpSpec(w_generic_repr, [wam_self])
+        return W_OpSpec(w_generic_repr, [wam_self])
 
     @builtin_method("__str__", color="blue", kind="metafunc")
     @staticmethod
