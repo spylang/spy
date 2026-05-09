@@ -88,24 +88,17 @@ class TestStr(CompilerTest):
         assert mod.foo("abc") == 3
         assert mod.foo("hello world") == 11
 
-    def test_object_str_blue(self):
+    def test_type_str_and_repr_on_blueval(self):
         src = """
-        def str_blue() -> str:
+        def type_repr() -> str:
+            return repr(i32)
+
+        def type_str() -> str:
             return str(i32)
         """
         mod = self.compile(src)
-        assert mod.str_blue() == "<spy type 'i32'>"
-
-    @skip_backends("C", reason="`type` type not supported")
-    def test_object_str_red(self):
-        src = """
-        def str_red_type() -> str:
-            var t: type = i32   # note, this is a red variable
-            return str(t)
-        """
-        mod = self.compile(src)
-        s = mod.str_red_type()
-        assert re.fullmatch(r"<spy `type` object at 0x.+>", s)
+        assert mod.type_repr() == "<spy type 'i32'>"
+        assert mod.type_str() == "<spy type 'i32'>"
 
     def test_str_numbers(self):
         # NOTE: float2str produces slightly different results in Python vs C
@@ -178,15 +171,17 @@ class TestStr(CompilerTest):
             assert mod.repr_str(s) == repr(s)
 
     @skip_backends("C", reason="`type` type not supported")
-    def test_repr_red(self):
+    def test_generic_repr(self):
         src = """
-        def repr_red_type() -> str:
-            var t: type = i32   # note, this is a red variable
-            return repr(t)
+        def get_repr(o: object) -> str:
+            return repr(o)
+
+        def foo() -> str:
+            return get_repr(42)
         """
         mod = self.compile(src)
-        s = mod.repr_red_type()
-        assert re.fullmatch(r"<spy `type` object at 0x.+>", s)
+        s = mod.foo()
+        assert re.fullmatch(r"<spy `object` object at 0x.+>", s)
 
     def test_str_fallback_to_repr(self):
         # str() should fallback to repr() for types without custom __str__

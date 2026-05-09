@@ -252,6 +252,7 @@ class W_Object:
         from spy.vm.str import W_Str
 
         if wam_self.color == "blue":
+            assert False, "do we need this?"
             w_self = wam_self.w_blueval
             w_s = vm.wrap(repr(w_self))
             return W_OpSpec.const(w_s)
@@ -728,7 +729,7 @@ class W_Type(W_Object):
         """
         return vm.dynamic_type(w_obj)
 
-    @builtin_method("__repr__")
+    @builtin_method("__repr__", is_pure=True)
     @staticmethod
     def w_repr(vm: "SPyVM", w_self: "W_Type") -> "W_Str":
         return vm.wrap(repr(w_self))
