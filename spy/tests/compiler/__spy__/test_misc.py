@@ -31,3 +31,13 @@ class TestMisc(CompilerTest):
             assert mod.foo() == False
         else:
             assert mod.foo() == True
+
+    def test_as_red(self):
+        src = """
+        from __spy__ import COLOR, as_red
+
+        def foo() -> str:
+            return COLOR(as_red(42))
+        """
+        mod = self.compile(src)
+        assert mod.foo() == "red"

@@ -55,8 +55,8 @@ def w_min(vm: "SPyVM", w_x: W_I32, w_y: W_I32) -> W_I32:
 
 @BUILTINS.builtin_func(color="blue", kind="metafunc")
 def w_print(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
-    w_T = wam_obj.w_static_T
     vm.import_("_print")
+    w_T = wam_obj.w_static_T
     w_print_one = vm.lookup_global(FQN("_print::_print_one"))
     w_func = vm.getitem_w(w_print_one, w_T)
 

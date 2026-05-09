@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING, Any
 
 from spy.errors import SPyError
+from spy.fqn import FQN
 from spy.vm.builtin import builtin_method
 from spy.vm.function import W_ASTFunc
 from spy.vm.object import W_Object
@@ -18,6 +19,15 @@ if TYPE_CHECKING:
 def w_COLOR(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
     w_color = vm.wrap(wam_obj.color)
     return W_OpSpec.const(w_color)
+
+
+@SPY.builtin_func(color="blue", kind="metafunc")
+def w_as_red(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
+    vm.import_("_identity")
+    w_T = wam_obj.w_static_T
+    w_id_fn = vm.lookup_global(FQN("_identity::identity"))
+    w_id_impl = vm.fast_call(w_id_fn, [w_T])
+    return W_OpSpec(w_id_impl)
 
 
 @SPY.builtin_func
