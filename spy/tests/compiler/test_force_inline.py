@@ -367,6 +367,25 @@ class TestForceInline(CompilerTest):
         """)
         assert mod.foo() == 14
 
+    def test_unused_param(self):
+        mod = self.compile("""
+        from __spy__ import force_inline
+
+        var count: i32 = 0
+
+        def bump() -> None:
+            count = count + 1
+
+        @force_inline
+        def bar(x: None) -> None:
+            count = count + 20
+
+        def foo() -> i32:
+            bar(bump())
+            return count
+        """)
+        assert mod.foo() == 21
+
     def test_metafunc(self):
         # see also test_doppler.py:test_force_inline_in_metafunc
         mod = self.compile("""

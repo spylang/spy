@@ -171,7 +171,10 @@ class CFuncWriter:
         if vardef.value:
             target = vardef.name.value
             v = self.fmt_expr(vardef.value)
-            self.tbc.wl(f"{target} = {v};")
+            if vardef.value.w_T is TYPES.w_NoneType:
+                self.tbc.wl(f"/* {target} = */ {v};")
+            else:
+                self.tbc.wl(f"{target} = {v};")
 
     def emit_stmt_Assign(self, assign: ast.Assign) -> None:
         assert False, "ast.Assign nodes should not survive redshifting"
