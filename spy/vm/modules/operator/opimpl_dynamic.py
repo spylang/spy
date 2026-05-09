@@ -135,3 +135,16 @@ def w_dynamic_call(vm: "SPyVM", w_obj: W_Dynamic, *args_w: W_Dynamic) -> W_Dynam
     all_args_wam = [W_MetaArg.from_w_obj(vm, w_x) for i, w_x in enumerate(all_args_w)]
     w_opimpl = vm.call_OP(None, OP.w_CALL, all_args_wam)
     return w_opimpl._execute(vm, all_args_w)  # XXX
+
+
+@OP.builtin_func
+def w_dynamic_str(vm: "SPyVM", w_x: W_Dynamic) -> W_Str:
+    w_T = vm.dynamic_type(w_x)
+    w_fn = w_T.lookup_func("__str__")
+    assert w_fn is not None
+    wam_arg = W_MetaArg.from_w_obj(vm, w_x)
+    w_opspec = vm.fast_metacall(w_fn, [wam_arg])
+    assert w_opspec._w_func is not None
+    w_res = vm.fast_call(w_opspec._w_func, [w_x])
+    assert isinstance(w_res, W_Str)
+    return w_res

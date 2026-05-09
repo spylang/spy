@@ -644,6 +644,14 @@ class W_Type(W_Object):
         """
         Return a list of all the supertypes.
         """
+        if self is B.w_dynamic:
+            msg = (
+                "Cannot call .get_mro(), .lookup() or .lookup_func() on B.w_dynamic. "
+                + "This is likely an internal bug: the caller should detect B.w_dynamic "
+                + "and do the lookup on the real type."
+            )
+            raise AssertionError(msg)
+
         mro = []
         w_T: Union["W_Type", "W_NoneType"] = self
         while w_T is not B.w_None:
