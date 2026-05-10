@@ -6,10 +6,13 @@ The first half is in vm/b.py. See its docstring for more details.
 
 from typing import TYPE_CHECKING
 
+from spy import ast
+from spy.analyze.scope import ScopeAnalyzer
 from spy.errors import SPyError
 from spy.fqn import FQN
+from spy.location import Loc
 from spy.vm.b import BUILTINS, TYPES, B
-from spy.vm.function import W_Func, W_FuncType
+from spy.vm.function import FuncParam, W_ASTFunc, W_Func, W_FuncType
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_list import (
     W_StrInterpList,
@@ -54,27 +57,104 @@ def w_min(vm: "SPyVM", w_x: W_I32, w_y: W_I32) -> W_I32:
 
 
 @BUILTINS.builtin_func(color="blue", kind="metafunc")
-def w_print(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
+def w_print(vm: "SPyVM", *args_wam: W_MetaArg) -> W_OpSpec:
     vm.import_("_print")
-    w_print_one = vm.lookup_global(FQN("_print::_print_one"))
+    w_print1 = vm.lookup_global(FQN("_print::print1"))
+    w_println = vm.lookup_global(FQN("_print::println"))
 
-    if wam_obj.color == "blue":
-        # precompute eagerly the str() of blue objects.  This makes it possible to print
-        # e.g. types (like in `print(int)`), even if they are not currently supported by
-        # the C backend.
-        wam_s = vm.str_wam(wam_obj, loc=wam_obj.loc)
-        if wam_s.color != "blue":
-            wam_s = W_MetaArg.from_w_obj(vm, wam_s.w_val)
+    # Blue args are eagerly str()'d so that e.g. `print(int)` works even when
+    # the type isn't supported by the C backend. Non-last args use print1[T];
+    # the last arg uses println[T].
+    new_args_wam: list[W_MetaArg] = []
+    for wam in args_wam:
+        if wam.color == "blue":
+            wam_s = vm.str_wam(wam, loc=wam.loc)
+            if wam_s.color != "blue":
+                wam_s = W_MetaArg.from_w_obj(vm, wam_s.w_val, loc=wam.loc)
+            new_args_wam.append(wam_s)
+        else:
+            new_args_wam.append(wam)
 
-        w_print_one_impl = vm.getitem_w(w_print_one, B.w_str)
-        assert isinstance(w_print_one_impl, W_Func)
-        return W_OpSpec(w_print_one_impl, [wam_s])
+    if len(new_args_wam) == 0:
+        # print() with no args: equivalent to println("")
+        new_args_wam.append(W_MetaArg.from_w_obj(vm, vm.wrap("")))
 
-    else:
-        w_T = wam_obj.w_static_T
-        w_print_one_impl = vm.getitem_w(w_print_one, w_T)
-        assert isinstance(w_print_one_impl, W_Func)
-        return W_OpSpec(w_print_one_impl)
+    if len(new_args_wam) == 1:
+        # single arg: equivalent to println[T](arg)
+        wam = new_args_wam[0]
+        w_impl = vm.getitem_w(w_println, wam.w_static_T)
+        assert isinstance(w_impl, W_Func)
+        return W_OpSpec(w_impl, [wam])
+
+    # generic case: for e.g. print(a, b, c) we synthesise an ASTFunc like this:
+    #     @force_inline
+    #     def impl(a: T1, b: T2, c: T3) -> None:
+    #         print1[T1](a)
+    #         print1[T2](b)
+    #         println[T3](c)
+    func_args: list[ast.FuncArg] = []
+    params: list[FuncParam] = []
+    body = []
+    n = len(new_args_wam)
+    for i, wam in enumerate(new_args_wam):
+        loc = wam.loc
+        w_T = wam.w_static_T
+        arg_name = f"arg{i}"
+        func_args.append(
+            ast.FuncArg(loc, arg_name, ast.FQNConst(loc, w_T.fqn), "simple")
+        )
+        params.append(FuncParam(w_T, "simple"))
+        # print1[T] for non-last args; println[T] for the last one
+        w_print_func = w_println if i == n - 1 else w_print1
+        w_impl = vm.getitem_w(w_print_func, w_T)
+        assert isinstance(w_impl, W_Func)
+        body.append(
+            ast.StmtExpr(
+                loc,
+                ast.Call(
+                    loc,
+                    ast.FQNConst(loc, w_impl.fqn),
+                    [ast.Name(loc, arg_name)],
+                ),
+            )
+        )
+
+    loc = Loc.here()
+    body.append(ast.Return(loc, ast.Constant(loc, None)))
+
+    fqn = FQN("_print::print::impl")
+    fqn = vm.get_unique_FQN(fqn)
+    funcdef = ast.FuncDef(
+        loc=loc,
+        color="red",
+        kind="plain",
+        name="print",
+        args=func_args,
+        return_type=ast.FQNConst(loc, TYPES.w_NoneType.fqn),
+        defaults=[],
+        docstring=None,
+        body=body,
+        decorators=[],
+    )
+    module = ast.Module(
+        loc=loc,
+        filename="<generated>",
+        docstring=None,
+        decls=[ast.GlobalFuncDef(loc, funcdef)],
+    )
+    ScopeAnalyzer("_print", module).analyze()
+    w_functype = W_FuncType.new(params, w_restype=TYPES.w_NoneType)
+    w_func = W_ASTFunc(
+        w_functype,
+        fqn,
+        funcdef,
+        closure=(),
+        defaults_w=[],
+        lowering_stage="source",
+        is_force_inline=True,
+    )
+    vm.add_global(fqn, w_func)
+    return W_OpSpec(w_func, new_args_wam)
 
 
 @BUILTINS.builtin_func(color="blue", kind="metafunc")

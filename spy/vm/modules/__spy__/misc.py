@@ -1,3 +1,4 @@
+import sys
 from typing import TYPE_CHECKING, Any
 
 from spy.errors import SPyError
@@ -124,5 +125,5 @@ def w_force_inline(vm: "SPyVM", w_func: W_Object) -> W_Object:
 
 
 @SPY.builtin_func
-def w__stdio_write(vm: "SPyVM", w_s: W_Str) -> None:
-    print(vm.unwrap(w_s))
+def w__stdout_write(vm: "SPyVM", w_s: W_Str) -> None:
+    sys.stdout.write(vm.unwrap(w_s))
