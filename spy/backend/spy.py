@@ -418,7 +418,9 @@ class SPyBackend:
 
     def fmt_expr_BlockExpr(self, block: ast.BlockExpr) -> str:
         b = SPyBackend(self.vm, fqn_format=self.fqn_format)
-        b.vars_declared = set()
+        b.w_func = self.w_func
+        b.scope_stack = self.scope_stack
+        b.vars_declared = self.vars_declared
         for stmt in block.body:
             b.emit_stmt(stmt)
         parts = [l for l in b.out.build().splitlines() if l]

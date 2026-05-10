@@ -403,3 +403,21 @@ class TestForceInline(CompilerTest):
             return double(21)
         """)
         assert mod.foo() == 42
+
+    def test_force_inline_in_loop(self):
+        mod = self.compile("""
+        from __spy__ import force_inline
+
+        @force_inline
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        def foo() -> i32:
+            var result = 0
+            var i = 0
+            while i < 3:
+                result = result + inc(i)
+                i = i + 1
+            return result
+        """)
+        assert mod.foo() == 6

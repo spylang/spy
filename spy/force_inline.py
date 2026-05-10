@@ -201,18 +201,16 @@ def inline_call(
 
     functype = w_callee.w_functype
     funcdef_args = w_callee.funcdef.args
-    param_vardefs: list[ast.Stmt] = []
+    param_assigns: list[ast.Stmt] = []
     for i, (func_param, funcdef_arg) in enumerate(zip(functype.params, funcdef_args)):
         param_name = funcdef_arg.name
         new_name = f"{param_name}{suffix}"
         new_locals_types_w[new_name] = func_param.w_T
 
-        param_vardefs.append(
-            ast.VarDef(
+        param_assigns.append(
+            ast.AssignLocal(
                 loc=op.loc,
-                kind=None,
-                name=ast.StrConst(op.loc, new_name).as_typed_node(),
-                type=make_const(vm, op.loc, func_param.w_T),
+                target=ast.StrConst(op.loc, new_name).as_typed_node(),
                 value=real_args[i],
             )
         )
@@ -235,7 +233,7 @@ def inline_call(
         stmts_before_return = renamed_body
         result_value = ast.Constant(op.loc, None, w_T=TYPES.w_NoneType)
 
-    body = [*param_vardefs, *stmts_before_return]
+    body = [*param_assigns, *stmts_before_return]
     block = ast.BlockExpr(
         loc=op.loc,
         body=body,
