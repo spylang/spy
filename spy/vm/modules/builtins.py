@@ -94,7 +94,7 @@ def w_print(vm: "SPyVM", *args_wam: W_MetaArg) -> W_OpSpec:
     #         println[T3](c)
     func_args: list[ast.FuncArg] = []
     params: list[FuncParam] = []
-    body = []
+    body: list[ast.Stmt] = []
     n = len(new_args_wam)
     for i, wam in enumerate(new_args_wam):
         loc = wam.loc
