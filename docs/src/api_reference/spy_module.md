@@ -1,4 +1,4 @@
-title: The __spy__ module
+title: The __spy__ Module
 ---
 <style> {
   font-family: "Lucida Console", "Courier New", monospace;
