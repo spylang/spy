@@ -73,9 +73,9 @@ The following built-in functions work similarly to their equivalents in CPython;
 
 :   `object` is implemented as a type, and can be used as a parameter or return type. "Plain" objects (i.e. `x = object()`) are not supported.
 
-### __print__(obj) { data-toc-label='print()' }
+### __print__(*objects) { data-toc-label='print()' }
 
-:   The print function is currently not variadic, in the sense that it only accepts a single argument. The built-in types are special-cased, and SPy can always print blue objects by pre-computing their string representation
+:   Prints objects to standard out, utilizing the objects `__str__` method if necessary. Extra keyworld arguments a la [CPythons' print()](https://docs.python.org/3/library/functions.html#print) are not currently supported.
 
 ### __range__(stop) { data-toc-label='range()' }
 <h3> <b>range</b>(start, stop, step)</h3> <!-- An HTML label to hide this in the TOC -->
