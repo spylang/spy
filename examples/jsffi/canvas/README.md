@@ -22,6 +22,11 @@ file is around **27 KB** and the Emscripten glue `.mjs` around **64 KB**, for a 
 roughly **91 KB** — smaller than a typical webpage image, and orders of magnitude smaller
 than a PyScript/Pyodide deployment (~10 MB).
 
+Note: The `jsffi` module is still a proof of concept with known limitations. Notably,
+SPy currently has no equivalent of the JavaScript `new` keyword and no `async`/`await`
+support, which rules out more advanced browser interactions, such as those in the
+[Sobel demo](https://github.com/spylang/demos/tree/main/sobel/sobel-pyscript).
+
 ## Requirements
 
 - `uv`
