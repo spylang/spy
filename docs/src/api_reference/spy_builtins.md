@@ -5,10 +5,14 @@ title: SPy Builtins
 }
 </style>
 
-
+SPy adds several new builtins to the global namespace. Currently, all of them happen to be decorators for classes or callables.
 
 /// warning
-XXXXXXXXXXXXx
+The contents of the `__spy__` module and SPy's builtins form the API surface of a language that's rapidly evolving. All of the constructs, names, functions, or decorators here are likely to change!
+///
+
+/// important
+For a deeper explanation of the current state of SPy's coloring nomenclature, see [this post by Antonio Cuni](https://antocuni.eu/2026/03/25/inside-spy-part-2-language-semantics/#blue-functions).
 ///
 
 
@@ -16,17 +20,37 @@ XXXXXXXXXXXXx
 
 ### __@struct__
 
-:   Used to create a struct from a class definition. See the [low level memory section on structs](/llmem/#stack-allocated-structs) for more details.
+:   Used to create a struct from a class definition. See the [low level memory section on structs](../llmem.md#stack-allocated-structs) for more details.
 
 ### __@blue__
 :   Declares that a function should be executed at [redshift time](https://antocuni.eu/2025/10/29/inside-spy-part-1-motivations-and-goals/#redshifting); that is, at the point when method and function lookups are resolved, and prior to compilation to C or WASM, if any.
 
 :   `@blue` decorated functions are not required to specify types for their parameters, nor are they required to specify return types.
 
+: In this example, the two blue functions are evaluated during redshift time, and the emitted C code is just a print statement of a constant number.
+
+```py
+@blue
+def factorial(x)
+    if x == 0: return 1
+    if x == 1: return 1
+    return x * factorial(x-1)
+
+@blue
+def calc_e(terms):
+    sum: float = 0
+    for i in range(terms):
+        sum += 1/factorial(i)
+    return sum
+
+def main() -> None:
+    print(calc_e(10))
+```
+
 ### __@blue.generic__
 :   Denotes that the decorated function accepts a type as its first argument. Generic functions should return a function object.
 
-:   Generic functions are called using the spy-specific syntax `func[Type](args)`.
+:   Generic functions are called using the spy-specific syntax `func[type](args)`.
 
 ```python
   @blue.generic
@@ -66,11 +90,11 @@ XXXXXXXXXXXXx
       myprint(5.2)  # raises TypeError
 ```
 
-### @force_inline
+### __@force_inline__
 
-:   Causes the decorated functino to be inlined **during redshifting**. 
+:   Causes the decorated function to be inlined **during redshifting**. 
 
-Only functions with a single return statement at the end of the funciton can be forced inline. Blue functions cannot be forced inline, nor can forced-inline statements be used recursively.
+:   Only functions with a single return statement at the end of the function can be forced inline. Blue functions cannot be forced inline, nor can forced-inline statements be used recursively.
 
 ```py
 #inline_demo.spy
