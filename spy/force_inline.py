@@ -137,6 +137,9 @@ class AlphaRenamer:
     def rename_expr_StrConst(self, expr: ast.StrConst) -> ast.Expr:
         return expr
 
+    def rename_expr_LocConst(self, expr: ast.LocConst) -> ast.Expr:
+        return expr
+
     def rename_expr_And(self, expr: ast.And) -> ast.Expr:
         return expr.replace(
             left=self.rename_expr(expr.left),
