@@ -329,6 +329,32 @@ class TestBuiltins(CompilerTest):
             ]
         )
 
+    def test_print_multi_args(self, capfd):
+        mod = self.compile("""
+        def foo() -> None:
+            print()
+            print("hello", "world")
+            print(1, 2, 3)
+            print("x =", 42)
+            print("a", 1, 2.5, True)
+            print("mix", i32, None)
+        """)
+        mod.foo()
+        if self.backend == "C":
+            mod.ll.call("spy_flush")
+        out, err = capfd.readouterr()
+        assert out == "\n".join(
+            [
+                "",
+                "hello world",
+                "1 2 3",
+                "x = 42",
+                "a 1 2.5 True",
+                "mix <spy type 'i32'> None",
+                "",
+            ]
+        )
+
     def test_print_blue(self, capfd):
         mod = self.compile("""
         def foo() -> None:

@@ -1,9 +1,27 @@
-from __spy__ import _stdio_write
+from __spy__ import _stdout_write
 
 
 @blue.generic
-def _print_one(T):
-    def impl(x: T) -> None:
-        _stdio_write(str(x))
+def print1(T):
+    """
+    print a single item and a space
+    """
 
-    return impl
+    def p(x: T) -> None:
+        _stdout_write(str(x))
+        _stdout_write(" ")
+
+    return p
+
+
+@blue.generic
+def println(T):
+    """
+    print a single item and a newline
+    """
+
+    def p(x: T) -> None:
+        _stdout_write(str(x))
+        _stdout_write("\n")
+
+    return p
