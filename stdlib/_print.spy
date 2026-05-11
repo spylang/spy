@@ -1,5 +1,28 @@
 from __spy__ import _stdout_write
 
+# this module contains small helpers used by the builtin `print()` function. The
+# ultimate goal is to write the full print() in SPy, something along these lines:
+#
+## @blue.metafunc
+## def print(*args_m):
+##     args_T = tuple[m_arg.static_type for m_arg in args_m]
+##
+##     @force_inline
+##     def impl(*args: args_T) -> None:
+##         n = len(args)
+##         for i, arg in UNROLL(enumerate(args)):
+##             is_last = (i == n -1)
+##             T = STATIC_TYPE(arg)
+##             if is_last:
+##                 println[T](arg)
+##             else:
+##                 print1[T](arg)
+##
+##     return OpSpec(impl)
+#
+# But at the moment we don't have all the needed features (in particular `UNROLL`), so
+# we need to implement the unrolling "by hand" at interp-level: see BUILTINS.w_print.
+
 
 @blue.generic
 def print1(T):
