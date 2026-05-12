@@ -40,6 +40,10 @@ The following built-in functions work similarly to their equivalents in CPython;
 
 :   Return the value of the named attribute of object. `attr` must be blue
 
+### __hasattr__(obj, name: str) { data-toc-label='hasattr()' }
+
+:  Returns `True` is the object has an attribute called `name`, or `False` otherwise. `attr` must be blue
+
 ### __hash__(object) { data-toc-label='hash()' }
 :   Currently implemented for types: `i8`,`i32`, `u8`, `bool`, `str`.
 
@@ -139,7 +143,7 @@ Number types beyond int and float are in active development; some of the math fu
 
 The internals of SPy are significantly different from CPython; as such, the road to (and need for) some of these built-ins is less straightforward. Some are also waiting on internal details to solidify prior to implementation.
 
-:   callable(), classmethod(), compile(), delattr(), eval(), exec(), globals(), hasattr(), help(), id(), isinstance(), issubclass(), locals(), property(), super(), vars(). \_\_import\_\_()
+:   callable(), classmethod(), compile(), delattr(), eval(), exec(), globals(), help(), id(), isinstance(), issubclass(), locals(), property(), super(), vars(). \_\_import\_\_()
 
 ### Type Conversion
 
