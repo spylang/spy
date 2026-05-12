@@ -437,3 +437,19 @@ class TestForceInline(CompilerTest):
             return result
         """)
         assert mod.foo() == 6
+
+    @skip_backends("C", reason="C backend cannot emit Tuple literals yet")
+    def test_tuple_literal_in_body(self):
+        mod = self.compile("""
+        from __spy__ import force_inline
+
+        SHAPE = (3, 2)
+
+        @force_inline
+        def sum_shape(extra: i32) -> i32:
+            return SHAPE[0] + SHAPE[1] + extra
+
+        def foo() -> i32:
+            return sum_shape(10)
+        """)
+        assert mod.foo() == 15
