@@ -11,14 +11,16 @@ The `__spy__` module provides functions for introspecting and manipulating SPy o
 The contents of the `__spy__` module and SPy's builtins form the API surface of a language that's rapidly evolving. All of the constructs, names, functions, or decorators here are likely to change!
 ///
 
-### __COLOR__(object) -> Literal["red", "blue"] { #markdown data-toc-label='Color()' }
-:   Returns the current color of the passed object. Mainly useful in tests, but may be useful to give users a view into the color of objects during development.
+### __COLOR__(expr) -> Literal["red", "blue"] { #markdown data-toc-label='Color()' }
+:   Returns the current color of the passed expression. Mainly useful in tests, but may be useful to give users a view into the color of expressions during development.
 
 ### __as_red__(object) -> Literal["red", "blue"] { #markdown data-toc-label='as_red()' }
-:   Returns a copy of the object as a red object. May be useful during metaprograming ensure that blue objects which are equal do not get optimized into the same object at redshift time. See, for example, the [implementation of `exal_expr_List`](https://github.com/spylang/spy/blob/main/spy/vm/astframe.py#L1161).
+:   If `object` is a reference type (e.g. strings, int, etc.), `as_red` simply changes the passed object's color to red. If `object` is a value type, returns a copy of the object as a red object. 
+
+: May be useful during metaprograming ensure that blue objects which are equal do not get optimized into the same object at redshift time. See, for example, the [implementation of `exal_expr_List`](https://github.com/spylang/spy/blob/main/spy/vm/astframe.py#L1161).
 
 ### __STATIC_TYPE__(object) { #markdown data-toc-label='\_\_STATIC_TYPE\_\_()' }
-:   Returns the type of the object determined in a static context. Useful in tests, and is used in some of SPy's internal machinery.
+:   Returns the type of the expression determined in a static context. Useful in tests, and is used in some of SPy's internal machinery.
 
 ### __interp_list__(object) { #markdown data-toc-label='interp_list' }
 :   A `list` object that functions only within the interpreter, and is not supported by the C backend. Highly likely to be removed in the future, but currently useful for prototyping internal to SPy for object types that cannot currently be held in 'real' lists, like types, `object()`s, and dynamic objects.
