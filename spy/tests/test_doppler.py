@@ -354,6 +354,19 @@ class TestDoppler:
             `test::x` = 1
         """)
 
+    def test_blue_if(self):
+        self.redshift("""
+        def foo() -> i32:
+            if True:
+                return 1
+            else:
+                return 0
+        """)
+        self.assert_dump("""
+        def foo() -> i32:
+            return 1
+        """)
+
     def test_format_prebuilt_exception(self):
         fname = str(self.tmpdir.join("test.spy"))
         self.redshift("""
