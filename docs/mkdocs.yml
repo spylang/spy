@@ -45,12 +45,14 @@ markdown_extensions:
   - toc:
       permalink: true
   - def_list
+  - mkdocs-typer
 
 nav:
   - Home: index.md
   - contributing.md
   - Language features:
     - howto/main_function.md
+    - howto/cli.md
   - API Reference:
     - api_reference/python_builtins.md
   - Unsorted notes:
