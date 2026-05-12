@@ -316,7 +316,6 @@ class AbstractFrame:
         )
         # create the w_func
         fqn = self.ns.join(funcdef.name)
-        fqn = self.vm.get_unique_FQN(fqn)
         # XXX we should capture only the names actually used in the inner func
         closure = self.closure + (self.locals,)
 
@@ -326,8 +325,14 @@ class AbstractFrame:
         # confusion. The solution is that in presence of decorators, we use
         # FQN("mod::foo#__bare__") as the name of the function, to make it
         # clear is the undecorated version.
+        #
+        # We must append "#__bare__" BEFORE calling get_unique_FQN, otherwise
+        # when the same FuncDef is re-entered (e.g. multiple instantiations of
+        # an enclosing @blue.generic) we'd get the un-suffixed FQN as "unique"
+        # and then collide on the suffixed version.
         if funcdef.decorators:
             fqn = fqn.with_suffix("__bare__")
+        fqn = self.vm.get_unique_FQN(fqn)
 
         defaults_w = [self.eval_expr(d).w_val for d in funcdef.defaults]
         w_func: W_Object = W_ASTFunc(

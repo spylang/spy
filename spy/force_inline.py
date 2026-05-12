@@ -158,6 +158,9 @@ class AlphaRenamer:
             args=[self.rename_expr(a) for a in expr.args],
         )
 
+    def rename_expr_Tuple(self, expr: ast.Tuple) -> ast.Expr:
+        return expr.replace(items=[self.rename_expr(i) for i in expr.items])
+
     def rename_expr_AssignExprLocal(self, expr: ast.AssignExprLocal) -> ast.Expr:
         new_target = expr.target.replace(value=f"{expr.target.value}{self.suffix}")
         return expr.replace(target=new_target, value=self.rename_expr(expr.value))
