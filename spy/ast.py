@@ -121,6 +121,12 @@ class Node:
         for node in self.get_children():
             yield from node.walk(cls)
 
+    def walk_postorder(self, cls: Optional[type] = None) -> Iterator["Node"]:
+        for node in self.get_children():
+            yield from node.walk_postorder(cls)
+        if cls is None or isinstance(self, cls):
+            yield self
+
     def get_children(self) -> Iterator["Node"]:
         for f in self.__dataclass_fields__.values():
             value = getattr(self, f.name)
@@ -151,6 +157,19 @@ class Node:
         Return None to use just the class name.
         """
         return None
+
+    def assert_fully_typed(self, extra_msg: str = "") -> None:
+        """
+        Check that all Expr descendants (including self, if it is an Expr)
+        have a non-None w_T. Raise an Exception otherwise.
+        """
+        for node in self.walk(Expr):
+            assert isinstance(node, Expr)
+            if node.w_T is None:
+                msg = f"Node `{node.__class__.__name__}` is untyped"
+                if extra_msg:
+                    msg = f"{msg}: {extra_msg}"
+                raise Exception(msg)
 
     def visit(self, prefix: str, visitor: Any, *args: Any) -> None:
         """
@@ -321,6 +340,12 @@ class StrConst(Expr):
 
     def shortrepr(self) -> Optional[str]:
         return repr(self.value)
+
+    def as_typed_node(self) -> "StrConst":
+        from spy.vm.b import B
+
+        assert self.w_T is None
+        return self.replace(w_T=B.w_str)
 
 
 @astnode
@@ -772,4 +797,25 @@ class AssignExprCell(Expr):
     precedence = 0
     target: StrConst
     target_fqn: FQN
+    value: Expr
+
+
+@astnode
+class BlockExpr(Expr):
+    """
+    A block of stmts which evaluates to a single Expr.
+
+    This Node is mostly produced by ASTFrame and Doppler as an internal IR node.
+
+    For testing purposes, you can use the special __block__ function:
+
+    myvar = __block__('''
+            x = 1
+            x += 3
+            x
+            ''')
+    """
+
+    precedence = 100
+    body: list[Stmt]
     value: Expr

@@ -215,7 +215,9 @@ class W_StructType(W_Type):
         params = [FuncParam(self, "simple"), FuncParam(self, "simple")]
         w_functype = W_FuncType.new(params, w_restype=B.w_bool)
         fqn = self.fqn.join(name)
-        return W_ASTFunc(w_functype, fqn, funcdef, closure=(), defaults_w=[])
+        return W_ASTFunc(
+            w_functype, fqn, funcdef, closure=(), defaults_w=[], lowering_stage="source"
+        )
 
     def repr_hints(self) -> list[str]:
         return super().repr_hints() + ["struct"]

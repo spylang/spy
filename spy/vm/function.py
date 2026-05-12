@@ -234,6 +234,8 @@ class W_Func(W_Object):
         # this is a hack, but good enough to constant-fold arithmetic ops and other
         # selected ops.
         is_op = self.fqn.modname == "operator" and self.fqn.symbol_name != "raise"
+        if isinstance(self, W_BuiltinFunc) and self._is_pure:
+            return True
         return is_op or self.fqn in self._pure_fqns
 
     _pure_fqns = {
@@ -333,19 +335,30 @@ class W_Func(W_Object):
         return w_opspec
 
 
+# =========== W_ASTFunc and compilation stages ========
+#
+# W_ASTFunc start at the "source" stage. The various compilation passes create new
+# versions of the function. Once a function has been lowered it becomes "invalid", and
+# we set the `w_replaced_by` field.
+
+LoweringStage = Literal["source", "redshift_in_progress", "redshift", "linearize"]
+
+
 class W_ASTFunc(W_Func):
     funcdef: ast.FuncDef
     closure: CLOSURE
     defaults_w: list[W_Object]
 
-    # types of local variables: this is non-None IIF the function has been
-    # redshifted.
+    # types of local variables: present only after redshifting
     locals_types_w: Optional[dict[str, W_Type]]
 
-    # if the function has been redshifted, this contains the NEW function, and
-    # the current one becomes invalid (not ensure we don't execute it by
-    # mistake).
-    w_redshifted_into: Optional["W_ASTFunc"]
+    # if the function has been lowered, this contains the NEW function, and the current
+    # one becomes invalid
+    lowering_stage: LoweringStage
+    w_replaced_by: Optional["W_ASTFunc"]
+
+    # set by the @force_inline decorator
+    is_force_inline: bool
 
     def __init__(
         self,
@@ -355,7 +368,9 @@ class W_ASTFunc(W_Func):
         closure: CLOSURE,
         defaults_w: list[W_Object],
         *,
+        lowering_stage: LoweringStage,
         locals_types_w: Optional[dict[str, W_Type]] = None,
+        is_force_inline: bool = False,
     ) -> None:
         self.w_functype = w_functype
         self.fqn = fqn
@@ -364,30 +379,46 @@ class W_ASTFunc(W_Func):
         self.closure = closure
         self.defaults_w = defaults_w
         self.locals_types_w = locals_types_w
-        self.w_redshifted_into = None
+        self.lowering_stage = lowering_stage
+        self.w_replaced_by = None
+        self.is_force_inline = is_force_inline
 
-    @property
-    def redshifted(self) -> bool:
-        return self.locals_types_w is not None
+        # sanity check
+        if lowering_stage in ("source", "redshift_in_progress"):
+            assert self.locals_types_w is None
+        else:
+            assert self.locals_types_w is not None
 
     @property
     def is_valid(self) -> bool:
         """
-        A function is valid if it has not been redshifted into something else.
+        A function is valid if it has not been replaced by something else.
         """
-        return self.w_redshifted_into is None
+        return self.w_replaced_by is None
 
-    def invalidate(self, w_func: "W_ASTFunc") -> None:
+    def replace_with(self, w_func: "W_ASTFunc") -> None:
         assert self.fqn == w_func.fqn
-        self.w_redshifted_into = w_func
+        assert self.w_replaced_by is None
+        self.w_replaced_by = w_func
+
+    def get_most_lowered_version(self) -> "W_ASTFunc":
+        w_func = self
+        while w_func.w_replaced_by is not None:
+            w_func = w_func.w_replaced_by
+        return w_func
 
     def __repr__(self) -> str:
+        extras = []
+        if self.color == "blue":
+            extras.append("blue")
+        stage = self.lowering_stage
+        if stage not in ("source", "redshift_in_progress"):
+            extras.append(stage)
         if not self.is_valid:
-            extra = " (invalid)"
-        elif self.redshifted:
-            extra = " (redshifted)"
-        elif self.color == "blue":
-            extra = " (blue)"
+            extras.append("invalid")
+
+        if extras:
+            extra = " (" + ", ".join(extras) + ")"
         else:
             extra = ""
         return f"<spy function '{self.fqn}'{extra}>"
@@ -436,13 +467,21 @@ class W_BuiltinFunc(W_Func):
 
     pyfunc: Callable
 
-    def __init__(self, w_functype: W_FuncType, fqn: FQN, pyfunc: Callable) -> None:
+    def __init__(
+        self,
+        w_functype: W_FuncType,
+        fqn: FQN,
+        pyfunc: Callable,
+        *,
+        is_pure: bool = False,
+    ) -> None:
         self.w_functype = w_functype
         self.fqn = fqn
         self.def_loc = Loc.from_pyfunc(pyfunc)
         # _pyfunc should NEVER be called directly, because it bypasses the
         # bluecache
         self._pyfunc = pyfunc
+        self._is_pure = is_pure
 
     def __repr__(self) -> str:
         return f"<spy function '{self.fqn}' (builtin)>"

@@ -82,7 +82,9 @@ markers = [
     # compiler_backend
     "interp: use the 'interp' compiler backend",
     "doppler: use the 'doppler' compiler backend",
+    "linearize: like 'doppler', but also run the linearize pass",
     "C: use the 'C' compiler backend",
+    "native: use the 'C' backend to compile to native executable",
     "emscripten: use the 'C' backend and run via emscripten",
     "py-cffi: build cffi-based CPython extensions",
 

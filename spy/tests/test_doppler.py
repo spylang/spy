@@ -8,6 +8,7 @@ from spy.analyze.symtable import Color
 from spy.backend.spy import FQN_FORMAT, SPyBackend
 from spy.fqn import FQN
 from spy.util import print_diff
+from spy.vm.function import W_ASTFunc
 from spy.vm.vm import SPyVM
 
 
@@ -30,9 +31,23 @@ class TestDoppler:
         self.import_src(src)
         self.vm.redshift(error_mode="eager")
 
-    def assert_dump(self, expected: str, *, fqn_format: FQN_FORMAT = "short") -> None:
+    def assert_dump(
+        self,
+        expected: str,
+        *,
+        fqn_format: FQN_FORMAT = "short",
+        funcname: Optional[str] = None,
+    ) -> None:
         b = SPyBackend(self.vm, fqn_format=fqn_format)
-        got = b.dump_mod("test").strip()
+        if funcname is not None:
+            fqn = FQN(f"test::{funcname}")
+            w_func = self.vm.globals_w[fqn]
+            assert isinstance(w_func, W_ASTFunc)
+            b.modname = "test"
+            b.dump_w_func(fqn, w_func)
+            got = b.out.build().strip()
+        else:
+            got = b.dump_mod("test").strip()
         expected = textwrap.dedent(expected).strip()
         if got != expected:
             print_diff(expected, got, "expected", "got")
@@ -155,10 +170,8 @@ class TestDoppler:
             return x + 1
 
         def foo() -> i32:
-            x: i32
-            x = 0
-            y: i32
-            y = `test::inc`(x := 1)
+            x: i32 = 0
+            y: i32 = `test::inc`(x := 1)
             return x + y
         """)
 
@@ -179,12 +192,11 @@ class TestDoppler:
             pass
 
         def main() -> None:
-            x: i32
-            x = 0
+            x: i32 = 0
             `test::foo`(x := 1)
             `test::foo`(2)
-            print_i32(x)
-            print_i32(2)
+            `_print::println[i32]::p`(x)
+            `_print::println[str]::p`('2')
         """)
 
     def test_call_blue_closure(self):
@@ -226,7 +238,7 @@ class TestDoppler:
             `test::make_foo::foo`()
 
         def `test::make_foo::fn`() -> None:
-            print_str('fn')
+            `_print::println[str]::p`('fn')
 
         def `test::make_foo::foo`() -> None:
             `test::make_foo::fn`()
@@ -321,10 +333,8 @@ class TestDoppler:
         """)
         self.assert_dump("""
         def foo() -> None:
-            x: i32
-            x = `test::add[i32]::impl`(1, 2)
-            y: str
-            y = `test::add[str]::impl`('a', 'b')
+            x: i32 = `test::add[i32]::impl`(1, 2)
+            y: str = `test::add[str]::impl`('a', 'b')
 
         def `test::add[i32]::impl`(x: i32, y: i32) -> i32:
             return x + y
@@ -423,3 +433,110 @@ class TestDoppler:
 
         dumper._dump_node(blue_node, "test", [], text_color="turquoise")
         mock_write.assert_any_call("test", color=None, bg="blue")
+
+    def test_force_inline_not_dumped(self):
+        self.redshift("""
+        from __spy__ import force_inline
+
+        @force_inline
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        def foo() -> i32:
+            return inc(10)
+        """)
+        expected = """
+        def foo() -> i32:
+            return __block__(x$0: i32 = 10; x$0 + 1)
+        """
+        self.assert_dump(expected)
+
+    def test_force_inline_replaces_call(self):
+        self.redshift("""
+        from __spy__ import force_inline
+
+        @force_inline
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        def foo() -> i32:
+            return inc(10)
+        """)
+        expected = """
+        def foo() -> i32:
+            return __block__(x$0: i32 = 10; x$0 + 1)
+        """
+        self.assert_dump(expected, funcname="foo")
+
+    def test_force_inline_multiple_sites_unique_names(self):
+        self.redshift("""
+        from __spy__ import force_inline
+
+        @force_inline
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        def foo(a: i32, b: i32) -> i32:
+            return inc(a) + inc(b)
+        """)
+        expected = """
+        def foo(a: i32, b: i32) -> i32:
+            return __block__(x$0: i32 = a; x$0 + 1) + __block__(x$1: i32 = b; x$1 + 1)
+        """
+        self.assert_dump(expected, funcname="foo")
+
+    def test_force_inline_in_metafunc(self):
+        # see also test_force_inline.py:test_metafunc
+        self.redshift("""
+        from __spy__ import force_inline
+        from operator import OpSpec
+
+        @blue.metafunc
+        def double(m_x):
+            @force_inline
+            def impl(x: i32) -> i32:
+                return x + x
+            return OpSpec(impl)
+
+        def foo() -> i32:
+            return double(21)
+        """)
+        expected = """
+        def foo() -> i32:
+            return __block__(x$0: i32 = 21; x$0 + x$0)
+        """
+        self.assert_dump(expected, funcname="foo")
+
+    def test_nested_force_inline(self):
+        self.redshift("""
+        from __spy__ import force_inline
+
+        @force_inline
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        @force_inline
+        def add2(x: i32) -> i32:
+            return inc(inc(x))
+
+        def foo() -> i32:
+            return add2(10)
+        """)
+        expected = """
+        def foo() -> i32:
+            return __block__(x$0: i32 = 10; __block__(x$1$0: i32 = __block__(x$0$0: i32 = x$0; x$0$0 + 1); x$1$0 + 1))
+        """
+        self.assert_dump(expected, funcname="foo")
+
+    def test_pure_builtin_method(self):
+        self.redshift("""
+        def foo() -> str:
+            return str(True)
+        """)
+        self.assert_dump(
+            """
+        def foo() -> str:
+            return 'True'
+        """,
+            funcname="foo",
+        )

@@ -10,16 +10,6 @@ int32_t WASM_EXPORT(spy_builtins$min)(int32_t x, int32_t y);
 
 int32_t WASM_EXPORT(spy_builtins$max)(int32_t x, int32_t y);
 
-void WASM_EXPORT(spy_builtins$print_i32)(int32_t x);
-
-void WASM_EXPORT(spy_builtins$print_f64)(double x);
-
-void WASM_EXPORT(spy_builtins$print_bool)(bool x);
-
-void WASM_EXPORT(spy_builtins$print_NoneType)(void);
-
-void WASM_EXPORT(spy_builtins$print_str)(spy_Str *s);
-
 static inline int32_t
 spy_builtins$hash_i8(int8_t x) {
     if (x == -1) {

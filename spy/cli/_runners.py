@@ -92,14 +92,13 @@ def execute_spy_main(
     w_restype, has_args = vm.typecheck_main(w_main)
     has_exit_code = w_restype == B.w_i32
 
-    # find the redshifted version, if necessary
+    # find the most lowered version, if necessary
     if redshift:
         assert not w_main.is_valid
-        assert w_main.w_redshifted_into is not None
-        w_main = w_main.w_redshifted_into
-        assert w_main.redshifted
+        w_main = w_main.get_most_lowered_version()
+        assert w_main.lowering_stage != "source"
     else:
-        assert not w_main.redshifted
+        assert w_main.lowering_stage == "source"
 
     # build argument list for the call
     args_w: list[W_Object] = []

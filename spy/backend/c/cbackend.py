@@ -167,6 +167,7 @@ class CBackend:
         """
         Convert all non-builtins modules into .c files
         """
+        self.vm.linearize_all()
         self.split_fqns()
 
         # Emit structdefs.h
@@ -224,6 +225,7 @@ class CBackend:
                 if (
                     isinstance(w_obj, W_ASTFunc)
                     and w_obj.color == "red"
+                    and not w_obj.is_force_inline
                     or isinstance(w_obj, W_Cell)
                 )
             ]

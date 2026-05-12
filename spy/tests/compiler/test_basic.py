@@ -22,9 +22,9 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 42
         if self.backend == "interp":
-            assert not mod.foo.w_func.redshifted
+            assert mod.foo.w_func.lowering_stage == "source"
         elif self.backend == "doppler":
-            assert mod.foo.w_func.redshifted
+            assert mod.foo.w_func.lowering_stage == "redshift"
 
     def test_return_None(self):
         mod = self.compile("""
@@ -988,48 +988,6 @@ class TestBasic(CompilerTest):
         """)
         assert mod.bar() == 20
 
-    def test_print(self, capfd):
-        mod = self.compile("""
-        def foo() -> None:
-            print("hello world")
-            print(42)
-            print(12.3)
-            print(True)
-            print(None)
-            print(i32)
-        """)
-        mod.foo()
-        if self.backend == "C":
-            # NOTE: float formatting is done by printf and it's different than
-            # the one that we get by Python in interp-mode. Too bad for now.
-            s_123 = "12.300000"
-            mod.ll.call("spy_flush")
-        else:
-            s_123 = "12.3"
-        out, err = capfd.readouterr()
-        assert out == "\n".join(
-            [
-                "hello world",
-                "42",
-                s_123,
-                "True",
-                "None",
-                "<spy type 'i32'>",
-                "",
-            ]
-        )
-
-    @no_C
-    def test_print_object(self, capfd):
-        mod = self.compile("""
-        def foo() -> None:
-            x = i32   # force i32 to be a red value
-            print(x)
-        """)
-        mod.foo()
-        out, err = capfd.readouterr()
-        assert out == "<spy type 'i32'>\n"
-
     def test_deeply_nested_closure(self, capfd):
         mod = self.compile("""
         x0 = 0
@@ -1665,3 +1623,18 @@ class TestBasic(CompilerTest):
             ("function defined here", "def add(x: int, y: int = 1) -> int"),
         )
         self.compile_raises(src, "foo", errors)
+
+    def test_void_local(self):
+        src = """
+        var N: i32 = 0
+
+        def bar() -> None:
+            N = N + 1
+
+        def foo() -> i32:
+            x = bar()
+            y = x
+            return N
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 1

@@ -160,6 +160,7 @@ graph TD
     SYMAST["SPy AST + symtable"]
     SPyVM["SPyVM"]
     REDSHIFTED["Redshifted AST"]
+    LINEARIZED["Linearized AST"]
     OUT["Output"]
     C["C Source (.c)"]
     EXE_NAT["Native exe"]
@@ -170,7 +171,8 @@ graph TD
     SRC -- pyparse --> PYAST -- parse --> AST -- ScopeAnalyzer --> SYMAST
     SYMAST -- import --> SPyVM -- execute --> OUT
     SPyVM -- redshift --> REDSHIFTED -- execute --> OUT
-    REDSHIFTED -- cwrite --> C
+    REDSHIFTED -- linearize --> LINEARIZED
+    LINEARIZED -- cwrite --> C
     C -- ninja --> EXE_NAT -- execute --> OUT
     C -- ninja --> EXE_WASI -- execute --> OUT
     C -- ninja --> EXE_EM -- execute --> OUT

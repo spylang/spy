@@ -6,9 +6,14 @@ The first half is in vm/b.py. See its docstring for more details.
 
 from typing import TYPE_CHECKING
 
+from spy import ast
+from spy.analyze.scope import ScopeAnalyzer
 from spy.errors import SPyError
+from spy.fqn import FQN
+from spy.location import Loc
 from spy.vm.b import BUILTINS, TYPES, B
-from spy.vm.function import W_FuncType
+from spy.vm.function import FuncParam, W_ASTFunc, W_Func, W_FuncType
+from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_list import (
     W_StrInterpList,
     make_str_interp_list,
@@ -16,13 +21,11 @@ from spy.vm.modules.__spy__.interp_list import (
 )
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opspec import W_MetaArg, W_OpSpec
-from spy.vm.primitive import W_F64, W_I8, W_I32, W_U8, W_Bool, W_Dynamic, W_NoneType
+from spy.vm.primitive import W_F64, W_I8, W_I32, W_U8, W_Bool
 from spy.vm.str import W_Str
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-
-PY_PRINT = print  # type: ignore
 
 
 @BUILTINS.builtin_func(color="blue", kind="metafunc")
@@ -54,72 +57,104 @@ def w_min(vm: "SPyVM", w_x: W_I32, w_y: W_I32) -> W_I32:
 
 
 @BUILTINS.builtin_func(color="blue", kind="metafunc")
-def w_print(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
-    w_T = wam_obj.w_static_T
-    if w_T is B.w_i32:
-        return W_OpSpec(B.w_print_i32)
-    elif w_T is B.w_f64:
-        return W_OpSpec(B.w_print_f64)
-    elif w_T is B.w_bool:
-        return W_OpSpec(B.w_print_bool)
-    elif w_T is TYPES.w_NoneType:
-        return W_OpSpec(B.w_print_NoneType)
-    elif w_T is B.w_str:
-        return W_OpSpec(B.w_print_str)
-    elif w_T is B.w_dynamic:
-        return W_OpSpec(B.w_print_dynamic)
+def w_print(vm: "SPyVM", *args_wam: W_MetaArg) -> W_OpSpec:
+    vm.import_("_print")
+    w_print1 = vm.lookup_global(FQN("_print::print1"))
+    w_println = vm.lookup_global(FQN("_print::println"))
 
-    elif wam_obj.color == "blue":
-        # if we print something of unsupported type BUT it's a blue object, we
-        # can precompute its repr now and just print it as a string. This
-        # allows to print things like types even with the C backend.
-        wam_s = vm.str_wam(wam_obj, loc=wam_obj.loc)
-        return W_OpSpec(w_print_str, [wam_s])
+    # Blue args are eagerly str()'d so that e.g. `print(int)` works even when
+    # the type isn't supported by the C backend. Non-last args use print1[T];
+    # the last arg uses println[T].
+    new_args_wam: list[W_MetaArg] = []
+    for wam in args_wam:
+        if wam.color == "blue":
+            wam_s = vm.str_wam(wam, loc=wam.loc)
+            if wam_s.color != "blue":
+                wam_s = W_MetaArg.from_w_obj(vm, wam_s.w_val, loc=wam.loc)
+            new_args_wam.append(wam_s)
+        else:
+            new_args_wam.append(wam)
 
-    else:
-        # printing a red value of unsupported type. As a fallback, we just use
-        # w_print_object, but this will not work in the C backend.
-        return W_OpSpec(B.w_print_object)
+    if len(new_args_wam) == 0:
+        # print() with no args: equivalent to println("")
+        new_args_wam.append(W_MetaArg.from_w_obj(vm, vm.wrap("")))
 
-    t = w_T.fqn.human_name
-    raise SPyError.simple(
-        "W_TypeError", f"cannot call print(`{t}`)", f"this is `{t}`", wam_obj.loc
+    if len(new_args_wam) == 1:
+        # single arg: equivalent to println[T](arg)
+        wam = new_args_wam[0]
+        w_impl = vm.getitem_w(w_println, wam.w_static_T)
+        assert isinstance(w_impl, W_Func)
+        return W_OpSpec(w_impl, [wam])
+
+    # generic case: for e.g. print(a, b, c) we synthesise an ASTFunc like this:
+    #     @force_inline
+    #     def impl(a: T1, b: T2, c: T3) -> None:
+    #         print1[T1](a)
+    #         print1[T2](b)
+    #         println[T3](c)
+    func_args: list[ast.FuncArg] = []
+    params: list[FuncParam] = []
+    body: list[ast.Stmt] = []
+    n = len(new_args_wam)
+    for i, wam in enumerate(new_args_wam):
+        loc = wam.loc
+        w_T = wam.w_static_T
+        arg_name = f"arg{i}"
+        func_args.append(
+            ast.FuncArg(loc, arg_name, ast.FQNConst(loc, w_T.fqn), "simple")
+        )
+        params.append(FuncParam(w_T, "simple"))
+        # print1[T] for non-last args; println[T] for the last one
+        w_print_func = w_println if i == n - 1 else w_print1
+        w_impl = vm.getitem_w(w_print_func, w_T)
+        assert isinstance(w_impl, W_Func)
+        body.append(
+            ast.StmtExpr(
+                loc,
+                ast.Call(
+                    loc,
+                    ast.FQNConst(loc, w_impl.fqn),
+                    [ast.Name(loc, arg_name)],
+                ),
+            )
+        )
+
+    loc = Loc.here()
+    body.append(ast.Return(loc, ast.Constant(loc, None)))
+
+    fqn = FQN("_print::print::impl")
+    fqn = vm.get_unique_FQN(fqn)
+    funcdef = ast.FuncDef(
+        loc=loc,
+        color="red",
+        kind="plain",
+        name="print",
+        args=func_args,
+        return_type=ast.FQNConst(loc, TYPES.w_NoneType.fqn),
+        defaults=[],
+        docstring=None,
+        body=body,
+        decorators=[],
     )
-
-
-@BUILTINS.builtin_func
-def w_print_i32(vm: "SPyVM", w_x: W_I32) -> None:
-    PY_PRINT(vm.unwrap(w_x))
-
-
-@BUILTINS.builtin_func
-def w_print_f64(vm: "SPyVM", w_x: W_F64) -> None:
-    PY_PRINT(vm.unwrap(w_x))
-
-
-@BUILTINS.builtin_func
-def w_print_bool(vm: "SPyVM", w_x: W_Bool) -> None:
-    PY_PRINT(vm.unwrap(w_x))
-
-
-@BUILTINS.builtin_func
-def w_print_NoneType(vm: "SPyVM", w_x: W_NoneType) -> None:
-    PY_PRINT(vm.unwrap(w_x))
-
-
-@BUILTINS.builtin_func
-def w_print_str(vm: "SPyVM", w_x: W_Str) -> None:
-    PY_PRINT(vm.unwrap(w_x))
-
-
-@BUILTINS.builtin_func
-def w_print_dynamic(vm: "SPyVM", w_x: W_Dynamic) -> None:
-    PY_PRINT(vm.unwrap(w_x))
-
-
-@BUILTINS.builtin_func
-def w_print_object(vm: "SPyVM", w_x: W_Object) -> None:
-    PY_PRINT(str(w_x))
+    module = ast.Module(
+        loc=loc,
+        filename="<generated>",
+        docstring=None,
+        decls=[ast.GlobalFuncDef(loc, funcdef)],
+    )
+    ScopeAnalyzer("_print", module).analyze()
+    w_functype = W_FuncType.new(params, w_restype=TYPES.w_NoneType)
+    w_func = W_ASTFunc(
+        w_functype,
+        fqn,
+        funcdef,
+        closure=(),
+        defaults_w=[],
+        lowering_stage="source",
+        is_force_inline=True,
+    )
+    vm.add_global(fqn, w_func)
+    return W_OpSpec(w_func, new_args_wam)
 
 
 @BUILTINS.builtin_func(color="blue", kind="metafunc")
@@ -234,6 +269,20 @@ def w_getattr(vm: "SPyVM", wam_obj: W_MetaArg, wam_name: W_MetaArg) -> W_OpSpec:
     name = wam_name.blue_unwrap_str(vm)
 
     @vm.register_builtin_func("builtins", "getattr", [name])
+    def w_fn(vm: "SPyVM", w_obj: W_Object, w_name: W_Str) -> W_Object:
+        assert False, (
+            "this function shouldn't be called, it's special cased by astframe"
+        )
+
+    return W_OpSpec(w_fn)
+
+
+@BUILTINS.builtin_func(color="blue", kind="metafunc")
+def w_hasattr(vm: "SPyVM", wam_obj: W_MetaArg, wam_name: W_MetaArg) -> W_OpSpec:
+    # ensure that wam_name is blue; raise TypeError if not
+    name = wam_name.blue_unwrap_str(vm)
+
+    @vm.register_builtin_func("builtins", "hasattr", [name])
     def w_fn(vm: "SPyVM", w_obj: W_Object, w_name: W_Str) -> W_Object:
         assert False, (
             "this function shouldn't be called, it's special cased by astframe"
