@@ -206,3 +206,6 @@ CLAUDE.local.md
 /playground/*.whl
 /playground/assets/
 /playground/*.spy
+
+# pixi environments
+.pixi/*
