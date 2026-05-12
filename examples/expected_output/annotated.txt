@@ -1,6 +1,6 @@
 MyInt.T, MyInt.extra:
 <spy type 'i32'>
-W_InterpTuple([W_Str('hello')])
+<spy `__spy__::interp_tuple` object at <ADDR>>
 
 converting MyInt to type:
 <spy type 'i32'>
