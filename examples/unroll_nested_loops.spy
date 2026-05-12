@@ -1,0 +1,106 @@
+"""
+Programmatically generate a nested loop of arbitrary depth.
+
+Given a SHAPE tuple of length N (known at compile time), we want to iterate
+over all the N-dimensional indices it describes, e.g. for SHAPE == (3, 2) the
+indices are (0,0), (0,1), (1,0), (1,1), (2,0), (2,1).
+
+The tricky part is that N is not fixed: we want to write the code once and let
+the compiler specialize it to a specific SHAPE. This example demonstrates how
+to do that in SPy by combining two features:
+
+  - `@blue.generic` for compile-time specialization on blue arguments;
+  - `@force_inline` so that doppler physically inlines each level of
+    recursion into the caller, leaving a flat nest of real `for` loops with
+    no residual function calls.
+
+The blue recursion in `nested_loop` terminates when we reach `k == len(shape)` and
+return `inner`.
+
+Run `spy redshift examples/unroll_nested_loops.spy` to see the generated code.
+
+For SHAPE == (3, 2) is equivalent to:
+
+    def ndindex() -> None:
+        idx = []
+        for i0 in range(3):
+            idx0 = idx + [i0]
+            for i1 in range(2):
+                idx1 = idx0 + [i1]
+                print_idx(idx1)
+
+The actual output is pretty ugly though. The following is a manually edited version to
+underline the important part, i.e. the two nested `while` loops:
+
+❯ spy rs --linearize examples/unroll_nested_loops.spy
+
+def ndindex() -> None:
+    idx: ... = `_list::list[i32]::new`()
+    [...]
+    _$iter0$0: ... = `_range::range::__fastiter__`($v2)
+    while `_range::range_iterator::__continue_iteration__`(_$iter0$0):
+        [...]
+        _$iter0$0$0: ... = `_range::range::__fastiter__`($v9)
+        while `_range::range_iterator::__continue_iteration__`(_$iter0$0$0):
+            [...]
+            `unroll_nested_loops::print_idx`(idx$0$0$0)
+"""
+
+from __spy__ import force_inline
+
+
+SHAPE = (3, 2)
+
+
+def print_idx(idx: list[int]) -> None:
+    """
+    Just a workaround because we cannot do print(*idx) yet
+    """
+    s = ""
+    first = True
+    for i in idx:
+        if first:
+            s = str(i)
+            first = False
+        else:
+            s = s + " " + str(i)
+    print(s)
+
+
+@blue.generic
+def nested_loop(shape, k):
+    """
+    Generate the body of the k-th level of the loop nest.
+
+    When k == len(shape) we hit the base case and emit the loop body.
+    Otherwise we emit a `for` loop over range(shape[k]) whose body recursively
+    calls `nested_loop[shape, k+1]` -- which, being blue, is resolved at
+    compile time into the next level.
+    """
+    if k == len(shape):
+
+        @force_inline
+        def inner(idx: list[int]) -> None:
+            # here we should do something with the given element. Just print the indices
+            # for demo purposes
+            print_idx(idx)
+
+        return inner
+
+    else:
+
+        @force_inline
+        def loop(idx: list[int]) -> None:
+            for i in range(shape[k]):
+                nested_loop[shape, k + 1](idx + [i])
+
+        return loop
+
+
+def ndindex() -> None:
+    idx: list[int] = []
+    nested_loop[SHAPE, 0](idx)
+
+
+def main() -> None:
+    ndindex()
