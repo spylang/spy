@@ -5,6 +5,7 @@ test
 
 ::: mkdocs-typer
     :module: spy.cli.cli
-    :command: execute
+    :command: app
+    :depth: 1
 
 Foo
