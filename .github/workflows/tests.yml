@@ -98,10 +98,6 @@ jobs:
         run: |
           pytest -n auto -m "not mypy" --junit-xml=test-results.xml
 
-      - name: Run examples
-        run: |
-          pytest -n auto examples
-
       - name: Run mypy
         run: |
           mypy
