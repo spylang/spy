@@ -1,0 +1,6 @@
+MyInt.T, MyInt.extra:
+<spy type 'i32'>
+W_InterpTuple([W_Str('hello')])
+
+converting MyInt to type:
+<spy type 'i32'>

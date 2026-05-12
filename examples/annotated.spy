@@ -1,4 +1,5 @@
 from operator import OpSpec
+from __spy__ import interp_tuple
 
 
 @blue.generic
@@ -10,7 +11,7 @@ def Annotated(_T: type, *_extra):
             return _T
 
         @property
-        def extra(self) -> tuple:
+        def extra(self) -> interp_tuple:
             return _extra
 
         @blue.metafunc
