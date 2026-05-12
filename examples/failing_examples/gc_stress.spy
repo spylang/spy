@@ -1,5 +1,6 @@
 # -*- mode: python -*-
 
+from __spy__ import is_compiled
 from unsafe import gc_alloc, gc_ptr
 
 # This example repeatedly allocates large buffers and discards them.
@@ -24,7 +25,14 @@ def allocate_and_discard(size: i32, iterations: i32) -> i32:
 
 
 def main() -> None:
-    # Each iteration allocates 1M i32s = 4 MB
-    # 500 iterations = 2 GB total allocated
-    result = allocate_and_discard(1000000, 500)
+    if is_compiled():
+        # Each iteration allocates 1M i32s = 4 MB
+        # 500 iterations = 2 GB total allocated
+        size = 1000000
+        N = 500
+    else:
+        size = 100
+        N = 5
+
+    result = allocate_and_discard(size, N)
     print(result)
