@@ -25,7 +25,7 @@ For a deeper explanation of the current state of SPy's coloring nomenclature, se
 ### __@blue__
 :   Declares that a function should be executed at [redshift time](https://antocuni.eu/2025/10/29/inside-spy-part-1-motivations-and-goals/#redshifting); that is, at the point when method and function lookups are resolved, and prior to compilation to C or WASM, if any.
 
-:   `@blue` decorated functions are not required to specify types for their parameters, nor are they required to specify return types.
+:   type annotations for `@blue` functions are optional. If omitted, the arguments and return types default to `dynamic`.
 
 : In this example, the two blue functions are evaluated during redshift time, and the emitted C code is just a print statement of a constant number.
 
@@ -48,9 +48,7 @@ def main() -> None:
 ```
 
 ### __@blue.generic__
-:   Denotes that the decorated function accepts a type as its first argument. Generic functions should return a function object.
-
-:   Generic functions are called using the spy-specific syntax `func[type](args)`.
+:   Functions decorated with `@blue.generic` are called using square brackets `[]` instead of parentheses `()`. Other than that, they are identical to other blue functions. While they may be used anywhere, the primary purposes is to allow the creation of functions that look like [PEP 695](https://peps.python.org/pep-0695/) functions with type parameters:
 
 ```python
   @blue.generic
