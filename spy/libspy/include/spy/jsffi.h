@@ -63,6 +63,8 @@ static inline double jsval_payload(JsVal v) {
     }
 }
 
+// workaround since SPy emits spy_jsffi$JsVal instead of just JsVal
+typedef JsVal spy_jsffi$JsVal;
 
 // jsffi C interface
 JsRef WASM_EXPORT(jsffi_debug)(const char *ptr);
