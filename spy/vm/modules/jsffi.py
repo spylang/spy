@@ -87,9 +87,9 @@ class W_JsRef(W_Object):
     ) -> W_OpSpec:
         w_expT = wam_expT.w_blueval
         if w_expT is B.w_i32:
-            return W_OpSpec(JSFFI.w_js_to_f64)
-        elif w_expT is B.w_f64:
             return W_OpSpec(JSFFI.w_js_to_i32)
+        elif w_expT is B.w_f64:
+            return W_OpSpec(JSFFI.w_js_to_f64)
         elif w_expT is W_JsVal._w:
             return W_OpSpec(JSFFI.w_jsval_from_jsref)
         else:
