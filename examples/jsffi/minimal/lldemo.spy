@@ -1,0 +1,37 @@
+import operator
+
+from jsffi import init as js_init
+from jsffi import JsRef, get_GlobalThis, get_Console, js_call_method_1
+from jsffi import jsval_from_jsref, jsval_from_str, jsval_from_func
+
+var counter: i32 = 0
+
+
+def onclick() -> None:
+    counter = counter + 1
+    window = get_GlobalThis()
+    document = window.document
+    message = js_call_method_1(
+        document,
+        "getElementById",
+        jsval_from_str("message"),
+    )
+    message.innerText = jsval_from_str(operator.str_add("onclick ", str(counter)))
+
+
+def main() -> None:
+    js_init()
+    window = get_GlobalThis()
+    console = get_Console()
+    document = window.document
+
+    js_call_method_1(console, "log", jsval_from_str("Hello SPy"))
+    div_title = js_call_method_1(document, "getElementById", jsval_from_str("title"))
+    js_call_method_1(console, "log", jsval_from_jsref(div_title))
+    div_message = js_call_method_1(
+        document, "getElementById", jsval_from_str("message")
+    )
+    btn = js_call_method_1(document, "getElementById", jsval_from_str("btn"))
+
+    div_title.innerText = jsval_from_str("Hello HTML from SPy")
+    btn.onclick = jsval_from_func(onclick)

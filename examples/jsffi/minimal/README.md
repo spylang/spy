@@ -9,7 +9,7 @@ This example shows:
   - and how to call spy code from JS
 
 **WARNING**: the `jsffi` module is just a proof of concept: it's incomplete, probably
-buggy, and has the minimum amout of logic which is needed to run this demo, nothing
+buggy, and has the minimum amount of logic which is needed to run this demo, nothing
 mode.
 
 ## How to compile and run
@@ -17,7 +17,7 @@ mode.
 Compile `demo.spy` for emscripten:
 
 ```
-❯ spy --compile --target emscripten demo.spy
+❯ spy build --target emscripten demo.spy
 [debug] build/demo.mjs
 ```
 
@@ -39,7 +39,7 @@ Serving HTTP on 0.0.0.0 port 8000 (http://0.0.0.0:8000/) ...
 `lldemo.spy` shows how to call low-level JSFFI functions directly. It's not meant to be
 useful, but to show how the high-level JSFFI operations are turned into low-level calls.
 
-You can compile it with `spy --compile --target emscripten lldemo.spy`. To run it, edit
+You can compile it with `spy build --target emscripten lldemo.spy`. To run it, edit
 the file `index.html` and change the `<script>` tag.
 
 `raw_c_demo.c` shows the same code but written directly in C.
