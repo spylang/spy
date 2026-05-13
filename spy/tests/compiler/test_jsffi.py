@@ -160,7 +160,7 @@ class TestJsFFI(CompilerTest):
             print(x)
         """)
         out = exe.run()
-        assert out == "3.140000\n"
+        assert out == "3.14\n"
 
     def test_u8array_from_ptr(self):
         exe = self.compile("""
