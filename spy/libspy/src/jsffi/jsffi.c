@@ -12,14 +12,16 @@ EM_JS(JsRef, jsffi_debug, (const char *ptr), {
 });
 
 EM_JS(int32_t, jsffi_debug_n_jsrefs, (void), {
-    let n = Object.keys(jsffi.objects).length;
-    console.log("Number of JsRef", n);
+    // subtract 7 for the reserved singleton slots (0-6)
+    let n = Object.keys(jsffi.objects).length - 7;
+    console.log("Number of live JsRef", n);
     return n;
 });
 
 EM_JS(void, jsffi_init, (void), {
     let jsffi = {
-        objects: {}
+        objects: {},
+        next_id: 7  // 0-6 are reserved for well-known singletons
     };
     globalThis.jsffi = jsffi;
     jsffi.objects[0] = globalThis;
@@ -44,10 +46,10 @@ EM_JS(void, jsffi_init, (void), {
         if (jsval === null)      return 4;
         if (jsval === true)      return 5;
         if (jsval === false)     return 6;
-        let n = Object.keys(jsffi.objects).length;
+        let id = jsffi.next_id++;
         // console.log(`to_jsref, jsval: ${ jsval }`);
-        jsffi.objects[n] = jsval;
-        return n;
+        jsffi.objects[id] = jsval;
+        return id;
     };
 
     jsffi.from_jsval = function(tag, val) {
