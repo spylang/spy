@@ -168,7 +168,7 @@ def w_js_i32(vm: "SPyVM", w_i: W_I32) -> W_JsRef:
 
 
 @JSFFI.builtin_func
-def w_js_f64(vm: "SPyVM", w_i: W_F64) -> W_JsRef:
+def w_js_f64(vm: "SPyVM", w_x: W_F64) -> W_JsRef:
     raise NotImplementedError
 
 
