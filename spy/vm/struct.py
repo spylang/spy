@@ -307,16 +307,13 @@ class W_Struct(W_Object):
         return ("struct", self.w_structtype.spy_key(vm)) + tuple(values_key)
 
     def spy_unwrap(self, vm: "SPyVM") -> Any:
-        fqn = self.w_structtype.fqn
-
-        # hack hack hack, as we don't have a better way to check whether w_T is a 'list'
-        is_list = str(fqn).startswith("_list::list[")
-        if is_list:
+        if vm.is_list_type(self.w_structtype):
             return unwrap_list(vm, self)
 
-        is_dict = str(fqn).startswith("_dict::dict[")
-        if is_dict:
+        if vm.is_dict_type(self.w_structtype):
             return unwrap_dict(vm, self)
+
+        fqn = self.w_structtype.fqn
 
         fields = {key: w_obj.spy_unwrap(vm) for key, w_obj in self.values_w.items()}
         return UnwrappedStruct(fqn, fields)

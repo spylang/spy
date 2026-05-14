@@ -549,9 +549,7 @@ class SPyVM:
         # check parameters
         has_argv = False
         if len(params) == 1:
-            fqn_str = str(params[0].w_T.fqn)
-            if fqn_str.startswith("_list::list[str]"):
-                has_argv = True
+            has_argv = self.is_list_of_str_type(params[0].w_T)
 
         if len(params) > 1 or (len(params) == 1 and not has_argv):
             msg = "parameters must be `main(argv: list[str])`"
@@ -747,6 +745,25 @@ class SPyVM:
         if not isinstance(w_value, W_Bool):
             raise Exception("Type mismatch")
         return w_value.value
+
+    @staticmethod
+    def is_list_type(w_T: W_Type) -> bool:
+        w_origin = w_T.w_origin
+        return isinstance(w_origin, W_Func) and w_origin.fqn == FQN("_list::list")
+
+    @staticmethod
+    def is_dict_type(w_T: W_Type) -> bool:
+        w_origin = w_T.w_origin
+        return isinstance(w_origin, W_Func) and w_origin.fqn == FQN("_dict::dict")
+
+    @staticmethod
+    def is_tuple_type(w_T: W_Type) -> bool:
+        w_origin = w_T.w_origin
+        return isinstance(w_origin, W_Func) and w_origin.fqn == FQN("_tuple::tuple")
+
+    @staticmethod
+    def is_list_of_str_type(w_T: W_Type) -> bool:
+        return w_T.fqn == FQN("_list::list[str]::_ListImpl")
 
     def fast_call(self, w_func: W_Func, args_w: Sequence[W_Object]) -> W_Object:
         """

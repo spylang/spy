@@ -601,7 +601,7 @@ class AbstractFrame:
         w_T = wam_tup.w_static_T
 
         is_interp_tuple = w_T is SPY.w_interp_tuple
-        is_stdlib_tuple = w_T.fqn.match("_tuple::tuple[*]::_tup")
+        is_stdlib_tuple = self.vm.is_tuple_type(w_T)
         if not (is_interp_tuple or is_stdlib_tuple):
             t = wam_tup.w_static_T.fqn.human_name
             err = SPyError(
