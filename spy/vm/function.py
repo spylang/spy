@@ -212,6 +212,7 @@ class W_Func(W_Object):
     w_functype: W_FuncType
     fqn: FQN
     def_loc: Loc
+    w_origin: Optional["W_Object"]
 
     @property
     def color(self) -> Color:
@@ -412,6 +413,7 @@ class W_ASTFunc(W_Func):
         self.lowering_stage = lowering_stage
         self.w_replaced_by = None
         self.is_force_inline = is_force_inline
+        self.w_origin = None
 
         # sanity check
         if lowering_stage in ("source", "redshift_in_progress"):
@@ -512,6 +514,7 @@ class W_BuiltinFunc(W_Func):
         # bluecache
         self._pyfunc = pyfunc
         self._is_pure = is_pure
+        self.w_origin = None
 
     def __repr__(self) -> str:
         return f"<spy function '{self.fqn}' (builtin)>"

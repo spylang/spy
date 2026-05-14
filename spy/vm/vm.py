@@ -765,6 +765,14 @@ class SPyVM:
                 return w_result
             w_result = self._raw_call(w_func, args_w)
             self.bluecache.record(w_func, args_w, w_result)
+            if (
+                w_func.w_functype.kind == "generic"
+                and isinstance(w_result, (W_Type, W_Func))
+                and w_result.w_origin is None
+            ):
+                expected_ns = w_func.compute_inner_ns(args_w)
+                if w_result.fqn.namespace == expected_ns:
+                    w_result.w_origin = w_func
             return w_result
         else:
             # for red functions, we just call them
