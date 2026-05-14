@@ -634,3 +634,24 @@ def w_GE(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
         dispatch="multi",
         errmsg="cannot do `{0}` >= `{1}`",
     )
+
+
+@OP.builtin_func(color="blue")
+def w_IN(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
+    from spy.vm.typechecker import typecheck_opspec
+
+    w_rtype = wam_r.w_static_T
+
+    # left and right operands are inverted here because the instruction "1 in list" will invoke "__contains__" on the right operand
+    if w_contains := w_rtype.lookup_func("__contains__"):
+        w_opspec = vm.fast_metacall(w_contains, [wam_r, wam_l])
+    else:
+        w_opspec = W_OpSpec.NULL
+
+    return typecheck_opspec(
+        vm,
+        w_opspec,
+        [wam_l, wam_r],
+        dispatch="multi",
+        errmsg="cannot do `{0}` in `{1}`",
+    )
