@@ -7,7 +7,7 @@ import fixedint
 import py.path
 
 from spy import ROOT, ast, libspy
-from spy.analyze.symtable import Color, ImportRef, maybe_blue
+from spy.analyze.symtable import Color, ImportRef, SymTable, maybe_blue
 from spy.ast import Color, FuncKind
 from spy.doppler import ErrorMode, redshift
 from spy.errors import WIP, SPyError
@@ -255,8 +255,6 @@ class SPyVM:
                 self.fast_call(w_init, [])
 
     def _seed_human_aliases(self) -> None:
-        from spy.analyze.symtable import SymTable
-
         for sym in SymTable.from_builtins()._symbols.values():
             if sym.impref is None or sym.impref.attr is None:
                 continue
