@@ -14,7 +14,7 @@ The contents of the `__spy__` module and SPy's builtins form the API surface of 
 ### __COLOR__(expr) -> Literal["red", "blue"] { #markdown data-toc-label='Color()' }
 :   Returns the current color of the passed expression. Mainly useful in tests, but may be useful to give users a view into the color of expressions during development.
 
-### __as_red__(object) -> Literal["red", "blue"] { #markdown data-toc-label='as_red()' }
+### __as_red__(object) { #markdown data-toc-label='as_red()' }
 :   If `object` is a reference type (e.g. strings, int, etc.), `as_red` simply changes the passed object's color to red. If `object` is a value type, returns a copy of the object as a red object. 
 
 : May be useful during metaprograming ensure that blue objects which are equal do not get optimized into the same object at redshift time. See, for example, the [implementation of `exal_expr_List`](https://github.com/spylang/spy/blob/main/spy/vm/astframe.py#L1161).
@@ -22,7 +22,7 @@ The contents of the `__spy__` module and SPy's builtins form the API surface of 
 ### __STATIC_TYPE__(object) { #markdown data-toc-label='STATIC_TYPE()' }
 :   Returns the type of the expression determined in a static context. Useful in tests, and is used in some of SPy's internal machinery.
 
-### __is_compiled__() { #markdown data-toc-label='is_compiled()' }
+### __is_compiled__() -> bool { #markdown data-toc-label='is_compiled()' }
 :   Returns `False` when run in the interpreter, with or without redshifting. Returns `True` in compiled C code. Useful for testing and benchmarks, where it may be useful to adjust parameters depending on whether the code is compiled or not.
 
 
