@@ -164,6 +164,150 @@ class TestException(CompilerTest):
             mod.foo()
 
     @pytest.mark.parametrize("error_mode", ["lazy", "eager"])
+    def test_non_static_errors_are_always_lazy(self, error_mode):
+        src = """
+        def dead_branch_division() -> None:
+            if False:
+                1 / 0
+
+        def divide_if_flag(flag: bool) -> None:
+            if flag:
+                1 / 0
+
+        def short_circuit_and_false() -> bool:
+            return False and (1 / 0)
+
+        def short_circuit_or_true() -> bool:
+            return True or (1 / 0)
+
+        def short_circuit_and_flag(flag: bool) -> bool:
+            return flag and (1 / 0)
+
+        def assert_with_division_message(flag: bool) -> bool:
+            assert flag, 1 / 0
+            return True
+        """
+        mod = self.compile(src, error_mode=error_mode)
+
+        mod.dead_branch_division()
+        mod.divide_if_flag(False)
+        with SPyError.raises("W_ZeroDivisionError", match="division by zero"):
+            mod.divide_if_flag(True)
+
+        assert mod.short_circuit_and_false() is False
+        assert mod.short_circuit_or_true() is True
+        assert mod.short_circuit_and_flag(False) is False
+        with SPyError.raises("W_ZeroDivisionError", match="division by zero"):
+            mod.short_circuit_and_flag(True)
+
+        assert mod.assert_with_division_message(True) is True
+        with SPyError.raises("W_ZeroDivisionError", match="division by zero"):
+            mod.assert_with_division_message(False)
+
+    @pytest.mark.parametrize("error_mode", ["lazy", "eager"])
+    def test_non_static_errors_preserve_side_effect_order(self, error_mode):
+        src = """
+        var counter: i32 = 0
+
+        def inc() -> i32:
+            counter = counter + 1
+            return 10
+
+        def sum_then_divide() -> f64:
+            return inc() + (1 / 0)
+
+        def read_counter() -> i32:
+            return counter
+        """
+        mod = self.compile(src, error_mode=error_mode)
+        assert mod.read_counter() == 0
+        with SPyError.raises("W_ZeroDivisionError", match="division by zero"):
+            mod.sum_then_divide()
+        assert mod.read_counter() == 1
+
+    @pytest.mark.parametrize("error_mode", ["lazy", "eager"])
+    def test_non_static_errors_remain_lazy_in_typed_contexts(self, error_mode):
+        src = """
+        def must_return_str() -> str:
+            return 1 / 0
+        """
+        mod = self.compile(src, error_mode=error_mode)
+        with SPyError.raises("W_ZeroDivisionError", match="division by zero"):
+            mod.must_return_str()
+
+    @pytest.mark.parametrize("error_mode", ["lazy", "eager"])
+    def test_non_static_errors_remain_lazy_in_non_primitive_typed_contexts(
+        self, error_mode
+    ):
+        src = """
+        def must_return_tuple() -> tuple[i32, i32]:
+            return 1 / 0
+        """
+        mod = self.compile(src, error_mode=error_mode)
+        with SPyError.raises("W_ZeroDivisionError", match="division by zero"):
+            mod.must_return_tuple()
+
+    def test_static_errors_are_eager_in_dead_code_and_boolops(self):
+        src = """
+        def dead_branch_type_error() -> None:
+            if False:
+                1 + "hello"
+
+        def short_circuit_and_type_error() -> bool:
+            return False and (1 + "x")
+
+        def short_circuit_or_type_error() -> bool:
+            return True or (1 + "x")
+        """
+        typeerr = r"cannot do `i32` \+ `str`"
+        if self.backend == "interp":
+            mod = self.compile(src, error_mode="eager")
+            mod.dead_branch_type_error()
+            assert mod.short_circuit_and_type_error() is False
+            assert mod.short_circuit_or_type_error() is True
+        else:
+            with SPyError.raises("W_TypeError", match=typeerr):
+                self.compile(
+                    """
+                    def dead_branch_type_error() -> None:
+                        if False:
+                            1 + "hello"
+                    """,
+                    error_mode="eager",
+                )
+            with SPyError.raises("W_TypeError", match=typeerr):
+                self.compile(
+                    """
+                    def short_circuit_and_type_error() -> bool:
+                        return False and (1 + "x")
+                    """,
+                    error_mode="eager",
+                )
+            with SPyError.raises("W_TypeError", match=typeerr):
+                self.compile(
+                    """
+                    def short_circuit_or_type_error() -> bool:
+                        return True or (1 + "x")
+                    """,
+                    error_mode="eager",
+                )
+
+    def test_assert_message_static_error_is_eager(self):
+        src = """
+        def assert_with_type_error_message(flag: bool) -> bool:
+            assert flag, 1 + "x"
+            return True
+        """
+        if self.backend == "interp":
+            mod = self.compile(src, error_mode="eager")
+            assert mod.assert_with_type_error_message(True) is True
+            with SPyError.raises("W_TypeError", match=r"cannot do `i32` \+ `str`"):
+                mod.assert_with_type_error_message(False)
+        else:
+            with SPyError.raises("W_TypeError", match=r"cannot do `i32` \+ `str`"):
+                self.compile(src, error_mode="eager")
+
+    @pytest.mark.parametrize("error_mode", ["lazy", "eager"])
     def test_static_error(self, error_mode):
         src = """
         @blue

@@ -248,10 +248,10 @@ class W_Exception(W_Object):
 @BUILTINS.builtin_type("StaticError")
 class W_StaticError(W_Exception):
     """
-    Static errors are those who can be turned into lazy errors during
-    redshifting.
+    Errors that should be treated as static during redshift.
 
-    All the other exceptions are immediately reported and abort redshiting.
+    In eager mode they are raised during redshift.
+    In lazy mode they can be turned into runtime raises by Doppler.
     """
 
     pass
@@ -292,12 +292,12 @@ class W_ImportError(W_Exception):
 
 
 @BUILTINS.builtin_type("ScopeError")
-class W_ScopeError(W_Exception):
+class W_ScopeError(W_StaticError):
     pass
 
 
 @BUILTINS.builtin_type("NameError")
-class W_NameError(W_Exception):
+class W_NameError(W_StaticError):
     pass
 
 
