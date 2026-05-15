@@ -90,7 +90,7 @@ class W_Str(W_Object):
                 w_opspec = vm.fast_metacall(w_fn, [wam_arg])
                 return w_opspec
 
-            t = w_T.fqn.human_name
+            t = w_T.fqn.human_name(vm)
             raise SPyError.simple(
                 "W_TypeError", f"cannot call str(`{t}`)", f"this is `{t}`", wam_arg.loc
             )

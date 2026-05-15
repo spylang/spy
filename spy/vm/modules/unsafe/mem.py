@@ -106,7 +106,8 @@ def generic_mem_read(vm: "SPyVM", addr: int, w_T: W_Type) -> W_Object:
             values_w[fname] = generic_mem_read(vm, addr + offset, w_field.w_T)
         return W_Struct(w_T, values_w)
     else:
-        raise WIP(f"Cannot read memory of type `{w_T.fqn.human_name}`")
+        t = w_T.fqn.human_name(vm)
+        raise WIP(f"Cannot read memory of type `{t}`")
 
 
 def generic_mem_write(vm: "SPyVM", addr: int, w_T: W_Type, w_val: W_Object) -> None:
@@ -138,4 +139,5 @@ def generic_mem_write(vm: "SPyVM", addr: int, w_T: W_Type, w_val: W_Object) -> N
             offset = w_field.offset
             generic_mem_write(vm, addr + offset, w_field.w_T, w_val.values_w[fname])
     else:
-        raise WIP(f"Cannot write memory of type `{w_T.fqn.human_name}`")
+        t = w_T.fqn.human_name(vm)
+        raise WIP(f"Cannot write memory of type `{t}`")

@@ -332,7 +332,7 @@ class CFuncWriter:
             return C.Literal("NULL")
         else:
             w_T = self.ctx.vm.dynamic_type(w_obj)
-            t = w_T.fqn.human_name
+            t = w_T.fqn.human_name(self.ctx.vm)
             raise SPyError.simple(
                 "W_WIP",
                 f"Prebuilt constant of type `{t}` are not supported by the C backend",

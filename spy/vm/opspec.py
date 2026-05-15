@@ -151,9 +151,10 @@ class W_MetaArg(W_Object):
         # Check that w_color is a string
         w_T = vm.dynamic_type(w_color)
         if w_T is not B.w_str:
+            got = w_T.fqn.human_name(vm)
             raise SPyError(
                 "W_TypeError",
-                f"MetaArg color must be a string, got {w_T.fqn.human_name}",
+                f"MetaArg color must be a string, got {got}",
             )
 
         color: Color = vm.unwrap_str(w_color)  # type: ignore
@@ -194,7 +195,7 @@ class W_MetaArg(W_Object):
             extra = f" = {self.w_val}"
         else:
             extra = ""
-        t = self.w_static_T.fqn.human_name
+        t = self.w_static_T.fqn.debug_human_name
         if DEBUG_METAARG:
             extra += f" id={self.debug_id}"
         return f"<W_MetaArg {self.color} {t}{extra}>"
