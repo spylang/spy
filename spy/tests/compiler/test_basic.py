@@ -887,31 +887,41 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo(10) == ((10 + 1) * 2) - 3
 
+    @no_C
     def test_aug_assign_subscript(self):
         mod = self.compile("""
-        from _list import list
+        from __spy__ import interp_list
+
+        var count: i32 = 0
+
+        def get_count() -> i32:
+            return count
+
+        def idx() -> i32:
+            count = count + 1
+            return 0
 
         def test_add() -> i32:
-            arr = list[i32]()
-            arr.append(10)
-            arr[0] += 5
+            arr = interp_list[i32](10)
+            arr[idx()] += 5
             return arr[0]
 
         def test_mul() -> i32:
-            arr = list[i32]()
-            arr.append(10)
-            arr[0] *= 3
+            arr = interp_list[i32](10)
+            arr[idx()] *= 3
             return arr[0]
 
         def test_sub() -> i32:
-            arr = list[i32]()
-            arr.append(10)
-            arr[0] -= 3
+            arr = interp_list[i32](10)
+            arr[idx()] -= 3
             return arr[0]
         """)
         assert mod.test_add() == 15
+        assert mod.get_count() == 1
         assert mod.test_mul() == 30
+        assert mod.get_count() == 2
         assert mod.test_sub() == 7
+        assert mod.get_count() == 3
 
     def test_aug_assign_attribute(self):
         mod = self.compile("""
