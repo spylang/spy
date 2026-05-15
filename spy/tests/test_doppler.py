@@ -333,13 +333,13 @@ class TestDoppler:
         """)
         self.assert_dump("""
         def foo() -> None:
-            x: i32 = `test::add[i32]`(1, 2)
-            y: str = `test::add[str]`('a', 'b')
+            x: i32 = `test::add[i32]::impl`(1, 2)
+            y: str = `test::add[str]::impl`('a', 'b')
 
-        def `test::add[i32]`(x: i32, y: i32) -> i32:
+        def `test::add[i32]::impl`(x: i32, y: i32) -> i32:
             return x + y
 
-        def `test::add[str]`(x: str, y: str) -> str:
+        def `test::add[str]::impl`(x: str, y: str) -> str:
             return `operator::str_add`(x, y)
         """)
 
