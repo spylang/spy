@@ -164,7 +164,7 @@ def w_len(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
         w_opspec = vm.fast_metacall(w_fn, [wam_obj])
         return w_opspec
 
-    t = w_T.fqn.debug_human_name
+    t = w_T.fqn.human_name(vm)
     raise SPyError.simple(
         "W_TypeError", f"cannot call len(`{t}`)", f"this is `{t}`", wam_obj.loc
     )
@@ -179,7 +179,7 @@ def w_repr(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
 
     # this can happen only if you override a __repr__ which returns
     # OpSpec.NULL
-    t = w_T.fqn.debug_human_name
+    t = w_T.fqn.human_name(vm)
     raise SPyError.simple(
         "W_TypeError", f"cannot call repr(`{t}`)", f"this is `{t}`", wam_obj.loc
     )
@@ -240,7 +240,7 @@ def w_hash(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
         w_opspec = vm.fast_metacall(w_fn, [wam_obj])
         return w_opspec
 
-    t = w_T.fqn.debug_human_name
+    t = w_T.fqn.human_name(vm)
     raise SPyError.simple(
         "W_TypeError", f"unhashable type '{t}'", f"this is `{t}`", wam_obj.loc
     )

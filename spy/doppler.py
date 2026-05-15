@@ -320,11 +320,8 @@ class DopplerFrame(ASTFrame):
 
             if wam_msg.w_static_T is not B.w_str:
                 err = SPyError("W_TypeError", "mismatched types")
-                err.add(
-                    "error",
-                    f"expected `str`, got `{wam_msg.w_static_T.fqn.debug_human_name}`",
-                    loc=wam_msg.loc,
-                )
+                got = wam_msg.w_static_T.fqn.human_name(self.vm)
+                err.add("error", f"expected `str`, got `{got}`", loc=wam_msg.loc)
                 raise err
 
             new_msg = self.shifted_expr[assert_node.msg]
@@ -461,10 +458,10 @@ class DopplerFrame(ASTFrame):
         w_callee = w_func.get_most_lowered_version()
         stage = w_callee.lowering_stage
         if stage == "redshift_in_progress":
+            callee = w_callee.fqn.human_name(self.vm)
             err = SPyError(
                 "W_TypeError",
-                f"cannot inline a recursive call to @force_inline function"
-                f" `{w_callee.fqn.debug_human_name}`",
+                f"cannot inline a recursive call to @force_inline function `{callee}`",
             )
             err.add("error", "recursive inline call", op.loc)
             raise err

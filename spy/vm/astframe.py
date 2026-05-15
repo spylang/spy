@@ -192,12 +192,12 @@ class AbstractFrame:
                 # no need to add extra info
                 pass
             elif varname == "@return":
-                exp = w_expT.fqn.debug_human_name
+                exp = w_expT.fqn.human_name(self.vm)
                 msg = f"expected `{exp}` because of return type"
                 loc = self.symtable.lookup(varname).type_loc
                 err.add("note", msg, loc=loc)
             else:
-                exp = w_expT.fqn.debug_human_name
+                exp = w_expT.fqn.human_name(self.vm)
                 msg = f"expected `{exp}` because of type declaration"
                 loc = self.symtable.lookup(varname).type_loc
                 err.add("note", msg, loc=loc)
@@ -243,7 +243,8 @@ class AbstractFrame:
             # special case None and allow to use it as a type even if it's not
             return TYPES.w_NoneType
         w_valtype = self.vm.dynamic_type(w_val)
-        msg = f"expected `type`, got `{w_valtype.fqn.debug_human_name}`"
+        got = w_valtype.fqn.human_name(self.vm)
+        msg = f"expected `type`, got `{got}`"
         raise SPyError.simple("W_TypeError", msg, "expected `type`", expr.loc)
 
     # ==== statements ====
@@ -603,7 +604,7 @@ class AbstractFrame:
         is_interp_tuple = w_T is SPY.w_interp_tuple
         is_stdlib_tuple = self.vm.is_tuple_type(w_T)
         if not (is_interp_tuple or is_stdlib_tuple):
-            t = wam_tup.w_static_T.fqn.debug_human_name
+            t = wam_tup.w_static_T.fqn.human_name(self.vm)
             err = SPyError(
                 "W_TypeError",
                 f"`{t}` does not support unpacking",
@@ -815,11 +816,8 @@ class AbstractFrame:
                     plain_msg = self.vm.unwrap_str(wam_msg.w_val)
                 else:
                     err = SPyError("W_TypeError", "mismatched types")
-                    err.add(
-                        "error",
-                        f"expected `str`, got `{wam_msg.w_static_T.fqn.debug_human_name}`",
-                        loc=wam_msg.loc,
-                    )
+                    got = wam_msg.w_static_T.fqn.human_name(self.vm)
+                    err.add("error", f"expected `str`, got `{got}`", loc=wam_msg.loc)
                     raise err
 
             raise SPyError.simple(

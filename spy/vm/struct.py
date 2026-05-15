@@ -299,7 +299,7 @@ class W_Struct(W_Object):
     def spy_key(self, vm: "SPyVM") -> Any:
         if not self.w_structtype.spy_key_is_valid:
             # see the comment in W_StructType.define_from_classbody
-            T = self.w_structtype.fqn.debug_human_name
+            T = self.w_structtype.fqn.human_name(vm)
             raise WIP(
                 f"type {T} cannot be cached because it defines __eq__ or __ne__",
             )
