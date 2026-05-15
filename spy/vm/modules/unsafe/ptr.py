@@ -311,7 +311,7 @@ class W_Ptr(W_MemLoc):
 
     def __repr__(self) -> str:
         clsname = self.__class__.__name__
-        t = self.w_T.w_itemT.fqn.human_name
+        t = self.w_T.w_itemT.fqn.debug_human_name
         k = self.w_T.memkind
         if self.addr == 0:
             return f"{clsname}({k!r}, {t}, NULL)"

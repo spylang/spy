@@ -477,7 +477,7 @@ class SPyVM:
             fqn = self.get_unique_FQN(fqn)
         else:
             w_T = self.dynamic_type(w_val)
-            T = w_T.fqn.human_name
+            T = w_T.fqn.debug_human_name
             msg = f"This prebuilt constant cannot be redshifted (yet): {w_val}"
             raise WIP(msg)
             assert False, "implement me"
@@ -532,8 +532,8 @@ class SPyVM:
         """
         if not self.isinstance(w_obj, w_type):
             w_t1 = self.dynamic_type(w_obj)
-            exp = w_type.fqn.human_name
-            got = w_t1.fqn.human_name
+            exp = w_type.fqn.debug_human_name
+            got = w_t1.fqn.debug_human_name
             msg = f"Invalid cast. Expected `{exp}`, got `{got}`"
             raise SPyError("W_TypeError", msg)
 

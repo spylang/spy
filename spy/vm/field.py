@@ -21,4 +21,4 @@ class W_Field(W_Object):
         return ("Field", self.name, self.w_T.spy_key(vm))
 
     def __repr__(self) -> str:
-        return f"<spy field {self.name}: `{self.w_T.fqn.human_name}`>"
+        return f"<spy field {self.name}: `{self.w_T.fqn.debug_human_name}`>"

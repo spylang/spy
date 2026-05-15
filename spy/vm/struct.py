@@ -299,7 +299,7 @@ class W_Struct(W_Object):
     def spy_key(self, vm: "SPyVM") -> Any:
         if not self.w_structtype.spy_key_is_valid:
             # see the comment in W_StructType.define_from_classbody
-            T = self.w_structtype.fqn.human_name
+            T = self.w_structtype.fqn.debug_human_name
             raise WIP(
                 f"type {T} cannot be cached because it defines __eq__ or __ne__",
             )
@@ -338,7 +338,7 @@ class W_StructField(W_Object):
 
     def __repr__(self) -> str:
         n = self.name
-        t = self.w_T.fqn.human_name
+        t = self.w_T.fqn.debug_human_name
         return f"<spy struct field {n}: `{t}` (+{self.offset})>"
 
     @builtin_method("__get__", color="blue", kind="metafunc")

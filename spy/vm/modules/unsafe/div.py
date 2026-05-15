@@ -18,8 +18,8 @@ def w_unchecked_div(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpSpec
     if w_opspec := MM.get_binary_opspec("unchecked_div", wam_l, wam_r):
         return w_opspec
     else:
-        l_type = wam_l.w_static_T.fqn.human_name
-        r_type = wam_r.w_static_T.fqn.human_name
+        l_type = wam_l.w_static_T.fqn.debug_human_name
+        r_type = wam_r.w_static_T.fqn.debug_human_name
 
         raise SPyError(
             "W_TypeError",
@@ -32,8 +32,8 @@ def w_unchecked_floordiv(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_O
     if w_opspec := MM.get_binary_opspec("unchecked_floordiv", wam_l, wam_r):
         return w_opspec
     else:
-        l_type = wam_l.w_static_T.fqn.human_name
-        r_type = wam_r.w_static_T.fqn.human_name
+        l_type = wam_l.w_static_T.fqn.debug_human_name
+        r_type = wam_r.w_static_T.fqn.debug_human_name
 
         raise SPyError(
             "W_TypeError",
@@ -46,8 +46,8 @@ def w_unchecked_mod(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpSpec
     if w_opspec := MM.get_binary_opspec("unchecked_mod", wam_l, wam_r):
         return w_opspec
     else:
-        l_type = wam_l.w_static_T.fqn.human_name
-        r_type = wam_r.w_static_T.fqn.human_name
+        l_type = wam_l.w_static_T.fqn.debug_human_name
+        r_type = wam_r.w_static_T.fqn.debug_human_name
 
         raise SPyError(
             "W_TypeError",
@@ -60,8 +60,8 @@ def w_ieee754_div(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpSpec:
     if w_opspec := MM.get_binary_opspec("ieee754_div", wam_l, wam_r):
         return w_opspec
     else:
-        l_type = wam_l.w_static_T.fqn.human_name
-        r_type = wam_r.w_static_T.fqn.human_name
+        l_type = wam_l.w_static_T.fqn.debug_human_name
+        r_type = wam_r.w_static_T.fqn.debug_human_name
 
         raise SPyError(
             "W_TypeError",

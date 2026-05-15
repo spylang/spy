@@ -135,7 +135,7 @@ class SPyBackend:
         if isinstance(w_obj, W_Type) and issubclass(w_obj.pyclass, W_InterpList):
             # this is a ugly special case for now, we need to find a better
             # solution
-            return w_obj.fqn.human_name
+            return w_obj.fqn.debug_human_name
         #
         # this assumes that w_obj has a valid FQN
         fqn = self.vm.reverse_lookup_global(w_obj)
@@ -146,7 +146,7 @@ class SPyBackend:
         if self.fqn_format == "full":
             name = str(fqn)
         elif self.fqn_format == "short":
-            name = fqn.human_name  # don't show builtins::
+            name = fqn.debug_human_name  # don't show builtins::
         else:
             assert False
         #

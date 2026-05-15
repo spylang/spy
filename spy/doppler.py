@@ -322,7 +322,7 @@ class DopplerFrame(ASTFrame):
                 err = SPyError("W_TypeError", "mismatched types")
                 err.add(
                     "error",
-                    f"expected `str`, got `{wam_msg.w_static_T.fqn.human_name}`",
+                    f"expected `str`, got `{wam_msg.w_static_T.fqn.debug_human_name}`",
                     loc=wam_msg.loc,
                 )
                 raise err
@@ -464,7 +464,7 @@ class DopplerFrame(ASTFrame):
             err = SPyError(
                 "W_TypeError",
                 f"cannot inline a recursive call to @force_inline function"
-                f" `{w_callee.fqn.human_name}`",
+                f" `{w_callee.fqn.debug_human_name}`",
             )
             err.add("error", "recursive inline call", op.loc)
             raise err

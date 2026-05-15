@@ -179,13 +179,13 @@ def _opspec_null_error(
        determining whether an operation is supported, so we report all
        of them
     """
-    typenames = [wam.w_static_T.fqn.human_name for wam in in_args_wam]
+    typenames = [wam.w_static_T.fqn.debug_human_name for wam in in_args_wam]
     errmsg = errmsg.format(*typenames)
     err = SPyError("W_TypeError", errmsg)
 
     if dispatch == "single":
         wam_target = in_args_wam[0]
-        t = wam_target.w_static_T.fqn.human_name
+        t = wam_target.w_static_T.fqn.debug_human_name
         if wam_target.loc:
             err.add("error", f"this is `{t}`", wam_target.loc)
         if wam_target.sym:
@@ -194,18 +194,18 @@ def _opspec_null_error(
 
     elif dispatch == "multi":
         for wam_arg in in_args_wam:
-            t = wam_arg.w_static_T.fqn.human_name
+            t = wam_arg.w_static_T.fqn.debug_human_name
             err.add("error", f"this is `{t}`", wam_arg.loc)
 
     elif dispatch == "convert":
         assert len(in_args_wam) == 3
         wam_expT, wam_gotT, wam_x = in_args_wam
         if wam_expT.color == "blue" and isinstance(wam_expT.w_blueval, W_Type):
-            exp = wam_expT.w_blueval.fqn.human_name
+            exp = wam_expT.w_blueval.fqn.debug_human_name
         else:
             # XXX: I'm not even sure that this can happen, we don't have a test for it
             exp = "<unknown>"
-        got = wam_x.w_static_T.fqn.human_name
+        got = wam_x.w_static_T.fqn.debug_human_name
         err.add("error", f"expected `{exp}`, got `{got}`", loc=wam_x.loc)
 
     else:

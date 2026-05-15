@@ -130,7 +130,7 @@ class W_FuncType(W_Type):
         w_functype.color = color
         w_functype.kind = kind
 
-        # print(fqn.human_name)
+        # print(fqn.debug_human_name)
         _CACHE[key] = w_functype
         return w_functype
 
@@ -349,7 +349,7 @@ class W_Func(W_Object):
             w_T = vm.dynamic_type(w_opspec)
             msg = (
                 "wrong metafunc return type: expected `operator::OpSpec`, "
-                + f"got `{w_T.fqn.human_name}`"
+                + f"got `{w_T.fqn.debug_human_name}`"
             )
             err = SPyError("W_TypeError", msg)
             err.add("error", "this is a metafunc", wam_func.loc)

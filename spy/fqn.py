@@ -111,7 +111,7 @@ class NSPart:
     def __str__(self) -> str:
         result = self.name
         if len(self.qualifiers) > 0:
-            quals = ", ".join(q.human_name for q in self.qualifiers)
+            quals = ", ".join(q.debug_human_name for q in self.qualifiers)
             result = f"{result}[{quals}]"
         if self.suffix != "":
             result += f"#{self.suffix}"
@@ -206,10 +206,13 @@ class FQN:
         return self._fullname(human=False)
 
     @property
-    def human_name(self) -> str:
+    def debug_human_name(self) -> str:
         """
-        Like fullname, but doesn't show 'builtins::',
-        and special-case 'def[...]'
+        Best-effort human name without access to a VM.
+
+        Use this as a last resort ONLY when no VM is available. End-user-facing output
+        (errors, backend dumps, etc.) should use `human_name(vm)` instead once that
+        exists.
         """
         is_def = (
             len(self.parts) == 2
@@ -234,7 +237,7 @@ class FQN:
                 d = "@blue.metafunc def"
             else:
                 assert False
-            quals = [fqn.human_name for fqn in p1.qualifiers]
+            quals = [fqn.debug_human_name for fqn in p1.qualifiers]
             p = ", ".join(quals[:-1])
             r = quals[-1]
             if r == "types::NoneType":
@@ -250,7 +253,7 @@ class FQN:
             p1 = self.parts[1]
             assert len(p1.qualifiers) == 1
             q0 = p1.qualifiers[0]
-            return f"*{q0.human_name}"
+            return f"*{q0.debug_human_name}"
 
         return self._fullname(human=True)
 
