@@ -68,7 +68,8 @@ class SPyBackend:
             ):
                 aliases.append((attr, w_obj))
         for attr, w_obj in aliases:
-            self.out.wl(f"{attr} = `{w_obj.fqn}`")
+            fqn_str = w_obj.fqn.human_name(self.vm)
+            self.out.wl(f"{attr} = `{fqn_str}`")
         if aliases:
             self.out.wl()
 
