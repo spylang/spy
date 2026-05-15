@@ -806,6 +806,10 @@ class SPyVM:
                 expected_ns = w_func.compute_inner_ns(args_w)
                 if w_result.fqn.namespace == expected_ns:
                     w_result.w_origin = w_func
+                    if w_result.fqn != expected_ns:
+                        # record an "human alias". If we got "list[i32]::_ListImpl", we
+                        # save it as "list[i32]".
+                        self.fqn_human_aliases[w_result.fqn] = expected_ns
             return w_result
         else:
             # for red functions, we just call them

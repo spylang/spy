@@ -1,3 +1,4 @@
+from spy.fqn import FQN
 from spy.tests.support import CompilerTest, expect_errors, only_interp
 
 
@@ -117,3 +118,43 @@ class TestBlueGeneric(CompilerTest):
             ("`ident` defined here", "def ident(x):"),
         )
         self.compile_raises(src, "foo", errors)
+
+    @only_interp
+    def test_dynamic_alias_inner_type(self):
+        mod = self.compile("""
+        @blue.generic
+        def MyList(T):
+            @struct
+            class _impl:
+                x: T
+            return _impl
+
+        def get_type() -> type:
+            return MyList[i32]
+        """)
+        w_mylist_i32 = mod.get_type(unwrap=False)
+        impl_fqn = FQN("test::MyList[i32]::_impl")
+        human_fqn = FQN("test::MyList[i32]")
+        assert w_mylist_i32.fqn == impl_fqn
+        assert self.vm.fqn_human_aliases[impl_fqn] == human_fqn
+        assert impl_fqn.human_name(self.vm) == "test::MyList[i32]"
+
+    @only_interp
+    def test_builtins_fqn(self):
+        mod = self.compile("""
+        def get_list_type() -> type:
+            return list[i32]
+
+        def get_dict_type() -> type:
+            return dict[i32, str]
+
+        def get_tuple_type() -> type:
+            return tuple[i32, str, float]
+        """)
+        w_list = mod.get_list_type(unwrap=False)
+        w_dict = mod.get_dict_type(unwrap=False)
+        w_tuple = mod.get_tuple_type(unwrap=False)
+
+        assert w_list.fqn.human_name(self.vm) == "list[i32]"
+        assert w_dict.fqn.human_name(self.vm) == "dict[i32, str]"
+        assert w_tuple.fqn.human_name(self.vm) == "tuple[i32, str, f64]"
