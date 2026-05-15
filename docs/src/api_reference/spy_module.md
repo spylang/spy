@@ -26,11 +26,11 @@ The contents of the `__spy__` module and SPy's builtins form the API surface of 
 :   Returns `False` when run in the interpreter, with or without redshifting. Returns `True` in compiled C code. Useful for testing and benchmarks, where it may be useful to adjust parameters depending on whether the code is compiled or not.
 
 
-### __interp_list__(object) { #markdown data-toc-label='interp_list' }
+### __interp_list__[type] { #markdown data-toc-label='interp_list' }
 :   A `list` object that functions only within the interpreter, and is not supported by the C backend. Highly likely to be removed in the future, but currently useful for prototyping internal to SPy for object types that cannot currently be held in 'real' lists, like types, `object()`s, and dynamic objects.
 
-### __interp_dict__(object) { #markdown data-toc-label='interp_dict' }
+### __interp_dict__[key_type, value_type] { #markdown data-toc-label='interp_dict' }
 :   A `dict` object that functions only within the interpreter, and is not supported by the C backend. Highly likely to be removed in the future, but currently useful for prototyping internal to SPy to support key types that cannot currently be keys of 'real' dicts, like union types.
 
-### __interp_tuple__(object) { #markdown data-toc-label='interp_tuple' }
+### __interp_tuple__[type] { #markdown data-toc-label='interp_tuple' }
 :   A `tuple` object that functions only within the interpreter, and is not supported by the C backend. Highly likely to be removed in the future, but solves some bootstrapping issues related to other types and operations implemented in SPy.
