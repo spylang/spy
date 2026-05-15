@@ -1,12 +1,6 @@
 title: Generic Functions and Types
 ---
-
 <!-- See https://github.com/spylang/spy/pull/519 and https://github.com/spylang/spy/pull/448-->
-
-
-
-Geneic 
-
 
 ### Generic Functions
 
@@ -26,7 +20,7 @@ Functions decorated with [@blue.generic](../api_reference/spy_builtins.md#bluege
 
 ### Generic Types
 
-`struct` classes may also be constructed with a type parameter, which is.... At an implementation level, the class syntax syntactic sugar:
+`struct` classes may also be created with one or more parameters in `[]` brackets. This is different from passing superclasses inside of `()` parentheses; rather, this is syntactic sugar for a generic function with an inner `struct` class than can make use of those parameters:
 
 ```py
 @struct
@@ -42,6 +36,21 @@ def MyList(T):
         inner: list[T]
 
     return Self
+```
+
+In use, this looks like:
+
+```py
+@struct
+class MyList[T]:
+    inner: list[T]
+
+  def main() -> None:
+    my_int_list = MyList[i32]()
+    my_int_list.append(123)
+
+    my_str_list = MyList[str]()
+    my_str_list.extend(["hello", "world"])
 ```
 
 ### \_\_origin\_\_
