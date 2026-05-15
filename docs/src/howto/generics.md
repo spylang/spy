@@ -26,6 +26,8 @@ Functions decorated with [@blue.generic](../api_reference/spy_builtins.md#bluege
 @struct
 class MyList[T]:
     inner: list[T]
+    other_param_1: ...
+    other_param_2: ...
 
 # ^^^ is syntactic sugar for vvv
 
@@ -34,6 +36,8 @@ def MyList(T):
     @struct
     class Self:
         inner: list[T]
+        other_param_1: ...
+        other_param_2: ...
 
     return Self
 ```
@@ -42,18 +46,19 @@ In use, this looks like:
 
 ```py
 @struct
-class MyList[T]:
-    inner: list[T]
+class MyAnnotatedList[T]:
+    name: str
+    data: list[T]
 
-  def main() -> None:
-    my_int_list = MyList[i32]()
-    my_int_list.append(123)
+def main() -> None:
+    my_int_list = MyList[i32]("profits", [])
+    my_int_list.data.append(1)
 
-    my_str_list = MyList[str]()
-    my_str_list.extend(["hello", "world"])
+    my_str_list = MyList[str]("words", ["hello", "world"])
+    my_str_list.data.extend(["and", "goodbye"])
 ```
 
-### \_\_origin\_\_
+### `__origin__`
 
 Objects in SPy have an `__origin__` attribute, which defaults to `None`. When a `type` or `function` defined inside a `blue.generic` function is returned, it's `__origin__` is set to that generic function (if it wasn't already set by something else).
 
@@ -81,14 +86,3 @@ class MyType[T]:
 
 assert MyList[T].__origin__ is MyList
 ```
-
-
-<!-- 
-
-The __origin__ is set ONLY:
-
-upon returning something from a @blue.generic function
-if the returned value was defined INSIDE the function
-if the __origin__ has not been set already
-
--->
