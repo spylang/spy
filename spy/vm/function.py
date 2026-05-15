@@ -212,6 +212,7 @@ class W_Func(W_Object):
     w_functype: W_FuncType
     fqn: FQN
     def_loc: Loc
+    w_origin: Optional["W_Object"]
 
     @property
     def color(self) -> Color:
@@ -241,6 +242,36 @@ class W_Func(W_Object):
     _pure_fqns = {
         FQN("builtins::type::__new__"),
     }
+
+    def compute_inner_ns(self, args_w: Sequence[W_Object]) -> FQN:
+        """
+        Try to generate a meaningful namespace for blue functions. The
+        idea is that if a blue func takes type parameters, we want to include
+        them in the qualifiers. E.g.:
+
+            @blue
+            def add(T):
+                def impl(x: T, y: T) -> T:
+                    return x + y
+                return impl
+
+            add(i32) # ==> add[i32]::impl
+            add(str) # ==> add[str]::impl
+
+        At the moment, the implementation is a bit ad-hoc and hackish, as it
+        considers ONLY type params as qualifiers, and ignores everything else.
+
+        Note that this is more about readability than correctness: in case of
+        blue params which are ignored, we might get clashing namespaces, but
+        this is still ok, because uniqueness of FQNs is guaranteed by
+        vm.get_unique_FQN().
+
+        This is fine as long as we don't support separate compilation. For sep
+        comp, we will probably need a deterministic and reproducible way to
+        compute unique FQNs out of a blue call.
+        """
+        quals = [w_arg.fqn for w_arg in args_w if isinstance(w_arg, W_Type)]
+        return self.fqn.with_qualifiers(quals)
 
     def spy_get_w_type(self, vm: "SPyVM") -> W_Type:
         return self.w_functype
@@ -382,6 +413,7 @@ class W_ASTFunc(W_Func):
         self.lowering_stage = lowering_stage
         self.w_replaced_by = None
         self.is_force_inline = is_force_inline
+        self.w_origin = None
 
         # sanity check
         if lowering_stage in ("source", "redshift_in_progress"):
@@ -482,6 +514,7 @@ class W_BuiltinFunc(W_Func):
         # bluecache
         self._pyfunc = pyfunc
         self._is_pure = is_pure
+        self.w_origin = None
 
     def __repr__(self) -> str:
         return f"<spy function '{self.fqn}' (builtin)>"

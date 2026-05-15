@@ -247,9 +247,10 @@ def w_from_dynamic(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
         b: i32 = from_dynamic[i32](a)
     """
     T = Annotated[W_Object, w_T]
+    ns = OP.w_from_dynamic.compute_inner_ns([w_T])
 
-    # operator::from_dynamic[i32]
-    @vm.register_builtin_func("operator", "from_dynamic", [w_T.fqn])
+    # operator::from_dynamic[i32]::impl
+    @vm.register_builtin_func(ns, "impl")
     def w_from_dynamic_T(vm: "SPyVM", w_obj: W_Dynamic) -> T:
         # XXX, we can probably generate better errors
         #

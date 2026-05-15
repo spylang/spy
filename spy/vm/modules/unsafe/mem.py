@@ -58,9 +58,9 @@ def w_gc_alloc(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
 @UNSAFE.builtin_func(color="blue")
 def w_mem_read(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     T = Annotated[W_Object, w_T]
+    ns = UNSAFE.w_mem_read.compute_inner_ns([w_T])
 
-    # unsafe::mem_read[T]
-    @vm.register_builtin_func("unsafe", "mem_read", [w_T.fqn])
+    @vm.register_builtin_func(ns, "impl")
     def w_mem_read_T(vm: "SPyVM", w_addr: W_I32) -> T:
         addr = vm.unwrap_i32(w_addr)
         return generic_mem_read(vm, addr, w_T)
@@ -71,9 +71,9 @@ def w_mem_read(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
 @UNSAFE.builtin_func(color="blue")
 def w_mem_write(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     T = Annotated[W_Object, w_T]
+    ns = UNSAFE.w_mem_write.compute_inner_ns([w_T])
 
-    # unsafe::mem_write[T]
-    @vm.register_builtin_func("unsafe", "mem_write", [w_T.fqn])
+    @vm.register_builtin_func(ns, "impl")
     def w_mem_write_T(vm: "SPyVM", w_addr: W_I32, w_val: T) -> None:
         addr = vm.unwrap_i32(w_addr)
         generic_mem_write(vm, addr, w_T, w_val)

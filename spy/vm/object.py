@@ -430,6 +430,7 @@ class W_Type(W_Object):
     fqn: FQN
     _pyclass: Optional[Type[W_Object]]
     _dict_w: Optional[dict[str, W_Object]]
+    w_origin: Optional["W_Object"]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         cls = self.__class__.__name__
@@ -465,6 +466,7 @@ class W_Type(W_Object):
         w_T.fqn = fqn
         w_T._pyclass = None
         w_T._dict_w = None
+        w_T.w_origin = None
         return w_T
 
     @classmethod
@@ -712,6 +714,15 @@ class W_Type(W_Object):
         return None
 
     # ======== app-level interface ========
+
+    @builtin_property("__origin__")
+    @staticmethod
+    def w_get_origin(vm: "SPyVM", w_self: "W_Type") -> "W_Dynamic":
+        from spy.vm.b import B
+
+        if w_self.w_origin is None:
+            return B.w_None
+        return w_self.w_origin
 
     @builtin_method("__new__")
     @staticmethod
