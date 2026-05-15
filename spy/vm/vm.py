@@ -106,6 +106,9 @@ class SPyVM:
     globals_w: dict[FQN, W_Object]
     irtags: dict[FQN, IRTag]
     modules_w: dict[str, W_Module]
+    # Maps a real FQN to a display FQN used only for human-readable rendering.
+    # The display FQN is NOT registered in globals_w and must not be used for lookup.
+    fqn_human_aliases: dict[FQN, FQN]
     path: list[str]
     bluecache: BlueCache
     emit_warning: Callable[[SPyError], None]
@@ -124,6 +127,7 @@ class SPyVM:
         self.globals_w = {}
         self.irtags = {}
         self.modules_w = {}
+        self.fqn_human_aliases = {}
         self.path = [str(STDLIB)]
         self.bluecache = BlueCache(self)
         self.emit_warning = lambda err: None
@@ -141,6 +145,7 @@ class SPyVM:
         self.make_module(SPY)
         self.make_module(_TESTING_HELPERS)
         self.call_INITs()
+        self._seed_human_aliases()
 
     @classmethod
     async def async_new(cls) -> "SPyVM":
@@ -248,6 +253,17 @@ class SPyVM:
             if w_init is not None:
                 assert isinstance(w_init, W_Func)
                 self.fast_call(w_init, [])
+
+    def _seed_human_aliases(self) -> None:
+        from spy.analyze.symtable import SymTable
+
+        for sym in SymTable.from_builtins()._symbols.values():
+            if sym.impref is None or sym.impref.attr is None:
+                continue
+            real_fqn = FQN([sym.impref.modname, sym.impref.attr])
+            display_fqn = FQN(sym.name)
+            if real_fqn != display_fqn:
+                self.fqn_human_aliases[real_fqn] = display_fqn
 
     def get_unique_FQN(self, fqn: FQN) -> FQN:
         """
