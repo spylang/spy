@@ -608,10 +608,6 @@ class AbstractFrame:
 
     def _desugar_AugAssign(self, node: ast.AugAssign) -> ast.Assign:
         # transform "x += 1" into "x = x + 1"
-        #
-        # Note: Only simple variable targets are supported in AugAssign.
-        # Complex targets (a.b += 1, arr[i] += 1) are desugared by the parser
-        # into SetAttr/SetItem nodes directly.
         return ast.Assign(
             loc=node.loc,
             target=node.target,
@@ -622,6 +618,78 @@ class AbstractFrame:
                 right=node.value,
             ),
         )
+
+    def _desugar_AugSetAttr(self, node: ast.AugSetAttr) -> list[ast.Stmt]:
+        temp_name = node.target_name()
+        target = ast.StrConst(node.target.loc, temp_name)
+        return [
+            ast.Assign(loc=node.target.loc, target=target, value=node.target),
+            ast.SetAttr(
+                loc=node.loc,
+                target=ast.Name(loc=node.target.loc, id=temp_name),
+                attr=node.attr,
+                value=ast.BinOp(
+                    loc=node.loc,
+                    op=node.op,
+                    left=ast.GetAttr(
+                        loc=node.loc,
+                        value=ast.Name(loc=node.target.loc, id=temp_name),
+                        attr=node.attr,
+                    ),
+                    right=node.value,
+                ),
+            ),
+        ]
+
+    def _desugar_AugSetItem(self, node: ast.AugSetItem) -> list[ast.Stmt]:
+        temp_name = node.target_name()
+        target = ast.StrConst(node.target.loc, temp_name)
+        stmts: list[ast.Stmt] = [
+            ast.Assign(loc=node.target.loc, target=target, value=node.target)
+        ]
+        arg_names = []
+        for i, arg in enumerate(node.args):
+            arg_name = node.arg_name(i)
+            arg_names.append(arg_name)
+            stmts.append(
+                ast.Assign(
+                    loc=arg.loc,
+                    target=ast.StrConst(arg.loc, arg_name),
+                    value=arg,
+                )
+            )
+        stmts.append(
+            ast.SetItem(
+                loc=node.loc,
+                target=ast.Name(loc=node.target.loc, id=temp_name),
+                args=[
+                    ast.Name(loc=arg.loc, id=name)
+                    for arg, name in zip(node.args, arg_names)
+                ],
+                value=ast.BinOp(
+                    loc=node.loc,
+                    op=node.op,
+                    left=ast.GetItem(
+                        loc=node.loc,
+                        value=ast.Name(loc=node.target.loc, id=temp_name),
+                        args=[
+                            ast.Name(loc=arg.loc, id=name)
+                            for arg, name in zip(node.args, arg_names)
+                        ],
+                    ),
+                    right=node.value,
+                ),
+            )
+        )
+        return stmts
+
+    def exec_stmt_AugSetAttr(self, node: ast.AugSetAttr) -> None:
+        for stmt in self._desugar_AugSetAttr(node):
+            self.exec_stmt(stmt)
+
+    def exec_stmt_AugSetItem(self, node: ast.AugSetItem) -> None:
+        for stmt in self._desugar_AugSetItem(node):
+            self.exec_stmt(stmt)
 
     def exec_stmt_SetAttr(self, node: ast.SetAttr) -> None:
         wam_obj = self.eval_expr(node.target)

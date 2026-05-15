@@ -607,6 +607,10 @@ class AugSetAttr(Stmt):
     op: str
     value: Expr
 
+    def target_name(self) -> str:
+        suffix = f"{self.loc.line_start}_{self.loc.col_start}_{self.loc.line_end}_{self.loc.col_end}"
+        return f"_$augattr_obj_{suffix}"
+
 
 @astnode
 class SetItem(Stmt):
@@ -621,6 +625,14 @@ class AugSetItem(Stmt):
     args: list[Expr]
     op: str
     value: Expr
+
+    def target_name(self) -> str:
+        suffix = f"{self.loc.line_start}_{self.loc.col_start}_{self.loc.line_end}_{self.loc.col_end}"
+        return f"_$augitem_obj_{suffix}"
+
+    def arg_name(self, index: int) -> str:
+        suffix = f"{self.loc.line_start}_{self.loc.col_start}_{self.loc.line_end}_{self.loc.col_end}"
+        return f"_$augitem_arg{index}_{suffix}"
 
 
 @astnode
