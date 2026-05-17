@@ -35,7 +35,7 @@ Note that the name of the concrete type is always "Self".
 
 @struct
 class Array1d[DTYPE]:
-    # This struct only contains a low level ("__ll__") pointer towards the data leaving on the heap (allocated)
+    # this struct is a thin zero-cost wrapper around the "__ll__" pointer. The actual data is heap-allocated.
     __ll__: gc_ptr[ArrayData[DTYPE]]
 
     # note: here, Self corresponds to the concrete type Array1d[DTYPE].
