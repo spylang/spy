@@ -464,6 +464,33 @@ class TestScopeAnalyzer:
             "i32": MatchSymbol("i32", "const", "explicit", level=2),
         }
 
+    def test_generic_class(self):
+        scopes = self.analyze("""
+        @struct
+        class Foo[T]:
+            x: T
+
+            def foo(self) -> T:
+                return self.x
+        """)
+        gclassdef = self.mod.get_generic_classdef("Foo")
+        scope = scopes.by_generic_classdef(gclassdef)
+        assert scope.name == "test::Foo"
+        assert scope.color == "blue"
+        assert scope._symbols == {
+            "T": MatchSymbol("T", "const", "blue-param"),
+            "Self": MatchSymbol("Self", "const", "classdef"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+        }
+
+        inner_scope = scopes.by_classdef(gclassdef.inner)
+        assert inner_scope.name == "test::Foo::Self"
+        assert inner_scope._symbols == {
+            "x": MatchSymbol("x", "var", "class-field"),
+            "foo": MatchSymbol("foo", "const", "funcdef"),
+            "T": MatchSymbol("T", "const", "blue-param", level=1),
+        }
+
     def test_vararg(self):
         scopes = self.analyze("""
         def foo(a: i32, *args: str) -> None:
@@ -547,7 +574,7 @@ class TestScopeAnalyzer:
         }
 
         inner_scope = scopes.by_funcdef(gfuncdef.inner)
-        assert inner_scope.name == f"test::foo::__impl"
+        assert inner_scope.name == "test::foo::__impl"
         assert inner_scope.color == "red"
         assert inner_scope._symbols == {
             "x": MatchSymbol("x", "var", "red-param"),
