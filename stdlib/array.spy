@@ -197,7 +197,16 @@ def zeros(DTYPE):
             ArrayT = array[DTYPE, 1]
 
             def impl(n: i32) -> ArrayT:
-                return ArrayT(n)
+                a = ArrayT(n)
+                # XXX: this loop is a temporary workaround. gc_alloc does not
+                # zero memory, so we zero the array element-by-element here.
+                # Eventually we should have a gc_alloc_zero (or similar) which
+                # returns zeroed memory, and use it for the underlying buffer.
+                i = 0
+                while i < n:
+                    a[i] = DTYPE(0)
+                    i = i + 1
+                return a
 
             return OpSpec(impl)
 
