@@ -1,15 +1,28 @@
 #include "spy.h"
 #include <errno.h>
 #include <stdarg.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 
+_spy_Str_Layout
+_spy_Str_layout(void) {
+    return (_spy_Str_Layout){
+        .size = sizeof(spy_Str),
+        .length_offset = offsetof(spy_Str, length),
+        .hash_offset = offsetof(spy_Str, hash),
+        .utf8_offset = offsetof(spy_Str, utf8),
+    };
+}
+
 spy_Str *
 spy_str_alloc(size_t length) {
+    // allocate a spy_Str AND the utf8 buffer as a single allocation
     size_t size = sizeof(spy_Str) + length;
     spy_Str *res = (spy_Str *)spy_GcAlloc(size).p;
     res->length = length;
     res->hash = 0;
+    res->utf8 = (const uint8_t *)(res + 1);
     return res;
 }
 
@@ -130,8 +143,13 @@ spy_str_repr(spy_Str *s) {
     // Choose quote character: use double quotes if string contains ' but not "
     char quote = '\'';
     for (size_t i = 0; i < s->length; i++) {
-        if (s->utf8[i] == '\'') { quote = '"'; }
-        if (s->utf8[i] == '"')  { quote = '\''; break; }
+        if (s->utf8[i] == '\'') {
+            quote = '"';
+        }
+        if (s->utf8[i] == '"') {
+            quote = '\'';
+            break;
+        }
     }
 
     // First pass: calculate the output length
@@ -156,15 +174,20 @@ spy_str_repr(spy_Str *s) {
     for (size_t i = 0; i < s->length; i++) {
         unsigned char c = (unsigned char)s->utf8[i];
         if (c == '\\') {
-            *buf++ = '\\'; *buf++ = '\\';
+            *buf++ = '\\';
+            *buf++ = '\\';
         } else if (c == quote) {
-            *buf++ = '\\'; *buf++ = quote;
+            *buf++ = '\\';
+            *buf++ = quote;
         } else if (c == '\n') {
-            *buf++ = '\\'; *buf++ = 'n';
+            *buf++ = '\\';
+            *buf++ = 'n';
         } else if (c == '\r') {
-            *buf++ = '\\'; *buf++ = 'r';
+            *buf++ = '\\';
+            *buf++ = 'r';
         } else if (c == '\t') {
-            *buf++ = '\\'; *buf++ = 't';
+            *buf++ = '\\';
+            *buf++ = 't';
         } else if (c < 0x20) {
             buf += sprintf(buf, "\\x%02x", c);
         } else {

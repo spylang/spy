@@ -138,10 +138,7 @@ class WasmFuncWrapper:
         elif w_T is B.w_bool:
             return bool(res)
         elif w_T is B.w_str:
-            # res is a  spy_Str*
-            addr = res
-            length = self.ll.mem.read_i32(addr)
-            utf8 = self.ll.mem.read(addr + 8, length)
+            _, _, utf8 = self.ll.read_str(res)
             return utf8.decode("utf-8")
         elif w_T is RB.w_RawBuffer:
             # res is a  spy_RawBuffer*
@@ -285,8 +282,7 @@ def unflatten_struct(
                 # str fields are spy_Str* pointers; read from WASM memory
                 addr = flat_values[idx]
                 if ll is not None:
-                    length = ll.mem.read_i32(addr)
-                    utf8 = ll.mem.read(addr + 8, length)
+                    _, _, utf8 = ll.read_str(addr)
                     content[w_field.name] = utf8.decode("utf-8")
                 else:
                     content[w_field.name] = addr

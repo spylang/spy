@@ -5,11 +5,41 @@
 #include "spy/complex.h"
 #include <stddef.h>
 
+/* === String layout ===
+
+   spy_Str contains length, hash and a ptr to utf8 data.
+
+   spy_Str_alloc allocates spy_Str AND the data buffer in a single allocation. So the
+   memory layout for "foo" is more or less this (assuming 32 bit WASM):
+
+   ADDR     3          length
+   ADDR+4   ...        hash
+   ADDR+8   ADDR+12    utf8
+   ADDR+12  'f'
+   ADDR+13  'o'
+   ADDR+14  'o'
+
+   Note that "co-allocation" is just an optimization, not a requirement.
+*/
+
 typedef struct {
     size_t length;
     int32_t hash;
-    const char utf8[];
+    const uint8_t *utf8;
 } spy_Str;
+
+// Convenience macro to get (const char*)utf8
+#define spy_Str_CHARS(s) ((const char *)(s)->utf8)
+
+// Layout info exported for str.py.
+typedef struct {
+    size_t size;
+    size_t length_offset;
+    size_t hash_offset;
+    size_t utf8_offset;
+} _spy_Str_Layout;
+
+_spy_Str_Layout WASM_EXPORT(_spy_Str_layout)(void);
 
 spy_Str *WASM_EXPORT(spy_str_alloc)(size_t length);
 

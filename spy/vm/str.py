@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from spy.llwasm import LLWasmInstance
+from spy.libspy import LLSPyInstance
 from spy.vm.b import BUILTINS, OP, B
 from spy.vm.builtin import builtin_method
 from spy.vm.object import W_Object, W_Type
@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-def ll_spy_Str_new(ll: LLWasmInstance, s: str) -> int:
+def ll_spy_Str_new(ll: LLSPyInstance, s: str) -> int:
     """
     Create a new spy_Str object inside the given LLWasmInstance, and fill it
     with the utf8-encoded content of s.
@@ -21,7 +21,8 @@ def ll_spy_Str_new(ll: LLWasmInstance, s: str) -> int:
     utf8 = s.encode("utf-8")
     length = len(utf8)
     ptr = ll.call("spy_str_alloc", length)
-    ll.mem.write(ptr + 8, utf8)
+    utf8_ptr = ll.mem.read_i32(ptr + ll.str_layout.utf8_offset)
+    ll.mem.write(utf8_ptr, utf8)
     return ptr
 
 
@@ -56,12 +57,12 @@ class W_Str(W_Object):
         return w_res
 
     def get_length(self) -> int:
-        return self.vm.ll.mem.read_i32(self.ptr)
+        ll = self.vm.ll
+        return ll.mem.read_i32(self.ptr + ll.str_layout.length_offset)
 
     def get_utf8(self) -> bytes:
-        length = self.get_length()
-        ba = self.vm.ll.mem.read(self.ptr + 8, length)
-        return bytes(ba)
+        _, _, utf8 = self.vm.ll.read_str(self.ptr)
+        return utf8
 
     def _as_str(self) -> str:
         return self.get_utf8().decode("utf-8")

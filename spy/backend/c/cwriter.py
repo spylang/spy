@@ -258,7 +258,7 @@ class CFuncWriter:
                 # TODO: assuming msg is always a string. extend the logic to work with other types
                 msg = self.fmt_expr(assert_node.msg)
                 self.tbc.wl(
-                    f'spy_panic("AssertionError", ({msg})->utf8, '
+                    f'spy_panic("AssertionError", spy_Str_CHARS({msg}), '
                     f'"{assert_node.loc.filename}", {assert_node.loc.line_start});'
                 )
             else:
@@ -295,7 +295,7 @@ class CFuncWriter:
         # generate the following:
         #
         #     // global declarations
-        #     static spy_Str SPY_g_str0 = {5, 0, "hello"};
+        #     static spy_Str SPY_g_str0 = {5, 0, (const uint8_t *)"hello"};
         #     ...
         #     // literal expr
         #     &SPY_g_str0 /* "hello" */
@@ -310,7 +310,7 @@ class CFuncWriter:
         v = self.cmodw.new_global_var("str")  # SPY_g_str0
         n = len(utf8)
         lit = C.Literal.from_bytes(utf8)
-        init = "{%d, 0, %s}" % (n, lit)
+        init = "{%d, 0, (const uint8_t *)%s}" % (n, lit)
         self.cmodw.tbc_globals.wl(f"static spy_Str {v} = {init};")
         #
         # shortstr is what we show in the comment, with a length limit

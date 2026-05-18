@@ -76,7 +76,9 @@ spy_operator$f32_to_i32(float x) {
 
 static inline void
 spy_operator$raise(spy_Str *etype, spy_Str *message, spy_Str *fname, int32_t lineno) {
-    spy_panic(etype->utf8, message->utf8, fname->utf8, lineno);
+    spy_panic(
+        spy_Str_CHARS(etype), spy_Str_CHARS(message), spy_Str_CHARS(fname), lineno
+    );
 }
 
 static inline double

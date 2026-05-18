@@ -26,7 +26,7 @@ void WASM_EXPORT(jsffi_setattr)(JsRef c_target, const char *c_name, JsRef c_val)
 // SPy JSFFI module
 static inline void
 spy_jsffi$debug(spy_Str *s) {
-    jsffi_debug(s->utf8);
+    jsffi_debug(spy_Str_CHARS(s));
 }
 
 static inline void
@@ -46,7 +46,7 @@ spy_jsffi$get_Console(void) {
 
 static inline JsRef
 spy_jsffi$js_string(spy_Str *s) {
-    return jsffi_string(s->utf8);
+    return jsffi_string(spy_Str_CHARS(s));
 }
 
 static inline JsRef
@@ -61,17 +61,17 @@ spy_jsffi$js_wrap_func(em_callback_func fn) {
 
 static inline JsRef
 spy_jsffi$js_call_method_1(JsRef target, spy_Str *name, JsRef arg0) {
-    return jsffi_call_method_1(target, name->utf8, arg0);
+    return jsffi_call_method_1(target, spy_Str_CHARS(name), arg0);
 }
 
 static inline JsRef
 spy_jsffi$JsRef$__getattribute__(JsRef target, spy_Str *name) {
-    return jsffi_getattr(target, name->utf8);
+    return jsffi_getattr(target, spy_Str_CHARS(name));
 }
 
 static inline void
 spy_jsffi$JsRef$__setattr__(JsRef target, spy_Str *name, JsRef val) {
-    jsffi_setattr(target, name->utf8, val);
+    jsffi_setattr(target, spy_Str_CHARS(name), val);
 }
 
 /* This is a workaround for an emscripten bug/limitation which triggers in the
