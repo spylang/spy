@@ -43,6 +43,7 @@ VarKindOrigin = Literal[
     "class-field",   # class field declarations are always "var"
     "red-param",     # parameters of red functions are "var"
     "blue-param",    # parameters of blue functions are "const"
+    "type-alias",    # `type X = ...` inside a GenericClassDef
 ]  # fmt: skip
 
 # each ScopeKind corresponds to a different Frame for evaluation: ModFrame, ClassFrame,

@@ -372,6 +372,10 @@ class ScopeAnalyzer:
         self.inner_scopes[gclassdef] = inner_scope
         for arg in gclassdef.args:
             self.define_name(arg.name, "const", "blue-param", arg.loc, arg.type.loc)
+        for alias in gclassdef.type_aliases:
+            self.define_name(
+                alias.name.value, "const", "type-alias", alias.loc, alias.value.loc
+            )
         self.define_name("Self", "const", "classdef", loc, loc)
         self.define_name("@return", "var", "auto", loc, loc)
         self.declare(gclassdef.inner)
@@ -548,6 +552,8 @@ class ScopeAnalyzer:
             self.flatten(arg)
         inner_scope = self.by_generic_classdef(gclassdef)
         self.push_scope(inner_scope)
+        for alias in gclassdef.type_aliases:
+            self.flatten(alias.value)
         self.flatten_ClassDef(gclassdef.inner)
         self.pop_scope()
         gclassdef.symtable = inner_scope

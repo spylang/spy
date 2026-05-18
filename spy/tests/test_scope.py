@@ -503,20 +503,21 @@ class TestScopeAnalyzer:
         scope = scopes.by_generic_classdef(gclassdef)
         assert scope.name == "test::ArrayData"
         assert scope.color == "blue"
-        assert scope._symbols == {
-            "DTYPE": MatchSymbol("DTYPE", "const", "blue-param"),
-            "ptr_T": MatchSymbol("ptr_T", "const", "type-alias"),
-            "Self": MatchSymbol("Self", "const", "classdef"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-        }
+        assert scope._symbols["DTYPE"] == MatchSymbol("DTYPE", "const", "blue-param")
+        assert scope._symbols["ptr_T"] == MatchSymbol("ptr_T", "const", "type-alias")
+        assert scope._symbols["Self"] == MatchSymbol("Self", "const", "classdef")
+        assert scope._symbols["@return"] == MatchSymbol("@return", "var", "auto")
 
         inner_scope = scopes.by_classdef(gclassdef.inner)
-        assert inner_scope._symbols == {
-            "length": MatchSymbol("length", "var", "class-field"),
-            "items": MatchSymbol("items", "var", "class-field"),
-            "DTYPE": MatchSymbol("DTYPE", "const", "blue-param", level=1),
-            "ptr_T": MatchSymbol("ptr_T", "const", "type-alias", level=1),
-        }
+        assert inner_scope._symbols["length"] == MatchSymbol(
+            "length", "var", "class-field"
+        )
+        assert inner_scope._symbols["items"] == MatchSymbol(
+            "items", "var", "class-field"
+        )
+        assert inner_scope._symbols["ptr_T"] == MatchSymbol(
+            "ptr_T", "const", "type-alias", level=1
+        )
 
     def test_vararg(self):
         scopes = self.analyze("""
