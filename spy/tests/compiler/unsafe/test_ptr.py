@@ -640,3 +640,21 @@ class TestUnsafePtr(CompilerTest):
         addr = w.p.addr
         self.vm.ll.mem.read_i32(addr) == 1
         self.vm.ll.mem.read_i32(addr + 4) == 2
+
+    @only_interp
+    def test_as_StrObject(self):
+        mod = self.compile("""
+        from unsafe import as_StrObject
+        from _str import StrObject
+
+        def get_length(s: str) -> i32:
+            data = as_StrObject(s)
+            return data.length
+
+        def get_byte(s: str, i: i32) -> u8:
+            data = as_StrObject(s)
+            return data.utf8[i]
+        """)
+        assert mod.get_length("hello") == 5
+        assert mod.get_byte("hello", 0) == ord("h")
+        assert mod.get_byte("hello", 4) == ord("o")

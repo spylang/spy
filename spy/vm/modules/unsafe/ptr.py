@@ -523,3 +523,23 @@ def w_ptr_setfield(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
         vm.call_generic(UNSAFE.w_mem_write, [w_T], [vm.wrap(addr), w_val])
 
     return w_ptr_setfield_T
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_as_StrObject(vm: "SPyVM", wam_s: W_MetaArg) -> W_OpSpec:
+    """
+    Convert an high-level `str` into low-level `gc_ptr[StrObject]`.
+
+    The struct StrObject is defined in stdlib/_str.spy.
+    """
+    w_StrObject = vm.lookup_global(FQN("_str::StrObject"))
+    assert isinstance(w_StrObject, W_StructType)
+    w_gc_ptr_StrObject = vm.getitem_w(w_gc_ptr, w_StrObject)
+    assert isinstance(w_gc_ptr_StrObject, W_PtrType)
+    GC_PTR = Annotated[W_Ptr, w_gc_ptr_StrObject]
+
+    @vm.register_builtin_func(UNSAFE.fqn)
+    def w_impl(vm: "SPyVM", w_s: W_Str) -> GC_PTR:
+        return W_Ptr(w_gc_ptr_StrObject, w_s.ptr, 1)
+
+    return W_OpSpec(w_impl, [wam_s])

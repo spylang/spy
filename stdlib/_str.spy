@@ -1,0 +1,9 @@
+from unsafe import gc_ptr
+
+
+# this MUST stay in sync with the equivalent struct declared in str.h
+@struct
+class StrObject:
+    length: i32
+    hash: i32
+    utf8: gc_ptr[u8]
