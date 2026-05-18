@@ -353,7 +353,7 @@ class TestLinearize(CompilerTest):
                     $v0: i32 = `test::tick`()
                     if `operator::bool_not`($v0 < 3):
                         break
-                    `_print::println[i32]::p`(`test::N`)
+                    `_print::println[i32]`(`test::N`)
                 return `test::N`
             """
             self.assert_linearize("foo", expected)

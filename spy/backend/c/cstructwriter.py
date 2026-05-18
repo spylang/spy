@@ -124,7 +124,8 @@ class CStructWriter:
             )
             return
 
-        self.tbh_fwdecl.wl(f"typedef struct {c_st} {c_st}; /* {w_st.fqn.human_name} */")
+        human_fqn = w_st.fqn.human_name(self.ctx.vm)
+        self.tbh_fwdecl.wl(f"typedef struct {c_st} {c_st}; /* {human_fqn} */")
 
         # XXX this is VERY wrong: it assumes that the standard C layout
         # matches the layout computed by struct.calc_layout: as long as we use

@@ -207,7 +207,7 @@ class W_Object:
     def __repr__(self) -> str:
         fqn = self._w.fqn
         addr = f"0x{id(self):x}"
-        return f"<spy instance: type={fqn.human_name}, id={addr}>"
+        return f"<spy instance: type={fqn.debug_human_name}, id={addr}>"
 
     def spy_get_w_type(self, vm: "SPyVM") -> "W_Type":
         pyclass = type(self)
@@ -257,7 +257,7 @@ class W_Object:
 
         @vm.register_builtin_func(w_T.fqn, "__generic_repr__", irtag=irtag)
         def w_generic_repr(vm: "SPyVM", w_obj: T) -> W_Str:
-            tname = w_T.fqn.human_name
+            tname = w_T.fqn.debug_human_name
             addr = f"0x{id(w_obj):x}"
             s = f"<spy `{tname}` object at {addr}>"
             return vm.wrap(s)
@@ -642,7 +642,7 @@ class W_Type(W_Object):
 
         addr = ""
         # addr = f' at 0x{id(self):x}'
-        return f"<spy type '{self.fqn.human_name}'{s_hints}{addr}>"
+        return f"<spy type '{self.fqn.debug_human_name}'{s_hints}{addr}>"
 
     def repr_hints(self) -> list[str]:
         return []
@@ -816,7 +816,7 @@ class W_Type(W_Object):
             return w_opspec
 
         # no __new__, error out
-        clsname = w_T.fqn.human_name
+        clsname = w_T.fqn.debug_human_name
         err = SPyError("W_TypeError", f"cannot instantiate `{clsname}`")
         err.add("error", f"`{clsname}` does not have a method `__new__`", loc=wam_t.loc)
         if wam_t.sym:

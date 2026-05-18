@@ -195,8 +195,8 @@ class TestDoppler:
             x: i32 = 0
             `test::foo`(x := 1)
             `test::foo`(2)
-            `_print::println[i32]::p`(x)
-            `_print::println[str]::p`('2')
+            `_print::println[i32]`(x)
+            `_print::println[str]`('2')
         """)
 
     def test_call_blue_closure(self):
@@ -238,7 +238,7 @@ class TestDoppler:
             `test::make_foo::foo`()
 
         def `test::make_foo::fn`() -> None:
-            `_print::println[str]::p`('fn')
+            `_print::println[str]`('fn')
 
         def `test::make_foo::foo`() -> None:
             `test::make_foo::fn`()
@@ -281,9 +281,9 @@ class TestDoppler:
         self.assert_dump("""
         def foo() -> dynamic:
             return \
-`_list::list[i32]::_ListImpl::_push`(\
-`_list::list[i32]::_ListImpl::_push`(\
-`_list::list[i32]::new`(), 1), 12)
+`list[i32]::_push`(\
+`list[i32]::_push`(\
+`list[i32]::new`(), 1), 12)
         """)
 
     def test_type_conversion(self):

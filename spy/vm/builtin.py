@@ -122,7 +122,7 @@ def make_builtin_func(
     fqn = namespace.join(fname, qualifiers)
 
     if kind == "metafunc" and color != "blue":
-        msg = f"wrong color for metafunc `{fqn.human_name}`: expected `blue`, got `{color}`"
+        msg = f"wrong color for metafunc `{fqn.debug_human_name}`: expected `blue`, got `{color}`"
         raise SPyError("W_TypeError", msg)
 
     w_functype = functype_from_sig(fn, color, kind, extra_types=extra_types)

@@ -57,7 +57,7 @@ class W_Member(W_Object):
     def __repr__(self) -> str:
         n = self.name
         f = self.field
-        T = self.w_type.fqn.human_name
+        T = self.w_type.fqn.debug_human_name
         return f"<spy member '{n}: {T}'>"
 
     @builtin_method("__get__", color="blue", kind="metafunc")
