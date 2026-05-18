@@ -123,6 +123,10 @@ class LLWasmMemoryBase:
 
     def read_i8(self, addr: int) -> int:
         rawbytes = self.read(addr, 1)
+        return struct.unpack("b", rawbytes)[0]
+
+    def read_u8(self, addr: int) -> int:
+        rawbytes = self.read(addr, 1)
         return rawbytes[0]
 
     def read_f64(self, addr: int) -> int:
@@ -158,6 +162,9 @@ class LLWasmMemoryBase:
 
     def write_i8(self, addr: int, v: int) -> None:
         self.write(addr, struct.pack("b", v))
+
+    def write_u8(self, addr: int, v: int) -> None:
+        self.write(addr, struct.pack("B", v))
 
     def write_f64(self, addr: int, v: float) -> None:
         self.write(addr, struct.pack("d", v))

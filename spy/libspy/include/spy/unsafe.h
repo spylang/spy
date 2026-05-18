@@ -9,9 +9,12 @@ void *WASM_EXPORT(spy_raw_alloc)(size_t size);
 // When compiling with bdwgc, override spy_gc_alloc with an inline that calls
 // GC_MALLOC. This takes precedence over the function in libspy.a.
 #ifdef SPY_GC_BDWGC
-#include <gc.h>
-static inline void *spy_gc_alloc_bdwgc(size_t size) { return GC_MALLOC(size); }
-#define spy_gc_alloc(size) spy_gc_alloc_bdwgc(size)
+#  include <gc.h>
+static inline void *
+spy_gc_alloc_bdwgc(size_t size) {
+    return GC_MALLOC(size);
+}
+#  define spy_gc_alloc(size) spy_gc_alloc_bdwgc(size)
 #endif
 
 /* Define the struct and accessor functions to represent a managed pointer to
@@ -114,5 +117,20 @@ static inline void *spy_gc_alloc_bdwgc(size_t size) { return GC_MALLOC(size); }
     static inline bool PTR##$to_bool(PTR p) {                                          \
         return p.p;                                                                    \
     }
+
+/* gc_ptr[u8] is predeclared here, see also cstructwriter.py:emit_PtrType.
+   Make sure that they stay in sync. */
+typedef struct spy_unsafe$gc_ptr__builtins$u8 {
+    uint8_t *p;
+#ifdef SPY_DEBUG
+    ptrdiff_t length;
+#endif
+} spy_unsafe$gc_ptr__builtins$u8;
+
+SPY_PTR_FUNCTIONS(gc, spy_unsafe$gc_ptr__builtins$u8, uint8_t)
+#define spy_unsafe$gc_ptr__builtins$u8$NULL ((spy_unsafe$gc_ptr__builtins$u8){0})
+
+// short alias for manual use
+typedef spy_unsafe$gc_ptr__builtins$u8 spy_gc_ptr_u8;
 
 #endif /* SPY_UNSAFE_H */

@@ -144,6 +144,11 @@ class CStructWriter:
         c_ptrtype = C_Type(w_ptrtype.fqn.c_name)
         w_itemT = w_ptrtype.w_itemT
         c_itemT = self.ctx.w2c(w_itemT)
+        # gc_ptr[u8] is predeclared manually by unsafe.h. Make sure to keep the code
+        # generated here and the code manually written there always in sync.
+        if str(w_ptrtype.fqn) == "unsafe::gc_ptr[u8]":
+            self.tbh_fwdecl.wl(f"// {c_ptrtype}: already pre-declared by unsafe.h")
+            return
         self.tbh_fwdecl.wb(f"""
         typedef struct {c_ptrtype} {{
             {c_itemT} *p;
