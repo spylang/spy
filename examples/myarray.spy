@@ -35,14 +35,18 @@ Note that the name of the concrete type is always "Self".
 
 @struct
 class Array1d[DTYPE]:
+
+    # just a local type alias
+    type ArrData = ArrayData[DTYPE]
+
     # this struct is a thin zero-cost wrapper around the "__ll__" pointer. The actual data is heap-allocated.
-    __ll__: gc_ptr[ArrayData[DTYPE]]
+    __ll__: gc_ptr[ArrData]
 
     # note: here, Self corresponds to the concrete type Array1d[DTYPE].
 
     def __new__(length: i32) -> Self:
         # a pointer towards the array data
-        ll = gc_alloc[ArrayData[DTYPE]](1)
+        ll = gc_alloc[ArrData](1)
         ll.length = length
         ll.capacity = length
         ll.items = gc_alloc[DTYPE](length)
