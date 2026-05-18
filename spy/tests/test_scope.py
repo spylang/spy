@@ -491,6 +491,33 @@ class TestScopeAnalyzer:
             "T": MatchSymbol("T", "const", "blue-param", level=1),
         }
 
+    def test_generic_class_with_TypeAlias(self):
+        scopes = self.analyze("""
+        @struct
+        class ArrayData[DTYPE]:
+            type ptr_T = gc_ptr[DTYPE]
+            length: i32
+            items: ptr_T
+        """)
+        gclassdef = self.mod.get_generic_classdef("ArrayData")
+        scope = scopes.by_generic_classdef(gclassdef)
+        assert scope.name == "test::ArrayData"
+        assert scope.color == "blue"
+        assert scope._symbols == {
+            "DTYPE": MatchSymbol("DTYPE", "const", "blue-param"),
+            "ptr_T": MatchSymbol("ptr_T", "const", "type-alias"),
+            "Self": MatchSymbol("Self", "const", "classdef"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+        }
+
+        inner_scope = scopes.by_classdef(gclassdef.inner)
+        assert inner_scope._symbols == {
+            "length": MatchSymbol("length", "var", "class-field"),
+            "items": MatchSymbol("items", "var", "class-field"),
+            "DTYPE": MatchSymbol("DTYPE", "const", "blue-param", level=1),
+            "ptr_T": MatchSymbol("ptr_T", "const", "type-alias", level=1),
+        }
+
     def test_vararg(self):
         scopes = self.analyze("""
         def foo(a: i32, *args: str) -> None:
