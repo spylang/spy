@@ -2,6 +2,7 @@
 #define SPY_UNSAFE_H
 
 #include "spy.h"
+#include <stddef.h>
 
 void *WASM_EXPORT(spy_gc_alloc)(size_t size);
 void *WASM_EXPORT(spy_raw_alloc)(size_t size);

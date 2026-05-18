@@ -10,7 +10,7 @@ spy_posix$_parse_mode(spy_StrObject *mode, char *out) {
     char base = 0;
     bool plus = false;
     for (int32_t i = 0; i < mode->length; i++) {
-        char c = mode->utf8[i];
+        char c = spy_StrObject_UTF8(mode)[i];
         if (c == 'r' || c == 'w' || c == 'a') {
             if (base != 0)
                 return false;
@@ -45,7 +45,7 @@ spy_posix$_fopen(spy_StrObject *filename, spy_StrObject *mode) {
 
     // spy_StrObject is not null-terminated, make a temporary copy for fopen
     char *fname = (char *)malloc(filename->length + 1);
-    memcpy(fname, filename->utf8, filename->length);
+    memcpy(fname, spy_StrObject_UTF8(filename), filename->length);
     fname[filename->length] = '\0';
 
     FILE *f = fopen(fname, cmode);
@@ -60,11 +60,11 @@ spy_posix$_fopen(spy_StrObject *filename, spy_StrObject *mode) {
 spy_StrObject *
 spy_posix$_fread(FILE *f, int32_t size) {
     spy_StrObject *res = spy_str_alloc(size);
-    size_t n = fread((char *)res->utf8, 1, size, f);
+    size_t n = fread((char *)spy_StrObject_UTF8(res), 1, size, f);
     if (n < (size_t)size) {
         // short read: reallocate to actual size
         spy_StrObject *trimmed = spy_str_alloc(n);
-        memcpy((char *)trimmed->utf8, res->utf8, n);
+        memcpy((char *)spy_StrObject_UTF8(trimmed), spy_StrObject_UTF8(res), n);
         res = trimmed;
     }
     return res;
@@ -91,7 +91,7 @@ spy_posix$__freadall_chunked(FILE *f) {
         return NULL;
     }
     spy_StrObject *res = spy_str_alloc(total);
-    memcpy((char *)res->utf8, buf, total);
+    memcpy((char *)spy_StrObject_UTF8(res), buf, total);
     free(buf);
     return res;
 }
@@ -116,7 +116,7 @@ spy_posix$_freadall(FILE *f) {
     fseek(f, cur, SEEK_SET);
     size_t size = end - cur;
     spy_StrObject *res = spy_str_alloc(size);
-    size_t n = fread((char *)res->utf8, 1, size, f);
+    size_t n = fread((char *)spy_StrObject_UTF8(res), 1, size, f);
     if (n < size) {
         if (ferror(f)) {
             spy_panic("OSError", "freadall: read error", __FILE__, __LINE__);
@@ -124,7 +124,7 @@ spy_posix$_freadall(FILE *f) {
         }
         // EOF before expected: e.g. file was truncated concurrently
         spy_StrObject *trimmed = spy_str_alloc(n);
-        memcpy((char *)trimmed->utf8, res->utf8, n);
+        memcpy((char *)spy_StrObject_UTF8(trimmed), spy_StrObject_UTF8(res), n);
         res = trimmed;
     }
     return res;
@@ -145,7 +145,7 @@ spy_posix$_freadline(FILE *f) {
         return spy_str_alloc(0);
     }
     spy_StrObject *res = spy_str_alloc(n);
-    memcpy((char *)res->utf8, line, n);
+    memcpy((char *)spy_StrObject_UTF8(res), line, n);
     free(line);
     return res;
 }
@@ -169,7 +169,7 @@ spy_posix$_fseek(FILE *f, int32_t offset, int32_t whence) {
 
 void
 spy_posix$_fwrite(FILE *f, spy_StrObject *data) {
-    size_t n = fwrite(data->utf8, 1, data->length, f);
+    size_t n = fwrite(spy_StrObject_UTF8(data), 1, data->length, f);
     if (n < data->length) {
         spy_panic("OSError", "fwrite: write error", __FILE__, __LINE__);
     }

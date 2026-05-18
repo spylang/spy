@@ -22,7 +22,11 @@ spy_str_alloc(size_t length) {
     spy_StrObject *res = (spy_StrObject *)spy_GcAlloc(size).p;
     res->length = length;
     res->hash = 0;
-    res->utf8 = (const uint8_t *)(res + 1);
+#ifdef SPY_DEBUG
+    res->utf8 = (spy_gc_ptr_u8){(uint8_t *)(res + 1), (ptrdiff_t)length};
+#else
+    res->utf8 = (spy_gc_ptr_u8){(uint8_t *)(res + 1)};
+#endif
     return res;
 }
 
@@ -30,9 +34,9 @@ spy_StrObject *
 spy_str_add(spy_StrObject *a, spy_StrObject *b) {
     size_t l = a->length + b->length;
     spy_StrObject *res = spy_str_alloc(l);
-    char *buf = (char *)res->utf8;
-    memcpy(buf, a->utf8, a->length);
-    memcpy(buf + a->length, b->utf8, b->length);
+    char *buf = (char *)spy_StrObject_UTF8(res);
+    memcpy(buf, spy_StrObject_UTF8(a), a->length);
+    memcpy(buf + a->length, spy_StrObject_UTF8(b), b->length);
     return res;
 }
 
@@ -46,23 +50,23 @@ spy_str_replace(spy_StrObject *original, spy_StrObject *old, spy_StrObject *new_
         // when old_len is empty insert new_str before each byte and after the last
         size_t result_len = orig_len + (orig_len + 1) * new_len;
         spy_StrObject *res = spy_str_alloc(result_len);
-        char *buf = (char *)res->utf8;
+        char *buf = (char *)spy_StrObject_UTF8(res);
         for (size_t i = 0; i < orig_len; i++) {
-            memcpy(buf, new_str->utf8, new_len);
+            memcpy(buf, spy_StrObject_UTF8(new_str), new_len);
             buf += new_len;
-            buf[0] = original->utf8[i];
+            buf[0] = spy_StrObject_UTF8(original)[i];
             buf++;
         }
-        memcpy(buf, new_str->utf8, new_len);
+        memcpy(buf, spy_StrObject_UTF8(new_str), new_len);
         return res;
     }
 
     // First pass -> count occurrences
     size_t count = 0;
-    const char *p = (const char *)original->utf8;
+    const char *p = (const char *)spy_StrObject_UTF8(original);
     const char *end = p + orig_len;
     while (p <= end - old_len) {
-        if (memcmp(p, old->utf8, old_len) == 0) {
+        if (memcmp(p, spy_StrObject_UTF8(old), old_len) == 0) {
             count++;
             p += old_len;
         } else {
@@ -73,18 +77,18 @@ spy_str_replace(spy_StrObject *original, spy_StrObject *old, spy_StrObject *new_
     if (count == 0) {
         // Return the original string when no occurrences are found
         spy_StrObject *res = spy_str_alloc(orig_len);
-        memcpy((char *)res->utf8, original->utf8, orig_len);
+        memcpy((char *)spy_StrObject_UTF8(res), spy_StrObject_UTF8(original), orig_len);
         return res;
     }
 
     // Second pass -> build the result
     size_t result_len = orig_len + count * (new_len - old_len);
     spy_StrObject *res = spy_str_alloc(result_len);
-    char *buf = (char *)res->utf8;
-    p = (const char *)original->utf8;
+    char *buf = (char *)spy_StrObject_UTF8(res);
+    p = (const char *)spy_StrObject_UTF8(original);
     while (p <= end - old_len) {
-        if (memcmp(p, old->utf8, old_len) == 0) {
-            memcpy(buf, new_str->utf8, new_len);
+        if (memcmp(p, spy_StrObject_UTF8(old), old_len) == 0) {
+            memcpy(buf, spy_StrObject_UTF8(new_str), new_len);
             buf += new_len;
             p += old_len;
         } else {
@@ -101,9 +105,9 @@ spy_StrObject *
 spy_str_mul(spy_StrObject *a, int32_t b) {
     size_t l = a->length * b;
     spy_StrObject *res = spy_str_alloc(l);
-    char *buf = (char *)res->utf8;
+    char *buf = (char *)spy_StrObject_UTF8(res);
     for (int i = 0; i < b; i++) {
-        memcpy(buf, a->utf8, a->length);
+        memcpy(buf, spy_StrObject_UTF8(a), a->length);
         buf += a->length;
     }
     return res;
@@ -113,7 +117,7 @@ bool
 spy_str_eq(spy_StrObject *a, spy_StrObject *b) {
     if (a->length != b->length)
         return false;
-    return memcmp(a->utf8, b->utf8, a->length) == 0;
+    return memcmp(spy_StrObject_UTF8(a), spy_StrObject_UTF8(b), a->length) == 0;
 }
 
 spy_StrObject *
@@ -128,8 +132,8 @@ spy_str_getitem(spy_StrObject *s, int32_t i) {
         return NULL;
     }
     spy_StrObject *res = spy_str_alloc(1);
-    char *buf = (char *)res->utf8;
-    buf[0] = s->utf8[i];
+    char *buf = (char *)spy_StrObject_UTF8(res);
+    buf[0] = spy_StrObject_UTF8(s)[i];
     return res;
 }
 
@@ -143,10 +147,10 @@ spy_str_repr(spy_StrObject *s) {
     // Choose quote character: use double quotes if string contains ' but not "
     char quote = '\'';
     for (size_t i = 0; i < s->length; i++) {
-        if (s->utf8[i] == '\'') {
+        if (spy_StrObject_UTF8(s)[i] == '\'') {
             quote = '"';
         }
-        if (s->utf8[i] == '"') {
+        if (spy_StrObject_UTF8(s)[i] == '"') {
             quote = '\'';
             break;
         }
@@ -155,7 +159,7 @@ spy_str_repr(spy_StrObject *s) {
     // First pass: calculate the output length
     size_t out_len = 2; // for the surrounding quotes
     for (size_t i = 0; i < s->length; i++) {
-        unsigned char c = (unsigned char)s->utf8[i];
+        unsigned char c = (unsigned char)spy_StrObject_UTF8(s)[i];
         if (c == '\\' || c == quote) {
             out_len += 2;
         } else if (c == '\n' || c == '\r' || c == '\t') {
@@ -169,10 +173,10 @@ spy_str_repr(spy_StrObject *s) {
 
     // Second pass: fill the buffer
     spy_StrObject *res = spy_str_alloc(out_len);
-    char *buf = (char *)res->utf8;
+    char *buf = (char *)spy_StrObject_UTF8(res);
     *buf++ = quote;
     for (size_t i = 0; i < s->length; i++) {
-        unsigned char c = (unsigned char)s->utf8[i];
+        unsigned char c = (unsigned char)spy_StrObject_UTF8(s)[i];
         if (c == '\\') {
             *buf++ = '\\';
             *buf++ = '\\';
@@ -205,7 +209,7 @@ spy_str_hash(spy_StrObject *s) {
     // FNV-1a hash
     uint32_t h = 2166136261u;
     for (size_t i = 0; i < s->length; i++) {
-        h ^= (uint8_t)s->utf8[i];
+        h ^= (uint8_t)spy_StrObject_UTF8(s)[i];
         h *= 16777619u;
     }
     int32_t result = (int32_t)h;
@@ -229,7 +233,7 @@ spy_str_from_format(const char *fmt, ...) {
     va_end(args);
 
     spy_StrObject *res = spy_str_alloc(length);
-    char *outbuf = (char *)res->utf8;
+    char *outbuf = (char *)spy_StrObject_UTF8(res);
     memcpy(outbuf, buf, length);
     return res;
 }
@@ -271,7 +275,7 @@ spy_str_parse_i64(spy_StrObject *s) {
             "ValueError", "invalid literal for int() with base 10", __FILE__, __LINE__
         );
     }
-    memcpy(buf, s->utf8, len);
+    memcpy(buf, spy_StrObject_UTF8(s), len);
     buf[len] = '\0';
 
     char *end;
@@ -335,7 +339,7 @@ spy_str_to_complex128(spy_StrObject *s) {
         );
     }
 
-    memcpy(buf, s->utf8, len);
+    memcpy(buf, spy_StrObject_UTF8(s), len);
     buf[len] = '\0';
     char *start = buf;
     char *end = start + len - 1;

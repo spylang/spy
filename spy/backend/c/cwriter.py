@@ -295,10 +295,13 @@ class CFuncWriter:
         # generate the following:
         #
         #     // global declarations
-        #     static spy_StrObject SPY_g_str0 = {5, 0, (const uint8_t *)"hello"};
+        #     static spy_StrObject SPY_g_str0 = SPY_STR_LITERAL(5, "hello");
         #     ...
         #     // literal expr
         #     &SPY_g_str0 /* "hello" */
+        #
+        # SPY_STR_LITERAL hides the difference between debug and release
+        # layouts of spy_gc_ptr_u8 (see str.h).
         #
         # Note that in the literal expr we also put a comment showing what is
         # the content of the literal: hopefully this will make the code more
@@ -310,7 +313,7 @@ class CFuncWriter:
         v = self.cmodw.new_global_var("str")  # SPY_g_str0
         n = len(utf8)
         lit = C.Literal.from_bytes(utf8)
-        init = "{%d, 0, (const uint8_t *)%s}" % (n, lit)
+        init = f"SPY_STR_LITERAL({n}, {lit})"
         self.cmodw.tbc_globals.wl(f"static spy_StrObject {v} = {init};")
         #
         # shortstr is what we show in the comment, with a length limit

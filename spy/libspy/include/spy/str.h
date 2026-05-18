@@ -3,6 +3,7 @@
 
 #include "spy.h"
 #include "spy/complex.h"
+#include "spy/unsafe.h"
 #include <stddef.h>
 
 /* === String layout ===
@@ -26,11 +27,31 @@
 typedef struct {
     size_t length;
     int32_t hash;
-    const uint8_t *utf8;
+    spy_gc_ptr_u8 utf8;
 } spy_StrObject;
 
-// Convenience macro to get (const char*)utf8
-#define spy_StrObject_CHARS(s) ((const char *)(s)->utf8)
+// Convenience macros for accessing the utf8 buffer.
+#define spy_StrObject_UTF8(s) ((s)->utf8.p)
+#define spy_StrObject_CHARS(s) ((const char *)spy_StrObject_UTF8(s))
+
+/* SPY_STR_LITERAL(N, "content") is a struct initializer for spy_StrObject,
+   useful for static globals and for-test literals. There are two versions
+   depending on whether spy_gc_ptr_u8 carries a length (SPY_DEBUG). */
+#ifdef SPY_DEBUG
+#  define SPY_STR_LITERAL(N, S)                                                        \
+      {                                                                                \
+          (N), 0, {                                                                    \
+              (uint8_t *)(S), (ptrdiff_t)(N)                                           \
+          }                                                                            \
+      }
+#else
+#  define SPY_STR_LITERAL(N, S)                                                        \
+      {                                                                                \
+          (N), 0, {                                                                    \
+              (uint8_t *)(S)                                                           \
+          }                                                                            \
+      }
+#endif
 
 // Layout info exported for str.py.
 typedef struct {
