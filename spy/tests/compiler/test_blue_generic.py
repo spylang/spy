@@ -173,3 +173,15 @@ class TestBlueGeneric(CompilerTest):
         assert w_list.fqn.human_name(self.vm) == "list[i32]"
         assert w_dict.fqn.human_name(self.vm) == "dict[i32, str]"
         assert w_tuple.fqn.human_name(self.vm) == "tuple[i32, str, f64]"
+
+    def test_generic_class_with_TypeAlias(self):
+        mod = self.compile("""
+        @struct
+        class Wrapper[T]:
+            type value_T = T
+            value: value_T
+
+        def foo() -> i32:
+            return Wrapper[i32](42).value
+        """)
+        assert mod.foo() == 42
