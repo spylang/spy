@@ -18,7 +18,7 @@ def main() -> None:
     print(add[str]('hello ', 'world'))
 ```
 
-Like all functions marked `@blue`, the generic function is guarenteed to be executed at compile-time. We can see in the redshifted version of the above code that `add()` no longer appears, but the two specialized versions of it remain:
+Like all functions marked `@blue`, the generic function is guaranteed to be executed at compile-time. We can see in the redshifted version of the above code that `add()` no longer appears, but the two specialized versions of it remain:
 
 <!-- Colorful code formatted by ansi2html -->
 <style type="text/css">
