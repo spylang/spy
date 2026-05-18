@@ -442,6 +442,7 @@ class TestParser:
                     kind='simple',
                 ),
             ],
+            type_aliases=[],
             inner=ClassDef(
                 name='Self',
                 kind='struct',
