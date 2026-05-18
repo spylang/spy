@@ -75,9 +75,15 @@ spy_operator$f32_to_i32(float x) {
 }
 
 static inline void
-spy_operator$raise(spy_Str *etype, spy_Str *message, spy_Str *fname, int32_t lineno) {
+spy_operator$raise(
+    spy_StrObject *etype,
+    spy_StrObject *message,
+    spy_StrObject *fname,
+    int32_t lineno
+) {
     spy_panic(
-        spy_Str_CHARS(etype), spy_Str_CHARS(message), spy_Str_CHARS(fname), lineno
+        spy_StrObject_CHARS(etype), spy_StrObject_CHARS(message),
+        spy_StrObject_CHARS(fname), lineno
     );
 }
 

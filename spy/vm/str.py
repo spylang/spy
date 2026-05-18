@@ -11,12 +11,12 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-def ll_spy_Str_new(ll: LLSPyInstance, s: str) -> int:
+def ll_str_new(ll: LLSPyInstance, s: str) -> int:
     """
-    Create a new spy_Str object inside the given LLWasmInstance, and fill it
+    Create a new spy_StrObject object inside the given LLWasmInstance, and fill it
     with the utf8-encoded content of s.
 
-    Return the corresponding 'spy_Str *'
+    Return the corresponding 'spy_StrObject *'
     """
     utf8 = s.encode("utf-8")
     length = len(utf8)
@@ -31,13 +31,13 @@ class W_Str(W_Object):
     """
     An unicode string, internally represented as UTF-8.
 
-    This is basically a 'spy_Str *', i.e. a pointer to a C struct which
+    This is basically a 'spy_StrObject *', i.e. a pointer to a C struct which
     resides in the linear memory of the VM:
         typedef struct {
             size_t length;
             int32_t hash;
             const char utf8[];
-        } spy_Str;
+        } spy_StrObject;
     """
 
     __spy_storage_category__ = "value"
@@ -45,7 +45,7 @@ class W_Str(W_Object):
     ptr: int
 
     def __init__(self, vm: "SPyVM", s: str) -> None:
-        ptr = ll_spy_Str_new(vm.ll, s)
+        ptr = ll_str_new(vm.ll, s)
         self.vm = vm
         self.ptr = ptr
 

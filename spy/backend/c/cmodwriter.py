@@ -172,7 +172,7 @@ class CModuleWriter:
                         spy_list_str lst = spy_list_str_new();
                         for (int i = 0; i < argc; i++) {
                             size_t length = strlen(argv[i]);
-                            spy_Str *s = spy_str_alloc(length);
+                            spy_StrObject *s = spy_str_alloc(length);
                             char *buf = (char *)s->utf8;
                             memcpy(buf, argv[i], length);
                             lst = spy_list_str_push(lst, s);

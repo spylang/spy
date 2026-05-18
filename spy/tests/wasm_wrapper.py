@@ -13,7 +13,7 @@ from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
 from spy.vm.modules.rawbuffer import RB
 from spy.vm.modules.unsafe.ptr import W_PtrType
 from spy.vm.object import W_Type
-from spy.vm.str import ll_spy_Str_new
+from spy.vm.str import ll_str_new
 from spy.vm.struct import UnwrappedStruct, W_StructType
 from spy.vm.vm import SPyVM
 
@@ -95,7 +95,7 @@ class WasmFuncWrapper:
             return float(pyval)
         elif w_T is B.w_str:
             # XXX: with the GC, we need to think how to keep this alive
-            return ll_spy_Str_new(self.ll, pyval)
+            return ll_str_new(self.ll, pyval)
         elif isinstance(w_T, W_PtrType):
             assert isinstance(pyval, WasmPtr)
             return (pyval.addr, pyval.length)
@@ -279,7 +279,7 @@ def unflatten_struct(
                 content[w_field.name] = WasmPtr(addr, length)
                 idx += 2
             elif w_field.w_T is B.w_str:
-                # str fields are spy_Str* pointers; read from WASM memory
+                # str fields are spy_StrObject* pointers; read from WASM memory
                 addr = flat_values[idx]
                 if ll is not None:
                     _, _, utf8 = ll.read_str(addr)

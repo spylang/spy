@@ -32,10 +32,10 @@ class TestLibSPy(CTest):
         src = r"""
         #include <spy.h>
 
-        spy_Str H = {6, 0, (const uint8_t *)"hello "};
+        spy_StrObject H = {6, 0, (const uint8_t *)"hello "};
 
-        spy_Str *mk_W(void) {
-            spy_Str *s = spy_str_alloc(5);
+        spy_StrObject *mk_W(void) {
+            spy_StrObject *s = spy_str_alloc(5);
             memcpy((void*)s->utf8, "world", 5);
             return s;
         }

@@ -83,7 +83,7 @@ class LibSPyHost(HostModule):
 
 @dataclass
 class StrLayout:
-    # See also the struct _spy_Str_layout in str.h
+    # See also the struct _spy_StrObject_layout in str.h
     size: int
     length_offset: int
     hash_offset: int
@@ -106,12 +106,12 @@ class LLSPyInstance(LLWasmInstance):
         self.libspy = LibSPyHost()
         hostmods = [self.libspy] + hostmods
         super().__init__(llmod, hostmods, instance=instance)
-        layout = self.call("_spy_Str_layout")
+        layout = self.call("_spy_StrObject_layout")
         self.str_layout = StrLayout(*layout)
 
     def read_str(self, ptr: int) -> tuple[int, int, bytes]:
         """
-        Read a spy_Str at ptr from linear memory.
+        Read a spy_StrObject at ptr from linear memory.
         Returns (length, hash, utf8_bytes).
         """
         layout = self.str_layout
