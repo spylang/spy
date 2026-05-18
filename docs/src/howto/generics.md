@@ -7,16 +7,41 @@ title: Generic Functions and Types
 Functions decorated with [@blue.generic](../api_reference/spy_builtins.md#bluegeneric) are called with `[]` brackets instead of parentheses. These *may* be used anywhere, but they are intended to help create functions that look like [PEP 695](https://peps.python.org/pep-0695/) functions with type parameters:
 
 ```python
-  @blue.generic
-  def add(T):
-      def impl(x:T, y: T) -> T:
-          return x + y
-      return impl
+@blue.generic
+def add(T):
+    def impl(x:T, y: T) -> T:
+        return x + y
+    return impl
 
-  def main() -> None:
-      print(add[i32](1, 2))
-      print(add[str]('hello ', 'world'))
+def main() -> None:
+    print(add[i32](1, 2))
+    print(add[str]('hello ', 'world'))
 ```
+
+Like all functions marked `@blue`, the generic function is guarenteed to be executed at compile-time. We can see in the redshifted version of the above code that `add()` no longer appears, but the two specialized versions of it remain:
+
+<!-- Colorful code formatted by ansi2html -->
+<style type="text/css">
+.ansi2html-content { display: block; white-space: pre-wrap; word-wrap: break-word; font-size: .85em; padding:1.1em; corner-radius: 0.1em}
+.ansi1 { font-weight: bold; }
+.ansi32 { color: #00aa00; }
+.ansi33 { color: #aa5500; }
+.ansi34 { color: #0000aa; }
+.ansi35 { color: #E850A8; }
+</style>
+<div class="body_background" style="background-color:rgb(245, 245, 245);">
+<pre class="ansi2html-content">
+<span class="ansi1 ansi34">def</span> main() -&gt; <span class="ansi1 ansi34">None</span>:
+    <span class="ansi1 ansi35">`_print::println[i32]::p`</span>(<span class="ansi1 ansi35">`t::add[i32]::impl`</span>(<span class="ansi1 ansi33">1</span>, <span class="ansi1 ansi33">2</span>))
+    <span class="ansi1 ansi35">`_print::println[str]::p`</span>(<span class="ansi1 ansi35">`t::add[str]::impl`</span>(<span class="ansi1 ansi32">'hello '</span>, <span class="ansi1 ansi32">'world'</span>))
+
+<span class="ansi1 ansi34">def</span> <span class="ansi1 ansi35">`t::add[i32]::impl`</span>(x: <span class="ansi1 ansi35">i32</span>, y: <span class="ansi1 ansi35">i32</span>) -&gt; <span class="ansi1 ansi35">i32</span>:
+    <span class="ansi1 ansi34">return</span> x + y
+
+<span class="ansi1 ansi34">def</span> <span class="ansi1 ansi35">`t::add[str]::impl`</span>(x: <span class="ansi1 ansi35">str</span>, y: <span class="ansi1 ansi35">str</span>) -&gt; <span class="ansi1 ansi35">str</span>:
+    <span class="ansi1 ansi34">return</span> <span class="ansi1 ansi35">`operator::str_add`</span>(x, y)
+</pre>
+</div>
 
 ### Generic Types
 
@@ -60,7 +85,7 @@ def main() -> None:
 
 ### `__origin__`
 
-Objects in SPy have an `__origin__` attribute, which defaults to `None`. When a `type` or `function` defined inside a `blue.generic` function is returned, it's `__origin__` is set to that generic function (if it wasn't already set by something else).
+The `__origin__` attribute of SPy objects carries information about the generic function which created them, if any. When `blue.generic` defines a `type` or `function` and returns it, the returned object has it's `__origin__` is set to the generic function:
 
 ```py
 @blue.generic
@@ -75,7 +100,9 @@ def adder(T):
 assert adder[T].__origin__ is adder
 ```
 
-This is a straightforward way to identify that `MyList[T]` is a 'specialised' version of `MyList` on the type `T`.
+This is a straightforward way to identify that, for example, `MyList[T]` is a 'specialised' version of `MyList` on the type `T`.
+
+(The default value for `__origin__` is None. If the object returned by a generic function already has a non-`None` origin, that origin will *not* be overwritten.)
 
 This also works with generic classes:
 
