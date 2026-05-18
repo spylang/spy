@@ -207,7 +207,7 @@ class W_Object:
     def __repr__(self) -> str:
         fqn = self._w.fqn
         addr = f"0x{id(self):x}"
-        return f"<spy instance: type={fqn.human_name}, id={addr}>"
+        return f"<spy instance: type={fqn.debug_human_name}, id={addr}>"
 
     def spy_get_w_type(self, vm: "SPyVM") -> "W_Type":
         pyclass = type(self)
@@ -257,7 +257,7 @@ class W_Object:
 
         @vm.register_builtin_func(w_T.fqn, "__generic_repr__", irtag=irtag)
         def w_generic_repr(vm: "SPyVM", w_obj: T) -> W_Str:
-            tname = w_T.fqn.human_name
+            tname = w_T.fqn.debug_human_name
             addr = f"0x{id(w_obj):x}"
             s = f"<spy `{tname}` object at {addr}>"
             return vm.wrap(s)
@@ -430,6 +430,7 @@ class W_Type(W_Object):
     fqn: FQN
     _pyclass: Optional[Type[W_Object]]
     _dict_w: Optional[dict[str, W_Object]]
+    w_origin: Optional["W_Object"]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         cls = self.__class__.__name__
@@ -465,6 +466,7 @@ class W_Type(W_Object):
         w_T.fqn = fqn
         w_T._pyclass = None
         w_T._dict_w = None
+        w_T.w_origin = None
         return w_T
 
     @classmethod
@@ -640,7 +642,7 @@ class W_Type(W_Object):
 
         addr = ""
         # addr = f' at 0x{id(self):x}'
-        return f"<spy type '{self.fqn.human_name}'{s_hints}{addr}>"
+        return f"<spy type '{self.fqn.debug_human_name}'{s_hints}{addr}>"
 
     def repr_hints(self) -> list[str]:
         return []
@@ -712,6 +714,15 @@ class W_Type(W_Object):
         return None
 
     # ======== app-level interface ========
+
+    @builtin_property("__origin__")
+    @staticmethod
+    def w_get_origin(vm: "SPyVM", w_self: "W_Type") -> "W_Dynamic":
+        from spy.vm.b import B
+
+        if w_self.w_origin is None:
+            return B.w_None
+        return w_self.w_origin
 
     @builtin_method("__new__")
     @staticmethod
@@ -805,7 +816,7 @@ class W_Type(W_Object):
             return w_opspec
 
         # no __new__, error out
-        clsname = w_T.fqn.human_name
+        clsname = w_T.fqn.debug_human_name
         err = SPyError("W_TypeError", f"cannot instantiate `{clsname}`")
         err.add("error", f"`{clsname}` does not have a method `__new__`", loc=wam_t.loc)
         if wam_t.sym:

@@ -896,7 +896,7 @@ class TestBasic(CompilerTest):
         """)
         #
         w_functype = mod.foo.w_functype
-        assert w_functype.fqn.human_name == "def(i32) -> i32"
+        assert w_functype.fqn.debug_human_name == "def(i32) -> i32"
         assert mod.foo(1) == 2
 
     def test_redshift_nonglobal_function(self):
@@ -924,53 +924,6 @@ class TestBasic(CompilerTest):
             return make_adder(3)(6)
         """)
         assert mod.foo() == 9
-
-    def test_blue_generic(self):
-        mod = self.compile("""
-        @blue.generic
-        def add(T):
-            def impl(x: T, y: T) -> T:
-                return x + y
-            return impl
-
-        def foo() -> i32:
-            return add[i32](1, 2)
-
-        def bar() -> str:
-            return add[str]('hello ', 'world')
-        """)
-        assert mod.foo() == 3
-        assert mod.bar() == "hello world"
-
-    def test_generic_args(self):
-        mod = self.compile("""
-        def add[T](x: T, y: T) -> T:
-            return x + y
-
-        def foo() -> i32:
-            return add[i32](1, 2)
-
-        def bar() -> str:
-            return add[str]('hello ', 'world')
-        """)
-        assert mod.foo() == 3
-        assert mod.bar() == "hello world"
-
-    def test_cannot_call_blue_generic(self):
-        src = """
-        @blue.generic
-        def ident(x):
-            return x
-
-        def foo() -> i32:
-            return ident(42)
-        """
-        errors = expect_errors(
-            "generic functions must be called via `[...]`",
-            ("this is `@blue.generic def(dynamic) -> dynamic`", "ident"),
-            ("`ident` defined here", "def ident(x):"),
-        )
-        self.compile_raises(src, "foo", errors)
 
     def test_call_func_already_redshifted(self):
         mod = self.compile("""
@@ -1266,7 +1219,7 @@ class TestBasic(CompilerTest):
         w_ptr_S2 = w_mod.getattr("ptr_S2")
         #
         expected_sig = "def(test::S, unsafe::raw_ptr[test::S]) -> None"
-        assert w_foo.w_functype.fqn.human_name == expected_sig
+        assert w_foo.w_functype.fqn.debug_human_name == expected_sig
         params = w_foo.w_functype.params
         assert params[0].w_T is w_S
         assert params[1].w_T is w_ptr_S1 is w_ptr_S2

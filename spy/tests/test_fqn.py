@@ -96,12 +96,12 @@ def test_nested_qualifiers_c_name():
 
 def test_FQN_human_name():
     # see also tests/vm/test_function.py::test_FunctionType_fqn
-    assert FQN("a::b").human_name == "a::b"
-    assert FQN("builtins::i32").human_name == "i32"
+    assert FQN("a::b").debug_human_name == "a::b"
+    assert FQN("builtins::i32").debug_human_name == "i32"
     func = FQN("builtins").join(
         "def", ["builtins::i32", "builtins::f64", "builtins::str"]
     )
-    assert func.human_name == "def(i32, f64) -> str"
+    assert func.debug_human_name == "def(i32, f64) -> str"
 
 
 def test_FQN_with_qualifiers():

@@ -251,23 +251,23 @@ class CModuleWriter:
         elif isinstance(w_obj, W_Cell):
             w_content = w_obj.get()
             w_T = self.ctx.vm.dynamic_type(w_content)
-            # we support only int global variables for now
-            assert isinstance(w_content, W_I32), "WIP: var type not supported"
-            intval = self.ctx.vm.unwrap(w_content)
-            c_type = self.ctx.w2c(w_T)
-            self.tbh_globals.wl(f"extern {c_type} {fqn.c_name};")
-            self.tbc_globals.wl(f"{c_type} {fqn.c_name} = {intval};")
-
-        # ==== misc consts ====
-        elif isinstance(w_T, W_PtrType):
-            # for now, we only support NULL constnts
-            assert isinstance(w_obj, W_Ptr)
-            assert w_obj.addr == 0, (
-                "only NULL pointers can be stored in constants for now"
-            )
-            c_type = self.ctx.w2c(w_T)
-            self.tbh_globals.wl(f"extern {c_type} {fqn.c_name};")
-            self.tbc_globals.wl(f"{c_type} {fqn.c_name} = {{0}};")
+            # we support only int and pointer global variables for now
+            if isinstance(w_content, W_I32):
+                intval = self.ctx.vm.unwrap(w_content)
+                c_type = self.ctx.w2c(w_T)
+                self.tbh_globals.wl(f"extern {c_type} {fqn.c_name};")
+                self.tbc_globals.wl(f"{c_type} {fqn.c_name} = {intval};")
+            elif isinstance(w_T, W_PtrType):
+                # for now, we only support NULL constnts
+                assert isinstance(w_content, W_Ptr)
+                assert w_content.addr == 0, (
+                    "only NULL pointers can be stored in constants for now"
+                )
+                c_type = self.ctx.w2c(w_T)
+                self.tbh_globals.wl(f"extern {c_type} {fqn.c_name};")
+                self.tbc_globals.wl(f"{c_type} {fqn.c_name} = {{0}};")
+            else:
+                raise WIP("var type `{w_T}` not supported")
 
         else:
             raise NotImplementedError("WIP")

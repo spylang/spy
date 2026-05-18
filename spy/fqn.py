@@ -111,7 +111,7 @@ class NSPart:
     def __str__(self) -> str:
         result = self.name
         if len(self.qualifiers) > 0:
-            quals = ", ".join(q.human_name for q in self.qualifiers)
+            quals = ", ".join(q.debug_human_name for q in self.qualifiers)
             result = f"{result}[{quals}]"
         if self.suffix != "":
             result += f"#{self.suffix}"
@@ -205,22 +205,15 @@ class FQN:
     def fullname(self) -> str:
         return self._fullname(human=False)
 
-    @property
-    def human_name(self) -> str:
+    def _human_render(self) -> str:
         """
-        Like fullname, but doesn't show 'builtins::',
-        and special-case 'def[...]'
+        Render a FQN to string, special casing builtins::, def, etc.
         """
         is_def = (
             len(self.parts) == 2
             and self.modname == "builtins"
             and self.parts[1].name
-            in (
-                "def",
-                "blue.def",
-                "blue.generic.def",
-                "blue.metafunc.def",
-            )
+            in ("def", "blue.def", "blue.generic.def", "blue.metafunc.def")
         )
         if is_def:
             p1 = self.parts[1]
@@ -230,11 +223,9 @@ class FQN:
                 d = "@blue def"
             elif p1.name == "blue.generic.def":
                 d = "@blue.generic def"
-            elif p1.name == "blue.metafunc.def":
-                d = "@blue.metafunc def"
             else:
-                assert False
-            quals = [fqn.human_name for fqn in p1.qualifiers]
+                d = "@blue.metafunc def"
+            quals = [q._human_render() for q in p1.qualifiers]
             p = ", ".join(quals[:-1])
             r = quals[-1]
             if r == "types::NoneType":
@@ -249,10 +240,96 @@ class FQN:
         if is_varargs_param:
             p1 = self.parts[1]
             assert len(p1.qualifiers) == 1
-            q0 = p1.qualifiers[0]
-            return f"*{q0.human_name}"
+            return f"*{p1.qualifiers[0]._human_render()}"
 
-        return self._fullname(human=True)
+        parts = self.parts
+        if str(parts[0]) == "builtins":
+            parts = parts[1:]
+
+        rendered = []
+        for part in parts:
+            name = part.name
+            if part.qualifiers:
+                name = (
+                    f"{name}[{', '.join(q._human_render() for q in part.qualifiers)}]"
+                )
+            if part.suffix:
+                name += f"#{part.suffix}"
+            rendered.append(name)
+        return "::".join(rendered)
+
+    def _resolve_aliases(self, vm: Any, seen: frozenset["FQN"]) -> "FQN":
+        """
+        Apply alias lookup recursively, returning a new FQN with all parts
+        replaced by their display equivalents. No string formatting.
+        """
+        aliases: dict["FQN", "FQN"] = vm.fqn_human_aliases
+
+        # Full-FQN direct lookup
+        if self in aliases:
+            display = aliases[self]
+            if display in seen:
+                return self
+            return display._resolve_aliases(vm, seen | {self})
+
+        # Prefix-match: try each prefix length from longest to shortest,
+        # stripping qualifiers from the last part of the candidate.
+        parts = self.parts
+        for k in range(len(parts), 0, -1):
+            last = parts[k - 1]
+            candidate = FQN(
+                list(parts[: k - 1]) + [NSPart(last.name, None, last.suffix)]
+            )
+            if candidate in aliases:
+                display_prefix = aliases[candidate]
+                display_last = display_prefix.parts[-1]
+                if last.qualifiers:
+                    # Reattach qualifiers (recursively unaliased) to the display prefix.
+                    rewritten_quals = tuple(
+                        q._resolve_aliases(vm, seen | {self}) for q in last.qualifiers
+                    )
+                    new_last = NSPart(
+                        display_last.name, rewritten_quals, display_last.suffix
+                    )
+                    new_display_parts = list(display_prefix.parts[:-1]) + [new_last]
+                else:
+                    new_display_parts = list(display_prefix.parts)
+                new_parts = new_display_parts + list(parts[k:])
+                result = FQN(new_parts)
+                if result in seen:
+                    return self
+                return result._resolve_aliases(vm, seen | {self})
+
+        # No alias match - humanize qualifiers in-place.
+        new_parts = []
+        for part in parts:
+            if part.qualifiers:
+                new_quals = tuple(
+                    q._resolve_aliases(vm, seen | {self}) for q in part.qualifiers
+                )
+                new_parts.append(NSPart(part.name, new_quals, part.suffix))
+            else:
+                new_parts.append(part)
+        return FQN(new_parts)
+
+    @property
+    def debug_human_name(self) -> str:
+        """
+        Best-effort human name without access to a VM.
+
+        The difference with .human_name is that this doesn't resolve aliases.
+        Use this as a last resort ONLY when no VM is available. End-user-facing output
+        (errors, backend dumps, etc.) should use `human_name(vm)` instead.
+        """
+        return self._human_render()
+
+    def human_name(self, vm: Any) -> str:
+        """
+        Render the FQN for end-user display, honoring vm.fqn_human_aliases.
+        If no VM is available, use debug_human_name instead.
+        """
+        human_fqn = self._resolve_aliases(vm, frozenset())
+        return human_fqn._human_render()
 
     @property
     def modname(self) -> str:

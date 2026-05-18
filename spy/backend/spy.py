@@ -68,7 +68,8 @@ class SPyBackend:
             ):
                 aliases.append((attr, w_obj))
         for attr, w_obj in aliases:
-            self.out.wl(f"{attr} = `{w_obj.fqn}`")
+            fqn_str = w_obj.fqn.human_name(self.vm)
+            self.out.wl(f"{attr} = `{fqn_str}`")
         if aliases:
             self.out.wl()
 
@@ -135,7 +136,7 @@ class SPyBackend:
         if isinstance(w_obj, W_Type) and issubclass(w_obj.pyclass, W_InterpList):
             # this is a ugly special case for now, we need to find a better
             # solution
-            return w_obj.fqn.human_name
+            return w_obj.fqn.human_name(self.vm)
         #
         # this assumes that w_obj has a valid FQN
         fqn = self.vm.reverse_lookup_global(w_obj)
@@ -146,7 +147,7 @@ class SPyBackend:
         if self.fqn_format == "full":
             name = str(fqn)
         elif self.fqn_format == "short":
-            name = fqn.human_name  # don't show builtins::
+            name = fqn.human_name(self.vm)  # don't show builtins::
         else:
             assert False
         #

@@ -113,8 +113,8 @@ class W_InterpDict(W_BaseInterpDict, Generic[K, V]):
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
-        K = self.w_dictT.w_keyT.fqn.human_name
-        V = self.w_dictT.w_valueT.fqn.human_name
+        K = self.w_dictT.w_keyT.fqn.debug_human_name
+        V = self.w_dictT.w_valueT.fqn.debug_human_name
         return f"{cls}('{K}', '{V}', {self.items_w})"
 
     def spy_get_w_type(self, vm: "SPyVM") -> W_Type:

@@ -311,7 +311,7 @@ class W_Ptr(W_MemLoc):
 
     def __repr__(self) -> str:
         clsname = self.__class__.__name__
-        t = self.w_T.w_itemT.fqn.human_name
+        t = self.w_T.w_itemT.fqn.debug_human_name
         k = self.w_T.memkind
         if self.addr == 0:
             return f"{clsname}({k!r}, {t}, NULL)"
@@ -481,14 +481,14 @@ def w_ptr_getfield(vm: "SPyVM", w_T: W_Type, w_memkind: W_Str) -> W_Dynamic:
         by = "byval"
 
     T = Annotated[W_Object, w_T]
-
+    ns = UNSAFE.w_ptr_getfield.compute_inner_ns([w_T])
     # example FQNs:
-    #     unsafe::ptr_getfield_byval[i32]
-    #     unsafe::ptr_getfield_byref[raw_ref[Point]]
-    #     unsafe::ptr_getfield_byref[gc_ref[Point]]
+    #     unsafe::ptr_getfield[i32]::byval
+    #     unsafe::ptr_getfield[raw_ref[Point]]::byref
+    #     unsafe::ptr_getfield[gc_ref[Point]]::byref
     tag = IRTag("ptr.getfield", by=by)
 
-    @vm.register_builtin_func("unsafe", f"ptr_getfield_{by}", [w_T.fqn], irtag=tag)
+    @vm.register_builtin_func(ns, by, irtag=tag)
     def w_ptr_getfield_T(
         vm: "SPyVM", w_ptr: W_Ptr, w_name: W_Str, w_offset: W_I32
     ) -> T:
@@ -508,11 +508,11 @@ def w_ptr_getfield(vm: "SPyVM", w_T: W_Type, w_memkind: W_Str) -> W_Dynamic:
 @UNSAFE.builtin_func(color="blue")
 def w_ptr_setfield(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     T = Annotated[W_Object, w_T]
-
-    # example FQN: unsafe::ptr_setfield[i32]
+    ns = UNSAFE.w_ptr_setfield.compute_inner_ns([w_T])
+    # example FQN: unsafe::ptr_setfield[i32]::impl
     irtag = IRTag("ptr.setfield")
 
-    @vm.register_builtin_func("unsafe", "ptr_setfield", [w_T.fqn], irtag=irtag)
+    @vm.register_builtin_func(ns, "impl", irtag=irtag)
     def w_ptr_setfield_T(
         vm: "SPyVM", w_ptr: W_Ptr, w_name: W_Str, w_offset: W_I32, w_val: T
     ) -> None:

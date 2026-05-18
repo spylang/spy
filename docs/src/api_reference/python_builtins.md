@@ -40,6 +40,10 @@ The following built-in functions work similarly to their equivalents in CPython;
 
 :   Return the value of the named attribute of object. `attr` must be blue
 
+### __hasattr__(obj, name: str) { data-toc-label='hasattr()' }
+
+:  Returns `True` is the object has an attribute called `name`, or `False` otherwise. `attr` must be blue
+
 ### __hash__(object) { data-toc-label='hash()' }
 :   Currently implemented for types: `i8`,`i32`, `u8`, `bool`, `str`.
 
@@ -73,9 +77,9 @@ The following built-in functions work similarly to their equivalents in CPython;
 
 :   `object` is implemented as a type, and can be used as a parameter or return type. "Plain" objects (i.e. `x = object()`) are not supported.
 
-### __print__(obj) { data-toc-label='print()' }
+### __print__(*objects) { data-toc-label='print()' }
 
-:   The print function is currently not variadic, in the sense that it only accepts a single argument. The built-in types are special-cased, and SPy can always print blue objects by pre-computing their string representation
+:   Prints objects to standard out, utilizing the objects `__str__` method if necessary. Extra keyworld arguments a la [CPythons' print()](https://docs.python.org/3/library/functions.html#print) are not currently supported.
 
 ### __range__(stop) { data-toc-label='range()' }
 <h3> <b>range</b>(start, stop, step)</h3> <!-- An HTML label to hide this in the TOC -->
@@ -139,7 +143,7 @@ Number types beyond int and float are in active development; some of the math fu
 
 The internals of SPy are significantly different from CPython; as such, the road to (and need for) some of these built-ins is less straightforward. Some are also waiting on internal details to solidify prior to implementation.
 
-:   callable(), classmethod(), compile(), delattr(), eval(), exec(), globals(), hasattr(), help(), id(), isinstance(), issubclass(), locals(), property(), super(), vars(). \_\_import\_\_()
+:   callable(), classmethod(), compile(), delattr(), eval(), exec(), globals(), help(), id(), isinstance(), issubclass(), locals(), property(), super(), vars(). \_\_import\_\_()
 
 ### Type Conversion
 

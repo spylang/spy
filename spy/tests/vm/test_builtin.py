@@ -92,7 +92,7 @@ class TestBuiltin:
         def w_foo(vm: "SPyVM", w_x: W_Dynamic) -> W_Dynamic:  # type: ignore
             pass
 
-        assert w_foo.w_functype.fqn.human_name == "def(dynamic) -> dynamic"
+        assert w_foo.w_functype.fqn.debug_human_name == "def(dynamic) -> dynamic"
 
     def test_return_None(self):
         vm = SPyVM()
@@ -101,7 +101,7 @@ class TestBuiltin:
         def w_foo(vm: "SPyVM") -> None:
             pass
 
-        assert w_foo.w_functype.fqn.human_name == "def() -> None"
+        assert w_foo.w_functype.fqn.debug_human_name == "def() -> None"
         assert isinstance(w_foo, W_BuiltinFunc)
         w_res = vm.fast_call(w_foo, [])
         assert w_res is B.w_None
@@ -114,7 +114,7 @@ class TestBuiltin:
             x = vm.unwrap_i32(w_x)
             return vm.wrap(x * 2)
 
-        assert w_foo.w_functype.fqn.human_name == "@blue def(i32) -> i32"
+        assert w_foo.w_functype.fqn.debug_human_name == "@blue def(i32) -> i32"
         w_x = vm.fast_call(w_foo, [vm.wrap(21)])
         w_y = vm.fast_call(w_foo, [vm.wrap(21)])
         assert w_x is w_y
@@ -131,7 +131,7 @@ class TestBuiltin:
         w_make = w_foo.dict_w["make"]
         assert w_foo.lookup_func("make") is w_make
         assert isinstance(w_make, W_BuiltinFunc)
-        assert w_make.w_functype.fqn.human_name == "def() -> test::Foo"
+        assert w_make.w_functype.fqn.debug_human_name == "def() -> test::Foo"
         assert w_make.w_functype.w_restype is W_Foo._w
 
     def test_builtin_class_attr(self):

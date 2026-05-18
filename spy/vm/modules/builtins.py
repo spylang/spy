@@ -164,7 +164,7 @@ def w_len(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
         w_opspec = vm.fast_metacall(w_fn, [wam_obj])
         return w_opspec
 
-    t = w_T.fqn.human_name
+    t = w_T.fqn.human_name(vm)
     raise SPyError.simple(
         "W_TypeError", f"cannot call len(`{t}`)", f"this is `{t}`", wam_obj.loc
     )
@@ -179,7 +179,7 @@ def w_repr(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
 
     # this can happen only if you override a __repr__ which returns
     # OpSpec.NULL
-    t = w_T.fqn.human_name
+    t = w_T.fqn.human_name(vm)
     raise SPyError.simple(
         "W_TypeError", f"cannot call repr(`{t}`)", f"this is `{t}`", wam_obj.loc
     )
@@ -240,7 +240,7 @@ def w_hash(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
         w_opspec = vm.fast_metacall(w_fn, [wam_obj])
         return w_opspec
 
-    t = w_T.fqn.human_name
+    t = w_T.fqn.human_name(vm)
     raise SPyError.simple(
         "W_TypeError", f"unhashable type '{t}'", f"this is `{t}`", wam_obj.loc
     )
@@ -269,6 +269,20 @@ def w_getattr(vm: "SPyVM", wam_obj: W_MetaArg, wam_name: W_MetaArg) -> W_OpSpec:
     name = wam_name.blue_unwrap_str(vm)
 
     @vm.register_builtin_func("builtins", "getattr", [name])
+    def w_fn(vm: "SPyVM", w_obj: W_Object, w_name: W_Str) -> W_Object:
+        assert False, (
+            "this function shouldn't be called, it's special cased by astframe"
+        )
+
+    return W_OpSpec(w_fn)
+
+
+@BUILTINS.builtin_func(color="blue", kind="metafunc")
+def w_hasattr(vm: "SPyVM", wam_obj: W_MetaArg, wam_name: W_MetaArg) -> W_OpSpec:
+    # ensure that wam_name is blue; raise TypeError if not
+    name = wam_name.blue_unwrap_str(vm)
+
+    @vm.register_builtin_func("builtins", "hasattr", [name])
     def w_fn(vm: "SPyVM", w_obj: W_Object, w_name: W_Str) -> W_Object:
         assert False, (
             "this function shouldn't be called, it's special cased by astframe"

@@ -415,7 +415,7 @@ class TestUnsafePtr(CompilerTest):
         mod = self.compile(f"""
         from unsafe import {k}_ptr as k_ptr
 
-        null_ptr: k_ptr[i32] = k_ptr[i32].NULL
+        var null_ptr: k_ptr[i32] = k_ptr[i32].NULL
 
         def foo(i: i32) -> i32:
             return null_ptr[i]
@@ -431,14 +431,19 @@ class TestUnsafePtr(CompilerTest):
     def test_NULL_in_global(self, memkind):
         k = memkind
         mod = self.compile(f"""
-        from unsafe import {k}_ptr as k_ptr
+        from unsafe import {k}_ptr as k_ptr, {k}_alloc as k_alloc
 
-        global_ptr: k_ptr[i32] = k_ptr[i32].NULL
+        var global_ptr: k_ptr[i32] = k_ptr[i32].NULL
 
         def is_null() -> bool:
             return global_ptr == k_ptr[i32].NULL
+
+        def alloc_global_ptr() -> None:
+            global_ptr = k_alloc[i32](1)
         """)
         assert mod.is_null() is True
+        mod.alloc_global_ptr()
+        assert mod.is_null() is False
 
     def test_ptr_truth(self, memkind):
         k = memkind
