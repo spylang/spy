@@ -459,6 +459,59 @@ class TestParser:
         """
         self.assert_dump(classdef, expected)
 
+    def test_GenericClassDef_with_TypeAlias(self):
+        mod = self.parse("""
+        @struct
+        class ArrayData[DTYPE]:
+            type ptr_T = gc_ptr[DTYPE]
+            length: i32
+            items: ptr_T
+        """)
+        classdef = mod.get_generic_classdef("ArrayData")
+        expected = """
+        GenericClassDef(
+            name='ArrayData',
+            args=[
+                FuncArg(
+                    name='DTYPE',
+                    type=Auto(),
+                    kind='simple',
+                ),
+            ],
+            type_aliases=[
+                TypeAlias(
+                    name=StrConst(value='ptr_T'),
+                    value=GetItem(
+                        value=Name(id='gc_ptr'),
+                        args=[
+                            Name(id='DTYPE'),
+                        ],
+                    ),
+                ),
+            ],
+            inner=ClassDef(
+                name='Self',
+                kind='struct',
+                docstring=None,
+                body=[
+                    VarDef(
+                        kind=None,
+                        name=StrConst(value='length'),
+                        type=Name(id='i32'),
+                        value=None,
+                    ),
+                    VarDef(
+                        kind=None,
+                        name=StrConst(value='items'),
+                        type=Name(id='ptr_T'),
+                        value=None,
+                    ),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(classdef, expected)
+
     def test_blue_metafunc_FuncDef(self):
         mod = self.parse("""
         @blue.metafunc
