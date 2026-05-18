@@ -124,6 +124,16 @@ class CStructWriter:
             )
             return
 
+        # _str::StrObject MUST stay layout-compatible with the C-level
+        # spy_StrObject (see stdlib/_str.spy and libspy/include/spy/str.h).
+        # Emit it as a typedef alias of spy_StrObject so they really are
+        # the same type, not just bitwise-compatible.
+        if str(w_st.fqn) == "_str::StrObject":
+            self.tbh_fwdecl.wl(
+                f"typedef spy_StrObject {c_st}; /* alias of spy_StrObject */"
+            )
+            return
+
         human_fqn = w_st.fqn.human_name(self.ctx.vm)
         self.tbh_fwdecl.wl(f"typedef struct {c_st} {c_st}; /* {human_fqn} */")
 
@@ -165,6 +175,16 @@ class CStructWriter:
         #define {c_ptrtype}$NULL (({c_ptrtype}){{0}})
         """)
         self.tbh_ptrs_def.wl()
+
+        # detect gc_ptr[_str::StrObject] and emit the implementetion for as_StrObject.
+        if str(w_ptrtype.fqn) == "unsafe::gc_ptr[_str::StrObject]":
+            self.tbh_ptrs_def.wb(f"""
+            static inline {c_ptrtype}
+            spy_unsafe$as_StrObject$impl(spy_StrObject *s) {{
+                return {c_ptrtype}_from_addr(({c_itemT} *)s);
+            }}
+            """)
+            self.tbh_ptrs_def.wl()
 
     def emit_RefType(self, fqn: FQN, w_reftype: W_RefType) -> None:
         w_ptrtype = w_reftype.as_ptrtype(self.ctx.vm)

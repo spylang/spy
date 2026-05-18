@@ -538,7 +538,7 @@ def w_as_StrObject(vm: "SPyVM", wam_s: W_MetaArg) -> W_OpSpec:
     assert isinstance(w_gc_ptr_StrObject, W_PtrType)
     GC_PTR = Annotated[W_Ptr, w_gc_ptr_StrObject]
 
-    @vm.register_builtin_func(UNSAFE.fqn)
+    @vm.register_builtin_func(UNSAFE.fqn.join("as_StrObject"), "impl")
     def w_impl(vm: "SPyVM", w_s: W_Str) -> GC_PTR:
         return W_Ptr(w_gc_ptr_StrObject, w_s.ptr, 1)
 

@@ -641,7 +641,6 @@ class TestUnsafePtr(CompilerTest):
         self.vm.ll.mem.read_i32(addr) == 1
         self.vm.ll.mem.read_i32(addr + 4) == 2
 
-    @only_interp
     def test_as_StrObject(self):
         mod = self.compile("""
         from unsafe import as_StrObject
