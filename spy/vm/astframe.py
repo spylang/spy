@@ -412,7 +412,12 @@ class AbstractFrame:
         if classdef.kind == "struct":
             return W_StructType
         else:
-            assert False, "only @struct classes are supported for now"
+            raise SPyError.simple(
+                "W_WIP",
+                "only @struct classes are supported for now",
+                "class defined here",
+                classdef.loc,
+            )
 
     def fwdecl_ClassDef(self, classdef: ast.ClassDef) -> None:
         """
