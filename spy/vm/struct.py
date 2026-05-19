@@ -432,22 +432,13 @@ def unwrap_dict(vm: "SPyVM", w_dict: W_Object) -> dict[Any, Any]:
     w_it = vm.call_w(w_fastiter, [w_dict], color="red")
     w_it_T = vm.dynamic_type(w_it)
     w_continue_iteration = vm.lookup_global(w_it_T.fqn.join("__continue_iteration__"))
-    is_continue = vm.call_w(w_continue_iteration, [w_it], color="red")
+    w_item_method = vm.lookup_global(w_it_T.fqn.join("__item__"))
     w_next = vm.lookup_global(w_it_T.fqn.join("__next__"))
-    w_it = vm.call_w(w_next, [w_it], color="red")
 
-    while vm.unwrap_bool(is_continue):
-        w_it_T = vm.dynamic_type(w_it)
-        w_item_method = vm.lookup_global(w_it_T.fqn.join("__item__"))
+    while vm.unwrap_bool(vm.call_w(w_continue_iteration, [w_it], color="red")):
         w_key = vm.call_w(w_item_method, [w_it], color="red")
         w_val = vm.getitem_w(w_dict, w_key, color="red")
-        result[vm.unwrap(w_key)] = vm.unwrap(w_val)  # append key,value
-
-        w_next = vm.lookup_global(w_it_T.fqn.join("__next__"))
+        result[vm.unwrap(w_key)] = vm.unwrap(w_val)
         w_it = vm.call_w(w_next, [w_it], color="red")
-        w_continue_iteration = vm.lookup_global(
-            w_it_T.fqn.join("__continue_iteration__")
-        )
-        is_continue = vm.call_w(w_continue_iteration, [w_it], color="red")
 
     return result

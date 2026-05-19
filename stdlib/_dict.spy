@@ -194,6 +194,11 @@ def dict(Key, Value):
         data.length = data.length - 1
         return deleted_value
 
+    def next_nonempty(data: gc_ptr[DictData], i: i32) -> i32:
+        while i <= data.length and data.entries[i].empty:
+            i += 1
+        return i
+
     @struct
     class dict_iterator:
         data: gc_ptr[DictData]
@@ -202,7 +207,7 @@ def dict(Key, Value):
         # todo: detect dict size change during iteration
 
         def __next__(self) -> dict_iterator:
-            return dict_iterator(self.data, self.i + 1)
+            return dict_iterator(self.data, next_nonempty(self.data, self.i + 1))
 
         def __item__(self) -> Key:
             return self.data.entries[self.i].key
@@ -300,7 +305,7 @@ def dict(Key, Value):
             return data.length
 
         def __fastiter__(self) -> dict_iterator:
-            return dict_iterator(self.__ll__, 0)
+            return dict_iterator(self.__ll__, next_nonempty(self.__ll__, 0))
 
         def keys(self) -> _dict:
             return self

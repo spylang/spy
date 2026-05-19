@@ -127,20 +127,22 @@ class TestDict(CompilerTest):
         src = """
         from _dict import dict
 
-        def test() -> int:
+        def test() -> tuple[int, int]:
             d = dict[i32, i32]()
             d[10] = -1
             d[20] = -1
             d[30] = -1
             it = d.__fastiter__()
+            count = 0
             total = 0
             while it.__continue_iteration__():
-                total = total + it.__item__()
+                count += 1
+                total += it.__item__()
                 it = it.__next__()
-            return total
+            return count, total
         """
         mod = self.compile(src)
-        assert mod.test() == 60
+        assert mod.test() == (3, 60)
 
     def test_for_loop(self):
         src = """
