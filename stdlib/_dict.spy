@@ -203,6 +203,8 @@ def dict(Key, Value):
         # todo: detect dict size change during iteration
 
         def __next__(self) -> dict_iterator:
+            # entries are always compact, we don't need to check for empty slots
+            # also see swap_last_entry_with() in delete()
             return dict_iterator(self.data, self.i + 1)
 
         def __item__(self) -> Key:
