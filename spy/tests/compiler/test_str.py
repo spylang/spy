@@ -484,3 +484,38 @@ class TestStr(CompilerTest):
         mod = self.compile(src)
         with SPyError.raises("W_ValueError"):
             mod.encode("x", "ascii")
+    
+    def test_str_in(self):
+        mod = self.compile("""
+        def foo(s: str, target: str) -> bool:
+            return target in s
+        """)
+
+        # Basic positive cases
+        assert mod.foo("hello world", "h") == True
+        assert mod.foo("hello", "he") == True
+        assert mod.foo("hello", "lo") == True
+        assert mod.foo("hello", "hello") == True
+
+        # Basic negative cases
+        assert mod.foo("hello", "z") == False
+        assert mod.foo("hello", "hell0") == False
+
+        # Empty target
+        assert mod.foo("hello", "") == True
+        assert mod.foo("", "") == True
+
+        # Empty container
+        assert mod.foo("", "h") == False
+
+        # Target longer than container
+        assert mod.foo("hello", "helloo") == False
+
+        # Single-character strings
+        assert mod.foo("x", "x") == True
+        assert mod.foo("x", "y") == False
+
+        # Repeated characters
+        assert mod.foo("aaab", "aaab") == True
+        assert mod.foo("aaaa", "aaaa") == True
+        assert mod.foo("aaab", "aaaab") == False
