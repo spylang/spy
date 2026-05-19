@@ -1,4 +1,4 @@
-from unsafe import gc_ptr
+from unsafe import gc_ptr, as_StrObject
 
 
 # this MUST stay in sync with the equivalent struct declared in str.h
@@ -7,3 +7,28 @@ class StrObject:
     length: i32
     hash: i32
     utf8: gc_ptr[u8]
+
+
+@struct
+class methods:
+    """
+    This is a special "fake" empty struct.
+
+    It is used solely as a container for str methods defined at applevel, which are
+    referenced by W_Str.lazy_attributes.
+
+    Because of that, the 'self' must be manually annotated with the `str` type.
+    """
+
+    # each method defined here should also have a corresponding entry in
+    # W_Str.__spy_lazy_attributes__.
+
+    def isascii(self: str) -> bool:
+        ll = as_StrObject(self)
+        i = 0
+        max_ascii: u8 = 127
+        while i < ll.length:
+            if ll.utf8[i] > max_ascii:
+                return False
+            i = i + 1
+        return True

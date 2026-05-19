@@ -460,7 +460,7 @@ class W_Ref(W_MemLoc):
         w_T = ref_T.w_itemT
 
         name = wam_name.blue_unwrap_str(vm)
-        w_meth = w_T.lookup(name)
+        w_meth = w_T.lookup(vm, name)
         if not isinstance(w_meth, W_ASTFunc):
             return W_OpSpec.NULL
         else:

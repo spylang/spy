@@ -31,7 +31,7 @@ def w_GETATTR(vm: "SPyVM", wam_obj: W_MetaArg, wam_name: W_MetaArg) -> W_OpImpl:
     w_T = wam_obj.w_static_T
     if w_T is B.w_dynamic:
         w_opspec = W_OpSpec(OP.w_dynamic_getattr)
-    elif w_getattribute := w_T.lookup_func(f"__getattribute__"):
+    elif w_getattribute := w_T.lookup_func(vm, f"__getattribute__"):
         w_opspec = vm.fast_metacall(w_getattribute, [wam_obj, wam_name])
     else:
         w_opspec = default_getattribute(vm, wam_obj, wam_name, name)
@@ -54,7 +54,7 @@ def w_HASATTR(vm: "SPyVM", wam_obj: W_MetaArg, wam_name: W_MetaArg) -> W_OpImpl:
     w_T = wam_obj.w_static_T
     if w_T is B.w_dynamic:
         w_opspec = W_OpSpec(OP.w_dynamic_hasattr)
-    elif w_getattribute := w_T.lookup_func("__getattribute__"):
+    elif w_getattribute := w_T.lookup_func(vm, "__getattribute__"):
         w_opspec_inner = vm.fast_metacall(w_getattribute, [wam_obj, wam_name])
         if w_opspec_inner.is_null():
             w_opspec = W_OpSpec.const(B.w_False)
@@ -114,8 +114,8 @@ def default_getattribute(
     # __dict__ by default. (__dict__ support not implemented yet ATM).
 
     w_T = wam_obj.w_static_T
-    if w_attr := w_T.lookup(name):
-        if w_get := vm.dynamic_type(w_attr).lookup_func("__get__"):
+    if w_attr := w_T.lookup(vm, name):
+        if w_get := vm.dynamic_type(w_attr).lookup_func(vm, "__get__"):
             # 1. found a descriptor on the type
             wam_attr = W_MetaArg.from_w_obj(vm, w_attr)
             return vm.fast_metacall(w_get, [wam_attr, wam_obj])
@@ -153,15 +153,15 @@ def _get_SETATTR_opspec(
         return W_OpSpec(OP.w_dynamic_setattr)
 
     # try to find a descriptor with a __set__ method
-    elif w_member := w_T.lookup(name):
+    elif w_member := w_T.lookup(vm, name):
         w_member_T = vm.dynamic_type(w_member)
-        w_set = w_member_T.lookup_func("__set__")
+        w_set = w_member_T.lookup_func(vm, "__set__")
         if w_set:
             # w_member is a descriptor! We can call its __set__
             wam_member = W_MetaArg.from_w_obj(vm, w_member)
             return vm.fast_metacall(w_set, [wam_member, wam_obj, wam_v])
 
-    elif w_setattr := w_T.lookup_func("__setattr__"):
+    elif w_setattr := w_T.lookup_func(vm, "__setattr__"):
         return vm.fast_metacall(w_setattr, [wam_obj, wam_name, wam_v])
 
     return W_OpSpec.NULL

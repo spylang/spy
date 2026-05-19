@@ -252,6 +252,17 @@ class TestStr(CompilerTest):
         assert mod.foo_f64() == "12.3"
         assert mod.foo_bool() == "True"
 
+    def test_isascii(self):
+        # isascii is defined in stdlib/_str.spy, so this also tests that "lazy
+        # attributes" work.
+        src = """
+        def isascii(s: str) -> bool:
+            return s.isascii()
+        """
+        mod = self.compile(src)
+        assert mod.isascii("hello")
+        assert not mod.isascii("àèìòù")
+
     def test_str_replace(self):
         mod = self.compile("""
         def foo(s: str, old: str, new: str) -> str:

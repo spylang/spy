@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING
 
+from spy.fqn import FQN
 from spy.libspy import LLSPyInstance
 from spy.vm.b import BUILTINS, OP, B
 from spy.vm.builtin import builtin_method
@@ -41,6 +42,10 @@ class W_Str(W_Object):
     """
 
     __spy_storage_category__ = "value"
+    __spy_lazy_attributes__ = {
+        "isascii": FQN("_str::methods::isascii"),
+    }
+
     vm: "SPyVM"
     ptr: int
 
@@ -87,7 +92,7 @@ class W_Str(W_Object):
             w_T = wam_arg.w_static_T
             if w_T is B.w_dynamic:
                 return W_OpSpec(OP.w_dynamic_str, [wam_arg])
-            if w_fn := w_T.lookup_func("__str__"):
+            if w_fn := w_T.lookup_func(vm, "__str__"):
                 w_opspec = vm.fast_metacall(w_fn, [wam_arg])
                 return w_opspec
 
