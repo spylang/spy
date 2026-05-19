@@ -321,3 +321,21 @@ class TestDict(CompilerTest):
         x = mod.foo()
         assert x[0] == 1
         assert x[1] == 1000
+
+    def test_iter_after_delete(self):
+        src = """
+        def test() -> i32:
+            visited = 0
+            for i in range(1, 4):
+                d = {1: 1, 2: 2, 3: 3}  # literals!
+                d.__delitem__(i)
+                for k in d:
+                    visited += 1
+            d = {1: 1}
+            d.__delitem__(1)
+            for k3 in d:
+                visited += 1
+            return visited
+        """
+        mod = self.compile(src)
+        assert mod.test() == 2 * 3
