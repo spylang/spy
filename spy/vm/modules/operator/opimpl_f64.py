@@ -1,5 +1,5 @@
-from typing import TYPE_CHECKING, Any
 import math
+from typing import TYPE_CHECKING, Any
 
 from spy.errors import SPyError
 from spy.vm.object import W_Object
