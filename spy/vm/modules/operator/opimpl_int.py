@@ -136,7 +136,7 @@ def make_unsigned_pow(T: str, pyclass: type[W_Object]) -> None:
 
     @OP.builtin_func(f"{T}_pow")
     def w_pow(vm: "SPyVM", w_a: WT, w_b: WT) -> WT:
-        return vm.wrap(w_a.value ** w_b.value)
+        return vm.wrap(w_a.value**w_b.value)
 
 
 make_ops("i32", W_I32)
