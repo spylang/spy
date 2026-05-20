@@ -689,6 +689,37 @@ class TestParser:
         """
         self.assert_dump(mod, expected)
 
+    def test_global_VarDef_without_type(self):
+        mod = self.parse("""
+        var c = 43
+        const d = 44
+        """)
+        expected = f"""
+        Module(
+            filename='{self.tmpdir}/test.spy',
+            docstring=None,
+            decls=[
+                GlobalVarDef(
+                    vardef=VarDef(
+                        kind='var',
+                        name=StrConst(value='c'),
+                        type=Auto(),
+                        value=Constant(value=43),
+                    ),
+                ),
+                GlobalVarDef(
+                    vardef=VarDef(
+                        kind='const',
+                        name=StrConst(value='d'),
+                        type=Auto(),
+                        value=Constant(value=44),
+                    ),
+                ),
+            ],
+        )
+        """
+        self.assert_dump(mod, expected)
+
     def test_List(self):
         mod = self.parse("""
         def foo() -> None:
