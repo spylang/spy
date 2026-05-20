@@ -124,10 +124,8 @@ class CStructWriter:
             )
             return
 
-        # _str::StrObject MUST stay layout-compatible with the C-level
-        # spy_StrObject (see stdlib/_str.spy and libspy/include/spy/str.h).
-        # Emit it as a typedef alias of spy_StrObject so they really are
-        # the same type, not just bitwise-compatible.
+        # _str::StrObject is already declared in str.h as spy_StrObject. Just emit a
+        # typedef.
         if str(w_st.fqn) == "_str::StrObject":
             self.tbh_fwdecl.wl(
                 f"typedef spy_StrObject {c_st}; /* alias of spy_StrObject */"
