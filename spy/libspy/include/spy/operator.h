@@ -502,22 +502,27 @@ spy_operator$bool_not(bool x) {
 }
 
 // Power operations
-static inline int8_t
+static inline double
 spy_operator$i8_pow(int8_t base, int8_t exp) {
-    // For integer power, use simple iterative multiplication
-    if (exp == 0) return 1;
-    if (exp < 0) return 0;  // Integer division by 0 for negative exponents
-    
+    if (exp == 0) return 1.0;
+    if (exp < 0) {
+        if (base == 0) {
+            spy_panic("ZeroDivisionError", "0 cannot be raised to a negative power",
+                      __FILE__, __LINE__);
+        }
+        return pow((double)base, (double)exp);
+    }
+
     int8_t result = 1;
     int8_t b = base;
     int8_t e = exp;
-    
+
     while (e > 0) {
         if (e & 1) result *= b;
         b *= b;
         e >>= 1;
     }
-    return result;
+    return (double)result;
 }
 
 static inline uint8_t
@@ -536,21 +541,27 @@ spy_operator$u8_pow(uint8_t base, uint8_t exp) {
     return result;
 }
 
-static inline int32_t
+static inline double
 spy_operator$i32_pow(int32_t base, int32_t exp) {
-    if (exp == 0) return 1;
-    if (exp < 0) return 0;
-    
+    if (exp == 0) return 1.0;
+    if (exp < 0) {
+        if (base == 0) {
+            spy_panic("ZeroDivisionError", "0 cannot be raised to a negative power",
+                      __FILE__, __LINE__);
+        }
+        return pow((double)base, (double)exp);
+    }
+
     int32_t result = 1;
     int32_t b = base;
     int32_t e = exp;
-    
+
     while (e > 0) {
         if (e & 1) result *= b;
         b *= b;
         e >>= 1;
     }
-    return result;
+    return (double)result;
 }
 
 static inline uint32_t
@@ -571,6 +582,13 @@ spy_operator$u32_pow(uint32_t base, uint32_t exp) {
 
 static inline double
 spy_operator$f64_pow(double x, double y) {
+    if (x == 0.0 && y < 0.0) {
+        spy_panic("ZeroDivisionError", "0.0 cannot be raised to a negative power",
+                  __FILE__, __LINE__);
+    }
+    if (x < 0.0 && isfinite(y) && y != trunc(y)) {
+        spy_panic("ValueError", "math domain error", __FILE__, __LINE__);
+    }
     return pow(x, y);
 }
 

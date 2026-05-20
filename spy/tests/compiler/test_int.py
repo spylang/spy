@@ -9,6 +9,11 @@ def int_type(request):
     return request.param
 
 
+@pytest.fixture(params=["i32", "i8"])
+def signed_int_type(request):
+    return request.param
+
+
 class TestInt(CompilerTest):
     def test_i8_conversion(self):
         mod = self.compile("""
@@ -146,9 +151,11 @@ class TestInt(CompilerTest):
         assert mod.b_xor(16, 0) == 16 ^ 0
 
     def test_pow(self, int_type):
+        is_signed = not int_type.startswith("u")
+        ret_type = "f64" if is_signed else int_type
         mod = self.compile(f"""
         T = {int_type}
-        def pow(x: T, y: T) -> T:
+        def pow(x: T, y: T) -> {ret_type}:
             return x ** y
         """)
         assert mod.pow(2, 3) == 8
@@ -163,13 +170,36 @@ class TestInt(CompilerTest):
             pytest.skip("Skipping negative base test for unsigned types")
         mod = self.compile(f"""
         T = {int_type}
-        def pow(x: T, y: T) -> T:
+        def pow(x: T, y: T) -> f64:
             return x ** y
         """)
-        assert mod.pow(-2, 3) == -8
-        assert mod.pow(-2, 2) == 4
-        assert mod.pow(-1, 5) == -1
-        assert mod.pow(-1, 4) == 1
+        assert mod.pow(-2, 3) == -8.0
+        assert mod.pow(-2, 2) == 4.0
+        assert mod.pow(-1, 5) == -1.0
+        assert mod.pow(-1, 4) == 1.0
+
+    def test_pow_negative_exponent(self, signed_int_type):
+        mod = self.compile(f"""
+        T = {signed_int_type}
+        def pow(x: T, y: T) -> f64:
+            return x ** y
+        """)
+        assert mod.pow(2, -1) == 0.5
+        assert mod.pow(2, -2) == 0.25
+        assert mod.pow(4, -1) == 0.25
+        assert mod.pow(-2, -1) == -0.5
+        assert mod.pow(-2, -2) == 0.25
+
+    def test_pow_zero_negative_exp_raises(self, signed_int_type):
+        mod = self.compile(f"""
+        T = {signed_int_type}
+        def pow(x: T, y: T) -> f64:
+            return x ** y
+        """)
+        with SPyError.raises(
+            "W_ZeroDivisionError", match="0 cannot be raised to a negative power"
+        ):
+            mod.pow(0, -1)
 
     def test_cmp(self, int_type):
         mod = self.compile(f"""

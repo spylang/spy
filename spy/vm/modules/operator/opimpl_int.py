@@ -86,10 +86,6 @@ def make_ops(T: str, pyclass: type[W_Object]) -> None:
     def w_xor(vm: "SPyVM", w_a: WT, w_b: WT) -> WT:
         return _binop(vm, w_a, w_b, lambda a, b: a ^ b)
 
-    @OP.builtin_func(f"{T}_pow")
-    def w_pow(vm: "SPyVM", w_a: WT, w_b: WT) -> WT:
-        return _binop(vm, w_a, w_b, lambda a, b: a**b)
-
     @OP.builtin_func(f"{T}_eq")
     def w_eq(vm: "SPyVM", w_a: WT, w_b: WT) -> W_Bool:
         return _binop(vm, w_a, w_b, lambda a, b: a == b)
@@ -119,7 +115,35 @@ def make_ops(T: str, pyclass: type[W_Object]) -> None:
         return _unary_op(vm, w_a, lambda a: -a)
 
 
+def make_signed_pow(T: str, pyclass: type[W_Object]) -> None:
+    w_T = pyclass._w
+    WT = Annotated[W_IntLike, w_T]
+
+    @OP.builtin_func(f"{T}_pow")
+    def w_pow(vm: "SPyVM", w_a: WT, w_b: WT) -> W_F64:
+        if w_a.value == 0 and w_b.value < 0:
+            raise SPyError(
+                "W_ZeroDivisionError", "0 cannot be raised to a negative power"
+            )
+        # Convert to Python int first: fixedint types don't handle
+        # negative exponents correctly (they truncate to integer range).
+        return vm.wrap(float(int(w_a.value) ** int(w_b.value)))
+
+
+def make_unsigned_pow(T: str, pyclass: type[W_Object]) -> None:
+    w_T = pyclass._w
+    WT = Annotated[W_IntLike, w_T]
+
+    @OP.builtin_func(f"{T}_pow")
+    def w_pow(vm: "SPyVM", w_a: WT, w_b: WT) -> WT:
+        return vm.wrap(w_a.value ** w_b.value)
+
+
 make_ops("i32", W_I32)
+make_signed_pow("i32", W_I32)
 make_ops("u32", W_U32)
+make_unsigned_pow("u32", W_U32)
 make_ops("i8", W_I8)
+make_signed_pow("i8", W_I8)
 make_ops("u8", W_U8)
+make_unsigned_pow("u8", W_U8)
