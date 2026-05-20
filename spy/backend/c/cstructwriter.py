@@ -152,11 +152,18 @@ class CStructWriter:
         c_ptrtype = C_Type(w_ptrtype.fqn.c_name)
         w_itemT = w_ptrtype.w_itemT
         c_itemT = self.ctx.w2c(w_itemT)
-        # gc_ptr[u8] is predeclared manually by unsafe.h. Make sure to keep the code
+
+        # some ptr types are predeclared manually in libspy. Make sure to keep the code
         # generated here and the code manually written there always in sync.
-        if str(w_ptrtype.fqn) == "unsafe::gc_ptr[u8]":
-            self.tbh_fwdecl.wl(f"// {c_ptrtype}: already pre-declared by unsafe.h")
+        if str(w_ptrtype.fqn) in (
+            "unsafe::gc_ptr[u8]",
+            "unsafe::gc_ptr[_str::StrObject]",
+        ):
+            self.tbh_fwdecl.wl(
+                f"// {c_ptrtype}: skip as it's already pre-declared by libspy"
+            )
             return
+
         self.tbh_fwdecl.wb(f"""
         typedef struct {c_ptrtype} {{
             {c_itemT} *p;
@@ -173,16 +180,6 @@ class CStructWriter:
         #define {c_ptrtype}$NULL (({c_ptrtype}){{0}})
         """)
         self.tbh_ptrs_def.wl()
-
-        # detect gc_ptr[_str::StrObject] and emit the implementetion for as_StrObject.
-        if str(w_ptrtype.fqn) == "unsafe::gc_ptr[_str::StrObject]":
-            self.tbh_ptrs_def.wb(f"""
-            static inline {c_ptrtype}
-            spy_unsafe$as_StrObject$impl(spy_StrObject *s) {{
-                return {c_ptrtype}_from_addr(({c_itemT} *)s);
-            }}
-            """)
-            self.tbh_ptrs_def.wl()
 
     def emit_RefType(self, fqn: FQN, w_reftype: W_RefType) -> None:
         w_ptrtype = w_reftype.as_ptrtype(self.ctx.vm)

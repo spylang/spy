@@ -34,6 +34,26 @@ typedef struct {
 #define spy_StrObject_UTF8(s) ((s)->utf8.p)
 #define spy_StrObject_CHARS(s) ((const char *)spy_StrObject_UTF8(s))
 
+/* gc_ptr[_str::StrObject] is predeclared here, see also
+   cstructwriter.py:emit_PtrType. Make sure that they stay in sync. */
+typedef struct spy_unsafe$gc_ptr___str$StrObject {
+    spy_StrObject *p;
+#ifdef SPY_DEBUG
+    ptrdiff_t length;
+#endif
+} spy_unsafe$gc_ptr___str$StrObject;
+
+SPY_PTR_FUNCTIONS(gc, spy_unsafe$gc_ptr___str$StrObject, spy_StrObject)
+#define spy_unsafe$gc_ptr___str$StrObject$NULL ((spy_unsafe$gc_ptr___str$StrObject){0})
+
+// short alias for manual use
+typedef spy_unsafe$gc_ptr___str$StrObject spy_gc_ptr_StrObject;
+
+static inline spy_gc_ptr_StrObject
+spy_unsafe$as_StrObject$impl(spy_StrObject *s) {
+    return spy_unsafe$gc_ptr___str$StrObject_from_addr(s);
+}
+
 /* SPY_STR_LITERAL(N, "content") is a struct initializer for spy_StrObject,
    useful for static globals and for-test literals. There are two versions
    depending on whether spy_gc_ptr_u8 carries a length (SPY_DEBUG). */
