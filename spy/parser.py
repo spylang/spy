@@ -3,6 +3,7 @@
 # ================================================================
 
 import ast as py_ast
+import textwrap
 from types import NoneType
 from typing import NoReturn, Optional
 
@@ -142,7 +143,11 @@ class Parser:
                 mod.decls.append(globfunc)
             elif isinstance(py_stmt, py_ast.ClassDef):
                 classdef = self.from_py_stmt_ClassDef(py_stmt)
-                globclass = spy.ast.GlobalClassDef(classdef.loc, classdef)
+                globclass: spy.ast.GlobalGenericClassDef | spy.ast.GlobalClassDef
+                if isinstance(classdef, spy.ast.GenericClassDef):
+                    globclass = spy.ast.GlobalGenericClassDef(classdef.loc, classdef)
+                else:
+                    globclass = spy.ast.GlobalClassDef(classdef.loc, classdef)
                 mod.decls.append(globclass)
             elif isinstance(py_stmt, py_ast.AnnAssign):
                 vardef = self.from_py_AnnAssign(py_stmt)
@@ -159,6 +164,13 @@ class Parser:
             elif isinstance(py_stmt, py_ast.Import):
                 importdecls = self.from_py_Import(py_stmt)
                 mod.decls += importdecls
+            elif (
+                isinstance(py_stmt, py_ast.Expr)
+                and isinstance(py_stmt.value, py_ast.Constant)
+                and isinstance(py_stmt.value.value, str)
+            ):
+                # this is an isolated module-level str
+                pass
             else:
                 msg = (
                     "only function and variable definitions are allowed at global scope"
@@ -211,10 +223,10 @@ class Parser:
         return self._parse_py_funcdef(py_funcdef, color, func_kind, decorators)
 
     def _parse_type_params(
-        self, py_funcdef: py_ast.FunctionDef
+        self, py_def: py_ast.FunctionDef | py_ast.ClassDef
     ) -> list[spy.ast.FuncArg]:
         generic_args = []
-        for tp in py_funcdef.type_params:
+        for tp in py_def.type_params:
             if not isinstance(tp, py_ast.TypeVar):
                 self.error(
                     "only plain TypeVar type parameters are supported",
@@ -332,7 +344,9 @@ class Parser:
             kind=kind,
         )
 
-    def from_py_stmt_ClassDef(self, py_classdef: py_ast.ClassDef) -> spy.ast.ClassDef:
+    def from_py_stmt_ClassDef(
+        self, py_classdef: py_ast.ClassDef
+    ) -> spy.ast.ClassDef | spy.ast.GenericClassDef:
         if py_classdef.bases:
             self.error(
                 "base classes not supported yet",
@@ -347,6 +361,21 @@ class Parser:
                 py_classdef.keywords[0].loc,
             )
 
+        # generic arguments: class Cls[T]()
+        if py_classdef.type_params:
+            generic_args = self._parse_type_params(py_classdef)
+            inner_classdef = self._parse_py_classdef(py_classdef)
+            inner_classdef.name = "Self"
+            return spy.ast.GenericClassDef(
+                loc=py_classdef.loc,
+                name=py_classdef.name,
+                args=generic_args,
+                inner=inner_classdef,
+            )
+
+        return self._parse_py_classdef(py_classdef)
+
+    def _parse_py_classdef(self, py_classdef: py_ast.ClassDef) -> spy.ast.ClassDef:
         # decorators are not supported yet, but @struct and @typelif are
         # special-cased
         struct_loc: Optional[Loc] = None
@@ -781,7 +810,9 @@ class Parser:
 
     def from_py_expr_Call(
         self, py_node: py_ast.Call
-    ) -> spy.ast.Call | spy.ast.CallMethod:
+    ) -> spy.ast.Call | spy.ast.CallMethod | spy.ast.BlockExpr:
+        if isinstance(py_node.func, py_ast.Name) and py_node.func.id == "__block__":
+            return self._parse_block_expr(py_node)
         if py_node.keywords:
             self.unsupported(py_node.keywords[0], "keyword arguments")
         func = self.from_py_expr(py_node.func)
@@ -792,6 +823,38 @@ class Parser:
             )
         else:
             return spy.ast.Call(loc=py_node.loc, func=func, args=args)
+
+    def _parse_block_expr(self, py_node: py_ast.Call) -> spy.ast.BlockExpr:
+        if (
+            len(py_node.args) != 1
+            or not isinstance(py_node.args[0], py_ast.Constant)
+            or not isinstance(py_node.args[0].value, str)
+        ):
+            self.error(
+                "__block__ requires a single string literal argument",
+                "expected a triple-quoted string",
+                py_node.loc,
+            )
+        src = textwrap.dedent(py_node.args[0].value).strip()
+        inner_mod = magic_py_parse(src, filename=self.filename)
+        inner_mod.compute_all_locs(self.filename)
+        if not inner_mod.body:
+            self.error(
+                "__block__ body is empty",
+                "expected at least one expression",
+                py_node.loc,
+            )
+        py_body = inner_mod.body
+        last = py_body[-1]
+        if not isinstance(last, py_ast.Expr):
+            self.error(
+                "__block__ last statement must be an expression (the result)",
+                "this should be an expression",
+                last.loc,
+            )
+        body = self.from_py_body(py_body[:-1])
+        value = self.from_py_expr(last.value)
+        return spy.ast.BlockExpr(loc=py_node.loc, body=body, value=value)
 
     def from_py_expr_Slice(self, py_node: py_ast.Slice) -> spy.ast.Slice:
         def from_py_expr_or_none(py_node: py_ast.expr, attr: str) -> spy.ast.Expr:

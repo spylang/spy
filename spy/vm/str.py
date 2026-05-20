@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 from spy.llwasm import LLWasmInstance
-from spy.vm.b import BUILTINS, B
+from spy.vm.b import BUILTINS, OP, B
 from spy.vm.builtin import builtin_method
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opspec import W_MetaArg, W_OpSpec
@@ -84,11 +84,13 @@ class W_Str(W_Object):
         if len(args_wam) == 1:
             wam_arg = args_wam[0]
             w_T = wam_arg.w_static_T
+            if w_T is B.w_dynamic:
+                return W_OpSpec(OP.w_dynamic_str, [wam_arg])
             if w_fn := w_T.lookup_func("__str__"):
                 w_opspec = vm.fast_metacall(w_fn, [wam_arg])
                 return w_opspec
 
-            t = w_T.fqn.human_name
+            t = w_T.fqn.human_name(vm)
             raise SPyError.simple(
                 "W_TypeError", f"cannot call str(`{t}`)", f"this is `{t}`", wam_arg.loc
             )
@@ -108,6 +110,11 @@ class W_Str(W_Object):
         assert isinstance(w_s, W_Str)
         length = vm.ll.call("spy_str_len", w_s.ptr)
         return vm.wrap(length)
+
+    @builtin_method("__str__")
+    @staticmethod
+    def w_str(vm: "SPyVM", w_s: "W_Str") -> "W_Str":
+        return w_s
 
     @builtin_method("__repr__")
     @staticmethod

@@ -7,12 +7,13 @@ import fixedint
 import py.path
 
 from spy import ROOT, ast, libspy
-from spy.analyze.symtable import Color, ImportRef, maybe_blue
+from spy.analyze.symtable import Color, ImportRef, SymTable, maybe_blue
 from spy.ast import Color, FuncKind
 from spy.doppler import ErrorMode, redshift
 from spy.errors import WIP, SPyError
 from spy.fqn import FQN, QUALIFIERS
 from spy.libspy import LLSPyInstance
+from spy.linearize import linearize
 from spy.location import Loc
 from spy.util import func_equals
 from spy.vm.b import B
@@ -105,6 +106,9 @@ class SPyVM:
     globals_w: dict[FQN, W_Object]
     irtags: dict[FQN, IRTag]
     modules_w: dict[str, W_Module]
+    # Maps a real FQN to a display FQN used only for human-readable rendering.
+    # The display FQN is NOT registered in globals_w and must not be used for lookup.
+    fqn_human_aliases: dict[FQN, FQN]
     path: list[str]
     bluecache: BlueCache
     emit_warning: Callable[[SPyError], None]
@@ -123,6 +127,7 @@ class SPyVM:
         self.globals_w = {}
         self.irtags = {}
         self.modules_w = {}
+        self.fqn_human_aliases = {}
         self.path = [str(STDLIB)]
         self.bluecache = BlueCache(self)
         self.emit_warning = lambda err: None
@@ -140,6 +145,7 @@ class SPyVM:
         self.make_module(SPY)
         self.make_module(_TESTING_HELPERS)
         self.call_INITs()
+        self._seed_human_aliases()
 
     @classmethod
     async def async_new(cls) -> "SPyVM":
@@ -190,7 +196,7 @@ class SPyVM:
 
         def should_redshift(w_func: W_ASTFunc) -> bool:
             # we don't want to redshift @blue functions
-            return w_func.color != "blue" and not w_func.redshifted
+            return w_func.color != "blue" and w_func.lowering_stage == "source"
 
         def get_funcs() -> Iterable[tuple[FQN, W_ASTFunc]]:
             for fqn, w_func in self.globals_w.items():
@@ -210,10 +216,18 @@ class SPyVM:
     ) -> None:
         for fqn, w_func in funcs:
             assert w_func.color != "blue"
-            assert not w_func.redshifted
+            assert w_func.lowering_stage == "source"
             w_newfunc = redshift(self, w_func, error_mode)
-            assert w_newfunc.redshifted
+            assert w_newfunc.lowering_stage == "redshift"
             self.globals_w[fqn] = w_newfunc
+
+    def linearize_all(self) -> None:
+        """
+        Apply the linearize pass to all redshifted W_ASTFuncs.
+        """
+        for fqn, w_obj in list(self.globals_w.items()):
+            if isinstance(w_obj, W_ASTFunc) and w_obj.lowering_stage == "redshift":
+                self.globals_w[fqn] = linearize(self, w_obj)
 
     def register_module(self, w_mod: W_Module) -> None:
         assert w_mod.name not in self.modules_w
@@ -239,6 +253,15 @@ class SPyVM:
             if w_init is not None:
                 assert isinstance(w_init, W_Func)
                 self.fast_call(w_init, [])
+
+    def _seed_human_aliases(self) -> None:
+        for sym in SymTable.from_builtins()._symbols.values():
+            if sym.impref is None or sym.impref.attr is None:
+                continue
+            real_fqn = FQN([sym.impref.modname, sym.impref.attr])
+            display_fqn = FQN(sym.name)
+            if real_fqn != display_fqn:
+                self.fqn_human_aliases[real_fqn] = display_fqn
 
     def get_unique_FQN(self, fqn: FQN) -> FQN:
         """
@@ -435,7 +458,7 @@ class SPyVM:
             # already have
             w_func = self.lookup_global(w_val.fqn)
             assert isinstance(w_func, W_ASTFunc)
-            assert w_func.redshifted
+            assert w_func.lowering_stage != "source"
             return w_val.fqn
         elif isinstance(w_val, W_BuiltinFunc):
             # ideally, I'd like ALL builtin funcs to be created with
@@ -468,7 +491,7 @@ class SPyVM:
             fqn = self.get_unique_FQN(fqn)
         else:
             w_T = self.dynamic_type(w_val)
-            T = w_T.fqn.human_name
+            T = w_T.fqn.human_name(self)
             msg = f"This prebuilt constant cannot be redshifted (yet): {w_val}"
             raise WIP(msg)
             assert False, "implement me"
@@ -523,8 +546,8 @@ class SPyVM:
         """
         if not self.isinstance(w_obj, w_type):
             w_t1 = self.dynamic_type(w_obj)
-            exp = w_type.fqn.human_name
-            got = w_t1.fqn.human_name
+            exp = w_type.fqn.human_name(self)
+            got = w_t1.fqn.human_name(self)
             msg = f"Invalid cast. Expected `{exp}`, got `{got}`"
             raise SPyError("W_TypeError", msg)
 
@@ -540,9 +563,7 @@ class SPyVM:
         # check parameters
         has_argv = False
         if len(params) == 1:
-            fqn_str = str(params[0].w_T.fqn)
-            if fqn_str.startswith("_list::list[str]"):
-                has_argv = True
+            has_argv = self.is_list_of_str_type(params[0].w_T)
 
         if len(params) > 1 or (len(params) == 1 and not has_argv):
             msg = "parameters must be `main(argv: list[str])`"
@@ -739,6 +760,25 @@ class SPyVM:
             raise Exception("Type mismatch")
         return w_value.value
 
+    @staticmethod
+    def is_list_type(w_T: W_Type) -> bool:
+        w_origin = w_T.w_origin
+        return isinstance(w_origin, W_Func) and w_origin.fqn == FQN("_list::list")
+
+    @staticmethod
+    def is_dict_type(w_T: W_Type) -> bool:
+        w_origin = w_T.w_origin
+        return isinstance(w_origin, W_Func) and w_origin.fqn == FQN("_dict::dict")
+
+    @staticmethod
+    def is_tuple_type(w_T: W_Type) -> bool:
+        w_origin = w_T.w_origin
+        return isinstance(w_origin, W_Func) and w_origin.fqn == FQN("_tuple::tuple")
+
+    @staticmethod
+    def is_list_of_str_type(w_T: W_Type) -> bool:
+        return w_T.fqn == FQN("_list::list[str]::_ListImpl")
+
     def fast_call(self, w_func: W_Func, args_w: Sequence[W_Object]) -> W_Object:
         """
         fast_call is a simpler calling convention which works only on
@@ -756,6 +796,18 @@ class SPyVM:
                 return w_result
             w_result = self._raw_call(w_func, args_w)
             self.bluecache.record(w_func, args_w, w_result)
+            if (
+                w_func.w_functype.kind == "generic"
+                and isinstance(w_result, (W_Type, W_Func))
+                and w_result.w_origin is None
+            ):
+                expected_ns = w_func.compute_inner_ns(args_w)
+                if w_result.fqn.namespace == expected_ns:
+                    w_result.w_origin = w_func
+                    if w_result.fqn != expected_ns:
+                        # record an "human alias". If we got "list[i32]::_ListImpl", we
+                        # save it as "list[i32]".
+                        self.fqn_human_aliases[w_result.fqn] = expected_ns
             return w_result
         else:
             # for red functions, we just call them

@@ -1,0 +1,38 @@
+name: Pixi checks
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test:
+    name: test-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    env:
+      SPY_WERROR: true
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - uses: prefix-dev/setup-pixi@v0.9.4
+        with:
+          pixi-version: v0.67.1
+          cache: true
+
+      - name: Build libspy
+        run: |
+          pixi run make-libspy
+
+      - name: Check spy build -x
+        run: |
+          pixi run spy build -x examples/hello.spy

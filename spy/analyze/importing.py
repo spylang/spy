@@ -11,7 +11,7 @@ from spy.analyze.scope import ScopeAnalyzer
 from spy.fqn import FQN
 from spy.parser import Parser
 from spy.textbuilder import ColorFormatter
-from spy.util import OrderedSet
+from spy.util import OrderedSet, save_pickle_atomic
 from spy.vm.modframe import ModFrame
 
 if TYPE_CHECKING:
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 MODULE = Union[ast.Module, "W_Module", None]
 
 # Cache version: increment this when ast.Module or SymTable structure changes
-SPYC_VERSION = 3
+SPYC_VERSION = 4
 
 
 @dataclass
@@ -181,13 +181,7 @@ class ImportAnalyzer:
         try:
             spyc.dirpath().ensure(dir=True)
             data = {"version": SPYC_VERSION, "module": mod}
-            # Write to a temp file first, then rename atomically so that
-            # concurrent readers (e.g. pytest-xdist workers) never see a
-            # partial write.
-            tmp = spyc.dirpath().join(f".{spyc.basename}.tmp")
-            with tmp.open("wb") as f:
-                pickle.dump(data, f)
-            tmp.rename(spyc)
+            save_pickle_atomic(data, spyc)
         except Exception as e:
             # Record the error
             error = CacheError(

@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 from spy import ast
 from spy.backend.c import c_ast as C
 from spy.backend.c.context import C_Ident, Context
+from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.textbuilder import TextBuilder
@@ -33,8 +34,10 @@ class CFuncWriter:
         self.cmodw = cmodw
         self.tbc = cmodw.tbc
         self.fqn = fqn
-        self.w_func = w_func
         self.last_emitted_linenos = (-1, -1)  # see emit_lineno_maybe
+
+        assert w_func.lowering_stage == "linearize"
+        self.w_func = w_func
 
     def ppc(self) -> None:
         """
@@ -86,7 +89,11 @@ class CFuncWriter:
                 and varname not in param_names
             ):
                 c_varname = C_Ident(varname)
-                self.tbc.wl(f"{c_type} {c_varname};")
+                if w_T is TYPES.w_NoneType:
+                    # we emit a "void myname;" fake declaration for readability
+                    self.tbc.wl(f"/* {c_type} {c_varname}; */")
+                else:
+                    self.tbc.wl(f"{c_type} {c_varname};")
 
     # ==============
 
@@ -131,6 +138,15 @@ class CFuncWriter:
         #     automatically converted by the C compiler anyway
         return magic_dispatch(self, "fmt_expr", expr)
 
+    def fmt_expr_BlockExpr(self, expr: ast.BlockExpr) -> C.Expr:
+        msg = (
+            "The C backend doesn't support ast.BlockExpr.\n"
+            + "This probably means that there is a bug in the compilation pipeline\n"
+            + "and that `linearize` was not called."
+        )
+        raise SPyError.simple("W_ValueError", msg, "", expr.loc)
+        # raise Exception(msg)
+
     # ===== statements =====
 
     def emit_stmt_Pass(self, stmt: ast.Pass) -> None:
@@ -155,7 +171,10 @@ class CFuncWriter:
         if vardef.value:
             target = vardef.name.value
             v = self.fmt_expr(vardef.value)
-            self.tbc.wl(f"{target} = {v};")
+            if vardef.value.w_T is TYPES.w_NoneType:
+                self.tbc.wl(f"/* {target} = */ {v};")
+            else:
+                self.tbc.wl(f"{target} = {v};")
 
     def emit_stmt_Assign(self, assign: ast.Assign) -> None:
         assert False, "ast.Assign nodes should not survive redshifting"
@@ -164,7 +183,10 @@ class CFuncWriter:
         target = assign.target.value
         v = self.fmt_expr(assign.value)
         c_varname = C_Ident(target)
-        self.tbc.wl(f"{c_varname} = {v};")
+        if assign.value.w_T is TYPES.w_NoneType:
+            self.tbc.wl(f"/* {c_varname} = */ {v};")
+        else:
+            self.tbc.wl(f"{c_varname} = {v};")
 
     def emit_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
         v = self.fmt_expr(assign.value)
@@ -309,14 +331,24 @@ class CFuncWriter:
             assert w_obj.h == 0, "only NULL _FILE can be a constant"
             return C.Literal("NULL")
         else:
-            assert False
+            w_T = self.ctx.vm.dynamic_type(w_obj)
+            t = w_T.fqn.human_name(self.ctx.vm)
+            raise SPyError.simple(
+                "W_WIP",
+                f"Prebuilt constant of type `{t}` are not supported by the C backend",
+                f"This is `{t}`",
+                const.loc,
+            )
 
     def fmt_expr_Name(self, name: ast.Name) -> C.Expr:
         assert False, "ast.Name nodes should not survive redshifting"
 
     def fmt_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> C.Expr:
         varname = C_Ident(name.sym.name)
-        return C.Literal(f"{varname}")
+        if name.w_T is TYPES.w_NoneType:
+            return C.Literal(f"/* {varname} */")
+        else:
+            return C.Literal(f"{varname}")
 
     def fmt_expr_NameOuterCell(self, name: ast.NameOuterCell) -> C.Expr:
         return C.Literal(name.fqn.c_name)

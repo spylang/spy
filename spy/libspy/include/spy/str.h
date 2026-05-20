@@ -44,7 +44,13 @@ int32_t WASM_EXPORT(spy_str_hash)(spy_Str *s);
 #define spy_builtins$str$replace spy_str_replace
 #define spy_builtins$str$__getitem__ spy_str_getitem
 #define spy_builtins$str$__len__ spy_str_len
+#define spy_builtins$str$__str__ spy_str_identity
 #define spy_builtins$str$__repr__ spy_str_repr
+
+static inline spy_Str *
+spy_str_identity(spy_Str *s) {
+    return s;
+}
 #define spy_builtins$hash_str spy_str_hash
 
 // __str__ methods of common builtin types

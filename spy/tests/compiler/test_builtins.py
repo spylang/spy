@@ -1,6 +1,12 @@
 import pytest
 
-from spy.tests.support import CompilerTest, expect_errors, no_C, only_interp
+from spy.tests.support import (
+    CompilerTest,
+    expect_errors,
+    no_C,
+    only_interp,
+    skip_backends,
+)
 from spy.vm.builtin import builtin_method
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_I32, W_Dynamic
@@ -262,6 +268,107 @@ class TestBuiltins(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
+    def test_setattr_getattr(self):
+        src = """
+        from unsafe import gc_alloc
+
+        @struct
+        class Point:
+            x: i32
+
+        def foo() -> i32:
+            ptr = gc_alloc[Point](1)
+            setattr(ptr[0], "x", 2)
+
+            p = Point(42)
+            return getattr(p, "x")
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 42
+
+    def test_hasattr(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo() -> bool:
+            p = Point(1, 2)
+            return hasattr(p, 'x')
+
+        def bar() -> bool:
+            p = Point(1, 2)
+            return hasattr(p, 'z')
+        """
+        mod = self.compile(src)
+        assert mod.foo() == True
+        assert mod.bar() == False
+
+    def test_hasattr_red(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo() -> bool:
+            var attr = "x"  # this is red
+            p = Point(1, 2)
+            return hasattr(p, attr)
+        """
+        errors = expect_errors(
+            "expected blue argument",
+            ("this is red", "attr"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    @skip_backends("C", reason="dynamic not supported in C backend")
+    def test_hasattr_dynamic(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo() -> bool:
+            p: dynamic = Point(1, 2)
+            return hasattr(p, 'x')
+
+        def bar() -> bool:
+            p: dynamic = Point(1, 2)
+            return hasattr(p, 'z')
+        """
+        mod = self.compile(src)
+        assert mod.foo() == True
+        assert mod.bar() == False
+
+    def test_hasattr_custom_getattribute(self):
+        mod = self.compile("""
+        from operator import OpSpec
+
+        @struct
+        class MyClass:
+
+            @blue.metafunc
+            def __getattribute__(m_self, m_name):
+                if m_name.blueval == 'x':
+                    def impl(obj: MyClass, name: str) -> i32:
+                        return 42
+                    return OpSpec(impl)
+                return OpSpec.NULL
+
+        def foo() -> bool:
+            obj = MyClass()
+            return hasattr(obj, 'x')
+
+        def bar() -> bool:
+            obj = MyClass()
+            return hasattr(obj, 'z')
+        """)
+        assert mod.foo() == True
+        assert mod.bar() == False
+
     @only_interp
     def test_dir(self):
         src = """
@@ -284,3 +391,81 @@ class TestBuiltins(CompilerTest):
         dm = mod.dir_math()
         assert "acos" in dm
         assert "pi" in dm
+
+    def test_print_red(self, capfd):
+        mod = self.compile("""
+        from __spy__ import as_red
+
+        def foo() -> None:
+            print(as_red("hello world"))
+            print(as_red(42))
+            print(as_red(12.3))
+            print(as_red(True))
+            print(as_red(None))
+        """)
+        mod.foo()
+        if self.backend == "C":
+            mod.ll.call("spy_flush")
+        out, err = capfd.readouterr()
+        assert out == "\n".join(
+            [
+                "hello world",
+                "42",
+                "12.3",
+                "True",
+                "None",
+                "",
+            ]
+        )
+
+    def test_print_multi_args(self, capfd):
+        mod = self.compile("""
+        def foo() -> None:
+            print()
+            print("hello", "world")
+            print(1, 2, 3)
+            print("x =", 42)
+            print("a", 1, 2.5, True)
+            print("mix", i32, None)
+        """)
+        mod.foo()
+        if self.backend == "C":
+            mod.ll.call("spy_flush")
+        out, err = capfd.readouterr()
+        assert out == "\n".join(
+            [
+                "",
+                "hello world",
+                "1 2 3",
+                "x = 42",
+                "a 1 2.5 True",
+                "mix <spy type 'i32'> None",
+                "",
+            ]
+        )
+
+    def test_print_blue(self, capfd):
+        mod = self.compile("""
+        def foo() -> None:
+            print("hello world")
+            print(42)
+            print(12.3)
+            print(True)
+            print(None)
+            print(i32)
+        """)
+        mod.foo()
+        if self.backend == "C":
+            mod.ll.call("spy_flush")
+        out, err = capfd.readouterr()
+        assert out == "\n".join(
+            [
+                "hello world",
+                "42",
+                "12.3",
+                "True",
+                "None",
+                "<spy type 'i32'>",
+                "",
+            ]
+        )

@@ -1,0 +1,94 @@
+name: Deploy PR Docs Preview
+#
+# Triggers after 'Build PR Docs Preview' completes successfully.
+#
+on:
+  workflow_run:
+    workflows: [Build PR Docs Preview]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: write
+  pages: write
+  id-token: write
+  pull-requests: write
+
+concurrency:
+  group: pr-docs-deploy-${{ github.event.workflow_run.id }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.SPYLANG_DOCS_DEPLOY_KEY }}
+
+      - name: Clone docs repository
+        run: |
+          git clone ${{ vars.SPY_DOCS_REPOSITORY }} /tmp/spy-docs
+
+      - name: Configure Git in docs repository
+        working-directory: /tmp/spy-docs
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+
+      - name: List artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/artifacts
+
+      - name: Get PR number from artifact name
+        id: pr
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          PR_NUMBER=$(gh api repos/${{ github.repository }}/actions/runs/${{ github.event.workflow_run.id }}/artifacts \
+            --jq '.artifacts[].name | select(startswith("pr-preview-docs-")) | sub("^pr-preview-docs-"; "")' | head -n1)
+          if [ -z "$PR_NUMBER" ]; then
+            echo "Failed to determine PR number from artifacts" >&2
+            exit 1
+          fi
+          echo "pr_number=$PR_NUMBER" >> "$GITHUB_OUTPUT"
+          echo "Deploying preview for PR #$PR_NUMBER"
+
+      - name: Download artifact
+        uses: dawidd6/action-download-artifact@v3
+        with:
+          run_id: ${{ github.event.workflow_run.id }}
+          name: pr-preview-docs-${{ steps.pr.outputs.pr_number }}
+          path: /tmp/spy-docs/pr-preview/pr-${{ steps.pr.outputs.pr_number }}
+
+      - name: Commit artifact
+        working-directory: /tmp/spy-docs
+        run: |
+          git add pr-preview
+          git commit -m "Added preview build for PR ${{ steps.pr.outputs.pr_number }}"
+          git push
+
+      - name: Get timestamp (UTC)
+        id: ts
+        run: echo "utc=$(date -u '+%Y-%m-%d %H:%M UTC')" >> "$GITHUB_OUTPUT"
+
+      - name: Post preview link as sticky PR comment
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          number: ${{ steps.pr.outputs.pr_number }}
+          header: pr-preview
+          message: |
+            [Documentation Preview](https://spylang.github.io/docs/pr-preview/pr-${{ steps.pr.outputs.pr_number }}/index.html)
+            :---:
+            Preview documentation for PR #${{ steps.pr.outputs.pr_number }}.
+            Last Updated: ${{ steps.ts.outputs.utc }}
+            <!-- Sticky Pull Request Commentpr-preview -->

@@ -73,11 +73,16 @@ if TYPE_CHECKING:
     from spy.vm.function import W_Func
     from spy.vm.opspec import W_MetaArg, W_OpSpec
     from spy.vm.primitive import W_Bool, W_Dynamic, W_NoneType
+    from spy.vm.str import W_Str
     from spy.vm.vm import SPyVM
 
 
 def builtin_method(
-    name: str, *, color: Color = "red", kind: "FuncKind" = "plain"
+    name: str,
+    *,
+    color: Color = "red",
+    kind: "FuncKind" = "plain",
+    is_pure: bool = False,
 ) -> Any:
     """
     Turn an interp-level method into an app-level one.
@@ -88,14 +93,18 @@ def builtin_method(
 
     def decorator(fn: Callable) -> Callable:
         assert isinstance(fn, staticmethod), "missing @staticmethod"
-        fn.spy_builtin_method = (name, color, kind, "method")  # type: ignore
+        fn.spy_builtin_method = (name, color, kind, "method", is_pure)  # type: ignore
         return fn
 
     return decorator
 
 
 def builtin_staticmethod(
-    name: str, *, color: Color = "red", kind: "FuncKind" = "plain"
+    name: str,
+    *,
+    color: Color = "red",
+    kind: "FuncKind" = "plain",
+    is_pure: bool = False,
 ) -> Any:
     """
     Turn an interp-level staticmethod into an app-level staticmethod.
@@ -106,14 +115,18 @@ def builtin_staticmethod(
 
     def decorator(fn: Callable) -> Callable:
         assert isinstance(fn, staticmethod), "missing @staticmethod"
-        fn.spy_builtin_method = (name, color, kind, "staticmethod")  # type: ignore
+        fn.spy_builtin_method = (name, color, kind, "staticmethod", is_pure)  # type: ignore
         return fn
 
     return decorator
 
 
 def builtin_classmethod(
-    name: str, *, color: Color = "red", kind: "FuncKind" = "plain"
+    name: str,
+    *,
+    color: Color = "red",
+    kind: "FuncKind" = "plain",
+    is_pure: bool = False,
 ) -> Any:
     """
     Turn an interp-level staticmethod into an app-level classmethod.
@@ -124,14 +137,18 @@ def builtin_classmethod(
 
     def decorator(fn: Callable) -> Callable:
         assert isinstance(fn, staticmethod), "missing @staticmethod"
-        fn.spy_builtin_method = (name, color, kind, "classmethod")  # type: ignore
+        fn.spy_builtin_method = (name, color, kind, "classmethod", is_pure)  # type: ignore
         return fn
 
     return decorator
 
 
 def builtin_property(
-    name: str, *, color: Color = "red", kind: "FuncKind" = "plain"
+    name: str,
+    *,
+    color: Color = "red",
+    kind: "FuncKind" = "plain",
+    is_pure: bool = False,
 ) -> Any:
     """
     Turn an interp-level getter method into an app-level property.
@@ -142,7 +159,7 @@ def builtin_property(
 
     def decorator(fn: Callable) -> Callable:
         assert isinstance(fn, staticmethod), "missing @staticmethod"
-        fn.spy_builtin_method = (name, color, kind, "property")  # type: ignore
+        fn.spy_builtin_method = (name, color, kind, "property", is_pure)  # type: ignore
         return fn
 
     return decorator
@@ -190,7 +207,7 @@ class W_Object:
     def __repr__(self) -> str:
         fqn = self._w.fqn
         addr = f"0x{id(self):x}"
-        return f"<spy instance: type={fqn.human_name}, id={addr}>"
+        return f"<spy instance: type={fqn.debug_human_name}, id={addr}>"
 
     def spy_get_w_type(self, vm: "SPyVM") -> "W_Type":
         pyclass = type(self)
@@ -234,25 +251,18 @@ class W_Object:
         from spy.vm.opspec import W_OpSpec
         from spy.vm.str import W_Str
 
-        if wam_self.color == "blue":
-            w_self = wam_self.w_blueval
-            w_s = vm.wrap(repr(w_self))
-            return W_OpSpec.const(w_s)
+        w_T = wam_self.w_static_T
+        T = Annotated[W_Object, w_T]
+        irtag = IRTag("object.repr", w_T=w_T)
 
-        else:
-            # fallback
-            w_T = wam_self.w_static_T
-            T = Annotated[W_Object, w_T]
-            irtag = IRTag("object.repr", w_T=w_T)
+        @vm.register_builtin_func(w_T.fqn, "__generic_repr__", irtag=irtag)
+        def w_generic_repr(vm: "SPyVM", w_obj: T) -> W_Str:
+            tname = w_T.fqn.debug_human_name
+            addr = f"0x{id(w_obj):x}"
+            s = f"<spy `{tname}` object at {addr}>"
+            return vm.wrap(s)
 
-            @vm.register_builtin_func(w_T.fqn, "__generic_repr__", irtag=irtag)
-            def w_generic_repr(vm: "SPyVM", w_obj: T) -> W_Str:
-                tname = w_T.fqn.human_name
-                addr = f"0x{id(w_obj):x}"
-                s = f"<spy `{tname}` object at {addr}>"
-                return vm.wrap(s)
-
-            return W_OpSpec(w_generic_repr, [wam_self])
+        return W_OpSpec(w_generic_repr, [wam_self])
 
     @builtin_method("__str__", color="blue", kind="metafunc")
     @staticmethod
@@ -420,6 +430,7 @@ class W_Type(W_Object):
     fqn: FQN
     _pyclass: Optional[Type[W_Object]]
     _dict_w: Optional[dict[str, W_Object]]
+    w_origin: Optional["W_Object"]
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         cls = self.__class__.__name__
@@ -455,6 +466,7 @@ class W_Type(W_Object):
         w_T.fqn = fqn
         w_T._pyclass = None
         w_T._dict_w = None
+        w_T.w_origin = None
         return w_T
 
     @classmethod
@@ -574,7 +586,7 @@ class W_Type(W_Object):
         from spy.vm.str import W_Str
 
         pyfunc = statmeth.__func__
-        appname, color, kind, what = statmeth.spy_builtin_method  # type: ignore
+        appname, color, kind, what, is_pure = statmeth.spy_builtin_method  # type: ignore
         assert what in ("method", "staticmethod", "classmethod", "property")
 
         # create the W_BuiltinFunc. Make it possible to use the string
@@ -595,6 +607,7 @@ class W_Type(W_Object):
             color=color,
             kind=kind,
             extra_types=extra_types,
+            is_pure=is_pure,
         )
         if what == "method":
             self.dict_w[appname] = w_func
@@ -629,7 +642,7 @@ class W_Type(W_Object):
 
         addr = ""
         # addr = f' at 0x{id(self):x}'
-        return f"<spy type '{self.fqn.human_name}'{s_hints}{addr}>"
+        return f"<spy type '{self.fqn.debug_human_name}'{s_hints}{addr}>"
 
     def repr_hints(self) -> list[str]:
         return []
@@ -644,6 +657,14 @@ class W_Type(W_Object):
         """
         Return a list of all the supertypes.
         """
+        if self is B.w_dynamic:
+            msg = (
+                "Cannot call .get_mro(), .lookup() or .lookup_func() on B.w_dynamic. "
+                + "This is likely an internal bug: the caller should detect B.w_dynamic "
+                + "and do the lookup on the real type."
+            )
+            raise AssertionError(msg)
+
         mro = []
         w_T: Union["W_Type", "W_NoneType"] = self
         while w_T is not B.w_None:
@@ -694,6 +715,15 @@ class W_Type(W_Object):
 
     # ======== app-level interface ========
 
+    @builtin_property("__origin__")
+    @staticmethod
+    def w_get_origin(vm: "SPyVM", w_self: "W_Type") -> "W_Dynamic":
+        from spy.vm.b import B
+
+        if w_self.w_origin is None:
+            return B.w_None
+        return w_self.w_origin
+
     @builtin_method("__new__")
     @staticmethod
     def w_new(vm: "SPyVM", w_obj: "W_Dynamic") -> "W_Type":
@@ -701,6 +731,11 @@ class W_Type(W_Object):
         This implements `type(obj)`, i.e. it returns its dynamic type
         """
         return vm.dynamic_type(w_obj)
+
+    @builtin_method("__repr__", is_pure=True)
+    @staticmethod
+    def w_repr(vm: "SPyVM", w_self: "W_Type") -> "W_Str":
+        return vm.wrap(repr(w_self))
 
     # this is the equivalent of CPython's typeobject.c:type_getattro
     @builtin_method("__getattribute__", color="blue", kind="metafunc")
@@ -781,7 +816,7 @@ class W_Type(W_Object):
             return w_opspec
 
         # no __new__, error out
-        clsname = w_T.fqn.human_name
+        clsname = w_T.fqn.debug_human_name
         err = SPyError("W_TypeError", f"cannot instantiate `{clsname}`")
         err.add("error", f"`{clsname}` does not have a method `__new__`", loc=wam_t.loc)
         if wam_t.sym:

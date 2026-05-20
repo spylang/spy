@@ -234,13 +234,13 @@ class TestSPyBackend(CompilerTest):
             add_f64(3.4, 5.6)
         """)
         self.assert_dump("""
-        add_i32 = `test::add[i32]::impl`
-        add_f64 = `test::add[f64]::impl`
+        add_i32 = `test::add[i32]`
+        add_f64 = `test::add[f64]`
 
-        def `test::add[i32]::impl`(x: i32, y: i32) -> i32:
+        def `test::add[i32]`(x: i32, y: i32) -> i32:
             return x + y
 
-        def `test::add[f64]::impl`(x: f64, y: f64) -> f64:
+        def `test::add[f64]`(x: f64, y: f64) -> f64:
             return x + y
 
         def foo() -> None:
@@ -418,3 +418,16 @@ class TestSPyBackend(CompilerTest):
         """
         self.compile(src)
         self.assert_dump(src)
+
+    def test_blockexpr(self):
+        self.compile("""
+        def foo() -> i32:
+            return __block__('''
+                x: i32 = 1
+                x
+            ''')
+        """)
+        self.assert_dump("""
+        def foo() -> i32:
+            return __block__(x: i32 = 1; x)
+        """)

@@ -64,10 +64,12 @@ class SPyBackend:
                 isinstance(w_obj, W_ASTFunc)
                 and w_obj.color == "red"
                 and w_obj.fqn != expected_fqn
+                and not w_obj.is_force_inline
             ):
                 aliases.append((attr, w_obj))
         for attr, w_obj in aliases:
-            self.out.wl(f"{attr} = `{w_obj.fqn}`")
+            fqn_str = w_obj.fqn.human_name(self.vm)
+            self.out.wl(f"{attr} = `{fqn_str}`")
         if aliases:
             self.out.wl()
 
@@ -78,6 +80,7 @@ class SPyBackend:
             if isinstance(w_obj, W_ASTFunc)
             and w_obj.color == "red"
             and w_obj.fqn == fqn
+            and not w_obj.is_force_inline
         ]
         for i, (fqn, w_obj) in enumerate(funcs):
             self.dump_w_func(fqn, w_obj)
@@ -133,7 +136,7 @@ class SPyBackend:
         if isinstance(w_obj, W_Type) and issubclass(w_obj.pyclass, W_InterpList):
             # this is a ugly special case for now, we need to find a better
             # solution
-            return w_obj.fqn.human_name
+            return w_obj.fqn.human_name(self.vm)
         #
         # this assumes that w_obj has a valid FQN
         fqn = self.vm.reverse_lookup_global(w_obj)
@@ -144,7 +147,7 @@ class SPyBackend:
         if self.fqn_format == "full":
             name = str(fqn)
         elif self.fqn_format == "short":
-            name = fqn.human_name  # don't show builtins::
+            name = fqn.human_name(self.vm)  # don't show builtins::
         else:
             assert False
         #
@@ -171,19 +174,20 @@ class SPyBackend:
 
     # statements
 
-    def emit_declare_var_maybe(self, varname: str) -> None:
+    def get_vartype_to_declare_maybe(self, varname: str) -> Optional[str]:
         symtable = self.scope_stack[-1]
         sym = symtable.lookup(varname)
         if (
-            self.w_func.redshifted
+            self.w_func.lowering_stage != "source"
             and sym.level == 0
             and varname not in self.vars_declared
         ):
             assert self.w_func.locals_types_w is not None
             w_T = self.w_func.locals_types_w[varname]
             t = self.fmt_w_obj(w_T)
-            self.wl(f"{varname}: {t}")
             self.vars_declared.add(varname)
+            return t
+        return None
 
     def emit_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
         name = funcdef.name
@@ -227,15 +231,21 @@ class SPyBackend:
 
     def emit_stmt_Assign(self, assign: ast.Assign) -> None:
         varname = assign.target.value
-        self.emit_declare_var_maybe(varname)
+        t = self.get_vartype_to_declare_maybe(varname)
         v = self.fmt_expr(assign.value)
-        self.wl(f"{varname} = {v}")
+        if t is not None:
+            self.wl(f"{varname}: {t} = {v}")
+        else:
+            self.wl(f"{varname} = {v}")
 
     def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
         varname = assign.target.value
-        self.emit_declare_var_maybe(varname)
+        t = self.get_vartype_to_declare_maybe(varname)
         v = self.fmt_expr(assign.value)
-        self.wl(f"{varname} = {v}")
+        if t is not None:
+            self.wl(f"{varname}: {t} = {v}")
+        else:
+            self.wl(f"{varname} = {v}")
 
     def emit_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
         varname = self.fmt_fqn(assign.target_fqn)
@@ -406,6 +416,17 @@ class SPyBackend:
         if unary.value.precedence < unary.precedence:
             v = f"({v})"
         return f"{unary.op}{v}"
+
+    def fmt_expr_BlockExpr(self, block: ast.BlockExpr) -> str:
+        b = SPyBackend(self.vm, fqn_format=self.fqn_format)
+        b.w_func = self.w_func
+        b.scope_stack = self.scope_stack
+        b.vars_declared = self.vars_declared
+        for stmt in block.body:
+            b.emit_stmt(stmt)
+        parts = [l for l in b.out.build().splitlines() if l]
+        parts.append(self.fmt_expr(block.value))
+        return "__block__(" + "; ".join(parts) + ")"
 
     def fmt_expr_AssignExpr(self, assignexpr: ast.AssignExpr) -> str:
         return self._fmt_assignexpr(

@@ -22,9 +22,9 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 42
         if self.backend == "interp":
-            assert not mod.foo.w_func.redshifted
+            assert mod.foo.w_func.lowering_stage == "source"
         elif self.backend == "doppler":
-            assert mod.foo.w_func.redshifted
+            assert mod.foo.w_func.lowering_stage == "redshift"
 
     def test_return_None(self):
         mod = self.compile("""
@@ -896,7 +896,7 @@ class TestBasic(CompilerTest):
         """)
         #
         w_functype = mod.foo.w_functype
-        assert w_functype.fqn.human_name == "def(i32) -> i32"
+        assert w_functype.fqn.debug_human_name == "def(i32) -> i32"
         assert mod.foo(1) == 2
 
     def test_redshift_nonglobal_function(self):
@@ -925,53 +925,6 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 9
 
-    def test_blue_generic(self):
-        mod = self.compile("""
-        @blue.generic
-        def add(T):
-            def impl(x: T, y: T) -> T:
-                return x + y
-            return impl
-
-        def foo() -> i32:
-            return add[i32](1, 2)
-
-        def bar() -> str:
-            return add[str]('hello ', 'world')
-        """)
-        assert mod.foo() == 3
-        assert mod.bar() == "hello world"
-
-    def test_generic_args(self):
-        mod = self.compile("""
-        def add[T](x: T, y: T) -> T:
-            return x + y
-
-        def foo() -> i32:
-            return add[i32](1, 2)
-
-        def bar() -> str:
-            return add[str]('hello ', 'world')
-        """)
-        assert mod.foo() == 3
-        assert mod.bar() == "hello world"
-
-    def test_cannot_call_blue_generic(self):
-        src = """
-        @blue.generic
-        def ident(x):
-            return x
-
-        def foo() -> i32:
-            return ident(42)
-        """
-        errors = expect_errors(
-            "generic functions must be called via `[...]`",
-            ("this is `@blue.generic def(dynamic) -> dynamic`", "ident"),
-            ("`ident` defined here", "def ident(x):"),
-        )
-        self.compile_raises(src, "foo", errors)
-
     def test_call_func_already_redshifted(self):
         mod = self.compile("""
         @blue
@@ -987,48 +940,6 @@ class TestBasic(CompilerTest):
             return make_foo()(3, 4)
         """)
         assert mod.bar() == 20
-
-    def test_print(self, capfd):
-        mod = self.compile("""
-        def foo() -> None:
-            print("hello world")
-            print(42)
-            print(12.3)
-            print(True)
-            print(None)
-            print(i32)
-        """)
-        mod.foo()
-        if self.backend == "C":
-            # NOTE: float formatting is done by printf and it's different than
-            # the one that we get by Python in interp-mode. Too bad for now.
-            s_123 = "12.300000"
-            mod.ll.call("spy_flush")
-        else:
-            s_123 = "12.3"
-        out, err = capfd.readouterr()
-        assert out == "\n".join(
-            [
-                "hello world",
-                "42",
-                s_123,
-                "True",
-                "None",
-                "<spy type 'i32'>",
-                "",
-            ]
-        )
-
-    @no_C
-    def test_print_object(self, capfd):
-        mod = self.compile("""
-        def foo() -> None:
-            x = i32   # force i32 to be a red value
-            print(x)
-        """)
-        mod.foo()
-        out, err = capfd.readouterr()
-        assert out == "<spy type 'i32'>\n"
 
     def test_deeply_nested_closure(self, capfd):
         mod = self.compile("""
@@ -1308,7 +1219,7 @@ class TestBasic(CompilerTest):
         w_ptr_S2 = w_mod.getattr("ptr_S2")
         #
         expected_sig = "def(test::S, unsafe::raw_ptr[test::S]) -> None"
-        assert w_foo.w_functype.fqn.human_name == expected_sig
+        assert w_foo.w_functype.fqn.debug_human_name == expected_sig
         params = w_foo.w_functype.params
         assert params[0].w_T is w_S
         assert params[1].w_T is w_ptr_S1 is w_ptr_S2
@@ -1665,3 +1576,18 @@ class TestBasic(CompilerTest):
             ("function defined here", "def add(x: int, y: int = 1) -> int"),
         )
         self.compile_raises(src, "foo", errors)
+
+    def test_void_local(self):
+        src = """
+        var N: i32 = 0
+
+        def bar() -> None:
+            N = N + 1
+
+        def foo() -> i32:
+            x = bar()
+            y = x
+            return N
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 1

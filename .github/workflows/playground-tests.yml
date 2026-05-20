@@ -1,4 +1,4 @@
-name: Playground Tests
+name: Playground and Example Tests
 
 on:
   push:
@@ -40,3 +40,7 @@ jobs:
       - name: Run playground tests
         run: |
           pytest playground/tests/ -v
+
+      - name: Run examples
+        run: |
+          pytest -n auto examples

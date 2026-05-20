@@ -38,6 +38,10 @@ MAX_FILL_RATIO = 2 / 3
 
 @blue.generic
 def dict(Key, Value):
+    # the current implementation of dict doesnt' work for e.g. dict[type, T], dict[T,
+    # type], dict[T, object] and dict[object, T]. As a temporary workaround, fallback to
+    # interp-dict for now. This mean that they cannot be translated, but it's fine as
+    # long as it's used only in blue code.
     if Key == type or Key == object or Value == type or Value == object:
         return interp_dict[Key, Value]
 
@@ -121,6 +125,7 @@ def dict(Key, Value):
         return data.index[position]
 
     def insert_entry(entries: gc_ptr[Entry], ix: i32, key: Key, value: Value) -> None:
+        assert ix > 0  # zero is reserved for empty node
         entries[ix].key = key
         entries[ix].value = value
         entries[ix].empty = 0
@@ -198,6 +203,8 @@ def dict(Key, Value):
         # todo: detect dict size change during iteration
 
         def __next__(self) -> dict_iterator:
+            # entries are always compact, we don't need to check for empty slots
+            # also see swap_last_entry_with() in delete()
             return dict_iterator(self.data, self.i + 1)
 
         def __item__(self) -> Key:
@@ -296,7 +303,8 @@ def dict(Key, Value):
             return data.length
 
         def __fastiter__(self) -> dict_iterator:
-            return dict_iterator(self.__ll__, 0)
+            # the first entry is always empty, so we skip it
+            return dict_iterator(self.__ll__, 1)
 
         def keys(self) -> _dict:
             return self

@@ -215,7 +215,9 @@ class W_StructType(W_Type):
         params = [FuncParam(self, "simple"), FuncParam(self, "simple")]
         w_functype = W_FuncType.new(params, w_restype=B.w_bool)
         fqn = self.fqn.join(name)
-        return W_ASTFunc(w_functype, fqn, funcdef, closure=(), defaults_w=[])
+        return W_ASTFunc(
+            w_functype, fqn, funcdef, closure=(), defaults_w=[], lowering_stage="source"
+        )
 
     def repr_hints(self) -> list[str]:
         return super().repr_hints() + ["struct"]
@@ -297,7 +299,7 @@ class W_Struct(W_Object):
     def spy_key(self, vm: "SPyVM") -> Any:
         if not self.w_structtype.spy_key_is_valid:
             # see the comment in W_StructType.define_from_classbody
-            T = self.w_structtype.fqn.human_name
+            T = self.w_structtype.fqn.human_name(vm)
             raise WIP(
                 f"type {T} cannot be cached because it defines __eq__ or __ne__",
             )
@@ -305,16 +307,13 @@ class W_Struct(W_Object):
         return ("struct", self.w_structtype.spy_key(vm)) + tuple(values_key)
 
     def spy_unwrap(self, vm: "SPyVM") -> Any:
-        fqn = self.w_structtype.fqn
-
-        # hack hack hack, as we don't have a better way to check whether w_T is a 'list'
-        is_list = str(fqn).startswith("_list::list[")
-        if is_list:
+        if vm.is_list_type(self.w_structtype):
             return unwrap_list(vm, self)
 
-        is_dict = str(fqn).startswith("_dict::dict[")
-        if is_dict:
+        if vm.is_dict_type(self.w_structtype):
             return unwrap_dict(vm, self)
+
+        fqn = self.w_structtype.fqn
 
         fields = {key: w_obj.spy_unwrap(vm) for key, w_obj in self.values_w.items()}
         return UnwrappedStruct(fqn, fields)
@@ -339,7 +338,7 @@ class W_StructField(W_Object):
 
     def __repr__(self) -> str:
         n = self.name
-        t = self.w_T.fqn.human_name
+        t = self.w_T.fqn.debug_human_name
         return f"<spy struct field {n}: `{t}` (+{self.offset})>"
 
     @builtin_method("__get__", color="blue", kind="metafunc")
@@ -433,22 +432,13 @@ def unwrap_dict(vm: "SPyVM", w_dict: W_Object) -> dict[Any, Any]:
     w_it = vm.call_w(w_fastiter, [w_dict], color="red")
     w_it_T = vm.dynamic_type(w_it)
     w_continue_iteration = vm.lookup_global(w_it_T.fqn.join("__continue_iteration__"))
-    is_continue = vm.call_w(w_continue_iteration, [w_it], color="red")
+    w_item_method = vm.lookup_global(w_it_T.fqn.join("__item__"))
     w_next = vm.lookup_global(w_it_T.fqn.join("__next__"))
-    w_it = vm.call_w(w_next, [w_it], color="red")
 
-    while vm.unwrap_bool(is_continue):
-        w_it_T = vm.dynamic_type(w_it)
-        w_item_method = vm.lookup_global(w_it_T.fqn.join("__item__"))
+    while vm.unwrap_bool(vm.call_w(w_continue_iteration, [w_it], color="red")):
         w_key = vm.call_w(w_item_method, [w_it], color="red")
         w_val = vm.getitem_w(w_dict, w_key, color="red")
-        result[vm.unwrap(w_key)] = vm.unwrap(w_val)  # append key,value
-
-        w_next = vm.lookup_global(w_it_T.fqn.join("__next__"))
+        result[vm.unwrap(w_key)] = vm.unwrap(w_val)
         w_it = vm.call_w(w_next, [w_it], color="red")
-        w_continue_iteration = vm.lookup_global(
-            w_it_T.fqn.join("__continue_iteration__")
-        )
-        is_continue = vm.call_w(w_continue_iteration, [w_it], color="red")
 
     return result
