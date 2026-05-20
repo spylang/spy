@@ -160,7 +160,7 @@ def w_print(vm: "SPyVM", *args_wam: W_MetaArg) -> W_OpSpec:
 @BUILTINS.builtin_func(color="blue", kind="metafunc")
 def w_len(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
     w_T = wam_obj.w_static_T
-    if w_fn := w_T.lookup_func("__len__"):
+    if w_fn := w_T.lookup_func(vm, "__len__"):
         w_opspec = vm.fast_metacall(w_fn, [wam_obj])
         return w_opspec
 
@@ -173,7 +173,7 @@ def w_len(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
 @BUILTINS.builtin_func(color="blue", kind="metafunc")
 def w_repr(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
     w_T = wam_obj.w_static_T
-    if w_fn := w_T.lookup_func("__repr__"):
+    if w_fn := w_T.lookup_func(vm, "__repr__"):
         w_opspec = vm.fast_metacall(w_fn, [wam_obj])
         return w_opspec
 
@@ -236,7 +236,7 @@ def w_hash(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
     elif w_T is B.w_str:
         return W_OpSpec(B.w_hash_str)
 
-    if w_fn := w_T.lookup_func("__hash__"):
+    if w_fn := w_T.lookup_func(vm, "__hash__"):
         w_opspec = vm.fast_metacall(w_fn, [wam_obj])
         return w_opspec
 

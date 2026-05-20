@@ -124,6 +124,14 @@ class CStructWriter:
             )
             return
 
+        # _str::StrObject is already declared in str.h as spy_StrObject. Just emit a
+        # typedef.
+        if str(w_st.fqn) == "_str::StrObject":
+            self.tbh_fwdecl.wl(
+                f"typedef spy_StrObject {c_st}; /* alias of spy_StrObject */"
+            )
+            return
+
         human_fqn = w_st.fqn.human_name(self.ctx.vm)
         self.tbh_fwdecl.wl(f"typedef struct {c_st} {c_st}; /* {human_fqn} */")
 
@@ -144,6 +152,18 @@ class CStructWriter:
         c_ptrtype = C_Type(w_ptrtype.fqn.c_name)
         w_itemT = w_ptrtype.w_itemT
         c_itemT = self.ctx.w2c(w_itemT)
+
+        # some ptr types are predeclared manually in libspy. Make sure to keep the code
+        # generated here and the code manually written there always in sync.
+        if str(w_ptrtype.fqn) in (
+            "unsafe::gc_ptr[u8]",
+            "unsafe::gc_ptr[_str::StrObject]",
+        ):
+            self.tbh_fwdecl.wl(
+                f"// {c_ptrtype}: skip as it's already pre-declared by libspy"
+            )
+            return
+
         self.tbh_fwdecl.wb(f"""
         typedef struct {c_ptrtype} {{
             {c_itemT} *p;

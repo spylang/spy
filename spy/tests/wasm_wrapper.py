@@ -13,7 +13,7 @@ from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
 from spy.vm.modules.rawbuffer import RB
 from spy.vm.modules.unsafe.ptr import W_PtrType
 from spy.vm.object import W_Type
-from spy.vm.str import ll_spy_Str_new
+from spy.vm.str import ll_str_new
 from spy.vm.struct import UnwrappedStruct, W_StructType
 from spy.vm.vm import SPyVM
 
@@ -95,7 +95,7 @@ class WasmFuncWrapper:
             return float(pyval)
         elif w_T is B.w_str:
             # XXX: with the GC, we need to think how to keep this alive
-            return ll_spy_Str_new(self.ll, pyval)
+            return ll_str_new(self.ll, pyval)
         elif isinstance(w_T, W_PtrType):
             assert isinstance(pyval, WasmPtr)
             return (pyval.addr, pyval.length)
@@ -138,10 +138,7 @@ class WasmFuncWrapper:
         elif w_T is B.w_bool:
             return bool(res)
         elif w_T is B.w_str:
-            # res is a  spy_Str*
-            addr = res
-            length = self.ll.mem.read_i32(addr)
-            utf8 = self.ll.mem.read(addr + 8, length)
+            _, _, utf8 = self.ll.read_str(res)
             return utf8.decode("utf-8")
         elif w_T is RB.w_RawBuffer:
             # res is a  spy_RawBuffer*
@@ -282,11 +279,10 @@ def unflatten_struct(
                 content[w_field.name] = WasmPtr(addr, length)
                 idx += 2
             elif w_field.w_T is B.w_str:
-                # str fields are spy_Str* pointers; read from WASM memory
+                # str fields are spy_StrObject* pointers; read from WASM memory
                 addr = flat_values[idx]
                 if ll is not None:
-                    length = ll.mem.read_i32(addr)
-                    utf8 = ll.mem.read(addr + 8, length)
+                    _, _, utf8 = ll.read_str(addr)
                     content[w_field.name] = utf8.decode("utf-8")
                 else:
                     content[w_field.name] = addr

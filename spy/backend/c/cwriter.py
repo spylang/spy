@@ -258,7 +258,7 @@ class CFuncWriter:
                 # TODO: assuming msg is always a string. extend the logic to work with other types
                 msg = self.fmt_expr(assert_node.msg)
                 self.tbc.wl(
-                    f'spy_panic("AssertionError", ({msg})->utf8, '
+                    f'spy_panic("AssertionError", spy_StrObject_CHARS({msg}), '
                     f'"{assert_node.loc.filename}", {assert_node.loc.line_start});'
                 )
             else:
@@ -295,10 +295,13 @@ class CFuncWriter:
         # generate the following:
         #
         #     // global declarations
-        #     static spy_Str SPY_g_str0 = {5, 0, "hello"};
+        #     static spy_StrObject SPY_g_str0 = SPY_STR_LITERAL(5, "hello");
         #     ...
         #     // literal expr
         #     &SPY_g_str0 /* "hello" */
+        #
+        # SPY_STR_LITERAL hides the difference between debug and release
+        # layouts of spy_gc_ptr_u8 (see str.h).
         #
         # Note that in the literal expr we also put a comment showing what is
         # the content of the literal: hopefully this will make the code more
@@ -310,8 +313,8 @@ class CFuncWriter:
         v = self.cmodw.new_global_var("str")  # SPY_g_str0
         n = len(utf8)
         lit = C.Literal.from_bytes(utf8)
-        init = "{%d, 0, %s}" % (n, lit)
-        self.cmodw.tbc_globals.wl(f"static spy_Str {v} = {init};")
+        init = f"SPY_STR_LITERAL({n}, {lit})"
+        self.cmodw.tbc_globals.wl(f"static spy_StrObject {v} = {init};")
         #
         # shortstr is what we show in the comment, with a length limit
         comment = shortrepr(utf8.decode("utf-8"), 15)
