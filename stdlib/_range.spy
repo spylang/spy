@@ -34,6 +34,16 @@ class range:
         else:
             return OpSpec.NULL
 
+    def __contains__(self, value: int) -> bool:
+        if self.step > 0:
+            if value < self.start or value >= self.stop:
+                return False
+        else:
+            if value > self.start or value <= self.stop:
+                return False
+        
+        return (value - self.start) % self.step == 0
+
     def __fastiter__(self) -> range_iterator:
         return range_iterator(self.start, self.stop, self.step)
 
