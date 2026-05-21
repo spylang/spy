@@ -50,12 +50,12 @@ SPY_PTR_FUNCTIONS(gc, spy_unsafe$gc_ptr___str$StrObject, spy_StrObject)
 typedef spy_unsafe$gc_ptr___str$StrObject spy_gc_ptr_StrObject;
 
 static inline spy_gc_ptr_StrObject
-spy_unsafe$as_StrObject$impl(spy_StrObject *s) {
+spy_unsafe$_str_to_StrObject$impl(spy_StrObject *s) {
     return spy_unsafe$gc_ptr___str$StrObject_from_addr(s);
 }
 
 static inline spy_StrObject *
-spy_unsafe$from_StrObject$impl(spy_gc_ptr_StrObject p) {
+spy_unsafe$_StrObject_to_str$impl(spy_gc_ptr_StrObject p) {
     return p.p;
 }
 
@@ -91,7 +91,7 @@ _spy_StrObject_Layout WASM_EXPORT(_spy_StrObject_layout)(void);
 spy_StrObject *WASM_EXPORT(spy_str_alloc)(size_t length);
 
 static inline spy_gc_ptr_StrObject
-spy_unsafe$alloc_StrObject$impl(int32_t length) {
+spy_unsafe$_alloc_StrObject$impl(int32_t length) {
     return spy_unsafe$gc_ptr___str$StrObject_from_addr(spy_str_alloc((size_t)length));
 }
 

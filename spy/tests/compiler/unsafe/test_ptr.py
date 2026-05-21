@@ -643,15 +643,15 @@ class TestUnsafePtr(CompilerTest):
 
     def test_as_StrObject(self):
         mod = self.compile("""
-        from unsafe import as_StrObject
+        from unsafe import _str_to_StrObject
         from _str import StrObject
 
         def get_length(s: str) -> i32:
-            data = as_StrObject(s)
+            data = _str_to_StrObject(s)
             return data.length
 
         def get_byte(s: str, i: i32) -> u8:
-            data = as_StrObject(s)
+            data = _str_to_StrObject(s)
             return data.utf8[i]
         """)
         assert mod.get_length("hello") == 5

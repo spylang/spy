@@ -526,7 +526,7 @@ def w_ptr_setfield(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
 
 
 @UNSAFE.builtin_func(color="blue", kind="metafunc")
-def w_as_StrObject(vm: "SPyVM", wam_s: W_MetaArg) -> W_OpSpec:
+def w__str_to_StrObject(vm: "SPyVM", wam_s: W_MetaArg) -> W_OpSpec:
     """
     Convert an high-level `str` into low-level `gc_ptr[StrObject]`.
 
@@ -538,7 +538,7 @@ def w_as_StrObject(vm: "SPyVM", wam_s: W_MetaArg) -> W_OpSpec:
     assert isinstance(w_gc_ptr_StrObject, W_PtrType)
     GC_PTR = Annotated[W_Ptr, w_gc_ptr_StrObject]
 
-    @vm.register_builtin_func(UNSAFE.fqn.join("as_StrObject"), "impl")
+    @vm.register_builtin_func(UNSAFE.fqn.join("_str_to_StrObject"), "impl")
     def w_impl(vm: "SPyVM", w_s: W_Str) -> GC_PTR:
         return W_Ptr(w_gc_ptr_StrObject, w_s.ptr, 1)
 
@@ -546,10 +546,10 @@ def w_as_StrObject(vm: "SPyVM", wam_s: W_MetaArg) -> W_OpSpec:
 
 
 @UNSAFE.builtin_func(color="blue", kind="metafunc")
-def w_alloc_StrObject(vm: "SPyVM", wam_length: W_MetaArg) -> W_OpSpec:
+def w__alloc_StrObject(vm: "SPyVM", wam_length: W_MetaArg) -> W_OpSpec:
     """
     Allocate a fresh StrObject (with utf8 buffer of `length` bytes) and return a
-    `gc_ptr[StrObject]`. The dual of `from_StrObject`.
+    `gc_ptr[StrObject]`. The dual of `_StrObject_to_str`.
     """
     w_StrObject = vm.lookup_global(FQN("_str::StrObject"))
     assert isinstance(w_StrObject, W_StructType)
@@ -557,7 +557,7 @@ def w_alloc_StrObject(vm: "SPyVM", wam_length: W_MetaArg) -> W_OpSpec:
     assert isinstance(w_gc_ptr_StrObject, W_PtrType)
     GC_PTR = Annotated[W_Ptr, w_gc_ptr_StrObject]
 
-    @vm.register_builtin_func(UNSAFE.fqn.join("alloc_StrObject"), "impl")
+    @vm.register_builtin_func(UNSAFE.fqn.join("_alloc_StrObject"), "impl")
     def w_impl(vm: "SPyVM", w_length: W_I32) -> GC_PTR:
         length = vm.unwrap_i32(w_length)
         addr = vm.ll.call("spy_str_alloc", length)
@@ -567,13 +567,13 @@ def w_alloc_StrObject(vm: "SPyVM", wam_length: W_MetaArg) -> W_OpSpec:
 
 
 @UNSAFE.builtin_func(color="blue", kind="metafunc")
-def w_from_StrObject(vm: "SPyVM", wam_p: W_MetaArg) -> W_OpSpec:
+def w__StrObject_to_str(vm: "SPyVM", wam_p: W_MetaArg) -> W_OpSpec:
     """
     Convert a low-level `gc_ptr[StrObject]` back into a high-level `str`. The dual
-    of `as_StrObject`.
+    of `_str_to_StrObject`.
     """
 
-    @vm.register_builtin_func(UNSAFE.fqn.join("from_StrObject"), "impl")
+    @vm.register_builtin_func(UNSAFE.fqn.join("_StrObject_to_str"), "impl")
     def w_impl(vm: "SPyVM", w_p: W_Ptr) -> W_Str:
         return W_Str.from_ptr(vm, w_p.addr)
 
