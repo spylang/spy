@@ -180,7 +180,7 @@ def reinsert_spy_specific_grammar(
                     j += 1
 
         i += 1
-    # print(spy_grammar_tracker)
+
     return tokens
 
 def preprocess(src: str, filename: str = "<string>") -> str:
