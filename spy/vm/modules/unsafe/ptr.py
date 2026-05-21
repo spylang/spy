@@ -543,3 +543,38 @@ def w_as_StrObject(vm: "SPyVM", wam_s: W_MetaArg) -> W_OpSpec:
         return W_Ptr(w_gc_ptr_StrObject, w_s.ptr, 1)
 
     return W_OpSpec(w_impl, [wam_s])
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_alloc_StrObject(vm: "SPyVM", wam_length: W_MetaArg) -> W_OpSpec:
+    """
+    Allocate a fresh StrObject (with utf8 buffer of `length` bytes) and return a
+    `gc_ptr[StrObject]`. The dual of `from_StrObject`.
+    """
+    w_StrObject = vm.lookup_global(FQN("_str::StrObject"))
+    assert isinstance(w_StrObject, W_StructType)
+    w_gc_ptr_StrObject = vm.getitem_w(w_gc_ptr, w_StrObject)
+    assert isinstance(w_gc_ptr_StrObject, W_PtrType)
+    GC_PTR = Annotated[W_Ptr, w_gc_ptr_StrObject]
+
+    @vm.register_builtin_func(UNSAFE.fqn.join("alloc_StrObject"), "impl")
+    def w_impl(vm: "SPyVM", w_length: W_I32) -> GC_PTR:
+        length = vm.unwrap_i32(w_length)
+        addr = vm.ll.call("spy_str_alloc", length)
+        return W_Ptr(w_gc_ptr_StrObject, addr, 1)
+
+    return W_OpSpec(w_impl, [wam_length])
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_from_StrObject(vm: "SPyVM", wam_p: W_MetaArg) -> W_OpSpec:
+    """
+    Convert a low-level `gc_ptr[StrObject]` back into a high-level `str`. The dual
+    of `as_StrObject`.
+    """
+
+    @vm.register_builtin_func(UNSAFE.fqn.join("from_StrObject"), "impl")
+    def w_impl(vm: "SPyVM", w_p: W_Ptr) -> W_Str:
+        return W_Str.from_ptr(vm, w_p.addr)
+
+    return W_OpSpec(w_impl, [wam_p])

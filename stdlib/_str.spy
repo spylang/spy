@@ -1,4 +1,4 @@
-from unsafe import gc_ptr, as_StrObject
+from unsafe import gc_ptr, as_StrObject, alloc_StrObject, from_StrObject
 
 
 # this MUST stay in sync with the equivalent struct declared in str.h
@@ -32,3 +32,21 @@ class methods:
                 return False
             i = i + 1
         return True
+
+    def upper(self: str) -> str:
+        # XXX: this works only for ASCII strings but it's good enough for now
+        ll = as_StrObject(self)
+        llnew = alloc_StrObject(ll.length)
+        llnew.hash = 0
+        lo: u8 = 97   # 'a'
+        hi: u8 = 122  # 'z'
+        delta: u8 = 32
+        i = 0
+        while i < ll.length:
+            ch = ll.utf8[i]
+            if lo <= ch and ch <= hi:
+                llnew.utf8[i] = ch - delta
+            else:
+                llnew.utf8[i] = ch
+            i = i + 1
+        return from_StrObject(llnew)
