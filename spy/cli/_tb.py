@@ -20,21 +20,23 @@ def _is_magic_dispatch_call(f: FrameType) -> bool:
 
 
 def tb_hide_magic_frames_maybe() -> TracebackType:
+    # Get exception info, and return a traceback with magic_dispatch() frames
+    # and calls to magic_dispatch() omitted, depending on an
+    # environment variable
     info = sys.exc_info()
     head_tb = info[2]
     tb = head_tb
-    # Hide magic dispatch frames
+
     if os.environ[TB_ENV_KEY_NAME] == "1":
         while tb.tb_next is not None:
-            if tb.tb_next.tb_next is not None and _is_magic_dispatch_frame(
-                tb.tb_next.tb_frame
-            ):
-                tb.tb_next = tb.tb_next.tb_next
-                continue
-            if tb.tb_next.tb_next is not None and _is_magic_dispatch_call(
-                tb.tb_next.tb_frame
-            ):
-                tb.tb_next = tb.tb_next.tb_next
+            if tb.tb_next.tb_next is not None:
+                next_frame = tb.tb_next.tb_frame
+                if _is_magic_dispatch_frame(next_frame) or _is_magic_dispatch_call(
+                    next_frame
+                ):
+                    tb.tb_next = tb.tb_next.tb_next  # skip the frame
+                else:
+                    tb = tb.tb_next
             else:
                 tb = tb.tb_next
 
