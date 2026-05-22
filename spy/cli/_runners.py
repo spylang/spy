@@ -1,3 +1,4 @@
+import os
 import pdb as stdlib_pdb  # to distinguish from the "--pdb" option  # to distinguish from the "--pdb" option
 import sys
 import time
@@ -11,6 +12,7 @@ from typing import (
     Protocol,
 )
 
+from spy.cli._tb import TB_ENV_KEY_NAME, tb_hide_magic_frames_maybe
 from spy.cli.commands.shared_args import Base_Args
 from spy.doppler import ErrorMode
 from spy.errors import SPyError
@@ -64,15 +66,15 @@ async def _run_command(user_func: Callable, args: "Base_Args") -> None:
             spdb.post_mortem()
         elif args.pdb:
             # post-mortem interp-level debugger
-            info = sys.exc_info()
-            stdlib_pdb.post_mortem(info[2])
+            tb = tb_hide_magic_frames_maybe()
+            stdlib_pdb.post_mortem(tb)
         sys.exit(1)
     except Exception as e:
         if not args.pdb:
             raise
         traceback.print_exc()
-        info = sys.exc_info()
-        stdlib_pdb.post_mortem(info[2])
+        tb = tb_hide_magic_frames_maybe()
+        stdlib_pdb.post_mortem(tb)
         sys.exit(1)
 
 
