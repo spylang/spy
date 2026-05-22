@@ -74,6 +74,15 @@ def _array1(DTYPE):
         def __len__(self) -> i32:
             return self.__ll__.l
 
+        def __contains__(self, v: DTYPE) -> bool:
+            ll = self.__ll__
+            i = 0
+            while i < ll.l:
+                if ll.items[i] == v:
+                    return True
+                i = i + 1
+            return False
+
     return ndarray
 
 
@@ -127,6 +136,16 @@ def _array2(DTYPE):
 
         # XXX: we don't have a good way to know "w". We need to implement
         # .shape
+
+        def __contains__(self, v: DTYPE) -> bool:
+            ll = self.__ll__
+            total = ll.h * ll.w
+            i = 0
+            while i < total:
+                if ll.items[i] == v:
+                    return True
+                i = i + 1
+            return False
 
     return ndarray
 
@@ -185,6 +204,16 @@ def _array3(DTYPE):
 
         def __len__(self) -> i32:
             return self.__ll__.d
+
+        def __contains__(self, v: DTYPE) -> bool:
+            ll = self.__ll__
+            total = ll.d * ll.h * ll.w
+            i = 0
+            while i < total:
+                if ll.items[i] == v:
+                    return True
+                i = i + 1
+            return False
 
     return ndarray
 
