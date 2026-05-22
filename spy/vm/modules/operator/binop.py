@@ -643,7 +643,7 @@ def w_IN(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     w_rtype = wam_r.w_static_T
 
     # left and right operands are inverted here because the instruction "1 in list" will invoke "__contains__" on the right operand
-    if w_contains := w_rtype.lookup_func("__contains__"):
+    if w_contains := w_rtype.lookup_func(vm, "__contains__"):
         w_opspec = vm.fast_metacall(w_contains, [wam_r, wam_l])
     else:
         w_opspec = W_OpSpec.NULL

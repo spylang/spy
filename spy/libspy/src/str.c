@@ -120,7 +120,7 @@ spy_str_repr(spy_StrObject *s) {
 }
 
 bool
-spy_str_contains(spy_Str *container, spy_Str *target) {
+spy_str_contains(spy_StrObject *container, spy_StrObject *target) {
     size_t target_len = target->length;
     size_t container_len = container->length;
 
@@ -131,7 +131,7 @@ spy_str_contains(spy_Str *container, spy_Str *target) {
 
     size_t last = container_len - target_len;
     for (size_t i = 0; i <= last; i++) {
-        if (memcmp(container->utf8 + i, target->utf8, target_len) == 0)
+        if (memcmp(spy_StrObject_UTF8(container) + i, spy_StrObject_UTF8(target), target_len) == 0)
             return true;
     }
     return false;
