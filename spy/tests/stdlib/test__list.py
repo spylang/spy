@@ -835,5 +835,3 @@ class TestList(CompilerTest):
         assert mod.test_i32_not_found() == False
         assert mod.test_str_found() == True
         assert mod.test_str_not_found() == False
-
-
