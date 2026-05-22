@@ -2,8 +2,8 @@ from typing import TYPE_CHECKING
 
 from spy.fqn import FQN
 from spy.libspy import LLSPyInstance
-from spy.vm.b import BUILTINS, OP, B
 from spy.llwasm import LLWasmInstance
+from spy.vm.b import BUILTINS, OP, B
 from spy.vm.builtin import builtin_method
 from spy.vm.object import W_Object
 from spy.vm.opspec import W_MetaArg, W_OpSpec
