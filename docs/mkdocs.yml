@@ -56,7 +56,7 @@ nav:
   - Language features:
     - howto/main_function.md
     - howto/generics.md
-  - API Reference:
+  - Reference:
     - api_reference/python_builtins.md
     - api_reference/spy_builtins.md
     - api_reference/spy_module.md
