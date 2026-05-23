@@ -192,12 +192,12 @@ class AbstractFrame:
                 # no need to add extra info
                 pass
             elif varname == "@return":
-                exp = w_expT.fqn.human_name
+                exp = w_expT.fqn.human_name(self.vm)
                 msg = f"expected `{exp}` because of return type"
                 loc = self.symtable.lookup(varname).type_loc
                 err.add("note", msg, loc=loc)
             else:
-                exp = w_expT.fqn.human_name
+                exp = w_expT.fqn.human_name(self.vm)
                 msg = f"expected `{exp}` because of type declaration"
                 loc = self.symtable.lookup(varname).type_loc
                 err.add("note", msg, loc=loc)
@@ -243,7 +243,8 @@ class AbstractFrame:
             # special case None and allow to use it as a type even if it's not
             return TYPES.w_NoneType
         w_valtype = self.vm.dynamic_type(w_val)
-        msg = f"expected `type`, got `{w_valtype.fqn.human_name}`"
+        got = w_valtype.fqn.human_name(self.vm)
+        msg = f"expected `type`, got `{got}`"
         raise SPyError.simple("W_TypeError", msg, "expected `type`", expr.loc)
 
     # ==== statements ====
@@ -316,7 +317,6 @@ class AbstractFrame:
         )
         # create the w_func
         fqn = self.ns.join(funcdef.name)
-        fqn = self.vm.get_unique_FQN(fqn)
         # XXX we should capture only the names actually used in the inner func
         closure = self.closure + (self.locals,)
 
@@ -326,8 +326,14 @@ class AbstractFrame:
         # confusion. The solution is that in presence of decorators, we use
         # FQN("mod::foo#__bare__") as the name of the function, to make it
         # clear is the undecorated version.
+        #
+        # We must append "#__bare__" BEFORE calling get_unique_FQN, otherwise
+        # when the same FuncDef is re-entered (e.g. multiple instantiations of
+        # an enclosing @blue.generic) we'd get the un-suffixed FQN as "unique"
+        # and then collide on the suffixed version.
         if funcdef.decorators:
             fqn = fqn.with_suffix("__bare__")
+        fqn = self.vm.get_unique_FQN(fqn)
 
         defaults_w = [self.eval_expr(d).w_val for d in funcdef.defaults]
         w_func: W_Object = W_ASTFunc(
@@ -406,7 +412,12 @@ class AbstractFrame:
         if classdef.kind == "struct":
             return W_StructType
         else:
-            assert False, "only @struct and @typedef are supported for now"
+            raise SPyError.simple(
+                "W_WIP",
+                "only @struct classes are supported for now",
+                "class defined here",
+                classdef.loc,
+            )
 
     def fwdecl_ClassDef(self, classdef: ast.ClassDef) -> None:
         """
@@ -440,6 +451,49 @@ class AbstractFrame:
         # finalize type definition
         w_T.define_from_classbody(self.vm, body)
         assert w_T.is_defined()
+
+    def exec_stmt_GenericClassDef(self, gclassdef: ast.GenericClassDef) -> None:
+        """
+        Desugar generic argument syntax sugar:
+
+            @struct
+            class Point[T]:
+                x: T
+
+        into the equivalent of:
+
+            @blue.generic
+            def Point(T):
+                @struct
+                class Self:
+                    x: T
+                return Self
+        """
+        loc = gclassdef.loc
+        assert gclassdef.symtable is not None
+
+        # build synthetic return: return Self
+        impl_symbol = gclassdef.symtable.lookup("Self")
+        return_stmt = ast.Return(
+            loc=loc,
+            value=ast.NameLocalDirect(loc=loc, sym=impl_symbol),
+        )
+
+        outer_funcdef = ast.FuncDef(
+            loc=loc,
+            color="blue",
+            kind="generic",
+            name=gclassdef.name,
+            args=gclassdef.args,
+            return_type=ast.Auto(loc),
+            defaults=[],
+            docstring=None,
+            body=[gclassdef.inner, return_stmt],
+            decorators=[],
+            symtable=gclassdef.symtable,
+        )
+
+        self.exec_stmt_FuncDef(outer_funcdef)
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         # Possible cases:
@@ -596,9 +650,9 @@ class AbstractFrame:
         w_T = wam_tup.w_static_T
 
         is_interp_tuple = w_T is SPY.w_interp_tuple
-        is_stdlib_tuple = w_T.fqn.match("_tuple::tuple[*]::_tup")
+        is_stdlib_tuple = self.vm.is_tuple_type(w_T)
         if not (is_interp_tuple or is_stdlib_tuple):
-            t = wam_tup.w_static_T.fqn.human_name
+            t = wam_tup.w_static_T.fqn.human_name(self.vm)
             err = SPyError(
                 "W_TypeError",
                 f"`{t}` does not support unpacking",
@@ -810,11 +864,8 @@ class AbstractFrame:
                     plain_msg = self.vm.unwrap_str(wam_msg.w_val)
                 else:
                     err = SPyError("W_TypeError", "mismatched types")
-                    err.add(
-                        "error",
-                        f"expected `str`, got `{wam_msg.w_static_T.fqn.human_name}`",
-                        loc=wam_msg.loc,
-                    )
+                    got = wam_msg.w_static_T.fqn.human_name(self.vm)
+                    err.add("error", f"expected `str`, got `{got}`", loc=wam_msg.loc)
                     raise err
 
             raise SPyError.simple(
@@ -1112,7 +1163,7 @@ class AbstractFrame:
         args_wam = [self.eval_expr(arg) for arg in call.args]
         w_opimpl = self.vm.call_OP(call.loc, OP.w_CALL, [wam_func] + args_wam)
 
-        # special case getattr and setattr: if we arrive at this point it means that the
+        # special case getattr, hasattr and setattr: if we arrive at this point it means that the
         # call typed correctly (right number, type and color of arguments). The returned
         # opimpl is not supposed to be executed, see builtins.w_getattr.
         #
@@ -1122,6 +1173,11 @@ class AbstractFrame:
         if wam_func.color == "blue" and wam_func.w_blueval is B.w_getattr:
             self.special_calls[call] = "getattr"
             w_opimpl = self.vm.call_OP(call.loc, OP.w_GETATTR, args_wam)
+            return self.eval_opimpl(call, w_opimpl, args_wam)
+
+        elif wam_func.color == "blue" and wam_func.w_blueval is B.w_hasattr:
+            self.special_calls[call] = "hasattr"
+            w_opimpl = self.vm.call_OP(call.loc, OP.w_HASATTR, args_wam)
             return self.eval_opimpl(call, w_opimpl, args_wam)
 
         elif wam_func.color == "blue" and wam_func.w_blueval is B.w_setattr:
@@ -1324,7 +1380,7 @@ class ASTFrame(AbstractFrame):
         # if w_func was lowered, automatically use the most lowered version
         w_func = w_func.get_most_lowered_version()
         assert isinstance(w_func, W_ASTFunc)
-        ns = self.compute_ns(w_func, args_w)
+        ns = w_func.compute_inner_ns(args_w or [])
         super().__init__(
             vm, ns, w_func.funcdef.loc, w_func.funcdef.symtable, w_func.closure
         )
@@ -1340,45 +1396,6 @@ class ASTFrame(AbstractFrame):
         else:
             extra = ""
         return f"<{cls} for `{self.w_func.fqn}`{extra}>"
-
-    def compute_ns(
-        self, w_func: W_ASTFunc, args_w: Optional[Sequence[W_Object]]
-    ) -> FQN:
-        """
-        Try to generate a meaningful namespace for blue functions. The
-        idea is that if we blue func takes type parameters, we want to include
-        them in the qualifiers. E.g.:
-
-            @blue
-            def add(T):
-                def impl(x: T, y: T) -> T:
-                    return x + y
-                return impl
-
-            add(i32) # ==> add[i32]::impl
-            add(str) # ==> add[str]::impl
-
-        At the moment, the implementation is a bit ad-hoc and hackish, as it
-        considers ONLY type params as qualifiers, and ignores everything else.
-
-        Note that this is more about readability than correctness: in case of
-        blue params which are ignored, we might get clashing namespaces, but
-        this is still ok, because uniqueness of FQNs is guaranteed by
-        vm.get_unique_FQN().
-
-        This is fine as long as we don't support separate compilation. For sep
-        comp, we will probably need a deterministic and reproducible way to
-        compute unique FQNs out of a blue call.
-        """
-        if w_func.color == "red":
-            return w_func.fqn
-        assert args_w is not None
-        ns = w_func.fqn
-        quals = []
-        for w_arg in args_w:
-            if isinstance(w_arg, W_Type):
-                quals.append(w_arg.fqn)
-        return ns.with_qualifiers(quals)
 
     def run(self, args_w: Sequence[W_Object]) -> W_Object:
         assert self.w_func.is_valid, "w_func has been redshifted"

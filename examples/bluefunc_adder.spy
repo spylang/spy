@@ -6,14 +6,18 @@
 #   - eventually we will support a syntax like "make_adder[i32]"
 #   - redshift inserts type conversions
 
+
 @blue
 def make_adder(T, x):
     def adder(y: T) -> T:
         return x + y
+
     return adder
+
 
 add_4 = make_adder(i32, 4)
 add_pi = make_adder(f64, 3.1415)
+
 
 def main() -> None:
     print(add_4(38))

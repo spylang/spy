@@ -404,6 +404,22 @@ class TestForceInline(CompilerTest):
         """)
         assert mod.foo() == 42
 
+    def test_LocConst(self):
+        mod = self.compile("""
+        from unsafe import gc_alloc, gc_ptr
+        from __spy__ import force_inline
+
+        @force_inline
+        def kernel(p: gc_ptr[i32], i: i32) -> i32:
+            return p[i]
+
+        def foo() -> i32:
+            p = gc_alloc[i32](1)
+            p[0] = 42
+            return kernel(p, 0)
+        """)
+        assert mod.foo() == 42
+
     def test_force_inline_in_loop(self):
         mod = self.compile("""
         from __spy__ import force_inline
@@ -421,3 +437,35 @@ class TestForceInline(CompilerTest):
             return result
         """)
         assert mod.foo() == 6
+
+    def test_decorated_in_generic_multiple_instantiations(self):
+        mod = self.compile("""
+        from __spy__ import force_inline
+
+        @blue.generic
+        def make(n: i32):
+            @force_inline
+            def impl(x: i32) -> i32:
+                return x + n
+            return impl
+
+        def foo() -> i32:
+            return make[10](1) + make[20](2)
+        """)
+        assert mod.foo() == 33
+
+    @skip_backends("C", reason="C backend cannot emit Tuple literals yet")
+    def test_tuple_literal_in_body(self):
+        mod = self.compile("""
+        from __spy__ import force_inline
+
+        SHAPE = (3, 2)
+
+        @force_inline
+        def sum_shape(extra: i32) -> i32:
+            return SHAPE[0] + SHAPE[1] + extra
+
+        def foo() -> i32:
+            return sum_shape(10)
+        """)
+        assert mod.foo() == 15

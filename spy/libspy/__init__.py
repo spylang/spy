@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Any, Optional
 
 import spy
@@ -49,7 +50,7 @@ class LibSPyHost(HostModule):
         self.panic_filename = None
         self.panic_lineno = 0
 
-    def _read_str(self, ptr: int) -> str:
+    def _read_cstr(self, ptr: int) -> str:
         # ptr is const char*
         ba = self.ll.mem.read_cstr(ptr)
         return ba.decode("utf-8")
@@ -57,12 +58,12 @@ class LibSPyHost(HostModule):
     # ========== WASM imports ==========
 
     def env_spy_debug_log(self, ptr: int) -> None:
-        s = self._read_str(ptr)
+        s = self._read_cstr(ptr)
         self.log.append(s)
         print("[log]", s)
 
     def env_spy_debug_log_i32(self, ptr: int, n: int) -> None:
-        s = self._read_str(ptr)
+        s = self._read_cstr(ptr)
         msg = f"{s} {n}"
         self.log.append(msg)
         print("[log]", msg)
@@ -74,10 +75,19 @@ class LibSPyHost(HostModule):
         assert ptr_etype != 0
         assert ptr_msg != 0
         assert ptr_fname != 0
-        self.panic_etype = self._read_str(ptr_etype)
-        self.panic_message = self._read_str(ptr_msg)
-        self.panic_filename = self._read_str(ptr_fname)
+        self.panic_etype = self._read_cstr(ptr_etype)
+        self.panic_message = self._read_cstr(ptr_msg)
+        self.panic_filename = self._read_cstr(ptr_fname)
         self.panic_lineno = lineno
+
+
+@dataclass
+class StrLayout:
+    # See also the struct _spy_StrObject_layout in str.h
+    size: int
+    length_offset: int
+    hash_offset: int
+    utf8_offset: int
 
 
 class LLSPyInstance(LLWasmInstance):
@@ -96,6 +106,20 @@ class LLSPyInstance(LLWasmInstance):
         self.libspy = LibSPyHost()
         hostmods = [self.libspy] + hostmods
         super().__init__(llmod, hostmods, instance=instance)
+        layout = self.call("_spy_StrObject_layout")
+        self.str_layout = StrLayout(*layout)
+
+    def read_str(self, ptr: int) -> tuple[int, int, bytes]:
+        """
+        Read a spy_StrObject at ptr from linear memory.
+        Returns (length, hash, utf8_bytes).
+        """
+        layout = self.str_layout
+        length = self.mem.read_i32(ptr + layout.length_offset)
+        hash_ = self.mem.read_i32(ptr + layout.hash_offset)
+        utf8_ptr = self.mem.read_i32(ptr + layout.utf8_offset)
+        utf8 = bytes(self.mem.read(utf8_ptr, length))
+        return length, hash_, utf8
 
     def call(self, name: str, *args: Any) -> Any:
         try:

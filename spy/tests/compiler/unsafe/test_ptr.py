@@ -64,6 +64,27 @@ class TestUnsafePtr(CompilerTest):
         assert mod.bar(1) == 3.4
         assert mod.bar(2) == 5.6
 
+    def test_gc_ptr_u8(self):
+        # gc_ptr[u8] is special-cased and predeclared manually in unsafe.h. Exercise
+        # alloc/store/load and bounds-checking to make sure that everything works.
+        mod = self.compile("""
+        from unsafe import gc_alloc, gc_ptr
+
+        def foo() -> i32:
+            buf: gc_ptr[u8] = gc_alloc[u8](3)
+            buf[0] = 1
+            buf[1] = 2
+            buf[2] = 3
+            return buf[0] + buf[1] + buf[2]
+
+        def out_of_bound() -> u8:
+            buf = gc_alloc[u8](3)
+            return buf[3]
+        """)
+        assert mod.foo() == 6
+        with SPyError.raises("W_PanicError", match="ptr_getitem out of bounds"):
+            mod.out_of_bound()
+
     def test_out_of_bound(self, memkind):
         k = memkind
         mod = self.compile(f"""
@@ -415,7 +436,7 @@ class TestUnsafePtr(CompilerTest):
         mod = self.compile(f"""
         from unsafe import {k}_ptr as k_ptr
 
-        null_ptr: k_ptr[i32] = k_ptr[i32].NULL
+        var null_ptr: k_ptr[i32] = k_ptr[i32].NULL
 
         def foo(i: i32) -> i32:
             return null_ptr[i]
@@ -431,14 +452,19 @@ class TestUnsafePtr(CompilerTest):
     def test_NULL_in_global(self, memkind):
         k = memkind
         mod = self.compile(f"""
-        from unsafe import {k}_ptr as k_ptr
+        from unsafe import {k}_ptr as k_ptr, {k}_alloc as k_alloc
 
-        global_ptr: k_ptr[i32] = k_ptr[i32].NULL
+        var global_ptr: k_ptr[i32] = k_ptr[i32].NULL
 
         def is_null() -> bool:
             return global_ptr == k_ptr[i32].NULL
+
+        def alloc_global_ptr() -> None:
+            global_ptr = k_alloc[i32](1)
         """)
         assert mod.is_null() is True
+        mod.alloc_global_ptr()
+        assert mod.is_null() is False
 
     def test_ptr_truth(self, memkind):
         k = memkind
@@ -614,3 +640,20 @@ class TestUnsafePtr(CompilerTest):
         addr = w.p.addr
         self.vm.ll.mem.read_i32(addr) == 1
         self.vm.ll.mem.read_i32(addr + 4) == 2
+
+    def test_as_StrObject(self):
+        mod = self.compile("""
+        from unsafe import as_StrObject
+        from _str import StrObject
+
+        def get_length(s: str) -> i32:
+            data = as_StrObject(s)
+            return data.length
+
+        def get_byte(s: str, i: i32) -> u8:
+            data = as_StrObject(s)
+            return data.utf8[i]
+        """)
+        assert mod.get_length("hello") == 5
+        assert mod.get_byte("hello", 0) == ord("h")
+        assert mod.get_byte("hello", 4) == ord("o")

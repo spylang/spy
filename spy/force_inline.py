@@ -137,6 +137,9 @@ class AlphaRenamer:
     def rename_expr_StrConst(self, expr: ast.StrConst) -> ast.Expr:
         return expr
 
+    def rename_expr_LocConst(self, expr: ast.LocConst) -> ast.Expr:
+        return expr
+
     def rename_expr_And(self, expr: ast.And) -> ast.Expr:
         return expr.replace(
             left=self.rename_expr(expr.left),
@@ -154,6 +157,9 @@ class AlphaRenamer:
             func=self.rename_expr(expr.func),
             args=[self.rename_expr(a) for a in expr.args],
         )
+
+    def rename_expr_Tuple(self, expr: ast.Tuple) -> ast.Expr:
+        return expr.replace(items=[self.rename_expr(i) for i in expr.items])
 
     def rename_expr_AssignExprLocal(self, expr: ast.AssignExprLocal) -> ast.Expr:
         new_target = expr.target.replace(value=f"{expr.target.value}{self.suffix}")

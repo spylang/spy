@@ -1,15 +1,19 @@
 import time
 
+
 def fibo(n: int) -> int:
     if n <= 1:
         return n
     else:
-        return fibo(n-1) + fibo(n-2)
+        return fibo(n - 1) + fibo(n - 2)
+
 
 def main() -> None:
     a = time.time()
-    fibo(40)
+    result = fibo(15)
     b = time.time()
-    print(b-a)
+    print(result)
+    print("# " + str(b - a))
 
-#main()
+
+# main()

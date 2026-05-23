@@ -1,0 +1,3 @@
+argv:
+<CWD>/exit_code.spy
+exit code: 88
