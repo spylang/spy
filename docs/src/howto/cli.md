@@ -1,11 +1,8 @@
 title: SPy CLI
 ____
 
-test
-
-::: mkdocs-typer
+::: mkdocs-typer2
     :module: spy.cli.cli
-    :command: app
-    :depth: 1
-
-Foo
+    :name: spy
+    :engine: native
+    :pretty: true

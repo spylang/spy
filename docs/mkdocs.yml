@@ -44,8 +44,11 @@ markdown_extensions:
       alternate_style: true
   - toc:
       permalink: true
+      toc_depth: 3
   - def_list
-  - mkdocs-typer
+
+plugins:
+  - mkdocs-typer2
 
 nav:
   - Home: index.md
