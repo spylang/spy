@@ -16,8 +16,6 @@ dependencies = [
     "pexpect==4.9.0; sys_platform != 'emscripten'",
     "wasmtime==8.0.1; sys_platform != 'emscripten'",
     "ziglang==0.13.0; sys_platform != 'emscripten'",
-    "mkdocs-typer>=0.0.3",
-    "mkdocs-typer2[mkdocs]>=0.3.0",
 ]
 
 [project.optional-dependencies]
@@ -43,6 +41,7 @@ docs = [
     "mkdocs-get-deps==0.2.0",
     "mkdocs-material==9.7.0",
     "mkdocs-material-extensions==1.3.1",
+    "mkdocs-typer2[mkdocs]>=0.3.0",
     "pymdown-extensions==10.20",
     "mike==2.1.3",
     "pygments==2.19.1"
