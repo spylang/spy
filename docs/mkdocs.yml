@@ -44,19 +44,23 @@ markdown_extensions:
       alternate_style: true
   - toc:
       permalink: true
+      toc_depth: 3
   - def_list
-  - mkdocs-typer
+
+plugins:
+  - mkdocs-typer2
 
 nav:
   - Home: index.md
   - contributing.md
   - Language features:
     - howto/main_function.md
-    - howto/cli.md
-  - API Reference:
+    - howto/generics.md
+  - Reference:
     - api_reference/python_builtins.md
     - api_reference/spy_builtins.md
     - api_reference/spy_module.md
+    - api_reference/cli.md
   - Unsorted notes:
       - Low-level memory model: llmem.md
 

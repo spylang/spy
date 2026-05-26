@@ -269,7 +269,7 @@ class W_Object:
     def w_STR(vm: "SPyVM", wam_self: "W_MetaArg") -> "W_OpSpec":
         # default implementation: fallback to __repr__
         w_T = wam_self.w_static_T
-        if w_repr := w_T.lookup_func("__repr__"):
+        if w_repr := w_T.lookup_func(vm, "__repr__"):
             return vm.fast_metacall(w_repr, [wam_self])
 
         # this should never happen since we define __repr__ on W_Object
@@ -400,6 +400,22 @@ class W_Object:
         raise NotImplementedError("this should never be called")
 
 
+class W_LazyAttr(W_Object):
+    """
+    Special object stored in W_Type.dict_w for lazy loading stdlib methods.
+    See also __spy_lazy_attributes__.
+    """
+
+    __spy_storage_category__ = "reference"
+
+    def __init__(self, fqn: FQN) -> None:
+        self.fqn = fqn
+
+    def load(self, vm: "SPyVM") -> W_Object:
+        vm.import_(self.fqn.modname)
+        return vm.lookup_global(self.fqn)
+
+
 class W_Type(W_Object):
     """
     The default metaclass for SPy types.
@@ -511,6 +527,10 @@ class W_Type(W_Object):
                 self._init_builtin_method(value)
             elif isinstance(value, builtin_class_attr):
                 self._dict_w[value.name] = value.w_val
+
+        # process __spy_lazy_attributes__: store sentinels in dict_w
+        for name, fqn in getattr(pyclass, "__spy_lazy_attributes__", {}).items():
+            self._dict_w[name] = W_LazyAttr(fqn)
 
         # copy the content of extra_dict_w into our _dict_w
         if extra_dict_w:
@@ -679,34 +699,39 @@ class W_Type(W_Object):
             names.update(w_T.dict_w.keys())
         return names
 
-    def lookup(self, name: str) -> Optional[W_Object]:
+    def lookup(self, vm: "SPyVM", name: str) -> Optional[W_Object]:
         """
         Lookup the given attribute into the applevel dict
         """
         for w_T in self.get_mro():
             if w_obj := w_T.dict_w.get(name):
+                if isinstance(w_obj, W_LazyAttr):
+                    # always resolve through vm: W_Type is a singleton shared
+                    # across vm instances, so vm-specific objects must never
+                    # be cached back into dict_w.
+                    return w_obj.load(vm)
                 return w_obj
         return None
 
-    def lookup_func(self, name: str) -> Optional["W_Func"]:
+    def lookup_func(self, vm: "SPyVM", name: str) -> Optional["W_Func"]:
         """
         Like lookup, but ensure it's a W_Func.
         """
         from spy.vm.function import W_Func
 
-        w_obj = self.lookup(name)
+        w_obj = self.lookup(vm, name)
         if w_obj:
             assert isinstance(w_obj, W_Func)
             return w_obj
         return None
 
-    def lookup_blue_func(self, name: str) -> Optional["W_Func"]:
+    def lookup_blue_func(self, vm: "SPyVM", name: str) -> Optional["W_Func"]:
         """
         Like lookup_func, but also check that the function is blue
         """
         from spy.vm.function import W_Func
 
-        w_obj = self.lookup(name)
+        w_obj = self.lookup(vm, name)
         if w_obj:
             assert isinstance(w_obj, W_Func)
             assert w_obj.color == "blue"
@@ -757,17 +782,17 @@ class W_Type(W_Object):
         # 1. try to lookup the attribute on the metatype. If it's a
         # descriptor, call it.
         w_meta_T = vm.dynamic_type(w_T)
-        w_meta_attr = w_meta_T.lookup(name)
+        w_meta_attr = w_meta_T.lookup(vm, name)
         if w_meta_attr is not None:
-            if w_get := vm.dynamic_type(w_meta_attr).lookup_func("__get__"):
+            if w_get := vm.dynamic_type(w_meta_attr).lookup_func(vm, "__get__"):
                 wam_meta_attr = W_MetaArg.from_w_obj(vm, w_meta_attr)
                 return vm.fast_metacall(w_get, [wam_meta_attr, wam_T])
 
         # 2. Look in the __dict__ of this type and its bases
-        w_attr = w_T.lookup(name)
+        w_attr = w_T.lookup(vm, name)
         if w_attr is not None:
             # implement descriptor functionality, if any
-            if w_get := vm.dynamic_type(w_attr).lookup_func("__get__"):
+            if w_get := vm.dynamic_type(w_attr).lookup_func(vm, "__get__"):
                 raise WIP("implement me: descriptor accessed via class")
 
             # normal attribute in the class body, just return it
@@ -801,7 +826,7 @@ class W_Type(W_Object):
         assert isinstance(w_T, W_Type)
 
         # try to call __new__
-        if w_new := w_T.lookup_func("__new__"):
+        if w_new := w_T.lookup_func(vm, "__new__"):
             # this is a bit of ad-hoc logic around normal __new__ vs metafunc
             # __new__: when it's a metafunc we also want to pass the MetaArg of
             # the type itself (so that the function can reach
@@ -842,7 +867,7 @@ class W_Type(W_Object):
         w_T = wam_T.w_blueval
         assert isinstance(w_T, W_Type)
         name = wam_name.blue_unwrap_str(vm)
-        w_meth = w_T.lookup(name)
+        w_meth = w_T.lookup(vm, name)
         if w_meth is None:
             return W_OpSpec.NULL
 

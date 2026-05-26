@@ -17,6 +17,7 @@ dependencies = [
     "wasmtime==8.0.1; sys_platform != 'emscripten'",
     "ziglang==0.13.0; sys_platform != 'emscripten'",
     "mkdocs-typer>=0.0.3",
+    "mkdocs-typer2[mkdocs]>=0.3.0",
 ]
 
 [project.optional-dependencies]

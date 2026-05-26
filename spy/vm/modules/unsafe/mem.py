@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Annotated
 
 from spy.errors import WIP
 from spy.vm.b import B
-from spy.vm.primitive import W_I32, W_Dynamic
+from spy.vm.primitive import W_I32, W_U8, W_Dynamic
 from spy.vm.str import W_Str
 from spy.vm.struct import W_Struct, W_StructType
 from spy.vm.w import W_Object, W_Type
@@ -86,6 +86,8 @@ def generic_mem_read(vm: "SPyVM", addr: int, w_T: W_Type) -> W_Object:
 
     if w_T is B.w_i32:
         return vm.wrap(vm.ll.mem.read_i32(addr))
+    elif w_T is B.w_u8:
+        return W_U8(vm.ll.mem.read_u8(addr))
     elif w_T is B.w_f64:
         return vm.wrap(vm.ll.mem.read_f64(addr))
     elif w_T is B.w_str:
@@ -116,6 +118,9 @@ def generic_mem_write(vm: "SPyVM", addr: int, w_T: W_Type, w_val: W_Object) -> N
     if w_T is B.w_i32:
         v = vm.unwrap_i32(w_val)
         vm.ll.mem.write_i32(addr, v)
+    elif w_T is B.w_u8:
+        assert isinstance(w_val, W_U8)
+        vm.ll.mem.write_u8(addr, int(w_val.value))
     elif w_T is B.w_f64:
         v = vm.unwrap_f64(w_val)
         vm.ll.mem.write_f64(addr, v)

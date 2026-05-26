@@ -86,11 +86,11 @@ def get_opspec(
     if w_opspec is not None:
         return w_opspec
 
-    elif w_conv_to := w_gotT.lookup_func("__convert_to__"):
+    elif w_conv_to := w_gotT.lookup_func(vm, "__convert_to__"):
         w_opspec = vm.fast_metacall(w_conv_to, [wam_expT, wam_gotT, wam_x])
         return w_opspec
 
-    elif w_conv_from := w_expT.lookup_func("__convert_from__"):
+    elif w_conv_from := w_expT.lookup_func(vm, "__convert_from__"):
         w_opspec = vm.fast_metacall(w_conv_from, [wam_expT, wam_gotT, wam_x])
         return w_opspec
 
