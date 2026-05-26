@@ -353,7 +353,7 @@ class TestMain:
         )
         f = self.write("ugly.spy", mod)
 
-        self.run("fmt", f)
+        self.run("format", f)
         expected = textwrap.dedent(
             """def main() -> None:
     print("hello world")
