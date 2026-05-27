@@ -43,6 +43,8 @@ jobs:
 
       - name: Build and mkdocs
         run: |
+          # don't load libspy/llmod
+          export _SPY_DOCS_BUILD_ENV = "1" 
           mkdocs build --config-file docs/mkdocs.yml --site-dir ./site -v
           
       - name: Upload preview artifact
