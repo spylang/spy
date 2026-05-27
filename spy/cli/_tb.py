@@ -13,7 +13,9 @@ def _is_magic_dispatch_frame(f: FrameType) -> bool:
 
 def _is_magic_dispatch_call(f: FrameType) -> bool:
     info = getframeinfo(f)
-    return "magic_dispatch(" in info.code_context[0]
+    return (context := info.code_context) is not None and "magic_dispatch(" in context[
+        0
+    ]
 
 
 def tb_hide_magic_frames_maybe() -> TracebackType:
@@ -22,6 +24,7 @@ def tb_hide_magic_frames_maybe() -> TracebackType:
     # environment variable
     info = sys.exc_info()
     head_tb = info[2]
+    assert head_tb is not None
     tb = head_tb
 
     if (env_val := os.getenv(TB_ENV_KEY_NAME)) and int(env_val) == 1:
@@ -38,6 +41,9 @@ def tb_hide_magic_frames_maybe() -> TracebackType:
                 else:
                     tb = tb.tb_next
             else:
+                assert (
+                    tb.tb_next is not None
+                )  # make mypy happy; we know this is try from the while statement above
                 tb = tb.tb_next
 
     return head_tb
