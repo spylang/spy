@@ -57,10 +57,10 @@ nav:
     - howto/main_function.md
     - howto/generics.md
   - Reference:
-    - api_reference/python_builtins.md
-    - api_reference/spy_builtins.md
-    - api_reference/spy_module.md
-    - api_reference/cli.md
+    - reference/python_builtins.md
+    - reference/spy_builtins.md
+    - reference/spy_module.md
+    - reference/cli.md
   - Unsorted notes:
       - Low-level memory model: llmem.md
 
