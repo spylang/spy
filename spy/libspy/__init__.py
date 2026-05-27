@@ -5,7 +5,7 @@ import spy
 from spy.errors import SPyError
 from spy.llwasm import HostModule, LLWasmInstance, LLWasmModule, WasmTrap
 from spy.location import Loc
-from spy.platform import IS_BROWSER, IS_NODE, IS_PYODIDE, IS_DOCS_BUILD
+from spy.platform import IS_BROWSER, IS_DOCS_BUILD, IS_NODE, IS_PYODIDE
 
 SRC = spy.ROOT.join("libspy", "src")
 INCLUDE = spy.ROOT.join("libspy", "include")
