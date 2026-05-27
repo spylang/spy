@@ -13,7 +13,7 @@ def _is_magic_dispatch_frame(f: FrameType) -> bool:
 
 def _is_magic_dispatch_call(f: FrameType) -> bool:
     info = getframeinfo(f)
-    return "magic_dispatch" in info.code_context[0]
+    return "magic_dispatch(" in info.code_context[0]
 
 
 def tb_hide_magic_frames_maybe() -> TracebackType:

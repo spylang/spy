@@ -12,7 +12,7 @@ from typing import (
     Protocol,
 )
 
-from spy.cli._tb import TB_ENV_KEY_NAME, tb_hide_magic_frames_maybe
+from spy.cli._tb import tb_hide_magic_frames_maybe
 from spy.cli.commands.shared_args import Base_Args
 from spy.doppler import ErrorMode
 from spy.errors import SPyError
