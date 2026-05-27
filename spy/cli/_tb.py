@@ -1,12 +1,9 @@
 import os
 import sys
 from inspect import getframeinfo
-from typing import TYPE_CHECKING
+from types import FrameType, TracebackType
 
-if TYPE_CHECKING:
-    from types import FrameType, TracebackType
-
-TB_ENV_KEY_NAME = "SPY_HIDE_MAGIC_FRAMES"
+TB_ENV_KEY_NAME = "SPY_SHOW_MAGIC_FRAMES"
 
 
 def _is_magic_dispatch_frame(f: FrameType) -> bool:
@@ -27,14 +24,17 @@ def tb_hide_magic_frames_maybe() -> TracebackType:
     head_tb = info[2]
     tb = head_tb
 
-    if os.environ[TB_ENV_KEY_NAME] == "1":
+    if (env_val := os.getenv(TB_ENV_KEY_NAME)) and int(env_val) == 1:
+        # We actually want to show all the magic frames; return stack unchanged
+        pass
+    else:
         while tb.tb_next is not None:
             if tb.tb_next.tb_next is not None:
                 next_frame = tb.tb_next.tb_frame
                 if _is_magic_dispatch_frame(next_frame) or _is_magic_dispatch_call(
                     next_frame
                 ):
-                    tb.tb_next = tb.tb_next.tb_next  # skip the frame
+                    tb.tb_next = tb.tb_next.tb_next  # skip the magic frame
                 else:
                     tb = tb.tb_next
             else:
