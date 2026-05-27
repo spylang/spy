@@ -224,9 +224,9 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/0d/fe/6bea5c9162869c5beba5d9c8abbed835ec85bf1ec1fba05a3822325c45f3/build-1.5.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/10/bd/c038d7cc38edc1aa5bf91ab8068b63d4308c66c4c8bb3cbba7dfbc049f9c/pyparsing-3.3.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/18/67/36e9267722cc04a6b9f15c7f3441c2363321a3ea07da7ae0c0707beb2a9c/typing_extensions-4.15.0-py3-none-any.whl
-      - pypi: https://files.pythonhosted.org/packages/1a/55/fd49e4471a5807bc911c362107172b07a131921c3306c9504587e3ec1d1a/mkdocs_typer2-0.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/22/5b/dbc6a8cddc9cfa9c4971d59fb12bb8d42e161b7e7f8cc89e49137c5b279c/mkdocs-1.6.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/22/a6/858897256d0deac81a172289110f31629fc4cee19b6f01283303e18c8db3/ptyprocess-0.7.0-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/25/34/e0b75adb09708b514d50fdf3f12bf44ed4133dc22094943db7944910c66e/mkdocs_typer2-0.3.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2c/19/04f9b178c2d8a15b076c8b5140708fa6ffc5601fb6f1e975537072df5b2a/mergedeep-1.3.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/36/da/87912ddec6e06feffbaa3d7aa18fc6352bee2e8f1fee185d7d1690f8f4e8/backrefs-7.0-py312-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/38/3d/2d244233ac4f76e38533cfcb2991c9eb4c7bf688ae0a036d30725b8faafe/importlib_metadata-9.0.0-py3-none-any.whl
@@ -297,9 +297,9 @@ environments:
       - pypi: https://files.pythonhosted.org/packages/10/bd/c038d7cc38edc1aa5bf91ab8068b63d4308c66c4c8bb3cbba7dfbc049f9c/pyparsing-3.3.2-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/18/67/36e9267722cc04a6b9f15c7f3441c2363321a3ea07da7ae0c0707beb2a9c/typing_extensions-4.15.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/19/95/6195171e385007300f0f5574592e467c568becce2d937a0b6804f218bc49/pydantic_core-2.46.4-cp312-cp312-macosx_11_0_arm64.whl
-      - pypi: https://files.pythonhosted.org/packages/1a/55/fd49e4471a5807bc911c362107172b07a131921c3306c9504587e3ec1d1a/mkdocs_typer2-0.3.0-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/22/5b/dbc6a8cddc9cfa9c4971d59fb12bb8d42e161b7e7f8cc89e49137c5b279c/mkdocs-1.6.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/22/a6/858897256d0deac81a172289110f31629fc4cee19b6f01283303e18c8db3/ptyprocess-0.7.0-py2.py3-none-any.whl
+      - pypi: https://files.pythonhosted.org/packages/25/34/e0b75adb09708b514d50fdf3f12bf44ed4133dc22094943db7944910c66e/mkdocs_typer2-0.3.1-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/2c/19/04f9b178c2d8a15b076c8b5140708fa6ffc5601fb6f1e975537072df5b2a/mergedeep-1.3.4-py3-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/36/da/87912ddec6e06feffbaa3d7aa18fc6352bee2e8f1fee185d7d1690f8f4e8/backrefs-7.0-py312-none-any.whl
       - pypi: https://files.pythonhosted.org/packages/38/3d/2d244233ac4f76e38533cfcb2991c9eb4c7bf688ae0a036d30725b8faafe/importlib_metadata-9.0.0-py3-none-any.whl
@@ -812,7 +812,7 @@ packages:
   - mkdocs-get-deps==0.2.0 ; extra == 'docs'
   - mkdocs-material==9.7.0 ; extra == 'docs'
   - mkdocs-material-extensions==1.3.1 ; extra == 'docs'
-  - mkdocs-typer2[mkdocs]>=0.3.0 ; extra == 'docs'
+  - mkdocs-typer2[mkdocs]>=0.3.1 ; extra == 'docs'
   - pymdown-extensions==10.20 ; extra == 'docs'
   - mike==2.1.3 ; extra == 'docs'
   - pygments==2.19.1 ; extra == 'docs'
@@ -940,17 +940,6 @@ packages:
   requires_dist:
   - typing-extensions>=4.14.1
   requires_python: '>=3.9'
-- pypi: https://files.pythonhosted.org/packages/1a/55/fd49e4471a5807bc911c362107172b07a131921c3306c9504587e3ec1d1a/mkdocs_typer2-0.3.0-py3-none-any.whl
-  name: mkdocs-typer2
-  version: 0.3.0
-  sha256: dfa12fd18a0ea902c815609affc59b2dd2e32ce28bc45fed3631da1803b21f07
-  requires_dist:
-  - markdown>=3.3.6,<4
-  - pydantic>=2.9.2
-  - typer>=0.12.5
-  - mkdocs>=1.6.1,<2 ; extra == 'mkdocs'
-  - zensical>=0.0.30,<1 ; extra == 'zensical'
-  requires_python: '>=3.10'
 - pypi: https://files.pythonhosted.org/packages/1c/93/dab25dc87ac48da0fe0f6419e07d0bfd98799bed4e05e7b9e0f85a1a4b4b/trio-0.33.0-py3-none-any.whl
   name: trio
   version: 0.33.0
@@ -1029,6 +1018,17 @@ packages:
   name: ptyprocess
   version: 0.7.0
   sha256: 4b41f3967fce3af57cc7e94b888626c18bf37a083e3651ca8feeb66d492fef35
+- pypi: https://files.pythonhosted.org/packages/25/34/e0b75adb09708b514d50fdf3f12bf44ed4133dc22094943db7944910c66e/mkdocs_typer2-0.3.1-py3-none-any.whl
+  name: mkdocs-typer2
+  version: 0.3.1
+  sha256: ed7dac5c8a1bfab4aa31a0c7a83f9ac1d53f1312c4793089ec34b686d169d7bb
+  requires_dist:
+  - markdown>=3.3.6,<4
+  - pydantic>=2.9.2
+  - typer>=0.12.5
+  - mkdocs>=1.6.1,<2 ; extra == 'mkdocs'
+  - zensical>=0.0.30,<1 ; extra == 'zensical'
+  requires_python: '>=3.10'
 - pypi: https://files.pythonhosted.org/packages/2c/19/04f9b178c2d8a15b076c8b5140708fa6ffc5601fb6f1e975537072df5b2a/mergedeep-1.3.4-py3-none-any.whl
   name: mergedeep
   version: 1.3.4
