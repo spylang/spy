@@ -56,6 +56,7 @@ nav:
     - api_reference/python_builtins.md
     - api_reference/spy_builtins.md
     - api_reference/spy_module.md
+    - api_reference/environment.md
   - Unsorted notes:
       - Low-level memory model: llmem.md
 
