@@ -4,5 +4,5 @@ ____
 ::: mkdocs-typer2
     :module: spy.cli.cli
     :name: spy
-    :engine: legacy
-    :pretty: false
+    :engine: native
+    :pretty: true
