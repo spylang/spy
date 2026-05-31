@@ -77,7 +77,6 @@ jobs:
       - name: Build and deploy mkdocs
         working-directory: /tmp/spy-docs
         run: |
-          export _SPY_DOCS_BUILD_ENV="1" 
           if [[ "${{ steps.version.outputs.alias }}" == "latest" ]]; then
             # Tagged release - deploy with version and "latest" alias
             mike deploy --config-file $GITHUB_WORKSPACE/docs/mkdocs.yml -b main --push --update-aliases ${{ steps.version.outputs.version }} latest

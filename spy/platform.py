@@ -12,6 +12,4 @@ else:
     IS_BROWSER = False
     IS_NODE = False
 
-IS_DOCS_BUILD = (docs_build := os.getenv("_SPY_DOCS_BUILD_ENV")) and int(
-    docs_build
-) == 1
+IS_DOCS_BUILD = "mkdocs" in sys.modules
