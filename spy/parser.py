@@ -3,12 +3,13 @@
 # ================================================================
 
 import ast as py_ast
+import re
 import textwrap
 from types import NoneType
 from typing import NoReturn, Optional
 
 import spy.ast
-from spy.analyze.symtable import ImportRef
+from spy.analyze.symtable import ImportRef, VarKind
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.location import Loc
@@ -20,16 +21,23 @@ def is_py_Name(py_expr: py_ast.expr, expected: str) -> bool:
     return isinstance(py_expr, py_ast.Name) and py_expr.id == expected
 
 
-def parse_var_name(id: str) -> tuple[Optional[str], str]:
+# match things like:
+#   var·x
+#   var····x
+#   const·x
+#   etc.
+_VAR_NAME_RE = re.compile(r"^(var|const)·+(.+)$")
+
+
+def parse_var_name(id: str) -> tuple[Optional[VarKind], str]:
     """
     Split a possibly-merged var name like 'var·x' or 'const···y' into
     (varkind, real_name). Returns (None, id) for plain names.
     """
-    MIDDLE_DOT = "·"
-    if MIDDLE_DOT not in id:
+    m = _VAR_NAME_RE.match(id)
+    if m is None:
         return None, id
-    parts = id.split(MIDDLE_DOT)
-    return parts[0], parts[-1]
+    return m.group(1), m.group(2)  # type: ignore[return-value]
 
 
 def parse_special_decorator(py_expr: py_ast.expr) -> Optional[str]:
