@@ -14,33 +14,41 @@ def _abs[T](x: T) -> T:
     return x
 
 
+@blue
+def get_min_T(T1, T2):
+    if T1 == T2:
+        return T1
+    key = (T1, T2)
+    if key == (int, float):
+        return float
+    if key == (float, int):
+        return float
+    return None
+
+
 @blue.metafunc
 def min(m_x, m_y):
-    T_x = m_x.static_type
-    T_y = m_y.static_type
-    if T_x == T_y:
-        return OpSpec(_min[T_x])
-    else:
-        raise TypeError("WIP: ...")
+    T1 = m_x.static_type
+    T2 = m_y.static_type
+    T = get_min_T(T1, T2)
+    return OpSpec(_min[T])
 
 
 def _min[T](x: T, y: T) -> T:
-    if (x < y):
+    if x < y:
         return x
     return y
 
 
 @blue.metafunc
 def max(m_x, m_y):
-    T_x = m_x.static_type
-    T_y = m_y.static_type
-    if T_x == T_y:
-        return OpSpec(_max[T_x])
-    else:
-        raise TypeError("WIP: ...")
+    T1 = m_x.static_type
+    T2 = m_y.static_type
+    T = get_min_T(T1, T2)
+    return OpSpec(_max[T])
 
 
 def _max[T](x: T, y: T) -> T:
-    if (x > y):
+    if x > y:
         return x
     return y
