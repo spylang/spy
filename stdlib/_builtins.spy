@@ -12,3 +12,35 @@ def _abs[T](x: T) -> T:
     if x < 0:
         return -x
     return x
+
+
+@blue.metafunc
+def min(m_x, m_y):
+    T_x = m_x.static_type
+    T_y = m_y.static_type
+    if T_x == T_y:
+        return OpSpec(_min[T_x])
+    else:
+        raise TypeError("WIP: ...")
+
+
+def _min[T](x: T, y: T) -> T:
+    if (x < y):
+        return x
+    return y
+
+
+@blue.metafunc
+def max(m_x, m_y):
+    T_x = m_x.static_type
+    T_y = m_y.static_type
+    if T_x == T_y:
+        return OpSpec(_max[T_x])
+    else:
+        raise TypeError("WIP: ...")
+
+
+def _max[T](x: T, y: T) -> T:
+    if (x > y):
+        return x
+    return y
