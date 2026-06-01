@@ -49,7 +49,9 @@ def test_magic_py_parse():
     """)
     py_mod = magic_py_parse(src)
     targets = [
-        stmt.target.id for stmt in py_mod.body if isinstance(stmt, py_ast.AnnAssign)
+        stmt.target.id
+        for stmt in py_mod.body
+        if isinstance(stmt, py_ast.AnnAssign) and isinstance(stmt.target, py_ast.Name)
     ]
     assert targets == ["var·x", "const·y", "z"]
 
