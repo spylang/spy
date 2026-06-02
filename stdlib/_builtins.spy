@@ -1,5 +1,9 @@
 from operator import OpSpec
 
+# ===== ATTENTION =======
+# this file is used for _slice.spy (which uses min and max)
+# which forbids using tuple (see the comment in _slice.spy)
+
 
 @blue.metafunc
 def abs(m_x):
@@ -18,12 +22,11 @@ def _abs[T](x: T) -> T:
 def get_min_T(T1, T2):
     if T1 == T2:
         return T1
-    key = (T1, T2)
-    if key == (int, float):
+    if T1 == int and T2 == float:
         return float
-    if key == (float, int):
+    if T1 == float and T2 == int:
         return float
-    return None
+    raise TypeError("WIP: only implemented for int and float")
 
 
 @blue.metafunc
