@@ -3,12 +3,13 @@
 # ================================================================
 
 import ast as py_ast
+import re
 import textwrap
 from types import NoneType
 from typing import NoReturn, Optional
 
 import spy.ast
-from spy.analyze.symtable import ImportRef
+from spy.analyze.symtable import ImportRef, VarKind
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.location import Loc
@@ -18,6 +19,25 @@ from spy.util import magic_dispatch
 
 def is_py_Name(py_expr: py_ast.expr, expected: str) -> bool:
     return isinstance(py_expr, py_ast.Name) and py_expr.id == expected
+
+
+# match things like:
+#   var·x
+#   var····x
+#   const·x
+#   etc.
+_VAR_NAME_RE = re.compile(r"^(var|const)·+(.+)$")
+
+
+def parse_var_name(id: str) -> tuple[Optional[VarKind], str]:
+    """
+    Split a possibly-merged var name like 'var·x' or 'const···y' into
+    (varkind, real_name). Returns (None, id) for plain names.
+    """
+    m = _VAR_NAME_RE.match(id)
+    if m is None:
+        return None, id
+    return m.group(1), m.group(2)  # type: ignore[return-value]
 
 
 def parse_special_decorator(py_expr: py_ast.expr) -> Optional[str]:
@@ -486,7 +506,7 @@ class Parser:
         assert isinstance(assign, spy.ast.Assign)
         assert len(py_node.targets) == 1
         assert isinstance(py_node.targets[0], py_ast.Name)
-        varkind = py_node.targets[0].spy_varkind
+        varkind, _ = parse_var_name(py_node.targets[0].id)
         vardef = spy.ast.VarDef(
             loc=py_node.loc,
             kind=varkind,
@@ -507,7 +527,7 @@ class Parser:
         # non-name target
         assert isinstance(py_node.target, py_ast.Name), "WTF?"
 
-        varkind = py_node.target.spy_varkind
+        varkind, real_name = parse_var_name(py_node.target.id)
         value = None
         if py_node.value is not None:
             value = self.from_py_expr(py_node.value)
@@ -515,7 +535,7 @@ class Parser:
         vardef = spy.ast.VarDef(
             loc=py_node.loc,
             kind=varkind,
-            name=spy.ast.StrConst(py_node.target.loc, py_node.target.id),
+            name=spy.ast.StrConst(py_node.target.loc, real_name),
             type=self.from_py_expr(py_node.annotation),
             value=value,
         )
@@ -530,12 +550,13 @@ class Parser:
             self.unsupported(py_node, "assign to multiple targets")
         py_target = py_node.targets[0]
         if isinstance(py_target, py_ast.Name):
-            if py_target.spy_varkind is not None:
+            varkind, real_name = parse_var_name(py_target.id)
+            if varkind is not None:
                 # "var x = 0" is a VarDef, not an Assign
                 return spy.ast.VarDef(
                     loc=py_node.loc,
-                    kind=py_target.spy_varkind,
-                    name=spy.ast.StrConst(py_target.loc, py_target.id),
+                    kind=varkind,
+                    name=spy.ast.StrConst(py_target.loc, real_name),
                     type=spy.ast.Auto(loc=py_node.loc),
                     value=self.from_py_expr(py_node.value),
                 )
@@ -543,7 +564,7 @@ class Parser:
                 # "x = 0" is an Assign
                 return spy.ast.Assign(
                     loc=py_node.loc,
-                    target=spy.ast.StrConst(py_target.loc, py_target.id),
+                    target=spy.ast.StrConst(py_target.loc, real_name),
                     value=self.from_py_expr(py_node.value),
                 )
         elif isinstance(py_target, py_ast.Attribute):
