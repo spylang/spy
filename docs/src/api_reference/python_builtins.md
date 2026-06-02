@@ -65,13 +65,15 @@ The following built-in functions work similarly to their equivalents in CPython;
 
 :   The implementation (in SPy) of `list` can be [viewed here](https://github.com/spylang/spy/blob/main/stdlib/_list.spy).
 
-### __max__(x: i32, y: i32) { data-toc-label='max()' }
+### __max__(x, y) { data-toc-label='max()' }
 
-:   Currently only implemented for int32's or objects convertible to int32's.
+:   If the arguments have the same type, works if they can be compared.
+    Else, currently only implemented for int's and float's.
 
-### __min__(x: i32, y: i32) { data-toc-label='min()' }
+### __min__(x, y) { data-toc-label='min()' }
 
-:   Currently only implemented for int32's or objects convertible to int32's.
+:   If the arguments have the same type, works if they can be compared.
+    Else, currently only implemented for int's and float's.
 
 ### __object__
 
