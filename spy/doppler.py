@@ -10,7 +10,7 @@ from spy.location import Loc
 from spy.util import magic_dispatch
 from spy.vm.astframe import ASTFrame
 from spy.vm.b import B
-from spy.vm.exc import W_StaticError
+from spy.vm.exc import W_Exception, W_StaticError
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
@@ -64,6 +64,9 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
         res = ast.Tuple(loc, items, w_T=w_T)
 
     elif w_T is TYPES.w_Loc:
+        res = ast.Const(loc, w_val, w_T=w_T)
+
+    elif isinstance(w_val, W_Exception):
         res = ast.Const(loc, w_val, w_T=w_T)
 
     else:
@@ -166,8 +169,9 @@ class DopplerFrame(ASTFrame):
         """
         Turn the given stmt into a "raise"
         """
-        fqn = self.vm.make_fqn_const(err.w_exc)
-        exc = ast.FQNConst(fqn=fqn, loc=stmt.loc)
+        w_exc = err.w_exc
+        w_T = self.vm.dynamic_type(w_exc)
+        exc = ast.Const(loc=stmt.loc, w_val=w_exc, w_T=w_T)
         return self.shift_stmt(ast.Raise(exc=exc, loc=stmt.loc))
 
     def record_node_color(self, node: ast.Node, color: Color) -> None:
