@@ -527,7 +527,7 @@ class SPyBackend:
             m = self.fmt_expr(msg)
             # show only the last part of the filename
             f = fname.value.split("/")[-1]
-            l = int(lineno.w_val.value)  # type: ignore[union-attr]
+            l = int(self.vm.unwrap_i32(lineno.w_val))
             if m == "''":
                 return f"raise {etype.value} # /.../{f}:{l}"
             else:
