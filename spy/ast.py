@@ -334,14 +334,14 @@ class Literal(Expr):
     value: object
 
     def __post_init__(self) -> None:
-        assert type(self.value) is not str, "use StrConst instead"
+        assert type(self.value) is not str, "use StrLiteral instead"
 
     def shortrepr(self) -> Optional[str]:
         return str(self.value)
 
 
 @astnode
-class StrConst(Expr):
+class StrLiteral(Expr):
     """
     Like Literal, but for strings.
 
@@ -355,7 +355,7 @@ class StrConst(Expr):
     def shortrepr(self) -> Optional[str]:
         return repr(self.value)
 
-    def as_typed_node(self) -> "StrConst":
+    def as_typed_node(self) -> "StrLiteral":
         from spy.vm.b import B
 
         assert self.w_T is None
@@ -425,7 +425,7 @@ class Slice(Expr):
 class CallMethod(Expr):
     precedence = 17  # higher than GetAttr
     target: Expr
-    method: StrConst
+    method: StrLiteral
     args: list[Expr]
 
 
@@ -433,7 +433,7 @@ class CallMethod(Expr):
 class GetAttr(Expr):
     precedence = 16
     value: Expr
-    attr: StrConst
+    attr: StrLiteral
 
 
 @astnode
@@ -550,7 +550,7 @@ class UnaryOp(Expr):
 @astnode
 class AssignExpr(Expr):
     precedence = 0
-    target: StrConst
+    target: StrLiteral
     value: Expr
 
 
@@ -666,7 +666,7 @@ class Return(Stmt):
 @astnode
 class VarDef(Stmt):
     kind: Optional[VarKind]
-    name: StrConst
+    name: StrLiteral
     type: Expr
     value: Optional[Expr]
 
@@ -682,20 +682,20 @@ class StmtExpr(Stmt):
 
 @astnode
 class Assign(Stmt):
-    target: StrConst
+    target: StrLiteral
     value: Expr
 
 
 @astnode
 class UnpackAssign(Stmt):
-    targets: list[StrConst]
+    targets: list[StrLiteral]
     value: Expr
 
 
 @astnode
 class AugAssign(Stmt):
     op: str
-    target: StrConst
+    target: StrLiteral
     value: Expr
 
     def shortrepr(self) -> Optional[str]:
@@ -705,7 +705,7 @@ class AugAssign(Stmt):
 @astnode
 class SetAttr(Stmt):
     target: Expr
-    attr: StrConst
+    attr: StrLiteral
     value: Expr
 
 
@@ -736,7 +736,7 @@ class While(Stmt):
 @astnode
 class For(Stmt):
     seq: int  # unique id within a funcdef
-    target: StrConst
+    target: StrLiteral
     iter: Expr
     body: list[Stmt]
 
@@ -810,13 +810,13 @@ class NameOuterCell(Expr):
 
 @astnode
 class AssignLocal(Stmt):
-    target: StrConst
+    target: StrLiteral
     value: Expr
 
 
 @astnode
 class AssignCell(Stmt):
-    target: StrConst
+    target: StrLiteral
     target_fqn: FQN
     value: Expr
 
@@ -824,14 +824,14 @@ class AssignCell(Stmt):
 @astnode
 class AssignExprLocal(Expr):
     precedence = 0
-    target: StrConst
+    target: StrLiteral
     value: Expr
 
 
 @astnode
 class AssignExprCell(Expr):
     precedence = 0
-    target: StrConst
+    target: StrLiteral
     target_fqn: FQN
     value: Expr
 

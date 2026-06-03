@@ -232,7 +232,7 @@ class TestParser:
                 Name(id='deco1'),
                 GetAttr(
                     value=Name(id='deco2'),
-                    attr=StrConst(value='attr'),
+                    attr=StrLiteral(value='attr'),
                 ),
                 Call(
                     func=Name(id='deco3'),
@@ -449,7 +449,7 @@ class TestParser:
                 body=[
                     VarDef(
                         kind=None,
-                        name=StrConst(value='x'),
+                        name=StrLiteral(value='x'),
                         type=Name(id='T'),
                         value=None,
                     ),
@@ -525,7 +525,7 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
-    def test_StrConst(self):
+    def test_StrLiteral(self):
         mod = self.parse("""
         def foo() -> i32:
             return "hello"
@@ -533,7 +533,7 @@ class TestParser:
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         Return(
-            value=StrConst(value='hello'),
+            value=StrLiteral(value='hello'),
         )
         """
         self.assert_dump(stmt, expected)
@@ -584,7 +584,7 @@ class TestParser:
         vardef_expected = """
         VarDef(
             kind=None,
-            name=StrConst(value='x'),
+            name=StrLiteral(value='x'),
             type=Name(id='i32'),
             value=Literal(value=42),
         )
@@ -600,7 +600,7 @@ class TestParser:
         expected = f"""
         VarDef(
             kind='const',
-            name=StrConst(value='x'),
+            name=StrLiteral(value='x'),
             type=Name(id='i32'),
             value=Literal(value=42),
         )
@@ -616,7 +616,7 @@ class TestParser:
         expected = """
         VarDef(
             kind='var',
-            name=StrConst(value='x'),
+            name=StrLiteral(value='x'),
             type=Auto(),
             value=Literal(value=42),
         )
@@ -632,7 +632,7 @@ class TestParser:
         expected = """
         VarDef(
             kind='const',
-            name=StrConst(value='y'),
+            name=StrLiteral(value='y'),
             type=Auto(),
             value=Literal(value=42),
         )
@@ -655,7 +655,7 @@ class TestParser:
                 GlobalVarDef(
                     vardef=VarDef(
                         kind=None,
-                        name=StrConst(value='a'),
+                        name=StrLiteral(value='a'),
                         type=Auto(),
                         value=Literal(value=1),
                     ),
@@ -663,7 +663,7 @@ class TestParser:
                 GlobalVarDef(
                     vardef=VarDef(
                         kind=None,
-                        name=StrConst(value='b'),
+                        name=StrLiteral(value='b'),
                         type=Name(id='i32'),
                         value=Literal(value=42),
                     ),
@@ -671,7 +671,7 @@ class TestParser:
                 GlobalVarDef(
                     vardef=VarDef(
                         kind='var',
-                        name=StrConst(value='c'),
+                        name=StrLiteral(value='c'),
                         type=Name(id='i32'),
                         value=Literal(value=43),
                     ),
@@ -679,7 +679,7 @@ class TestParser:
                 GlobalVarDef(
                     vardef=VarDef(
                         kind='const',
-                        name=StrConst(value='d'),
+                        name=StrLiteral(value='d'),
                         type=Name(id='i32'),
                         value=Literal(value=44),
                     ),
@@ -737,11 +737,11 @@ class TestParser:
         stmt = mod.get_funcdef("foo").body[0]
         expected = f"""
             Assign(
-                target=StrConst(value='dict_test'),
+                target=StrLiteral(value='dict_test'),
                 value=Dict(
                     items=[
                         KeyValuePair(
-                            key=StrConst(value='key1'),
+                            key=StrLiteral(value='key1'),
                             value=Literal(value=10),
                         ),
                         KeyValuePair(
@@ -815,7 +815,7 @@ class TestParser:
         expected = f"""
         AugAssign(
             op='{op}',
-            target=StrConst(value='x'),
+            target=StrLiteral(value='x'),
             value=Literal(value=42),
         )
         """
@@ -914,7 +914,7 @@ class TestParser:
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         Assign(
-            target=StrConst(value='x'),
+            target=StrLiteral(value='x'),
             value=Literal(value=42),
         )
         """
@@ -951,9 +951,9 @@ class TestParser:
         expected = """
         UnpackAssign(
             targets=[
-                StrConst(value='a'),
-                StrConst(value='b'),
-                StrConst(value='c'),
+                StrLiteral(value='a'),
+                StrLiteral(value='b'),
+                StrLiteral(value='c'),
             ],
             value=Name(id='x'),
         )
@@ -1001,7 +1001,7 @@ class TestParser:
         Return(
             value=CallMethod(
                 target=Name(id='a'),
-                method=StrConst(value='b'),
+                method=StrLiteral(value='b'),
                 args=[
                     Literal(value=1),
                     Literal(value=2),
@@ -1122,7 +1122,7 @@ class TestParser:
         expected = """
         For(
             seq=0,
-            target=StrConst(value='i'),
+            target=StrLiteral(value='i'),
             iter=Call(
                 func=Name(id='range'),
                 args=[
@@ -1179,12 +1179,12 @@ class TestParser:
         expected0 = """
         For(
             seq=0,
-            target=StrConst(value='i'),
+            target=StrLiteral(value='i'),
             iter=Name(id='x'),
             body=[
                 For(
                     seq=1,
-                    target=StrConst(value='j'),
+                    target=StrLiteral(value='j'),
                     iter=Name(id='x'),
                     body=[
                         Pass(),
@@ -1198,7 +1198,7 @@ class TestParser:
         expected1 = """
         For(
             seq=2,
-            target=StrConst(value='z'),
+            target=StrLiteral(value='z'),
             iter=Name(id='x'),
             body=[
                 Pass(),
@@ -1219,7 +1219,7 @@ class TestParser:
             exc=Call(
                 func=Name(id='ValueError'),
                 args=[
-                    StrConst(value='error message'),
+                    StrLiteral(value='error message'),
                 ],
             ),
         )
@@ -1303,7 +1303,7 @@ class TestParser:
                 GlobalVarDef(
                     vardef=VarDef(
                         kind=None,
-                        name=StrConst(value='x'),
+                        name=StrLiteral(value='x'),
                         type=Auto(),
                         value=Literal(value=42),
                     ),
@@ -1330,7 +1330,7 @@ class TestParser:
         assert isclass(nodes[4], "If")
         assert isclass(nodes[5], "Literal") and nodes[5].value is True
         assert isclass(nodes[6], "Assign")
-        assert isclass(nodes[7], "StrConst") and nodes[7].value == "x"
+        assert isclass(nodes[7], "StrLiteral") and nodes[7].value == "x"
         assert isclass(nodes[8], "BinOp")
         assert isclass(nodes[9], "Name") and nodes[9].id == "y"
         assert isclass(nodes[10], "Literal") and nodes[10].value == 1
@@ -1356,7 +1356,7 @@ class TestParser:
         nodes: list[Any] = list(mod.walk_postorder())
         assert isclass(nodes[0], "Literal") and nodes[0].value is None
         assert isclass(nodes[1], "Literal") and nodes[1].value is True
-        assert isclass(nodes[2], "StrConst") and nodes[2].value == "x"
+        assert isclass(nodes[2], "StrLiteral") and nodes[2].value == "x"
         assert isclass(nodes[3], "Name") and nodes[3].id == "y"
         assert isclass(nodes[4], "Literal") and nodes[4].value == 1
         assert isclass(nodes[5], "BinOp")
@@ -1446,7 +1446,7 @@ class TestParser:
         StmtExpr(
             value=GetAttr(
                 value=Name(id='a'),
-                attr=StrConst(value='b'),
+                attr=StrLiteral(value='b'),
             ),
         )
         """
@@ -1461,7 +1461,7 @@ class TestParser:
         expected = """
         SetAttr(
             target=Name(id='a'),
-            attr=StrConst(value='b'),
+            attr=StrLiteral(value='b'),
             value=Literal(value=42),
         )
         """
@@ -1520,7 +1520,7 @@ class TestParser:
             body=[
                 VarDef(
                     kind=None,
-                    name=StrConst(value='x'),
+                    name=StrLiteral(value='x'),
                     type=Name(id='i32'),
                     value=None,
                 ),
@@ -1545,13 +1545,13 @@ class TestParser:
             body=[
                 VarDef(
                     kind=None,
-                    name=StrConst(value='x'),
+                    name=StrLiteral(value='x'),
                     type=Name(id='i32'),
                     value=None,
                 ),
                 VarDef(
                     kind=None,
-                    name=StrConst(value='y'),
+                    name=StrLiteral(value='y'),
                     type=Name(id='i32'),
                     value=None,
                 ),
@@ -1575,12 +1575,12 @@ class TestParser:
             body=[
                 VarDef(
                     kind=None,
-                    name=StrConst(value='x'),
+                    name=StrLiteral(value='x'),
                     type=Name(id='i32'),
                     value=Literal(value=42),
                 ),
                 Assign(
-                    target=StrConst(value='y'),
+                    target=StrLiteral(value='y'),
                     value=Literal(value=1),
                 ),
             ],
@@ -1606,7 +1606,7 @@ class TestParser:
             body=[
                 VarDef(
                     kind=None,
-                    name=StrConst(value='x'),
+                    name=StrLiteral(value='x'),
                     type=Name(id='i32'),
                     value=None,
                 ),
@@ -1708,7 +1708,7 @@ class TestParser:
         expected = """
         For(
             seq=0,
-            target=StrConst(value='i'),
+            target=StrLiteral(value='i'),
             iter=Call(
                 func=Name(id='range'),
                 args=[
@@ -1743,7 +1743,7 @@ class TestParser:
         expected = """
         For(
             seq=0,
-            target=StrConst(value='i'),
+            target=StrLiteral(value='i'),
             iter=Call(
                 func=Name(id='range'),
                 args=[
@@ -1781,7 +1781,7 @@ class TestParser:
             if_stmt.test,
             """
             AssignExpr(
-                target=StrConst(value='x'),
+                target=StrLiteral(value='x'),
                 value=Literal(value=1),
             )
             """,
@@ -1804,7 +1804,7 @@ class TestParser:
             BlockExpr(
                 body=[
                     Assign(
-                        target=StrConst(value='x'),
+                        target=StrLiteral(value='x'),
                         value=Literal(value=1),
                     ),
                 ],

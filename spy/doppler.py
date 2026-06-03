@@ -51,7 +51,7 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
 
     elif w_T is B.w_str:
         value = vm.unwrap_str(w_val)
-        res = ast.StrConst(loc, value, w_T=w_T)
+        res = ast.StrLiteral(loc, value, w_T=w_T)
 
     elif w_T is SPY.w_interp_tuple:
         assert isinstance(w_val, W_InterpTuple)

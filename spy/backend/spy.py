@@ -348,7 +348,7 @@ class SPyBackend:
     def fmt_expr_Literal(self, const: ast.Literal) -> str:
         return repr(const.value)
 
-    def fmt_expr_StrConst(self, const: ast.StrConst) -> str:
+    def fmt_expr_StrLiteral(self, const: ast.StrLiteral) -> str:
         return repr(const.value)
 
     def fmt_expr_FQNConst(self, const: ast.FQNConst) -> str:
@@ -500,9 +500,9 @@ class SPyBackend:
             # `operator::raise('TypeError', ...)` -->."raise TypeError(...)"
             assert len(call.args) == 4
             etype, msg, fname, lineno = call.args
-            assert isinstance(etype, ast.StrConst)
-            assert isinstance(msg, ast.StrConst)
-            assert isinstance(fname, ast.StrConst)
+            assert isinstance(etype, ast.StrLiteral)
+            assert isinstance(msg, ast.StrLiteral)
+            assert isinstance(fname, ast.StrLiteral)
             assert isinstance(lineno, ast.Literal)
             E = etype.value
             m = self.fmt_expr(msg)

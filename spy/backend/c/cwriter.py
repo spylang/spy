@@ -290,7 +290,7 @@ class CFuncWriter:
         else:
             raise NotImplementedError("WIP")
 
-    def fmt_expr_StrConst(self, const: ast.StrConst) -> C.Expr:
+    def fmt_expr_StrLiteral(self, const: ast.StrLiteral) -> C.Expr:
         # SPy string literals must be initialized as C globals. We want to
         # generate the following:
         #
@@ -554,7 +554,7 @@ class CFuncWriter:
         return C.Dot(c_struct, name)
 
     def fmt_ptr_getfield(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
-        assert isinstance(call.args[1], ast.StrConst)
+        assert isinstance(call.args[1], ast.StrLiteral)
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value
         offset = call.args[2]  # ignored
@@ -566,7 +566,7 @@ class CFuncWriter:
             return c_field
 
     def fmt_ptr_setfield(self, fqn: FQN, call: ast.Call) -> C.Expr:
-        assert isinstance(call.args[1], ast.StrConst)
+        assert isinstance(call.args[1], ast.StrLiteral)
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value
         offset = call.args[2]  # ignored

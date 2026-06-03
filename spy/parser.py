@@ -535,7 +535,7 @@ class Parser:
         vardef = spy.ast.VarDef(
             loc=py_node.loc,
             kind=varkind,
-            name=spy.ast.StrConst(py_node.target.loc, real_name),
+            name=spy.ast.StrLiteral(py_node.target.loc, real_name),
             type=self.from_py_expr(py_node.annotation),
             value=value,
         )
@@ -556,7 +556,7 @@ class Parser:
                 return spy.ast.VarDef(
                     loc=py_node.loc,
                     kind=varkind,
-                    name=spy.ast.StrConst(py_target.loc, real_name),
+                    name=spy.ast.StrLiteral(py_target.loc, real_name),
                     type=spy.ast.Auto(loc=py_node.loc),
                     value=self.from_py_expr(py_node.value),
                 )
@@ -564,14 +564,14 @@ class Parser:
                 # "x = 0" is an Assign
                 return spy.ast.Assign(
                     loc=py_node.loc,
-                    target=spy.ast.StrConst(py_target.loc, real_name),
+                    target=spy.ast.StrLiteral(py_target.loc, real_name),
                     value=self.from_py_expr(py_node.value),
                 )
         elif isinstance(py_target, py_ast.Attribute):
             return spy.ast.SetAttr(
                 loc=py_node.loc,
                 target=self.from_py_expr(py_target.value),
-                attr=spy.ast.StrConst(py_target.loc, py_target.attr),
+                attr=spy.ast.StrLiteral(py_target.loc, py_target.attr),
                 value=self.from_py_expr(py_node.value),
             )
         elif isinstance(py_target, py_ast.Subscript):
@@ -592,7 +592,7 @@ class Parser:
             targets = []
             for item in py_target.elts:
                 assert isinstance(item, py_ast.Name)
-                targets.append(spy.ast.StrConst(item.loc, item.id))
+                targets.append(spy.ast.StrLiteral(item.loc, item.id))
             return spy.ast.UnpackAssign(
                 loc=py_node.loc, targets=targets, value=self.from_py_expr(py_node.value)
             )
@@ -607,7 +607,7 @@ class Parser:
             return spy.ast.AugAssign(
                 loc=py_node.loc,
                 op=op,
-                target=spy.ast.StrConst(py_target.loc, py_target.id),
+                target=spy.ast.StrLiteral(py_target.loc, py_target.id),
                 value=self.from_py_expr(py_node.value),
             )
         else:
@@ -650,7 +650,7 @@ class Parser:
         return spy.ast.For(
             loc=py_node.loc,
             seq=seq,
-            target=spy.ast.StrConst(py_node.target.loc, py_node.target.id),
+            target=spy.ast.StrLiteral(py_node.target.loc, py_node.target.id),
             iter=self.from_py_expr(py_node.iter),
             body=self.from_py_body(py_node.body),
         )
@@ -693,7 +693,7 @@ class Parser:
         assert py_node.kind is None  # I don't know what is 'kind' here
         T = type(py_node.value)
         if T is str:
-            return spy.ast.StrConst(py_node.loc, py_node.value)
+            return spy.ast.StrLiteral(py_node.loc, py_node.value)
         elif T in (int, float, complex, bool, NoneType):
             return spy.ast.Literal(py_node.loc, py_node.value)
         elif T in (bytes, Ellipsis):
@@ -716,7 +716,7 @@ class Parser:
 
     def from_py_expr_Attribute(self, py_node: py_ast.Attribute) -> spy.ast.GetAttr:
         value = self.from_py_expr(py_node.value)
-        attr = spy.ast.StrConst(py_node.loc, py_node.attr)
+        attr = spy.ast.StrLiteral(py_node.loc, py_node.attr)
         return spy.ast.GetAttr(py_node.loc, value, attr)
 
     def from_py_expr_List(self, py_node: py_ast.List) -> spy.ast.List:
@@ -740,7 +740,7 @@ class Parser:
         return spy.ast.Dict(py_node.loc, keyValuePairItems)
 
     def from_py_expr_NamedExpr(self, py_node: py_ast.NamedExpr) -> spy.ast.AssignExpr:
-        target = spy.ast.StrConst(py_node.target.loc, py_node.target.id)
+        target = spy.ast.StrLiteral(py_node.target.loc, py_node.target.id)
         value = self.from_py_expr(py_node.value)
         return spy.ast.AssignExpr(py_node.loc, target, value)
 

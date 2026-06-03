@@ -345,11 +345,11 @@ class TestHTMLBackend:
         expected = """
         <VarDef> (stmt, default)
             kind: <None> (leaf, emerald)
-            name: <StrConst: 'x'> (expr, amber)
+            name: <StrLiteral: 'x'> (expr, amber)
                 value: <'x'> (leaf, emerald)
             type: <Name: str> (expr, amber)
                 id: <'str'> (leaf, emerald)
-            value: <StrConst: 'hello'> (expr, amber)
+            value: <StrLiteral: 'hello'> (expr, amber)
                 value: <'hello'> (leaf, emerald)
         """
         self.assert_dump(vardef, expected)

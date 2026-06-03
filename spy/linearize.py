@@ -168,7 +168,7 @@ class Linearizer:
         self.hoisted.append(
             ast.AssignLocal(
                 loc=loc,
-                target=ast.StrConst(loc, name),
+                target=ast.StrLiteral(loc, name),
                 value=expr,
             )
         )
@@ -307,7 +307,7 @@ class Linearizer:
     #     as a sequence point. Promote ``pending_spills`` into ``to_spill``
     #     and mark self for spill.
 
-    PURE_EXPRS = (ast.Literal, ast.StrConst, ast.FQNConst, ast.LocConst)
+    PURE_EXPRS = (ast.Literal, ast.StrLiteral, ast.FQNConst, ast.LocConst)
     NAME_EXPRS = (ast.NameLocalDirect, ast.NameOuterDirect, ast.NameOuterCell)
 
     def is_pure(self, expr: ast.Expr) -> bool:
@@ -401,7 +401,7 @@ class Linearizer:
         loc = op.loc
         assert op.w_T is not None
         name, sym = self.fresh_tmp(op.w_T, loc)
-        target = ast.StrConst(loc, name)
+        target = ast.StrLiteral(loc, name)
         assign_rhs = ast.AssignLocal(loc=loc, target=target, value=new_right)
 
         # new_left is used as both the if-test and the value for the
@@ -473,8 +473,8 @@ class Linearizer:
     ) -> ast.Expr:
         return name
 
-    def rewrite_expr_StrConst(
-        self, const: ast.StrConst, to_spill: set[ast.Expr]
+    def rewrite_expr_StrLiteral(
+        self, const: ast.StrLiteral, to_spill: set[ast.Expr]
     ) -> ast.Expr:
         return const
 

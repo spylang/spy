@@ -134,7 +134,7 @@ class AlphaRenamer:
     def rename_expr_Literal(self, expr: ast.Literal) -> ast.Expr:
         return expr
 
-    def rename_expr_StrConst(self, expr: ast.StrConst) -> ast.Expr:
+    def rename_expr_StrLiteral(self, expr: ast.StrLiteral) -> ast.Expr:
         return expr
 
     def rename_expr_LocConst(self, expr: ast.LocConst) -> ast.Expr:
@@ -216,7 +216,7 @@ def inline_call(
         param_assigns.append(
             ast.AssignLocal(
                 loc=op.loc,
-                target=ast.StrConst(op.loc, new_name).as_typed_node(),
+                target=ast.StrLiteral(op.loc, new_name).as_typed_node(),
                 value=real_args[i],
             )
         )
