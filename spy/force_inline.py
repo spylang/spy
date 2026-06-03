@@ -131,6 +131,9 @@ class AlphaRenamer:
     def rename_expr_FQNConst(self, expr: ast.FQNConst) -> ast.Expr:
         return expr
 
+    def rename_expr_Const(self, expr: ast.Const) -> ast.Expr:
+        return expr
+
     def rename_expr_Literal(self, expr: ast.Literal) -> ast.Expr:
         return expr
 

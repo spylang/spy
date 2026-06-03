@@ -222,8 +222,8 @@ class TestHTMLBackend:
                     fqn: <operator::i32_add> (leaf, emerald)
                 args[0]: <NameLocalDirect> (expr, amber)
                     sym: <x> (leaf, emerald)
-                args[1]: <Literal: 1> (expr, amber)
-                    value: <1> (leaf, emerald)
+                args[1]: <Const: W_I32(1)> (expr, amber)
+                    w_val: <W_I32(1)> (leaf, emerald)
         """
         self.assert_dump(ret, expected)
 
@@ -244,9 +244,9 @@ class TestHTMLBackend:
                 args[0]: <NameLocalDirect> (expr, amber)
                     | x
                     sym: <x> (leaf, emerald)
-                args[1]: <Literal: 1> (expr, amber)
+                args[1]: <Const: W_I32(1)> (expr, amber)
                     | 1
-                    value: <1> (leaf, emerald)
+                    w_val: <W_I32(1)> (leaf, emerald)
         """
         self.assert_dump(ret, expected, show_src=True)
 

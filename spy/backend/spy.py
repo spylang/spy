@@ -345,6 +345,24 @@ class SPyBackend:
         # including ast.Auto).
         return ""
 
+    def fmt_expr_Const(self, const: ast.Const) -> str:
+        vm = self.vm
+        w_T = const.w_T
+        w_val = const.w_val
+        if w_T is B.w_bool:
+            return repr(vm.unwrap_bool(w_val))
+        elif w_T is B.w_i32:
+            return repr(int(vm.unwrap_i32(w_val)))
+        elif w_T is B.w_f64:
+            return repr(float(vm.unwrap_f64(w_val)))
+        elif w_T is B.w_complex128:
+            return repr(vm.unwrap_complex128(w_val))
+        elif w_T is TYPES.w_NoneType:
+            assert w_val is B.w_None
+            return "None"
+        else:
+            raise NotImplementedError(f"WIP: {w_T}")
+
     def fmt_expr_Literal(self, const: ast.Literal) -> str:
         return repr(const.value)
 
@@ -503,12 +521,12 @@ class SPyBackend:
             assert isinstance(etype, ast.StrLiteral)
             assert isinstance(msg, ast.StrLiteral)
             assert isinstance(fname, ast.StrLiteral)
-            assert isinstance(lineno, ast.Literal)
+            assert isinstance(lineno, ast.Const)
             E = etype.value
             m = self.fmt_expr(msg)
             # show only the last part of the filename
             f = fname.value.split("/")[-1]
-            l = lineno.value
+            l = int(lineno.w_val.value)  # type: ignore[union-attr]
             if m == "''":
                 return f"raise {etype.value} # /.../{f}:{l}"
             else:

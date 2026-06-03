@@ -405,7 +405,7 @@ class TestDoppler:
         #
         # this is the node "6". Keep in mind that get_src() always points to the
         # original src "2 * 3"
-        assert get_color(foo_rs, ast.Literal, None) == "blue"
+        assert get_color(foo_rs, ast.Const, None) == "blue"
         #
         # this is the "+", but it has been shifted into a call to i32_add
         assert get_color(foo_rs, ast.Call, "i + 2 * 3") == "red"

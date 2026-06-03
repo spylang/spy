@@ -887,6 +887,10 @@ class AbstractFrame:
             auto.loc,
         )
 
+    def eval_expr_Const(self, const: ast.Const) -> W_MetaArg:
+        assert const.w_T is not None
+        return W_MetaArg(self.vm, "blue", const.w_T, const.w_val, const.loc)
+
     def eval_expr_Literal(self, const: ast.Literal) -> W_MetaArg:
         # unsupported literals are rejected directly by the parser, see
         # Parser.from_py_expr_Literal

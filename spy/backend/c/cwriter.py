@@ -9,7 +9,7 @@ from spy.fqn import FQN
 from spy.location import Loc
 from spy.textbuilder import TextBuilder
 from spy.util import magic_dispatch, shortrepr
-from spy.vm.b import TYPES
+from spy.vm.b import TYPES, B
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.irtag import IRTag
 from spy.vm.modules.posix import W__FILE
@@ -271,24 +271,29 @@ class CFuncWriter:
 
     # ===== expressions =====
 
-    def fmt_expr_Literal(self, const: ast.Literal) -> C.Expr:
-        # unsupported literals are rejected directly by the parser, see
-        # Parser.from_py_expr_Literal
-        T = type(const.value)
-        assert T in (int, float, complex, bool, str, NoneType)
-        if T is NoneType:
-            return C.Void()
-        elif T in (int, float):
-            return C.Literal(str(const.value))
-        elif T is complex:
-            val = complex(str(const.value))
+    def fmt_expr_Const(self, const: ast.Const) -> C.Expr:
+        vm = self.ctx.vm
+        w_T = const.w_T
+        w_val = const.w_val
+        if w_T is B.w_bool:
+            return C.Literal(str(vm.unwrap_bool(w_val)).lower())
+        elif w_T is B.w_i32:
+            return C.Literal(str(int(vm.unwrap_i32(w_val))))
+        elif w_T is B.w_f64:
+            return C.Literal(str(vm.unwrap_f64(w_val)))
+        elif w_T is B.w_complex128:
+            val = vm.unwrap_complex128(w_val)
             return C.Literal(
                 "(spy_Complex128) {" + str(val.real) + ", " + str(val.imag) + "}"
             )
-        elif T is bool:
-            return C.Literal(str(const.value).lower())
+        elif w_T is TYPES.w_NoneType:
+            assert w_val is B.w_None
+            return C.Void()
         else:
-            raise NotImplementedError("WIP")
+            raise NotImplementedError(f"WIP: {w_T}")
+
+    def fmt_expr_Literal(self, const: ast.Literal) -> C.Expr:
+        assert False, "ast.Literal should not appear in C backend (use ast.Const)"
 
     def fmt_expr_StrLiteral(self, const: ast.StrLiteral) -> C.Expr:
         # SPy string literals must be initialized as C globals. We want to

@@ -22,7 +22,7 @@ from spy.location import Loc
 from spy.util import extend
 
 if TYPE_CHECKING:
-    from spy.vm.object import W_Type
+    from spy.vm.object import W_Object, W_Type
     from spy.vm.vm import SPyVM
 
 ClassKind = typing.Literal["class", "struct"]
@@ -768,6 +768,25 @@ class Continue(Stmt):
 # only by the ASTFrame and/or Doppler. In other words, they are not part of
 # the proper AST-which-represent-the-syntax-of-the-language, but they are part
 # of the AST-which-we-use-as-IR
+
+
+@astnode
+class Const(Expr):
+    """
+    Hold a primitive wrapped constant.
+
+    It's similar to ast.Literal, but the former is created only by the parser and
+    carries a .value which is an arbitrary Python object, while Const carries a SPy
+    *wrapped* object.
+
+    ast.Const is produced during redshift and always has w_T set.
+    """
+
+    precedence = 100  # the highest
+    w_val: "W_Object"
+
+    def shortrepr(self) -> Optional[str]:
+        return repr(self.w_val)
 
 
 @astnode
