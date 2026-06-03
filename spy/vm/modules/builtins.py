@@ -120,7 +120,7 @@ def w_print(vm: "SPyVM", *args_wam: W_MetaArg) -> W_OpSpec:
         )
 
     loc = Loc.here()
-    body.append(ast.Return(loc, ast.Constant(loc, None)))
+    body.append(ast.Return(loc, ast.Literal(loc, None)))
 
     fqn = FQN("_print::print::impl")
     fqn = vm.get_unique_FQN(fqn)

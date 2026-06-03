@@ -496,7 +496,7 @@ class Parser:
         # during parsing: this simplifies quite a bit the rest
         value: spy.ast.Expr
         if py_node.value is None:
-            value = spy.ast.Constant(py_node.loc, None)
+            value = spy.ast.Literal(py_node.loc, None)
         else:
             value = self.from_py_expr(py_node.value)
         return spy.ast.Return(py_node.loc, value)
@@ -695,7 +695,7 @@ class Parser:
         if T is str:
             return spy.ast.StrConst(py_node.loc, py_node.value)
         elif T in (int, float, complex, bool, NoneType):
-            return spy.ast.Constant(py_node.loc, py_node.value)
+            return spy.ast.Literal(py_node.loc, py_node.value)
         elif T in (bytes, Ellipsis):
             self.error(
                 f"unsupported literal: {py_node.value!r}",
@@ -820,13 +820,13 @@ class Parser:
         # special-case -NUM
         if (
             opname == "USub"
-            and isinstance(value, spy.ast.Constant)
+            and isinstance(value, spy.ast.Literal)
             and isinstance(value.value, (int, float))
         ):
             c_loc = value.loc
             op_loc = py_node.loc
             new_loc = Loc.combine(op_loc, c_loc)
-            return spy.ast.Constant(new_loc, -value.value)
+            return spy.ast.Literal(new_loc, -value.value)
         return spy.ast.UnaryOp(py_node.loc, op, value)
 
     def from_py_expr_Call(
@@ -881,7 +881,7 @@ class Parser:
         def from_py_expr_or_none(py_node: py_ast.expr, attr: str) -> spy.ast.Expr:
             if getattr(py_node, attr) is not None:
                 return self.from_py_expr(getattr(py_node, attr))
-            return spy.ast.Constant(py_node.loc, None)
+            return spy.ast.Literal(py_node.loc, None)
 
         r = spy.ast.Slice(
             py_node.loc,

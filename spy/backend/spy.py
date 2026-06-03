@@ -345,7 +345,7 @@ class SPyBackend:
         # including ast.Auto).
         return ""
 
-    def fmt_expr_Constant(self, const: ast.Constant) -> str:
+    def fmt_expr_Literal(self, const: ast.Literal) -> str:
         return repr(const.value)
 
     def fmt_expr_StrConst(self, const: ast.StrConst) -> str:
@@ -503,7 +503,7 @@ class SPyBackend:
             assert isinstance(etype, ast.StrConst)
             assert isinstance(msg, ast.StrConst)
             assert isinstance(fname, ast.StrConst)
-            assert isinstance(lineno, ast.Constant)
+            assert isinstance(lineno, ast.Literal)
             E = etype.value
             m = self.fmt_expr(msg)
             # show only the last part of the filename

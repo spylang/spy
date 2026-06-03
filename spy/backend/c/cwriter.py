@@ -271,9 +271,9 @@ class CFuncWriter:
 
     # ===== expressions =====
 
-    def fmt_expr_Constant(self, const: ast.Constant) -> C.Expr:
+    def fmt_expr_Literal(self, const: ast.Literal) -> C.Expr:
         # unsupported literals are rejected directly by the parser, see
-        # Parser.from_py_expr_Constant
+        # Parser.from_py_expr_Literal
         T = type(const.value)
         assert T in (int, float, complex, bool, str, NoneType)
         if T is NoneType:

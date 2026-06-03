@@ -329,7 +329,7 @@ class Auto(Expr):
 
 
 @astnode
-class Constant(Expr):
+class Literal(Expr):
     precedence = 100  # the highest
     value: object
 
@@ -343,7 +343,7 @@ class Constant(Expr):
 @astnode
 class StrConst(Expr):
     """
-    Like Constant, but for strings.
+    Like Literal, but for strings.
 
     The reason we have a specialized node is that we want to use it for fields
     than MUST be strings, like GetAttr.attr or Assign.target.
@@ -365,7 +365,7 @@ class StrConst(Expr):
 @astnode
 class LocConst(Expr):
     """
-    Like Constant, but for W_Locs.
+    Like Literal, but for W_Locs.
 
     The reason for this is that we treat W_Locs as value types and we don't
     want to give them an FQN just for redshifting.

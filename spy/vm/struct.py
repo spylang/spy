@@ -171,7 +171,7 @@ class W_StructType(W_Type):
             return ast.CmpOp(Loc.here(), "==", a, b)
 
         if not fields_w:
-            result: ast.Expr = ast.Constant(func_loc, True)
+            result: ast.Expr = ast.Literal(func_loc, True)
         else:
             result = cmp_field(fields_w[0])
             for w_field in fields_w[1:]:

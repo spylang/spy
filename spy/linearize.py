@@ -266,7 +266,7 @@ class Linearizer:
             return [while_node.replace(test=new_test, body=new_body)]
 
         loc = while_node.loc
-        true_const = ast.Constant(loc=loc, value=True, w_T=B.w_bool)
+        true_const = ast.Literal(loc=loc, value=True, w_T=B.w_bool)
         not_test = ast.Call(
             loc=loc,
             func=ast.FQNConst(loc=loc, fqn=OP.w_bool_not.fqn, w_T=B.w_dynamic),
@@ -307,7 +307,7 @@ class Linearizer:
     #     as a sequence point. Promote ``pending_spills`` into ``to_spill``
     #     and mark self for spill.
 
-    PURE_EXPRS = (ast.Constant, ast.StrConst, ast.FQNConst, ast.LocConst)
+    PURE_EXPRS = (ast.Literal, ast.StrConst, ast.FQNConst, ast.LocConst)
     NAME_EXPRS = (ast.NameLocalDirect, ast.NameOuterDirect, ast.NameOuterCell)
 
     def is_pure(self, expr: ast.Expr) -> bool:
@@ -478,8 +478,8 @@ class Linearizer:
     ) -> ast.Expr:
         return const
 
-    def rewrite_expr_Constant(
-        self, const: ast.Constant, to_spill: set[ast.Expr]
+    def rewrite_expr_Literal(
+        self, const: ast.Literal, to_spill: set[ast.Expr]
     ) -> ast.Expr:
         return const
 

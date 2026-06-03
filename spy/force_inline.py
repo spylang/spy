@@ -131,7 +131,7 @@ class AlphaRenamer:
     def rename_expr_FQNConst(self, expr: ast.FQNConst) -> ast.Expr:
         return expr
 
-    def rename_expr_Constant(self, expr: ast.Constant) -> ast.Expr:
+    def rename_expr_Literal(self, expr: ast.Literal) -> ast.Expr:
         return expr
 
     def rename_expr_StrConst(self, expr: ast.StrConst) -> ast.Expr:
@@ -237,7 +237,7 @@ def inline_call(
         result_value = last_stmt.value
     else:
         stmts_before_return = renamed_body
-        result_value = ast.Constant(op.loc, None, w_T=TYPES.w_NoneType)
+        result_value = ast.Literal(op.loc, None, w_T=TYPES.w_NoneType)
 
     body = [*param_assigns, *stmts_before_return]
     block = ast.BlockExpr(

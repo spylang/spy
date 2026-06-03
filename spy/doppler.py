@@ -36,18 +36,18 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
     """
     Create an AST node to represent a constant of the given w_val.
 
-    For primitive types, it's easy, we can just reuse ast.Constant.
+    For primitive types, it's easy, we can just reuse ast.Literal.
     For non primitive types, we assign an unique FQN to the w_val, and we
     return ast.FQNConst.
     """
     res: ast.Expr
     w_T = vm.dynamic_type(w_val)
     if w_T in (B.w_i32, B.w_f64, B.w_complex128, B.w_bool, TYPES.w_NoneType):
-        # this is a primitive, we can just use ast.Constant
+        # this is a primitive, we can just use ast.Literal
         value = vm.unwrap(w_val)
         if isinstance(value, FixedInt):  # type: ignore
             value = int(value)
-        res = ast.Constant(loc, value, w_T=w_T)
+        res = ast.Literal(loc, value, w_T=w_T)
 
     elif w_T is B.w_str:
         value = vm.unwrap_str(w_val)
@@ -499,7 +499,7 @@ class DopplerFrame(ASTFrame):
         real_args = [getarg(spec) for spec in w_opimpl.args]
         return real_args
 
-    def shift_expr_Constant(self, const: ast.Constant, wam: W_MetaArg) -> ast.Expr:
+    def shift_expr_Literal(self, const: ast.Literal, wam: W_MetaArg) -> ast.Expr:
         return const.replace(w_T=wam.w_static_T)
 
     def shift_expr_Name(self, name: ast.Name, wam: W_MetaArg) -> ast.Expr:

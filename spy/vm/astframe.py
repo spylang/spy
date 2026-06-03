@@ -693,7 +693,7 @@ class AbstractFrame:
             expr = ast.GetItem(
                 loc=unpack.value.loc,
                 value=unpack.value,
-                args=[ast.Constant(loc=unpack.value.loc, value=i)],
+                args=[ast.Literal(loc=unpack.value.loc, value=i)],
             )
             # fabricate an ast.Assign
             # XXX: ideally we should cache the specialization instead of
@@ -885,9 +885,9 @@ class AbstractFrame:
             auto.loc,
         )
 
-    def eval_expr_Constant(self, const: ast.Constant) -> W_MetaArg:
+    def eval_expr_Literal(self, const: ast.Literal) -> W_MetaArg:
         # unsupported literals are rejected directly by the parser, see
-        # Parser.from_py_expr_Constant
+        # Parser.from_py_expr_Literal
         T = type(const.value)
         assert T in (int, float, complex, bool, NoneType)
         w_val = self.vm.wrap(const.value)
