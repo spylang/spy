@@ -14,7 +14,7 @@ from spy.vm.exc import W_StaticError
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
-from spy.vm.modules.types import TYPES, W_Loc
+from spy.vm.modules.types import TYPES
 from spy.vm.object import W_Object
 from spy.vm.opimpl import ArgSpec, W_OpImpl
 from spy.vm.opspec import W_MetaArg
@@ -64,12 +64,7 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
         res = ast.Tuple(loc, items, w_T=w_T)
 
     elif w_T is TYPES.w_Loc:
-        # note that here we have two locs: 'loc' is as usual the location
-        # where the const comes from; 'value' is the actual value of the
-        # const, which happen to be of type Loc.
-        assert isinstance(w_val, W_Loc)
-        value = w_val.loc
-        res = ast.LocConst(loc, value, w_T=w_T)
+        res = ast.Const(loc, w_val, w_T=w_T)
 
     else:
         # this is a non-primitive prebuilt constant.

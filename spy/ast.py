@@ -363,19 +363,6 @@ class StrLiteral(Expr):
 
 
 @astnode
-class LocConst(Expr):
-    """
-    Like Literal, but for W_Locs.
-
-    The reason for this is that we treat W_Locs as value types and we don't
-    want to give them an FQN just for redshifting.
-    """
-
-    precedence = 100  # the highest
-    value: Loc
-
-
-@astnode
 class GetItem(Expr):
     precedence = 16
     value: Expr

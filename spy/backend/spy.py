@@ -10,6 +10,7 @@ from spy.vm.b import TYPES, B
 from spy.vm.exc import W_Exception
 from spy.vm.function import W_ASTFunc
 from spy.vm.modules.__spy__.interp_list import W_InterpList
+from spy.vm.modules.types import W_Loc as W_Loc
 from spy.vm.object import W_Object, W_Type
 from spy.vm.vm import SPyVM
 
@@ -360,6 +361,10 @@ class SPyBackend:
         elif w_T is TYPES.w_NoneType:
             assert w_val is B.w_None
             return "None"
+        elif w_T is TYPES.w_Loc:
+            assert isinstance(w_val, W_Loc)
+            r = w_val.loc._repr()
+            return f"Loc('{r}')"
         else:
             raise NotImplementedError(f"WIP: {w_T}")
 
@@ -379,10 +384,6 @@ class SPyBackend:
             m = w_val.message
             return f"{t}({m!r})"
         return self.fmt_fqn(const.fqn)
-
-    def fmt_expr_LocConst(self, const: ast.LocConst) -> str:
-        r = const.value._repr()
-        return f"Loc('{r}')"
 
     def fmt_expr_Name(self, name: ast.Name) -> str:
         return name.id
