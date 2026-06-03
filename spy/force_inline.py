@@ -9,6 +9,7 @@ from spy.analyze.symtable import Symbol
 from spy.doppler import make_const
 from spy.errors import SPyError
 from spy.util import magic_dispatch
+from spy.vm.b import B
 from spy.vm.function import W_ASTFunc
 from spy.vm.primitive import TYPES
 
@@ -237,7 +238,7 @@ def inline_call(
         result_value = last_stmt.value
     else:
         stmts_before_return = renamed_body
-        result_value = ast.Literal(op.loc, None, w_T=TYPES.w_NoneType)
+        result_value = ast.Const(op.loc, B.w_None, w_T=TYPES.w_NoneType)
 
     body = [*param_assigns, *stmts_before_return]
     block = ast.BlockExpr(
