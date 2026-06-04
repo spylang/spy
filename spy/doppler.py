@@ -42,9 +42,16 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
     """
     res: ast.Expr
     w_T = vm.dynamic_type(w_val)
-    if w_T in (B.w_i8, B.w_u8, B.w_u32):
-        assert False, "TODO"
-    if w_T in (B.w_i32, B.w_f64, B.w_complex128, B.w_bool, TYPES.w_NoneType):
+    if w_T in (
+        B.w_i32,
+        B.w_i8,
+        B.w_u8,
+        B.w_u32,
+        B.w_f64,
+        B.w_complex128,
+        B.w_bool,
+        TYPES.w_NoneType,
+    ):
         res = ast.Const(loc, w_val, w_T=w_T)
 
     elif w_T is B.w_str:
