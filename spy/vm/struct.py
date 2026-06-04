@@ -166,12 +166,12 @@ class W_StructType(W_Type):
 
         def cmp_field(w_field: W_StructField) -> ast.Expr:
             loc = w_field.loc
-            a = ast.GetAttr(loc, ast.Name(loc, "a"), ast.StrConst(loc, w_field.name))
-            b = ast.GetAttr(loc, ast.Name(loc, "b"), ast.StrConst(loc, w_field.name))
+            a = ast.GetAttr(loc, ast.Name(loc, "a"), ast.StrLiteral(loc, w_field.name))
+            b = ast.GetAttr(loc, ast.Name(loc, "b"), ast.StrLiteral(loc, w_field.name))
             return ast.CmpOp(Loc.here(), "==", a, b)
 
         if not fields_w:
-            result: ast.Expr = ast.Constant(func_loc, True)
+            result: ast.Expr = ast.Literal(func_loc, True)
         else:
             result = cmp_field(fields_w[0])
             for w_field in fields_w[1:]:

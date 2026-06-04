@@ -9,6 +9,7 @@ from spy.analyze.symtable import Symbol
 from spy.doppler import make_const
 from spy.errors import SPyError
 from spy.util import magic_dispatch
+from spy.vm.b import B
 from spy.vm.function import W_ASTFunc
 from spy.vm.primitive import TYPES
 
@@ -131,13 +132,13 @@ class AlphaRenamer:
     def rename_expr_FQNConst(self, expr: ast.FQNConst) -> ast.Expr:
         return expr
 
-    def rename_expr_Constant(self, expr: ast.Constant) -> ast.Expr:
+    def rename_expr_Const(self, expr: ast.Const) -> ast.Expr:
         return expr
 
-    def rename_expr_StrConst(self, expr: ast.StrConst) -> ast.Expr:
+    def rename_expr_Literal(self, expr: ast.Literal) -> ast.Expr:
         return expr
 
-    def rename_expr_LocConst(self, expr: ast.LocConst) -> ast.Expr:
+    def rename_expr_StrLiteral(self, expr: ast.StrLiteral) -> ast.Expr:
         return expr
 
     def rename_expr_And(self, expr: ast.And) -> ast.Expr:
@@ -216,7 +217,7 @@ def inline_call(
         param_assigns.append(
             ast.AssignLocal(
                 loc=op.loc,
-                target=ast.StrConst(op.loc, new_name).as_typed_node(),
+                target=ast.StrLiteral(op.loc, new_name).as_typed_node(),
                 value=real_args[i],
             )
         )
@@ -237,7 +238,7 @@ def inline_call(
         result_value = last_stmt.value
     else:
         stmts_before_return = renamed_body
-        result_value = ast.Constant(op.loc, None, w_T=TYPES.w_NoneType)
+        result_value = ast.Const(op.loc, B.w_None, w_T=TYPES.w_NoneType)
 
     body = [*param_assigns, *stmts_before_return]
     block = ast.BlockExpr(

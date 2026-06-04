@@ -10,11 +10,11 @@ from spy.location import Loc
 from spy.util import magic_dispatch
 from spy.vm.astframe import ASTFrame
 from spy.vm.b import B
-from spy.vm.exc import W_StaticError
+from spy.vm.exc import W_Exception, W_StaticError
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
-from spy.vm.modules.types import TYPES, W_Loc
+from spy.vm.modules.types import TYPES
 from spy.vm.object import W_Object
 from spy.vm.opimpl import ArgSpec, W_OpImpl
 from spy.vm.opspec import W_MetaArg
@@ -36,22 +36,18 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
     """
     Create an AST node to represent a constant of the given w_val.
 
-    For primitive types, it's easy, we can just reuse ast.Constant.
+    For primitive types, we use ast.Const (an IR-only typed node).
     For non primitive types, we assign an unique FQN to the w_val, and we
     return ast.FQNConst.
     """
     res: ast.Expr
     w_T = vm.dynamic_type(w_val)
     if w_T in (B.w_i32, B.w_f64, B.w_complex128, B.w_bool, TYPES.w_NoneType):
-        # this is a primitive, we can just use ast.Constant
-        value = vm.unwrap(w_val)
-        if isinstance(value, FixedInt):  # type: ignore
-            value = int(value)
-        res = ast.Constant(loc, value, w_T=w_T)
+        res = ast.Const(loc, w_val, w_T=w_T)
 
     elif w_T is B.w_str:
         value = vm.unwrap_str(w_val)
-        res = ast.StrConst(loc, value, w_T=w_T)
+        res = ast.StrLiteral(loc, value, w_T=w_T)
 
     elif w_T is SPY.w_interp_tuple:
         assert isinstance(w_val, W_InterpTuple)
@@ -68,12 +64,10 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
         res = ast.Tuple(loc, items, w_T=w_T)
 
     elif w_T is TYPES.w_Loc:
-        # note that here we have two locs: 'loc' is as usual the location
-        # where the const comes from; 'value' is the actual value of the
-        # const, which happen to be of type Loc.
-        assert isinstance(w_val, W_Loc)
-        value = w_val.loc
-        res = ast.LocConst(loc, value, w_T=w_T)
+        res = ast.Const(loc, w_val, w_T=w_T)
+
+    elif isinstance(w_val, W_Exception):
+        res = ast.Const(loc, w_val, w_T=w_T)
 
     else:
         # this is a non-primitive prebuilt constant.
@@ -175,8 +169,9 @@ class DopplerFrame(ASTFrame):
         """
         Turn the given stmt into a "raise"
         """
-        fqn = self.vm.make_fqn_const(err.w_exc)
-        exc = ast.FQNConst(fqn=fqn, loc=stmt.loc)
+        w_exc = err.w_exc
+        w_T = self.vm.dynamic_type(w_exc)
+        exc = ast.Const(loc=stmt.loc, w_val=w_exc, w_T=w_T)
         return self.shift_stmt(ast.Raise(exc=exc, loc=stmt.loc))
 
     def record_node_color(self, node: ast.Node, color: Color) -> None:
@@ -499,8 +494,12 @@ class DopplerFrame(ASTFrame):
         real_args = [getarg(spec) for spec in w_opimpl.args]
         return real_args
 
-    def shift_expr_Constant(self, const: ast.Constant, wam: W_MetaArg) -> ast.Expr:
+    def shift_expr_Const(self, const: ast.Const, wam: W_MetaArg) -> ast.Expr:
         return const.replace(w_T=wam.w_static_T)
+
+    def shift_expr_Literal(self, const: ast.Literal, wam: W_MetaArg) -> ast.Expr:
+        w_val = self.vm.wrap(const.value)
+        return ast.Const(const.loc, w_val, w_T=wam.w_static_T)
 
     def shift_expr_Name(self, name: ast.Name, wam: W_MetaArg) -> ast.Expr:
         return self.specialized_names[name].replace(w_T=wam.w_static_T)

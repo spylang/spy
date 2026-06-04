@@ -404,7 +404,7 @@ class TestForceInline(CompilerTest):
         """)
         assert mod.foo() == 42
 
-    def test_LocConst(self):
+    def test_Const_Loc(self):
         mod = self.compile("""
         from unsafe import gc_alloc, gc_ptr
         from __spy__ import force_inline

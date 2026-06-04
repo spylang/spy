@@ -168,7 +168,7 @@ class Linearizer:
         self.hoisted.append(
             ast.AssignLocal(
                 loc=loc,
-                target=ast.StrConst(loc, name),
+                target=ast.StrLiteral(loc, name),
                 value=expr,
             )
         )
@@ -266,7 +266,7 @@ class Linearizer:
             return [while_node.replace(test=new_test, body=new_body)]
 
         loc = while_node.loc
-        true_const = ast.Constant(loc=loc, value=True, w_T=B.w_bool)
+        true_const = ast.Const(loc=loc, w_val=B.w_True, w_T=B.w_bool)
         not_test = ast.Call(
             loc=loc,
             func=ast.FQNConst(loc=loc, fqn=OP.w_bool_not.fqn, w_T=B.w_dynamic),
@@ -307,7 +307,7 @@ class Linearizer:
     #     as a sequence point. Promote ``pending_spills`` into ``to_spill``
     #     and mark self for spill.
 
-    PURE_EXPRS = (ast.Constant, ast.StrConst, ast.FQNConst, ast.LocConst)
+    PURE_EXPRS = (ast.Const, ast.Literal, ast.StrLiteral, ast.FQNConst)
     NAME_EXPRS = (ast.NameLocalDirect, ast.NameOuterDirect, ast.NameOuterCell)
 
     def is_pure(self, expr: ast.Expr) -> bool:
@@ -401,7 +401,7 @@ class Linearizer:
         loc = op.loc
         assert op.w_T is not None
         name, sym = self.fresh_tmp(op.w_T, loc)
-        target = ast.StrConst(loc, name)
+        target = ast.StrLiteral(loc, name)
         assign_rhs = ast.AssignLocal(loc=loc, target=target, value=new_right)
 
         # new_left is used as both the if-test and the value for the
@@ -473,17 +473,15 @@ class Linearizer:
     ) -> ast.Expr:
         return name
 
-    def rewrite_expr_StrConst(
-        self, const: ast.StrConst, to_spill: set[ast.Expr]
+    def rewrite_expr_StrLiteral(
+        self, const: ast.StrLiteral, to_spill: set[ast.Expr]
     ) -> ast.Expr:
         return const
 
-    def rewrite_expr_Constant(
-        self, const: ast.Constant, to_spill: set[ast.Expr]
-    ) -> ast.Expr:
+    def rewrite_expr_Const(self, const: ast.Const, to_spill: set[ast.Expr]) -> ast.Expr:
         return const
 
-    def rewrite_expr_LocConst(
-        self, const: ast.LocConst, to_spill: set[ast.Expr]
+    def rewrite_expr_Literal(
+        self, const: ast.Literal, to_spill: set[ast.Expr]
     ) -> ast.Expr:
-        return const
+        assert False, "ast.Literal should not appear after redshift"

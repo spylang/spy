@@ -20,7 +20,7 @@ from spy.vm.b import B
 from spy.vm.bluecache import BlueCache
 from spy.vm.builtin import make_builtin_func
 from spy.vm.debugger import spdb
-from spy.vm.exc import W_Exception, W_TypeError
+from spy.vm.exc import W_TypeError
 from spy.vm.function import (
     CLOSURE,
     LocalVar,
@@ -479,16 +479,6 @@ class SPyVM:
             # we might need to change this when we introduce custom types
             fqn = w_val.fqn
             assert w_val.fqn not in self.globals_w
-        elif isinstance(w_val, W_Exception):
-            # this is a bit of a temporary hack: it's needed to support this:
-            #     raise Exception("...")
-
-            # the argument to "raise" must be blue for now (see also
-            # W_Exception.w_NEW). Eventually, we will have proper support
-            # for prebuilt constants, but for now we special case W_Exception.
-            w_T = self.dynamic_type(w_val)
-            fqn = w_T.fqn.join("prebuilt")
-            fqn = self.get_unique_FQN(fqn)
         else:
             w_T = self.dynamic_type(w_val)
             T = w_T.fqn.human_name(self)

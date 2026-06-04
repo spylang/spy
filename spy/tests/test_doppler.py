@@ -396,7 +396,7 @@ class TestDoppler:
         foo_rs = w_foo_rs.funcdef  # type: ignore
 
         # check the colors of the original function
-        assert get_color(foo_orig, ast.Constant, "2") == "blue"
+        assert get_color(foo_orig, ast.Literal, "2") == "blue"
         assert get_color(foo_orig, ast.BinOp, "2 * 3") == "blue"
         assert get_color(foo_orig, ast.Name, "i") == "red"
         assert get_color(foo_orig, ast.BinOp, "i + 2 * 3") == "red"
@@ -405,7 +405,7 @@ class TestDoppler:
         #
         # this is the node "6". Keep in mind that get_src() always points to the
         # original src "2 * 3"
-        assert get_color(foo_rs, ast.Constant, None) == "blue"
+        assert get_color(foo_rs, ast.Const, None) == "blue"
         #
         # this is the "+", but it has been shifted into a call to i32_add
         assert get_color(foo_rs, ast.Call, "i + 2 * 3") == "red"
