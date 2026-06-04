@@ -194,11 +194,6 @@ MM.register("*",  "str", "i32", OP.w_str_mul)
 MM.register("==", "str", "str", OP.w_str_eq)
 MM.register("!=", "str", "str", OP.w_str_ne)
 
-# bytes ops
-MM.register("+",  "bytes", "bytes", OP.w_bytes_add)
-MM.register("*",  "bytes", "i32",   OP.w_bytes_mul)
-MM.register("==", "bytes", "bytes", OP.w_bytes_eq)
-MM.register("!=", "bytes", "bytes", OP.w_bytes_ne)
 
 # bool ops
 MM.register("==", "bool", "bool", OP.w_bool_eq)

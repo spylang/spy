@@ -85,39 +85,7 @@ spy_unsafe$_alloc_BytesObject$impl(int32_t length) {
     );
 }
 
-spy_BytesObject *WASM_EXPORT(spy_bytes_add)(spy_BytesObject *a, spy_BytesObject *b);
-
-spy_BytesObject *WASM_EXPORT(spy_bytes_mul)(spy_BytesObject *a, int32_t b);
-
-bool WASM_EXPORT(spy_bytes_eq)(spy_BytesObject *a, spy_BytesObject *b);
-
-static inline bool
-spy_bytes_ne(spy_BytesObject *a, spy_BytesObject *b) {
-    return !spy_bytes_eq(a, b);
-}
-
-uint8_t WASM_EXPORT(spy_bytes_getitem)(spy_BytesObject *b, int32_t i);
-
-int32_t WASM_EXPORT(spy_bytes_len)(spy_BytesObject *b);
-
-spy_StrObject *WASM_EXPORT(spy_bytes_repr)(spy_BytesObject *b);
-
 int32_t WASM_EXPORT(spy_bytes_hash)(spy_BytesObject *b);
-
-#define spy_operator$bytes_add spy_bytes_add
-#define spy_operator$bytes_mul spy_bytes_mul
-#define spy_operator$bytes_eq spy_bytes_eq
-#define spy_operator$bytes_ne spy_bytes_ne
-#define spy_builtins$bytes$__getitem__ spy_bytes_getitem
-#define spy_builtins$bytes$__len__ spy_bytes_len
-#define spy_builtins$bytes$__repr__ spy_bytes_repr
-#define spy_builtins$hash_bytes spy_bytes_hash
-
-// __str__ of bytes returns its __repr__ result (matches CPython)
-static inline spy_StrObject *
-spy_bytes_str(spy_BytesObject *b) {
-    return spy_bytes_repr(b);
-}
-#define spy_builtins$bytes$__str__ spy_bytes_str
+#define spy_builtins$bytes$__hash__ spy_bytes_hash
 
 #endif /* SPY_BYTES_H */

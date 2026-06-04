@@ -12,7 +12,6 @@ from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.vm.b import BUILTINS, TYPES, B
-from spy.vm.bytes import W_Bytes
 from spy.vm.function import FuncParam, W_ASTFunc, W_Func, W_FuncType
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_list import (
@@ -200,13 +199,6 @@ def w_hash_str(vm: "SPyVM", w_x: W_Str) -> W_I32:
     return vm.wrap(res)
 
 
-@BUILTINS.builtin_func
-def w_hash_bytes(vm: "SPyVM", w_x: W_Bytes) -> W_I32:
-    assert isinstance(w_x, W_Bytes)
-    res = vm.ll.call("spy_bytes_hash", w_x.ptr)
-    return vm.wrap(res)
-
-
 @BUILTINS.builtin_func(color="blue", kind="metafunc")
 def w_hash(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
     w_T = wam_obj.w_static_T
@@ -220,8 +212,6 @@ def w_hash(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
         return W_OpSpec(B.w_hash_bool)
     elif w_T is B.w_str:
         return W_OpSpec(B.w_hash_str)
-    elif w_T is B.w_bytes:
-        return W_OpSpec(B.w_hash_bytes)
 
     if w_fn := w_T.lookup_func(vm, "__hash__"):
         w_opspec = vm.fast_metacall(w_fn, [wam_obj])

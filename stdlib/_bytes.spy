@@ -12,6 +12,7 @@ BytesObject.{from,to}_bytes.
 """
 
 from unsafe import gc_ptr, _bytes_to_BytesObject, _alloc_BytesObject, _BytesObject_to_bytes
+from _str import StrObject
 
 
 # this MUST stay in sync with the equivalent struct declared in bytes.h
@@ -38,4 +39,144 @@ class BytesObject:
 class methods:
     # each method defined here MUST have a corresponding entry in
     # W_Bytes.__spy_lazy_attributes__.
-    pass
+
+    def __len__(self: bytes) -> i32:
+        ll = BytesObject.from_bytes(self)
+        return ll.length
+
+    def __getitem__(self: bytes, i: i32) -> u8:
+        ll = BytesObject.from_bytes(self)
+        n = ll.length
+        if i < 0:
+            i = i + n
+        # out-of-bounds access panics via the gc_ptr debug bounds check
+        return ll.data[i]
+
+    def __eq__(self: bytes, other: bytes) -> bool:
+        a = BytesObject.from_bytes(self)
+        b = BytesObject.from_bytes(other)
+        if a.length != b.length:
+            return False
+        for i in range(a.length):
+            if a.data[i] != b.data[i]:
+                return False
+        return True
+
+    def __ne__(self: bytes, other: bytes) -> bool:
+        return not self.__eq__(other)
+
+    def __add__(self: bytes, other: bytes) -> bytes:
+        a = BytesObject.from_bytes(self)
+        b = BytesObject.from_bytes(other)
+        out = BytesObject.alloc(a.length + b.length)
+        out.hash = 0
+        for ia in range(a.length):
+            out.data[ia] = a.data[ia]
+        for ib in range(b.length):
+            out.data[a.length + ib] = b.data[ib]
+        return BytesObject.to_bytes(out)
+
+    def __mul__(self: bytes, n: i32) -> bytes:
+        a = BytesObject.from_bytes(self)
+        out = BytesObject.alloc(a.length * n)
+        out.hash = 0
+        k = 0
+        for _ in range(n):
+            for i in range(a.length):
+                out.data[k] = a.data[i]
+                k = k + 1
+        return BytesObject.to_bytes(out)
+
+    # XXX: __hash__ lives in C (spy_bytes_hash, called from W_Bytes.w_hash) because
+    # FNV-1a requires wrapping i32 multiply, which is not yet available at applevel.
+    # Once SPy gains wrapping arithmetic primitives, port it here.
+
+    def __repr__(self: bytes) -> str:
+        ll = BytesObject.from_bytes(self)
+        backslash: u8 = 92
+        quote: u8 = 39
+        newline: u8 = 10
+        cr: u8 = 13
+        tab: u8 = 9
+        space: u8 = 32
+        tilde: u8 = 126
+        # First pass: compute the output length of the b'...' representation
+        out_len: i32 = 3  # b + ' + '
+        for i in range(ll.length):
+            c = ll.data[i]
+            if c == backslash or c == quote:
+                out_len = out_len + 2
+            elif c == newline or c == cr or c == tab:
+                out_len = out_len + 2
+            elif c < space or c > tilde:
+                out_len = out_len + 4  # \xNN
+            else:
+                out_len = out_len + 1
+        # Second pass: fill the output buffer
+        out = StrObject.alloc(out_len)
+        out.hash = 0
+        j: i32 = 0
+        b_byte: u8 = 98
+        out.utf8[j] = b_byte
+        j = j + 1
+        out.utf8[j] = quote
+        j = j + 1
+        n_: u8 = 110
+        r_: u8 = 114
+        t_: u8 = 116
+        x_: u8 = 120
+        zero: u8 = 48
+        a_hex: u8 = 97
+        for k in range(ll.length):
+            c2 = ll.data[k]
+            if c2 == backslash:
+                out.utf8[j] = backslash
+                j = j + 1
+                out.utf8[j] = backslash
+                j = j + 1
+            elif c2 == quote:
+                out.utf8[j] = backslash
+                j = j + 1
+                out.utf8[j] = quote
+                j = j + 1
+            elif c2 == newline:
+                out.utf8[j] = backslash
+                j = j + 1
+                out.utf8[j] = n_
+                j = j + 1
+            elif c2 == cr:
+                out.utf8[j] = backslash
+                j = j + 1
+                out.utf8[j] = r_
+                j = j + 1
+            elif c2 == tab:
+                out.utf8[j] = backslash
+                j = j + 1
+                out.utf8[j] = t_
+                j = j + 1
+            elif c2 < space or c2 > tilde:
+                # \xNN hex escape
+                out.utf8[j] = backslash
+                j = j + 1
+                out.utf8[j] = x_
+                j = j + 1
+                hi: i32 = i32(c2) >> 4
+                lo: i32 = i32(c2) & 15
+                if hi < 10:
+                    out.utf8[j] = u8(hi) + zero
+                else:
+                    out.utf8[j] = u8(hi - 10) + a_hex
+                j = j + 1
+                if lo < 10:
+                    out.utf8[j] = u8(lo) + zero
+                else:
+                    out.utf8[j] = u8(lo - 10) + a_hex
+                j = j + 1
+            else:
+                out.utf8[j] = c2
+                j = j + 1
+        out.utf8[j] = quote
+        return StrObject.to_str(out)
+
+    def __str__(self: bytes) -> str:
+        return self.__repr__()

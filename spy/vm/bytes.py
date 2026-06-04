@@ -1,11 +1,11 @@
 from typing import TYPE_CHECKING
 
+from spy.fqn import FQN
 from spy.libspy import LLSPyInstance
 from spy.vm.b import BUILTINS, B
 from spy.vm.builtin import builtin_method
 from spy.vm.object import W_Object
 from spy.vm.primitive import W_I32
-from spy.vm.str import W_Str
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -40,7 +40,16 @@ class W_Bytes(W_Object):
     """
 
     __spy_storage_category__ = "value"
-    __spy_lazy_attributes__ = {}
+    __spy_lazy_attributes__ = {
+        "__len__": FQN("_bytes::methods::__len__"),
+        "__getitem__": FQN("_bytes::methods::__getitem__"),
+        "__eq__": FQN("_bytes::methods::__eq__"),
+        "__ne__": FQN("_bytes::methods::__ne__"),
+        "__add__": FQN("_bytes::methods::__add__"),
+        "__mul__": FQN("_bytes::methods::__mul__"),
+        "__repr__": FQN("_bytes::methods::__repr__"),
+        "__str__": FQN("_bytes::methods::__str__"),
+    }
 
     vm: "SPyVM"
     ptr: int
@@ -74,31 +83,12 @@ class W_Bytes(W_Object):
     def spy_key(self, vm: "SPyVM") -> bytes:
         return self.get_data()
 
-    @builtin_method("__getitem__")
+    # XXX: __hash__ stays in C because applevel SPy has no wrapping i32
+    # multiply yet (needed for FNV-1a). Once wrapping arithmetic is
+    # available, this can move to _bytes.spy methods like the other dunders.
+    @builtin_method("__hash__")
     @staticmethod
-    def w_getitem(vm: "SPyVM", w_b: "W_Bytes", w_i: W_I32) -> W_I32:
+    def w_hash(vm: "SPyVM", w_b: "W_Bytes") -> W_I32:
         assert isinstance(w_b, W_Bytes)
-        assert isinstance(w_i, W_I32)
-        byte = vm.ll.call("spy_bytes_getitem", w_b.ptr, w_i.value)
-        return vm.wrap(byte)
-
-    @builtin_method("__len__")
-    @staticmethod
-    def w_len(vm: "SPyVM", w_b: "W_Bytes") -> W_I32:
-        assert isinstance(w_b, W_Bytes)
-        length = vm.ll.call("spy_bytes_len", w_b.ptr)
-        return vm.wrap(length)
-
-    @builtin_method("__str__")
-    @staticmethod
-    def w_str(vm: "SPyVM", w_b: "W_Bytes") -> W_Str:
-        assert isinstance(w_b, W_Bytes)
-        ptr = vm.ll.call("spy_bytes_repr", w_b.ptr)
-        return W_Str.from_ptr(vm, ptr)
-
-    @builtin_method("__repr__")
-    @staticmethod
-    def w_repr(vm: "SPyVM", w_b: "W_Bytes") -> W_Str:
-        assert isinstance(w_b, W_Bytes)
-        ptr = vm.ll.call("spy_bytes_repr", w_b.ptr)
-        return W_Str.from_ptr(vm, ptr)
+        result = vm.ll.call("spy_bytes_hash", w_b.ptr)
+        return vm.wrap(result)
