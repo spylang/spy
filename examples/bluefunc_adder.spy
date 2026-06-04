@@ -1,9 +1,11 @@
-# things to notice:
-#   - @blue funcs are completely resolved at redshift time
-#   - make_adder is not present in the redshifted or .c file
-#   - types in blue functions are optional
-#   - you can pass a type to get generics
-#   - redshift inserts type conversions
+"""
+Things to notice:
+  - @blue funcs are completely resolved at redshift time
+  - make_adder is not present in the redshifted or .c file
+  - types in blue functions are optional
+  - you can pass a type to get generics
+  - redshift inserts type conversions
+"""
 
 
 @blue

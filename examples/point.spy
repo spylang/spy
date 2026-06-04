@@ -1,13 +1,14 @@
-# things to notice:
-#   - the unsafe module allows C-level direct memory access to pointers and
-#     unsafe arrays
-#   - @struct maps directly to C structs
-#   - most users will never have to deal with this directly: using the
-#     `unsafe` module is the equivalent of writing C extensions or using
-#     Cython
-#
-# Exercise for the reader:
-#   - write a Rect struct with two points, and check what its C layout
+"""
+Things to notice:
+  - the unsafe module allows C-level direct memory access to pointers and
+    unsafe arrays
+  - @struct maps directly to C structs
+  - most users will never have to deal with this directly: using the
+    `unsafe` module is the equivalent of writing C extensions or using
+    Cython
+
+Exercise for the reader: write a Rect struct with two points, and check what its C layout
+"""
 
 from unsafe import gc_ptr, gc_alloc
 

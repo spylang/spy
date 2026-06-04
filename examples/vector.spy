@@ -1,4 +1,3 @@
-
 from unsafe import gc_alloc, gc_ptr
 
 
@@ -9,12 +8,14 @@ class Vector:
     items: gc_ptr[i32]
 
 
-# available operations:
-#     arr: gc_ptr[i32] = gc_alloc[i32](5)  # allocates an array of 5 i32
-#     arr[0]     # read item 0 of the array
-#     arr[0] = x # write item 0
-#     v = gc_alloc[Vector](1)   # allocate a new Vector
-#     v.capacity  # read the field "capacity" of the Vector "v"
+"""
+available operations:
+    arr: gc_ptr[i32] = gc_alloc[i32](5)  # allocates an array of 5 i32
+    arr[0]     # read item 0 of the array
+    arr[0] = x # write item 0
+    v = gc_alloc[Vector](1)   # allocate a new Vector
+    v.capacity  # read the field "capacity" of the Vector "v"
+"""
 
 
 def vector_new(capacity: i32) -> gc_ptr[Vector]:
