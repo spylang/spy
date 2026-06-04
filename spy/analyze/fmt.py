@@ -3,12 +3,10 @@ import subprocess
 import tempfile
 
 from spy.magic_py_parse import (
-    construct_SPy_specific_grammar,
     preprocess,
-    reinsert_spy_specific_grammar,
+    reintroduce_spy_grammar,
 )
 from spy.parser import Parser
-from spy.vendored import untokenize
 from spy.vm.vm import SPyVM
 
 
@@ -52,12 +50,10 @@ class SPyFormatter:
         parser.parse()
 
         spy_src = parser.src
-        py_src, _ = preprocess(spy_src, parser.filename)
+        py_src = preprocess(spy_src, parser.filename)
 
-        spy_grammar_tracker = construct_SPy_specific_grammar(spy_src)
         formatted_py_src = format_python_source_with_ruff(py_src)
-        tokens = reinsert_spy_specific_grammar(formatted_py_src, spy_grammar_tracker)
-        formatted_spy_src = untokenize.untokenize(tokens)
+        formatted_spy_src = reintroduce_spy_grammar(formatted_py_src)
 
         with open(str(spyfile), "w", encoding="utf-8") as f:
             f.write(formatted_spy_src)

@@ -35,12 +35,15 @@ does exactly that.
 """
 
 import ast as py_ast
+import re
 from io import BytesIO
-from tokenize import DEDENT, NAME, TokenError, TokenInfo, tokenize
+from tokenize import NAME, TokenError, TokenInfo, tokenize
 
 from spy.errors import SPyError
 from spy.location import Loc
 from spy.vendored import untokenize
+
+SPY_DECL_RE = re.compile(r"\b(var|const)·+([A-Za-z_][A-Za-z0-9_]*)\b")
 
 
 def magic_py_parse(src: str, filename: str = "<string>") -> py_ast.Module:
@@ -63,125 +66,13 @@ def get_tokens(src: str) -> list[TokenInfo]:
     return list(tokenize(readline))
 
 
-def _update_scope_stack(
-    tokens: list[TokenInfo],
-    i: int,
-    scope_stack: list[str],
-    keyword_counts: dict[str, int],
-) -> bool:
-    tok = tokens[i]
-    if tok.type == NAME and (
-        tok.string == "def" and i + 1 < len(tokens) and tokens[i + 1].type == NAME
-    ):
-        scope_stack.append(f"{tok.string}-{tokens[i + 1].string}")
-        return True
+def reintroduce_spy_grammar(src: str) -> str:
+    """
+    Convert merged SPy declarations like `var·x` / `const·name` back to
+    `var x` / `const name`.
+    """
+    return SPY_DECL_RE.sub(r"\1 \2", src)
 
-    if tok.type == NAME and tok.string in ("while", "for", "if", "else"):
-        count = keyword_counts.get(tok.string, 0) + 1
-        keyword_counts[tok.string] = count
-        scope_stack.append(f"{tok.string}-{count}")
-        return True
-
-    if tok.type == DEDENT and len(scope_stack) > 1:
-        scope_stack.pop()
-
-    return False
-
-
-def _make_identifier(scope_stack: list[str], name: str, occurrence: int) -> str:
-    return f"{'_'.join(scope_stack)}__{name}__occurrence-{occurrence}"
-
-
-def construct_SPy_specific_grammar(src: str) -> dict[str, TokenInfo]:
-    tokens = get_tokens(src)
-    n_tokens = len(tokens)
-    i = 0
-
-    scope_stack = ["module"]
-    spy_grammar_tracker: dict[str, TokenInfo] = {}
-    occurrences: dict[str, int] = {}
-    while i < n_tokens:
-        if _update_scope_stack(tokens, i, scope_stack, occurrences):
-            i += 1
-            continue
-
-        if tokens[i].type == NAME:
-            prefix = f"{'_'.join(scope_stack)}__{tokens[i].string}"
-            occurrence = occurrences.get(prefix, 1)
-            occurrences[prefix] = occurrence + 1
-
-            identifier = _make_identifier(scope_stack, tokens[i].string, occurrence)
-            if (
-                i > 0
-                and tokens[i - 1].string in ("const", "var")
-                and identifier not in spy_grammar_tracker
-            ):
-                string = tokens[i - 1].string
-                spy_grammar_tracker[identifier] = tokens[i - 1]._replace(
-                    string=string + " "
-                )
-
-        i += 1
-
-    return spy_grammar_tracker
-
-
-def reinsert_spy_specific_grammar(
-    src: str, spy_grammar_tracker: dict[str, TokenInfo]
-) -> list[TokenInfo]:
-    tokens = get_tokens(src)
-    n_tokens = len(tokens)
-    i = 0
-
-    scope_stack = ["module"]
-    occurrences: dict[str, int] = {}
-    while i < n_tokens:
-        if _update_scope_stack(tokens, i, scope_stack, occurrences):
-            i += 1
-            continue
-
-        if tokens[i].type == NAME:
-            prefix = f"{'_'.join(scope_stack)}__{tokens[i].string}"
-            occurrence = occurrences.get(prefix, 1)
-            occurrences[prefix] = occurrence + 1
-
-            identifier = _make_identifier(scope_stack, tokens[i].string, occurrence)
-            if identifier in spy_grammar_tracker:
-                cur = tokens[i]
-                string = spy_grammar_tracker[identifier].string
-                offset = len(string)
-                line_no, col = cur.start
-                new_tok = spy_grammar_tracker[identifier]._replace(
-                    start=(line_no, col),
-                    end=(line_no, col + offset),
-                    line=cur.line,
-                )
-                # build the reconstructed line so untokenize can use it for
-                # whitespace slicing (it does line[last_col:start_col])
-                new_line = cur.line[:col] + string + cur.line[col:]
-                tokens[i] = new_tok._replace(line=new_line)
-                # propagate new_line backward to tokens on the same line
-                # (e.g. INDENT) so their line field is consistent
-                k = i - 1
-                while k >= 0 and tokens[k].start[0] == line_no:
-                    tokens[k] = tokens[k]._replace(line=new_line)
-                    k -= 1
-                # shift all remaining tokens on the same line to account for
-                # the inserted `const `/`var ` prefix
-                offset = len(string)
-                j = i + 1
-                while j < len(tokens) and tokens[j].start[0] == line_no:
-                    t = tokens[j]
-                    tokens[j] = t._replace(
-                        start=(line_no, t.start[1] + offset),
-                        end=(line_no, t.end[1] + offset),
-                        line=new_line,
-                    )
-                    j += 1
-
-        i += 1
-
-    return tokens
 
 def preprocess(src: str, filename: str = "<string>") -> str:
     try:
