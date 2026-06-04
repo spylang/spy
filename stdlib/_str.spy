@@ -81,15 +81,14 @@ class methods:
         ll = StrObject.from_str(self)
         llnew = StrObject.alloc(ll.length)
         llnew.hash = 0
-        lo: u8 = 97  # 'a'
-        hi: u8 = 122  # 'z'
-        delta: u8 = 32
-        i = 0
-        while i < ll.length:
+        # we don't have bytes literal yet, quick workaround
+        A = u8(65)
+        a = u8(97)
+        z = u8(122)
+        for i in range(ll.length):
             ch = ll.utf8[i]
-            if lo <= ch and ch <= hi:
-                llnew.utf8[i] = ch - delta
+            if a <= ch and ch <= z:
+                llnew.utf8[i] = ch - (a - A)
             else:
                 llnew.utf8[i] = ch
-            i = i + 1
         return StrObject.to_str(llnew)
