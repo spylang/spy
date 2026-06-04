@@ -296,6 +296,23 @@ class CFuncWriter:
     def fmt_expr_Literal(self, const: ast.Literal) -> C.Expr:
         assert False, "ast.Literal should not appear in C backend (use ast.Const)"
 
+    def fmt_expr_BytesLiteral(self, const: ast.BytesLiteral) -> C.Expr:
+        # Similar to fmt_expr_StrLiteral: emit a static spy_BytesObject global
+        # and return a pointer to it.
+        #
+        #     static spy_BytesObject SPY_g_bytes0 = SPY_BYTES_LITERAL(3, "abc");
+        #     ...
+        #     &SPY_g_bytes0 /* b'abc' */
+        b = const.value
+        v = self.cmodw.new_global_var("bytes")
+        n = len(b)
+        lit = C.Literal.from_bytes(b)
+        init = f"SPY_BYTES_LITERAL({n}, {lit})"
+        self.cmodw.tbc_globals.wl(f"static spy_BytesObject {v} = {init};")
+        comment = shortrepr(repr(b), 15)
+        v = f"{v} /* {comment} */"
+        return C.UnaryOp("&", C.Literal(v))
+
     def fmt_expr_StrLiteral(self, const: ast.StrLiteral) -> C.Expr:
         # SPy string literals must be initialized as C globals. We want to
         # generate the following:

@@ -22,6 +22,24 @@ typedef struct {
 
 #define spy_BytesObject_DATA(b) ((b)->data.p)
 
+/* SPY_BYTES_LITERAL(N, "content") is a struct initializer for spy_BytesObject,
+   useful for static globals and for-test literals. Mirrors SPY_STR_LITERAL. */
+#ifdef SPY_DEBUG
+#  define SPY_BYTES_LITERAL(N, S)                                                      \
+      {                                                                                \
+          (N), 0, {                                                                    \
+              (uint8_t *)(S), (ptrdiff_t)(N)                                           \
+          }                                                                            \
+      }
+#else
+#  define SPY_BYTES_LITERAL(N, S)                                                      \
+      {                                                                                \
+          (N), 0, {                                                                    \
+              (uint8_t *)(S)                                                           \
+          }                                                                            \
+      }
+#endif
+
 /* gc_ptr[_bytes::BytesObject] is predeclared here, see also
    cstructwriter.py:emit_PtrType. Make sure that they stay in sync. */
 typedef struct spy_unsafe$gc_ptr___bytes$BytesObject {
