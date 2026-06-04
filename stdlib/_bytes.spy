@@ -1,0 +1,41 @@
+"""
+This module contains the applevel part of the `bytes` type.
+
+At the C level, `bytes` is defined by the spy_BytesObject struct and related
+helper functions defined in bytes.h and bytes.c.
+
+At interp level, the W_Bytes type is defined in vm/bytes.py.
+
+The BytesObject struct defined here MUST stay in sync with the one defined in C.
+It is possible to cast between bytes and gc_ptr[BytesObject] using
+BytesObject.{from,to}_bytes.
+"""
+
+from unsafe import gc_ptr, _bytes_to_BytesObject, _alloc_BytesObject, _BytesObject_to_bytes
+
+
+# this MUST stay in sync with the equivalent struct declared in bytes.h
+@struct
+class BytesObject:
+    length: i32
+    hash: i32
+    data: gc_ptr[u8]
+
+    @staticmethod
+    def alloc(n: i32) -> gc_ptr[BytesObject]:
+        return _alloc_BytesObject(n)
+
+    @staticmethod
+    def from_bytes(b: bytes) -> gc_ptr[BytesObject]:
+        return _bytes_to_BytesObject(b)
+
+    @staticmethod
+    def to_bytes(ll: gc_ptr[BytesObject]) -> bytes:
+        return _BytesObject_to_bytes(ll)
+
+
+@struct
+class methods:
+    # each method defined here MUST have a corresponding entry in
+    # W_Bytes.__spy_lazy_attributes__.
+    pass

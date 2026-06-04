@@ -1,4 +1,4 @@
-from spy.tests.support import CompilerTest
+from spy.tests.support import CompilerTest, only_interp
 
 
 class TestBytes(CompilerTest):
@@ -98,3 +98,13 @@ class TestBytes(CompilerTest):
             return b + b'!'
         """)
         assert mod.foo(b"hello") == b"hello!"
+
+    def test_BytesObject_roundtrip(self):
+        mod = self.compile("""
+        from _bytes import BytesObject
+
+        def foo() -> i32:
+            ll = BytesObject.from_bytes(b'hello')
+            return ll.length
+        """)
+        assert mod.foo() == 5
