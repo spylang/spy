@@ -1,4 +1,3 @@
-# -*- mode: python -*-
 
 from unsafe import gc_alloc, gc_ptr
 

@@ -1,4 +1,3 @@
-#! -*- mode: python -*-
 
 from operator import OpSpec
 
