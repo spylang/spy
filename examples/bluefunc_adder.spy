@@ -3,7 +3,6 @@
 #   - make_adder is not present in the redshifted or .c file
 #   - types in blue functions are optional
 #   - you can pass a type to get generics
-#   - eventually we will support a syntax like "make_adder[i32]"
 #   - redshift inserts type conversions
 
 

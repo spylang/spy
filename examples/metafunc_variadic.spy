@@ -23,7 +23,7 @@ def mysum(*args_m):
         return OpSpec(mysum3)
 
     else:
-        raise TypeError("invalid numer of arguments")
+        raise TypeError("invalid number of arguments")
 
 
 def main() -> None:

@@ -1,6 +1,5 @@
 # things to notice:
 #   - functions require signature
-#   - print works with only one argument for now
 #   - after redshift, print is specialized
 #   - with spy redshift --full-fqn, you can see that lookups are resolved early
 
