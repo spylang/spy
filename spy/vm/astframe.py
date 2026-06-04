@@ -896,6 +896,8 @@ class AbstractFrame:
         # Parser.from_py_expr_Literal
         T = type(const.value)
         assert T in (int, float, complex, bool, NoneType)
+        if const.w_T is not None and const.w_T in (B.w_i8, B.w_u8, B.w_u32):
+            assert False, "TODO"
         w_val = self.vm.wrap(const.value)
         w_T = self.vm.dynamic_type(w_val)
         return W_MetaArg(self.vm, "blue", w_T, w_val, const.loc)

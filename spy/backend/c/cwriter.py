@@ -277,8 +277,9 @@ class CFuncWriter:
         w_val = const.w_val
         if w_T is B.w_bool:
             return C.Literal(str(vm.unwrap_bool(w_val)).lower())
-        elif w_T is B.w_i32:
-            return C.Literal(str(int(vm.unwrap_i32(w_val))))
+        elif w_T in (B.w_i32, B.w_i8, B.w_u8):
+            intval = int(vm.unwrap(w_val))
+            return C.Literal(str(intval))
         elif w_T is B.w_f64:
             return C.Literal(str(vm.unwrap_f64(w_val)))
         elif w_T is B.w_complex128:
