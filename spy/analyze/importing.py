@@ -103,10 +103,11 @@ class ImportAnalyzer:
 
     def __init__(self, vm: "SPyVM", modname: str, use_spyc: bool = True) -> None:
         self.vm = vm
-        self.root = modname
         self.queue = deque([modname])
         self.mods: dict[str, MODULE] = {}
         self.deps: dict[str, OrderedSet[str]] = {}  # modname -> list_of_imports
+        # modname -> first ast.Import that referenced it
+        self.importers: dict[str, ast.Import] = {}
         self.cur_modname: Optional[str] = None
         self.cached_mods: dict[str, py.path.local] = {}  # modname -> cache file path
         self.cache_errors: list[CacheError] = []  # List of all cache errors
@@ -224,7 +225,7 @@ class ImportAnalyzer:
                 # record implicit imports
                 assert mod.symtable is not None
                 for imp_modname in mod.symtable.implicit_imports:
-                    self.record_import(modname, imp_modname)
+                    self.record_import(modname, imp_modname, node=None)
 
                 # record explicit imports
                 self.cur_modname = modname
@@ -293,27 +294,37 @@ class ImportAnalyzer:
         return result
 
     def import_all(self) -> None:
+        from spy.vm.module import W_Module
+
         assert self.mods, "call .parse_all() first"
         import_list = self.get_import_list()
         for modname in import_list:
             mod = self.mods[modname]
             if isinstance(mod, ast.Module):
                 self.import_one(modname, mod)
-            elif mod is None and modname == self.root:
-                # The root module couldn't be found. For non-root modules this
-                # is reported by ModFrame.exec_Import (which has the `import`
-                # statement to point at), but nothing imports the root, so we
-                # report it here instead.
-                self.import_error_not_found(modname)
+            elif isinstance(mod, W_Module):
+                pass  # already imported, nothing to do
+            elif mod is None:
+                # not found, raise ImportError
+                self.raise_import_error(modname)
+            else:
+                assert False
 
-    def import_error_not_found(self, modname: str) -> None:
-        if self.vm.find_file_on_path(modname) is not None:
-            # the file exists, so it must be a .py (a .spy would have been
-            # parsed during parse_all)
+    def raise_import_error(self, modname: str) -> None:
+        f = self.vm.find_file_on_path(modname)
+        if f is not None and f.ext == ".py":
             msg = f"file `{modname}.py` exists, but py files cannot be imported"
         else:
             msg = f"module `{modname}` does not exist"
-        raise SPyError("W_ImportError", msg)
+
+        imp = self.importers.get(modname)
+        if imp is None:
+            # nobody imported this module via an `import` statement: it's
+            # either the root module or an implicit import (which has no node)
+            raise SPyError("W_ImportError", msg)
+        err = SPyError("W_ImportError", f"cannot import `{imp.ref.spy_name()}`")
+        err.add("error", msg, loc=imp.loc)
+        raise err
 
     def import_one(self, modname: str, mod: ast.Module) -> None:
         assert mod.symtable is not None
@@ -462,12 +473,16 @@ class ImportAnalyzer:
 
     def visit_Import(self, imp: ast.Import) -> None:
         assert self.cur_modname is not None
-        self.record_import(self.cur_modname, imp.ref.modname)
+        self.record_import(self.cur_modname, imp.ref.modname, node=imp)
 
-    def record_import(self, cur_modname: str, modname: str) -> None:
+    def record_import(
+        self, cur_modname: str, modname: str, *, node: ast.Import
+    ) -> None:
         if modname == "builtins":
             return
         self.deps[cur_modname].add(modname)
         self.queue.append(modname)
+        # remember the first Import node which referenced this module
+        self.importers.setdefault(modname, node)
 
     # ===========================================================
