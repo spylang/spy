@@ -118,6 +118,26 @@ class ImportAnalyzer:
         assert isinstance(mod, ast.Module)
         return mod
 
+    def find_file_on_path(self, modname: str) -> Optional[py.path.local]:
+        # XXX for now we assume that we find the module as a single file in
+        # the only vm.path entry. Eventually we will need a proper import
+        # mechanism and support for packages
+        #
+        # We search dir by dir, and within a dir .spy wins over .py. The
+        # caller is expected to check the extension of the result: a .py file
+        # cannot be imported, but we return it anyway so that the caller can
+        # produce a good error message. Note that a .py found in an earlier
+        # dir shadows a .spy in a later dir.
+        assert self.vm.path, "vm.path not set"
+        for d in self.vm.path:
+            f = py.path.local(d).join(f"{modname}.spy")
+            if f.exists():
+                return f
+            py_f = f.new(ext=".py")
+            if py_f.exists():
+                return py_f
+        return None
+
     def _get_spyc(self, spyfile: py.path.local) -> py.path.local:
         """
         Get the path to the cache file for a given .spy file.
@@ -212,7 +232,7 @@ class ImportAnalyzer:
                 w_mod = self.vm.modules_w[modname]
                 self.mods[modname] = w_mod
 
-            elif (spyfile := self.vm.find_file_on_path(modname)) and (
+            elif (spyfile := self.find_file_on_path(modname)) and (
                 spyfile.ext == ".spy"
             ):
                 # Initialize the dependency list for this module
@@ -311,7 +331,7 @@ class ImportAnalyzer:
                 assert False
 
     def raise_import_error(self, modname: str) -> None:
-        f = self.vm.find_file_on_path(modname)
+        f = self.find_file_on_path(modname)
         if f is not None and f.ext == ".py":
             msg = f"file `{modname}.py` exists, but py files cannot be imported"
         else:
