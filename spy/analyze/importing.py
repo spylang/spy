@@ -496,13 +496,14 @@ class ImportAnalyzer:
         self.record_import(self.cur_modname, imp.ref.modname, node=imp)
 
     def record_import(
-        self, cur_modname: str, modname: str, *, node: ast.Import
+        self, cur_modname: str, modname: str, *, node: ast.Import | None
     ) -> None:
         if modname == "builtins":
             return
         self.deps[cur_modname].add(modname)
         self.queue.append(modname)
         # remember the first Import node which referenced this module
-        self.importers.setdefault(modname, node)
+        if node is not None:
+            self.importers.setdefault(modname, node)
 
     # ===========================================================
