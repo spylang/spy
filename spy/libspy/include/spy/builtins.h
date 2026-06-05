@@ -4,12 +4,6 @@
 #include "spy.h"
 #include "spy/str.h"
 
-int32_t WASM_EXPORT(spy_builtins$abs)(int32_t x);
-
-int32_t WASM_EXPORT(spy_builtins$min)(int32_t x, int32_t y);
-
-int32_t WASM_EXPORT(spy_builtins$max)(int32_t x, int32_t y);
-
 static inline int32_t
 spy_builtins$hash_i8(int8_t x) {
     if (x == -1) {

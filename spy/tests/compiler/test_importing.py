@@ -6,12 +6,12 @@ class TestImporting(CompilerTest):
 
     def test_import(self):
         mod = self.compile("""
-        from builtins import abs as my_abs
+        from math import cos as my_cos
 
-        def foo(x: i32) -> i32:
-            return my_abs(x)
+        def foo(x: f64) -> f64:
+            return my_cos(x)
         """)
-        assert mod.foo(-20) == 20
+        assert mod.foo(0.0) == 1.0
 
     def test_import_errors_1(self):
         ctx = expect_errors(

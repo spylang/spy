@@ -33,29 +33,6 @@ def w_STATIC_TYPE(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
     return W_OpSpec.const(wam_obj.w_static_T)
 
 
-@BUILTINS.builtin_func
-def w_abs(vm: "SPyVM", w_x: W_I32) -> W_I32:
-    x = vm.unwrap_i32(w_x)
-    res = vm.ll.call("spy_builtins$abs", x)
-    return vm.wrap(res)
-
-
-@BUILTINS.builtin_func
-def w_max(vm: "SPyVM", w_x: W_I32, w_y: W_I32) -> W_I32:
-    x = vm.unwrap_i32(w_x)
-    y = vm.unwrap_i32(w_y)
-    res = vm.ll.call("spy_builtins$max", x, y)
-    return vm.wrap(res)
-
-
-@BUILTINS.builtin_func
-def w_min(vm: "SPyVM", w_x: W_I32, w_y: W_I32) -> W_I32:
-    x = vm.unwrap_i32(w_x)
-    y = vm.unwrap_i32(w_y)
-    res = vm.ll.call("spy_builtins$min", x, y)
-    return vm.wrap(res)
-
-
 @BUILTINS.builtin_func(color="blue", kind="metafunc")
 def w_print(vm: "SPyVM", *args_wam: W_MetaArg) -> W_OpSpec:
     vm.import_("_print")
