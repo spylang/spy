@@ -8,6 +8,7 @@ import py.path
 
 from spy import ast
 from spy.analyze.scope import ScopeAnalyzer
+from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.parser import Parser
 from spy.textbuilder import ColorFormatter
@@ -102,6 +103,7 @@ class ImportAnalyzer:
 
     def __init__(self, vm: "SPyVM", modname: str, use_spyc: bool = True) -> None:
         self.vm = vm
+        self.root = modname
         self.queue = deque([modname])
         self.mods: dict[str, MODULE] = {}
         self.deps: dict[str, OrderedSet[str]] = {}  # modname -> list_of_imports
@@ -297,6 +299,21 @@ class ImportAnalyzer:
             mod = self.mods[modname]
             if isinstance(mod, ast.Module):
                 self.import_one(modname, mod)
+            elif mod is None and modname == self.root:
+                # The root module couldn't be found. For non-root modules this
+                # is reported by ModFrame.exec_Import (which has the `import`
+                # statement to point at), but nothing imports the root, so we
+                # report it here instead.
+                self.import_error_not_found(modname)
+
+    def import_error_not_found(self, modname: str) -> None:
+        if self.vm.find_file_on_path(modname) is not None:
+            # the file exists, so it must be a .py (a .spy would have been
+            # parsed during parse_all)
+            msg = f"file `{modname}.py` exists, but py files cannot be imported"
+        else:
+            msg = f"module `{modname}` does not exist"
+        raise SPyError("W_ImportError", msg)
 
     def import_one(self, modname: str, mod: ast.Module) -> None:
         assert mod.symtable is not None

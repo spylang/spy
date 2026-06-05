@@ -1,3 +1,4 @@
+from spy.errors import SPyError
 from spy.tests.support import CompilerTest, expect_errors, only_interp
 
 
@@ -65,6 +66,18 @@ class TestImporting(CompilerTest):
             self.compile("""
             from mymodule import x
             """)
+
+    @only_interp
+    def test_import_missing_root_module(self):
+        with SPyError.raises("W_ImportError", match="module `xxx` does not exist"):
+            self.vm.import_("xxx")
+
+    @only_interp
+    def test_import_py_root_module(self):
+        self.write_file("mymodule.py", "x = 42")
+        msg = "file `mymodule.py` exists, but py files cannot be imported"
+        with SPyError.raises("W_ImportError", match=msg):
+            self.vm.import_("mymodule")
 
     def test_function_in_other_module(self):
         src = """
