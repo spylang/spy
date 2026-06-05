@@ -120,36 +120,35 @@ class ModFrame(AbstractFrame):
         assert sym.impref == imp.ref
         w_val = self.vm.lookup_ImportRef(imp.ref)
         if w_val is not None:
-            # import successfull
+            # import successful
             w_T = self.vm.dynamic_type(w_val)
             self.declare_local(sym.name, "blue", w_T, imp.loc)
             self.store_local(sym.name, w_val)
             return
 
-        # import failed
+        if imp.ref.modname not in self.vm.modules_w:
+            # the module exists as a file (otherwise check_imports would have
+            # caught it) but is not loaded yet: this is a circular import,
+            # which is not yet supported.
+            err = SPyError(
+                "W_ImportError",
+                f"cannot import `{imp.ref.spy_name()}`",
+            )
+            err.add("error", f"module `{imp.ref.modname}` does not exist", loc=imp.loc)
+            err.add("note", "this is likely a circular import (WIP)", loc=imp.loc)
+            raise err
+
+        # if we are here, the module was imported but lookup_ImportRef failed: it must
+        # be a missing attribute on the module
+        assert imp.ref.modname in self.vm.modules_w, "FIXME: circular imports"
         err = SPyError(
             "W_ImportError",
             f"cannot import `{imp.ref.spy_name()}`",
         )
-        if imp.ref.modname not in self.vm.modules_w:
-            # See if there is a matching .py file
-            if self.vm.find_file_on_path(imp.ref.modname, allow_py_files=True):
-                err.add(
-                    "error",
-                    f"file `{imp.ref.modname}.py` exists, but py files cannot be imported",
-                    loc=imp.loc,
-                )
-            else:
-                # module not found
-                err.add(
-                    "error", f"module `{imp.ref.modname}` does not exist", loc=imp.loc
-                )
-        else:
-            # attribute not found
-            err.add(
-                "error",
-                f"attribute `{imp.ref.attr}` does not exist "
-                + f"in module `{imp.ref.modname}`",
-                loc=imp.loc_asname,
-            )
+        err.add(
+            "error",
+            f"attribute `{imp.ref.attr}` does not exist "
+            + f"in module `{imp.ref.modname}`",
+            loc=imp.loc_asname,
+        )
         raise err
