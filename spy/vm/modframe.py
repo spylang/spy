@@ -133,7 +133,8 @@ class ModFrame(AbstractFrame):
         )
         if imp.ref.modname not in self.vm.modules_w:
             # See if there is a matching .py file
-            if self.vm.find_file_on_path(imp.ref.modname, allow_py_files=True):
+            f = self.vm.find_file_on_path(imp.ref.modname)
+            if f is not None and f.ext == ".py":
                 err.add(
                     "error",
                     f"file `{imp.ref.modname}.py` exists, but py files cannot be imported",

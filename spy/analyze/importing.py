@@ -209,7 +209,9 @@ class ImportAnalyzer:
                 w_mod = self.vm.modules_w[modname]
                 self.mods[modname] = w_mod
 
-            elif spyfile := self.vm.find_file_on_path(modname):
+            elif (spyfile := self.vm.find_file_on_path(modname)) and (
+                spyfile.ext == ".spy"
+            ):
                 # Initialize the dependency list for this module
                 if modname not in self.deps:
                     self.deps[modname] = OrderedSet()

@@ -270,8 +270,7 @@ class TestVM:
         assert vm.find_file_on_path("nonexistent") is None
         py_file = tmpdir.join("py.py")
         py_file.write("i = 42\n")
-        assert vm.find_file_on_path("py") is None
-        assert vm.find_file_on_path("py", allow_py_files=True) == tmpdir.join("py.py")
+        assert vm.find_file_on_path("py") == tmpdir.join("py.py")
 
     def test_wrap_list(self):
         from spy.vm.struct import unwrap_list

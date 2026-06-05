@@ -47,6 +47,25 @@ class TestImporting(CompilerTest):
             from mymodule import x
             """)
 
+    def test_py_shadows_spy(self):
+        # a .py in an earlier vm.path dir shadows a .spy in a later one, so
+        # the import fails even though a .spy exists
+        otherdir = self.tmpdir.join("otherdir").ensure(dir=True)
+        self.vm.path.insert(0, str(otherdir))
+        otherdir.join("mymodule.py").write("x = 42")
+        self.write_file("mymodule.spy", "x: i32 = 100")
+        ctx = expect_errors(
+            "cannot import `mymodule.x`",
+            (
+                "file `mymodule.py` exists, but py files cannot be imported",
+                "from mymodule import x",
+            ),
+        )
+        with ctx:
+            self.compile("""
+            from mymodule import x
+            """)
+
     def test_function_in_other_module(self):
         src = """
         def get_delta() -> i32:

@@ -170,22 +170,25 @@ class SPyVM:
         w_mod = self.modules_w[modname]
         return w_mod
 
-    def find_file_on_path(
-        self, modname: str, allow_py_files: bool = False
-    ) -> Optional[py.path.local]:
+    def find_file_on_path(self, modname: str) -> Optional[py.path.local]:
         # XXX for now we assume that we find the module as a single file in
         # the only vm.path entry. Eventually we will need a proper import
         # mechanism and support for packages
+        #
+        # We search dir by dir, and within a dir .spy wins over .py. The
+        # caller is expected to check the extension of the result: a .py file
+        # cannot be imported, but we return it anyway so that the caller can
+        # produce a good error message. Note that a .py found in an earlier
+        # dir shadows a .spy in a later dir.
         assert self.path, "vm.path not set"
         for d in self.path:
             # XXX write test for this
             f = py.path.local(d).join(f"{modname}.spy")
             if f.exists():
                 return f
-            if allow_py_files:
-                py_f = f.new(ext=".py")
-                if py_f.exists():
-                    return py_f
+            py_f = f.new(ext=".py")
+            if py_f.exists():
+                return py_f
 
         return None
 
