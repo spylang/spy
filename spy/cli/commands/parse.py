@@ -31,7 +31,7 @@ class _parse_mixin:
         Option(
             "--spyast-js",
             help="How to include spyast.js in the HTML output",
-            click_type=click.Choice(["cdn", "inline"]),
+            click_type=click.Choice(["cdn", "inline", "relative"]),
         ),
     ] = "inline"
 
