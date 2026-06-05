@@ -762,6 +762,44 @@ class W_Type(W_Object):
     def w_repr(vm: "SPyVM", w_self: "W_Type") -> "W_Str":
         return vm.wrap(repr(w_self))
 
+    @builtin_property("__name__")
+    @staticmethod
+    def w_get_name(vm: "SPyVM", w_self: "W_Type") -> "W_Str":
+        """
+        Equivalent to fqn.human_symbol_name().
+        """
+        return vm.wrap(w_self.fqn.human_symbol_name(vm))
+
+    @builtin_property("__qualname__")
+    @staticmethod
+    def w_get_qualname(vm: "SPyVM", w_self: "W_Type") -> "W_Str":
+        """
+        Equivalent to __fqn__ and fqn.human_name().
+
+        This is what is shown in the output of e.g. 'spy redshift'.
+        """
+        return vm.wrap(w_self.fqn.human_name(vm))
+
+    @builtin_property("__fqn__")
+    @staticmethod
+    def w_get_fqn(vm: "SPyVM", w_self: "W_Type") -> "W_Str":
+        """
+        Equivalent to __qualname__ and fqn.human_name()
+
+        This is what is shown in the output of e.g. 'spy redshift'.
+        """
+        return vm.wrap(w_self.fqn.human_name(vm))
+
+    @builtin_property("__full_fqn__")
+    @staticmethod
+    def w_get_full_fqn(vm: "SPyVM", w_self: "W_Type") -> "W_Str":
+        """
+        Equivalent to str(fqn).
+
+        This is what is shown in the output of e.g. 'spy redshift --full-fqn'.
+        """
+        return vm.wrap(str(w_self.fqn))
+
     # this is the equivalent of CPython's typeobject.c:type_getattro
     @builtin_method("__getattribute__", color="blue", kind="metafunc")
     @staticmethod

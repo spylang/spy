@@ -1568,3 +1568,27 @@ class TestBasic(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == 1
+
+    @only_interp
+    def test_type_name_attributes(self):
+        src = """
+        @struct
+        class Foo[T]:
+            pass
+
+        def get_name() -> str:
+            return Foo[i32].__name__
+
+        def get_qualname() -> str:
+            return Foo[i32].__qualname__
+
+        def get_fqn() -> str:
+            return Foo[i32].__fqn__
+
+        def get_full_fqn() -> str:
+            return Foo[i32].__full_fqn__
+        """
+        mod = self.compile(src)
+        assert mod.get_name() == "Foo[i32]"
+        assert mod.get_qualname() == mod.get_fqn() == "test::Foo[i32]"
+        assert mod.get_full_fqn() == "test::Foo[i32]::Self"
