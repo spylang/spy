@@ -190,8 +190,9 @@ class SymTable:
             loc = w_obj.def_loc if isinstance(w_obj, W_BuiltinFunc) else None
             add_sym(attr, ImportRef("builtins", attr), loc)
 
-        for attr in ("abs", "min", "max"):
-            add_sym(attr, ImportRef("_builtins", attr))
+        add_sym("abs", ImportRef("_builtins", "abs"))
+        add_sym("min", ImportRef("_builtins", "min"))
+        add_sym("max", ImportRef("_builtins", "max"))
 
         add_sym("range", ImportRef("_range", "range"))
         add_sym("list", ImportRef("_list", "list"))
