@@ -48,7 +48,6 @@ class W_Bytes(W_Object):
         "__add__": FQN("_bytes::methods::__add__"),
         "__mul__": FQN("_bytes::methods::__mul__"),
         "__repr__": FQN("_bytes::methods::__repr__"),
-        "__str__": FQN("_bytes::methods::__str__"),
     }
 
     vm: "SPyVM"

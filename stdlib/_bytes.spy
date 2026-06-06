@@ -11,7 +11,12 @@ It is possible to cast between bytes and gc_ptr[BytesObject] using
 BytesObject.{from,to}_bytes.
 """
 
-from unsafe import gc_ptr, _bytes_to_BytesObject, _alloc_BytesObject, _BytesObject_to_bytes
+from unsafe import (
+    gc_ptr,
+    _bytes_to_BytesObject,
+    _alloc_BytesObject,
+    _BytesObject_to_bytes,
+)
 from _str import StrObject
 
 
@@ -93,22 +98,15 @@ class methods:
 
     def __repr__(self: bytes) -> str:
         ll = BytesObject.from_bytes(self)
-        backslash: u8 = 92
-        quote: u8 = 39
-        newline: u8 = 10
-        cr: u8 = 13
-        tab: u8 = 9
-        space: u8 = 32
-        tilde: u8 = 126
         # First pass: compute the output length of the b'...' representation
         out_len: i32 = 3  # b + ' + '
         for i in range(ll.length):
             c = ll.data[i]
-            if c == backslash or c == quote:
+            if c == ord(b"\\") or c == ord(b"'"):
                 out_len = out_len + 2
-            elif c == newline or c == cr or c == tab:
+            elif c == ord(b"\n") or c == ord(b"\r") or c == ord(b"\t"):
                 out_len = out_len + 2
-            elif c < space or c > tilde:
+            elif c < ord(b" ") or c > ord(b"~"):
                 out_len = out_len + 4  # \xNN
             else:
                 out_len = out_len + 1
@@ -116,67 +114,57 @@ class methods:
         out = StrObject.alloc(out_len)
         out.hash = 0
         j: i32 = 0
-        b_byte: u8 = 98
-        out.utf8[j] = b_byte
+        out.utf8[j] = ord(b"b")
         j = j + 1
-        out.utf8[j] = quote
+        out.utf8[j] = ord(b"'")
         j = j + 1
-        n_: u8 = 110
-        r_: u8 = 114
-        t_: u8 = 116
-        x_: u8 = 120
-        zero: u8 = 48
-        a_hex: u8 = 97
         for k in range(ll.length):
             c2 = ll.data[k]
-            if c2 == backslash:
-                out.utf8[j] = backslash
+            if c2 == ord(b"\\"):
+                out.utf8[j] = ord(b"\\")
                 j = j + 1
-                out.utf8[j] = backslash
+                out.utf8[j] = ord(b"\\")
                 j = j + 1
-            elif c2 == quote:
-                out.utf8[j] = backslash
+            elif c2 == ord(b"'"):
+                out.utf8[j] = ord(b"\\")
                 j = j + 1
-                out.utf8[j] = quote
+                out.utf8[j] = ord(b"'")
                 j = j + 1
-            elif c2 == newline:
-                out.utf8[j] = backslash
+            elif c2 == ord(b"\n"):
+                out.utf8[j] = ord(b"\\")
                 j = j + 1
-                out.utf8[j] = n_
+                out.utf8[j] = ord(b"n")
                 j = j + 1
-            elif c2 == cr:
-                out.utf8[j] = backslash
+            elif c2 == ord(b"\r"):
+                out.utf8[j] = ord(b"\\")
                 j = j + 1
-                out.utf8[j] = r_
+                out.utf8[j] = ord(b"r")
                 j = j + 1
-            elif c2 == tab:
-                out.utf8[j] = backslash
+            elif c2 == ord(b"\t"):
+                out.utf8[j] = ord(b"\\")
                 j = j + 1
-                out.utf8[j] = t_
+                out.utf8[j] = ord(b"t")
                 j = j + 1
-            elif c2 < space or c2 > tilde:
+            elif c2 < ord(b" ") or c2 > ord(b"~"):
                 # \xNN hex escape
-                out.utf8[j] = backslash
+                out.utf8[j] = ord(b"\\")
                 j = j + 1
-                out.utf8[j] = x_
+                out.utf8[j] = ord(b"x")
                 j = j + 1
                 hi: i32 = i32(c2) >> 4
                 lo: i32 = i32(c2) & 15
                 if hi < 10:
-                    out.utf8[j] = u8(hi) + zero
+                    out.utf8[j] = u8(hi) + ord(b"0")
                 else:
-                    out.utf8[j] = u8(hi - 10) + a_hex
+                    out.utf8[j] = u8(hi - 10) + ord(b"a")
                 j = j + 1
                 if lo < 10:
-                    out.utf8[j] = u8(lo) + zero
+                    out.utf8[j] = u8(lo) + ord(b"0")
                 else:
-                    out.utf8[j] = u8(lo - 10) + a_hex
+                    out.utf8[j] = u8(lo - 10) + ord(b"a")
                 j = j + 1
             else:
                 out.utf8[j] = c2
                 j = j + 1
-        out.utf8[j] = quote
+        out.utf8[j] = ord(b"'")
         return StrObject.to_str(out)
-
-    def __str__(self: bytes) -> str:
-        return self.__repr__()

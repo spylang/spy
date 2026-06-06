@@ -76,12 +76,38 @@ class TestBytes(CompilerTest):
         """)
         assert mod.foo() is True
 
-    def test_repr(self):
+    def test_repr_str(self):
         mod = self.compile("""
-        def foo() -> str:
-            return repr(b'a\\x00b')
+        def b_repr(b: bytes) -> str:
+            return repr(b)
+
+        def b_str(b: bytes) -> str:
+            return str(b)
         """)
-        assert mod.foo() == "b'a\\x00b'"
+        # printable ASCII: no escaping
+        assert mod.b_repr(b"abc") == "b'abc'"
+        # backslash
+        assert mod.b_repr(b"a\\b") == "b'a\\\\b'"
+        # single quote
+        assert mod.b_repr(b"a'b") == "b'a\\'b'"
+        # \n \r \t shortcuts
+        assert mod.b_repr(b"\n") == "b'\\n'"
+        assert mod.b_repr(b"\r") == "b'\\r'"
+        assert mod.b_repr(b"\t") == "b'\\t'"
+        # control char below space (not \n/\r/\t) -> \xNN
+        assert mod.b_repr(b"\x00") == "b'\\x00'"
+        assert mod.b_repr(b"\x1f") == "b'\\x1f'"
+        # byte above tilde -> \xNN, exercising both hex digit branches (>=10 and <10)
+        assert mod.b_repr(b"\x7f") == "b'\\x7f'"
+        assert mod.b_repr(b"\xff") == "b'\\xff'"
+        assert mod.b_repr(b"\xa0") == "b'\\xa0'"
+        # empty
+        assert mod.b_repr(b"") == "b''"
+        # mixed
+        assert mod.b_repr(b"a\x00b") == "b'a\\x00b'"
+        #
+        # str() just calls repr()
+        assert mod.b_str(b"abc") == "b'abc'"
 
     def test_hash_stable(self):
         mod = self.compile("""
