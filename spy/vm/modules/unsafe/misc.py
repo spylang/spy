@@ -10,7 +10,7 @@ def sizeof(w_T: W_Type) -> int:
 
     if w_T in (B.w_i8, B.w_u8):
         return 1
-    elif w_T is B.w_i32:
+    elif w_T in (B.w_i32, B.w_u32, B.w_f32):
         return 4
     elif w_T is B.w_f64:
         return 8
