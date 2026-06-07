@@ -132,6 +132,13 @@ class CStructWriter:
             )
             return
 
+        # _bytes::BytesObject is already declared in bytes.h as spy_BytesObject.
+        if str(w_st.fqn) == "_bytes::BytesObject":
+            self.tbh_fwdecl.wl(
+                f"typedef spy_BytesObject {c_st}; /* alias of spy_BytesObject */"
+            )
+            return
+
         human_fqn = w_st.fqn.human_name(self.ctx.vm)
         self.tbh_fwdecl.wl(f"typedef struct {c_st} {c_st}; /* {human_fqn} */")
 
@@ -158,6 +165,7 @@ class CStructWriter:
         if str(w_ptrtype.fqn) in (
             "unsafe::gc_ptr[u8]",
             "unsafe::gc_ptr[_str::StrObject]",
+            "unsafe::gc_ptr[_bytes::BytesObject]",
         ):
             self.tbh_fwdecl.wl(
                 f"// {c_ptrtype}: skip as it's already pre-declared by libspy"

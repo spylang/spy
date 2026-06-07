@@ -762,7 +762,7 @@ class W_Type(W_Object):
     def w_repr(vm: "SPyVM", w_self: "W_Type") -> "W_Str":
         return vm.wrap(repr(w_self))
 
-    @builtin_property("__name__")
+    @builtin_property("__name__", is_pure=True)
     @staticmethod
     def w_get_name(vm: "SPyVM", w_self: "W_Type") -> "W_Str":
         """
@@ -770,7 +770,7 @@ class W_Type(W_Object):
         """
         return vm.wrap(w_self.fqn.human_symbol_name(vm))
 
-    @builtin_property("__qualname__")
+    @builtin_property("__qualname__", is_pure=True)
     @staticmethod
     def w_get_qualname(vm: "SPyVM", w_self: "W_Type") -> "W_Str":
         """
@@ -780,7 +780,7 @@ class W_Type(W_Object):
         """
         return vm.wrap(w_self.fqn.human_name(vm))
 
-    @builtin_property("__fqn__")
+    @builtin_property("__fqn__", is_pure=True)
     @staticmethod
     def w_get_fqn(vm: "SPyVM", w_self: "W_Type") -> "W_Str":
         """
@@ -790,7 +790,7 @@ class W_Type(W_Object):
         """
         return vm.wrap(w_self.fqn.human_name(vm))
 
-    @builtin_property("__full_fqn__")
+    @builtin_property("__full_fqn__", is_pure=True)
     @staticmethod
     def w_get_full_fqn(vm: "SPyVM", w_self: "W_Type") -> "W_Str":
         """

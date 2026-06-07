@@ -363,6 +363,19 @@ class StrLiteral(Expr):
 
 
 @astnode
+class BytesLiteral(Expr):
+    """
+    Like Literal, but for bytes objects (b"..." literals).
+    """
+
+    precedence = 100  # the highest
+    value: bytes
+
+    def shortrepr(self) -> Optional[str]:
+        return repr(self.value)
+
+
+@astnode
 class GetItem(Expr):
     precedence = 16
     value: Expr

@@ -374,6 +374,9 @@ class SPyBackend:
     def fmt_expr_StrLiteral(self, const: ast.StrLiteral) -> str:
         return repr(const.value)
 
+    def fmt_expr_BytesLiteral(self, const: ast.BytesLiteral) -> str:
+        return repr(const.value)
+
     def fmt_expr_FQNConst(self, const: ast.FQNConst) -> str:
         # hack hack hack: in case of prebuilt exceptions, let's emit a more
         # readable form. This is needed because for now raise supports only
