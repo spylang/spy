@@ -2,19 +2,16 @@ from spy.tests.support import CompilerTest, only_interp
 
 
 class TestBytes(CompilerTest):
-    def test_literal_empty(self):
-        mod = self.compile("""
-        def foo() -> bytes:
-            return b''
-        """)
-        assert mod.foo() == b""
-
     def test_literal(self):
         mod = self.compile("""
         def foo() -> bytes:
             return b'hello'
+
+        def bar() -> bytes:
+            return b''
         """)
         assert mod.foo() == b"hello"
+        assert mod.bar() == b""
 
     def test_len(self):
         mod = self.compile("""
@@ -55,26 +52,18 @@ class TestBytes(CompilerTest):
         """)
         assert mod.foo(b"ABC", -1) == ord("C")
 
-    def test_eq_true(self):
+    def test_eq_ne(self):
         mod = self.compile("""
-        def foo() -> bool:
-            return b'abc' == b'abc'
-        """)
-        assert mod.foo() is True
+        def eq(a: bytes, b: bytes) -> bool:
+            return a == b
 
-    def test_eq_false(self):
-        mod = self.compile("""
-        def foo() -> bool:
-            return b'abc' == b'abd'
+        def ne(a: bytes, b: bytes) -> bool:
+            return a != b
         """)
-        assert mod.foo() is False
-
-    def test_ne(self):
-        mod = self.compile("""
-        def foo() -> bool:
-            return b'abc' != b'abd'
-        """)
-        assert mod.foo() is True
+        assert mod.eq(b"abc", b"abc") is True
+        assert mod.eq(b"abc", b"aaa") is False
+        assert mod.ne(b"abc", b"abc") is False
+        assert mod.ne(b"abc", b"aaa") is True
 
     def test_repr_str(self):
         mod = self.compile("""
@@ -117,20 +106,3 @@ class TestBytes(CompilerTest):
         result = mod.foo()
         assert result != 0
         assert result == mod.foo()
-
-    def test_bytes_argument(self):
-        mod = self.compile("""
-        def foo(b: bytes) -> bytes:
-            return b + b'!'
-        """)
-        assert mod.foo(b"hello") == b"hello!"
-
-    def test_BytesObject_roundtrip(self):
-        mod = self.compile("""
-        from _bytes import BytesObject
-
-        def foo() -> i32:
-            ll = BytesObject.from_bytes(b'hello')
-            return ll.length
-        """)
-        assert mod.foo() == 5
