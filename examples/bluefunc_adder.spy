@@ -8,16 +8,26 @@ Things to notice:
 """
 
 
-@blue
+def make_adder[T, x](y: T) -> T:
+    return x + y
+
+
+"""
+This generic function is just syntactic sugar for
+
+@blue.generic
 def make_adder(T, x):
-    def adder(y: T) -> T:
+    def _impl(y: T) -> T:
         return x + y
 
-    return adder
+    return _impl
 
+Functions decorated with @blue.generic are called using square brackets [] instead of parentheses ().
+Other than that, they are identical to other blue functions.
+"""
 
-add_4 = make_adder(i32, 4)
-add_pi = make_adder(f64, 3.1415)
+add_4 = make_adder[i32, 4]
+add_pi = make_adder[f64, 3.1415]
 
 
 def main() -> None:
