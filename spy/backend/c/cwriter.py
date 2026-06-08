@@ -558,7 +558,7 @@ class CFuncWriter:
             return self.fmt_generic_call(fqn, call)
 
         elif irtag.tag == "unsafe.memop":
-            # memcpy, memmove, etc.
+            # ptr_copy, ptr_move, etc.
             return self.fmt_memop(fqn, call, irtag)
 
         else:
@@ -606,6 +606,6 @@ class CFuncWriter:
 
     def fmt_memop(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         cfunc = irtag.data["cfunc"]
-        assert cfunc in ("spy_memcpy", "spy_memmove", "spy_memcmp", "spy_memset")
+        assert cfunc in ("spy_ptr_copy", "spy_ptr_move", "spy_ptr_cmp", "spy_ptr_set")
         c_args = [self.fmt_expr(arg) for arg in call.args]
         return C.Call(cfunc, c_args)

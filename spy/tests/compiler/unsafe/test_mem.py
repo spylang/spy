@@ -10,10 +10,10 @@ def memkind(request):
 
 
 class TestMem(CompilerTest):
-    def test_memcpy(self, memkind):
+    def test_ptr_copy(self, memkind):
         k = memkind
         src = """
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, memcpy
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, ptr_copy
 
         def foo() -> i32:
             src: k_ptr[u8] = k_alloc[u8](4)
@@ -22,15 +22,15 @@ class TestMem(CompilerTest):
             src[1] = 20
             src[2] = 30
             src[3] = 40
-            memcpy(dst, src, 4)
+            ptr_copy(dst, src, 4)
             return dst[0] + dst[1] + dst[2] + dst[3]
         """.format(k=k)
         mod = self.compile(src)
         assert mod.foo() == 100
 
-    def test_memcpy_mixed_memkind(self):
+    def test_ptr_copy_mixed_memkind(self):
         src = """
-        from unsafe import raw_alloc, raw_ptr, gc_alloc, gc_ptr, memcpy
+        from unsafe import raw_alloc, raw_ptr, gc_alloc, gc_ptr, ptr_copy
 
         def foo() -> i32:
             src: raw_ptr[u8] = raw_alloc[u8](3)
@@ -38,19 +38,19 @@ class TestMem(CompilerTest):
             src[0] = 1
             src[1] = 2
             src[2] = 3
-            memcpy(dst, src, 3)
+            ptr_copy(dst, src, 3)
             return dst[0] + dst[1] + dst[2]
         """
         mod = self.compile(src)
         assert mod.foo() == 6
 
-    def test_memcpy_not_a_ptr(self):
+    def test_ptr_copy_not_a_ptr(self):
         src = """
-        from unsafe import memcpy
+        from unsafe import ptr_copy
 
         def foo() -> i32:
             x: i32 = 0
-            memcpy(x, x, 4)
+            ptr_copy(x, x, 4)
             return 0
         """
         errors = expect_errors(
@@ -59,14 +59,14 @@ class TestMem(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    def test_memcpy_incompatible_ptrs(self):
+    def test_ptr_copy_incompatible_ptrs(self):
         src = """
-        from unsafe import raw_alloc, raw_ptr, memcpy
+        from unsafe import raw_alloc, raw_ptr, ptr_copy
 
         def foo() -> i32:
             a: raw_ptr[i32] = raw_alloc[i32](4)
             b: raw_ptr[u8] = raw_alloc[u8](4)
-            memcpy(a, b, 4)
+            ptr_copy(a, b, 4)
             return 0
         """
         errors = expect_errors(
@@ -76,10 +76,10 @@ class TestMem(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    def test_memcpy_i32(self, memkind):
+    def test_ptr_copy_i32(self, memkind):
         k = memkind
         src = """
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, memcpy
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, ptr_copy
 
         def foo() -> i32:
             src: k_ptr[i32] = k_alloc[i32](4)
@@ -88,46 +88,46 @@ class TestMem(CompilerTest):
             src[1] = 200
             src[2] = 300
             src[3] = 400
-            memcpy(dst, src, 4)
+            ptr_copy(dst, src, 4)
             return dst[0] + dst[1] + dst[2] + dst[3]
         """.format(k=k)
         mod = self.compile(src)
         assert mod.foo() == 1000
 
-    def test_memcpy_i32_out_of_bounds(self, memkind):
+    def test_ptr_copy_i32_out_of_bounds(self, memkind):
         k = memkind
         src = """
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, memcpy
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, ptr_copy
 
         def foo() -> i32:
             src: k_ptr[i32] = k_alloc[i32](4)
             dst: k_ptr[i32] = k_alloc[i32](4)
-            memcpy(dst, src, 10)
+            ptr_copy(dst, src, 10)
             return 0
         """.format(k=k)
         mod = self.compile(src)
         with SPyError.raises("W_PanicError", match="out of bounds"):
             mod.foo()
 
-    def test_memcpy_out_of_bounds(self, memkind):
+    def test_ptr_copy_out_of_bounds(self, memkind):
         k = memkind
         src = """
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, memcpy
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, ptr_copy
 
         def foo() -> i32:
             src: k_ptr[u8] = k_alloc[u8](4)
             dst: k_ptr[u8] = k_alloc[u8](4)
-            memcpy(dst, src, 10)
+            ptr_copy(dst, src, 10)
             return 0
         """.format(k=k)
         mod = self.compile(src)
         with SPyError.raises("W_PanicError", match="out of bounds"):
             mod.foo()
 
-    def test_memmove(self, memkind):
+    def test_ptr_move(self, memkind):
         k = memkind
         src = """
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, memmove
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, ptr_move
 
         def foo() -> i32:
             src: k_ptr[u8] = k_alloc[u8](4)
@@ -136,19 +136,19 @@ class TestMem(CompilerTest):
             src[1] = 20
             src[2] = 30
             src[3] = 40
-            memmove(dst, src, 4)
+            ptr_move(dst, src, 4)
             return dst[0] + dst[1] + dst[2] + dst[3]
         """.format(k=k)
         mod = self.compile(src)
         assert mod.foo() == 100
 
-    def test_memmove_not_a_ptr(self):
+    def test_ptr_move_not_a_ptr(self):
         src = """
-        from unsafe import memmove
+        from unsafe import ptr_move
 
         def foo() -> i32:
             x: i32 = 0
-            memmove(x, x, 4)
+            ptr_move(x, x, 4)
             return 0
         """
         errors = expect_errors(
@@ -157,14 +157,14 @@ class TestMem(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    def test_memmove_incompatible_ptrs(self):
+    def test_ptr_move_incompatible_ptrs(self):
         src = """
-        from unsafe import raw_alloc, raw_ptr, memmove
+        from unsafe import raw_alloc, raw_ptr, ptr_move
 
         def foo() -> i32:
             a: raw_ptr[i32] = raw_alloc[i32](4)
             b: raw_ptr[u8] = raw_alloc[u8](4)
-            memmove(a, b, 4)
+            ptr_move(a, b, 4)
             return 0
         """
         errors = expect_errors(
@@ -174,41 +174,41 @@ class TestMem(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    def test_memmove_out_of_bounds(self, memkind):
+    def test_ptr_move_out_of_bounds(self, memkind):
         k = memkind
         src = """
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, memmove
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, ptr_move
 
         def foo() -> i32:
             src: k_ptr[u8] = k_alloc[u8](4)
             dst: k_ptr[u8] = k_alloc[u8](4)
-            memmove(dst, src, 10)
+            ptr_move(dst, src, 10)
             return 0
         """.format(k=k)
         mod = self.compile(src)
         with SPyError.raises("W_PanicError", match="out of bounds"):
             mod.foo()
 
-    def test_memset(self, memkind):
+    def test_ptr_set(self, memkind):
         k = memkind
         src = """
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, memset
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, ptr_set
 
         def foo() -> i32:
             buf: k_ptr[u8] = k_alloc[u8](4)
-            memset(buf, 7, 4)
+            ptr_set(buf, 7, 4)
             return buf[0] + buf[1] + buf[2] + buf[3]
         """.format(k=k)
         mod = self.compile(src)
         assert mod.foo() == 28
 
-    def test_memset_not_a_ptr(self):
+    def test_ptr_set_not_a_ptr(self):
         src = """
-        from unsafe import memset
+        from unsafe import ptr_set
 
         def foo() -> i32:
             x: i32 = 0
-            memset(x, 0, 4)
+            ptr_set(x, 0, 4)
             return 0
         """
         errors = expect_errors(
@@ -217,38 +217,38 @@ class TestMem(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    def test_memset_out_of_bounds(self, memkind):
+    def test_ptr_set_out_of_bounds(self, memkind):
         k = memkind
         src = """
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, memset
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, ptr_set
 
         def foo() -> i32:
             buf: k_ptr[u8] = k_alloc[u8](4)
-            memset(buf, 0, 10)
+            ptr_set(buf, 0, 10)
             return 0
         """.format(k=k)
         mod = self.compile(src)
         with SPyError.raises("W_PanicError", match="out of bounds"):
             mod.foo()
 
-    def test_memcmp(self, memkind):
+    def test_ptr_cmp(self, memkind):
         k = memkind
         src = """
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, memset, memcmp
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, ptr_set, ptr_cmp
 
         def foo() -> i32:
             a: k_ptr[u8] = k_alloc[u8](4)
             b: k_ptr[u8] = k_alloc[u8](4)
-            memset(a, 42, 4)
-            memset(b, 42, 4)
-            return memcmp(a, b, 4)
+            ptr_set(a, 42, 4)
+            ptr_set(b, 42, 4)
+            return ptr_cmp(a, b, 4)
 
         def bar() -> i32:
             a: k_ptr[u8] = k_alloc[u8](4)
             b: k_ptr[u8] = k_alloc[u8](4)
-            memset(a, 1, 4)
-            memset(b, 2, 4)
-            r: i32 = memcmp(a, b, 4)
+            ptr_set(a, 1, 4)
+            ptr_set(b, 2, 4)
+            r: i32 = ptr_cmp(a, b, 4)
             if r < 0:
                 return -1
             return 1
@@ -257,13 +257,13 @@ class TestMem(CompilerTest):
         assert mod.foo() == 0
         assert mod.bar() == -1
 
-    def test_memcmp_not_a_ptr(self):
+    def test_ptr_cmp_not_a_ptr(self):
         src = """
-        from unsafe import memcmp
+        from unsafe import ptr_cmp
 
         def foo() -> i32:
             x: i32 = 0
-            return memcmp(x, x, 4)
+            return ptr_cmp(x, x, 4)
         """
         errors = expect_errors(
             "mismatched types",
@@ -271,14 +271,14 @@ class TestMem(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    def test_memcmp_incompatible_ptrs(self):
+    def test_ptr_cmp_incompatible_ptrs(self):
         src = """
-        from unsafe import raw_alloc, raw_ptr, memcmp
+        from unsafe import raw_alloc, raw_ptr, ptr_cmp
 
         def foo() -> i32:
             a: raw_ptr[i32] = raw_alloc[i32](4)
             b: raw_ptr[u8] = raw_alloc[u8](4)
-            return memcmp(a, b, 4)
+            return ptr_cmp(a, b, 4)
         """
         errors = expect_errors(
             "mismatched types",
@@ -287,15 +287,15 @@ class TestMem(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    def test_memcmp_out_of_bounds(self, memkind):
+    def test_ptr_cmp_out_of_bounds(self, memkind):
         k = memkind
         src = """
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, memcmp
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, ptr_cmp
 
         def foo() -> i32:
             a: k_ptr[u8] = k_alloc[u8](4)
             b: k_ptr[u8] = k_alloc[u8](4)
-            return memcmp(a, b, 10)
+            return ptr_cmp(a, b, 10)
         """.format(k=k)
         mod = self.compile(src)
         with SPyError.raises("W_PanicError", match="out of bounds"):
