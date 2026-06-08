@@ -18,7 +18,7 @@ Other directories contain more specialized examples:
 | [`debugger/`](debugger/) | Using the SPy debugger (`spdb`) |
 | [`multifile/`](multifile/) | Multi-file SPy projects |
 | [`errors/`](errors/) | Examples of error handling and error messages |
-| [`failing_examples/`](failing_examples/) | Known failing cases / work in progress |
+| [`gc_stress/`](gc_stress/) | Garbage collector |
 
 ## Running the examples
 
