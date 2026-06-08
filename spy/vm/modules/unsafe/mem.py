@@ -57,101 +57,451 @@ def w_gc_alloc(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     return w_fn
 
 
-def _check_ptr_u8(vm: "SPyVM", wam: W_MetaArg) -> W_PtrType:
+def _check_ptr(vm: "SPyVM", wam: W_MetaArg) -> W_PtrType:
     """
-    Validate that a W_MetaArg is statically typed as ptr[u8] (any memkind).
+    Validate that a W_MetaArg is statically typed as ptr[T] (any memkind, any T).
     Raises W_TypeError on failure.
     """
     w_T = wam.w_static_T
-    if isinstance(w_T, W_PtrType) and w_T.w_itemT is B.w_u8:
+    if isinstance(w_T, W_PtrType):
         return w_T
     t = w_T.fqn.human_name(vm)
-    err = SPyError("W_TypeError", f"mismatched types")
-    err.add("error", f"expected ptr[u8], got `{t}`", loc=wam.loc)
+    err = SPyError("W_TypeError", "mismatched types")
+    err.add("error", f"expected ptr[T], got `{t}`", loc=wam.loc)
     raise err
+
+
+def _check_ptrs_match(
+    vm: "SPyVM", wam_a: W_MetaArg, wam_b: W_MetaArg
+) -> tuple[W_PtrType, W_PtrType]:
+    """
+    Validate that both wams are ptr[T] for the SAME T (memkinds may differ).
+    Raises W_TypeError on failure.
+    """
+    w_a_T = _check_ptr(vm, wam_a)
+    w_b_T = _check_ptr(vm, wam_b)
+    if w_a_T.w_itemT is not w_b_T.w_itemT:
+        a_t = w_a_T.fqn.human_name(vm)
+        b_t = w_b_T.fqn.human_name(vm)
+        err = SPyError("W_TypeError", "mismatched types")
+        err.add("error", f"`{a_t}`", loc=wam_a.loc)
+        err.add("error", f"`{b_t}`", loc=wam_b.loc)
+        raise err
+    return w_a_T, w_b_T
+
+
+def _check_byte_ptr(vm: "SPyVM", wam: W_MetaArg, ptr_op: str) -> W_PtrType:
+    """
+    Validate that a W_MetaArg is statically typed as ptr[u8] or ptr[i8].
+    Used by the memcpy/memmove/memset/memcmp shims, which mirror C's byte-
+    oriented mem* and only accept byte-sized item types.
+    """
+    w_T = _check_ptr(vm, wam)
+    if w_T.w_itemT is not B.w_u8 and w_T.w_itemT is not B.w_i8:
+        t = w_T.fqn.human_name(vm)
+        err = SPyError("W_TypeError", "mismatched types")
+        err.add("error", f"expected ptr[u8] or ptr[i8], got `{t}`", loc=wam.loc)
+        err.add("note", f"help: use `{ptr_op}` instead", loc=wam.loc)
+        raise err
+    return w_T
 
 
 @UNSAFE.builtin_func(color="blue", kind="metafunc")
 def w_memcpy(
     vm: "SPyVM", wam_dst: W_MetaArg, wam_src: W_MetaArg, wam_n: W_MetaArg
 ) -> W_OpSpec:
-    w_dst_T = _check_ptr_u8(vm, wam_dst)
-    w_src_T = _check_ptr_u8(vm, wam_src)
-    DST = Annotated[W_Ptr, w_dst_T]
-    SRC = Annotated[W_Ptr, w_src_T]
-    ns = UNSAFE.w_memcpy.compute_inner_ns([w_dst_T, w_src_T])
-    irtag = IRTag("unsafe.memop", cfunc="spy_memcpy")
+    """
+    memcpy(dst, src, n): copy `n` bytes from `src` to `dst`.
 
-    @vm.register_builtin_func(ns, "impl", irtag=irtag)
-    def w_memcpy_impl(vm: "SPyVM", w_dst: DST, w_src: SRC, w_n: W_I32) -> None:
-        n = vm.unwrap_i32(w_n)
-        if n > w_dst.length or n > w_src.length:
-            raise SPyError("W_PanicError", "memcpy out of bounds")
-        vm.ll.call("_spy_memcpy", w_dst.addr, w_src.addr, n)
-
-    return W_OpSpec(w_memcpy_impl, [wam_dst, wam_src, wam_n])
+    Mirrors C's memcpy: only accepts ptr[u8] or ptr[i8]; for any other ptr[T]
+    use ptr_copy instead. The two regions must NOT overlap (use memmove for
+    that).
+    """
+    _check_byte_ptr(vm, wam_dst, "ptr_copy")
+    _check_byte_ptr(vm, wam_src, "ptr_copy")
+    return vm.fast_metacall(UNSAFE.w_ptr_copy, [wam_dst, wam_src, wam_n])
 
 
 @UNSAFE.builtin_func(color="blue", kind="metafunc")
 def w_memmove(
     vm: "SPyVM", wam_dst: W_MetaArg, wam_src: W_MetaArg, wam_n: W_MetaArg
 ) -> W_OpSpec:
-    w_dst_T = _check_ptr_u8(vm, wam_dst)
-    w_src_T = _check_ptr_u8(vm, wam_src)
-    DST = Annotated[W_Ptr, w_dst_T]
-    SRC = Annotated[W_Ptr, w_src_T]
-    ns = UNSAFE.w_memmove.compute_inner_ns([w_dst_T, w_src_T])
-    irtag = IRTag("unsafe.memop", cfunc="spy_memmove")
+    """
+    memmove(dst, src, n): copy `n` bytes from `src` to `dst`, allowing overlap.
 
-    @vm.register_builtin_func(ns, "impl", irtag=irtag)
-    def w_memmove_impl(vm: "SPyVM", w_dst: DST, w_src: SRC, w_n: W_I32) -> None:
-        n = vm.unwrap_i32(w_n)
-        if n > w_dst.length or n > w_src.length:
-            raise SPyError("W_PanicError", "memmove out of bounds")
-        vm.ll.call("_spy_memmove", w_dst.addr, w_src.addr, n)
-
-    return W_OpSpec(w_memmove_impl, [wam_dst, wam_src, wam_n])
+    Mirrors C's memmove: only accepts ptr[u8] or ptr[i8]; for any other ptr[T]
+    use ptr_move instead.
+    """
+    _check_byte_ptr(vm, wam_dst, "ptr_move")
+    _check_byte_ptr(vm, wam_src, "ptr_move")
+    return vm.fast_metacall(UNSAFE.w_ptr_move, [wam_dst, wam_src, wam_n])
 
 
 @UNSAFE.builtin_func(color="blue", kind="metafunc")
 def w_memset(
     vm: "SPyVM", wam_dst: W_MetaArg, wam_value: W_MetaArg, wam_n: W_MetaArg
 ) -> W_OpSpec:
-    w_dst_T = _check_ptr_u8(vm, wam_dst)
-    DST = Annotated[W_Ptr, w_dst_T]
-    ns = UNSAFE.w_memset.compute_inner_ns([w_dst_T])
-    irtag = IRTag("unsafe.memop", cfunc="spy_memset")
+    """
+    memset(dst, value, n): write the byte `value` to the first `n` bytes of `dst`.
 
-    @vm.register_builtin_func(ns, "impl", irtag=irtag)
-    def w_memset_impl(vm: "SPyVM", w_dst: DST, w_value: W_U8, w_n: W_I32) -> None:
-        n = vm.unwrap_i32(w_n)
-        if n > w_dst.length:
-            raise SPyError("W_PanicError", "memset out of bounds")
-        vm.ll.call("_spy_memset", w_dst.addr, int(w_value.value), n)
-
-    return W_OpSpec(w_memset_impl, [wam_dst, wam_value, wam_n])
+    Mirrors C's memset: only accepts ptr[u8] or ptr[i8]; for any other ptr[T]
+    use ptr_set instead.
+    """
+    _check_byte_ptr(vm, wam_dst, "ptr_set")
+    return vm.fast_metacall(UNSAFE.w_ptr_set, [wam_dst, wam_value, wam_n])
 
 
 @UNSAFE.builtin_func(color="blue", kind="metafunc")
 def w_memcmp(
     vm: "SPyVM", wam_a: W_MetaArg, wam_b: W_MetaArg, wam_n: W_MetaArg
 ) -> W_OpSpec:
-    w_a_T = _check_ptr_u8(vm, wam_a)
-    w_b_T = _check_ptr_u8(vm, wam_b)
-    A = Annotated[W_Ptr, w_a_T]
-    B_ = Annotated[W_Ptr, w_b_T]
-    ns = UNSAFE.w_memcmp.compute_inner_ns([w_a_T, w_b_T])
-    irtag = IRTag("unsafe.memop", cfunc="spy_memcmp")
+    """
+    memcmp(a, b, n): compare the first `n` bytes of `a` and `b`.
+
+    Returns 0 if equal, <0 if a<b, >0 if a>b. Mirrors C's memcmp: only accepts
+    ptr[u8] or ptr[i8]; for any other ptr[T] use ptr_cmp instead.
+    """
+    _check_byte_ptr(vm, wam_a, "ptr_cmp")
+    _check_byte_ptr(vm, wam_b, "ptr_cmp")
+    return vm.fast_metacall(UNSAFE.w_ptr_cmp, [wam_a, wam_b, wam_n])
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_ptr_copy(
+    vm: "SPyVM", wam_dst: W_MetaArg, wam_src: W_MetaArg, wam_n: W_MetaArg
+) -> W_OpSpec:
+    """
+    ptr_copy(dst, src, n): copy `n` items from `src` to `dst`.
+
+    Both `src` and `dst` must be ptr[T] for the same item type T (memkinds may
+    differ). Unlike C's memcpy, `n` is the number of ITEMS, not bytes —
+    matching Rust's ptr::copy_nonoverlapping, Java's System.arraycopy, etc.
+    The two regions must NOT overlap (use ptr_move for that).
+    """
+    w_dst_T, w_src_T = _check_ptrs_match(vm, wam_dst, wam_src)
+    DST = Annotated[W_Ptr, w_dst_T]
+    SRC = Annotated[W_Ptr, w_src_T]
+    ITEMSIZE = sizeof(w_dst_T.w_itemT)
+    ns = UNSAFE.w_ptr_copy.compute_inner_ns([w_dst_T, w_src_T])
+    irtag = IRTag("unsafe.memop", cfunc="spy_ptr_copy")
 
     @vm.register_builtin_func(ns, "impl", irtag=irtag)
-    def w_memcmp_impl(vm: "SPyVM", w_a: A, w_b: B_, w_n: W_I32) -> W_I32:
+    def w_ptr_copy_impl(vm: "SPyVM", w_dst: DST, w_src: SRC, w_n: W_I32) -> None:
+        n = vm.unwrap_i32(w_n)
+        if n > w_dst.length or n > w_src.length:
+            raise SPyError("W_PanicError", "ptr_copy out of bounds")
+        vm.ll.call("_spy_memcpy", w_dst.addr, w_src.addr, n * ITEMSIZE)
+
+    return W_OpSpec(w_ptr_copy_impl, [wam_dst, wam_src, wam_n])
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_ptr_copy_slice(
+    vm: "SPyVM",
+    wam_dst: W_MetaArg,
+    wam_dst_start: W_MetaArg,
+    wam_dst_end: W_MetaArg,
+    wam_src: W_MetaArg,
+    wam_src_start: W_MetaArg,
+    wam_src_end: W_MetaArg,
+) -> W_OpSpec:
+    """
+    ptr_copy_slice(dst, dst_start, dst_end, src, src_start, src_end):
+    copy items from src[src_start:src_end] into dst[dst_start:dst_end].
+
+    Both slices must have the same length, both endpoints must be in bounds,
+    and the two regions must NOT overlap (use ptr_move_slice for that).
+    """
+    w_dst_T, w_src_T = _check_ptrs_match(vm, wam_dst, wam_src)
+    DST = Annotated[W_Ptr, w_dst_T]
+    SRC = Annotated[W_Ptr, w_src_T]
+    ITEMSIZE = sizeof(w_dst_T.w_itemT)
+    ns = UNSAFE.w_ptr_copy_slice.compute_inner_ns([w_dst_T, w_src_T])
+    irtag = IRTag("unsafe.memop", cfunc="spy_ptr_copy_slice")
+
+    @vm.register_builtin_func(ns, "impl", irtag=irtag)
+    def w_ptr_copy_slice_impl(
+        vm: "SPyVM",
+        w_dst: DST,
+        w_dst_start: W_I32,
+        w_dst_end: W_I32,
+        w_src: SRC,
+        w_src_start: W_I32,
+        w_src_end: W_I32,
+    ) -> None:
+        dst_start = vm.unwrap_i32(w_dst_start)
+        dst_end = vm.unwrap_i32(w_dst_end)
+        src_start = vm.unwrap_i32(w_src_start)
+        src_end = vm.unwrap_i32(w_src_end)
+        n = dst_end - dst_start
+        if n != src_end - src_start:
+            raise SPyError("W_PanicError", "ptr_copy_slice length mismatch")
+        if n < 0:
+            raise SPyError("W_PanicError", "ptr_copy_slice out of bounds")
+        if dst_start < 0 or dst_end > w_dst.length:
+            raise SPyError("W_PanicError", "ptr_copy_slice out of bounds")
+        if src_start < 0 or src_end > w_src.length:
+            raise SPyError("W_PanicError", "ptr_copy_slice out of bounds")
+        vm.ll.call(
+            "_spy_memcpy",
+            w_dst.addr + dst_start * ITEMSIZE,
+            w_src.addr + src_start * ITEMSIZE,
+            n * ITEMSIZE,
+        )
+
+    return W_OpSpec(
+        w_ptr_copy_slice_impl,
+        [wam_dst, wam_dst_start, wam_dst_end, wam_src, wam_src_start, wam_src_end],
+    )
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_ptr_move(
+    vm: "SPyVM", wam_dst: W_MetaArg, wam_src: W_MetaArg, wam_n: W_MetaArg
+) -> W_OpSpec:
+    """
+    ptr_move(dst, src, n): copy `n` items from `src` to `dst`, allowing overlap.
+
+    Like ptr_copy, but the two regions are allowed to overlap. `n` is the
+    number of ITEMS, not bytes.
+    """
+    w_dst_T, w_src_T = _check_ptrs_match(vm, wam_dst, wam_src)
+    DST = Annotated[W_Ptr, w_dst_T]
+    SRC = Annotated[W_Ptr, w_src_T]
+    ITEMSIZE = sizeof(w_dst_T.w_itemT)
+    ns = UNSAFE.w_ptr_move.compute_inner_ns([w_dst_T, w_src_T])
+    irtag = IRTag("unsafe.memop", cfunc="spy_ptr_move")
+
+    @vm.register_builtin_func(ns, "impl", irtag=irtag)
+    def w_ptr_move_impl(vm: "SPyVM", w_dst: DST, w_src: SRC, w_n: W_I32) -> None:
+        n = vm.unwrap_i32(w_n)
+        if n > w_dst.length or n > w_src.length:
+            raise SPyError("W_PanicError", "ptr_move out of bounds")
+        vm.ll.call("_spy_memmove", w_dst.addr, w_src.addr, n * ITEMSIZE)
+
+    return W_OpSpec(w_ptr_move_impl, [wam_dst, wam_src, wam_n])
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_ptr_move_slice(
+    vm: "SPyVM",
+    wam_dst: W_MetaArg,
+    wam_dst_start: W_MetaArg,
+    wam_dst_end: W_MetaArg,
+    wam_src: W_MetaArg,
+    wam_src_start: W_MetaArg,
+    wam_src_end: W_MetaArg,
+) -> W_OpSpec:
+    """
+    ptr_move_slice(dst, dst_start, dst_end, src, src_start, src_end):
+    copy items from src[src_start:src_end] into dst[dst_start:dst_end],
+    allowing overlap.
+
+    Like ptr_copy_slice, but the two regions are allowed to overlap.
+    """
+    w_dst_T, w_src_T = _check_ptrs_match(vm, wam_dst, wam_src)
+    DST = Annotated[W_Ptr, w_dst_T]
+    SRC = Annotated[W_Ptr, w_src_T]
+    ITEMSIZE = sizeof(w_dst_T.w_itemT)
+    ns = UNSAFE.w_ptr_move_slice.compute_inner_ns([w_dst_T, w_src_T])
+    irtag = IRTag("unsafe.memop", cfunc="spy_ptr_move_slice")
+
+    @vm.register_builtin_func(ns, "impl", irtag=irtag)
+    def w_ptr_move_slice_impl(
+        vm: "SPyVM",
+        w_dst: DST,
+        w_dst_start: W_I32,
+        w_dst_end: W_I32,
+        w_src: SRC,
+        w_src_start: W_I32,
+        w_src_end: W_I32,
+    ) -> None:
+        dst_start = vm.unwrap_i32(w_dst_start)
+        dst_end = vm.unwrap_i32(w_dst_end)
+        src_start = vm.unwrap_i32(w_src_start)
+        src_end = vm.unwrap_i32(w_src_end)
+        n = dst_end - dst_start
+        if n != src_end - src_start:
+            raise SPyError("W_PanicError", "ptr_move_slice length mismatch")
+        if n < 0:
+            raise SPyError("W_PanicError", "ptr_move_slice out of bounds")
+        if dst_start < 0 or dst_end > w_dst.length:
+            raise SPyError("W_PanicError", "ptr_move_slice out of bounds")
+        if src_start < 0 or src_end > w_src.length:
+            raise SPyError("W_PanicError", "ptr_move_slice out of bounds")
+        vm.ll.call(
+            "_spy_memmove",
+            w_dst.addr + dst_start * ITEMSIZE,
+            w_src.addr + src_start * ITEMSIZE,
+            n * ITEMSIZE,
+        )
+
+    return W_OpSpec(
+        w_ptr_move_slice_impl,
+        [wam_dst, wam_dst_start, wam_dst_end, wam_src, wam_src_start, wam_src_end],
+    )
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_ptr_set(
+    vm: "SPyVM", wam_dst: W_MetaArg, wam_value: W_MetaArg, wam_n: W_MetaArg
+) -> W_OpSpec:
+    """
+    ptr_set(dst, value, n): write the byte `value` to the first `n` items of `dst`.
+
+    `n` is the number of ITEMS (not bytes); the underlying memset writes
+    `n * sizeof(T)` bytes. `value` is interpreted as a byte and broadcast to
+    every byte in the region — this is mostly useful for zeroing memory or
+    initializing ptr[u8]/ptr[i8].
+    """
+    w_dst_T = _check_ptr(vm, wam_dst)
+    DST = Annotated[W_Ptr, w_dst_T]
+    ITEMSIZE = sizeof(w_dst_T.w_itemT)
+    ns = UNSAFE.w_ptr_set.compute_inner_ns([w_dst_T])
+    irtag = IRTag("unsafe.memop", cfunc="spy_ptr_set")
+
+    @vm.register_builtin_func(ns, "impl", irtag=irtag)
+    def w_ptr_set_impl(vm: "SPyVM", w_dst: DST, w_value: W_U8, w_n: W_I32) -> None:
+        n = vm.unwrap_i32(w_n)
+        if n > w_dst.length:
+            raise SPyError("W_PanicError", "ptr_set out of bounds")
+        vm.ll.call("_spy_memset", w_dst.addr, int(w_value.value), n * ITEMSIZE)
+
+    return W_OpSpec(w_ptr_set_impl, [wam_dst, wam_value, wam_n])
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_ptr_set_slice(
+    vm: "SPyVM",
+    wam_dst: W_MetaArg,
+    wam_dst_start: W_MetaArg,
+    wam_dst_end: W_MetaArg,
+    wam_value: W_MetaArg,
+) -> W_OpSpec:
+    """
+    ptr_set_slice(dst, dst_start, dst_end, value): write the byte `value`
+    to dst[dst_start:dst_end].
+
+    Like ptr_set, but writes only the given slice instead of the prefix.
+    """
+    w_dst_T = _check_ptr(vm, wam_dst)
+    DST = Annotated[W_Ptr, w_dst_T]
+    ITEMSIZE = sizeof(w_dst_T.w_itemT)
+    ns = UNSAFE.w_ptr_set_slice.compute_inner_ns([w_dst_T])
+    irtag = IRTag("unsafe.memop", cfunc="spy_ptr_set_slice")
+
+    @vm.register_builtin_func(ns, "impl", irtag=irtag)
+    def w_ptr_set_slice_impl(
+        vm: "SPyVM",
+        w_dst: DST,
+        w_dst_start: W_I32,
+        w_dst_end: W_I32,
+        w_value: W_U8,
+    ) -> None:
+        dst_start = vm.unwrap_i32(w_dst_start)
+        dst_end = vm.unwrap_i32(w_dst_end)
+        n = dst_end - dst_start
+        if n < 0 or dst_start < 0 or dst_end > w_dst.length:
+            raise SPyError("W_PanicError", "ptr_set_slice out of bounds")
+        vm.ll.call(
+            "_spy_memset",
+            w_dst.addr + dst_start * ITEMSIZE,
+            int(w_value.value),
+            n * ITEMSIZE,
+        )
+
+    return W_OpSpec(
+        w_ptr_set_slice_impl, [wam_dst, wam_dst_start, wam_dst_end, wam_value]
+    )
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_ptr_cmp(
+    vm: "SPyVM", wam_a: W_MetaArg, wam_b: W_MetaArg, wam_n: W_MetaArg
+) -> W_OpSpec:
+    """
+    ptr_cmp(a, b, n): byte-compare the first `n` items of `a` and `b`.
+
+    Returns 0 if equal, <0 if a<b, >0 if a>b. `n` is the number of ITEMS, not
+    bytes; the comparison is byte-wise (like memcmp), so the result is
+    meaningful for ptr[u8]/ptr[i8] and for plain-data structs but not for
+    types whose representation has padding or alternate equal forms.
+    """
+    w_a_T, w_b_T = _check_ptrs_match(vm, wam_a, wam_b)
+    A = Annotated[W_Ptr, w_a_T]
+    B_ = Annotated[W_Ptr, w_b_T]
+    ITEMSIZE = sizeof(w_a_T.w_itemT)
+    ns = UNSAFE.w_ptr_cmp.compute_inner_ns([w_a_T, w_b_T])
+    irtag = IRTag("unsafe.memop", cfunc="spy_ptr_cmp")
+
+    @vm.register_builtin_func(ns, "impl", irtag=irtag)
+    def w_ptr_cmp_impl(vm: "SPyVM", w_a: A, w_b: B_, w_n: W_I32) -> W_I32:
         n = vm.unwrap_i32(w_n)
         if n > w_a.length or n > w_b.length:
-            raise SPyError("W_PanicError", "memcmp out of bounds")
-        result = vm.ll.call("_spy_memcmp", w_a.addr, w_b.addr, n)
+            raise SPyError("W_PanicError", "ptr_cmp out of bounds")
+        result = vm.ll.call("_spy_memcmp", w_a.addr, w_b.addr, n * ITEMSIZE)
         return vm.wrap(result)
 
-    return W_OpSpec(w_memcmp_impl, [wam_a, wam_b, wam_n])
+    return W_OpSpec(w_ptr_cmp_impl, [wam_a, wam_b, wam_n])
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_ptr_cmp_slice(
+    vm: "SPyVM",
+    wam_a: W_MetaArg,
+    wam_a_start: W_MetaArg,
+    wam_a_end: W_MetaArg,
+    wam_b: W_MetaArg,
+    wam_b_start: W_MetaArg,
+    wam_b_end: W_MetaArg,
+) -> W_OpSpec:
+    """
+    ptr_cmp_slice(a, a_start, a_end, b, b_start, b_end): byte-compare
+    a[a_start:a_end] and b[b_start:b_end].
+
+    Like ptr_cmp, but compares the given slices. Both slices must have the
+    same length.
+    """
+    w_a_T, w_b_T = _check_ptrs_match(vm, wam_a, wam_b)
+    A = Annotated[W_Ptr, w_a_T]
+    B_ = Annotated[W_Ptr, w_b_T]
+    ITEMSIZE = sizeof(w_a_T.w_itemT)
+    ns = UNSAFE.w_ptr_cmp_slice.compute_inner_ns([w_a_T, w_b_T])
+    irtag = IRTag("unsafe.memop", cfunc="spy_ptr_cmp_slice")
+
+    @vm.register_builtin_func(ns, "impl", irtag=irtag)
+    def w_ptr_cmp_slice_impl(
+        vm: "SPyVM",
+        w_a: A,
+        w_a_start: W_I32,
+        w_a_end: W_I32,
+        w_b: B_,
+        w_b_start: W_I32,
+        w_b_end: W_I32,
+    ) -> W_I32:
+        a_start = vm.unwrap_i32(w_a_start)
+        a_end = vm.unwrap_i32(w_a_end)
+        b_start = vm.unwrap_i32(w_b_start)
+        b_end = vm.unwrap_i32(w_b_end)
+        n = a_end - a_start
+        if n != b_end - b_start:
+            raise SPyError("W_PanicError", "ptr_cmp_slice length mismatch")
+        if n < 0 or a_start < 0 or a_end > w_a.length:
+            raise SPyError("W_PanicError", "ptr_cmp_slice out of bounds")
+        if b_start < 0 or b_end > w_b.length:
+            raise SPyError("W_PanicError", "ptr_cmp_slice out of bounds")
+        result = vm.ll.call(
+            "_spy_memcmp",
+            w_a.addr + a_start * ITEMSIZE,
+            w_b.addr + b_start * ITEMSIZE,
+            n * ITEMSIZE,
+        )
+        return vm.wrap(result)
+
+    return W_OpSpec(
+        w_ptr_cmp_slice_impl,
+        [wam_a, wam_a_start, wam_a_end, wam_b, wam_b_start, wam_b_end],
+    )
 
 
 @UNSAFE.builtin_func(color="blue")

@@ -13,7 +13,7 @@ BytesObject.{from,to}_bytes.
 
 from unsafe import (
     gc_ptr,
-    memcpy,
+    ptr_copy,
     _bytes_to_BytesObject,
     _alloc_BytesObject,
     _BytesObject_to_bytes,
@@ -104,7 +104,7 @@ class methods:
         out = StrObject.alloc(ll.length)
         out.hash = 0
         if ll.length > 0:
-            memcpy(out.utf8, ll.data, ll.length)
+            ptr_copy(out.utf8, ll.data, ll.length)
         return StrObject.to_str(out)
 
     def __repr__(self: bytes) -> str:

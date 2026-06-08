@@ -14,7 +14,7 @@ possible to cast between str and gc_ptr[StrObject] using StrObject.{from,to}_str
 
 from unsafe import (
     gc_ptr,
-    memcpy,
+    ptr_copy,
     _str_to_StrObject,
     _alloc_StrObject,
     _StrObject_to_str,
@@ -84,7 +84,7 @@ class methods:
         out = _alloc_BytesObject(ll.length)
         out.hash = 0
         if ll.length > 0:
-            memcpy(out.data, ll.utf8, ll.length)
+            ptr_copy(out.data, ll.utf8, ll.length)
         return _BytesObject_to_bytes(out)
 
     def isascii(self: str) -> bool:
