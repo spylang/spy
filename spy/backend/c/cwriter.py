@@ -606,5 +606,6 @@ class CFuncWriter:
 
     def fmt_memop(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         cfunc = irtag.data["cfunc"]
+        assert cfunc in ("spy_memcpy", "spy_memmove", "spy_memcmp", "spy_memset")
         c_args = [self.fmt_expr(arg) for arg in call.args]
         return C.Call(cfunc, c_args)
