@@ -115,3 +115,42 @@ class TestMem(CompilerTest):
         mod = self.compile(src)
         with SPyError.raises("W_PanicError", match="out of bounds"):
             mod.foo()
+
+    def test_memset(self, memkind):
+        k = memkind
+        src = """
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, memset
+
+        def foo() -> i32:
+            buf: k_ptr[u8] = k_alloc[u8](4)
+            memset(buf, 7, 4)
+            return buf[0] + buf[1] + buf[2] + buf[3]
+        """.format(k=k)
+        mod = self.compile(src)
+        assert mod.foo() == 28
+
+    def test_memset_wrong_itemtype(self):
+        src = """
+        from unsafe import raw_alloc, raw_ptr, memset
+
+        def foo() -> i32:
+            buf: raw_ptr[i32] = raw_alloc[i32](4)
+            memset(buf, 0, 4)
+            return 0
+        """
+        ctx = SPyError.raises("W_TypeError", match=r"memset requires `ptr\[u8\]`")
+        self.compile_raises(src, "foo", ctx)
+
+    def test_memset_out_of_bounds(self, memkind):
+        k = memkind
+        src = """
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, memset
+
+        def foo() -> i32:
+            buf: k_ptr[u8] = k_alloc[u8](4)
+            memset(buf, 0, 10)
+            return 0
+        """.format(k=k)
+        mod = self.compile(src)
+        with SPyError.raises("W_PanicError", match="out of bounds"):
+            mod.foo()

@@ -116,6 +116,25 @@ def w_memmove(
     return W_OpSpec(w_memmove_impl, [wam_dst, wam_src, wam_n])
 
 
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_memset(
+    vm: "SPyVM", wam_dst: W_MetaArg, wam_value: W_MetaArg, wam_n: W_MetaArg
+) -> W_OpSpec:
+    w_dst_T = _check_ptr_u8(vm, wam_dst, "memset", "dst")
+    DST = Annotated[W_Ptr, w_dst_T]
+    ns = UNSAFE.w_memset.compute_inner_ns([w_dst_T])
+    irtag = IRTag("unsafe.memop", cfunc="spy_memset")
+
+    @vm.register_builtin_func(ns, "impl", irtag=irtag)
+    def w_memset_impl(vm: "SPyVM", w_dst: DST, w_value: W_U8, w_n: W_I32) -> None:
+        n = vm.unwrap_i32(w_n)
+        if n > w_dst.length:
+            raise SPyError("W_PanicError", "memset out of bounds")
+        vm.ll.call("_spy_memset", w_dst.addr, int(w_value.value), n)
+
+    return W_OpSpec(w_memset_impl, [wam_dst, wam_value, wam_n])
+
+
 @UNSAFE.builtin_func(color="blue")
 def w_mem_read(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     T = Annotated[W_Object, w_T]

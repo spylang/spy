@@ -19,3 +19,8 @@ void
 _spy_memmove(void *dst, void *src, size_t n) {
     memmove(dst, src, n);
 }
+
+void
+_spy_memset(void *dst, int value, size_t n) {
+    memset(dst, value, n);
+}
