@@ -1,0 +1,64 @@
+"""
+Things to notice:
+  - str supports: +, *, ==, !=, [], len(), replace(), upper(), isascii()
+  - str can be converted to numeric types with explicit casts: i32(s), f64(s), ...
+  - bytes literals use b'...' syntax
+  - bytes supports: len(), [], ==, !=, +, *, repr()
+  - ord() works on single-character str or bytes literals
+  - there is no encode()/decode() yet: str and bytes are distinct types
+"""
+
+
+def demo_str() -> None:
+    s: str = "Hello"
+
+    # concatenation and repetition
+    print(s + ", world!")
+    print(s * 3)
+
+    # length and indexing
+    print(len(s))
+    print(s[1])
+
+    # comparison
+    print(s == "Hello")
+    print(s != "World")
+
+    # methods
+    print(s.upper())
+    print(s.isascii())
+    print(s.replace("l", "r"))
+
+    # explicit conversion from str to numeric types
+    n = i32("42")
+    print(n + 1)
+
+
+def demo_bytes() -> None:
+    b: bytes = b"Hello"
+
+    # length and indexing (returns u8)
+    print(len(b))
+    byte: u8 = b[0]
+    print(byte)     # 72  (ASCII code of 'H')
+
+    # concatenation and repetition
+    print(b + b", world!")
+    print(b * 2)
+
+    # comparison
+    print(b == b"Hello")
+    print(b != b"World")
+
+    print(repr(b"hi\nbye"))
+
+    assert ord(b"A") == u8(65)
+    # non ASCII characters not yet supported
+    assert ord("A") == 65
+
+
+def main() -> None:
+    print("=== str ===")
+    demo_str()
+    print("=== bytes ===")
+    demo_bytes()
