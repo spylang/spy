@@ -165,6 +165,32 @@ typedef spy_unsafe$gc_ptr__builtins$u8 spy_gc_ptr_u8;
 #  define spy_ptr_copy(dst, src, n) memcpy((dst).p, (src).p, (n) * sizeof(*(dst).p))
 #endif
 
+/* ptr_copy_slice(dst, dst_start, dst_end, src, src_start, src_end):
+   copy items in src[src_start:src_end] to dst[dst_start:dst_end].
+   Both slices must have the same length; bounds are checked in SPY_DEBUG. */
+#ifdef SPY_DEBUG
+#  define spy_ptr_copy_slice(dst, ds, de, src, ss, se)                                 \
+      do {                                                                             \
+          ptrdiff_t _spy_n = (de) - (ds);                                              \
+          if (_spy_n != (se) - (ss))                                                   \
+              spy_panic(                                                               \
+                  "PanicError", "ptr_copy_slice length mismatch", __FILE__, __LINE__   \
+              );                                                                       \
+          if (_spy_n < 0 || (ds) < 0 || (de) > (dst).length)                           \
+              spy_panic(                                                               \
+                  "PanicError", "ptr_copy_slice dst out of bounds", __FILE__, __LINE__ \
+              );                                                                       \
+          if ((ss) < 0 || (se) > (src).length)                                         \
+              spy_panic(                                                               \
+                  "PanicError", "ptr_copy_slice src out of bounds", __FILE__, __LINE__ \
+              );                                                                       \
+          memcpy((dst).p + (ds), (src).p + (ss), _spy_n * sizeof(*(dst).p));           \
+      } while (0)
+#else
+#  define spy_ptr_copy_slice(dst, ds, de, src, ss, se)                                 \
+      memcpy((dst).p + (ds), (src).p + (ss), ((de) - (ds)) * sizeof(*(dst).p))
+#endif
+
 #ifdef SPY_DEBUG
 #  define spy_ptr_move(dst, src, n)                                                    \
       do {                                                                             \

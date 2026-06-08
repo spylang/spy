@@ -13,9 +13,12 @@ class TestMem(CompilerTest):
     def test_ptr_copy(self, memkind):
         k = memkind
         src = """
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, ptr_copy
+        from unsafe import (
+            {k}_alloc as k_alloc, {k}_ptr as k_ptr,
+            ptr_copy, ptr_copy_slice,
+        )
 
-        def foo() -> i32:
+        def fn_ptr() -> i32:
             src: k_ptr[u8] = k_alloc[u8](4)
             dst: k_ptr[u8] = k_alloc[u8](4)
             src[0] = 10
@@ -24,9 +27,25 @@ class TestMem(CompilerTest):
             src[3] = 40
             ptr_copy(dst, src, 4)
             return dst[0] + dst[1] + dst[2] + dst[3]
+
+        def fn_slice() -> i32:
+            src: k_ptr[u8] = k_alloc[u8](4)
+            dst: k_ptr[u8] = k_alloc[u8](4)
+            src[0] = 10
+            src[1] = 20
+            src[2] = 30
+            src[3] = 40
+            dst[0] = 0
+            dst[1] = 0
+            dst[2] = 0
+            dst[3] = 0
+            # copy src[1:3] into dst[2:4]
+            ptr_copy_slice(dst, 2, 4, src, 1, 3)
+            return i32(dst[0])*1000 + i32(dst[1])*100 + i32(dst[2])*10 + i32(dst[3])
         """.format(k=k)
         mod = self.compile(src)
-        assert mod.foo() == 100
+        assert mod.fn_ptr() == 100
+        assert mod.fn_slice() == 200 + 30  # dst[2]=20, dst[3]=30; rest=0
 
     def test_ptr_copy_mixed_memkind(self):
         src = """
@@ -79,9 +98,12 @@ class TestMem(CompilerTest):
     def test_ptr_copy_i32(self, memkind):
         k = memkind
         src = """
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, ptr_copy
+        from unsafe import (
+            {k}_alloc as k_alloc, {k}_ptr as k_ptr,
+            ptr_copy, ptr_copy_slice,
+        )
 
-        def foo() -> i32:
+        def fn_ptr() -> i32:
             src: k_ptr[i32] = k_alloc[i32](4)
             dst: k_ptr[i32] = k_alloc[i32](4)
             src[0] = 100
@@ -90,39 +112,58 @@ class TestMem(CompilerTest):
             src[3] = 400
             ptr_copy(dst, src, 4)
             return dst[0] + dst[1] + dst[2] + dst[3]
-        """.format(k=k)
-        mod = self.compile(src)
-        assert mod.foo() == 1000
 
-    def test_ptr_copy_i32_out_of_bounds(self, memkind):
-        k = memkind
-        src = """
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, ptr_copy
-
-        def foo() -> i32:
+        def fn_slice() -> i32:
             src: k_ptr[i32] = k_alloc[i32](4)
             dst: k_ptr[i32] = k_alloc[i32](4)
-            ptr_copy(dst, src, 10)
-            return 0
+            src[0] = 100
+            src[1] = 200
+            src[2] = 300
+            src[3] = 400
+            dst[0] = 0
+            dst[1] = 0
+            dst[2] = 0
+            dst[3] = 0
+            ptr_copy_slice(dst, 2, 4, src, 1, 3)
+            return dst[0] + dst[1] + dst[2] + dst[3]
         """.format(k=k)
         mod = self.compile(src)
-        with SPyError.raises("W_PanicError", match="out of bounds"):
-            mod.foo()
+        assert mod.fn_ptr() == 1000
+        assert mod.fn_slice() == 500  # dst[2]=200, dst[3]=300
 
     def test_ptr_copy_out_of_bounds(self, memkind):
         k = memkind
         src = """
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, ptr_copy
+        from unsafe import (
+            {k}_alloc as k_alloc, {k}_ptr as k_ptr,
+            ptr_copy, ptr_copy_slice,
+        )
 
-        def foo() -> i32:
-            src: k_ptr[u8] = k_alloc[u8](4)
-            dst: k_ptr[u8] = k_alloc[u8](4)
+        def fn_ptr() -> i32:
+            src: k_ptr[i32] = k_alloc[i32](4)
+            dst: k_ptr[i32] = k_alloc[i32](4)
             ptr_copy(dst, src, 10)
+            return 0
+
+        def fn_slice() -> i32:
+            src: k_ptr[i32] = k_alloc[i32](4)
+            dst: k_ptr[i32] = k_alloc[i32](4)
+            ptr_copy_slice(dst, 0, 10, src, 0, 10)
+            return 0
+
+        def fn_slice_mismatch() -> i32:
+            src: k_ptr[i32] = k_alloc[i32](4)
+            dst: k_ptr[i32] = k_alloc[i32](4)
+            ptr_copy_slice(dst, 0, 3, src, 0, 2)
             return 0
         """.format(k=k)
         mod = self.compile(src)
         with SPyError.raises("W_PanicError", match="out of bounds"):
-            mod.foo()
+            mod.fn_ptr()
+        with SPyError.raises("W_PanicError", match="out of bounds"):
+            mod.fn_slice()
+        with SPyError.raises("W_PanicError", match="length mismatch"):
+            mod.fn_slice_mismatch()
 
     def test_ptr_move(self, memkind):
         k = memkind

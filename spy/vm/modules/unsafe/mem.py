@@ -163,6 +163,59 @@ def w_ptr_copy(
 
 
 @UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_ptr_copy_slice(
+    vm: "SPyVM",
+    wam_dst: W_MetaArg,
+    wam_dst_start: W_MetaArg,
+    wam_dst_end: W_MetaArg,
+    wam_src: W_MetaArg,
+    wam_src_start: W_MetaArg,
+    wam_src_end: W_MetaArg,
+) -> W_OpSpec:
+    w_dst_T, w_src_T = _check_ptrs_match(vm, wam_dst, wam_src)
+    DST = Annotated[W_Ptr, w_dst_T]
+    SRC = Annotated[W_Ptr, w_src_T]
+    ITEMSIZE = sizeof(w_dst_T.w_itemT)
+    ns = UNSAFE.w_ptr_copy_slice.compute_inner_ns([w_dst_T, w_src_T])
+    irtag = IRTag("unsafe.memop", cfunc="spy_ptr_copy_slice")
+
+    @vm.register_builtin_func(ns, "impl", irtag=irtag)
+    def w_ptr_copy_slice_impl(
+        vm: "SPyVM",
+        w_dst: DST,
+        w_dst_start: W_I32,
+        w_dst_end: W_I32,
+        w_src: SRC,
+        w_src_start: W_I32,
+        w_src_end: W_I32,
+    ) -> None:
+        dst_start = vm.unwrap_i32(w_dst_start)
+        dst_end = vm.unwrap_i32(w_dst_end)
+        src_start = vm.unwrap_i32(w_src_start)
+        src_end = vm.unwrap_i32(w_src_end)
+        n = dst_end - dst_start
+        if n != src_end - src_start:
+            raise SPyError("W_PanicError", "ptr_copy_slice length mismatch")
+        if n < 0:
+            raise SPyError("W_PanicError", "ptr_copy_slice out of bounds")
+        if dst_start < 0 or dst_end > w_dst.length:
+            raise SPyError("W_PanicError", "ptr_copy_slice out of bounds")
+        if src_start < 0 or src_end > w_src.length:
+            raise SPyError("W_PanicError", "ptr_copy_slice out of bounds")
+        vm.ll.call(
+            "_spy_memcpy",
+            w_dst.addr + dst_start * ITEMSIZE,
+            w_src.addr + src_start * ITEMSIZE,
+            n * ITEMSIZE,
+        )
+
+    return W_OpSpec(
+        w_ptr_copy_slice_impl,
+        [wam_dst, wam_dst_start, wam_dst_end, wam_src, wam_src_start, wam_src_end],
+    )
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
 def w_ptr_move(
     vm: "SPyVM", wam_dst: W_MetaArg, wam_src: W_MetaArg, wam_n: W_MetaArg
 ) -> W_OpSpec:
