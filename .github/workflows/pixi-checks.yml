@@ -35,4 +35,4 @@ jobs:
 
       - name: Check spy build -x
         run: |
-          pixi run spy build -x examples/hello.spy
+          pixi run spy build -x examples/1_high_level/hello.spy

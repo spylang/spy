@@ -1,4 +1,12 @@
-from math import fabs
+"""
+Things to notice:
+  - @blue funcs are completely resolved at redshift time
+  - get_pi is not present in the redshifted or .c file
+  - types in blue functions are optional
+
+Note: `redshift --linearize` gives simpler output for the print calls with
+more than one argument.
+"""
 
 
 @blue
@@ -11,7 +19,7 @@ def get_pi():
     k = 0
     term = 1.0  # Initial term to enter the loop
 
-    while fabs(term) > tol:
+    while abs(term) > tol:
         if k % 2 == 0:
             term = 1.0 / (2 * k + 1)
         else:
@@ -25,5 +33,5 @@ def get_pi():
 
 def main() -> None:
     pi = get_pi()
-    print("pi:")
-    print(pi)
+    print("pi:", pi)
+    print("tau:", 2 * pi)
