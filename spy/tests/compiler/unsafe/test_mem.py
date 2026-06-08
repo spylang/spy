@@ -70,3 +70,48 @@ class TestMem(CompilerTest):
         mod = self.compile(src)
         with SPyError.raises("W_PanicError", match="out of bounds"):
             mod.foo()
+
+    def test_memmove(self, memkind):
+        k = memkind
+        src = """
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, memmove
+
+        def foo() -> i32:
+            src: k_ptr[u8] = k_alloc[u8](4)
+            dst: k_ptr[u8] = k_alloc[u8](4)
+            src[0] = 10
+            src[1] = 20
+            src[2] = 30
+            src[3] = 40
+            memmove(dst, src, 4)
+            return dst[0] + dst[1] + dst[2] + dst[3]
+        """.format(k=k)
+        mod = self.compile(src)
+        assert mod.foo() == 100
+
+    def test_memmove_wrong_itemtype(self):
+        src = """
+        from unsafe import raw_alloc, raw_ptr, memmove
+
+        def foo() -> i32:
+            buf: raw_ptr[i32] = raw_alloc[i32](4)
+            memmove(buf, buf, 4)
+            return 0
+        """
+        ctx = SPyError.raises("W_TypeError", match=r"memmove requires `ptr\[u8\]`")
+        self.compile_raises(src, "foo", ctx)
+
+    def test_memmove_out_of_bounds(self, memkind):
+        k = memkind
+        src = """
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, memmove
+
+        def foo() -> i32:
+            src: k_ptr[u8] = k_alloc[u8](4)
+            dst: k_ptr[u8] = k_alloc[u8](4)
+            memmove(dst, src, 10)
+            return 0
+        """.format(k=k)
+        mod = self.compile(src)
+        with SPyError.raises("W_PanicError", match="out of bounds"):
+            mod.foo()
