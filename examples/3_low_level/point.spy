@@ -34,10 +34,9 @@ def squared_distance(p0: Point, p1: Point) -> f64:
 
 
 def main() -> None:
-
     arr: gc_ptr[i32] = gc_alloc[i32](5)  # allocates an array of 5 i32
-    arr[0]        # read item 0 of the array
-    arr[0] = 42   # write item 0
+    arr[0]  # read item 0 of the array
+    arr[0] = 42  # write item 0
     print(arr[0])
 
     p0 = Point(1, 2)

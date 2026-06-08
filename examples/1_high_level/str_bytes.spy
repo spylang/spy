@@ -5,12 +5,11 @@ Things to notice:
   - bytes literals use b'...' syntax
   - bytes supports: len(), [], ==, !=, +, *, repr()
   - ord() works on single-character str or bytes literals
-  - there is no encode()/decode() yet: str and bytes are distinct types
 """
 
 
 def demo_str() -> None:
-    s: str = "Hello"
+    s = "Hello"
 
     # concatenation and repetition
     print(s + ", world!")
@@ -35,12 +34,12 @@ def demo_str() -> None:
 
 
 def demo_bytes() -> None:
-    b: bytes = b"Hello"
+    b = b"Hello"
 
     # length and indexing (returns u8)
     print(len(b))
     byte: u8 = b[0]
-    print(byte)     # 72  (ASCII code of 'H')
+    print(byte)  # 72  (ASCII code of 'H')
 
     # concatenation and repetition
     print(b + b", world!")
@@ -62,3 +61,6 @@ def main() -> None:
     demo_str()
     print("=== bytes ===")
     demo_bytes()
+
+    assert "hello".encode("utf-8") == b"hello"
+    assert "àèìòù".encode("utf-8").decode("utf-8") == "àèìòù"
