@@ -57,28 +57,47 @@ def w_gc_alloc(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     return w_fn
 
 
-def _check_ptr_u8(vm: "SPyVM", wam: W_MetaArg) -> W_PtrType:
+def _check_ptr(vm: "SPyVM", wam: W_MetaArg) -> W_PtrType:
     """
-    Validate that a W_MetaArg is statically typed as ptr[u8] (any memkind).
+    Validate that a W_MetaArg is statically typed as ptr[T] (any memkind, any T).
     Raises W_TypeError on failure.
     """
     w_T = wam.w_static_T
-    if isinstance(w_T, W_PtrType) and w_T.w_itemT is B.w_u8:
+    if isinstance(w_T, W_PtrType):
         return w_T
     t = w_T.fqn.human_name(vm)
-    err = SPyError("W_TypeError", f"mismatched types")
-    err.add("error", f"expected ptr[u8], got `{t}`", loc=wam.loc)
+    err = SPyError("W_TypeError", "mismatched types")
+    err.add("error", f"expected ptr[T], got `{t}`", loc=wam.loc)
     raise err
+
+
+def _check_ptrs_match(
+    vm: "SPyVM", wam_a: W_MetaArg, wam_b: W_MetaArg
+) -> tuple[W_PtrType, W_PtrType]:
+    """
+    Validate that both wams are ptr[T] for the SAME T (memkinds may differ).
+    Raises W_TypeError on failure.
+    """
+    w_a_T = _check_ptr(vm, wam_a)
+    w_b_T = _check_ptr(vm, wam_b)
+    if w_a_T.w_itemT is not w_b_T.w_itemT:
+        a_t = w_a_T.fqn.human_name(vm)
+        b_t = w_b_T.fqn.human_name(vm)
+        err = SPyError("W_TypeError", "mismatched types")
+        err.add("error", f"`{a_t}`", loc=wam_a.loc)
+        err.add("error", f"`{b_t}`", loc=wam_b.loc)
+        raise err
+    return w_a_T, w_b_T
 
 
 @UNSAFE.builtin_func(color="blue", kind="metafunc")
 def w_memcpy(
     vm: "SPyVM", wam_dst: W_MetaArg, wam_src: W_MetaArg, wam_n: W_MetaArg
 ) -> W_OpSpec:
-    w_dst_T = _check_ptr_u8(vm, wam_dst)
-    w_src_T = _check_ptr_u8(vm, wam_src)
+    w_dst_T, w_src_T = _check_ptrs_match(vm, wam_dst, wam_src)
     DST = Annotated[W_Ptr, w_dst_T]
     SRC = Annotated[W_Ptr, w_src_T]
+    ITEMSIZE = sizeof(w_dst_T.w_itemT)
     ns = UNSAFE.w_memcpy.compute_inner_ns([w_dst_T, w_src_T])
     irtag = IRTag("unsafe.memop", cfunc="spy_memcpy")
 
@@ -87,7 +106,7 @@ def w_memcpy(
         n = vm.unwrap_i32(w_n)
         if n > w_dst.length or n > w_src.length:
             raise SPyError("W_PanicError", "memcpy out of bounds")
-        vm.ll.call("_spy_memcpy", w_dst.addr, w_src.addr, n)
+        vm.ll.call("_spy_memcpy", w_dst.addr, w_src.addr, n * ITEMSIZE)
 
     return W_OpSpec(w_memcpy_impl, [wam_dst, wam_src, wam_n])
 
@@ -96,10 +115,10 @@ def w_memcpy(
 def w_memmove(
     vm: "SPyVM", wam_dst: W_MetaArg, wam_src: W_MetaArg, wam_n: W_MetaArg
 ) -> W_OpSpec:
-    w_dst_T = _check_ptr_u8(vm, wam_dst)
-    w_src_T = _check_ptr_u8(vm, wam_src)
+    w_dst_T, w_src_T = _check_ptrs_match(vm, wam_dst, wam_src)
     DST = Annotated[W_Ptr, w_dst_T]
     SRC = Annotated[W_Ptr, w_src_T]
+    ITEMSIZE = sizeof(w_dst_T.w_itemT)
     ns = UNSAFE.w_memmove.compute_inner_ns([w_dst_T, w_src_T])
     irtag = IRTag("unsafe.memop", cfunc="spy_memmove")
 
@@ -108,7 +127,7 @@ def w_memmove(
         n = vm.unwrap_i32(w_n)
         if n > w_dst.length or n > w_src.length:
             raise SPyError("W_PanicError", "memmove out of bounds")
-        vm.ll.call("_spy_memmove", w_dst.addr, w_src.addr, n)
+        vm.ll.call("_spy_memmove", w_dst.addr, w_src.addr, n * ITEMSIZE)
 
     return W_OpSpec(w_memmove_impl, [wam_dst, wam_src, wam_n])
 
@@ -117,8 +136,9 @@ def w_memmove(
 def w_memset(
     vm: "SPyVM", wam_dst: W_MetaArg, wam_value: W_MetaArg, wam_n: W_MetaArg
 ) -> W_OpSpec:
-    w_dst_T = _check_ptr_u8(vm, wam_dst)
+    w_dst_T = _check_ptr(vm, wam_dst)
     DST = Annotated[W_Ptr, w_dst_T]
+    ITEMSIZE = sizeof(w_dst_T.w_itemT)
     ns = UNSAFE.w_memset.compute_inner_ns([w_dst_T])
     irtag = IRTag("unsafe.memop", cfunc="spy_memset")
 
@@ -127,7 +147,7 @@ def w_memset(
         n = vm.unwrap_i32(w_n)
         if n > w_dst.length:
             raise SPyError("W_PanicError", "memset out of bounds")
-        vm.ll.call("_spy_memset", w_dst.addr, int(w_value.value), n)
+        vm.ll.call("_spy_memset", w_dst.addr, int(w_value.value), n * ITEMSIZE)
 
     return W_OpSpec(w_memset_impl, [wam_dst, wam_value, wam_n])
 
@@ -136,10 +156,10 @@ def w_memset(
 def w_memcmp(
     vm: "SPyVM", wam_a: W_MetaArg, wam_b: W_MetaArg, wam_n: W_MetaArg
 ) -> W_OpSpec:
-    w_a_T = _check_ptr_u8(vm, wam_a)
-    w_b_T = _check_ptr_u8(vm, wam_b)
+    w_a_T, w_b_T = _check_ptrs_match(vm, wam_a, wam_b)
     A = Annotated[W_Ptr, w_a_T]
     B_ = Annotated[W_Ptr, w_b_T]
+    ITEMSIZE = sizeof(w_a_T.w_itemT)
     ns = UNSAFE.w_memcmp.compute_inner_ns([w_a_T, w_b_T])
     irtag = IRTag("unsafe.memop", cfunc="spy_memcmp")
 
@@ -148,7 +168,7 @@ def w_memcmp(
         n = vm.unwrap_i32(w_n)
         if n > w_a.length or n > w_b.length:
             raise SPyError("W_PanicError", "memcmp out of bounds")
-        result = vm.ll.call("_spy_memcmp", w_a.addr, w_b.addr, n)
+        result = vm.ll.call("_spy_memcmp", w_a.addr, w_b.addr, n * ITEMSIZE)
         return vm.wrap(result)
 
     return W_OpSpec(w_memcmp_impl, [wam_a, wam_b, wam_n])

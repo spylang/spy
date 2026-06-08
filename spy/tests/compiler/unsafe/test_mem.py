@@ -44,20 +44,70 @@ class TestMem(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == 6
 
-    def test_memcpy_wrong_itemtype(self):
+    def test_memcpy_not_a_ptr(self):
         src = """
-        from unsafe import raw_alloc, raw_ptr, memcpy
+        from unsafe import memcpy
 
         def foo() -> i32:
-            buf: raw_ptr[i32] = raw_alloc[i32](4)
-            memcpy(buf, buf, 4)
+            x: i32 = 0
+            memcpy(x, x, 4)
             return 0
         """
         errors = expect_errors(
             "mismatched types",
-            ("expected ptr[u8], got `unsafe::raw_ptr[i32]`", "buf"),
+            ("expected ptr[T], got `i32`", "x"),
         )
         self.compile_raises(src, "foo", errors)
+
+    def test_memcpy_incompatible_ptrs(self):
+        src = """
+        from unsafe import raw_alloc, raw_ptr, memcpy
+
+        def foo() -> i32:
+            a: raw_ptr[i32] = raw_alloc[i32](4)
+            b: raw_ptr[u8] = raw_alloc[u8](4)
+            memcpy(a, b, 4)
+            return 0
+        """
+        errors = expect_errors(
+            "mismatched types",
+            ("`unsafe::raw_ptr[i32]`", "a"),
+            ("`unsafe::raw_ptr[u8]`", "b"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    def test_memcpy_i32(self, memkind):
+        k = memkind
+        src = """
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, memcpy
+
+        def foo() -> i32:
+            src: k_ptr[i32] = k_alloc[i32](4)
+            dst: k_ptr[i32] = k_alloc[i32](4)
+            src[0] = 100
+            src[1] = 200
+            src[2] = 300
+            src[3] = 400
+            memcpy(dst, src, 4)
+            return dst[0] + dst[1] + dst[2] + dst[3]
+        """.format(k=k)
+        mod = self.compile(src)
+        assert mod.foo() == 1000
+
+    def test_memcpy_i32_out_of_bounds(self, memkind):
+        k = memkind
+        src = """
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, memcpy
+
+        def foo() -> i32:
+            src: k_ptr[i32] = k_alloc[i32](4)
+            dst: k_ptr[i32] = k_alloc[i32](4)
+            memcpy(dst, src, 10)
+            return 0
+        """.format(k=k)
+        mod = self.compile(src)
+        with SPyError.raises("W_PanicError", match="out of bounds"):
+            mod.foo()
 
     def test_memcpy_out_of_bounds(self, memkind):
         k = memkind
@@ -92,18 +142,35 @@ class TestMem(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == 100
 
-    def test_memmove_wrong_itemtype(self):
+    def test_memmove_not_a_ptr(self):
         src = """
-        from unsafe import raw_alloc, raw_ptr, memmove
+        from unsafe import memmove
 
         def foo() -> i32:
-            buf: raw_ptr[i32] = raw_alloc[i32](4)
-            memmove(buf, buf, 4)
+            x: i32 = 0
+            memmove(x, x, 4)
             return 0
         """
         errors = expect_errors(
             "mismatched types",
-            ("expected ptr[u8], got `unsafe::raw_ptr[i32]`", "buf"),
+            ("expected ptr[T], got `i32`", "x"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    def test_memmove_incompatible_ptrs(self):
+        src = """
+        from unsafe import raw_alloc, raw_ptr, memmove
+
+        def foo() -> i32:
+            a: raw_ptr[i32] = raw_alloc[i32](4)
+            b: raw_ptr[u8] = raw_alloc[u8](4)
+            memmove(a, b, 4)
+            return 0
+        """
+        errors = expect_errors(
+            "mismatched types",
+            ("`unsafe::raw_ptr[i32]`", "a"),
+            ("`unsafe::raw_ptr[u8]`", "b"),
         )
         self.compile_raises(src, "foo", errors)
 
@@ -135,18 +202,18 @@ class TestMem(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == 28
 
-    def test_memset_wrong_itemtype(self):
+    def test_memset_not_a_ptr(self):
         src = """
-        from unsafe import raw_alloc, raw_ptr, memset
+        from unsafe import memset
 
         def foo() -> i32:
-            buf: raw_ptr[i32] = raw_alloc[i32](4)
-            memset(buf, 0, 4)
+            x: i32 = 0
+            memset(x, 0, 4)
             return 0
         """
         errors = expect_errors(
             "mismatched types",
-            ("expected ptr[u8], got `unsafe::raw_ptr[i32]`", "buf"),
+            ("expected ptr[T], got `i32`", "x"),
         )
         self.compile_raises(src, "foo", errors)
 
@@ -190,17 +257,33 @@ class TestMem(CompilerTest):
         assert mod.foo() == 0
         assert mod.bar() == -1
 
-    def test_memcmp_wrong_itemtype(self):
+    def test_memcmp_not_a_ptr(self):
+        src = """
+        from unsafe import memcmp
+
+        def foo() -> i32:
+            x: i32 = 0
+            return memcmp(x, x, 4)
+        """
+        errors = expect_errors(
+            "mismatched types",
+            ("expected ptr[T], got `i32`", "x"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    def test_memcmp_incompatible_ptrs(self):
         src = """
         from unsafe import raw_alloc, raw_ptr, memcmp
 
         def foo() -> i32:
-            buf: raw_ptr[i32] = raw_alloc[i32](4)
-            return memcmp(buf, buf, 4)
+            a: raw_ptr[i32] = raw_alloc[i32](4)
+            b: raw_ptr[u8] = raw_alloc[u8](4)
+            return memcmp(a, b, 4)
         """
         errors = expect_errors(
             "mismatched types",
-            ("expected ptr[u8], got `unsafe::raw_ptr[i32]`", "buf"),
+            ("`unsafe::raw_ptr[i32]`", "a"),
+            ("`unsafe::raw_ptr[u8]`", "b"),
         )
         self.compile_raises(src, "foo", errors)
 

@@ -144,6 +144,7 @@ typedef spy_unsafe$gc_ptr__builtins$u8 spy_gc_ptr_u8;
 /* memcpy/memmove/memset/memcmp macros for the C backend.
    In SPY_DEBUG they check bounds via the .length field; in SPY_RELEASE they
    expand to bare libc calls with zero overhead. */
+/* In all the macros below, `n` is the number of ITEMS, not bytes. */
 #ifdef SPY_DEBUG
 #  define spy_memcpy(dst, src, n)                                                      \
       do {                                                                             \
@@ -151,10 +152,10 @@ typedef spy_unsafe$gc_ptr__builtins$u8 spy_gc_ptr_u8;
               spy_panic("PanicError", "memcpy dst out of bounds", __FILE__, __LINE__); \
           if ((size_t)(n) > (size_t)(src).length)                                      \
               spy_panic("PanicError", "memcpy src out of bounds", __FILE__, __LINE__); \
-          memcpy((dst).p, (src).p, (n));                                               \
+          memcpy((dst).p, (src).p, (n) * sizeof(*(dst).p));                            \
       } while (0)
 #else
-#  define spy_memcpy(dst, src, n) memcpy((dst).p, (src).p, (n))
+#  define spy_memcpy(dst, src, n) memcpy((dst).p, (src).p, (n) * sizeof(*(dst).p))
 #endif
 
 #ifdef SPY_DEBUG
@@ -168,10 +169,10 @@ typedef spy_unsafe$gc_ptr__builtins$u8 spy_gc_ptr_u8;
               spy_panic(                                                               \
                   "PanicError", "memmove src out of bounds", __FILE__, __LINE__        \
               );                                                                       \
-          memmove((dst).p, (src).p, (n));                                              \
+          memmove((dst).p, (src).p, (n) * sizeof(*(dst).p));                           \
       } while (0)
 #else
-#  define spy_memmove(dst, src, n) memmove((dst).p, (src).p, (n))
+#  define spy_memmove(dst, src, n) memmove((dst).p, (src).p, (n) * sizeof(*(dst).p))
 #endif
 
 #ifdef SPY_DEBUG
@@ -179,10 +180,10 @@ typedef spy_unsafe$gc_ptr__builtins$u8 spy_gc_ptr_u8;
       do {                                                                             \
           if ((size_t)(n) > (size_t)(dst).length)                                      \
               spy_panic("PanicError", "memset out of bounds", __FILE__, __LINE__);     \
-          memset((dst).p, (value), (n));                                               \
+          memset((dst).p, (value), (n) * sizeof(*(dst).p));                            \
       } while (0)
 #else
-#  define spy_memset(dst, value, n) memset((dst).p, (value), (n))
+#  define spy_memset(dst, value, n) memset((dst).p, (value), (n) * sizeof(*(dst).p))
 #endif
 
 // spy_memcmp needs to yield a value; ternary chain works on all compilers.
@@ -195,9 +196,9 @@ typedef spy_unsafe$gc_ptr__builtins$u8 spy_gc_ptr_u8;
        : (size_t)(n) > (size_t)(b).length                                              \
            ? (spy_panic("PanicError", "memcmp b out of bounds", __FILE__, __LINE__),   \
               0)                                                                       \
-           : memcmp((a).p, (b).p, (n)))
+           : memcmp((a).p, (b).p, (n) * sizeof(*(a).p)))
 #else
-#  define spy_memcmp(a, b, n) memcmp((a).p, (b).p, (n))
+#  define spy_memcmp(a, b, n) memcmp((a).p, (b).p, (n) * sizeof(*(a).p))
 #endif
 
 #endif /* SPY_UNSAFE_H */
