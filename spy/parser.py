@@ -696,7 +696,9 @@ class Parser:
             return spy.ast.StrLiteral(py_node.loc, py_node.value)
         elif T in (int, float, complex, bool, NoneType):
             return spy.ast.Literal(py_node.loc, py_node.value)
-        elif T in (bytes, Ellipsis):
+        elif T is bytes:
+            return spy.ast.BytesLiteral(py_node.loc, py_node.value)
+        elif T is type(Ellipsis):
             self.error(
                 f"unsupported literal: {py_node.value!r}",
                 f"this is not supported yet",

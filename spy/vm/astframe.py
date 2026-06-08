@@ -906,6 +906,10 @@ class AbstractFrame:
         w_val = self.vm.wrap(const.value)
         return W_MetaArg(self.vm, "blue", B.w_str, w_val, const.loc)
 
+    def eval_expr_BytesLiteral(self, const: ast.BytesLiteral) -> W_MetaArg:
+        w_val = self.vm.wrap(const.value)
+        return W_MetaArg(self.vm, "blue", B.w_bytes, w_val, const.loc)
+
     def eval_expr_FQNConst(self, const: ast.FQNConst) -> W_MetaArg:
         w_value = self.vm.lookup_global(const.fqn)
         assert w_value is not None

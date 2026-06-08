@@ -311,6 +311,17 @@ class TestStr(CompilerTest):
         assert mod.isascii("hello")
         assert not mod.isascii("àèìòù")
 
+    def test_upper(self):
+        src = """
+        def upper(s: str) -> str:
+            return s.upper()
+        """
+        mod = self.compile(src)
+        assert mod.upper("hello") == "HELLO"
+        assert mod.upper("Hello World") == "HELLO WORLD"
+        assert mod.upper("ABC123") == "ABC123"
+        assert mod.upper("") == ""
+
     def test_str_replace(self):
         mod = self.compile("""
         def foo(s: str, old: str, new: str) -> str:

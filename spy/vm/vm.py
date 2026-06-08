@@ -4,7 +4,6 @@ from types import FunctionType
 from typing import Any, Callable, Iterable, Optional, Sequence, Union, overload
 
 import fixedint
-import py.path
 
 from spy import ROOT, ast, libspy
 from spy.analyze.symtable import Color, ImportRef, SymTable, maybe_blue
@@ -19,6 +18,7 @@ from spy.util import func_equals
 from spy.vm.b import B
 from spy.vm.bluecache import BlueCache
 from spy.vm.builtin import make_builtin_func
+from spy.vm.bytes import W_Bytes
 from spy.vm.debugger import spdb
 from spy.vm.exc import W_TypeError
 from spy.vm.function import (
@@ -86,6 +86,7 @@ W_Bool._w.define(W_Bool)
 W_NoneType._w.define(W_NoneType)
 W_NotImplementedType._w.define(W_NotImplementedType)
 W_Str._w.define(W_Str)
+W_Bytes._w.define(W_Bytes)
 # note: W_Dynamic doesn't exist: the equivalent of W_Dynamic._w is
 # w_DynamicType. See "The <dynamic> type" comment in primitive.py
 w_DynamicType.define(W_Object)
@@ -169,25 +170,6 @@ class SPyVM:
         importer.import_all()
         w_mod = self.modules_w[modname]
         return w_mod
-
-    def find_file_on_path(
-        self, modname: str, allow_py_files: bool = False
-    ) -> Optional[py.path.local]:
-        # XXX for now we assume that we find the module as a single file in
-        # the only vm.path entry. Eventually we will need a proper import
-        # mechanism and support for packages
-        assert self.path, "vm.path not set"
-        for d in self.path:
-            # XXX write test for this
-            f = py.path.local(d).join(f"{modname}.spy")
-            if f.exists():
-                return f
-            if allow_py_files:
-                py_f = f.new(ext=".py")
-                if py_f.exists():
-                    return py_f
-
-        return None
 
     def redshift(self, error_mode: ErrorMode) -> None:
         """
@@ -628,6 +610,9 @@ class SPyVM:
     def wrap(self, value: str) -> W_Str: ...
 
     @overload
+    def wrap(self, value: bytes) -> W_Bytes: ...
+
+    @overload
     def wrap(self, value: Any) -> W_Object: ...
 
     # ======== </vm.wrap typing> =========
@@ -663,6 +648,8 @@ class SPyVM:
                 return B.w_False
         elif T is str:
             return W_Str(self, value)
+        elif T is bytes:
+            return W_Bytes(self, value)
         elif T is Loc:
             return W_Loc(value)
         elif T is UnwrappedStruct:

@@ -296,6 +296,23 @@ class CFuncWriter:
     def fmt_expr_Literal(self, const: ast.Literal) -> C.Expr:
         assert False, "ast.Literal should not appear in C backend (use ast.Const)"
 
+    def fmt_expr_BytesLiteral(self, const: ast.BytesLiteral) -> C.Expr:
+        # Similar to fmt_expr_StrLiteral: emit a static spy_BytesObject global
+        # and return a pointer to it.
+        #
+        #     static spy_BytesObject SPY_g_bytes0 = SPY_BYTES_LITERAL(3, "abc");
+        #     ...
+        #     &SPY_g_bytes0 /* b'abc' */
+        b = const.value
+        v = self.cmodw.new_global_var("bytes")
+        n = len(b)
+        lit = C.Literal.from_bytes(b)
+        init = f"SPY_BYTES_LITERAL({n}, {lit})"
+        self.cmodw.tbc_globals.wl(f"static spy_BytesObject {v} = {init};")
+        comment = shortrepr(repr(b), 15)
+        v = f"{v} /* {comment} */"
+        return C.UnaryOp("&", C.Literal(v))
+
     def fmt_expr_StrLiteral(self, const: ast.StrLiteral) -> C.Expr:
         # SPy string literals must be initialized as C globals. We want to
         # generate the following:
@@ -540,6 +557,10 @@ class CFuncWriter:
             call.args.pop()  # remove it
             return self.fmt_generic_call(fqn, call)
 
+        elif irtag.tag == "unsafe.memop":
+            # memcpy, memmove, etc.
+            return self.fmt_memop(fqn, call, irtag)
+
         else:
             return self.fmt_generic_call(fqn, call)
 
@@ -582,3 +603,9 @@ class CFuncWriter:
         c_lval = C.PtrField(c_ptr, attr)
         c_rval = self.fmt_expr(call.args[3])
         return C.BinOp("=", c_lval, c_rval)
+
+    def fmt_memop(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
+        cfunc = irtag.data["cfunc"]
+        assert cfunc in ("spy_memcpy", "spy_memmove", "spy_memcmp", "spy_memset")
+        c_args = [self.fmt_expr(arg) for arg in call.args]
+        return C.Call(cfunc, c_args)

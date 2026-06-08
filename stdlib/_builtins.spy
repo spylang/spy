@@ -1,0 +1,57 @@
+from operator import OpSpec
+
+# ===== ATTENTION =======
+# this file is used for _slice.spy (which uses min and max)
+# which forbids using tuple (see the comment in _slice.spy)
+
+
+@blue.metafunc
+def abs(m_x):
+    """Return the absolute value of the argument."""
+    T = m_x.static_type
+    return OpSpec(_abs[T])
+
+
+def _abs[T](x: T) -> T:
+    if x < 0:
+        return -x
+    return x
+
+
+@blue
+def get_min_T(T1, T2):
+    if T1 == T2:
+        return T1
+    if T1 == int and T2 == float:
+        return float
+    if T1 == float and T2 == int:
+        return float
+    raise TypeError("WIP: only implemented for int and float")
+
+
+@blue.metafunc
+def min(m_x, m_y):
+    T1 = m_x.static_type
+    T2 = m_y.static_type
+    T = get_min_T(T1, T2)
+    return OpSpec(_min[T])
+
+
+def _min[T](x: T, y: T) -> T:
+    if x < y:
+        return x
+    return y
+
+
+@blue.metafunc
+def max(m_x, m_y):
+    T1 = m_x.static_type
+    T2 = m_y.static_type
+    T = get_min_T(T1, T2)
+    return OpSpec(_max[T])
+
+
+def _max[T](x: T, y: T) -> T:
+    if x > y:
+        return x
+    return y

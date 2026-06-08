@@ -103,6 +103,34 @@ class TestBuiltins(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
+    def test_ord(self):
+        src = """
+        def ord_str(s: str) -> i32:
+            return ord(s)
+
+        def ord_bytes(b: bytes) -> u8:
+            return ord(b)
+        """
+        mod = self.compile(src)
+        assert mod.ord_str("A") == 65
+        # str doesn't have full unicode support yet, so non-ASCII chars don't work
+        # assert mod.ord_str("€") == 0x20AC
+        # assert mod.ord_str("\U0001F600") == 0x1F600
+        #
+        assert mod.ord_bytes(b"A") == 65
+        assert mod.ord_bytes(b"\xff") == 255
+
+    def test_ord_TypeError(self):
+        src = """
+        def foo() -> None:
+            return ord(42)
+        """
+        errors = expect_errors(
+            "ord: expected `str` or `bytes`, found `i32`",
+            ("this is `i32`", "42"),
+        )
+        self.compile_raises(src, "foo", errors)
+
     def test_hash(self):
         src = """
         def test_hash_i8(x: i8) -> int:

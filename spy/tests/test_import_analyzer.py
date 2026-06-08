@@ -26,6 +26,14 @@ class TestImportAnalyzer:
             f.setmtime(f.mtime() + mtime_delta)
         return f
 
+    def test_find_file_on_path(self):
+        analyzer = ImportAnalyzer(self.vm, "main")
+        self.tmpdir.join("main.spy").write("x: i32 = 42\n")
+        assert analyzer.find_file_on_path("main") == self.tmpdir.join("main.spy")
+        assert analyzer.find_file_on_path("nonexistent") is None
+        self.tmpdir.join("py.py").write("i = 42\n")
+        assert analyzer.find_file_on_path("py") == self.tmpdir.join("py.py")
+
     def test_simple_import(self):
         src = """
         x: i32 = 42

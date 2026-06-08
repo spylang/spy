@@ -201,25 +201,25 @@ class TestVM:
 
     def test_call_function(self):
         vm = SPyVM()
-        w_abs = B.w_abs
-        w_x = vm.wrap(-42)
-        w_y = vm.fast_call(w_abs, [w_x])
+        w_hash_i32 = B.w_hash_i32
+        w_x = vm.wrap(42)
+        w_y = vm.fast_call(w_hash_i32, [w_x])
         assert vm.unwrap(w_y) == 42
 
     def test_call_function_TypeError(self):
         vm = SPyVM()
-        w_abs = B.w_abs
+        w_hash_i32 = B.w_hash_i32
         w_x = vm.wrap("hello")
         # if we use vm.call(), we get proper type checking and SPyTypeError
         # XXX implement vm.call!
         ## msg = 'Invalid cast. Expected `i32`, got `str`'
         ## with pytest.raises(SPyError, match=msg):
-        ##     vm.call(w_abs, [w_x])
+        ##     vm.call(w_hash_i32, [w_x])
         #
         # if we use vm.fast_call(), we don't get proper type checking, but we
         # get AssertionError
         with pytest.raises(AssertionError):
-            vm.fast_call(w_abs, [w_x])
+            vm.fast_call(w_hash_i32, [w_x])
 
     def test_eq_w(self):
         vm = SPyVM()
@@ -258,20 +258,6 @@ class TestVM:
         assert vm.lookup_global(fqn) is w_x
         with pytest.raises(ValueError, match="'builtins::x' already exists"):
             vm.add_global(fqn, vm.wrap(43))
-
-    def test_get_filename(self, tmpdir):
-        vm = SPyVM()
-        vm.path = [str(tmpdir)]
-        spy_file = tmpdir.join("main.spy")
-        spy_file.write("x: i32 = 42\n")
-
-        filename = vm.find_file_on_path("main")
-        assert filename == tmpdir.join("main.spy")
-        assert vm.find_file_on_path("nonexistent") is None
-        py_file = tmpdir.join("py.py")
-        py_file.write("i = 42\n")
-        assert vm.find_file_on_path("py") is None
-        assert vm.find_file_on_path("py", allow_py_files=True) == tmpdir.join("py.py")
 
     def test_wrap_list(self):
         from spy.vm.struct import unwrap_list
