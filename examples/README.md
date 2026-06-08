@@ -5,7 +5,7 @@ The main examples are organized into four directories, ordered by complexity:
 | Directory | Description |
 |---|---|
 | [`1_high_level/`](1_high_level/) | High-level SPy code that looks close to Python |
-| [`2_blue/`](2_blue/) | Blue functions, metafunctions, and compile-time computation |
+| [`2_metaprogramming/`](2_metaprogramming/) | Blue functions, metafunctions, and compile-time computation |
 | [`3_low_level/`](3_low_level/) | Structs, pointers, and direct memory access via `unsafe` |
 | [`4_advanced/`](4_advanced/) | Advanced features and patterns |
 
