@@ -110,6 +110,13 @@ def _check_byte_ptr(vm: "SPyVM", wam: W_MetaArg, ptr_op: str) -> W_PtrType:
 def w_memcpy(
     vm: "SPyVM", wam_dst: W_MetaArg, wam_src: W_MetaArg, wam_n: W_MetaArg
 ) -> W_OpSpec:
+    """
+    memcpy(dst, src, n): copy `n` bytes from `src` to `dst`.
+
+    Mirrors C's memcpy: only accepts ptr[u8] or ptr[i8]; for any other ptr[T]
+    use ptr_copy instead. The two regions must NOT overlap (use memmove for
+    that).
+    """
     _check_byte_ptr(vm, wam_dst, "ptr_copy")
     _check_byte_ptr(vm, wam_src, "ptr_copy")
     return vm.fast_metacall(UNSAFE.w_ptr_copy, [wam_dst, wam_src, wam_n])
@@ -119,6 +126,12 @@ def w_memcpy(
 def w_memmove(
     vm: "SPyVM", wam_dst: W_MetaArg, wam_src: W_MetaArg, wam_n: W_MetaArg
 ) -> W_OpSpec:
+    """
+    memmove(dst, src, n): copy `n` bytes from `src` to `dst`, allowing overlap.
+
+    Mirrors C's memmove: only accepts ptr[u8] or ptr[i8]; for any other ptr[T]
+    use ptr_move instead.
+    """
     _check_byte_ptr(vm, wam_dst, "ptr_move")
     _check_byte_ptr(vm, wam_src, "ptr_move")
     return vm.fast_metacall(UNSAFE.w_ptr_move, [wam_dst, wam_src, wam_n])
@@ -128,6 +141,12 @@ def w_memmove(
 def w_memset(
     vm: "SPyVM", wam_dst: W_MetaArg, wam_value: W_MetaArg, wam_n: W_MetaArg
 ) -> W_OpSpec:
+    """
+    memset(dst, value, n): write the byte `value` to the first `n` bytes of `dst`.
+
+    Mirrors C's memset: only accepts ptr[u8] or ptr[i8]; for any other ptr[T]
+    use ptr_set instead.
+    """
     _check_byte_ptr(vm, wam_dst, "ptr_set")
     return vm.fast_metacall(UNSAFE.w_ptr_set, [wam_dst, wam_value, wam_n])
 
@@ -136,6 +155,12 @@ def w_memset(
 def w_memcmp(
     vm: "SPyVM", wam_a: W_MetaArg, wam_b: W_MetaArg, wam_n: W_MetaArg
 ) -> W_OpSpec:
+    """
+    memcmp(a, b, n): compare the first `n` bytes of `a` and `b`.
+
+    Returns 0 if equal, <0 if a<b, >0 if a>b. Mirrors C's memcmp: only accepts
+    ptr[u8] or ptr[i8]; for any other ptr[T] use ptr_cmp instead.
+    """
     _check_byte_ptr(vm, wam_a, "ptr_cmp")
     _check_byte_ptr(vm, wam_b, "ptr_cmp")
     return vm.fast_metacall(UNSAFE.w_ptr_cmp, [wam_a, wam_b, wam_n])
@@ -145,6 +170,14 @@ def w_memcmp(
 def w_ptr_copy(
     vm: "SPyVM", wam_dst: W_MetaArg, wam_src: W_MetaArg, wam_n: W_MetaArg
 ) -> W_OpSpec:
+    """
+    ptr_copy(dst, src, n): copy `n` items from `src` to `dst`.
+
+    Both `src` and `dst` must be ptr[T] for the same item type T (memkinds may
+    differ). Unlike C's memcpy, `n` is the number of ITEMS, not bytes —
+    matching Rust's ptr::copy_nonoverlapping, Java's System.arraycopy, etc.
+    The two regions must NOT overlap (use ptr_move for that).
+    """
     w_dst_T, w_src_T = _check_ptrs_match(vm, wam_dst, wam_src)
     DST = Annotated[W_Ptr, w_dst_T]
     SRC = Annotated[W_Ptr, w_src_T]
@@ -172,6 +205,13 @@ def w_ptr_copy_slice(
     wam_src_start: W_MetaArg,
     wam_src_end: W_MetaArg,
 ) -> W_OpSpec:
+    """
+    ptr_copy_slice(dst, dst_start, dst_end, src, src_start, src_end):
+    copy items from src[src_start:src_end] into dst[dst_start:dst_end].
+
+    Both slices must have the same length, both endpoints must be in bounds,
+    and the two regions must NOT overlap (use ptr_move_slice for that).
+    """
     w_dst_T, w_src_T = _check_ptrs_match(vm, wam_dst, wam_src)
     DST = Annotated[W_Ptr, w_dst_T]
     SRC = Annotated[W_Ptr, w_src_T]
@@ -219,6 +259,12 @@ def w_ptr_copy_slice(
 def w_ptr_move(
     vm: "SPyVM", wam_dst: W_MetaArg, wam_src: W_MetaArg, wam_n: W_MetaArg
 ) -> W_OpSpec:
+    """
+    ptr_move(dst, src, n): copy `n` items from `src` to `dst`, allowing overlap.
+
+    Like ptr_copy, but the two regions are allowed to overlap. `n` is the
+    number of ITEMS, not bytes.
+    """
     w_dst_T, w_src_T = _check_ptrs_match(vm, wam_dst, wam_src)
     DST = Annotated[W_Ptr, w_dst_T]
     SRC = Annotated[W_Ptr, w_src_T]
@@ -246,6 +292,13 @@ def w_ptr_move_slice(
     wam_src_start: W_MetaArg,
     wam_src_end: W_MetaArg,
 ) -> W_OpSpec:
+    """
+    ptr_move_slice(dst, dst_start, dst_end, src, src_start, src_end):
+    copy items from src[src_start:src_end] into dst[dst_start:dst_end],
+    allowing overlap.
+
+    Like ptr_copy_slice, but the two regions are allowed to overlap.
+    """
     w_dst_T, w_src_T = _check_ptrs_match(vm, wam_dst, wam_src)
     DST = Annotated[W_Ptr, w_dst_T]
     SRC = Annotated[W_Ptr, w_src_T]
@@ -293,6 +346,14 @@ def w_ptr_move_slice(
 def w_ptr_set(
     vm: "SPyVM", wam_dst: W_MetaArg, wam_value: W_MetaArg, wam_n: W_MetaArg
 ) -> W_OpSpec:
+    """
+    ptr_set(dst, value, n): write the byte `value` to the first `n` items of `dst`.
+
+    `n` is the number of ITEMS (not bytes); the underlying memset writes
+    `n * sizeof(T)` bytes. `value` is interpreted as a byte and broadcast to
+    every byte in the region — this is mostly useful for zeroing memory or
+    initializing ptr[u8]/ptr[i8].
+    """
     w_dst_T = _check_ptr(vm, wam_dst)
     DST = Annotated[W_Ptr, w_dst_T]
     ITEMSIZE = sizeof(w_dst_T.w_itemT)
@@ -317,6 +378,12 @@ def w_ptr_set_slice(
     wam_dst_end: W_MetaArg,
     wam_value: W_MetaArg,
 ) -> W_OpSpec:
+    """
+    ptr_set_slice(dst, dst_start, dst_end, value): write the byte `value`
+    to dst[dst_start:dst_end].
+
+    Like ptr_set, but writes only the given slice instead of the prefix.
+    """
     w_dst_T = _check_ptr(vm, wam_dst)
     DST = Annotated[W_Ptr, w_dst_T]
     ITEMSIZE = sizeof(w_dst_T.w_itemT)
@@ -352,6 +419,14 @@ def w_ptr_set_slice(
 def w_ptr_cmp(
     vm: "SPyVM", wam_a: W_MetaArg, wam_b: W_MetaArg, wam_n: W_MetaArg
 ) -> W_OpSpec:
+    """
+    ptr_cmp(a, b, n): byte-compare the first `n` items of `a` and `b`.
+
+    Returns 0 if equal, <0 if a<b, >0 if a>b. `n` is the number of ITEMS, not
+    bytes; the comparison is byte-wise (like memcmp), so the result is
+    meaningful for ptr[u8]/ptr[i8] and for plain-data structs but not for
+    types whose representation has padding or alternate equal forms.
+    """
     w_a_T, w_b_T = _check_ptrs_match(vm, wam_a, wam_b)
     A = Annotated[W_Ptr, w_a_T]
     B_ = Annotated[W_Ptr, w_b_T]
@@ -380,6 +455,13 @@ def w_ptr_cmp_slice(
     wam_b_start: W_MetaArg,
     wam_b_end: W_MetaArg,
 ) -> W_OpSpec:
+    """
+    ptr_cmp_slice(a, a_start, a_end, b, b_start, b_end): byte-compare
+    a[a_start:a_end] and b[b_start:b_end].
+
+    Like ptr_cmp, but compares the given slices. Both slices must have the
+    same length.
+    """
     w_a_T, w_b_T = _check_ptrs_match(vm, wam_a, wam_b)
     A = Annotated[W_Ptr, w_a_T]
     B_ = Annotated[W_Ptr, w_b_T]
