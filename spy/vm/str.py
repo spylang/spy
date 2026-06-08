@@ -108,7 +108,6 @@ class W_Str(W_Object):
     @staticmethod
     def w_getitem(vm: "SPyVM", wam_s: W_MetaArg, wam_i: W_MetaArg) -> W_OpSpec:
         assert wam_s.w_static_T is B.w_str
-        w_T = wam_i.w_static_T
         from spy.vm.typechecker import convertible  # avoid a circular import
 
         if convertible(vm, W_MetaArg.from_w_obj(vm, B.w_i32), wam_i):
@@ -120,7 +119,7 @@ class W_Str(W_Object):
 
             return W_OpSpec(w_str_getitem_int, [wam_s, wam_i])
 
-        elif "_slice::Slice" in str(w_T.fqn):
+        elif "_slice::Slice" in str(wam_i.w_static_T.fqn):
             return W_OpSpec(B.w_str.lookup(vm, "__getitem_slice__"), [wam_s, wam_i])
 
         return W_OpSpec.NULL
