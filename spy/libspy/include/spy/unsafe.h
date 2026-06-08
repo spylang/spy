@@ -12,6 +12,7 @@ void *WASM_EXPORT(spy_raw_alloc)(size_t size);
 void WASM_EXPORT(_spy_memcpy)(void *dst, void *src, size_t n);
 void WASM_EXPORT(_spy_memmove)(void *dst, void *src, size_t n);
 void WASM_EXPORT(_spy_memset)(void *dst, int value, size_t n);
+int32_t WASM_EXPORT(_spy_memcmp)(void *a, void *b, size_t n);
 
 // When compiling with bdwgc, override spy_gc_alloc with an inline that calls
 // GC_MALLOC. This takes precedence over the function in libspy.a.
@@ -182,6 +183,21 @@ typedef spy_unsafe$gc_ptr__builtins$u8 spy_gc_ptr_u8;
       } while (0)
 #else
 #  define spy_memset(dst, value, n) memset((dst).p, (value), (n))
+#endif
+
+// spy_memcmp needs to yield a value; ternary chain works on all compilers.
+// spy_panic is NORETURN so the ", 0" arms are dead code but satisfy the type.
+#ifdef SPY_DEBUG
+#  define spy_memcmp(a, b, n)                                                          \
+      ((size_t)(n) > (size_t)(a).length                                                \
+           ? (spy_panic("PanicError", "memcmp a out of bounds", __FILE__, __LINE__),   \
+              0)                                                                       \
+       : (size_t)(n) > (size_t)(b).length                                              \
+           ? (spy_panic("PanicError", "memcmp b out of bounds", __FILE__, __LINE__),   \
+              0)                                                                       \
+           : memcmp((a).p, (b).p, (n)))
+#else
+#  define spy_memcmp(a, b, n) memcmp((a).p, (b).p, (n))
 #endif
 
 #endif /* SPY_UNSAFE_H */

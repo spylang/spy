@@ -24,3 +24,8 @@ void
 _spy_memset(void *dst, int value, size_t n) {
     memset(dst, value, n);
 }
+
+int32_t
+_spy_memcmp(void *a, void *b, size_t n) {
+    return memcmp(a, b, n);
+}

@@ -135,6 +135,28 @@ def w_memset(
     return W_OpSpec(w_memset_impl, [wam_dst, wam_value, wam_n])
 
 
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_memcmp(
+    vm: "SPyVM", wam_a: W_MetaArg, wam_b: W_MetaArg, wam_n: W_MetaArg
+) -> W_OpSpec:
+    w_a_T = _check_ptr_u8(vm, wam_a, "memcmp", "a")
+    w_b_T = _check_ptr_u8(vm, wam_b, "memcmp", "b")
+    A = Annotated[W_Ptr, w_a_T]
+    B_ = Annotated[W_Ptr, w_b_T]
+    ns = UNSAFE.w_memcmp.compute_inner_ns([w_a_T, w_b_T])
+    irtag = IRTag("unsafe.memop", cfunc="spy_memcmp")
+
+    @vm.register_builtin_func(ns, "impl", irtag=irtag)
+    def w_memcmp_impl(vm: "SPyVM", w_a: A, w_b: B_, w_n: W_I32) -> W_I32:
+        n = vm.unwrap_i32(w_n)
+        if n > w_a.length or n > w_b.length:
+            raise SPyError("W_PanicError", "memcmp out of bounds")
+        result = vm.ll.call("_spy_memcmp", w_a.addr, w_b.addr, n)
+        return vm.wrap(result)
+
+    return W_OpSpec(w_memcmp_impl, [wam_a, wam_b, wam_n])
+
+
 @UNSAFE.builtin_func(color="blue")
 def w_mem_read(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     T = Annotated[W_Object, w_T]
