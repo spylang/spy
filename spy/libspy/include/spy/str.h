@@ -113,7 +113,7 @@ spy_str_ne(spy_StrObject *a, spy_StrObject *b) {
 }
 
 // XXX: should we introduce a separate type Char?
-spy_StrObject *WASM_EXPORT(spy_str_getitem)(spy_StrObject *s, int32_t i);
+spy_StrObject *WASM_EXPORT(spy_str_getitem_int)(spy_StrObject *s, int32_t i);
 
 int32_t WASM_EXPORT(spy_str_len)(spy_StrObject *s);
 
@@ -127,7 +127,7 @@ int32_t WASM_EXPORT(spy_str_hash)(spy_StrObject *s);
 #define spy_operator$str_ne spy_str_ne
 #define spy_operator$str_to_complex128 spy_str_to_complex128
 #define spy_builtins$str$replace spy_str_replace
-#define spy_builtins$str$__getitem__ spy_str_getitem
+#define spy_builtins$str$_getitem_int spy_str_getitem_int
 #define spy_builtins$str$__len__ spy_str_len
 #define spy_builtins$str$__str__ spy_str_identity
 #define spy_builtins$str$__repr__ spy_str_repr

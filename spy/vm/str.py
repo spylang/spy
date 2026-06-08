@@ -104,13 +104,26 @@ class W_Str(W_Object):
             )
         return W_OpSpec.NULL
 
-    @builtin_method("__getitem__")
+    @builtin_method("__getitem__", color="blue", kind="metafunc")
     @staticmethod
-    def w_getitem(vm: "SPyVM", w_s: "W_Str", w_i: W_I32) -> "W_Str":
-        assert isinstance(w_s, W_Str)
-        assert isinstance(w_i, W_I32)
-        ptr_c = vm.ll.call("spy_str_getitem", w_s.ptr, w_i.value)
-        return W_Str.from_ptr(vm, ptr_c)
+    def w_getitem(vm: "SPyVM", wam_s: W_MetaArg, wam_i: W_MetaArg) -> W_OpSpec:
+        assert wam_s.w_static_T is B.w_str
+        w_T = wam_i.w_static_T
+        from spy.vm.typechecker import convertible
+
+        if convertible(vm, W_MetaArg.from_w_obj(vm, B.w_i32), wam_i):
+
+            @vm.register_builtin_func(B.w_str.fqn, "_getitem_int")
+            def w_str_getitem_int(vm: "SPyVM", w_s: W_Str, w_i: W_I32) -> W_Str:
+                ptr_c = vm.ll.call("spy_str_getitem_int", w_s.ptr, w_i.value)
+                return W_Str.from_ptr(vm, ptr_c)
+
+            return W_OpSpec(w_str_getitem_int, [wam_s, wam_i])
+
+        elif "_slice::Slice" in str(w_T.fqn):
+            return W_OpSpec(B.w_str.lookup(vm, "__getitem_slice__"), [wam_s, wam_i])
+
+        return W_OpSpec.NULL
 
     @builtin_method("__len__")
     @staticmethod

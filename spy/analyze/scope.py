@@ -581,6 +581,11 @@ class ScopeAnalyzer:
         for item in tup.items:
             self.flatten(item)
 
+    def flatten_Slice(self, slc: ast.Slice) -> None:
+        self.mod_scope.implicit_imports.add("_slice")
+        for item in (slc.start, slc.stop, slc.step):
+            self.flatten(item)
+
     def flatten_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         self.mod_scope.implicit_imports.add("_tuple")
         for target in unpack.targets:

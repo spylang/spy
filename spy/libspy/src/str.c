@@ -121,7 +121,7 @@ spy_str_eq(spy_StrObject *a, spy_StrObject *b) {
 }
 
 spy_StrObject *
-spy_str_getitem(spy_StrObject *s, int32_t i) {
+spy_str_getitem_int(spy_StrObject *s, int32_t i) {
     // XXX this is wrong: it should return a code point
     size_t l = s->length;
     if (i < 0) {
