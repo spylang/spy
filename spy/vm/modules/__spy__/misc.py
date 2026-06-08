@@ -7,7 +7,7 @@ from spy.vm.builtin import builtin_method
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.object import W_Object
 from spy.vm.opspec import W_MetaArg, W_OpSpec
-from spy.vm.primitive import W_Bool
+from spy.vm.primitive import W_Bool, W_Dynamic
 from spy.vm.str import W_Str
 
 from . import SPY, interp_list
@@ -127,3 +127,12 @@ def w_force_inline(vm: "SPyVM", w_func: W_Object) -> W_Object:
 @SPY.builtin_func
 def w__stdout_write(vm: "SPyVM", w_s: W_Str) -> None:
     sys.stdout.write(vm.unwrap(w_s))
+
+
+@SPY.builtin_func(color="blue")
+def w_lookup_fqn(vm: "SPyVM", w_s: W_Str) -> W_Dynamic:
+    fqn_str = vm.unwrap_str(w_s)
+    w_val = vm.lookup_global_maybe(FQN(fqn_str))
+    if w_val is None:
+        raise SPyError("W_ValueError", f"FQN not found: {fqn_str}")
+    return w_val
