@@ -53,9 +53,8 @@ class TestMem(CompilerTest):
             memcpy(buf, buf, 4)
             return 0
         """
-        mod = self.compile(src)
-        with SPyError.raises("W_TypeError", match=r"memcpy requires `ptr\[u8\]`"):
-            mod.foo()
+        ctx = SPyError.raises("W_TypeError", match=r"memcpy requires `ptr\[u8\]`")
+        self.compile_raises(src, "foo", ctx)
 
     def test_memcpy_out_of_bounds(self, memkind):
         k = memkind

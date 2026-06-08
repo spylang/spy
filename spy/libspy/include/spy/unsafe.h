@@ -138,4 +138,20 @@ SPY_PTR_FUNCTIONS(gc, spy_unsafe$gc_ptr__builtins$u8, uint8_t)
 // short alias for manual use
 typedef spy_unsafe$gc_ptr__builtins$u8 spy_gc_ptr_u8;
 
+/* memcpy/memmove/memset/memcmp macros for the C backend.
+   In SPY_DEBUG they check bounds via the .length field; in SPY_RELEASE they
+   expand to bare libc calls with zero overhead. */
+#ifdef SPY_DEBUG
+#  define spy_memcpy(dst, src, n)                                                      \
+      do {                                                                             \
+          if ((size_t)(n) > (size_t)(dst).length)                                      \
+              spy_panic("PanicError", "memcpy dst out of bounds", __FILE__, __LINE__); \
+          if ((size_t)(n) > (size_t)(src).length)                                      \
+              spy_panic("PanicError", "memcpy src out of bounds", __FILE__, __LINE__); \
+          memcpy((dst).p, (src).p, (n));                                               \
+      } while (0)
+#else
+#  define spy_memcpy(dst, src, n) memcpy((dst).p, (src).p, (n))
+#endif
+
 #endif /* SPY_UNSAFE_H */
