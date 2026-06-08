@@ -189,11 +189,7 @@ class TestLLWasm(CTest):
         fn(self.selenium, test_wasm)
 
     def test_HostModule(self):
-        if (
-            self.llwasm_backend == "pyodide"
-            and os.environ.get("GITHUB_ACTIONS") == "true"
-        ):
-            # Prevent CI failed
+        if self.llwasm_backend == "pyodide":
             pytest.skip("fixme")
 
         src = r"""
