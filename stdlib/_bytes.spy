@@ -13,6 +13,7 @@ BytesObject.{from,to}_bytes.
 
 from unsafe import (
     gc_ptr,
+    memcpy,
     _bytes_to_BytesObject,
     _alloc_BytesObject,
     _BytesObject_to_bytes,
@@ -95,6 +96,16 @@ class methods:
     # XXX: __hash__ lives in C (spy_bytes_hash, called from W_Bytes.w_hash) because
     # FNV-1a requires wrapping i32 multiply, which is not yet available at applevel.
     # Once SPy gains wrapping arithmetic primitives, port it here.
+
+    def decode(self: bytes, encoding: str) -> str:
+        if encoding != "utf-8":
+            raise ValueError("only 'utf-8' encoding is supported")
+        ll = BytesObject.from_bytes(self)
+        out = StrObject.alloc(ll.length)
+        out.hash = 0
+        if ll.length > 0:
+            memcpy(out.utf8, ll.data, ll.length)
+        return StrObject.to_str(out)
 
     def __repr__(self: bytes) -> str:
         ll = BytesObject.from_bytes(self)

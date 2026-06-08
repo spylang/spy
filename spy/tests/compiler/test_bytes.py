@@ -1,3 +1,4 @@
+from spy.errors import SPyError
 from spy.tests.support import CompilerTest, only_interp
 
 
@@ -106,3 +107,31 @@ class TestBytes(CompilerTest):
         result = mod.foo()
         assert result != 0
         assert result == mod.foo()
+
+    def test_decode(self):
+        src = """
+        def decode(b: bytes) -> str:
+            return b.decode("utf-8")
+        """
+        mod = self.compile(src)
+        assert mod.decode(b"hello") == "hello"
+        assert mod.decode(b"") == ""
+        assert mod.decode("àèìòù".encode("utf-8")) == "àèìòù"
+
+    def test_decode_unsupported(self):
+        src = """
+        def decode(b: bytes, enc: str) -> str:
+            return b.decode(enc)
+        """
+        mod = self.compile(src)
+        with SPyError.raises("W_ValueError"):
+            mod.decode(b"x", "ascii")
+
+    def test_encode_decode_roundtrip(self):
+        src = """
+        def roundtrip(s: str) -> str:
+            return s.encode("utf-8").decode("utf-8")
+        """
+        mod = self.compile(src)
+        assert mod.roundtrip("hello world") == "hello world"
+        assert mod.roundtrip("àèìòù") == "àèìòù"

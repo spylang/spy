@@ -12,7 +12,15 @@ The StrObject struct defined here MUST stay in sync with the one defined in C. I
 possible to cast between str and gc_ptr[StrObject] using StrObject.{from,to}_str.
 """
 
-from unsafe import gc_ptr, _str_to_StrObject, _alloc_StrObject, _StrObject_to_str
+from unsafe import (
+    gc_ptr,
+    memcpy,
+    _str_to_StrObject,
+    _alloc_StrObject,
+    _StrObject_to_str,
+)
+from unsafe import _alloc_BytesObject, _BytesObject_to_bytes
+from __spy__ import lookup_fqn
 
 
 # this MUST stay in sync with the equivalent struct declared in str.h
@@ -66,6 +74,19 @@ class methods:
     # each method defined here should also have a corresponding entry in
     # W_Str.__spy_lazy_attributes__.
 
+    def encode(self: str, encoding: str) -> bytes:
+        # we don't support circular imports and function-level imports. This is a hacky
+        # workaround for 'from _bytes import BytesObject'
+        BytesObject = lookup_fqn("_bytes::BytesObject")
+        if encoding != "utf-8":
+            raise ValueError("only 'utf-8' encoding is supported")
+        ll = StrObject.from_str(self)
+        out = _alloc_BytesObject(ll.length)
+        out.hash = 0
+        if ll.length > 0:
+            memcpy(out.data, ll.utf8, ll.length)
+        return _BytesObject_to_bytes(out)
+
     def isascii(self: str) -> bool:
         ll = StrObject.from_str(self)
         i = 0
@@ -83,8 +104,8 @@ class methods:
         llnew.hash = 0
         for i in range(ll.length):
             ch = ll.utf8[i]
-            if ord(b'a') <= ch and ch <= ord(b'z'):
-                llnew.utf8[i] = ch - (ord(b'a') - ord(b'A'))
+            if ord(b"a") <= ch and ch <= ord(b"z"):
+                llnew.utf8[i] = ch - (ord(b"a") - ord(b"A"))
             else:
                 llnew.utf8[i] = ch
         return StrObject.to_str(llnew)
