@@ -384,20 +384,42 @@ class Parser:
         # generic arguments: class Cls[T]()
         if py_classdef.type_params:
             generic_args = self._parse_type_params(py_classdef)
-            inner_classdef = self._parse_py_classdef(py_classdef)
+            type_aliases: list[spy.ast.TypeAlias] = []
+            inner_classdef = self._parse_py_classdef(py_classdef, type_aliases)
             inner_classdef.name = "Self"
             return spy.ast.GenericClassDef(
                 loc=py_classdef.loc,
                 name=py_classdef.name,
                 args=generic_args,
+                type_aliases=type_aliases,
                 inner=inner_classdef,
             )
 
         return self._parse_py_classdef(py_classdef)
 
-    def _parse_py_classdef(self, py_classdef: py_ast.ClassDef) -> spy.ast.ClassDef:
-        # decorators are not supported yet, but @struct and @typelif are
-        # special-cased
+    def from_py_stmt_TypeAlias(self, py_node: py_ast.TypeAlias) -> spy.ast.Stmt:
+        self.error(
+            "`type` aliases are only supported inside generic classes",
+            "not supported here",
+            py_node.loc,
+        )
+
+    def _parse_py_classdef(
+        self,
+        py_classdef: py_ast.ClassDef,
+        type_aliases: Optional[list[spy.ast.TypeAlias]] = None,
+    ) -> spy.ast.ClassDef:
+        """
+        Parse a ClassDef node.
+
+        If `type_aliases` is provided, `type X = ...` statements in the body
+        are collected there instead of the returned ClassDef body.  This is
+        used when parsing the inner class of a GenericClassDef, where type
+        aliases belong to the outer (blue) scope.
+        When `type_aliases` is None, encountering a TypeAlias raises an error
+        via the normal from_py_stmt dispatch.
+        """
+        # decorators are not supported yet, but @struct is special-cased
         struct_loc: Optional[Loc] = None
         for py_deco in py_classdef.decorator_list:
             if is_py_Name(py_deco, "struct"):
@@ -409,11 +431,7 @@ class Parser:
                     py_deco.loc,
                 )
 
-        kind: spy.ast.ClassKind
-        if struct_loc:
-            kind = "struct"
-        else:
-            kind = "class"
+        kind: spy.ast.ClassKind = "struct" if struct_loc else "class"
 
         docstring, py_class_body = self.get_docstring_maybe(py_classdef.body)
 
@@ -421,7 +439,17 @@ class Parser:
         # validation is delegated to ClassFrame
         body: list[spy.ast.Stmt] = []
         for py_stmt in py_class_body:
-            if isinstance(py_stmt, py_ast.AnnAssign):
+            if type_aliases is not None and isinstance(py_stmt, py_ast.TypeAlias):
+                name_node = py_stmt.name
+                assert isinstance(name_node, py_ast.Name)
+                type_aliases.append(
+                    spy.ast.TypeAlias(
+                        loc=py_stmt.loc,
+                        name=spy.ast.StrConst(loc=name_node.loc, value=name_node.id),
+                        value=self.from_py_expr(py_stmt.value),
+                    )
+                )
+            elif isinstance(py_stmt, py_ast.AnnAssign):
                 body.append(self.from_py_AnnAssign(py_stmt))
             else:
                 body.append(self.from_py_stmt(py_stmt))

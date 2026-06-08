@@ -472,6 +472,20 @@ class AbstractFrame:
         loc = gclassdef.loc
         assert gclassdef.symtable is not None
 
+        # desugar each `type X = expr` alias into a synthetic `const X = expr`
+        # VarDef, which will be evaluated before the inner ClassDef
+        alias_stmts: list[ast.Stmt] = []
+        for alias in gclassdef.type_aliases:
+            alias_stmts.append(
+                ast.VarDef(
+                    loc=alias.loc,
+                    kind="const",
+                    name=alias.name,
+                    type=ast.Auto(alias.loc),
+                    value=alias.value,
+                )
+            )
+
         # build synthetic return: return Self
         impl_symbol = gclassdef.symtable.lookup("Self")
         return_stmt = ast.Return(
@@ -488,7 +502,7 @@ class AbstractFrame:
             return_type=ast.Auto(loc),
             defaults=[],
             docstring=None,
-            body=[gclassdef.inner, return_stmt],
+            body=alias_stmts + [gclassdef.inner, return_stmt],
             decorators=[],
             symtable=gclassdef.symtable,
         )

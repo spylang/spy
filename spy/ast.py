@@ -632,6 +632,20 @@ class ClassDef(Stmt):
 
 
 @astnode
+class TypeAlias(Stmt):
+    """
+    A type alias inside a GenericClassDef body, e.g.:
+
+        type ptr_T = gc_ptr[DTYPE]
+
+    Only valid inside a GenericClassDef; the parser rejects it elsewhere.
+    """
+
+    name: StrConst
+    value: "Expr"
+
+
+@astnode
 class GenericClassDef(Stmt):
     """
     If you have this:
@@ -642,10 +656,15 @@ class GenericClassDef(Stmt):
             y: T
 
     Then GenericClassDef represents the "outer" function. Its argument list contains "T".
+
+    Type aliases (e.g. `type ptr_T = gc_ptr[DTYPE]`) are stored separately in
+    `type_aliases` rather than in `inner.body`, since they belong to the outer
+    (blue) scope, not to the struct body.
     """
 
     name: str
     args: list[FuncArg]
+    type_aliases: list[TypeAlias]
     inner: ClassDef
     symtable: Any = field(repr=False, default=None)
 
