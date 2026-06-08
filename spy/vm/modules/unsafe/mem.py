@@ -90,6 +90,57 @@ def _check_ptrs_match(
     return w_a_T, w_b_T
 
 
+def _check_byte_ptr(vm: "SPyVM", wam: W_MetaArg, ptr_op: str) -> W_PtrType:
+    """
+    Validate that a W_MetaArg is statically typed as ptr[u8] or ptr[i8].
+    Used by the memcpy/memmove/memset/memcmp shims, which mirror C's byte-
+    oriented mem* and only accept byte-sized item types.
+    """
+    w_T = _check_ptr(vm, wam)
+    if w_T.w_itemT is not B.w_u8 and w_T.w_itemT is not B.w_i8:
+        t = w_T.fqn.human_name(vm)
+        err = SPyError("W_TypeError", "mismatched types")
+        err.add("error", f"expected ptr[u8] or ptr[i8], got `{t}`", loc=wam.loc)
+        err.add("note", f"help: use `{ptr_op}` instead", loc=wam.loc)
+        raise err
+    return w_T
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_memcpy(
+    vm: "SPyVM", wam_dst: W_MetaArg, wam_src: W_MetaArg, wam_n: W_MetaArg
+) -> W_OpSpec:
+    _check_byte_ptr(vm, wam_dst, "ptr_copy")
+    _check_byte_ptr(vm, wam_src, "ptr_copy")
+    return vm.fast_metacall(UNSAFE.w_ptr_copy, [wam_dst, wam_src, wam_n])
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_memmove(
+    vm: "SPyVM", wam_dst: W_MetaArg, wam_src: W_MetaArg, wam_n: W_MetaArg
+) -> W_OpSpec:
+    _check_byte_ptr(vm, wam_dst, "ptr_move")
+    _check_byte_ptr(vm, wam_src, "ptr_move")
+    return vm.fast_metacall(UNSAFE.w_ptr_move, [wam_dst, wam_src, wam_n])
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_memset(
+    vm: "SPyVM", wam_dst: W_MetaArg, wam_value: W_MetaArg, wam_n: W_MetaArg
+) -> W_OpSpec:
+    _check_byte_ptr(vm, wam_dst, "ptr_set")
+    return vm.fast_metacall(UNSAFE.w_ptr_set, [wam_dst, wam_value, wam_n])
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_memcmp(
+    vm: "SPyVM", wam_a: W_MetaArg, wam_b: W_MetaArg, wam_n: W_MetaArg
+) -> W_OpSpec:
+    _check_byte_ptr(vm, wam_a, "ptr_cmp")
+    _check_byte_ptr(vm, wam_b, "ptr_cmp")
+    return vm.fast_metacall(UNSAFE.w_ptr_cmp, [wam_a, wam_b, wam_n])
+
+
 @UNSAFE.builtin_func(color="blue", kind="metafunc")
 def w_ptr_copy(
     vm: "SPyVM", wam_dst: W_MetaArg, wam_src: W_MetaArg, wam_n: W_MetaArg
