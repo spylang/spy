@@ -1,7 +1,9 @@
 from typing import TYPE_CHECKING, Annotated
 
-from spy.errors import WIP
+from spy.errors import WIP, SPyError
 from spy.vm.b import B
+from spy.vm.irtag import IRTag
+from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_I32, W_U8, W_Dynamic
 from spy.vm.str import W_Str
 from spy.vm.struct import W_Struct, W_StructType
@@ -53,6 +55,103 @@ def w_gc_alloc(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
         return W_Ptr(w_ptrtype, addr, n)  # type: ignore
 
     return w_fn
+
+
+def _check_ptr_u8(vm: "SPyVM", wam: W_MetaArg) -> W_PtrType:
+    """
+    Validate that a W_MetaArg is statically typed as ptr[u8] (any memkind).
+    Raises W_TypeError on failure.
+    """
+    w_T = wam.w_static_T
+    if isinstance(w_T, W_PtrType) and w_T.w_itemT is B.w_u8:
+        return w_T
+    t = w_T.fqn.human_name(vm)
+    err = SPyError("W_TypeError", f"mismatched types")
+    err.add("error", f"expected ptr[u8], got `{t}`", loc=wam.loc)
+    raise err
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_memcpy(
+    vm: "SPyVM", wam_dst: W_MetaArg, wam_src: W_MetaArg, wam_n: W_MetaArg
+) -> W_OpSpec:
+    w_dst_T = _check_ptr_u8(vm, wam_dst)
+    w_src_T = _check_ptr_u8(vm, wam_src)
+    DST = Annotated[W_Ptr, w_dst_T]
+    SRC = Annotated[W_Ptr, w_src_T]
+    ns = UNSAFE.w_memcpy.compute_inner_ns([w_dst_T, w_src_T])
+    irtag = IRTag("unsafe.memop", cfunc="spy_memcpy")
+
+    @vm.register_builtin_func(ns, "impl", irtag=irtag)
+    def w_memcpy_impl(vm: "SPyVM", w_dst: DST, w_src: SRC, w_n: W_I32) -> None:
+        n = vm.unwrap_i32(w_n)
+        if n > w_dst.length or n > w_src.length:
+            raise SPyError("W_PanicError", "memcpy out of bounds")
+        vm.ll.call("_spy_memcpy", w_dst.addr, w_src.addr, n)
+
+    return W_OpSpec(w_memcpy_impl, [wam_dst, wam_src, wam_n])
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_memmove(
+    vm: "SPyVM", wam_dst: W_MetaArg, wam_src: W_MetaArg, wam_n: W_MetaArg
+) -> W_OpSpec:
+    w_dst_T = _check_ptr_u8(vm, wam_dst)
+    w_src_T = _check_ptr_u8(vm, wam_src)
+    DST = Annotated[W_Ptr, w_dst_T]
+    SRC = Annotated[W_Ptr, w_src_T]
+    ns = UNSAFE.w_memmove.compute_inner_ns([w_dst_T, w_src_T])
+    irtag = IRTag("unsafe.memop", cfunc="spy_memmove")
+
+    @vm.register_builtin_func(ns, "impl", irtag=irtag)
+    def w_memmove_impl(vm: "SPyVM", w_dst: DST, w_src: SRC, w_n: W_I32) -> None:
+        n = vm.unwrap_i32(w_n)
+        if n > w_dst.length or n > w_src.length:
+            raise SPyError("W_PanicError", "memmove out of bounds")
+        vm.ll.call("_spy_memmove", w_dst.addr, w_src.addr, n)
+
+    return W_OpSpec(w_memmove_impl, [wam_dst, wam_src, wam_n])
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_memset(
+    vm: "SPyVM", wam_dst: W_MetaArg, wam_value: W_MetaArg, wam_n: W_MetaArg
+) -> W_OpSpec:
+    w_dst_T = _check_ptr_u8(vm, wam_dst)
+    DST = Annotated[W_Ptr, w_dst_T]
+    ns = UNSAFE.w_memset.compute_inner_ns([w_dst_T])
+    irtag = IRTag("unsafe.memop", cfunc="spy_memset")
+
+    @vm.register_builtin_func(ns, "impl", irtag=irtag)
+    def w_memset_impl(vm: "SPyVM", w_dst: DST, w_value: W_U8, w_n: W_I32) -> None:
+        n = vm.unwrap_i32(w_n)
+        if n > w_dst.length:
+            raise SPyError("W_PanicError", "memset out of bounds")
+        vm.ll.call("_spy_memset", w_dst.addr, int(w_value.value), n)
+
+    return W_OpSpec(w_memset_impl, [wam_dst, wam_value, wam_n])
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_memcmp(
+    vm: "SPyVM", wam_a: W_MetaArg, wam_b: W_MetaArg, wam_n: W_MetaArg
+) -> W_OpSpec:
+    w_a_T = _check_ptr_u8(vm, wam_a)
+    w_b_T = _check_ptr_u8(vm, wam_b)
+    A = Annotated[W_Ptr, w_a_T]
+    B_ = Annotated[W_Ptr, w_b_T]
+    ns = UNSAFE.w_memcmp.compute_inner_ns([w_a_T, w_b_T])
+    irtag = IRTag("unsafe.memop", cfunc="spy_memcmp")
+
+    @vm.register_builtin_func(ns, "impl", irtag=irtag)
+    def w_memcmp_impl(vm: "SPyVM", w_a: A, w_b: B_, w_n: W_I32) -> W_I32:
+        n = vm.unwrap_i32(w_n)
+        if n > w_a.length or n > w_b.length:
+            raise SPyError("W_PanicError", "memcmp out of bounds")
+        result = vm.ll.call("_spy_memcmp", w_a.addr, w_b.addr, n)
+        return vm.wrap(result)
+
+    return W_OpSpec(w_memcmp_impl, [wam_a, wam_b, wam_n])
 
 
 @UNSAFE.builtin_func(color="blue")
