@@ -109,7 +109,7 @@ class TestStr(CompilerTest):
         mod = self.compile(src)
 
         for s_in, slc, res in eq_list:
-            # For each pair (inp, out), it should be true that slice(*inp).indices() == out
+            # For each pair (inp, out), it should be true that s_in[slc] == res
             assert getattr(mod, args_to_func_name(s_in, slc))() == res
         return
 

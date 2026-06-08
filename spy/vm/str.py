@@ -109,7 +109,7 @@ class W_Str(W_Object):
     def w_getitem(vm: "SPyVM", wam_s: W_MetaArg, wam_i: W_MetaArg) -> W_OpSpec:
         assert wam_s.w_static_T is B.w_str
         w_T = wam_i.w_static_T
-        from spy.vm.typechecker import convertible
+        from spy.vm.typechecker import convertible  # avoid a circular import
 
         if convertible(vm, W_MetaArg.from_w_obj(vm, B.w_i32), wam_i):
 
