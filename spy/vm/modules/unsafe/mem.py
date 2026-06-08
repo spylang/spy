@@ -1,7 +1,9 @@
 from typing import TYPE_CHECKING, Annotated
 
-from spy.errors import WIP
+from spy.errors import WIP, SPyError
 from spy.vm.b import B
+from spy.vm.irtag import IRTag
+from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_I32, W_U8, W_Dynamic
 from spy.vm.str import W_Str
 from spy.vm.struct import W_Struct, W_StructType
@@ -53,6 +55,42 @@ def w_gc_alloc(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
         return W_Ptr(w_ptrtype, addr, n)  # type: ignore
 
     return w_fn
+
+
+def _check_ptr_u8(vm: "SPyVM", wam: W_MetaArg, argname: str) -> W_PtrType:
+    """
+    Validate that a W_MetaArg is statically typed as ptr[u8] (any memkind).
+    Raises W_TypeError on failure.
+    """
+    w_T = wam.w_static_T
+    if isinstance(w_T, W_PtrType) and w_T.w_itemT is B.w_u8:
+        return w_T
+    t = w_T.fqn.human_name(vm)
+    raise SPyError(
+        "W_TypeError",
+        f"memcpy requires `ptr[u8]`, got `{t}` for argument `{argname}`",
+    )
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_memcpy(
+    vm: "SPyVM", wam_dst: W_MetaArg, wam_src: W_MetaArg, wam_n: W_MetaArg
+) -> W_OpSpec:
+    w_dst_T = _check_ptr_u8(vm, wam_dst, "dst")
+    w_src_T = _check_ptr_u8(vm, wam_src, "src")
+    DST = Annotated[W_Ptr, w_dst_T]
+    SRC = Annotated[W_Ptr, w_src_T]
+    ns = UNSAFE.w_memcpy.compute_inner_ns([w_dst_T, w_src_T])
+    irtag = IRTag("unsafe.memop", cfunc="spy_memcpy")
+
+    @vm.register_builtin_func(ns, "impl", irtag=irtag)
+    def w_memcpy_impl(vm: "SPyVM", w_dst: DST, w_src: SRC, w_n: W_I32) -> None:
+        n = vm.unwrap_i32(w_n)
+        if n > w_dst.length or n > w_src.length:
+            raise SPyError("W_PanicError", "memcpy out of bounds")
+        vm.ll.call("_spy_memcpy", w_dst.addr, w_src.addr, n)
+
+    return W_OpSpec(w_memcpy_impl, [wam_dst, wam_src, wam_n])
 
 
 @UNSAFE.builtin_func(color="blue")

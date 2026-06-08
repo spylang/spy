@@ -7,6 +7,10 @@
 void *WASM_EXPORT(spy_gc_alloc)(size_t size);
 void *WASM_EXPORT(spy_raw_alloc)(size_t size);
 
+// note: these are needed to implement unsafe.memcpy&co in the interp (via vm.ll.call),
+// but NOT by the C backend. The C backend implements them via IRTags.
+void WASM_EXPORT(_spy_memcpy)(void *dst, void *src, size_t n);
+
 // When compiling with bdwgc, override spy_gc_alloc with an inline that calls
 // GC_MALLOC. This takes precedence over the function in libspy.a.
 #ifdef SPY_GC_BDWGC

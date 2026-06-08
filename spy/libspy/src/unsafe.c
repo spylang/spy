@@ -9,3 +9,8 @@ void *
 spy_raw_alloc(size_t size) {
     return malloc(size);
 }
+
+void
+_spy_memcpy(void *dst, void *src, size_t n) {
+    memcpy(dst, src, n);
+}
