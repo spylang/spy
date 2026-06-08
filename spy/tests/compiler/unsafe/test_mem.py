@@ -1,7 +1,7 @@
 import pytest
 
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest, only_interp
+from spy.tests.support import CompilerTest, expect_errors
 
 
 @pytest.fixture(params=["raw", "gc"])
@@ -53,8 +53,11 @@ class TestMem(CompilerTest):
             memcpy(buf, buf, 4)
             return 0
         """
-        ctx = SPyError.raises("W_TypeError", match=r"memcpy requires `ptr\[u8\]`")
-        self.compile_raises(src, "foo", ctx)
+        errors = expect_errors(
+            "mismatched types",
+            ("expected ptr[u8], got `unsafe::raw_ptr[i32]`", "buf"),
+        )
+        self.compile_raises(src, "foo", errors)
 
     def test_memcpy_out_of_bounds(self, memkind):
         k = memkind
@@ -98,8 +101,11 @@ class TestMem(CompilerTest):
             memmove(buf, buf, 4)
             return 0
         """
-        ctx = SPyError.raises("W_TypeError", match=r"memmove requires `ptr\[u8\]`")
-        self.compile_raises(src, "foo", ctx)
+        errors = expect_errors(
+            "mismatched types",
+            ("expected ptr[u8], got `unsafe::raw_ptr[i32]`", "buf"),
+        )
+        self.compile_raises(src, "foo", errors)
 
     def test_memmove_out_of_bounds(self, memkind):
         k = memkind
@@ -138,8 +144,11 @@ class TestMem(CompilerTest):
             memset(buf, 0, 4)
             return 0
         """
-        ctx = SPyError.raises("W_TypeError", match=r"memset requires `ptr\[u8\]`")
-        self.compile_raises(src, "foo", ctx)
+        errors = expect_errors(
+            "mismatched types",
+            ("expected ptr[u8], got `unsafe::raw_ptr[i32]`", "buf"),
+        )
+        self.compile_raises(src, "foo", errors)
 
     def test_memset_out_of_bounds(self, memkind):
         k = memkind
@@ -189,8 +198,11 @@ class TestMem(CompilerTest):
             buf: raw_ptr[i32] = raw_alloc[i32](4)
             return memcmp(buf, buf, 4)
         """
-        ctx = SPyError.raises("W_TypeError", match=r"memcmp requires `ptr\[u8\]`")
-        self.compile_raises(src, "foo", ctx)
+        errors = expect_errors(
+            "mismatched types",
+            ("expected ptr[u8], got `unsafe::raw_ptr[i32]`", "buf"),
+        )
+        self.compile_raises(src, "foo", errors)
 
     def test_memcmp_out_of_bounds(self, memkind):
         k = memkind

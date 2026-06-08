@@ -57,9 +57,7 @@ def w_gc_alloc(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     return w_fn
 
 
-def _check_ptr_u8(
-    vm: "SPyVM", wam: W_MetaArg, funcname: str, argname: str
-) -> W_PtrType:
+def _check_ptr_u8(vm: "SPyVM", wam: W_MetaArg) -> W_PtrType:
     """
     Validate that a W_MetaArg is statically typed as ptr[u8] (any memkind).
     Raises W_TypeError on failure.
@@ -68,11 +66,8 @@ def _check_ptr_u8(
     if isinstance(w_T, W_PtrType) and w_T.w_itemT is B.w_u8:
         return w_T
     t = w_T.fqn.human_name(vm)
-    err = SPyError(
-        "W_TypeError",
-        f"{funcname} requires `ptr[u8]` for argument `{argname}`",
-    )
-    err.add("error", f"this is `{t}`", loc=wam.loc)
+    err = SPyError("W_TypeError", f"mismatched types")
+    err.add("error", f"expected ptr[u8], got `{t}`", loc=wam.loc)
     raise err
 
 
@@ -80,8 +75,8 @@ def _check_ptr_u8(
 def w_memcpy(
     vm: "SPyVM", wam_dst: W_MetaArg, wam_src: W_MetaArg, wam_n: W_MetaArg
 ) -> W_OpSpec:
-    w_dst_T = _check_ptr_u8(vm, wam_dst, "memcpy", "dst")
-    w_src_T = _check_ptr_u8(vm, wam_src, "memcpy", "src")
+    w_dst_T = _check_ptr_u8(vm, wam_dst)
+    w_src_T = _check_ptr_u8(vm, wam_src)
     DST = Annotated[W_Ptr, w_dst_T]
     SRC = Annotated[W_Ptr, w_src_T]
     ns = UNSAFE.w_memcpy.compute_inner_ns([w_dst_T, w_src_T])
@@ -101,8 +96,8 @@ def w_memcpy(
 def w_memmove(
     vm: "SPyVM", wam_dst: W_MetaArg, wam_src: W_MetaArg, wam_n: W_MetaArg
 ) -> W_OpSpec:
-    w_dst_T = _check_ptr_u8(vm, wam_dst, "memmove", "dst")
-    w_src_T = _check_ptr_u8(vm, wam_src, "memmove", "src")
+    w_dst_T = _check_ptr_u8(vm, wam_dst)
+    w_src_T = _check_ptr_u8(vm, wam_src)
     DST = Annotated[W_Ptr, w_dst_T]
     SRC = Annotated[W_Ptr, w_src_T]
     ns = UNSAFE.w_memmove.compute_inner_ns([w_dst_T, w_src_T])
@@ -122,7 +117,7 @@ def w_memmove(
 def w_memset(
     vm: "SPyVM", wam_dst: W_MetaArg, wam_value: W_MetaArg, wam_n: W_MetaArg
 ) -> W_OpSpec:
-    w_dst_T = _check_ptr_u8(vm, wam_dst, "memset", "dst")
+    w_dst_T = _check_ptr_u8(vm, wam_dst)
     DST = Annotated[W_Ptr, w_dst_T]
     ns = UNSAFE.w_memset.compute_inner_ns([w_dst_T])
     irtag = IRTag("unsafe.memop", cfunc="spy_memset")
@@ -141,8 +136,8 @@ def w_memset(
 def w_memcmp(
     vm: "SPyVM", wam_a: W_MetaArg, wam_b: W_MetaArg, wam_n: W_MetaArg
 ) -> W_OpSpec:
-    w_a_T = _check_ptr_u8(vm, wam_a, "memcmp", "a")
-    w_b_T = _check_ptr_u8(vm, wam_b, "memcmp", "b")
+    w_a_T = _check_ptr_u8(vm, wam_a)
+    w_b_T = _check_ptr_u8(vm, wam_b)
     A = Annotated[W_Ptr, w_a_T]
     B_ = Annotated[W_Ptr, w_b_T]
     ns = UNSAFE.w_memcmp.compute_inner_ns([w_a_T, w_b_T])
