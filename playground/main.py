@@ -78,9 +78,9 @@ console.log("[Python] Loading example files from pyscript.toml...")
 with open("pyscript.toml", "rb") as f:
     config = tomllib.load(f)
 EXAMPLE_FILES = [
-    f"examples/{source}"
+    f"{dest}{source}"
     for source, dest in config.get("files", {}).items()
-    if dest == "examples/"
+    if dest.startswith("examples/")
 ]
 
 

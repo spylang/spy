@@ -10,7 +10,7 @@ from spy.util import print_diff
 EXAMPLES_DIR = Path(__file__).parent
 EXPECTED_OUTPUT_DIR = EXAMPLES_DIR / "expected_output"
 
-_spy_files = sorted(EXAMPLES_DIR.glob("*.spy"))
+_spy_files = sorted(EXAMPLES_DIR.glob('[0-9]*/**/*.spy'))
 
 
 def expected_returncode(path: Path) -> int:
