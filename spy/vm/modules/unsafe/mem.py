@@ -68,10 +68,12 @@ def _check_ptr_u8(
     if isinstance(w_T, W_PtrType) and w_T.w_itemT is B.w_u8:
         return w_T
     t = w_T.fqn.human_name(vm)
-    raise SPyError(
+    err = SPyError(
         "W_TypeError",
-        f"{funcname} requires `ptr[u8]`, got `{t}` for argument `{argname}`",
+        f"{funcname} requires `ptr[u8]` for argument `{argname}`",
     )
+    err.add("error", f"this is `{t}`", loc=wam.loc)
+    raise err
 
 
 @UNSAFE.builtin_func(color="blue", kind="metafunc")
