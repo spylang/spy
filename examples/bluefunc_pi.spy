@@ -3,6 +3,9 @@ Things to notice:
   - @blue funcs are completely resolved at redshift time
   - get_pi is not present in the redshifted or .c file
   - types in blue functions are optional
+
+Note: `redshift --linearize` gives simpler output for the print calls with
+more than one argument.
 """
 
 
@@ -30,5 +33,5 @@ def get_pi():
 
 def main() -> None:
     pi = get_pi()
-    print("pi:")
-    print(pi)
+    print("pi:", pi)
+    print("tau:", 2 * pi)

@@ -236,6 +236,7 @@ def main():
                     RunSPyButton("execute"),
                     RunSPyButton("parse"),
                     RunSPyButton("redshift"),
+                    RunSPyButton("redshift --linearize"),
                     RunSPyButton("redshift --full-fqn"),
                     RunSPyButton("build --cdump"),
                     RunSPyButton("colorize"),
