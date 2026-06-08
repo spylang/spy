@@ -132,7 +132,9 @@ def w__stdout_write(vm: "SPyVM", w_s: W_Str) -> None:
 @SPY.builtin_func(color="blue")
 def w_lookup_fqn(vm: "SPyVM", w_s: W_Str) -> W_Dynamic:
     fqn_str = vm.unwrap_str(w_s)
-    w_val = vm.lookup_global_maybe(FQN(fqn_str))
+    fqn = FQN(fqn_str)
+    vm.import_(fqn.modname)
+    w_val = vm.lookup_global_maybe(fqn)
     if w_val is None:
         raise SPyError("W_ValueError", f"FQN not found: {fqn_str}")
     return w_val
