@@ -168,9 +168,12 @@ class TestMem(CompilerTest):
     def test_ptr_move(self, memkind):
         k = memkind
         src = """
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, ptr_move
+        from unsafe import (
+            {k}_alloc as k_alloc, {k}_ptr as k_ptr,
+            ptr_move, ptr_move_slice,
+        )
 
-        def foo() -> i32:
+        def fn_ptr() -> i32:
             src: k_ptr[u8] = k_alloc[u8](4)
             dst: k_ptr[u8] = k_alloc[u8](4)
             src[0] = 10
@@ -179,9 +182,24 @@ class TestMem(CompilerTest):
             src[3] = 40
             ptr_move(dst, src, 4)
             return dst[0] + dst[1] + dst[2] + dst[3]
+
+        def fn_slice() -> i32:
+            src: k_ptr[u8] = k_alloc[u8](4)
+            dst: k_ptr[u8] = k_alloc[u8](4)
+            src[0] = 10
+            src[1] = 20
+            src[2] = 30
+            src[3] = 40
+            dst[0] = 0
+            dst[1] = 0
+            dst[2] = 0
+            dst[3] = 0
+            ptr_move_slice(dst, 2, 4, src, 1, 3)
+            return i32(dst[0])*1000 + i32(dst[1])*100 + i32(dst[2])*10 + i32(dst[3])
         """.format(k=k)
         mod = self.compile(src)
-        assert mod.foo() == 100
+        assert mod.fn_ptr() == 100
+        assert mod.fn_slice() == 200 + 30
 
     def test_ptr_move_not_a_ptr(self):
         src = """
@@ -218,30 +236,62 @@ class TestMem(CompilerTest):
     def test_ptr_move_out_of_bounds(self, memkind):
         k = memkind
         src = """
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, ptr_move
+        from unsafe import (
+            {k}_alloc as k_alloc, {k}_ptr as k_ptr,
+            ptr_move, ptr_move_slice,
+        )
 
-        def foo() -> i32:
+        def fn_ptr() -> i32:
             src: k_ptr[u8] = k_alloc[u8](4)
             dst: k_ptr[u8] = k_alloc[u8](4)
             ptr_move(dst, src, 10)
             return 0
+
+        def fn_slice() -> i32:
+            src: k_ptr[u8] = k_alloc[u8](4)
+            dst: k_ptr[u8] = k_alloc[u8](4)
+            ptr_move_slice(dst, 0, 10, src, 0, 10)
+            return 0
+
+        def fn_slice_mismatch() -> i32:
+            src: k_ptr[u8] = k_alloc[u8](4)
+            dst: k_ptr[u8] = k_alloc[u8](4)
+            ptr_move_slice(dst, 0, 3, src, 0, 2)
+            return 0
         """.format(k=k)
         mod = self.compile(src)
         with SPyError.raises("W_PanicError", match="out of bounds"):
-            mod.foo()
+            mod.fn_ptr()
+        with SPyError.raises("W_PanicError", match="out of bounds"):
+            mod.fn_slice()
+        with SPyError.raises("W_PanicError", match="length mismatch"):
+            mod.fn_slice_mismatch()
 
     def test_ptr_set(self, memkind):
         k = memkind
         src = """
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, ptr_set
+        from unsafe import (
+            {k}_alloc as k_alloc, {k}_ptr as k_ptr,
+            ptr_set, ptr_set_slice,
+        )
 
-        def foo() -> i32:
+        def fn_ptr() -> i32:
             buf: k_ptr[u8] = k_alloc[u8](4)
             ptr_set(buf, 7, 4)
             return buf[0] + buf[1] + buf[2] + buf[3]
+
+        def fn_slice() -> i32:
+            buf: k_ptr[u8] = k_alloc[u8](4)
+            buf[0] = 0
+            buf[1] = 0
+            buf[2] = 0
+            buf[3] = 0
+            ptr_set_slice(buf, 1, 3, 7)
+            return i32(buf[0])*1000 + i32(buf[1])*100 + i32(buf[2])*10 + i32(buf[3])
         """.format(k=k)
         mod = self.compile(src)
-        assert mod.foo() == 28
+        assert mod.fn_ptr() == 28
+        assert mod.fn_slice() == 700 + 70
 
     def test_ptr_set_not_a_ptr(self):
         src = """
@@ -261,30 +311,43 @@ class TestMem(CompilerTest):
     def test_ptr_set_out_of_bounds(self, memkind):
         k = memkind
         src = """
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, ptr_set
+        from unsafe import (
+            {k}_alloc as k_alloc, {k}_ptr as k_ptr,
+            ptr_set, ptr_set_slice,
+        )
 
-        def foo() -> i32:
+        def fn_ptr() -> i32:
             buf: k_ptr[u8] = k_alloc[u8](4)
             ptr_set(buf, 0, 10)
+            return 0
+
+        def fn_slice() -> i32:
+            buf: k_ptr[u8] = k_alloc[u8](4)
+            ptr_set_slice(buf, 0, 10, 0)
             return 0
         """.format(k=k)
         mod = self.compile(src)
         with SPyError.raises("W_PanicError", match="out of bounds"):
-            mod.foo()
+            mod.fn_ptr()
+        with SPyError.raises("W_PanicError", match="out of bounds"):
+            mod.fn_slice()
 
     def test_ptr_cmp(self, memkind):
         k = memkind
         src = """
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, ptr_set, ptr_cmp
+        from unsafe import (
+            {k}_alloc as k_alloc, {k}_ptr as k_ptr,
+            ptr_set, ptr_cmp, ptr_cmp_slice,
+        )
 
-        def foo() -> i32:
+        def fn_ptr_eq() -> i32:
             a: k_ptr[u8] = k_alloc[u8](4)
             b: k_ptr[u8] = k_alloc[u8](4)
             ptr_set(a, 42, 4)
             ptr_set(b, 42, 4)
             return ptr_cmp(a, b, 4)
 
-        def bar() -> i32:
+        def fn_ptr_lt() -> i32:
             a: k_ptr[u8] = k_alloc[u8](4)
             b: k_ptr[u8] = k_alloc[u8](4)
             ptr_set(a, 1, 4)
@@ -293,10 +356,35 @@ class TestMem(CompilerTest):
             if r < 0:
                 return -1
             return 1
+
+        def fn_slice_eq() -> i32:
+            a: k_ptr[u8] = k_alloc[u8](4)
+            b: k_ptr[u8] = k_alloc[u8](4)
+            a[0] = 1
+            a[1] = 7
+            a[2] = 7
+            a[3] = 9
+            b[0] = 2
+            b[1] = 7
+            b[2] = 7
+            b[3] = 8
+            return ptr_cmp_slice(a, 1, 3, b, 1, 3)
+
+        def fn_slice_lt() -> i32:
+            a: k_ptr[u8] = k_alloc[u8](4)
+            b: k_ptr[u8] = k_alloc[u8](4)
+            ptr_set(a, 1, 4)
+            ptr_set(b, 2, 4)
+            r: i32 = ptr_cmp_slice(a, 0, 2, b, 0, 2)
+            if r < 0:
+                return -1
+            return 1
         """.format(k=k)
         mod = self.compile(src)
-        assert mod.foo() == 0
-        assert mod.bar() == -1
+        assert mod.fn_ptr_eq() == 0
+        assert mod.fn_ptr_lt() == -1
+        assert mod.fn_slice_eq() == 0
+        assert mod.fn_slice_lt() == -1
 
     def test_ptr_cmp_not_a_ptr(self):
         src = """
@@ -331,16 +419,33 @@ class TestMem(CompilerTest):
     def test_ptr_cmp_out_of_bounds(self, memkind):
         k = memkind
         src = """
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, ptr_cmp
+        from unsafe import (
+            {k}_alloc as k_alloc, {k}_ptr as k_ptr,
+            ptr_cmp, ptr_cmp_slice,
+        )
 
-        def foo() -> i32:
+        def fn_ptr() -> i32:
             a: k_ptr[u8] = k_alloc[u8](4)
             b: k_ptr[u8] = k_alloc[u8](4)
             return ptr_cmp(a, b, 10)
+
+        def fn_slice() -> i32:
+            a: k_ptr[u8] = k_alloc[u8](4)
+            b: k_ptr[u8] = k_alloc[u8](4)
+            return ptr_cmp_slice(a, 0, 10, b, 0, 10)
+
+        def fn_slice_mismatch() -> i32:
+            a: k_ptr[u8] = k_alloc[u8](4)
+            b: k_ptr[u8] = k_alloc[u8](4)
+            return ptr_cmp_slice(a, 0, 3, b, 0, 2)
         """.format(k=k)
         mod = self.compile(src)
         with SPyError.raises("W_PanicError", match="out of bounds"):
-            mod.foo()
+            mod.fn_ptr()
+        with SPyError.raises("W_PanicError", match="out of bounds"):
+            mod.fn_slice()
+        with SPyError.raises("W_PanicError", match="length mismatch"):
+            mod.fn_slice_mismatch()
 
     def test_memcpy(self, memkind):
         k = memkind

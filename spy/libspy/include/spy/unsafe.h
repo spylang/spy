@@ -209,6 +209,29 @@ typedef spy_unsafe$gc_ptr__builtins$u8 spy_gc_ptr_u8;
 #endif
 
 #ifdef SPY_DEBUG
+#  define spy_ptr_move_slice(dst, ds, de, src, ss, se)                                 \
+      do {                                                                             \
+          ptrdiff_t _spy_n = (de) - (ds);                                              \
+          if (_spy_n != (se) - (ss))                                                   \
+              spy_panic(                                                               \
+                  "PanicError", "ptr_move_slice length mismatch", __FILE__, __LINE__   \
+              );                                                                       \
+          if (_spy_n < 0 || (ds) < 0 || (de) > (dst).length)                           \
+              spy_panic(                                                               \
+                  "PanicError", "ptr_move_slice dst out of bounds", __FILE__, __LINE__ \
+              );                                                                       \
+          if ((ss) < 0 || (se) > (src).length)                                         \
+              spy_panic(                                                               \
+                  "PanicError", "ptr_move_slice src out of bounds", __FILE__, __LINE__ \
+              );                                                                       \
+          memmove((dst).p + (ds), (src).p + (ss), _spy_n * sizeof(*(dst).p));          \
+      } while (0)
+#else
+#  define spy_ptr_move_slice(dst, ds, de, src, ss, se)                                 \
+      memmove((dst).p + (ds), (src).p + (ss), ((de) - (ds)) * sizeof(*(dst).p))
+#endif
+
+#ifdef SPY_DEBUG
 #  define spy_ptr_set(dst, value, n)                                                   \
       do {                                                                             \
           if ((size_t)(n) > (size_t)(dst).length)                                      \
@@ -217,6 +240,21 @@ typedef spy_unsafe$gc_ptr__builtins$u8 spy_gc_ptr_u8;
       } while (0)
 #else
 #  define spy_ptr_set(dst, value, n) memset((dst).p, (value), (n) * sizeof(*(dst).p))
+#endif
+
+#ifdef SPY_DEBUG
+#  define spy_ptr_set_slice(dst, ds, de, value)                                        \
+      do {                                                                             \
+          ptrdiff_t _spy_n = (de) - (ds);                                              \
+          if (_spy_n < 0 || (ds) < 0 || (de) > (dst).length)                           \
+              spy_panic(                                                               \
+                  "PanicError", "ptr_set_slice out of bounds", __FILE__, __LINE__      \
+              );                                                                       \
+          memset((dst).p + (ds), (value), _spy_n * sizeof(*(dst).p));                  \
+      } while (0)
+#else
+#  define spy_ptr_set_slice(dst, ds, de, value)                                        \
+      memset((dst).p + (ds), (value), ((de) - (ds)) * sizeof(*(dst).p))
 #endif
 
 // spy_ptr_cmp needs to yield a value; ternary chain works on all compilers.
@@ -232,6 +270,30 @@ typedef spy_unsafe$gc_ptr__builtins$u8 spy_gc_ptr_u8;
            : memcmp((a).p, (b).p, (n) * sizeof(*(a).p)))
 #else
 #  define spy_ptr_cmp(a, b, n) memcmp((a).p, (b).p, (n) * sizeof(*(a).p))
+#endif
+
+// spy_ptr_cmp_slice yields a value too; same ternary trick.
+#ifdef SPY_DEBUG
+#  define spy_ptr_cmp_slice(a, as_, ae, b, bs, be)                                     \
+      (((ae) - (as_)) != ((be) - (bs))                                                 \
+           ? (spy_panic(                                                               \
+                  "PanicError", "ptr_cmp_slice length mismatch", __FILE__, __LINE__    \
+              ),                                                                       \
+              0)                                                                       \
+       : ((ae) - (as_)) < 0 || (as_) < 0 || (ae) > (a).length                          \
+           ? (spy_panic(                                                               \
+                  "PanicError", "ptr_cmp_slice a out of bounds", __FILE__, __LINE__    \
+              ),                                                                       \
+              0)                                                                       \
+       : (bs) < 0 || (be) > (b).length                                                 \
+           ? (spy_panic(                                                               \
+                  "PanicError", "ptr_cmp_slice b out of bounds", __FILE__, __LINE__    \
+              ),                                                                       \
+              0)                                                                       \
+           : memcmp((a).p + (as_), (b).p + (bs), ((ae) - (as_)) * sizeof(*(a).p)))
+#else
+#  define spy_ptr_cmp_slice(a, as_, ae, b, bs, be)                                     \
+      memcmp((a).p + (as_), (b).p + (bs), ((ae) - (as_)) * sizeof(*(a).p))
 #endif
 
 #endif /* SPY_UNSAFE_H */
