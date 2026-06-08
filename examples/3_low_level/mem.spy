@@ -1,0 +1,78 @@
+"""
+Things to notice:
+  - memset, memcpy, memmove, memcmp all operate on ptr[u8] buffers
+  - they provide the same semantics as their C counterparts
+  - bounds are checked at runtime: out-of-bounds access panics
+  - memcpy is faster but requires non-overlapping buffers;
+    memmove is safe for overlapping regions
+  - gc_alloc is used here: the GC handles memory release automatically
+"""
+
+from unsafe import gc_alloc, gc_ptr, memset, memcpy, memmove, memcmp
+
+
+def demo_memset() -> None:
+    buf: gc_ptr[u8] = gc_alloc[u8](4)
+    memset(buf, 7, 4)
+    # all bytes are now 7
+    total: i32 = buf[0] + buf[1] + buf[2] + buf[3]
+    assert total == 28
+
+
+def demo_memcpy() -> None:
+    src: gc_ptr[u8] = gc_alloc[u8](4)
+    dst: gc_ptr[u8] = gc_alloc[u8](4)
+
+    src[0] = 10
+    src[1] = 20
+    src[2] = 30
+    src[3] = 40
+
+    memcpy(dst, src, 4)
+
+    total: i32 = dst[0] + dst[1] + dst[2] + dst[3]
+    assert total == 100
+
+
+# The canonical use case for memmove over memcpy is overlapping regions, e.g.:
+#
+#   memmove(buf + 2, buf, 3)  # shift 3 bytes forward by 2 positions
+#
+# This requires pointer arithmetic (buf + 2), which is not yet supported in SPy.
+# For non-overlapping buffers memmove and memcpy are interchangeable.
+def demo_memmove() -> None:
+    src: gc_ptr[u8] = gc_alloc[u8](4)
+    dst: gc_ptr[u8] = gc_alloc[u8](4)
+
+    src[0] = 1
+    src[1] = 2
+    src[2] = 3
+    src[3] = 4
+
+    memmove(dst, src, 4)
+
+    assert dst[0] == u8(1)
+    assert dst[1] == u8(2)
+    assert dst[2] == u8(3)
+    assert dst[3] == u8(4)
+
+
+def demo_memcmp() -> None:
+    a: gc_ptr[u8] = gc_alloc[u8](3)
+    b: gc_ptr[u8] = gc_alloc[u8](3)
+
+    memset(a, 42, 3)
+    memset(b, 42, 3)
+    assert memcmp(a, b, 3) == 0  # buffers are equal
+
+    b[2] = 99
+    result: i32 = memcmp(a, b, 3)
+    assert result < 0  # a < b lexicographically
+
+
+def main() -> None:
+    demo_memset()
+    demo_memcpy()
+    demo_memmove()
+    demo_memcmp()
+    print("all assertions passed")
