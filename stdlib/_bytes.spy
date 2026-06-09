@@ -14,6 +14,9 @@ BytesObject.{from,to}_bytes.
 from unsafe import (
     gc_ptr,
     ptr_copy,
+    ptr_copy_slice,
+    memcmp,
+    memset,
     _bytes_to_BytesObject,
     _alloc_BytesObject,
     _BytesObject_to_bytes,
@@ -63,10 +66,7 @@ class methods:
         b = BytesObject.from_bytes(other)
         if a.length != b.length:
             return False
-        for i in range(a.length):
-            if a.data[i] != b.data[i]:
-                return False
-        return True
+        return memcmp(a.data, b.data, a.length) == 0
 
     def __ne__(self: bytes, other: bytes) -> bool:
         return not self.__eq__(other)
@@ -76,21 +76,20 @@ class methods:
         b = BytesObject.from_bytes(other)
         out = BytesObject.alloc(a.length + b.length)
         out.hash = 0
-        for ia in range(a.length):
-            out.data[ia] = a.data[ia]
-        for ib in range(b.length):
-            out.data[a.length + ib] = b.data[ib]
+        ptr_copy_slice(out.data, 0, a.length, a.data, 0, a.length)
+        ptr_copy_slice(out.data, a.length, a.length + b.length, b.data, 0, b.length)
         return BytesObject.to_bytes(out)
 
     def __mul__(self: bytes, n: i32) -> bytes:
-        a = BytesObject.from_bytes(self)
-        out = BytesObject.alloc(a.length * n)
+        ll = BytesObject.from_bytes(self)
+        out = BytesObject.alloc(ll.length * n)
         out.hash = 0
-        k = 0
-        for _ in range(n):
-            for i in range(a.length):
-                out.data[k] = a.data[i]
-                k = k + 1
+        if ll.length == 1:
+            memset(out.data, ll.data[0], n)
+        else:
+            l = ll.length
+            for i in range(n):
+                ptr_copy_slice(out.data, i * l, (i + 1) * l, ll.data, 0, l)
         return BytesObject.to_bytes(out)
 
     # XXX: __hash__ lives in C (spy_bytes_hash, called from W_Bytes.w_hash) because

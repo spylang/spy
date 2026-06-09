@@ -165,6 +165,30 @@ class TestMem(CompilerTest):
         with SPyError.raises("W_PanicError", match="length mismatch"):
             mod.fn_slice_mismatch()
 
+    def test_ptr_copy_overlap(self, memkind):
+        k = memkind
+        src = """
+        from unsafe import (
+            {k}_alloc as k_alloc, {k}_ptr as k_ptr,
+            ptr_copy, ptr_copy_slice,
+        )
+
+        def fn_ptr() -> i32:
+            buf: k_ptr[u8] = k_alloc[u8](4)
+            ptr_copy(buf, buf, 4)
+            return 0
+
+        def fn_slice() -> i32:
+            buf: k_ptr[u8] = k_alloc[u8](4)
+            ptr_copy_slice(buf, 0, 3, buf, 1, 4)
+            return 0
+        """.format(k=k)
+        mod = self.compile(src)
+        with SPyError.raises("W_PanicError", match="ptr_copy regions overlap"):
+            mod.fn_ptr()
+        with SPyError.raises("W_PanicError", match="ptr_copy_slice regions overlap"):
+            mod.fn_slice()
+
     def test_ptr_move(self, memkind):
         k = memkind
         src = """
