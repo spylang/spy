@@ -32,13 +32,6 @@ console.log("[Python] SPy imports complete")
 libspy.LIBSPY_WASM = str(URL.new("./libspy.mjs", document.baseURI))
 
 
-def spy_main(argv):
-    try:
-        spy.cli.app(argv)
-    except SystemExit:
-        pass
-
-
 # =========== GUI code ==========
 
 
@@ -152,7 +145,7 @@ def run_spy_file_with_args(argv: list[str]):
     with open(display_filename, "w") as f:
         f.write(text)
 
-    spy_main(argv)
+    spy.cli.app(argv)
 
 
 def run_click(event):
