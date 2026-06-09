@@ -652,6 +652,8 @@ class SPyVM:
             return W_Bytes(self, value)
         elif T is Loc:
             return W_Loc(value)
+        elif T is slice:
+            return self.wrap_slice(value)
         elif T is UnwrappedStruct:
             return value.spy_wrap(self)
         elif isinstance(value, FunctionType):
@@ -682,6 +684,15 @@ class SPyVM:
         for item in items:
             vm.call_w(w_push, [w_res, vm.wrap(item)], color="red")
         return w_res
+
+    def wrap_slice(self, s: slice) -> W_Object:
+        vm = self
+        self.import_("_slice")
+        w_T = self.lookup_global(FQN("_slice::Slice"))
+        w_start = vm.wrap(s.start)
+        w_stop = vm.wrap(s.stop)
+        w_step = vm.wrap(s.step)
+        return vm.call_w(w_T, [w_start, w_stop, w_step])
 
     def unwrap(self, w_value: W_Object) -> Any:
         """

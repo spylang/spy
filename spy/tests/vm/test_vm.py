@@ -266,3 +266,16 @@ class TestVM:
         w_lst = vm.wrap_list(B.w_str, ["a", "bb", "ccc"])
         lst = unwrap_list(vm, w_lst)
         assert lst == ["a", "bb", "ccc"]
+
+    def test_wrap_slice(self):
+        from spy.location import Loc
+        from spy.vm.modules.operator import OP
+        from spy.vm.opspec import W_MetaArg
+
+        vm = SPyVM()
+        w_slice = vm.wrap_slice(slice(0, 1, 2))
+        w_arg_slice = W_MetaArg.from_w_obj(vm, vm.wrap(w_slice))
+        w_arg_start = W_MetaArg.from_w_obj(vm, vm.wrap("start"))
+        w_opimpl = vm.call_OP(Loc.fake(), OP.w_GETATTR, [w_arg_slice, w_arg_start])
+        start = vm.eval_opimpl(w_opimpl, [w_arg_slice, w_arg_start], loc=Loc.fake())
+        assert vm.unwrap(start.w_val) == 0
