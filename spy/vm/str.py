@@ -109,9 +109,7 @@ class W_Str(W_Object):
     @staticmethod
     def w_getitem(vm: "SPyVM", wam_s: W_MetaArg, wam_i: W_MetaArg) -> W_OpSpec:
         assert wam_s.w_static_T is B.w_str
-        from spy.vm.typechecker import is_convertible_to  # avoid a circular import
-
-        if is_convertible_to(vm, W_MetaArg.from_w_obj(vm, B.w_i32), wam_i):
+        if vm.is_convertible_to(W_MetaArg.from_w_obj(vm, B.w_i32), wam_i):
 
             @vm.register_builtin_func(B.w_str.fqn, "_getitem_int")
             def w_str_getitem_int(vm: "SPyVM", w_s: W_Str, w_i: W_I32) -> W_Str:
