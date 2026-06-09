@@ -29,13 +29,15 @@ GLOBAL_VM: Optional[SPyVM] = None
 
 async def _pyodide_main(user_func: Callable, args: "Base_Args") -> None:
     """
-    For some reasons, it seems that pyodide doesn't print exceptions
-    uncaught exceptions which escapes an asyncio task. This is a small wrapper
-    to ensure that we display a proper traceback in that case
+    For some reasons, it seems that pyodide doesn't print uncaught exceptions
+    which escapes an asyncio task. This is a small wrapper to ensure that we
+    display a proper traceback in that case.
     """
     try:
         await _run_command(user_func, args)
-    except BaseException:
+    except BaseException as exc:
+        if isinstance(exc, SystemExit):
+            return
         traceback.print_exc()
 
 
