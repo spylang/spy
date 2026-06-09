@@ -273,9 +273,15 @@ class TestVM:
         from spy.vm.opspec import W_MetaArg
 
         vm = SPyVM()
-        w_slice = vm.wrap_slice(slice(0, 1, 2))
+        w_slice = vm.wrap_slice(slice(0, None, 2))
         w_arg_slice = W_MetaArg.from_w_obj(vm, vm.wrap(w_slice))
-        w_arg_start = W_MetaArg.from_w_obj(vm, vm.wrap("start"))
-        w_opimpl = vm.call_OP(Loc.fake(), OP.w_GETATTR, [w_arg_slice, w_arg_start])
-        start = vm.eval_opimpl(w_opimpl, [w_arg_slice, w_arg_start], loc=Loc.fake())
-        assert vm.unwrap(start.w_val) == 0
+
+        def roundtrip_val(name: str) -> str:
+            wam = W_MetaArg.from_w_obj(vm, vm.wrap(name))
+            w_opimpl = vm.call_OP(Loc.fake(), OP.w_GETATTR, [w_arg_slice, wam])
+            result = vm.eval_opimpl(w_opimpl, [w_arg_slice, wam], loc=Loc.fake())
+            return vm.unwrap(result.w_val)
+
+        assert roundtrip_val("start") == 0
+        assert roundtrip_val("stop_is_none")  # Boolean flag for None-ness
+        assert roundtrip_val("step") == 2
