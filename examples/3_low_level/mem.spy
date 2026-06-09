@@ -1,78 +1,111 @@
 """
 Things to notice:
-  - memset, memcpy, memmove, memcmp all operate on ptr[u8] buffers
-  - they provide the same semantics as their C counterparts
+  - ptr_copy, ptr_move, ptr_set, ptr_cmp are the primary mem ops; they work
+    on ptr[T] for any type T, and count is expressed in items, not bytes
+  - each op has a _slice variant that avoids the need for pointer arithmetic:
+      ptr_copy_slice(dst, dstart, dend, src, sstart, send)
+  - ptr_copy panics on overlapping regions; use ptr_move when regions may overlap
   - bounds are checked at runtime: out-of-bounds access panics
-  - memcpy is faster but requires non-overlapping buffers;
-    memmove is safe for overlapping regions
-  - gc_alloc is used here: the GC handles memory release automatically
+  - gc_alloc is used here; the GC handles memory release automatically
+
+Note: memcpy, memmove, memset, memcmp are byte-only shims (ptr[u8]/ptr[i8])
+that mirror the C standard library.
 """
 
-from unsafe import gc_alloc, gc_ptr, memset, memcpy, memmove, memcmp
+from unsafe import (
+    gc_alloc,
+    gc_ptr,
+    ptr_copy,
+    ptr_copy_slice,
+    ptr_cmp,
+    ptr_cmp_slice,
+    ptr_move,
+    ptr_move_slice,
+    ptr_set,
+    ptr_set_slice,
+)
 
 
-def demo_memset() -> None:
-    buf: gc_ptr[u8] = gc_alloc[u8](4)
-    memset(buf, 7, 4)
-    # all bytes are now 7
+def demo_ptr_set() -> None:
+    buf = gc_alloc[u8](4)
+    ptr_set(buf, 7, 4)
     total: i32 = buf[0] + buf[1] + buf[2] + buf[3]
     assert total == 28
 
+    # _slice variant: only fill a sub-range [1, 3)
+    buf2 = gc_alloc[u8](4)
+    ptr_set(buf2, 0, 4)
+    ptr_set_slice(buf2, 1, 3, 5)
+    assert buf2[0] == u8(0)
+    assert buf2[1] == u8(5)
+    assert buf2[2] == u8(5)
+    assert buf2[3] == u8(0)
 
-def demo_memcpy() -> None:
-    src: gc_ptr[u8] = gc_alloc[u8](4)
-    dst: gc_ptr[u8] = gc_alloc[u8](4)
+
+def demo_ptr_copy() -> None:
+    src = gc_alloc[u8](4)
+    dst = gc_alloc[u8](4)
 
     src[0] = 10
     src[1] = 20
     src[2] = 30
     src[3] = 40
 
-    memcpy(dst, src, 4)
-
+    ptr_copy(dst, src, 4)
     total: i32 = dst[0] + dst[1] + dst[2] + dst[3]
     assert total == 100
 
-
-# The canonical use case for memmove over memcpy is overlapping regions, e.g.:
-#
-#   memmove(buf + 2, buf, 3)  # shift 3 bytes forward by 2 positions
-#
-# This requires pointer arithmetic (buf + 2), which is not yet supported in SPy.
-# For non-overlapping buffers memmove and memcpy are interchangeable.
-def demo_memmove() -> None:
-    src: gc_ptr[u8] = gc_alloc[u8](4)
-    dst: gc_ptr[u8] = gc_alloc[u8](4)
-
-    src[0] = 1
-    src[1] = 2
-    src[2] = 3
-    src[3] = 4
-
-    memmove(dst, src, 4)
-
-    assert dst[0] == u8(1)
-    assert dst[1] == u8(2)
-    assert dst[2] == u8(3)
-    assert dst[3] == u8(4)
+    # _slice variant: copy src[1:3] into dst[2:4]
+    dst2 = gc_alloc[u8](4)
+    ptr_set(dst2, 0, 4)
+    ptr_copy_slice(dst2, 2, 4, src, 1, 3)
+    assert dst2[0] == u8(0)
+    assert dst2[1] == u8(0)
+    assert dst2[2] == u8(20)
+    assert dst2[3] == u8(30)
 
 
-def demo_memcmp() -> None:
-    a: gc_ptr[u8] = gc_alloc[u8](3)
-    b: gc_ptr[u8] = gc_alloc[u8](3)
+def demo_ptr_move() -> None:
+    # ptr_move_slice allows shifting data within a buffer using overlapping
+    # regions, without needing pointer arithmetic
+    buf = gc_alloc[u8](6)
+    buf[0] = 1
+    buf[1] = 2
+    buf[2] = 3
+    buf[3] = 0
+    buf[4] = 0
+    buf[5] = 0
 
-    memset(a, 42, 3)
-    memset(b, 42, 3)
-    assert memcmp(a, b, 3) == 0  # buffers are equal
+    # shift buf[0:3] into buf[2:5] (overlapping)
+    ptr_move_slice(buf, 2, 5, buf, 0, 3)
 
-    b[2] = 99
-    result: i32 = memcmp(a, b, 3)
-    assert result < 0  # a < b lexicographically
+    assert buf[2] == u8(1)
+    assert buf[3] == u8(2)
+    assert buf[4] == u8(3)
+
+
+def demo_ptr_cmp() -> None:
+    a = gc_alloc[u8](4)
+    b = gc_alloc[u8](4)
+
+    ptr_set(a, 42, 4)
+    ptr_set(b, 42, 4)
+    assert ptr_cmp(a, b, 4) == 0  # equal
+
+    b[3] = 99
+    assert ptr_cmp(a, b, 4) < 0
+
+    # _slice variant: compare only the middle two bytes
+    a[1] = 7
+    a[2] = 7
+    b[1] = 7
+    b[2] = 7
+    assert ptr_cmp_slice(a, 1, 3, b, 1, 3) == 0
 
 
 def main() -> None:
-    demo_memset()
-    demo_memcpy()
-    demo_memmove()
-    demo_memcmp()
+    demo_ptr_set()
+    demo_ptr_copy()
+    demo_ptr_move()
+    demo_ptr_cmp()
     print("all assertions passed")
