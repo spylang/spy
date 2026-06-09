@@ -223,7 +223,7 @@ class W_MemLoc(W_Object):
         if addr == 0:
             assert length == 0
         else:
-            assert length >= 1
+            assert length >= 0
         self.w_T = w_T
         self.addr = fixedint.Int32(addr)
         self.length = fixedint.Int32(length)

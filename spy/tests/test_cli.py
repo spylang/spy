@@ -294,8 +294,8 @@ class TestMain:
     def test_execute_pyodide(self):
         # pyodide under node cannot access /tmp/, so we cannot try to execute
         # files which we wrote to self.tmpdir. Instead, let's try to execute
-        # examples/hello.spy
-        hello_spy = spy.ROOT.dirpath().join("examples", "hello.spy")
+        # examples/1_high_level/hello.spy
+        hello_spy = spy.ROOT.dirpath().join("examples", "1_high_level", "hello.spy")
         assert hello_spy.exists()
         res, stdout = self.run_external(PYODIDE_EXE, hello_spy)
         assert stdout == "Hello world!\n"

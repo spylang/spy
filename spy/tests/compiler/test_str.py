@@ -20,6 +20,19 @@ class TestStr(CompilerTest):
         """)
         assert mod.foo() == "hello àèìòù"
 
+    def test_empty_str_as_StrObject(self):
+        src = """
+        from unsafe import _str_to_StrObject
+        from _str import StrObject
+
+        def get_length(s: str) -> i32:
+            data = _str_to_StrObject(s)
+            utf8 = data.utf8
+            return data.length
+        """
+        mod = self.compile(src)
+        assert mod.get_length("") == 0
+
     def test_add(self):
         mod = self.compile("""
         def foo() -> str:

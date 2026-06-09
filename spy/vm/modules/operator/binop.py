@@ -189,8 +189,6 @@ for num_t in ["i32", "f64"]:
     MM.register("!=", num_t, "complex128", OP.w_complex128_ne)
 
 # str ops
-MM.register("+",  "str", "str", OP.w_str_add)
-MM.register("*",  "str", "i32", OP.w_str_mul)
 MM.register("==", "str", "str", OP.w_str_eq)
 MM.register("!=", "str", "str", OP.w_str_ne)
 

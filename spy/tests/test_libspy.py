@@ -47,9 +47,6 @@ class TestLibSPy(CTest):
         #
         ptr_W = ll.call("mk_W")
         assert ll.read_str(ptr_W) == (5, 0, b"world")
-        #
-        ptr_HW = ll.call("spy_str_add", ptr_H, ptr_W)
-        assert ll.read_str(ptr_HW) == (11, 0, b"hello world")
 
     def test_debug_log(self):
         src = r"""
