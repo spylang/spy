@@ -4,7 +4,7 @@ title: Generic Functions and Types
 
 ### Generic Functions
 
-Functions decorated with [@blue.generic](../api_reference/spy_builtins.md#bluegeneric) are called with `[]` brackets instead of parentheses. These *may* be used anywhere, but they are intended to help create functions that look like [PEP 695](https://peps.python.org/pep-0695/) functions with type parameters:
+Functions decorated with [@blue.generic](../reference/spy_builtins.md#bluegeneric) are called with `[]` brackets instead of parentheses. These *may* be used anywhere, but they are intended to help create functions that look like [PEP 695](https://peps.python.org/pep-0695/) functions with type parameters:
 
 ```python
 @blue.generic

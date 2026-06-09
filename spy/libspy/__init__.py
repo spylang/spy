@@ -5,7 +5,7 @@ import spy
 from spy.errors import SPyError
 from spy.llwasm import HostModule, LLWasmInstance, LLWasmModule, WasmTrap
 from spy.location import Loc
-from spy.platform import IS_BROWSER, IS_NODE, IS_PYODIDE
+from spy.platform import IS_BROWSER, IS_DOCS_BUILD, IS_NODE, IS_PYODIDE
 
 SRC = spy.ROOT.join("libspy", "src")
 INCLUDE = spy.ROOT.join("libspy", "include")
@@ -16,7 +16,7 @@ DEPS = spy.ROOT.join("libspy", "deps")
 if IS_NODE:
     LIBSPY_WASM = BUILD.join("emscripten", "debug", "libspy.mjs")
     LLMOD = None
-elif IS_BROWSER:
+elif IS_BROWSER or IS_DOCS_BUILD:
     LIBSPY_WASM = None  # type: ignore    # needs to be set by the embedder
     LLMOD = None
 else:

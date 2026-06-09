@@ -53,7 +53,7 @@ def filename_callback(value: Path) -> Path:
 class Filename_Required_Args:
     filename: Annotated[
         Path,
-        Argument(help="", show_default=False),
+        Argument(help="File to operate on", show_default=False),
     ]
     # Since this argument doesn't have a default value, it must come last
     # in the list of base classes of dataclasses that inherit from it
