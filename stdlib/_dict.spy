@@ -1,4 +1,4 @@
-from unsafe import gc_alloc, gc_ptr
+from unsafe import gc_alloc, gc_ptr, ptr_set
 from operator import OpSpec
 from __spy__ import interp_dict, EmptyDictType
 
@@ -64,10 +64,7 @@ def dict(Key, Value):
         assert MIN_LOG_SIZE <= log_size
         assert log_size <= MAX_LOG_SIZE
         index = gc_alloc[i32](1 << log_size)
-        i = 0
-        while i < 1 << log_size:
-            index[i] = DKIX_EMPTY
-            i += 1
+        ptr_set(index, 0, 1 << log_size)
         return index
 
     def new_entries(log_size: i32) -> gc_ptr[Entry]:

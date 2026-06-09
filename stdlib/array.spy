@@ -15,7 +15,7 @@ hardcode _array1, _array2, _array3, etc.
 """
 
 from operator import OpSpec
-from unsafe import gc_alloc, gc_ptr
+from unsafe import gc_alloc, gc_ptr, ptr_set
 
 
 @blue.generic
@@ -198,14 +198,11 @@ def zeros(DTYPE):
 
             def impl(n: i32) -> ArrayT:
                 a = ArrayT(n)
-                # XXX: this loop is a temporary workaround. gc_alloc does not
-                # zero memory, so we zero the array element-by-element here.
-                # Eventually we should have a gc_alloc_zero (or similar) which
-                # returns zeroed memory, and use it for the underlying buffer.
-                i = 0
-                while i < n:
-                    a[i] = DTYPE(0)
-                    i = i + 1
+                # XXX: this loop is a temporary workaround. gc_alloc does not zero
+                # memory, so we zero the array here.  Eventually we should have a
+                # gc_alloc_zero (or similar) which returns zeroed memory, and use it for
+                # the underlying buffer.
+                ptr_set(a.__ll__.items, 0, n)
                 return a
 
             return OpSpec(impl)
