@@ -1,7 +1,7 @@
 import re
 
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest, skip_backends
+from spy.tests.support import CompilerTest, only_interp, skip_backends
 
 
 class TestStr(CompilerTest):
@@ -263,6 +263,17 @@ class TestStr(CompilerTest):
         assert mod.isascii("hello")
         assert not mod.isascii("àèìòù")
 
+    def test_upper(self):
+        src = """
+        def upper(s: str) -> str:
+            return s.upper()
+        """
+        mod = self.compile(src)
+        assert mod.upper("hello") == "HELLO"
+        assert mod.upper("Hello World") == "HELLO WORLD"
+        assert mod.upper("ABC123") == "ABC123"
+        assert mod.upper("") == ""
+
     def test_str_replace(self):
         mod = self.compile("""
         def foo(s: str, old: str, new: str) -> str:
@@ -419,3 +430,22 @@ class TestStr(CompilerTest):
         # assert mod.foo("abc", "", "-", 0) == "abc"  # count not supported
         # assert mod.foo("abc", "ab", "--", 0) == "abc"  # count not supported
         assert mod.foo("abc", "xy", "--") == "abc"
+
+    def test_encode(self):
+        src = """
+        def encode(s: str) -> bytes:
+            return s.encode("utf-8")
+        """
+        mod = self.compile(src)
+        assert mod.encode("hello") == b"hello"
+        assert mod.encode("") == b""
+        assert mod.encode("àèìòù") == "àèìòù".encode("utf-8")
+
+    def test_encode_unsupported(self):
+        src = """
+        def encode(s: str, enc: str) -> bytes:
+            return s.encode(enc)
+        """
+        mod = self.compile(src)
+        with SPyError.raises("W_ValueError"):
+            mod.encode("x", "ascii")

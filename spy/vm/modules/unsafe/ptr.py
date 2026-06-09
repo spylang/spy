@@ -33,6 +33,7 @@ from spy.fqn import FQN
 from spy.location import Loc
 from spy.vm.b import B
 from spy.vm.builtin import builtin_method, builtin_property
+from spy.vm.bytes import W_Bytes
 from spy.vm.function import W_ASTFunc
 from spy.vm.irtag import IRTag
 from spy.vm.member import Member
@@ -526,7 +527,7 @@ def w_ptr_setfield(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
 
 
 @UNSAFE.builtin_func(color="blue", kind="metafunc")
-def w_as_StrObject(vm: "SPyVM", wam_s: W_MetaArg) -> W_OpSpec:
+def w__str_to_StrObject(vm: "SPyVM", wam_s: W_MetaArg) -> W_OpSpec:
     """
     Convert an high-level `str` into low-level `gc_ptr[StrObject]`.
 
@@ -538,8 +539,98 @@ def w_as_StrObject(vm: "SPyVM", wam_s: W_MetaArg) -> W_OpSpec:
     assert isinstance(w_gc_ptr_StrObject, W_PtrType)
     GC_PTR = Annotated[W_Ptr, w_gc_ptr_StrObject]
 
-    @vm.register_builtin_func(UNSAFE.fqn.join("as_StrObject"), "impl")
+    @vm.register_builtin_func(UNSAFE.fqn.join("_str_to_StrObject"), "impl")
     def w_impl(vm: "SPyVM", w_s: W_Str) -> GC_PTR:
         return W_Ptr(w_gc_ptr_StrObject, w_s.ptr, 1)
 
     return W_OpSpec(w_impl, [wam_s])
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w__alloc_StrObject(vm: "SPyVM", wam_length: W_MetaArg) -> W_OpSpec:
+    """
+    Allocate a fresh StrObject (with utf8 buffer of `length` bytes) and return a
+    `gc_ptr[StrObject]`. The dual of `_StrObject_to_str`.
+    """
+    w_StrObject = vm.lookup_global(FQN("_str::StrObject"))
+    assert isinstance(w_StrObject, W_StructType)
+    w_gc_ptr_StrObject = vm.getitem_w(w_gc_ptr, w_StrObject)
+    assert isinstance(w_gc_ptr_StrObject, W_PtrType)
+    GC_PTR = Annotated[W_Ptr, w_gc_ptr_StrObject]
+
+    @vm.register_builtin_func(UNSAFE.fqn.join("_alloc_StrObject"), "impl")
+    def w_impl(vm: "SPyVM", w_length: W_I32) -> GC_PTR:
+        length = vm.unwrap_i32(w_length)
+        addr = vm.ll.call("spy_str_alloc", length)
+        return W_Ptr(w_gc_ptr_StrObject, addr, 1)
+
+    return W_OpSpec(w_impl, [wam_length])
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w__StrObject_to_str(vm: "SPyVM", wam_p: W_MetaArg) -> W_OpSpec:
+    """
+    Convert a low-level `gc_ptr[StrObject]` back into a high-level `str`. The dual
+    of `_str_to_StrObject`.
+    """
+
+    @vm.register_builtin_func(UNSAFE.fqn.join("_StrObject_to_str"), "impl")
+    def w_impl(vm: "SPyVM", w_p: W_Ptr) -> W_Str:
+        return W_Str.from_ptr(vm, w_p.addr)
+
+    return W_OpSpec(w_impl, [wam_p])
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w__bytes_to_BytesObject(vm: "SPyVM", wam_b: W_MetaArg) -> W_OpSpec:
+    """
+    Convert a high-level `bytes` into low-level `gc_ptr[BytesObject]`.
+
+    The struct BytesObject is defined in stdlib/_bytes.spy.
+    """
+    w_BytesObject = vm.lookup_global(FQN("_bytes::BytesObject"))
+    assert isinstance(w_BytesObject, W_StructType)
+    w_gc_ptr_BytesObject = vm.getitem_w(w_gc_ptr, w_BytesObject)
+    assert isinstance(w_gc_ptr_BytesObject, W_PtrType)
+    GC_PTR = Annotated[W_Ptr, w_gc_ptr_BytesObject]
+
+    @vm.register_builtin_func(UNSAFE.fqn.join("_bytes_to_BytesObject"), "impl")
+    def w_impl(vm: "SPyVM", w_b: W_Bytes) -> GC_PTR:
+        return W_Ptr(w_gc_ptr_BytesObject, w_b.ptr, 1)
+
+    return W_OpSpec(w_impl, [wam_b])
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w__alloc_BytesObject(vm: "SPyVM", wam_length: W_MetaArg) -> W_OpSpec:
+    """
+    Allocate a fresh BytesObject (with data buffer of `length` bytes) and return a
+    `gc_ptr[BytesObject]`. The dual of `_BytesObject_to_bytes`.
+    """
+    w_BytesObject = vm.lookup_global(FQN("_bytes::BytesObject"))
+    assert isinstance(w_BytesObject, W_StructType)
+    w_gc_ptr_BytesObject = vm.getitem_w(w_gc_ptr, w_BytesObject)
+    assert isinstance(w_gc_ptr_BytesObject, W_PtrType)
+    GC_PTR = Annotated[W_Ptr, w_gc_ptr_BytesObject]
+
+    @vm.register_builtin_func(UNSAFE.fqn.join("_alloc_BytesObject"), "impl")
+    def w_impl(vm: "SPyVM", w_length: W_I32) -> GC_PTR:
+        length = vm.unwrap_i32(w_length)
+        addr = vm.ll.call("spy_bytes_alloc", length)
+        return W_Ptr(w_gc_ptr_BytesObject, addr, 1)
+
+    return W_OpSpec(w_impl, [wam_length])
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w__BytesObject_to_bytes(vm: "SPyVM", wam_p: W_MetaArg) -> W_OpSpec:
+    """
+    Convert a low-level `gc_ptr[BytesObject]` back into a high-level `bytes`. The
+    dual of `_bytes_to_BytesObject`.
+    """
+
+    @vm.register_builtin_func(UNSAFE.fqn.join("_BytesObject_to_bytes"), "impl")
+    def w_impl(vm: "SPyVM", w_p: W_Ptr) -> W_Bytes:
+        return W_Bytes.from_ptr(vm, w_p.addr)
+
+    return W_OpSpec(w_impl, [wam_p])

@@ -53,10 +53,10 @@ def make_w_func(
         name=fqn.symbol_name,
         args=[
             ast.FuncArg(
-                loc=loc, name="x", type=ast.Constant(loc=loc, value=0), kind="simple"
+                loc=loc, name="x", type=ast.Literal(loc=loc, value=0), kind="simple"
             )
         ],
-        return_type=ast.Constant(loc=loc, value=0),
+        return_type=ast.Literal(loc=loc, value=0),
         defaults=[],
         docstring=None,
         body=[],

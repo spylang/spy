@@ -12,7 +12,12 @@ from spy.cli.commands.redshift import redshift
 from spy.cli.commands.symtable import symtable
 from spy.cli.spy_typer import SpyGroupConfig, SpyTyper
 
-app = SpyTyper(pretty_exceptions_enable=False, cls=SpyGroupConfig, no_args_is_help=True)
+app = SpyTyper(
+    pretty_exceptions_enable=False,
+    cls=SpyGroupConfig,
+    no_args_is_help=True,
+    help="Command line interface for the SPy interpreter and compiler",
+)
 
 # Commands
 # Each command should be written as an async function which takes

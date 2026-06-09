@@ -4,7 +4,7 @@ SPy list module
 A generic dynamic array implementation similar to Python's list.
 """
 
-from unsafe import gc_alloc, gc_ptr
+from unsafe import gc_alloc, gc_ptr, ptr_copy, ptr_copy_slice, ptr_move_slice
 from operator import OpSpec, MetaArg
 from __spy__ import interp_list, EmptyListType
 
@@ -81,12 +81,7 @@ def list(T):
                 old_capacity = ll.capacity
                 new_capacity = old_capacity * 2
                 new_items = gc_alloc[T](new_capacity)
-
-                i = 0
-                while i < ll.length:
-                    new_items[i] = ll.items[i]
-                    i = i + 1
-
+                ptr_copy(new_items, ll.items, ll.length)
                 ll.items = new_items
                 ll.capacity = new_capacity
 
@@ -132,10 +127,8 @@ def list(T):
                 new_data.length = new_length
                 new_data.capacity = new_length + 1
                 new_data.items = gc_alloc[T](ll.capacity)
-
-                for i in range(new_length):
-                    new_data.items[i] = ll.items[indices.start + i]
-
+                ptr_copy_slice(new_data.items, 0, new_length,
+                               ll.items, indices.start, indices.start + new_length)
                 return _ListImpl.__make__(new_data)
             else:
                 new_data = gc_alloc[ListData](1)
@@ -196,25 +189,18 @@ def list(T):
                 if new_total > ll.capacity:
                     new_cap = new_total * 2
                     new_items = gc_alloc[T](new_cap)
-                    j = 0
-                    while j < ll.length:
-                        new_items[j] = ll.items[j]
-                        j = j + 1
+                    ptr_copy(new_items, ll.items, ll.length)
                     ll.items = new_items
                     ll.capacity = new_cap
 
                 if diff > 0:
                     # shift right to make room
-                    j = ll.length - 1
-                    while j >= start + slice_len:
-                        ll.items[j + diff] = ll.items[j]
-                        j = j - 1
+                    ptr_move_slice(ll.items, start + new_len, new_total,
+                                   ll.items, start + slice_len, ll.length)
                 elif diff < 0:
                     # shift left to close gap
-                    j = start + slice_len
-                    while j < ll.length:
-                        ll.items[j + diff] = ll.items[j]
-                        j = j + 1
+                    ptr_move_slice(ll.items, start + new_len, new_total,
+                                   ll.items, start + slice_len, ll.length)
 
                 k = 0
                 while k < new_len:
@@ -233,10 +219,7 @@ def list(T):
             if i >= ll.length:
                 raise IndexError
             value = ll.items[i]
-            j = i
-            while j < ll.length - 1:
-                ll.items[j] = ll.items[j + 1]
-                j = j + 1
+            ptr_move_slice(ll.items, i, ll.length - 1, ll.items, i + 1, ll.length)
             ll.length = ll.length - 1
             return value
 
@@ -251,20 +234,11 @@ def list(T):
                 old_capacity = ll.capacity
                 new_capacity = old_capacity * 2
                 new_items = gc_alloc[T](new_capacity)
-
-                j = 0
-                while j < ll.length:
-                    new_items[j] = ll.items[j]
-                    j = j + 1
-
+                ptr_copy(new_items, ll.items, ll.length)
                 ll.items = new_items
                 ll.capacity = new_capacity
 
-            j = ll.length
-            while j > i:
-                ll.items[j] = ll.items[j - 1]
-                j = j - 1
-
+            ptr_move_slice(ll.items, i + 1, ll.length + 1, ll.items, i, ll.length)
             ll.items[i] = item
             ll.length = ll.length + 1
 
@@ -273,11 +247,18 @@ def list(T):
             ll.length = 0
 
         def extend(self, other: _ListImpl) -> None:
+            ll = self.__ll__
             other_ll = other.__ll__
-            i = 0
-            while i < other_ll.length:
-                self.append(other_ll.items[i])
-                i = i + 1
+            new_length = ll.length + other_ll.length
+            if new_length > ll.capacity:
+                new_capacity = new_length * 2
+                new_items = gc_alloc[T](new_capacity)
+                ptr_copy(new_items, ll.items, ll.length)
+                ll.items = new_items
+                ll.capacity = new_capacity
+            ptr_copy_slice(ll.items, ll.length, new_length,
+                           other_ll.items, 0, other_ll.length)
+            ll.length = new_length
 
         def copy(self) -> _ListImpl:
             ll = self.__ll__
@@ -285,12 +266,7 @@ def list(T):
             new_data.length = ll.length
             new_data.capacity = ll.capacity
             new_data.items = gc_alloc[T](ll.capacity)
-
-            i = 0
-            while i < ll.length:
-                new_data.items[i] = ll.items[i]
-                i = i + 1
-
+            ptr_copy(new_data.items, ll.items, ll.length)
             return _ListImpl.__make__(new_data)
 
         def __add__(self, other: _ListImpl) -> _ListImpl:
@@ -314,10 +290,8 @@ def list(T):
 
                 i = 0
                 while i < n:
-                    j = 0
-                    while j < ll.length:
-                        new_data.items[i * ll.length + j] = ll.items[j]
-                        j = j + 1
+                    ptr_copy_slice(new_data.items, i * ll.length, (i + 1) * ll.length,
+                                   ll.items, 0, ll.length)
                     i = i + 1
 
             return _ListImpl.__make__(new_data)
@@ -354,11 +328,7 @@ def list(T):
             if idx == -1:
                 raise ValueError
 
-            j = idx
-            while j < ll.length - 1:
-                ll.items[j] = ll.items[j + 1]
-                j = j + 1
-
+            ptr_move_slice(ll.items, idx, ll.length - 1, ll.items, idx + 1, ll.length)
             ll.length = ll.length - 1
 
         @blue.metafunc

@@ -1,0 +1,10 @@
+@struct
+class Foo[T]:
+    pass
+
+
+def main() -> None:
+    print("__full_fqn__ ", Foo[i32].__full_fqn__)
+    print("__fqn__      ", Foo[i32].__fqn__)
+    print("__qualname__ ", Foo[i32].__qualname__)
+    print("__name__     ", Foo[i32].__name__)

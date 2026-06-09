@@ -331,6 +331,10 @@ class FQN:
         human_fqn = self._resolve_aliases(vm, frozenset())
         return human_fqn._human_render()
 
+    def human_symbol_name(self, vm: Any) -> str:
+        human_fqn = self._resolve_aliases(vm, frozenset())
+        return human_fqn.symbol_name
+
     @property
     def modname(self) -> str:
         return str(self.parts[0])

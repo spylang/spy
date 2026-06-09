@@ -5,7 +5,7 @@ import spy
 from spy.errors import SPyError
 from spy.llwasm import HostModule, LLWasmInstance, LLWasmModule, WasmTrap
 from spy.location import Loc
-from spy.platform import IS_BROWSER, IS_NODE, IS_PYODIDE
+from spy.platform import IS_BROWSER, IS_DOCS_BUILD, IS_NODE, IS_PYODIDE
 
 SRC = spy.ROOT.join("libspy", "src")
 INCLUDE = spy.ROOT.join("libspy", "include")
@@ -16,7 +16,7 @@ DEPS = spy.ROOT.join("libspy", "deps")
 if IS_NODE:
     LIBSPY_WASM = BUILD.join("emscripten", "debug", "libspy.mjs")
     LLMOD = None
-elif IS_BROWSER:
+elif IS_BROWSER or IS_DOCS_BUILD:
     LIBSPY_WASM = None  # type: ignore    # needs to be set by the embedder
     LLMOD = None
 else:
@@ -90,6 +90,15 @@ class StrLayout:
     utf8_offset: int
 
 
+@dataclass
+class BytesLayout:
+    # See also the struct _spy_BytesObject_layout in bytes.h
+    size: int
+    length_offset: int
+    hash_offset: int
+    data_offset: int
+
+
 class LLSPyInstance(LLWasmInstance):
     """
     A specialized version of LLWasmInstance which automatically link against
@@ -108,6 +117,20 @@ class LLSPyInstance(LLWasmInstance):
         super().__init__(llmod, hostmods, instance=instance)
         layout = self.call("_spy_StrObject_layout")
         self.str_layout = StrLayout(*layout)
+        blayout = self.call("_spy_BytesObject_layout")
+        self.bytes_layout = BytesLayout(*blayout)
+
+    def read_bytes(self, ptr: int) -> tuple[int, int, bytes]:
+        """
+        Read a spy_BytesObject at ptr from linear memory.
+        Returns (length, hash, data_bytes).
+        """
+        layout = self.bytes_layout
+        length = self.mem.read_i32(ptr + layout.length_offset)
+        hash_ = self.mem.read_i32(ptr + layout.hash_offset)
+        data_ptr = self.mem.read_i32(ptr + layout.data_offset)
+        data = bytes(self.mem.read(data_ptr, length))
+        return length, hash_, data
 
     def read_str(self, ptr: int) -> tuple[int, int, bytes]:
         """

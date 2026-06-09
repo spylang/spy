@@ -1,0 +1,15 @@
+def main() -> None:
+    a = (2, "SPy")
+    print(a[0])
+    print(a[1])
+    print(a)
+
+    b = {"a": 20}
+    print(b["a"])
+    print(b)
+
+    l = [""]
+    l[0] = "Hello"
+    l.append("SPy")
+    print(l[0], l[1])
+    print(l)

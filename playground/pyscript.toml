@@ -3,10 +3,11 @@ packages = [ "micropip"]
 
 [files]
 "pyscript.toml" = ""
-"hello_add.spy" = "examples/"
-"bluefunc_adder.spy" = "examples/"
-"point.spy" = "examples/"
-"myarray.spy" = "examples/"
+"hello_add.spy" = "examples/1_high_level/"
+"bluefunc_pi.spy" = "examples/2_metaprogramming/"
+"bluefunc_adder.spy" = "examples/2_metaprogramming/"
+"point.spy" = "examples/3_low_level/"
+"myarray.spy" = "examples/4_advanced/"
 "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/jquery.py" = "ltk/jquery.py"
 "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/widgets.py" = "ltk/widgets.py"
 "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/pubsub.py" = "ltk/pubsub.py"

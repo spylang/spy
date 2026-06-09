@@ -1,4 +1,4 @@
-import time
+from time import time
 
 
 def fibo(n: int) -> int:
@@ -9,11 +9,11 @@ def fibo(n: int) -> int:
 
 
 def main() -> None:
-    a = time.time()
+    t_start = time()
     result = fibo(15)
-    b = time.time()
+    t_end = time()
     print(result)
-    print("# " + str(b - a))
+    print("#", str(t_end - t_start), "s")
 
 
 # main()

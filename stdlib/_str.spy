@@ -1,4 +1,26 @@
-from unsafe import gc_ptr, as_StrObject
+"""
+This module contains the applevel part of the `str` type.
+
+At the C level, `str` is defined by the spy_StrObject struct and related helper
+functions defined in str.h and str.c
+
+At interp level, the W_Str type is defined in vm/str.py.
+
+Finally, some of the methods are implemented at applevel in this file.
+
+The StrObject struct defined here MUST stay in sync with the one defined in C. It is
+possible to cast between str and gc_ptr[StrObject] using StrObject.{from,to}_str.
+"""
+
+from unsafe import (
+    gc_ptr,
+    ptr_copy,
+    _str_to_StrObject,
+    _alloc_StrObject,
+    _StrObject_to_str,
+)
+from unsafe import _alloc_BytesObject, _BytesObject_to_bytes
+from __spy__ import lookup_fqn
 
 
 # this MUST stay in sync with the equivalent struct declared in str.h
@@ -7,6 +29,35 @@ class StrObject:
     length: i32
     hash: i32
     utf8: gc_ptr[u8]
+
+    @staticmethod
+    def alloc(n: i32) -> gc_ptr[StrObject]:
+        """
+        Allocate a new StrObject AND the its utf8 buffer.
+        If you want a split allocation, you must gc_malloc[StrObject] manually.
+        """
+        return _alloc_StrObject(n)
+
+    @staticmethod
+    def from_str(s: str) -> gc_ptr[StrObject]:
+        """
+        Cast `s` into its low level gc_ptr[StrObject].
+
+        This is just a cast and the returned ptr points to the same area of memory as
+        `s`. You must be careful NOT to modify the content, else as modifications are
+        visible from the outside.
+        """
+        return _str_to_StrObject(s)
+
+    @staticmethod
+    def to_str(ll: gc_ptr[StrObject]) -> str:
+        """
+        Cast a `ll` into a high level `str`.
+
+        Once a newly-allocated StrObject is casted to `str`, it should be considered
+        "locked" and immutable.
+        """
+        return _StrObject_to_str(ll)
 
 
 @struct
@@ -23,8 +74,21 @@ class methods:
     # each method defined here should also have a corresponding entry in
     # W_Str.__spy_lazy_attributes__.
 
+    def encode(self: str, encoding: str) -> bytes:
+        # we don't support circular imports and function-level imports. This is a hacky
+        # workaround for 'from _bytes import BytesObject'
+        BytesObject = lookup_fqn("_bytes::BytesObject")
+        if encoding != "utf-8":
+            raise ValueError("only 'utf-8' encoding is supported")
+        ll = StrObject.from_str(self)
+        out = _alloc_BytesObject(ll.length)
+        out.hash = 0
+        if ll.length > 0:
+            ptr_copy(out.data, ll.utf8, ll.length)
+        return _BytesObject_to_bytes(out)
+
     def isascii(self: str) -> bool:
-        ll = as_StrObject(self)
+        ll = StrObject.from_str(self)
         i = 0
         max_ascii: u8 = 127
         while i < ll.length:
@@ -32,3 +96,16 @@ class methods:
                 return False
             i = i + 1
         return True
+
+    def upper(self: str) -> str:
+        # XXX: this works only for ASCII strings but it's good enough for now
+        ll = StrObject.from_str(self)
+        llnew = StrObject.alloc(ll.length)
+        llnew.hash = 0
+        for i in range(ll.length):
+            ch = ll.utf8[i]
+            if ord(b"a") <= ch and ch <= ord(b"z"):
+                llnew.utf8[i] = ch - (ord(b"a") - ord(b"A"))
+            else:
+                llnew.utf8[i] = ch
+        return StrObject.to_str(llnew)

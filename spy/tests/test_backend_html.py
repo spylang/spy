@@ -167,7 +167,7 @@ class TestHTMLBackend:
                     op: <'+'> (leaf, emerald)
                     left: <Name: x> (expr, amber)
                         id: <'x'> (leaf, emerald)
-                    right: <Constant: 1> (expr, amber)
+                    right: <Literal: 1> (expr, amber)
                         value: <1> (leaf, emerald)
         """
         self.assert_dump(funcdef, expected)
@@ -203,7 +203,7 @@ class TestHTMLBackend:
                     left: <Name: x> (expr, amber)
                         | x
                         id: <'x'> (leaf, emerald)
-                    right: <Constant: 1> (expr, amber)
+                    right: <Literal: 1> (expr, amber)
                         | 1
                         value: <1> (leaf, emerald)
         """
@@ -222,8 +222,8 @@ class TestHTMLBackend:
                     fqn: <operator::i32_add> (leaf, emerald)
                 args[0]: <NameLocalDirect> (expr, amber)
                     sym: <x> (leaf, emerald)
-                args[1]: <Constant: 1> (expr, amber)
-                    value: <1> (leaf, emerald)
+                args[1]: <Const: W_I32(1)> (expr, amber)
+                    w_val: <W_I32(1)> (leaf, emerald)
         """
         self.assert_dump(ret, expected)
 
@@ -244,9 +244,9 @@ class TestHTMLBackend:
                 args[0]: <NameLocalDirect> (expr, amber)
                     | x
                     sym: <x> (leaf, emerald)
-                args[1]: <Constant: 1> (expr, amber)
+                args[1]: <Const: W_I32(1)> (expr, amber)
                     | 1
-                    value: <1> (leaf, emerald)
+                    w_val: <W_I32(1)> (leaf, emerald)
         """
         self.assert_dump(ret, expected, show_src=True)
 
@@ -265,7 +265,7 @@ class TestHTMLBackend:
                 op: <'+'> (leaf, emerald)
                 left: <Name: x> (expr, red)
                     id: <'x'> (leaf, emerald)
-                right: <Constant: 1> (expr, blue)
+                right: <Literal: 1> (expr, blue)
                     value: <1> (leaf, emerald)
         """
         self.assert_dump(ret, expected)
@@ -345,11 +345,11 @@ class TestHTMLBackend:
         expected = """
         <VarDef> (stmt, default)
             kind: <None> (leaf, emerald)
-            name: <StrConst: 'x'> (expr, amber)
+            name: <StrLiteral: 'x'> (expr, amber)
                 value: <'x'> (leaf, emerald)
             type: <Name: str> (expr, amber)
                 id: <'str'> (leaf, emerald)
-            value: <StrConst: 'hello'> (expr, amber)
+            value: <StrLiteral: 'hello'> (expr, amber)
                 value: <'hello'> (leaf, emerald)
         """
         self.assert_dump(vardef, expected)

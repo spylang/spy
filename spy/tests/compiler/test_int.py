@@ -12,30 +12,61 @@ def int_type(request):
 class TestInt(CompilerTest):
     def test_i8_conversion(self):
         mod = self.compile("""
-        def foo(x: i32) -> i8:
+        def i32_to_i8_imp(x: i32) -> i8:
             return x
 
-        def bar(x: i8) -> i32:
+        def i8_to_i32_imp(x: i8) -> i32:
             return x
+
+        def i32_to_i8_exp(x: i32) -> i8:
+            return i8(x)
+
+        def i8_to_i32_exp(x: i8) -> i32:
+            return i32(x)
+
+        def i8_from_lit_pos() -> i8:
+            return i8(42)
+
+        def i8_from_lit_neg() -> i8:
+            return i8(-5)
         """)
-        assert mod.foo(42) == 42
-        assert mod.foo(128) == -128
-        assert mod.bar(42) == 42
-        assert mod.bar(-1) == -1
-        assert mod.bar(128) == -128
+        assert mod.i32_to_i8_imp(42) == 42
+        assert mod.i32_to_i8_imp(128) == -128
+        assert mod.i8_to_i32_imp(42) == 42
+        assert mod.i8_to_i32_imp(-1) == -1
+        assert mod.i8_to_i32_imp(128) == -128
+        assert mod.i32_to_i8_exp(42) == 42
+        assert mod.i32_to_i8_exp(128) == -128
+        assert mod.i8_to_i32_exp(42) == 42
+        assert mod.i8_to_i32_exp(-1) == -1
+        assert mod.i8_from_lit_pos() == 42
+        assert mod.i8_from_lit_neg() == -5
 
     def test_u8_conversion(self):
         mod = self.compile("""
-        def foo(x: i32) -> u8:
+        def i32_to_u8_imp(x: i32) -> u8:
             return x
 
-        def bar(x: u8) -> i32:
+        def u8_to_i32_imp(x: u8) -> i32:
             return x
+
+        def i32_to_u8_exp(x: i32) -> u8:
+            return u8(x)
+
+        def u8_to_i32_exp(x: u8) -> i32:
+            return i32(x)
+
+        def u8_from_lit() -> u8:
+            return u8(200)
         """)
-        assert mod.foo(42) == 42
-        assert mod.foo(256 + 10) == 10
-        assert mod.bar(42) == 42
-        assert mod.bar(-1) == 255
+        assert mod.i32_to_u8_imp(42) == 42
+        assert mod.i32_to_u8_imp(256 + 10) == 10
+        assert mod.u8_to_i32_imp(42) == 42
+        assert mod.u8_to_i32_imp(-1) == 255
+        assert mod.i32_to_u8_exp(42) == 42
+        assert mod.i32_to_u8_exp(256) == 0
+        assert mod.u8_to_i32_exp(255) == 255
+        assert mod.u8_from_lit() == 200
 
     def test_u32_conversion(self):
         mod = self.compile("""

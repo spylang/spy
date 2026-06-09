@@ -12,6 +12,7 @@ from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.vm.b import BUILTINS, TYPES, B
+from spy.vm.bytes import W_Bytes
 from spy.vm.function import FuncParam, W_ASTFunc, W_Func, W_FuncType
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_list import (
@@ -31,29 +32,6 @@ if TYPE_CHECKING:
 @BUILTINS.builtin_func(color="blue", kind="metafunc")
 def w_STATIC_TYPE(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
     return W_OpSpec.const(wam_obj.w_static_T)
-
-
-@BUILTINS.builtin_func
-def w_abs(vm: "SPyVM", w_x: W_I32) -> W_I32:
-    x = vm.unwrap_i32(w_x)
-    res = vm.ll.call("spy_builtins$abs", x)
-    return vm.wrap(res)
-
-
-@BUILTINS.builtin_func
-def w_max(vm: "SPyVM", w_x: W_I32, w_y: W_I32) -> W_I32:
-    x = vm.unwrap_i32(w_x)
-    y = vm.unwrap_i32(w_y)
-    res = vm.ll.call("spy_builtins$max", x, y)
-    return vm.wrap(res)
-
-
-@BUILTINS.builtin_func
-def w_min(vm: "SPyVM", w_x: W_I32, w_y: W_I32) -> W_I32:
-    x = vm.unwrap_i32(w_x)
-    y = vm.unwrap_i32(w_y)
-    res = vm.ll.call("spy_builtins$min", x, y)
-    return vm.wrap(res)
 
 
 @BUILTINS.builtin_func(color="blue", kind="metafunc")
@@ -120,7 +98,7 @@ def w_print(vm: "SPyVM", *args_wam: W_MetaArg) -> W_OpSpec:
         )
 
     loc = Loc.here()
-    body.append(ast.Return(loc, ast.Constant(loc, None)))
+    body.append(ast.Return(loc, ast.Literal(loc, None)))
 
     fqn = FQN("_print::print::impl")
     fqn = vm.get_unique_FQN(fqn)
@@ -305,6 +283,41 @@ def w_setattr(
         )
 
     return W_OpSpec(w_fn)
+
+
+@BUILTINS.builtin_func(is_pure=True)
+def w__ord_str(vm: "SPyVM", w_s: W_Str) -> W_I32:
+    assert isinstance(w_s, W_Str)
+    utf8 = w_s.get_utf8()
+    # XXX: only works for ASCII; full Unicode support requires UTF-8 decoding
+    return vm.wrap(utf8[0])
+
+
+@BUILTINS.builtin_func(is_pure=True)
+def w__ord_bytes(vm: "SPyVM", w_b: W_Bytes) -> W_U8:
+    assert isinstance(w_b, W_Bytes)
+    data = w_b.get_data()
+    return W_U8(data[0])
+
+
+# NOTE: at the moment `ord` MUST be implemented at interp-level because we use it in
+# e.g. stdlib/_bytes.spy: if we implement it at app-level we would get a circular import
+# because ord needs `as_BytesObject`. We should move it to applevel once we support
+# circular imports better.
+@BUILTINS.builtin_func(color="blue", kind="metafunc")
+def w_ord(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
+    w_T = wam_obj.w_static_T
+    if w_T is B.w_str:
+        return W_OpSpec(B.w__ord_str)
+    elif w_T is B.w_bytes:
+        return W_OpSpec(B.w__ord_bytes)
+    t = w_T.fqn.human_name(vm)
+    raise SPyError.simple(
+        "W_TypeError",
+        f"ord: expected `str` or `bytes`, found `{t}`",
+        f"this is `{t}`",
+        wam_obj.loc,
+    )
 
 
 # add aliases for common types. For now we map:

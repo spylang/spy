@@ -1,8 +1,8 @@
 """
 This example show how to create a new high level type based on a lower level type.
 
-The new type has its own set of methods and opertors and it is purely a static typing
-contruct with zero runtime overhead. It is declared like this:
+The new type has its own set of methods and operators and it is purely a static typing
+construct with zero runtime overhead. It is declared like this:
 
     @struct
     class MyNewType:
