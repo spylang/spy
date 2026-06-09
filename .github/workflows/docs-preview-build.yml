@@ -43,7 +43,6 @@ jobs:
 
       - name: Build and mkdocs
         run: |
-          # don't load libspy/llmod
           mkdocs build --config-file docs/mkdocs.yml --site-dir ./site -v
           
       - name: Upload preview artifact
