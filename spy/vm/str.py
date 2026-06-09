@@ -48,6 +48,10 @@ class W_Str(W_Object):
         "encode": FQN("_str::methods::encode"),
         "replace": FQN("_str::methods::replace"),
         "__repr__": FQN("_str::methods::__repr__"),
+        "__len__": FQN("_str::methods::__len__"),
+        "__getitem__": FQN("_str::methods::__getitem__"),
+        "__add__": FQN("_str::methods::__add__"),
+        "__mul__": FQN("_str::methods::__mul__"),
     }
 
     vm: "SPyVM"
@@ -105,21 +109,6 @@ class W_Str(W_Object):
                 "W_TypeError", f"cannot call str(`{t}`)", f"this is `{t}`", wam_arg.loc
             )
         return W_OpSpec.NULL
-
-    @builtin_method("__getitem__")
-    @staticmethod
-    def w_getitem(vm: "SPyVM", w_s: "W_Str", w_i: W_I32) -> "W_Str":
-        assert isinstance(w_s, W_Str)
-        assert isinstance(w_i, W_I32)
-        ptr_c = vm.ll.call("spy_str_getitem", w_s.ptr, w_i.value)
-        return W_Str.from_ptr(vm, ptr_c)
-
-    @builtin_method("__len__")
-    @staticmethod
-    def w_len(vm: "SPyVM", w_s: "W_Str") -> W_I32:
-        assert isinstance(w_s, W_Str)
-        length = vm.ll.call("spy_str_len", w_s.ptr)
-        return vm.wrap(length)
 
     @builtin_method("__str__")
     @staticmethod

@@ -30,55 +30,11 @@ spy_str_alloc(size_t length) {
     return res;
 }
 
-spy_StrObject *
-spy_str_add(spy_StrObject *a, spy_StrObject *b) {
-    size_t l = a->length + b->length;
-    spy_StrObject *res = spy_str_alloc(l);
-    char *buf = (char *)spy_StrObject_UTF8(res);
-    memcpy(buf, spy_StrObject_UTF8(a), a->length);
-    memcpy(buf + a->length, spy_StrObject_UTF8(b), b->length);
-    return res;
-}
-
-spy_StrObject *
-spy_str_mul(spy_StrObject *a, int32_t b) {
-    size_t l = a->length * b;
-    spy_StrObject *res = spy_str_alloc(l);
-    char *buf = (char *)spy_StrObject_UTF8(res);
-    for (int i = 0; i < b; i++) {
-        memcpy(buf, spy_StrObject_UTF8(a), a->length);
-        buf += a->length;
-    }
-    return res;
-}
-
 bool
 spy_str_eq(spy_StrObject *a, spy_StrObject *b) {
     if (a->length != b->length)
         return false;
     return memcmp(spy_StrObject_UTF8(a), spy_StrObject_UTF8(b), a->length) == 0;
-}
-
-spy_StrObject *
-spy_str_getitem(spy_StrObject *s, int32_t i) {
-    // XXX this is wrong: it should return a code point
-    size_t l = s->length;
-    if (i < 0) {
-        i += l;
-    }
-    if (i >= l || i < 0) {
-        spy_panic("IndexError", "string index out of bound", __FILE__, __LINE__);
-        return NULL;
-    }
-    spy_StrObject *res = spy_str_alloc(1);
-    char *buf = (char *)spy_StrObject_UTF8(res);
-    buf[0] = spy_StrObject_UTF8(s)[i];
-    return res;
-}
-
-int32_t
-spy_str_len(spy_StrObject *s) {
-    return (int32_t)s->length;
 }
 
 int32_t

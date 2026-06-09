@@ -76,6 +76,41 @@ class methods:
     # each method defined here should also have a corresponding entry in
     # W_Str.__spy_lazy_attributes__.
 
+    def __len__(self: str) -> i32:
+        ll = StrObject.from_str(self)
+        return ll.length
+
+    def __getitem__(self: str, i: i32) -> str:
+        # XXX this is wrong: it should return a code point
+        ll = StrObject.from_str(self)
+        n = ll.length
+        if i < 0:
+            i = i + n
+        if i < 0 or i >= n:
+            raise IndexError("string index out of bound")
+        out = StrObject.alloc(1)
+        out.hash = 0
+        out.utf8[0] = ll.utf8[i]
+        return StrObject.to_str(out)
+
+    def __add__(self: str, other: str) -> str:
+        a = StrObject.from_str(self)
+        b = StrObject.from_str(other)
+        out = StrObject.alloc(a.length + b.length)
+        out.hash = 0
+        ptr_copy_slice(out.utf8, 0, a.length, a.utf8, 0, a.length)
+        ptr_copy_slice(out.utf8, a.length, a.length + b.length, b.utf8, 0, b.length)
+        return StrObject.to_str(out)
+
+    def __mul__(self: str, n: i32) -> str:
+        ll = StrObject.from_str(self)
+        out = StrObject.alloc(ll.length * n)
+        out.hash = 0
+        l = ll.length
+        for i in range(n):
+            ptr_copy_slice(out.utf8, i * l, (i + 1) * l, ll.utf8, 0, l)
+        return StrObject.to_str(out)
+
     def encode(self: str, encoding: str) -> bytes:
         # we don't support circular imports and function-level imports. This is a hacky
         # workaround for 'from _bytes import BytesObject'
