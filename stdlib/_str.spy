@@ -99,6 +99,92 @@ class methods:
             i = i + 1
         return True
 
+    def __repr__(self: str) -> str:
+        ll = StrObject.from_str(self)
+        # Choose quote: ' by default, but " if the string contains ' but not "
+        single = ord(b"'")
+        double = ord(b'"')
+        quote = single
+        for i in range(ll.length):
+            ci = ll.utf8[i]
+            if ci == single:
+                quote = double
+            if ci == double:
+                quote = single
+                # found ", stop scanning since ' wins on conflict
+                # (matches C behaviour: it 'break's here)
+                break
+
+        # First pass: compute the output length
+        out_len: i32 = 2  # surrounding quotes
+        for m in range(ll.length):
+            c = ll.utf8[m]
+            if c == ord(b"\\") or c == quote:
+                out_len = out_len + 2
+            elif c == ord(b"\n") or c == ord(b"\r") or c == ord(b"\t"):
+                out_len = out_len + 2
+            elif c < ord(b" "):
+                out_len = out_len + 4  # \xNN
+            else:
+                out_len = out_len + 1
+
+        # Second pass: fill the buffer
+        out = StrObject.alloc(out_len)
+        out.hash = 0
+        j: i32 = 0
+        out.utf8[j] = quote
+        j = j + 1
+        for k in range(ll.length):
+            c2 = ll.utf8[k]
+            if c2 == ord(b"\\"):
+                out.utf8[j] = ord(b"\\")
+                j = j + 1
+                out.utf8[j] = ord(b"\\")
+                j = j + 1
+            elif c2 == quote:
+                out.utf8[j] = ord(b"\\")
+                j = j + 1
+                out.utf8[j] = quote
+                j = j + 1
+            elif c2 == ord(b"\n"):
+                out.utf8[j] = ord(b"\\")
+                j = j + 1
+                out.utf8[j] = ord(b"n")
+                j = j + 1
+            elif c2 == ord(b"\r"):
+                out.utf8[j] = ord(b"\\")
+                j = j + 1
+                out.utf8[j] = ord(b"r")
+                j = j + 1
+            elif c2 == ord(b"\t"):
+                out.utf8[j] = ord(b"\\")
+                j = j + 1
+                out.utf8[j] = ord(b"t")
+                j = j + 1
+            elif c2 < ord(b" "):
+                # \xNN hex escape
+                out.utf8[j] = ord(b"\\")
+                j = j + 1
+                out.utf8[j] = ord(b"x")
+                j = j + 1
+                hi: i32 = i32(c2) >> 4
+                lo: i32 = i32(c2) & 15
+                if hi < 10:
+                    out.utf8[j] = u8(hi) + ord(b"0")
+                else:
+                    out.utf8[j] = u8(hi - 10) + ord(b"a")
+                j = j + 1
+                if lo < 10:
+                    out.utf8[j] = u8(lo) + ord(b"0")
+                else:
+                    out.utf8[j] = u8(lo - 10) + ord(b"a")
+                j = j + 1
+            else:
+                out.utf8[j] = c2
+                j = j + 1
+        out.utf8[j] = quote
+        return StrObject.to_str(out)
+
     def replace(self: str, old: str, new: str) -> str:
         ll_orig = StrObject.from_str(self)
         ll_old = StrObject.from_str(old)

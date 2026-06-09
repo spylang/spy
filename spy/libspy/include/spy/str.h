@@ -111,8 +111,6 @@ spy_StrObject *WASM_EXPORT(spy_str_getitem)(spy_StrObject *s, int32_t i);
 
 int32_t WASM_EXPORT(spy_str_len)(spy_StrObject *s);
 
-spy_StrObject *WASM_EXPORT(spy_str_repr)(spy_StrObject *s);
-
 int32_t WASM_EXPORT(spy_str_hash)(spy_StrObject *s);
 
 #define spy_operator$str_add spy_str_add
@@ -123,7 +121,6 @@ int32_t WASM_EXPORT(spy_str_hash)(spy_StrObject *s);
 #define spy_builtins$str$__getitem__ spy_str_getitem
 #define spy_builtins$str$__len__ spy_str_len
 #define spy_builtins$str$__str__ spy_str_identity
-#define spy_builtins$str$__repr__ spy_str_repr
 
 static inline spy_StrObject *
 spy_str_identity(spy_StrObject *s) {
