@@ -17,9 +17,11 @@ def _is_magic_dispatch_call(f: FrameType) -> bool:
     info.index is the index of the line currently being executed
     """
     info = getframeinfo(f)
-    return (context := info.code_context) is not None and "magic_dispatch(" in context[
-        info.index
-    ]
+    return (
+        (context := info.code_context) is not None
+        and info.index is not None
+        and "magic_dispatch(" in context[info.index]
+    )
 
 
 def tb_hide_magic_frames_maybe() -> TracebackType:
