@@ -16,6 +16,7 @@ on:
   pull_request:
     paths:
       - 'docs/**'
+      - 'spy/cli/**' # Rebuild cli docs when cli changes
       - '.github/workflows/docs**'
     types:
       - opened

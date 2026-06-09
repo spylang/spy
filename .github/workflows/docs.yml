@@ -9,6 +9,7 @@ on:
       - 'docs/**'
     paths:
       - 'docs/**'
+      - 'spy/cli/**' # Rebuild cli docs when cli changes
   workflow_dispatch:  # Allows manual triggering
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages

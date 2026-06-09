@@ -46,6 +46,7 @@ class W_Str(W_Object):
         "isascii": FQN("_str::methods::isascii"),
         "upper": FQN("_str::methods::upper"),
         "_getitem_slice": FQN("_str::methods::_getitem_slice"),
+        "encode": FQN("_str::methods::encode"),
     }
 
     vm: "SPyVM"
