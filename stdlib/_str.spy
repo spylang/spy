@@ -89,7 +89,7 @@ class methods:
                 llnew.utf8[i] = ch
         return StrObject.to_str(llnew)
         
-    def _getitem_slice_impl(self: str, slc: slice) -> str:
+    def _getitem_slice(self: str, slc: slice) -> str:
         # Fast path for trivial slices:
         if (slc.start == 0 or slc.start_is_none) and (slc.stop == -1 or slc.stop_is_none) and (slc.step == 1 or slc.step_is_none): return self
         

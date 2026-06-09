@@ -45,7 +45,7 @@ class W_Str(W_Object):
     __spy_lazy_attributes__ = {
         "isascii": FQN("_str::methods::isascii"),
         "upper": FQN("_str::methods::upper"),
-        "__getitem_slice__": FQN("_str::methods::_getitem_slice_impl"),
+        "_getitem_slice": FQN("_str::methods::_getitem_slice"),
     }
 
     vm: "SPyVM"
@@ -108,9 +108,9 @@ class W_Str(W_Object):
     @staticmethod
     def w_getitem(vm: "SPyVM", wam_s: W_MetaArg, wam_i: W_MetaArg) -> W_OpSpec:
         assert wam_s.w_static_T is B.w_str
-        from spy.vm.typechecker import convertible  # avoid a circular import
+        from spy.vm.typechecker import is_convertible_to  # avoid a circular import
 
-        if convertible(vm, W_MetaArg.from_w_obj(vm, B.w_i32), wam_i):
+        if is_convertible_to(vm, W_MetaArg.from_w_obj(vm, B.w_i32), wam_i):
 
             @vm.register_builtin_func(B.w_str.fqn, "_getitem_int")
             def w_str_getitem_int(vm: "SPyVM", w_s: W_Str, w_i: W_I32) -> W_Str:
@@ -120,7 +120,7 @@ class W_Str(W_Object):
             return W_OpSpec(w_str_getitem_int, [wam_s, wam_i])
 
         elif "_slice::Slice" in str(wam_i.w_static_T.fqn):
-            return W_OpSpec(B.w_str.lookup(vm, "__getitem_slice__"), [wam_s, wam_i])
+            return W_OpSpec(B.w_str.lookup(vm, "_getitem_slice"), [wam_s, wam_i])
 
         return W_OpSpec.NULL
 
