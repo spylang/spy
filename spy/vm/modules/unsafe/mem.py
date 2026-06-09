@@ -190,7 +190,10 @@ def w_ptr_copy(
         n = vm.unwrap_i32(w_n)
         if n > w_dst.length or n > w_src.length:
             raise SPyError("W_PanicError", "ptr_copy out of bounds")
-        vm.ll.call("_spy_memcpy", w_dst.addr, w_src.addr, n * ITEMSIZE)
+        nbytes = n * ITEMSIZE
+        if w_dst.addr < w_src.addr + nbytes and w_src.addr < w_dst.addr + nbytes:
+            raise SPyError("W_PanicError", "ptr_copy regions overlap")
+        vm.ll.call("_spy_memcpy", w_dst.addr, w_src.addr, nbytes)
 
     return W_OpSpec(w_ptr_copy_impl, [wam_dst, wam_src, wam_n])
 
@@ -242,12 +245,12 @@ def w_ptr_copy_slice(
             raise SPyError("W_PanicError", "ptr_copy_slice out of bounds")
         if src_start < 0 or src_end > w_src.length:
             raise SPyError("W_PanicError", "ptr_copy_slice out of bounds")
-        vm.ll.call(
-            "_spy_memcpy",
-            w_dst.addr + dst_start * ITEMSIZE,
-            w_src.addr + src_start * ITEMSIZE,
-            n * ITEMSIZE,
-        )
+        dst_addr = w_dst.addr + dst_start * ITEMSIZE
+        src_addr = w_src.addr + src_start * ITEMSIZE
+        nbytes = n * ITEMSIZE
+        if dst_addr < src_addr + nbytes and src_addr < dst_addr + nbytes:
+            raise SPyError("W_PanicError", "ptr_copy_slice regions overlap")
+        vm.ll.call("_spy_memcpy", dst_addr, src_addr, nbytes)
 
     return W_OpSpec(
         w_ptr_copy_slice_impl,

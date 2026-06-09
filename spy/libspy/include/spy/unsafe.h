@@ -151,6 +151,7 @@ typedef spy_unsafe$gc_ptr__builtins$u8 spy_gc_ptr_u8;
 #ifdef SPY_DEBUG
 #  define spy_ptr_copy(dst, src, n)                                                    \
       do {                                                                             \
+          size_t _spy_nb = (size_t)(n) * sizeof(*(dst).p);                             \
           if ((size_t)(n) > (size_t)(dst).length)                                      \
               spy_panic(                                                               \
                   "PanicError", "ptr_copy dst out of bounds", __FILE__, __LINE__       \
@@ -159,7 +160,10 @@ typedef spy_unsafe$gc_ptr__builtins$u8 spy_gc_ptr_u8;
               spy_panic(                                                               \
                   "PanicError", "ptr_copy src out of bounds", __FILE__, __LINE__       \
               );                                                                       \
-          memcpy((dst).p, (src).p, (n) * sizeof(*(dst).p));                            \
+          if ((char *)(dst).p < (char *)(src).p + _spy_nb &&                           \
+              (char *)(src).p < (char *)(dst).p + _spy_nb)                             \
+              spy_panic("PanicError", "ptr_copy regions overlap", __FILE__, __LINE__); \
+          memcpy((dst).p, (src).p, _spy_nb);                                           \
       } while (0)
 #else
 #  define spy_ptr_copy(dst, src, n) memcpy((dst).p, (src).p, (n) * sizeof(*(dst).p))
@@ -184,7 +188,17 @@ typedef spy_unsafe$gc_ptr__builtins$u8 spy_gc_ptr_u8;
               spy_panic(                                                               \
                   "PanicError", "ptr_copy_slice src out of bounds", __FILE__, __LINE__ \
               );                                                                       \
-          memcpy((dst).p + (ds), (src).p + (ss), _spy_n * sizeof(*(dst).p));           \
+          {                                                                            \
+              size_t _spy_nb = (size_t)_spy_n * sizeof(*(dst).p);                      \
+              char *_spy_d = (char *)((dst).p + (ds));                                 \
+              char *_spy_s = (char *)((src).p + (ss));                                 \
+              if (_spy_d < _spy_s + _spy_nb && _spy_s < _spy_d + _spy_nb)              \
+                  spy_panic(                                                           \
+                      "PanicError", "ptr_copy_slice regions overlap", __FILE__,        \
+                      __LINE__                                                         \
+                  );                                                                   \
+              memcpy(_spy_d, _spy_s, _spy_nb);                                         \
+          }                                                                            \
       } while (0)
 #else
 #  define spy_ptr_copy_slice(dst, ds, de, src, ss, se)                                 \
