@@ -3,8 +3,6 @@ import sys
 from inspect import getframeinfo
 from types import FrameType, TracebackType
 
-TB_ENV_KEY_NAME = "SPY_SHOW_MAGIC_FRAMES"
-
 
 def _is_magic_dispatch_frame(f: FrameType) -> bool:
     info = getframeinfo(f)
@@ -12,9 +10,15 @@ def _is_magic_dispatch_frame(f: FrameType) -> bool:
 
 
 def _is_magic_dispatch_call(f: FrameType) -> bool:
+    """
+    Check whether the string `magic_dispatch(` is in the line of code that's
+    present the current frame of a traceback. info.code_context is an array of
+    strings of the lines of code "around" the line being executed.
+    info.index is the index of the line currently being executed
+    """
     info = getframeinfo(f)
     return (context := info.code_context) is not None and "magic_dispatch(" in context[
-        0
+        info.index
     ]
 
 
@@ -27,7 +31,7 @@ def tb_hide_magic_frames_maybe() -> TracebackType:
     assert head_tb is not None
     tb = head_tb
 
-    if (env_val := os.getenv(TB_ENV_KEY_NAME)) and int(env_val) == 1:
+    if (env_val := os.getenv("SPY_SHOW_MAGIC_FRAMES")) and int(env_val) == 1:
         # We actually want to show all the magic frames; return stack unchanged
         pass
     else:
@@ -43,7 +47,7 @@ def tb_hide_magic_frames_maybe() -> TracebackType:
             else:
                 assert (
                     tb.tb_next is not None
-                )  # make mypy happy; we know this is try from the while statement above
+                )  # make mypy happy; we know this is true from the while statement above
                 tb = tb.tb_next
 
     return head_tb
