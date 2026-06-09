@@ -1,0 +1,35 @@
+"""
+Things to notice:
+  - @blue funcs are completely resolved at redshift time
+  - make_adder is not present in the redshifted or .c file
+  - types in blue functions are optional
+  - you can pass a type to get generics
+  - redshift inserts type conversions
+"""
+
+
+def make_adder[T, x](y: T) -> T:
+    return x + y
+
+
+"""
+This generic function is just syntactic sugar for
+
+@blue.generic
+def make_adder(T, x):
+    def _impl(y: T) -> T:
+        return x + y
+
+    return _impl
+
+Functions decorated with @blue.generic are called using square brackets [] instead of parentheses ().
+Other than that, they are identical to other blue functions.
+"""
+
+add_4 = make_adder[i32, 4]
+add_pi = make_adder[f64, 3.1415]
+
+
+def main() -> None:
+    print(add_4(38))
+    print(add_pi(10))

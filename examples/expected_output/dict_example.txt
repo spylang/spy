@@ -1,2 +1,0 @@
-20
-<spy `_dict::dict[i32, i32]::_dict` object at <ADDR>>

@@ -8,6 +8,7 @@ from spy.fqn import FQN
 from spy.libspy import LLSPyInstance
 from spy.llwasm import LLWasmType
 from spy.vm.b import TYPES, B
+from spy.vm.bytes import ll_bytes_new
 from spy.vm.cell import W_Cell
 from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
 from spy.vm.modules.rawbuffer import RB
@@ -96,6 +97,9 @@ class WasmFuncWrapper:
         elif w_T is B.w_str:
             # XXX: with the GC, we need to think how to keep this alive
             return ll_str_new(self.ll, pyval)
+        elif w_T is B.w_bytes:
+            # XXX: with the GC, we need to think how to keep this alive
+            return ll_bytes_new(self.ll, pyval)
         elif isinstance(w_T, W_PtrType):
             assert isinstance(pyval, WasmPtr)
             return (pyval.addr, pyval.length)
@@ -140,6 +144,9 @@ class WasmFuncWrapper:
         elif w_T is B.w_str:
             _, _, utf8 = self.ll.read_str(res)
             return utf8.decode("utf-8")
+        elif w_T is B.w_bytes:
+            _, _, data = self.ll.read_bytes(res)
+            return data
         elif w_T is RB.w_RawBuffer:
             # res is a  spy_RawBuffer*
             # On wasm32, it looks like this:

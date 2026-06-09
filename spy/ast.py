@@ -22,7 +22,7 @@ from spy.location import Loc
 from spy.util import extend
 
 if TYPE_CHECKING:
-    from spy.vm.object import W_Type
+    from spy.vm.object import W_Object, W_Type
     from spy.vm.vm import SPyVM
 
 ClassKind = typing.Literal["class", "struct"]
@@ -329,21 +329,21 @@ class Auto(Expr):
 
 
 @astnode
-class Constant(Expr):
+class Literal(Expr):
     precedence = 100  # the highest
     value: object
 
     def __post_init__(self) -> None:
-        assert type(self.value) is not str, "use StrConst instead"
+        assert type(self.value) is not str, "use StrLiteral instead"
 
     def shortrepr(self) -> Optional[str]:
         return str(self.value)
 
 
 @astnode
-class StrConst(Expr):
+class StrLiteral(Expr):
     """
-    Like Constant, but for strings.
+    Like Literal, but for strings.
 
     The reason we have a specialized node is that we want to use it for fields
     than MUST be strings, like GetAttr.attr or Assign.target.
@@ -355,7 +355,7 @@ class StrConst(Expr):
     def shortrepr(self) -> Optional[str]:
         return repr(self.value)
 
-    def as_typed_node(self) -> "StrConst":
+    def as_typed_node(self) -> "StrLiteral":
         from spy.vm.b import B
 
         assert self.w_T is None
@@ -363,16 +363,16 @@ class StrConst(Expr):
 
 
 @astnode
-class LocConst(Expr):
+class BytesLiteral(Expr):
     """
-    Like Constant, but for W_Locs.
-
-    The reason for this is that we treat W_Locs as value types and we don't
-    want to give them an FQN just for redshifting.
+    Like Literal, but for bytes objects (b"..." literals).
     """
 
     precedence = 100  # the highest
-    value: Loc
+    value: bytes
+
+    def shortrepr(self) -> Optional[str]:
+        return repr(self.value)
 
 
 @astnode
@@ -425,7 +425,7 @@ class Slice(Expr):
 class CallMethod(Expr):
     precedence = 17  # higher than GetAttr
     target: Expr
-    method: StrConst
+    method: StrLiteral
     args: list[Expr]
 
 
@@ -433,7 +433,7 @@ class CallMethod(Expr):
 class GetAttr(Expr):
     precedence = 16
     value: Expr
-    attr: StrConst
+    attr: StrLiteral
 
 
 @astnode
@@ -550,7 +550,7 @@ class UnaryOp(Expr):
 @astnode
 class AssignExpr(Expr):
     precedence = 0
-    target: StrConst
+    target: StrLiteral
     value: Expr
 
 
@@ -666,7 +666,7 @@ class Return(Stmt):
 @astnode
 class VarDef(Stmt):
     kind: Optional[VarKind]
-    name: StrConst
+    name: StrLiteral
     type: Expr
     value: Optional[Expr]
 
@@ -682,20 +682,20 @@ class StmtExpr(Stmt):
 
 @astnode
 class Assign(Stmt):
-    target: StrConst
+    target: StrLiteral
     value: Expr
 
 
 @astnode
 class UnpackAssign(Stmt):
-    targets: list[StrConst]
+    targets: list[StrLiteral]
     value: Expr
 
 
 @astnode
 class AugAssign(Stmt):
     op: str
-    target: StrConst
+    target: StrLiteral
     value: Expr
 
     def shortrepr(self) -> Optional[str]:
@@ -705,7 +705,7 @@ class AugAssign(Stmt):
 @astnode
 class SetAttr(Stmt):
     target: Expr
-    attr: StrConst
+    attr: StrLiteral
     value: Expr
 
 
@@ -736,7 +736,7 @@ class While(Stmt):
 @astnode
 class For(Stmt):
     seq: int  # unique id within a funcdef
-    target: StrConst
+    target: StrLiteral
     iter: Expr
     body: list[Stmt]
 
@@ -768,6 +768,25 @@ class Continue(Stmt):
 # only by the ASTFrame and/or Doppler. In other words, they are not part of
 # the proper AST-which-represent-the-syntax-of-the-language, but they are part
 # of the AST-which-we-use-as-IR
+
+
+@astnode
+class Const(Expr):
+    """
+    Hold a primitive wrapped constant.
+
+    It's similar to ast.Literal, but the former is created only by the parser and
+    carries a .value which is an arbitrary Python object, while Const carries a SPy
+    *wrapped* object.
+
+    ast.Const is produced during redshift and always has w_T set.
+    """
+
+    precedence = 100  # the highest
+    w_val: "W_Object"
+
+    def shortrepr(self) -> Optional[str]:
+        return repr(self.w_val)
 
 
 @astnode
@@ -810,13 +829,13 @@ class NameOuterCell(Expr):
 
 @astnode
 class AssignLocal(Stmt):
-    target: StrConst
+    target: StrLiteral
     value: Expr
 
 
 @astnode
 class AssignCell(Stmt):
-    target: StrConst
+    target: StrLiteral
     target_fqn: FQN
     value: Expr
 
@@ -824,14 +843,14 @@ class AssignCell(Stmt):
 @astnode
 class AssignExprLocal(Expr):
     precedence = 0
-    target: StrConst
+    target: StrLiteral
     value: Expr
 
 
 @astnode
 class AssignExprCell(Expr):
     precedence = 0
-    target: StrConst
+    target: StrLiteral
     target_fqn: FQN
     value: Expr
 

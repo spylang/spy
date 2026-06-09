@@ -1,5 +1,4 @@
 import time
-from _range import range
 
 
 def factorial(n: i32) -> i32:
