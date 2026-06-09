@@ -107,8 +107,17 @@ class WasmFuncWrapper:
             # the function accepts a struct by value; wasmtime allows to pass
             # a flat sequence of fields. This is the opposite of what we do in
             # to_py_result. It works only for flat structs with simple types.
+
+            # If we get a plain object, try to wrap convert it to a spy struct
+            # and then pull out the unwrapped version
+            if not isinstance(pyval, UnwrappedStruct):
+                try:
+                    pyval = self.vm.unwrap(self.vm.wrap(pyval))
+                except Exception as exc:
+                    raise TypeError(f"Unsupported type: {w_T}") from exc
             assert isinstance(pyval, UnwrappedStruct)
             return tuple(pyval._content.values())
+
         else:
             assert False, f"Unsupported type: {w_T}"
 

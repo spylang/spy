@@ -88,30 +88,13 @@ class TestStr(CompilerTest):
             ("abc", slice(None, -1, -1), ""),
         ]
 
-        def args_to_func_name(s_in: str, slc: slice) -> str:
-            return "f" + "_".join(
-                str(a).replace("-", "n") for a in (s_in, slc.start, slc.stop, slc.step)
-            )
+        mod = self.compile("""
+            def get_slice(s: str, slc: slice) -> str:
+                return s.__getitem__(slc)
+        """)
 
-        src = "from _slice import tuple3"
-
-        # Generate a function (who's name we know) that takes no arguments
-        # and returns the slice.indices() of the given slice.
-        # Append that function to the source code for the module
-        # we're about to compile.
-        for s_in, slc, _ in eq_list:
-            src += dedent(f"""
-            def {args_to_func_name(s_in, slc)}() -> str:
-                s: slice = slice({slc.start}, {slc.stop}, {slc.step})
-                return "{s_in}"[s]
-            """)
-
-        mod = self.compile(src)
-
-        for s_in, slc, res in eq_list:
-            # For each pair (inp, out), it should be true that s_in[slc] == res
-            assert getattr(mod, args_to_func_name(s_in, slc))() == res
-        return
+        for in_, slc, out in eq_list:
+            assert mod.get_slice(in_, slc) == out
 
     def test_compare(self):
         mod = self.compile("""
