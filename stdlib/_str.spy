@@ -15,6 +15,7 @@ possible to cast between str and gc_ptr[StrObject] using StrObject.{from,to}_str
 from unsafe import (
     gc_ptr,
     ptr_copy,
+    ptr_copy_slice,
     _str_to_StrObject,
     _alloc_StrObject,
     _StrObject_to_str,
@@ -118,24 +119,46 @@ class methods:
         start = indices.start
         stop = indices.stop
         step = indices.step
-        result_list = list[str]()
 
+        ll = StrObject.from_str(self)
+        
+        # Fast path for simple slices
+        if slc.step == 1:
+            length = stop - start
+            if length <= 0:
+                return ""
+            llnew = StrObject.alloc(length)
+            ptr_copy_slice(llnew.utf8, 0, length, ll.utf8, start, stop)
+            return StrObject.to_str(llnew)
+
+        # Calculate number of elements in final list
+        # Note that step cannot be zero thanks to trap in slice.__new__
+        num_members: int = 0
+        if step < 0:
+            if stop < start:
+                num_members = int((start - stop - 1) / (-step)) + 1
+        else:
+            if start < stop:
+                num_members = int((stop - start - 1) / step) + 1
+
+        if num_members == 0:
+            return ""
+
+        llnew = StrObject.alloc(num_members)
+        
+        current = start
+        i = 0
         if step > 0:
-            current = start
             while current < stop:
-                result_list.append(self[current])
+                # ptr_copy_slice(dst, dstart, dend, src, sstart, send)
+                ptr_copy_slice(llnew.utf8, i, i+1, ll.utf8, current, current+1)
                 current += step
+                i += 1
         else:
             current = start
             while current > stop:
-                result_list.append(self[current])
+                ptr_copy_slice(llnew.utf8, i, i+1, ll.utf8, current, current+1)
                 current += step
+                i += 1
 
-        if not len(result_list):
-            return ""
-        
-        result_str = ""
-        for r in result_list:
-            result_str = result_str + r
-                   
-        return result_str
+        return StrObject.to_str(llnew)
