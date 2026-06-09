@@ -46,6 +46,7 @@ class W_Str(W_Object):
         "isascii": FQN("_str::methods::isascii"),
         "upper": FQN("_str::methods::upper"),
         "encode": FQN("_str::methods::encode"),
+        "replace": FQN("_str::methods::replace"),
     }
 
     vm: "SPyVM"
@@ -130,11 +131,3 @@ class W_Str(W_Object):
         assert isinstance(w_s, W_Str)
         ptr = vm.ll.call("spy_str_repr", w_s.ptr)
         return W_Str.from_ptr(vm, ptr)
-
-    @builtin_method("replace")
-    @staticmethod
-    def w_replace(
-        vm: "SPyVM", w_original: "W_Str", w_old: "W_Str", w_new: "W_Str"
-    ) -> "W_Str":
-        ptr_c = vm.ll.call("spy_str_replace", w_original.ptr, w_old.ptr, w_new.ptr)
-        return W_Str.from_ptr(vm, ptr_c)

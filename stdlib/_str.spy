@@ -15,6 +15,8 @@ possible to cast between str and gc_ptr[StrObject] using StrObject.{from,to}_str
 from unsafe import (
     gc_ptr,
     ptr_copy,
+    ptr_copy_slice,
+    ptr_cmp_slice,
     _str_to_StrObject,
     _alloc_StrObject,
     _StrObject_to_str,
@@ -96,6 +98,80 @@ class methods:
                 return False
             i = i + 1
         return True
+
+    def replace(self: str, old: str, new: str) -> str:
+        ll_orig = StrObject.from_str(self)
+        ll_old = StrObject.from_str(old)
+        ll_new = StrObject.from_str(new)
+        orig_len = ll_orig.length
+        old_len = ll_old.length
+        new_len = ll_new.length
+
+        if old_len == 0:
+            # insert `new` before each byte and after the last
+            result_len = orig_len + (orig_len + 1) * new_len
+            res = StrObject.alloc(result_len)
+            res.hash = 0
+            pos: i32 = 0
+            for i in range(orig_len):
+                if new_len > 0:
+                    ptr_copy_slice(
+                        res.utf8, pos, pos + new_len, ll_new.utf8, 0, new_len
+                    )
+                    pos = pos + new_len
+                res.utf8[pos] = ll_orig.utf8[i]
+                pos = pos + 1
+            if new_len > 0:
+                ptr_copy_slice(res.utf8, pos, pos + new_len, ll_new.utf8, 0, new_len)
+            return StrObject.to_str(res)
+
+        # First pass: count occurrences
+        count: i32 = 0
+        i = 0
+        while i <= orig_len - old_len:
+            if (
+                ptr_cmp_slice(ll_orig.utf8, i, i + old_len, ll_old.utf8, 0, old_len)
+                == 0
+            ):
+                count = count + 1
+                i = i + old_len
+            else:
+                i = i + 1
+
+        if count == 0:
+            # Return the original string when no occurrences are found
+            res = StrObject.alloc(orig_len)
+            res.hash = 0
+            if orig_len > 0:
+                ptr_copy(res.utf8, ll_orig.utf8, orig_len)
+            return StrObject.to_str(res)
+
+        # Second pass: build the result
+        result_len = orig_len + count * (new_len - old_len)
+        res = StrObject.alloc(result_len)
+        res.hash = 0
+        pos = 0
+        i = 0
+        while i <= orig_len - old_len:
+            c = ptr_cmp_slice(ll_orig.utf8, i, i + old_len, ll_old.utf8, 0, old_len)
+            if c == 0:  # found
+                if new_len > 0:
+                    ptr_copy_slice(
+                        res.utf8, pos, pos + new_len, ll_new.utf8, 0, new_len
+                    )
+                    pos = pos + new_len
+                i = i + old_len
+            else:
+                res.utf8[pos] = ll_orig.utf8[i]
+                pos = pos + 1
+                i = i + 1
+        # Copy remaining tail
+        remaining = orig_len - i
+        if remaining > 0:
+            ptr_copy_slice(
+                res.utf8, pos, pos + remaining, ll_orig.utf8, i, i + remaining
+            )
+        return StrObject.to_str(res)
 
     def upper(self: str) -> str:
         # XXX: this works only for ASCII strings but it's good enough for now

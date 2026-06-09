@@ -97,12 +97,6 @@ spy_unsafe$_alloc_StrObject$impl(int32_t length) {
 
 spy_StrObject *WASM_EXPORT(spy_str_add)(spy_StrObject *a, spy_StrObject *b);
 
-spy_StrObject *WASM_EXPORT(spy_str_replace)(
-    spy_StrObject *original,
-    spy_StrObject *old,
-    spy_StrObject *new_str
-);
-
 spy_StrObject *WASM_EXPORT(spy_str_mul)(spy_StrObject *a, int32_t b);
 
 bool WASM_EXPORT(spy_str_eq)(spy_StrObject *a, spy_StrObject *b);
@@ -126,7 +120,6 @@ int32_t WASM_EXPORT(spy_str_hash)(spy_StrObject *s);
 #define spy_operator$str_eq spy_str_eq
 #define spy_operator$str_ne spy_str_ne
 #define spy_operator$str_to_complex128 spy_str_to_complex128
-#define spy_builtins$str$replace spy_str_replace
 #define spy_builtins$str$__getitem__ spy_str_getitem
 #define spy_builtins$str$__len__ spy_str_len
 #define spy_builtins$str$__str__ spy_str_identity

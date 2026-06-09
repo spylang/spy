@@ -41,67 +41,6 @@ spy_str_add(spy_StrObject *a, spy_StrObject *b) {
 }
 
 spy_StrObject *
-spy_str_replace(spy_StrObject *original, spy_StrObject *old, spy_StrObject *new_str) {
-    size_t orig_len = original->length;
-    size_t old_len = old->length;
-    size_t new_len = new_str->length;
-
-    if (old_len == 0) {
-        // when old_len is empty insert new_str before each byte and after the last
-        size_t result_len = orig_len + (orig_len + 1) * new_len;
-        spy_StrObject *res = spy_str_alloc(result_len);
-        char *buf = (char *)spy_StrObject_UTF8(res);
-        for (size_t i = 0; i < orig_len; i++) {
-            memcpy(buf, spy_StrObject_UTF8(new_str), new_len);
-            buf += new_len;
-            buf[0] = spy_StrObject_UTF8(original)[i];
-            buf++;
-        }
-        memcpy(buf, spy_StrObject_UTF8(new_str), new_len);
-        return res;
-    }
-
-    // First pass -> count occurrences
-    size_t count = 0;
-    const char *p = (const char *)spy_StrObject_UTF8(original);
-    const char *end = p + orig_len;
-    while (p <= end - old_len) {
-        if (memcmp(p, spy_StrObject_UTF8(old), old_len) == 0) {
-            count++;
-            p += old_len;
-        } else {
-            p++;
-        }
-    }
-
-    if (count == 0) {
-        // Return the original string when no occurrences are found
-        spy_StrObject *res = spy_str_alloc(orig_len);
-        memcpy((char *)spy_StrObject_UTF8(res), spy_StrObject_UTF8(original), orig_len);
-        return res;
-    }
-
-    // Second pass -> build the result
-    size_t result_len = orig_len + count * (new_len - old_len);
-    spy_StrObject *res = spy_str_alloc(result_len);
-    char *buf = (char *)spy_StrObject_UTF8(res);
-    p = (const char *)spy_StrObject_UTF8(original);
-    while (p <= end - old_len) {
-        if (memcmp(p, spy_StrObject_UTF8(old), old_len) == 0) {
-            memcpy(buf, spy_StrObject_UTF8(new_str), new_len);
-            buf += new_len;
-            p += old_len;
-        } else {
-            *buf++ = *p++;
-        }
-    }
-    // Copy remaining bytes
-    size_t remaining = end - p;
-    memcpy(buf, p, remaining);
-    return res;
-}
-
-spy_StrObject *
 spy_str_mul(spy_StrObject *a, int32_t b) {
     size_t l = a->length * b;
     spy_StrObject *res = spy_str_alloc(l);
