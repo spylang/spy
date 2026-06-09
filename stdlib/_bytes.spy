@@ -14,6 +14,8 @@ BytesObject.{from,to}_bytes.
 from unsafe import (
     gc_ptr,
     ptr_copy,
+    ptr_copy_slice,
+    memcmp,
     _bytes_to_BytesObject,
     _alloc_BytesObject,
     _BytesObject_to_bytes,
@@ -63,10 +65,7 @@ class methods:
         b = BytesObject.from_bytes(other)
         if a.length != b.length:
             return False
-        for i in range(a.length):
-            if a.data[i] != b.data[i]:
-                return False
-        return True
+        return memcmp(a.data, b.data, a.length) == 0
 
     def __ne__(self: bytes, other: bytes) -> bool:
         return not self.__eq__(other)
