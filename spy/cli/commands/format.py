@@ -4,9 +4,9 @@ from pathlib import Path
 
 from typer import Argument
 
-from spy.analyze.fmt import SPyFormatter
 from spy.cli._runners import init_vm
 from spy.cli.commands.shared_args import Base_Args
+from spy.tool.spyformatter import SPyFormatter
 
 
 @dataclass
@@ -14,7 +14,7 @@ class Fmt_Args(Base_Args):
     filename: Path = Argument(help="", show_default=False)
 
 
-async def fmt(args: Fmt_Args) -> None:
+async def format(args: Fmt_Args) -> None:
     """Format SPy file"""
     # TODO: implement directory formatting.
     if args.filename.suffix != ".spy":
