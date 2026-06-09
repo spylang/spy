@@ -145,10 +145,10 @@ def w_memset(
     memset(dst, value, n): write the byte `value` to the first `n` bytes of `dst`.
 
     Mirrors C's memset: only accepts ptr[u8] or ptr[i8]; for any other ptr[T]
-    use ptr_set instead.
+    use ptr_setbytes instead.
     """
-    _check_byte_ptr(vm, wam_dst, "ptr_set")
-    return vm.fast_metacall(UNSAFE.w_ptr_set, [wam_dst, wam_value, wam_n])
+    _check_byte_ptr(vm, wam_dst, "ptr_setbytes")
+    return vm.fast_metacall(UNSAFE.w_ptr_setbytes, [wam_dst, wam_value, wam_n])
 
 
 @UNSAFE.builtin_func(color="blue", kind="metafunc")
@@ -346,11 +346,11 @@ def w_ptr_move_slice(
 
 
 @UNSAFE.builtin_func(color="blue", kind="metafunc")
-def w_ptr_set(
+def w_ptr_setbytes(
     vm: "SPyVM", wam_dst: W_MetaArg, wam_value: W_MetaArg, wam_n: W_MetaArg
 ) -> W_OpSpec:
     """
-    ptr_set(dst, value, n): write the byte `value` to the first `n` items of `dst`.
+    ptr_setbytes(dst, value, n): write the byte `value` to the first `n` items of `dst`.
 
     `n` is the number of ITEMS (not bytes); the underlying memset writes
     `n * sizeof(T)` bytes. `value` is interpreted as a byte and broadcast to
@@ -360,21 +360,21 @@ def w_ptr_set(
     w_dst_T = _check_ptr(vm, wam_dst)
     DST = Annotated[W_Ptr, w_dst_T]
     ITEMSIZE = sizeof(w_dst_T.w_itemT)
-    ns = UNSAFE.w_ptr_set.compute_inner_ns([w_dst_T])
-    irtag = IRTag("unsafe.memop", cfunc="spy_ptr_set")
+    ns = UNSAFE.w_ptr_setbytes.compute_inner_ns([w_dst_T])
+    irtag = IRTag("unsafe.memop", cfunc="spy_ptr_setbytes")
 
     @vm.register_builtin_func(ns, "impl", irtag=irtag)
-    def w_ptr_set_impl(vm: "SPyVM", w_dst: DST, w_value: W_U8, w_n: W_I32) -> None:
+    def w_ptr_setbytes_impl(vm: "SPyVM", w_dst: DST, w_value: W_U8, w_n: W_I32) -> None:
         n = vm.unwrap_i32(w_n)
         if n > w_dst.length:
-            raise SPyError("W_PanicError", "ptr_set out of bounds")
+            raise SPyError("W_PanicError", "ptr_setbytes out of bounds")
         vm.ll.call("_spy_memset", w_dst.addr, int(w_value.value), n * ITEMSIZE)
 
-    return W_OpSpec(w_ptr_set_impl, [wam_dst, wam_value, wam_n])
+    return W_OpSpec(w_ptr_setbytes_impl, [wam_dst, wam_value, wam_n])
 
 
 @UNSAFE.builtin_func(color="blue", kind="metafunc")
-def w_ptr_set_slice(
+def w_ptr_setbytes_slice(
     vm: "SPyVM",
     wam_dst: W_MetaArg,
     wam_dst_start: W_MetaArg,
@@ -382,19 +382,19 @@ def w_ptr_set_slice(
     wam_value: W_MetaArg,
 ) -> W_OpSpec:
     """
-    ptr_set_slice(dst, dst_start, dst_end, value): write the byte `value`
+    ptr_setbytes_slice(dst, dst_start, dst_end, value): write the byte `value`
     to dst[dst_start:dst_end].
 
-    Like ptr_set, but writes only the given slice instead of the prefix.
+    Like ptr_setbytes, but writes only the given slice instead of the prefix.
     """
     w_dst_T = _check_ptr(vm, wam_dst)
     DST = Annotated[W_Ptr, w_dst_T]
     ITEMSIZE = sizeof(w_dst_T.w_itemT)
-    ns = UNSAFE.w_ptr_set_slice.compute_inner_ns([w_dst_T])
-    irtag = IRTag("unsafe.memop", cfunc="spy_ptr_set_slice")
+    ns = UNSAFE.w_ptr_setbytes_slice.compute_inner_ns([w_dst_T])
+    irtag = IRTag("unsafe.memop", cfunc="spy_ptr_setbytes_slice")
 
     @vm.register_builtin_func(ns, "impl", irtag=irtag)
-    def w_ptr_set_slice_impl(
+    def w_ptr_setbytes_slice_impl(
         vm: "SPyVM",
         w_dst: DST,
         w_dst_start: W_I32,
@@ -405,7 +405,7 @@ def w_ptr_set_slice(
         dst_end = vm.unwrap_i32(w_dst_end)
         n = dst_end - dst_start
         if n < 0 or dst_start < 0 or dst_end > w_dst.length:
-            raise SPyError("W_PanicError", "ptr_set_slice out of bounds")
+            raise SPyError("W_PanicError", "ptr_setbytes_slice out of bounds")
         vm.ll.call(
             "_spy_memset",
             w_dst.addr + dst_start * ITEMSIZE,
@@ -414,7 +414,7 @@ def w_ptr_set_slice(
         )
 
     return W_OpSpec(
-        w_ptr_set_slice_impl, [wam_dst, wam_dst_start, wam_dst_end, wam_value]
+        w_ptr_setbytes_slice_impl, [wam_dst, wam_dst_start, wam_dst_end, wam_value]
     )
 
 

@@ -15,7 +15,7 @@ hardcode _array1, _array2, _array3, etc.
 """
 
 from operator import OpSpec
-from unsafe import gc_alloc, gc_ptr, ptr_set
+from unsafe import gc_alloc, gc_ptr, ptr_setbytes
 
 
 @blue.generic
@@ -202,7 +202,7 @@ def zeros(DTYPE):
                 # memory, so we zero the array here.  Eventually we should have a
                 # gc_alloc_zero (or similar) which returns zeroed memory, and use it for
                 # the underlying buffer.
-                ptr_set(a.__ll__.items, 0, n)
+                ptr_setbytes(a.__ll__.items, 0, n)
                 return a
 
             return OpSpec(impl)
