@@ -1,6 +1,6 @@
 """
 Things to notice:
-  - ptr_copy, ptr_move, ptr_set, ptr_cmp are the primary mem ops; they work
+  - ptr_copy, ptr_move, ptr_setbytes, ptr_cmp are the primary mem ops; they work
     on ptr[T] for any type T, and count is expressed in items, not bytes
   - each op has a _slice variant that avoids the need for pointer arithmetic:
       ptr_copy_slice(dst, dstart, dend, src, sstart, send)
@@ -21,29 +21,29 @@ from unsafe import (
     ptr_cmp_slice,
     ptr_move,
     ptr_move_slice,
-    ptr_set,
-    ptr_set_slice,
+    ptr_setbytes,
+    ptr_setbytes_slice,
 )
 
 
-def demo_ptr_set() -> None:
-    # ptr_set broadcasts a byte value across n*sizeof(T) bytes;
+def demo_ptr_setbytes() -> None:
+    # ptr_setbytes broadcasts a byte value across n*sizeof(T) bytes;
     # for T longer than u8 it is mainly useful for zeroing memory
     buf = gc_alloc[i32](4)
-    ptr_set(buf, 0, 4)
+    ptr_setbytes(buf, 0, 4)
     total = buf[0] + buf[1] + buf[2] + buf[3]
     assert total == 0
 
     # for u8 buffers, any byte value works as expected
     bytes_buf = gc_alloc[u8](4)
-    ptr_set(bytes_buf, 7, 4)
+    ptr_setbytes(bytes_buf, 7, 4)
     total = bytes_buf[0] + bytes_buf[1] + bytes_buf[2] + bytes_buf[3]
     assert total == 28
 
     # _slice variant: only fill a sub-range [1, 3)
     buf2 = gc_alloc[u8](4)
-    ptr_set(buf2, 0, 4)
-    ptr_set_slice(buf2, 1, 3, 5)
+    ptr_setbytes(buf2, 0, 4)
+    ptr_setbytes_slice(buf2, 1, 3, 5)
     assert buf2[0] == u8(0)
     assert buf2[1] == u8(5)
     assert buf2[2] == u8(5)
@@ -65,7 +65,7 @@ def demo_ptr_copy() -> None:
 
     # _slice variant: copy src[1:3] into dst[2:4]
     dst2 = gc_alloc[i32](4)
-    ptr_set(dst2, 0, 4)
+    ptr_setbytes(dst2, 0, 4)
     ptr_copy_slice(dst2, 2, 4, src, 1, 3)
     assert dst2[0] == 0
     assert dst2[1] == 0
@@ -96,8 +96,8 @@ def demo_ptr_cmp() -> None:
     a = gc_alloc[i32](4)
     b = gc_alloc[i32](4)
 
-    ptr_set(a, 42, 4)
-    ptr_set(b, 42, 4)
+    ptr_setbytes(a, 42, 4)
+    ptr_setbytes(b, 42, 4)
     assert ptr_cmp(a, b, 4) == 0  # equal
 
     b[3] = 99
@@ -112,7 +112,7 @@ def demo_ptr_cmp() -> None:
 
 
 def main() -> None:
-    demo_ptr_set()
+    demo_ptr_setbytes()
     demo_ptr_copy()
     demo_ptr_move()
     demo_ptr_cmp()

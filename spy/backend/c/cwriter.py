@@ -613,8 +613,8 @@ class CFuncWriter:
             "spy_ptr_move_slice",
             "spy_ptr_cmp",
             "spy_ptr_cmp_slice",
-            "spy_ptr_set",
-            "spy_ptr_set_slice",
+            "spy_ptr_setbytes",
+            "spy_ptr_setbytes_slice",
         )
         c_args = [self.fmt_expr(arg) for arg in call.args]
         return C.Call(cfunc, c_args)

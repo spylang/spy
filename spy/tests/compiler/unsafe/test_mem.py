@@ -291,17 +291,17 @@ class TestMem(CompilerTest):
         with SPyError.raises("W_PanicError", match="length mismatch"):
             mod.fn_slice_mismatch()
 
-    def test_ptr_set(self, memkind):
+    def test_ptr_setbytes(self, memkind):
         k = memkind
         src = """
         from unsafe import (
             {k}_alloc as k_alloc, {k}_ptr as k_ptr,
-            ptr_set, ptr_set_slice,
+            ptr_setbytes, ptr_setbytes_slice,
         )
 
         def fn_ptr() -> i32:
             buf: k_ptr[u8] = k_alloc[u8](4)
-            ptr_set(buf, 7, 4)
+            ptr_setbytes(buf, 7, 4)
             return buf[0] + buf[1] + buf[2] + buf[3]
 
         def fn_slice() -> i32:
@@ -310,20 +310,20 @@ class TestMem(CompilerTest):
             buf[1] = 0
             buf[2] = 0
             buf[3] = 0
-            ptr_set_slice(buf, 1, 3, 7)
+            ptr_setbytes_slice(buf, 1, 3, 7)
             return i32(buf[0])*1000 + i32(buf[1])*100 + i32(buf[2])*10 + i32(buf[3])
         """.format(k=k)
         mod = self.compile(src)
         assert mod.fn_ptr() == 28
         assert mod.fn_slice() == 700 + 70
 
-    def test_ptr_set_not_a_ptr(self):
+    def test_ptr_setbytes_not_a_ptr(self):
         src = """
-        from unsafe import ptr_set
+        from unsafe import ptr_setbytes
 
         def foo() -> i32:
             x: i32 = 0
-            ptr_set(x, 0, 4)
+            ptr_setbytes(x, 0, 4)
             return 0
         """
         errors = expect_errors(
@@ -332,22 +332,22 @@ class TestMem(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    def test_ptr_set_out_of_bounds(self, memkind):
+    def test_ptr_setbytes_out_of_bounds(self, memkind):
         k = memkind
         src = """
         from unsafe import (
             {k}_alloc as k_alloc, {k}_ptr as k_ptr,
-            ptr_set, ptr_set_slice,
+            ptr_setbytes, ptr_setbytes_slice,
         )
 
         def fn_ptr() -> i32:
             buf: k_ptr[u8] = k_alloc[u8](4)
-            ptr_set(buf, 0, 10)
+            ptr_setbytes(buf, 0, 10)
             return 0
 
         def fn_slice() -> i32:
             buf: k_ptr[u8] = k_alloc[u8](4)
-            ptr_set_slice(buf, 0, 10, 0)
+            ptr_setbytes_slice(buf, 0, 10, 0)
             return 0
         """.format(k=k)
         mod = self.compile(src)
@@ -361,21 +361,21 @@ class TestMem(CompilerTest):
         src = """
         from unsafe import (
             {k}_alloc as k_alloc, {k}_ptr as k_ptr,
-            ptr_set, ptr_cmp, ptr_cmp_slice,
+            ptr_setbytes, ptr_cmp, ptr_cmp_slice,
         )
 
         def fn_ptr_eq() -> i32:
             a: k_ptr[u8] = k_alloc[u8](4)
             b: k_ptr[u8] = k_alloc[u8](4)
-            ptr_set(a, 42, 4)
-            ptr_set(b, 42, 4)
+            ptr_setbytes(a, 42, 4)
+            ptr_setbytes(b, 42, 4)
             return ptr_cmp(a, b, 4)
 
         def fn_ptr_lt() -> i32:
             a: k_ptr[u8] = k_alloc[u8](4)
             b: k_ptr[u8] = k_alloc[u8](4)
-            ptr_set(a, 1, 4)
-            ptr_set(b, 2, 4)
+            ptr_setbytes(a, 1, 4)
+            ptr_setbytes(b, 2, 4)
             r: i32 = ptr_cmp(a, b, 4)
             if r < 0:
                 return -1
@@ -397,8 +397,8 @@ class TestMem(CompilerTest):
         def fn_slice_lt() -> i32:
             a: k_ptr[u8] = k_alloc[u8](4)
             b: k_ptr[u8] = k_alloc[u8](4)
-            ptr_set(a, 1, 4)
-            ptr_set(b, 2, 4)
+            ptr_setbytes(a, 1, 4)
+            ptr_setbytes(b, 2, 4)
             r: i32 = ptr_cmp_slice(a, 0, 2, b, 0, 2)
             if r < 0:
                 return -1
@@ -564,7 +564,7 @@ class TestMem(CompilerTest):
         errors = expect_errors(
             "mismatched types",
             ("expected ptr[u8] or ptr[i8], got `unsafe::raw_ptr[i32]`", "buf"),
-            ("help: use `ptr_set` instead", "buf"),
+            ("help: use `ptr_setbytes` instead", "buf"),
         )
         self.compile_raises(src, "foo", errors)
 
