@@ -37,7 +37,7 @@ from spy.vm.modules._testing_helpers import _TESTING_HELPERS
 from spy.vm.modules.builtins import BUILTINS
 from spy.vm.modules.jsffi import JSFFI
 from spy.vm.modules.math import MATH
-from spy.vm.modules.operator import OPERATOR
+from spy.vm.modules.operator import OPERATOR, convop
 from spy.vm.modules.posix import POSIX
 from spy.vm.modules.rawbuffer import RAW_BUFFER
 from spy.vm.modules.time import TIME
@@ -893,6 +893,27 @@ class SPyVM:
             w_res = w_opimpl._execute(self, args_w)
 
         return W_MetaArg(self, color, w_functype.w_restype, w_res, loc)
+
+    def is_convertible_to(
+        self: "SPyVM",
+        wam_expT: W_MetaArg,
+        wam: W_MetaArg,
+    ) -> bool:
+        """
+        Tests whether given MetaArg is convertible to the desired type.
+
+        There is probably a more efficient way to do this - we essentially resolve a whole
+        opimpl, then throw it away, only to resolve the converter again later if necessary
+        """
+        try:
+            convop.CONVERT_maybe(self, wam_expT, wam)
+        except SPyError as exc:
+            if exc.match(W_TypeError):
+                return False
+            else:
+                raise exc
+
+        return True
 
     # ======= operators ========
     #

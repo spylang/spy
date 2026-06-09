@@ -142,28 +142,6 @@ def typecheck_opspec(
     return w_opimpl
 
 
-def convertible(
-    vm: "SPyVM",
-    wam_expT: W_MetaArg,
-    wam: W_MetaArg,
-) -> bool:
-    """
-    Tests whether given MetaArg is convertible to the desired type.
-
-    There is probably a more efficient way to do this - we essentially resolve a whole
-    opimpl, then throw it away, only to resolve the converter again later if necessary
-    """
-    try:
-        CONVERT_maybe(vm, wam_expT, wam)
-    except SPyError as exc:
-        if exc.match(W_TypeError):
-            return False
-        else:
-            raise exc
-
-    return True
-
-
 def functype_from_opargs(
     args_wam: list[W_MetaArg], w_restype: W_Type, color: Color
 ) -> W_FuncType:
