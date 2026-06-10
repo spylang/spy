@@ -12,6 +12,8 @@ from spy.vm.modules.unsafe.misc import sizeof
         (B.w_i32, 4),
         (B.w_u32, 4),
         (B.w_f32, 4),
+        (B.w_i64, 8),
+        (B.w_u64, 8),
         (B.w_f64, 8),
     ],
 )
