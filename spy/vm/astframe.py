@@ -20,7 +20,7 @@ from spy.vm.modules.types import TYPES
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import W_OpImpl
 from spy.vm.opspec import W_MetaArg
-from spy.vm.primitive import W_Bool
+from spy.vm.primitive import W_Bool, W_I64, W_U32, W_U64
 from spy.vm.struct import W_StructType
 from spy.vm.typechecker import maybe_plural
 
@@ -207,6 +207,16 @@ class AbstractFrame:
 
     def eval_expr(self, expr: ast.Expr, *, varname: Optional[str] = None) -> W_MetaArg:
         assert not self.redshifting, "DopplerFrame should override eval_expr"
+        # Integer-literal retyping: an int literal assigned to a variable with a
+        # known wider/other int type (e.g. `x: i64 = 5000000000`) must be wrapped
+        # directly to that type, NOT defaulted to i32 and then converted — the
+        # default would truncate before the conversion runs. We handle it here
+        # (rather than in eval_expr_Literal) because only the caller knows the
+        # target varname/type.
+        if isinstance(expr, ast.Literal) and type(expr.value) is int:
+            w_int = self._wrap_int_literal_maybe(expr, varname)
+            if w_int is not None:
+                return w_int
         wam = magic_dispatch(self, "eval_expr", expr)
 
         w_typeconv_opimpl = self.typecheck_maybe(wam, varname)
@@ -890,6 +900,31 @@ class AbstractFrame:
     def eval_expr_Const(self, const: ast.Const) -> W_MetaArg:
         assert const.w_T is not None
         return W_MetaArg(self.vm, "blue", const.w_T, const.w_val, const.loc)
+
+    # Map an int target type -> the W_* class used to wrap the literal without
+    # truncation. Only types whose range differs from i32's matter here.
+    _INT_LITERAL_WRAPPERS = {
+        B.w_i64: W_I64,
+        B.w_u64: W_U64,
+        B.w_u32: W_U32,
+    }
+
+    def _wrap_int_literal_maybe(
+        self, const: ast.Literal, varname: Optional[str]
+    ) -> Optional[W_MetaArg]:
+        """
+        If `const` (an int literal) is being assigned to a local with a declared
+        int type that isn't i32, wrap it directly to that type. Returns None to
+        fall back to the default (i32) handling.
+        """
+        if varname is None or varname not in self.locals:
+            return None
+        w_T = self.locals[varname].w_T
+        pyclass = self._INT_LITERAL_WRAPPERS.get(w_T)
+        if pyclass is None:
+            return None
+        w_val = pyclass(const.value)
+        return W_MetaArg(self.vm, "blue", w_T, w_val, const.loc)
 
     def eval_expr_Literal(self, const: ast.Literal) -> W_MetaArg:
         # unsupported literals are rejected directly by the parser, see

@@ -392,7 +392,17 @@ class DopplerFrame(ASTFrame):
                   -> compute shited binop (stored in .shifted_expr)
         """
         assert self.redshifting
-        wam = magic_dispatch(self, "eval_expr", expr)
+        # Same int-literal retyping as ASTFrame.eval_expr (see the comment there):
+        # an int literal bound to a non-i32 int local must be wrapped directly to
+        # that type, not defaulted to i32 and truncated. The retyped wam is blue,
+        # so shift_expr emits a correctly-typed Const for it.
+        wam_int = None
+        if isinstance(expr, ast.Literal) and type(expr.value) is int:
+            wam_int = self._wrap_int_literal_maybe(expr, varname)
+        if wam_int is not None:
+            wam = wam_int
+        else:
+            wam = magic_dispatch(self, "eval_expr", expr)
         new_expr = self.shift_expr(expr, wam)
         assert new_expr.w_T is not None, "shift_expr should return a typed ast.Expr"
 

@@ -248,6 +248,21 @@ class TestInt(CompilerTest):
         with SPyError.raises("W_OverflowError", match="out of range"):
             mod.foo(too_small)
 
+    def test_i64_large_literal(self):
+        # Values beyond i32 range must not be truncated when the variable is
+        # explicitly typed as i64/u64.
+        mod = self.compile("""
+        def get_i64() -> i64:
+            x: i64 = 5000000000
+            return x
+
+        def get_u64() -> u64:
+            x: u64 = 10000000000
+            return x
+        """)
+        assert mod.get_i64() == 5_000_000_000
+        assert mod.get_u64() == 10_000_000_000
+
     def test_i64_u64_conversion(self):
         mod = self.compile("""
         def i32_to_i64(x: i32) -> i64: return x
