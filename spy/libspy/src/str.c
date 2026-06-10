@@ -184,7 +184,7 @@ spy_operator$str_to_i64(spy_StrObject *s) {
         spy_panic("ValueError", msg, __FILE__, __LINE__);
     }
     if (errno != 0) {
-        char msg[128];
+        char msg[256];
         snprintf(
             msg, sizeof(msg),
             "i64 value %s out of range [-9223372036854775808, 9223372036854775807]",
@@ -219,7 +219,7 @@ spy_operator$str_to_u64(spy_StrObject *s) {
         spy_panic("ValueError", msg, __FILE__, __LINE__);
     }
     if (errno != 0 || strchr(buf, '-') != NULL) {
-        char msg[128];
+        char msg[256];
         snprintf(
             msg, sizeof(msg),
             "u64 value %s out of range [0, 18446744073709551615]", buf
