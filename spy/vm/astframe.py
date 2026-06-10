@@ -20,7 +20,7 @@ from spy.vm.modules.types import TYPES
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import W_OpImpl
 from spy.vm.opspec import W_MetaArg
-from spy.vm.primitive import W_Bool, W_I64, W_U32, W_U64
+from spy.vm.primitive import W_I64, W_U32, W_U64, W_Bool
 from spy.vm.struct import W_StructType
 from spy.vm.typechecker import maybe_plural
 
