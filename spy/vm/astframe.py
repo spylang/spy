@@ -923,6 +923,7 @@ class AbstractFrame:
         pyclass = self._INT_LITERAL_WRAPPERS.get(w_T)
         if pyclass is None:
             return None
+        assert isinstance(const.value, int)
         w_val = pyclass(const.value)
         return W_MetaArg(self.vm, "blue", w_T, w_val, const.loc)
 
