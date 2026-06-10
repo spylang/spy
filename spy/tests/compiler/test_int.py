@@ -4,7 +4,7 @@ from spy.errors import SPyError
 from spy.tests.support import CompilerTest
 
 
-@pytest.fixture(params=["i32", "u32", "i8", "u8"])
+@pytest.fixture(params=["i32", "u32", "i8", "u8", "i64", "u64"])
 def int_type(request):
     return request.param
 
@@ -126,7 +126,7 @@ class TestInt(CompilerTest):
             mod.floordiv(11, 0)
 
     def test_division_mixed_signs(self, int_type):
-        if int_type in ("u8", "u32"):
+        if int_type in ("u8", "u32", "u64"):
             pytest.skip("Skipping for negative operands in floordiv test")
 
         mod = self.compile(f"""
@@ -239,9 +239,31 @@ class TestInt(CompilerTest):
             "u32": ("4294967296", "-1"),
             "i8": ("128", "-129"),
             "u8": ("256", "-1"),
+            "i64": ("9223372036854775808", "-9223372036854775809"),
+            "u64": ("18446744073709551616", "-1"),
         }
         too_big, too_small = limits[int_type]
         with SPyError.raises("W_OverflowError", match="out of range"):
             mod.foo(too_big)
         with SPyError.raises("W_OverflowError", match="out of range"):
             mod.foo(too_small)
+
+    def test_i64_u64_conversion(self):
+        mod = self.compile("""
+        def i32_to_i64(x: i32) -> i64: return x
+        def i64_to_i32(x: i64) -> i32: return x
+        def i32_to_u64(x: i32) -> u64: return x
+        def u64_to_i32(x: u64) -> i32: return x
+        def i64_to_u64(x: i64) -> u64: return x
+        def u64_to_i64(x: u64) -> i64: return x
+        def i64_to_f64(x: i64) -> f64: return x
+        def u64_to_f64(x: u64) -> f64: return x
+        """)
+        assert mod.i32_to_i64(42) == 42
+        assert mod.i64_to_i32(42) == 42
+        assert mod.i32_to_u64(42) == 42
+        assert mod.u64_to_i32(42) == 42
+        assert mod.i64_to_u64(42) == 42
+        assert mod.u64_to_i64(42) == 42
+        assert mod.i64_to_f64(42) == 42.0
+        assert mod.u64_to_f64(42) == 42.0

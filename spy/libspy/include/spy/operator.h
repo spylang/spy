@@ -16,6 +16,8 @@
 #define u8 uint8_t
 #define i32 int32_t
 #define u32 uint32_t
+#define i64 int64_t
+#define u64 uint64_t
 #define f32 float
 #define f64 double
 
@@ -35,6 +37,16 @@ DEFINE_CONV(u8, f64)
 DEFINE_CONV(u32, i32)
 DEFINE_CONV(u32, f64)
 
+// 64-bit int conversions (see convop.py registrations).
+DEFINE_CONV(i32, i64)
+DEFINE_CONV(i32, u64)
+DEFINE_CONV(i64, i32)
+DEFINE_CONV(u64, i32)
+DEFINE_CONV(i64, u64)
+DEFINE_CONV(u64, i64)
+DEFINE_CONV(i64, f64)
+DEFINE_CONV(u64, f64)
+
 DEFINE_CONV(f32, f64)
 
 DEFINE_CONV(f64, f32)
@@ -43,6 +55,8 @@ DEFINE_CONV(f64, f32)
 #undef u8
 #undef i32
 #undef u32
+#undef i64
+#undef u64
 #undef f32
 #undef f64
 
@@ -371,6 +385,52 @@ spy_unsafe$u32_unchecked_mod(uint32_t x, uint32_t y) {
 #endif
     return x % y;
 }
+
+// ---- 64-bit int div / floordiv / mod ----
+// Generated for {i64, u64} via a macro to avoid ~12 near-identical functions
+// each. `div` returns double (Python `/` semantics, matching i32/u32);
+// floordiv/mod return the integer type. SIGNED guards the (x^y)<0 floor
+// correction, which is meaningless for unsigned.
+// NAME is the SPy type name used in the symbol (i64/u64); CT is the C type.
+#define SPY_DEF_INT64_DIVMOD(NAME, CT, SIGNED)                                         \
+    static inline double spy_operator$##NAME##_div(CT x, CT y) {                       \
+        if (y == 0)                                                                    \
+            spy_panic("ZeroDivisionError", "division by zero", __FILE__, __LINE__);    \
+        return (double)x / y;                                                          \
+    }                                                                                  \
+    static inline double spy_unsafe$##NAME##_unchecked_div(CT x, CT y) {               \
+        return (double)x / y;                                                          \
+    }                                                                                  \
+    static inline CT spy_operator$##NAME##_floordiv(CT x, CT y) {                      \
+        if (y == 0)                                                                    \
+            spy_panic("ZeroDivisionError", "integer division or modulo by zero",       \
+                      __FILE__, __LINE__);                                             \
+        CT q = x / y;                                                                  \
+        if (SIGNED) { CT r = x % y; if (r != 0 && ((x ^ y) < 0)) q -= 1; }             \
+        return q;                                                                      \
+    }                                                                                  \
+    static inline CT spy_unsafe$##NAME##_unchecked_floordiv(CT x, CT y) {              \
+        CT q = x / y;                                                                  \
+        if (SIGNED) { CT r = x % y; if (r != 0 && ((x ^ y) < 0)) q -= 1; }             \
+        return q;                                                                      \
+    }                                                                                  \
+    static inline CT spy_operator$##NAME##_mod(CT x, CT y) {                           \
+        if (y == 0)                                                                    \
+            spy_panic("ZeroDivisionError", "integer modulo by zero", __FILE__,         \
+                      __LINE__);                                                       \
+        CT r = x % y;                                                                  \
+        if (SIGNED) { if (r != 0 && ((x ^ y) < 0)) r += y; }                           \
+        return r;                                                                      \
+    }                                                                                  \
+    static inline CT spy_unsafe$##NAME##_unchecked_mod(CT x, CT y) {                   \
+        CT r = x % y;                                                                  \
+        if (SIGNED) { if (r != 0 && ((x ^ y) < 0)) r += y; }                           \
+        return r;                                                                      \
+    }
+
+SPY_DEF_INT64_DIVMOD(i64, int64_t, 1)
+SPY_DEF_INT64_DIVMOD(u64, uint64_t, 0)
+#undef SPY_DEF_INT64_DIVMOD
 
 static inline double
 spy_operator$f64_div(double x, double y) {

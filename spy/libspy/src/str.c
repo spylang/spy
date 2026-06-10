@@ -79,6 +79,16 @@ spy_builtins$i32$__str__(int32_t x) {
 }
 
 spy_StrObject *
+spy_builtins$i64$__str__(int64_t x) {
+    return spy_str_from_format("%lld", (long long)x);
+}
+
+spy_StrObject *
+spy_builtins$u64$__str__(uint64_t x) {
+    return spy_str_from_format("%llu", (unsigned long long)x);
+}
+
+spy_StrObject *
 spy_builtins$i8$__str__(int8_t x) {
     return spy_str_from_format("%d", (int)x);
 }
@@ -148,6 +158,75 @@ spy_operator$str_to_u32(spy_StrObject *s) {
     int64_t val = spy_str_parse_i64(s);
     spy_check_range(val, 0LL, 4294967295LL, "u32");
     return (uint32_t)val;
+}
+
+int64_t
+spy_operator$str_to_i64(spy_StrObject *s) {
+    // We can't reuse spy_str_parse_i64: it reports overflow as a ValueError,
+    // but for an explicit i64() conversion an out-of-range value must be an
+    // OverflowError (matching the interp path and the other int types).
+    char buf[64];
+    size_t len = s->length;
+    if (len >= sizeof(buf)) {
+        spy_panic(
+            "ValueError", "invalid literal for int() with base 10", __FILE__, __LINE__
+        );
+    }
+    memcpy(buf, spy_StrObject_UTF8(s), len);
+    buf[len] = '\0';
+
+    char *end;
+    errno = 0;
+    long long val = strtoll(buf, &end, 10);
+    if (end == buf || *end != '\0') {
+        char msg[128];
+        snprintf(msg, sizeof(msg), "invalid literal for int() with base 10: '%s'", buf);
+        spy_panic("ValueError", msg, __FILE__, __LINE__);
+    }
+    if (errno != 0) {
+        char msg[128];
+        snprintf(
+            msg, sizeof(msg),
+            "i64 value %s out of range [-9223372036854775808, 9223372036854775807]",
+            buf
+        );
+        spy_panic("OverflowError", msg, __FILE__, __LINE__);
+    }
+    return (int64_t)val;
+}
+
+uint64_t
+spy_operator$str_to_u64(spy_StrObject *s) {
+    // u64's max exceeds int64, so we can't reuse spy_str_parse_i64. strtoull
+    // would silently wrap a leading '-' into a huge positive value, so we
+    // reject negatives explicitly to match Python's int() + range semantics.
+    char buf[64];
+    size_t len = s->length;
+    if (len >= sizeof(buf)) {
+        spy_panic(
+            "ValueError", "invalid literal for int() with base 10", __FILE__, __LINE__
+        );
+    }
+    memcpy(buf, spy_StrObject_UTF8(s), len);
+    buf[len] = '\0';
+
+    char *end;
+    errno = 0;
+    unsigned long long val = strtoull(buf, &end, 10);
+    if (end == buf || *end != '\0') {
+        char msg[128];
+        snprintf(msg, sizeof(msg), "invalid literal for int() with base 10: '%s'", buf);
+        spy_panic("ValueError", msg, __FILE__, __LINE__);
+    }
+    if (errno != 0 || strchr(buf, '-') != NULL) {
+        char msg[128];
+        snprintf(
+            msg, sizeof(msg),
+            "u64 value %s out of range [0, 18446744073709551615]", buf
+        );
+        spy_panic("OverflowError", msg, __FILE__, __LINE__);
+    }
+    return (uint64_t)val;
 }
 
 int8_t

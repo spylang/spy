@@ -91,6 +91,18 @@ MM.register("<=", "i32", "i32", OP.w_i32_le)
 MM.register(">" , "i32", "i32", OP.w_i32_gt)
 MM.register(">=", "i32", "i32", OP.w_i32_ge)
 
+# i64 / u64 ops (same shape as i32/u32; generated to avoid 32 hand lines each)
+for _T in ("i64", "u64"):
+    for _op in ("+", "-", "*", "/", "//", "%", "<<", ">>", "&", "|", "^",
+                "==", "!=", "<", "<=", ">", ">="):
+        _name = {
+            "+": "add", "-": "sub", "*": "mul", "/": "div", "//": "floordiv",
+            "%": "mod", "<<": "lshift", ">>": "rshift", "&": "and", "|": "or",
+            "^": "xor", "==": "eq", "!=": "ne", "<": "lt", "<=": "le",
+            ">": "gt", ">=": "ge",
+        }[_op]
+        MM.register(_op, _T, _T, getattr(OP, f"w_{_T}_{_name}"))
+
 # f64 ops
 MM.register("+",  "f64", "f64", OP.w_f64_add)
 MM.register("-",  "f64", "f64", OP.w_f64_sub)
@@ -108,7 +120,7 @@ MM.register(">=", "f64", "f64", OP.w_f64_ge)
 # mixed int/f64 ops: this is still small enough that we can write it manually,
 # but we should consider the idea of generating this table automatically. This
 # will become especially relevant when we add more integer types.
-for num_t in ("i8", "u8", "u32", "i32", "f32"):
+for num_t in ("i8", "u8", "u32", "i32", "i64", "u64", "f32"):
     MM.register("+",  "f64", num_t, OP.w_f64_add)
     MM.register("+",  num_t, "f64", OP.w_f64_add)
     MM.register("-",  "f64", num_t, OP.w_f64_sub)

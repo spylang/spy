@@ -147,6 +147,98 @@ class W_U32(W_Object):
         return vm.wrap(str(i))
 
 
+@B.builtin_type("i64", lazy_definition=True)
+class W_I64(W_Object):
+    __spy_storage_category__ = "value"
+    value: fixedint.Int64
+
+    def __init__(self, value: int | FixedInt) -> None:
+        self.value = fixedint.Int64(value)
+
+    @builtin_method("__new__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_NEW(vm: "SPyVM", wam_cls: "W_MetaArg", *args_wam: "W_MetaArg") -> "W_OpSpec":
+        from spy.vm.opspec import W_OpSpec
+
+        if len(args_wam) != 1:
+            return W_OpSpec.NULL
+        wam_arg = args_wam[0]
+        if wam_arg.w_static_T == B.w_i32:
+            return W_OpSpec(OP.w_i32_to_i64, [wam_arg])
+        elif wam_arg.w_static_T == B.w_u64:
+            return W_OpSpec(OP.w_u64_to_i64, [wam_arg])
+        elif wam_arg.w_static_T == B.w_str:
+            return W_OpSpec(OP.w_str_to_i64, [wam_arg])
+        return W_OpSpec.NULL
+
+    def __repr__(self) -> str:
+        return f"W_I64({self.value})"
+
+    def spy_unwrap(self, vm: "SPyVM") -> fixedint.Int64:
+        return self.value
+
+    def spy_key(self, vm: "SPyVM") -> fixedint.Int64:
+        return self.value
+
+    @builtin_method("__str__")
+    @staticmethod
+    def w_str(vm: "SPyVM", w_self: "W_I64") -> "W_Str":
+        i = vm.unwrap(w_self)
+        return vm.wrap(str(i))
+
+    @builtin_method("__repr__")
+    @staticmethod
+    def w_repr(vm: "SPyVM", w_self: "W_I64") -> "W_Str":
+        i = vm.unwrap(w_self)
+        return vm.wrap(str(i))
+
+
+@B.builtin_type("u64", lazy_definition=True)
+class W_U64(W_Object):
+    __spy_storage_category__ = "value"
+    value: fixedint.UInt64
+
+    def __init__(self, value: int | FixedInt) -> None:
+        self.value = fixedint.UInt64(value)
+
+    @builtin_method("__new__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_NEW(vm: "SPyVM", wam_cls: "W_MetaArg", *args_wam: "W_MetaArg") -> "W_OpSpec":
+        from spy.vm.opspec import W_OpSpec
+
+        if len(args_wam) != 1:
+            return W_OpSpec.NULL
+        wam_arg = args_wam[0]
+        if wam_arg.w_static_T == B.w_i32:
+            return W_OpSpec(OP.w_i32_to_u64, [wam_arg])
+        elif wam_arg.w_static_T == B.w_i64:
+            return W_OpSpec(OP.w_i64_to_u64, [wam_arg])
+        elif wam_arg.w_static_T == B.w_str:
+            return W_OpSpec(OP.w_str_to_u64, [wam_arg])
+        return W_OpSpec.NULL
+
+    def __repr__(self) -> str:
+        return f"W_U64({self.value})"
+
+    def spy_unwrap(self, vm: "SPyVM") -> fixedint.UInt64:
+        return self.value
+
+    def spy_key(self, vm: "SPyVM") -> fixedint.UInt64:
+        return self.value
+
+    @builtin_method("__str__")
+    @staticmethod
+    def w_str(vm: "SPyVM", w_self: "W_U64") -> "W_Str":
+        u = vm.unwrap(w_self)
+        return vm.wrap(str(u))
+
+    @builtin_method("__repr__")
+    @staticmethod
+    def w_repr(vm: "SPyVM", w_self: "W_U64") -> "W_Str":
+        u = vm.unwrap(w_self)
+        return vm.wrap(str(u))
+
+
 @B.builtin_type("i8", lazy_definition=True)
 class W_I8(W_Object):
     __spy_storage_category__ = "value"

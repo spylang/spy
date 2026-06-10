@@ -4,7 +4,7 @@ from spy.errors import SPyError
 from spy.vm.b import B
 from spy.vm.modules.operator.multimethod import MultiMethodTable
 from spy.vm.opspec import W_MetaArg
-from spy.vm.primitive import W_F32, W_F64, W_I8, W_I32, W_U8, W_U32
+from spy.vm.primitive import W_F32, W_F64, W_I8, W_I32, W_I64, W_U8, W_U32, W_U64
 from spy.vm.w import W_Object, W_OpSpec, W_Type
 
 from . import UNSAFE
@@ -108,6 +108,8 @@ make_ops("i8", W_I8)
 make_ops("u8", W_U8)
 make_ops("i32", W_I32)
 make_ops("u32", W_U32)
+make_ops("i64", W_I64)
+make_ops("u64", W_U64)
 
 
 @UNSAFE.builtin_func

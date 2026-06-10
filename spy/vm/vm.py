@@ -51,8 +51,10 @@ from spy.vm.primitive import (
     W_F64,
     W_I8,
     W_I32,
+    W_I64,
     W_U8,
     W_U32,
+    W_U64,
     W_Bool,
     W_Complex128,
     W_Dynamic,
@@ -77,6 +79,8 @@ W_Member._w.define(W_Member)
 W_FuncType._w.define(W_FuncType)
 W_I32._w.define(W_I32)
 W_U32._w.define(W_U32)
+W_I64._w.define(W_I64)
+W_U64._w.define(W_U64)
 W_I8._w.define(W_I8)
 W_U8._w.define(W_U8)
 W_F64._w.define(W_F64)
@@ -631,6 +635,10 @@ class SPyVM:
             return W_I32(value)
         elif T is fixedint.UInt32:
             return W_U32(value)
+        elif T is fixedint.Int64:
+            return W_I64(value)
+        elif T is fixedint.UInt64:
+            return W_U64(value)
         elif T is fixedint.Int8:
             return W_I8(value)
         elif T is fixedint.UInt8:
@@ -699,6 +707,16 @@ class SPyVM:
 
     def unwrap_u32(self, w_value: W_Object) -> Any:
         if not isinstance(w_value, W_U32):
+            raise Exception("Type mismatch")
+        return w_value.value
+
+    def unwrap_i64(self, w_value: W_Object) -> Any:
+        if not isinstance(w_value, W_I64):
+            raise Exception("Type mismatch")
+        return w_value.value
+
+    def unwrap_u64(self, w_value: W_Object) -> Any:
+        if not isinstance(w_value, W_U64):
             raise Exception("Type mismatch")
         return w_value.value
 

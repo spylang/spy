@@ -12,7 +12,7 @@ def sizeof(w_T: W_Type) -> int:
         return 1
     elif w_T in (B.w_i32, B.w_u32, B.w_f32):
         return 4
-    elif w_T is B.w_f64:
+    elif w_T in (B.w_i64, B.w_u64, B.w_f64):
         return 8
     elif isinstance(w_T, W_StructType):
         return w_T.size

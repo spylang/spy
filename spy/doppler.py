@@ -47,6 +47,8 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
         B.w_i8,
         B.w_u8,
         B.w_u32,
+        B.w_i64,
+        B.w_u64,
         B.w_f64,
         B.w_complex128,
         B.w_bool,
