@@ -6,9 +6,7 @@ from pathlib import Path
 
 import spy
 from spy.errors import SPyError
-from spy.magic_py_parse import preprocess
-
-SPY_DECL_RE = re.compile(r"\b(var|const)·+([A-Za-z_][A-Za-z0-9_]*)\b")
+from spy.magic_py_parse import preprocess, undo_preprocess
 
 
 class SPyFormatter:
@@ -45,15 +43,6 @@ class SPyFormatter:
             if os.path.exists(tmp_path):
                 os.unlink(tmp_path)
 
-    def undo_preprocess(self, src: str) -> str:
-        """
-        The opposite of preprocess.
-
-        If preprocess converts e.g. `var x` into `var·x`, this does the opposite.
-        Used e.g. by 'spy format' to reconstruct the user code after passing it to ruff.
-        """
-        return SPY_DECL_RE.sub(r"\1 \2", src)
-
     def format(self, filename: Path) -> None:
         try:
             spy_src = filename.read_text()
@@ -62,7 +51,7 @@ class SPyFormatter:
             formatted_py_src, stdout_message = self.format_python_source_with_ruff(
                 py_src
             )
-            formatted_spy_src = self.undo_preprocess(formatted_py_src)
+            formatted_spy_src = undo_preprocess(formatted_py_src)
             with open(filename, "w", encoding="utf-8") as f:
                 f.write(formatted_spy_src)
             print(stdout_message)
