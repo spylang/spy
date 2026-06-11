@@ -1,10 +1,10 @@
 import textwrap
 
-from spy.magic_py_parse import reintroduce_spy_grammar
+from spy.magic_py_parse import undo_preprocess
 
 
 class TestFmt:
-    def test_reintroduce_spy_grammar_var_and_const(self):
+    def test_undo_preprocess_var_and_const(self):
         src = textwrap.dedent(
             """
             def main():
@@ -13,7 +13,7 @@ class TestFmt:
             """
         )
 
-        got = reintroduce_spy_grammar(src)
+        got = undo_preprocess(src)
         expected = textwrap.dedent(
             """
             def main():
@@ -23,7 +23,7 @@ class TestFmt:
         )
         assert got == expected
 
-    def test_reintroduce_spy_grammar_non_spy_names_unchanged(self):
+    def test_undo_preprocess_non_spy_names_unchanged(self):
         src = "value = var_name + const_value\n"
-        got = reintroduce_spy_grammar(src)
+        got = undo_preprocess(src)
         assert got == src

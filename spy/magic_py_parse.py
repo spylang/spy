@@ -43,8 +43,6 @@ from spy.errors import SPyError
 from spy.location import Loc
 from spy.vendored import untokenize
 
-SPY_DECL_RE = re.compile(r"\b(var|const)·+([A-Za-z_][A-Za-z0-9_]*)\b")
-
 
 def magic_py_parse(src: str, filename: str = "<string>") -> py_ast.Module:
     """
@@ -64,14 +62,6 @@ def magic_py_parse(src: str, filename: str = "<string>") -> py_ast.Module:
 def get_tokens(src: str) -> list[TokenInfo]:
     readline = BytesIO(src.encode("utf-8")).readline
     return list(tokenize(readline))
-
-
-def reintroduce_spy_grammar(src: str) -> str:
-    """
-    Convert merged SPy declarations like `var·x` / `const·name` back to
-    `var x` / `const name`.
-    """
-    return SPY_DECL_RE.sub(r"\1 \2", src)
 
 
 def preprocess(src: str, filename: str = "<string>") -> str:

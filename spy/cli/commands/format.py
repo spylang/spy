@@ -25,12 +25,5 @@ async def format(args: Fmt_Args) -> None:
         )
         sys.exit(1)
 
-    vm = await init_vm(args)
-    """
-    HACK: we only need `find_file_on_path` for formatter.
-    we left modname='' for ImportAnalyzer in which `modname` is passed again
-    in `find_file_on_path`.
-    """
-    analyzer = ImportAnalyzer(vm=vm, modname="")
-    formatter = SPyFormatter(analyzer=analyzer)
-    formatter.format(args.filename.stem)
+    formatter = SPyFormatter()
+    formatter.format(args.filename)

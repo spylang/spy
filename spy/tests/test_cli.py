@@ -346,21 +346,21 @@ class TestMain:
         assert stdout.startswith("Import tree:")
 
     def test_fmt_file(self):
-        mod = textwrap.dedent(
-            """def main( ) -> None:
-                print( \"hello world\" )
-            """
-        )
-        f = self.write("ugly.spy", mod)
+        src = """
+        def main( ) -> None:
+            print("hello world")
+        """
+        src = textwrap.dedent(src)
+        file = self.write("ugly.spy", src)
 
-        self.run("format", f)
-        expected = textwrap.dedent(
-            """def main() -> None:
-    print("hello world")
-            """
-        )
+        self.run("format", file)
 
-        assert f.read() == expected
+        expected = """\
+        def main() -> None:
+            print("hello world")
+        """
+        expected = textwrap.dedent(expected)
+        assert file.read() == expected
 
     def test_interp_exit_code(self):
         src = """
