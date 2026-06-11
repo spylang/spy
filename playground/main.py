@@ -1,6 +1,7 @@
+# type: ignore
+
 import base64
 import sys
-import time
 import tomllib
 import zlib
 from pathlib import Path
@@ -228,11 +229,11 @@ def main():
                     ButtonLabel("Sample Flags:"),
                     RunSPyButton("execute"),
                     RunSPyButton("parse"),
+                    RunSPyButton("colorize"),
                     RunSPyButton("redshift"),
                     RunSPyButton("redshift --linearize"),
                     RunSPyButton("redshift --full-fqn"),
                     RunSPyButton("build --cdump"),
-                    RunSPyButton("colorize"),
                 ).css({"display": "flex", "gap": "5px", "vertical-align": "bottom"}),
             ).css(
                 {
