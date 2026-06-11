@@ -69,15 +69,30 @@ class Editor(ltk.Div):
         )
 
 
-# Auto-discover example files from pyscript.toml
+# Auto-discover example files from pyscript.toml, grouped by category
 console.log("[Python] Loading example files from pyscript.toml...")
 with open("pyscript.toml", "rb") as f:
     config = tomllib.load(f)
-EXAMPLE_FILES = [
-    source
-    for source, dest in config.get("files", {}).items()
-    if dest.startswith("examples/")
-]
+
+# CATEGORIES: dict mapping category dir name -> list of file paths
+# e.g. {"1_high_level": ["examples/1_high_level/hello.spy", ...], ...}
+CATEGORIES: dict[str, list[str]] = {}
+for source, dest in config.get("files", {}).items():
+    if dest.startswith("examples/"):
+        category = Path(source).parent.name  # e.g. "1_high_level"
+        CATEGORIES.setdefault(category, []).append(source)
+
+# Pretty labels for the outer tabs
+CATEGORY_LABELS = {
+    "1_high_level": "1 \u00b7 High Level",
+    "2_metaprogramming": "2 \u00b7 Metaprogramming",
+    "3_low_level": "3 \u00b7 Low Level",
+    "4_advanced": "4 \u00b7 Advanced",
+}
+
+
+def category_label(cat: str) -> str:
+    return CATEGORY_LABELS.get(cat, cat)
 
 
 def load_shared_code_from_url() -> None:
@@ -90,7 +105,10 @@ def load_shared_code_from_url() -> None:
             code = zlib.decompress(compressed).decode("utf-8")
             Path(SHARED_FILENAME).parent.mkdir(parents=True, exist_ok=True)
             Path(SHARED_FILENAME).write_text(code)
-            EXAMPLE_FILES.insert(0, SHARED_FILENAME)
+            shared_entry = {"shared": [SHARED_FILENAME]}
+            shared_entry.update(CATEGORIES)
+            CATEGORIES.clear()
+            CATEGORIES.update(shared_entry)
             console.log("[Python] Loaded shared code from URL into 'Shared' tab")
         except Exception as e:
             console.log(f"[Python] Failed to decode shared code from URL: {e}")
@@ -98,9 +116,12 @@ def load_shared_code_from_url() -> None:
 
 load_shared_code_from_url()
 
+# Currently selected file path
+current_file: str = next(iter(CATEGORIES.values()))[0]
+current_cat_idx: int = 0
 
-console.log(f"[Python] Creating editor with initial file: {EXAMPLE_FILES[0]}")
-editor = Editor(Path(EXAMPLE_FILES[0]).read_text())
+console.log(f"[Python] Creating editor with initial file: {current_file}")
+editor = Editor(Path(current_file).read_text())
 console.log("[Python] Editor created")
 
 display_filename = "test.spy"
@@ -147,11 +168,6 @@ def run_input_if_validated():
 
 
 term_input.on("keydown", handle_term_enter)
-
-# Create tabs for example files (display only the filename, not the path)
-example_tabs = ltk.Tabs(
-    *[ltk.VBox().attr("name", Path(filepath).name) for filepath in EXAMPLE_FILES]
-)
 
 
 def run_spy_file_with_args(argv: list[str]):
@@ -210,25 +226,61 @@ def RunShareButton():
     return btn
 
 
-@ltk.callback
-def tab_activated(event, ui=None):
-    # Load the selected example file into the editor
-    index = example_tabs.active()
-    filename = EXAMPLE_FILES[index]
-    src = Path(filename).read_text()
-    editor.text(src)
+def load_file(filepath: str) -> None:
+    """Load a file into the editor."""
+    global current_file
+    current_file = filepath
+    console.log(f"load_file: {filepath = }, {current_file = }")
+    editor.text(Path(filepath).read_text(encoding="utf-8"))
+
+
+def make_category_tabs() -> ltk.Tabs:
+    """Build the two-level tab widget: outer = categories, inner = files."""
+    inner_tabs_list: list[ltk.Tabs] = []
+
+    for cat, files in CATEGORIES.items():
+        file_tabs = ltk.Tabs(*[ltk.VBox().attr("name", Path(f).name) for f in files])
+
+        @ltk.callback
+        def on_file_tab(event, ui=None, _file_tabs=file_tabs, _files=files):
+            idx = _file_tabs.active()
+            console.log(f"on_file_tab: {_files[idx]}...")
+            load_file(_files[idx])
+
+        file_tabs.on("tabsactivate", on_file_tab)
+        file_tabs.find(".ui-tabs-panel").hide()
+        inner_tabs_list.append(file_tabs)
+
+    outer_tabs = ltk.Tabs(
+        *[
+            inner_tabs.attr("name", category_label(cat))
+            for cat, inner_tabs in zip(CATEGORIES.keys(), inner_tabs_list)
+        ]
+    )
+
+    @ltk.callback
+    def on_category_tab(event, ui=None):
+        # When switching category, load the first file of the new category
+        cat_idx = outer_tabs.active()
+        global current_cat_idx
+        if cat_idx == current_cat_idx:
+            return
+        current_cat_idx = cat_idx
+        cat = list(CATEGORIES.keys())[cat_idx]
+        load_file(CATEGORIES[cat][0])
+
+    outer_tabs.on("tabsactivate", on_category_tab)
+    return outer_tabs
 
 
 def main():
     console.log("[Python] main() function started - building GUI...")
 
-    # Register tab activation callback
-    example_tabs.on("tabsactivate", tab_activated)
-    example_tabs.find(".ui-tabs-panel").hide()
+    category_tabs = make_category_tabs()
 
     (
         ltk.VBox(
-            example_tabs,
+            category_tabs,
             ltk.HBox(
                 ltk.Label(f"{display_filename}"),
                 RunShareButton().css("margin-left", "auto"),
