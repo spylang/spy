@@ -115,6 +115,9 @@ spy_str_identity(spy_StrObject *s) {
 }
 #define spy_builtins$hash_str spy_str_hash
 
+// __str__ methods of common builtin types
+spy_StrObject *spy_builtins$i32$__str__(int32_t x);
+
 spy_StrObject *spy_builtins$i8$__str__(int8_t x);
 
 spy_StrObject *spy_builtins$u8$__str__(uint8_t x);
