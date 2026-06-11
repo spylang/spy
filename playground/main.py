@@ -54,7 +54,9 @@ class Editor(ltk.Div):
                 },
                 "lineNumbers": True,
                 "indentUnit": 4,
+                "indentWithTabs": False,
                 "matchBrackets": True,
+                "extraKeys": {"Tab": "indentMore", "Shift-Tab": "indentLess"},
             }
         )
         self.editor = ltk.window.CodeMirror(self.element[0], config)
