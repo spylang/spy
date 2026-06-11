@@ -8,7 +8,7 @@ def sizeof(w_T: W_Type) -> int:
     from spy.vm.modules.unsafe.ptr import W_PtrType
     from spy.vm.struct import W_StructType
 
-    if w_T in (B.w_i8, B.w_u8):
+    if w_T in (B.w_bool, B.w_i8, B.w_u8):
         return 1
     elif w_T in (B.w_i32, B.w_u32, B.w_f32):
         return 4
