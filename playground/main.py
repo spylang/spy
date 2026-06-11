@@ -108,27 +108,40 @@ INPUT_TERMINAL_ENDER = f"{display_filename}"
 
 term_input = (
     ltk.Input(INPUT_TERMINAL_LEADER + INPUT_TERMINAL_ENDER)
-    .css("width", "100%")
+    .css("flex", "1")
     .css("padding", 5)
     .attr("id", "terminal-input")
+    .attr("title", "Edit arguments then press Enter or click Run")
     .addClass("command-prompt")
 )
 
 
+def run_input_click(event):
+    """Run what is written in the terminal input"""
+    run_input_if_validated()
+
+
+term_input_run_btn = ltk.Button("Run ▶", run_input_click)
+term_input_run_btn.addClass("run-button").addClass("base-button")
+
+
 @ltk.callback
 def handle_term_enter(event):
+    """Run the command on Enter key"""
+    if event.key == "Enter":
+        run_input_if_validated()
+
+
+def run_input_if_validated():
     """Validate that the input field still starts with "$ spy (filename) and
     run the SPy cli with the indicated arguments
     """
-    if event.key == "Enter":
-        inp = event.target
-        value = inp.value
-
-        if value.startswith(INPUT_TERMINAL_LEADER):
-            _, _, argv = value.partition(INPUT_TERMINAL_LEADER)
-            run_spy_file_with_args(argv.split())
-        else:
-            print(f"{INPUT_TERMINAL_LEADER}{value} is not a valid command")
+    value = term_input.val()
+    if value.startswith(INPUT_TERMINAL_LEADER):
+        _, _, argv = value.partition(INPUT_TERMINAL_LEADER)
+        run_spy_file_with_args(argv.split())
+    else:
+        print(f"{value} is not a valid command")
 
 
 term_input.on("keydown", handle_term_enter)
@@ -223,7 +236,10 @@ def main():
             .attr("id", "editor"),
             ltk.VBox(
                 ltk.Label("Try the SPy CLI:"),
-                term_input,
+                ltk.HBox(
+                    term_input,
+                    term_input_run_btn,
+                ).css({"width": "100%", "display": "flex", "gap": "5px"}),
                 ltk.Div(
                     ButtonLabel("Sample Flags:"),
                     RunSPyButton("execute"),
