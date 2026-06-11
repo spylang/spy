@@ -45,6 +45,7 @@ class W_Str(W_Object):
     __spy_lazy_attributes__ = {
         "isascii": FQN("_str::methods::isascii"),
         "upper": FQN("_str::methods::upper"),
+        "_getitem_slice": FQN("_str::methods::_getitem_slice"),
         "encode": FQN("_str::methods::encode"),
         "replace": FQN("_str::methods::replace"),
         "__repr__": FQN("_str::methods::__repr__"),

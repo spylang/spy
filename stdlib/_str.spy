@@ -23,6 +23,7 @@ from unsafe import (
 )
 from unsafe import _alloc_BytesObject, _BytesObject_to_bytes
 from __spy__ import lookup_fqn
+from operator import OpSpec
 
 
 # this MUST stay in sync with the equivalent struct declared in str.h
@@ -80,18 +81,78 @@ class methods:
         ll = StrObject.from_str(self)
         return ll.length
 
-    def __getitem__(self: str, i: i32) -> str:
-        # XXX this is wrong: it should return a code point
-        ll = StrObject.from_str(self)
-        n = ll.length
-        if i < 0:
-            i = i + n
-        if i < 0 or i >= n:
-            raise IndexError("string index out of bound")
-        out = StrObject.alloc(1)
-        out.hash = 0
-        out.utf8[0] = ll.utf8[i]
-        return StrObject.to_str(out)
+    @blue.metafunc
+    def __getitem__(self, wam_i):
+        if wam_i.static_type == i32:
+            def _getitem_int(s: str, i: i32) -> str:
+                # XXX this is wrong: it should return a code point
+                ll = StrObject.from_str(s)
+                n = ll.length
+                if i < 0:
+                    i = i + n
+                if i < 0 or i >= n:
+                    raise IndexError("string index out of bound")
+                out = StrObject.alloc(1)
+                out.hash = 0
+                out.utf8[0] = ll.utf8[i]
+                return StrObject.to_str(out)
+            return OpSpec(_getitem_int, [self, wam_i])
+        
+        if wam_i.static_type == slice:
+            def _getitem_slice(s: str, slc: slice) -> str:
+                # Fast path for trivial slices:
+                if (slc.start == 0 or slc.start_is_none) and (slc.stop == -1 or slc.stop_is_none) and (slc.step == 1 or slc.step_is_none): return s
+                
+                indices = slc.indices(len(s))
+                start = indices.start
+                stop = indices.stop
+                step = indices.step
+
+                ll = StrObject.from_str(s)
+                
+                # Fast path for simple slices
+                if slc.step == 1:
+                    length = stop - start
+                    if length <= 0:
+                        return ""
+                    llnew = StrObject.alloc(length)
+                    ptr_copy_slice(llnew.utf8, 0, length, ll.utf8, start, stop)
+                    return StrObject.to_str(llnew)
+
+                # Calculate the length of the final string
+                # Note that step cannot be zero thanks to trap in slice.__new__
+                new_string_length: int = 0
+                if step < 0:
+                    if stop < start:
+                        new_string_length = int((start - stop - 1) / (-step)) + 1
+                else:
+                    if start < stop:
+                        new_string_length = int((stop - start - 1) / step) + 1
+
+                if new_string_length == 0:
+                    return ""
+
+                llnew = StrObject.alloc(new_string_length)
+                
+                current = start
+                i = 0
+                if step > 0:
+                    while current < stop:
+                        # ptr_copy_slice(dst, dstart, dend, src, sstart, send)
+                        ptr_copy_slice(llnew.utf8, i, i+1, ll.utf8, current, current+1)
+                        current += step
+                        i += 1
+                else:
+                    current = start
+                    while current > stop:
+                        ptr_copy_slice(llnew.utf8, i, i+1, ll.utf8, current, current+1)
+                        current += step
+                        i += 1
+
+                return StrObject.to_str(llnew)
+            return OpSpec(_getitem_slice, [self, wam_i])
+        
+        return OpSpec.NULL
 
     def __add__(self: str, other: str) -> str:
         a = StrObject.from_str(self)
@@ -306,3 +367,4 @@ class methods:
             else:
                 llnew.utf8[i] = ch
         return StrObject.to_str(llnew)
+        

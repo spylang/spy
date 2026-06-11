@@ -15,7 +15,7 @@ from spy.libspy import LLSPyInstance
 from spy.linearize import linearize
 from spy.location import Loc
 from spy.util import func_equals
-from spy.vm.b import B
+from spy.vm.b import OP, B
 from spy.vm.bluecache import BlueCache
 from spy.vm.builtin import make_builtin_func
 from spy.vm.bytes import W_Bytes
@@ -37,7 +37,7 @@ from spy.vm.modules._testing_helpers import _TESTING_HELPERS
 from spy.vm.modules.builtins import BUILTINS
 from spy.vm.modules.jsffi import JSFFI
 from spy.vm.modules.math import MATH
-from spy.vm.modules.operator import OPERATOR
+from spy.vm.modules.operator import OPERATOR, convop
 from spy.vm.modules.posix import POSIX
 from spy.vm.modules.rawbuffer import RAW_BUFFER
 from spy.vm.modules.time import TIME
@@ -652,6 +652,8 @@ class SPyVM:
             return W_Bytes(self, value)
         elif T is Loc:
             return W_Loc(value)
+        elif T is slice:
+            return self.wrap_slice(value)
         elif T is UnwrappedStruct:
             return value.spy_wrap(self)
         elif isinstance(value, FunctionType):
@@ -682,6 +684,15 @@ class SPyVM:
         for item in items:
             vm.call_w(w_push, [w_res, vm.wrap(item)], color="red")
         return w_res
+
+    def wrap_slice(self, s: slice) -> W_Object:
+        vm = self
+        self.import_("_slice")
+        w_T = self.lookup_global(FQN("_slice::Slice"))
+        w_start = vm.wrap(s.start)
+        w_stop = vm.wrap(s.stop)
+        w_step = vm.wrap(s.step)
+        return vm.call_w(w_T, [w_start, w_stop, w_step])
 
     def unwrap(self, w_value: W_Object) -> Any:
         """
@@ -882,6 +893,27 @@ class SPyVM:
             w_res = w_opimpl._execute(self, args_w)
 
         return W_MetaArg(self, color, w_functype.w_restype, w_res, loc)
+
+    def is_convertible_to(
+        self: "SPyVM",
+        wam_expT: W_MetaArg,
+        wam: W_MetaArg,
+    ) -> bool:
+        """
+        Tests whether given MetaArg is convertible to the desired type.
+
+        There is probably a more efficient way to do this - we essentially resolve a whole
+        opimpl, then throw it away, only to resolve the converter again later if necessary
+        """
+        try:
+            convop.CONVERT_maybe(self, wam_expT, wam)
+        except SPyError as exc:
+            if exc.match(W_TypeError):
+                return False
+            else:
+                raise exc
+
+        return True
 
     # ======= operators ========
     #

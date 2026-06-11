@@ -1,4 +1,5 @@
 import re
+from textwrap import dedent
 
 from spy.errors import SPyError
 from spy.tests.support import CompilerTest, only_interp, skip_backends
@@ -65,7 +66,7 @@ class TestStr(CompilerTest):
         """)
         assert mod.identity("hello") == "hello"
 
-    def test_getitem(self):
+    def test_getitem_int(self):
         mod = self.compile("""
         def foo(a: str, i: i32) -> str:
             return a[i]
@@ -77,6 +78,27 @@ class TestStr(CompilerTest):
             mod.foo("ABCDE", 5)
         with SPyError.raises("W_IndexError", match="string index out of bound"):
             mod.foo("ABCDE", -6)
+
+    def test_getitem_slice(self):
+        mod = self.compile("""
+            def get_slice(s: str, slc: slice) -> str:
+                return s.__getitem__(slc)
+        """)
+
+        assert mod.get_slice("abc", slice(0, 1000, None)) == "abc"
+        assert mod.get_slice("abc", slice(0, 3, None)) == "abc"
+        assert mod.get_slice("abc", slice(0, 1, None)) == "a"
+        assert mod.get_slice("abc", slice(0, 0, None)) == ""
+        assert mod.get_slice("abc", slice(0, 2, None)) == "ab"
+        assert mod.get_slice("abc", slice(1, 3, None)) == "bc"
+        assert mod.get_slice("abc", slice(1, 2, None)) == "b"
+        assert mod.get_slice("abc", slice(2, 2, None)) == ""
+        assert mod.get_slice("abc", slice(1000, 1000, None)) == ""
+        assert mod.get_slice("abc", slice(2000, 1000, None)) == ""
+        assert mod.get_slice("abc", slice(2, 1, None)) == ""
+        assert mod.get_slice("abc", slice(None, None, -1)) == "cba"
+        assert mod.get_slice("abc", slice(1, None, -1)) == "ba"
+        assert mod.get_slice("abc", slice(None, -1, -1)) == ""
 
     def test_compare(self):
         mod = self.compile("""
