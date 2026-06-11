@@ -124,13 +124,16 @@ console.log(f"[Python] Creating editor with initial file: {current_file}")
 editor = Editor(Path(current_file).read_text())
 console.log("[Python] Editor created")
 
-display_filename = "test.spy"
 command_leader = "$"
 INPUT_TERMINAL_LEADER = f"{command_leader} spy "
-INPUT_TERMINAL_ENDER = f"{display_filename}"
+
+
+def display_filename() -> str:
+    return Path(current_file).name
+
 
 term_input = (
-    ltk.Input(INPUT_TERMINAL_LEADER + INPUT_TERMINAL_ENDER)
+    ltk.Input(INPUT_TERMINAL_LEADER + display_filename())
     .css("flex", "1")
     .css("padding", 5)
     .attr("id", "terminal-input")
@@ -174,7 +177,7 @@ def run_spy_file_with_args(argv: list[str]):
     """Given a list of space-delimited arguments, pass them to the spy cli"""
     __terminal__.clear()
     text = editor.text()
-    with open(display_filename, "w") as f:
+    with open(display_filename(), "w") as f:
         f.write(text)
 
     spy.cli.app(argv)
@@ -185,11 +188,11 @@ def run_click(event):
     element = ltk.find(event.target)
     flag_value = element.text().lower()
 
-    new_input_value = f"{command_leader} spy {flag_value} {display_filename}"
+    new_input_value = f"{command_leader} spy {flag_value} {display_filename()}"
     console.log("Setting input value to " + new_input_value)
     term_input.val(new_input_value)
 
-    run_spy_file_with_args(flag_value.split() + [display_filename])
+    run_spy_file_with_args(flag_value.split() + [display_filename()])
 
 
 def ButtonLabel(text):
@@ -226,12 +229,17 @@ def RunShareButton():
     return btn
 
 
+filename_label = ltk.Label(display_filename())
+
+
 def load_file(filepath: str) -> None:
-    """Load a file into the editor."""
+    """Load a file into the editor and update the UI accordingly."""
     global current_file
     current_file = filepath
     console.log(f"load_file: {filepath = }, {current_file = }")
     editor.text(Path(filepath).read_text(encoding="utf-8"))
+    term_input.val(INPUT_TERMINAL_LEADER + display_filename())
+    filename_label.text(display_filename())
 
 
 def make_category_tabs() -> ltk.Tabs:
@@ -282,7 +290,7 @@ def main():
         ltk.VBox(
             category_tabs,
             ltk.HBox(
-                ltk.Label(f"{display_filename}"),
+                filename_label,
                 RunShareButton().css("margin-left", "auto"),
             ).css("margin", "5px"),
             editor.css("border", "1px solid gray")
