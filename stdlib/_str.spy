@@ -23,7 +23,7 @@ from unsafe import (
 )
 from unsafe import _alloc_BytesObject, _BytesObject_to_bytes
 from __spy__ import lookup_fqn
-from operator import OpSpec, is_convertible_to
+from operator import OpSpec
 
 
 # this MUST stay in sync with the equivalent struct declared in str.h
@@ -83,7 +83,7 @@ class methods:
 
     @blue.metafunc
     def __getitem__(self, wam_i):
-        if wam_i.static_type == i32: #if is_convertible_to(wam_i, i32):
+        if wam_i.static_type == i32:
             def _getitem_int(s: str, i: i32) -> str:
                 # XXX this is wrong: it should return a code point
                 ll = StrObject.from_str(s)
