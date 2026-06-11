@@ -4,6 +4,7 @@ from pathlib import Path
 
 from typer import Argument
 
+from spy.analyze.importing import ImportAnalyzer
 from spy.cli._runners import init_vm
 from spy.cli.commands.shared_args import Base_Args
 from spy.tool.spyformatter import SPyFormatter
@@ -25,5 +26,11 @@ async def format(args: Fmt_Args) -> None:
         sys.exit(1)
 
     vm = await init_vm(args)
-    formatter = SPyFormatter(vm)
+    """
+    HACK: we only need `find_file_on_path` for formatter.
+    we left modname='' for ImportAnalyzer in which `modname` is passed again
+    in `find_file_on_path`.
+    """
+    analyzer = ImportAnalyzer(vm=vm, modname="")
+    formatter = SPyFormatter(analyzer=analyzer)
     formatter.format(args.filename.stem)
