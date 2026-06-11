@@ -1,9 +1,12 @@
+import importlib.util
 import itertools
+import sys
 from ctypes import c_float as float32
 from types import FunctionType
 from typing import Any, Callable, Iterable, Optional, Sequence, Union, overload
 
 import fixedint
+import py
 
 from spy import ROOT, ast, libspy
 from spy.analyze.symtable import Color, ImportRef, SymTable, maybe_blue
@@ -118,7 +121,12 @@ class SPyVM:
     # If True, cache errors are collected and reported; if False, they're raised
     robust_import_caching: bool
 
-    def __init__(self, ll: Optional[LLSPyInstance] = None) -> None:
+    def __init__(
+        self,
+        ll: Optional[LLSPyInstance] = None,
+        *,
+        extra_vm_modules: list[str] = [],
+    ) -> None:
         if ll is None:
             assert libspy.LLMOD is not None
             self.ll = LLSPyInstance(libspy.LLMOD)
@@ -145,6 +153,8 @@ class SPyVM:
         self.make_module(TIME)
         self.make_module(SPY)
         self.make_module(_TESTING_HELPERS)
+        for mod_path in extra_vm_modules:
+            self._load_extra_vm_module(mod_path)
         self.call_INITs()
         self._seed_human_aliases()
 
@@ -227,6 +237,29 @@ class SPyVM:
             if len(fqn.parts) == 2 and fqn.modname == reg.fqn.modname:
                 name = fqn.symbol_name
                 w_mod.setattr(name, w_obj)
+
+    def _load_extra_vm_module(self, mod_path: str) -> None:
+        """
+        Import and load an out-of-tree builtin module passed via --extra-vm-module.
+
+        The convention is that the package exposes a MODULE object which is an instance
+        of ModuleRegistry.
+        """
+        # import the extra module even if it's not in sys.path
+        p = py.path.local(mod_path)
+        pkg_name = p.basename
+        spec = importlib.util.spec_from_file_location(
+            pkg_name,
+            str(p.join("__init__.py")),
+            submodule_search_locations=[str(p)],
+        )
+        assert spec is not None and spec.loader is not None
+        pkg = importlib.util.module_from_spec(spec)
+        sys.modules[pkg_name] = pkg
+        spec.loader.exec_module(pkg)  # type: ignore[union-attr]
+        reg = pkg.MODULE
+        assert isinstance(reg, ModuleRegistry)
+        self.make_module(reg)
 
     def call_INITs(self) -> None:
         for modname in self.modules_w:
