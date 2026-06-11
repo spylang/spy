@@ -131,7 +131,7 @@ class methods:
             ptr_copy_slice(llnew.utf8, 0, length, ll.utf8, start, stop)
             return StrObject.to_str(llnew)
 
-        # Calculate number of elements in final list
+        # Calculate the length of the final string
         # Note that step cannot be zero thanks to trap in slice.__new__
         num_members: int = 0
         if step < 0:
