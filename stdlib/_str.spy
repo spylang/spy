@@ -133,18 +133,18 @@ class methods:
 
         # Calculate the length of the final string
         # Note that step cannot be zero thanks to trap in slice.__new__
-        num_members: int = 0
+        new_string_length: int = 0
         if step < 0:
             if stop < start:
-                num_members = int((start - stop - 1) / (-step)) + 1
+                new_string_length = int((start - stop - 1) / (-step)) + 1
         else:
             if start < stop:
-                num_members = int((stop - start - 1) / step) + 1
+                new_string_length = int((stop - start - 1) / step) + 1
 
-        if num_members == 0:
+        if new_string_length == 0:
             return ""
 
-        llnew = StrObject.alloc(num_members)
+        llnew = StrObject.alloc(new_string_length)
         
         current = start
         i = 0
