@@ -7,6 +7,7 @@ from spy.vm.b import B
 from spy.vm.builtin import builtin_type
 from spy.vm.exc import W_Exception
 from spy.vm.object import W_Object, W_Type
+from spy.vm.opspec import W_MetaArg
 from spy.vm.primitive import W_I32, W_Bool, W_NoneType
 from spy.vm.str import W_Str
 from spy.vm.vm import SPyVM
@@ -275,3 +276,12 @@ class TestVM:
         assert slc.start == 0
         assert slc.stop_is_none  # Boolean flag for None-ness
         assert slc.step == 2
+
+    def test_is_convertible_to(self):
+        vm = SPyVM()
+        _int = W_MetaArg.from_w_obj(vm, vm.wrap(1))
+        float_type = W_MetaArg.from_w_obj(vm, B.w_float)
+        str_type = W_MetaArg.from_w_obj(vm, B.w_str)
+
+        assert vm.is_convertible_to(float_type, _int)
+        assert not vm.is_convertible_to(str_type, _int)

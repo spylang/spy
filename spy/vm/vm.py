@@ -894,12 +894,11 @@ class SPyVM:
 
         return W_MetaArg(self, color, w_functype.w_restype, w_res, loc)
 
-    @OP.builtin_func(color="blue")
-    def w_is_convertible_to(
-        vm: "SPyVM",
+    def is_convertible_to(
+        self: "SPyVM",
         wam_expT: W_MetaArg,
         wam: W_MetaArg,
-    ) -> W_Bool:
+    ) -> bool:
         """
         Tests whether given MetaArg is convertible to the desired type.
 
@@ -907,14 +906,14 @@ class SPyVM:
         opimpl, then throw it away, only to resolve the converter again later if necessary
         """
         try:
-            convop.CONVERT_maybe(vm, wam_expT, wam)
+            convop.CONVERT_maybe(self, wam_expT, wam)
         except SPyError as exc:
             if exc.match(W_TypeError):
-                return B.w_False
+                return False
             else:
                 raise exc
 
-        return B.w_True
+        return True
 
     # ======= operators ========
     #
