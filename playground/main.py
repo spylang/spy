@@ -153,13 +153,12 @@ def run_click(event):
     """Pass the text label of a button as args to the Spy cli"""
     element = ltk.find(event.target)
     flag_value = element.text().lower()
-    run_spy_file_with_args(flag_value.split() + [display_filename])
 
-    inp = ltk.window.document.getElementById("terminal-input")
-    console.log(
-        f"Setting input value to {command_leader} spy {flag_value} {display_filename} "
-    )
-    inp.value = f"{command_leader} spy {flag_value} {display_filename}"
+    new_input_value = f"{command_leader} spy {flag_value} {display_filename}"
+    console.log("Setting input value to " + new_input_value)
+    term_input.val(new_input_value)
+
+    run_spy_file_with_args(flag_value.split() + [display_filename])
 
 
 def ButtonLabel(text):
