@@ -293,9 +293,7 @@ def main():
                 filename_label,
                 RunShareButton().css("margin-left", "auto"),
             ).css("margin", "5px"),
-            editor.css("border", "1px solid gray")
-            .css("height", 405)
-            .attr("id", "editor"),
+            editor.css("border", "1px solid gray").attr("id", "editor"),
             ltk.VBox(
                 ltk.Label("Try the SPy CLI:"),
                 ltk.HBox(
