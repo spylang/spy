@@ -67,34 +67,25 @@ class TestStr(CompilerTest):
             mod.foo("ABCDE", -6)
 
     def test_getitem_slice(self):
-        # Because we can't wrap slices and pass them into the test, and
-        # because we want to only compiler the module once, we do this dance
-        # where we build a bunch of names functions inside module source
-        # Before it's compiled
-        eq_list = [
-            ("abc", slice(0, 3, None), "abc"),
-            ("abc", slice(0, 1000, None), "abc"),
-            ("abc", slice(0, 1, None), "a"),
-            ("abc", slice(0, 0, None), ""),
-            ("abc", slice(0, 2, None), "ab"),
-            ("abc", slice(1, 3, None), "bc"),
-            ("abc", slice(1, 2, None), "b"),
-            ("abc", slice(2, 2, None), ""),
-            ("abc", slice(1000, 1000, None), ""),
-            ("abc", slice(2000, 1000, None), ""),
-            ("abc", slice(2, 1, None), ""),
-            ("abc", slice(None, None, -1), "cba"),
-            ("abc", slice(1, None, -1), "ba"),
-            ("abc", slice(None, -1, -1), ""),
-        ]
-
         mod = self.compile("""
             def get_slice(s: str, slc: slice) -> str:
                 return s.__getitem__(slc)
         """)
 
-        for in_, slc, out in eq_list:
-            assert mod.get_slice(in_, slc) == out
+        assert mod.get_slice("abc", slice(0, 1000, None)) == "abc"
+        assert mod.get_slice("abc", slice(0, 3, None)) == "abc"
+        assert mod.get_slice("abc", slice(0, 1, None)) == "a"
+        assert mod.get_slice("abc", slice(0, 0, None)) == ""
+        assert mod.get_slice("abc", slice(0, 2, None)) == "ab"
+        assert mod.get_slice("abc", slice(1, 3, None)) == "bc"
+        assert mod.get_slice("abc", slice(1, 2, None)) == "b"
+        assert mod.get_slice("abc", slice(2, 2, None)) == ""
+        assert mod.get_slice("abc", slice(1000, 1000, None)) == ""
+        assert mod.get_slice("abc", slice(2000, 1000, None)) == ""
+        assert mod.get_slice("abc", slice(2, 1, None)) == ""
+        assert mod.get_slice("abc", slice(None, None, -1)) == "cba"
+        assert mod.get_slice("abc", slice(1, None, -1)) == "ba"
+        assert mod.get_slice("abc", slice(None, -1, -1)) == ""
 
     def test_compare(self):
         mod = self.compile("""
