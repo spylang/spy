@@ -1,3 +1,4 @@
+import os
 import pdb as stdlib_pdb  # to distinguish from the "--pdb" option  # to distinguish from the "--pdb" option
 import sys
 import time
@@ -11,6 +12,7 @@ from typing import (
     Protocol,
 )
 
+from spy.cli._tb import tb_hide_magic_frames_maybe
 from spy.cli.commands.shared_args import Base_Args
 from spy.doppler import ErrorMode
 from spy.errors import SPyError
@@ -27,13 +29,15 @@ GLOBAL_VM: Optional[SPyVM] = None
 
 async def _pyodide_main(user_func: Callable, args: "Base_Args") -> None:
     """
-    For some reasons, it seems that pyodide doesn't print exceptions
-    uncaught exceptions which escapes an asyncio task. This is a small wrapper
-    to ensure that we display a proper traceback in that case
+    For some reasons, it seems that pyodide doesn't print uncaught exceptions
+    which escapes an asyncio task. This is a small wrapper to ensure that we
+    display a proper traceback in that case.
     """
     try:
         await _run_command(user_func, args)
-    except BaseException:
+    except BaseException as exc:
+        if isinstance(exc, SystemExit):
+            return
         traceback.print_exc()
 
 
@@ -64,15 +68,15 @@ async def _run_command(user_func: Callable, args: "Base_Args") -> None:
             spdb.post_mortem()
         elif args.pdb:
             # post-mortem interp-level debugger
-            info = sys.exc_info()
-            stdlib_pdb.post_mortem(info[2])
+            tb = tb_hide_magic_frames_maybe()
+            stdlib_pdb.post_mortem(tb)
         sys.exit(1)
     except Exception as e:
         if not args.pdb:
             raise
         traceback.print_exc()
-        info = sys.exc_info()
-        stdlib_pdb.post_mortem(info[2])
+        tb = tb_hide_magic_frames_maybe()
+        stdlib_pdb.post_mortem(tb)
         sys.exit(1)
 
 

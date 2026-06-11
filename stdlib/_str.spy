@@ -16,12 +16,14 @@ from unsafe import (
     gc_ptr,
     ptr_copy,
     ptr_copy_slice,
+    ptr_cmp_slice,
     _str_to_StrObject,
     _alloc_StrObject,
     _StrObject_to_str,
 )
 from unsafe import _alloc_BytesObject, _BytesObject_to_bytes
 from __spy__ import lookup_fqn
+from operator import OpSpec, is_convertible_to
 
 
 # this MUST stay in sync with the equivalent struct declared in str.h
@@ -75,6 +77,101 @@ class methods:
     # each method defined here should also have a corresponding entry in
     # W_Str.__spy_lazy_attributes__.
 
+    def __len__(self: str) -> i32:
+        ll = StrObject.from_str(self)
+        return ll.length
+
+    @blue.metafunc
+    def __getitem__(self, wam_i):
+        if wam_i.static_type == i32: #if is_convertible_to(wam_i, i32):
+            def _getitem_int(s: str, i: i32) -> str:
+                # XXX this is wrong: it should return a code point
+                ll = StrObject.from_str(s)
+                n = ll.length
+                if i < 0:
+                    i = i + n
+                if i < 0 or i >= n:
+                    raise IndexError("string index out of bound")
+                out = StrObject.alloc(1)
+                out.hash = 0
+                out.utf8[0] = ll.utf8[i]
+                return StrObject.to_str(out)
+            return OpSpec(_getitem_int, [self, wam_i])
+        
+        if wam_i.static_type == slice:
+            def _getitem_slice(s: str, slc: slice) -> str:
+                # Fast path for trivial slices:
+                if (slc.start == 0 or slc.start_is_none) and (slc.stop == -1 or slc.stop_is_none) and (slc.step == 1 or slc.step_is_none): return s
+                
+                indices = slc.indices(len(s))
+                start = indices.start
+                stop = indices.stop
+                step = indices.step
+
+                ll = StrObject.from_str(s)
+                
+                # Fast path for simple slices
+                if slc.step == 1:
+                    length = stop - start
+                    if length <= 0:
+                        return ""
+                    llnew = StrObject.alloc(length)
+                    ptr_copy_slice(llnew.utf8, 0, length, ll.utf8, start, stop)
+                    return StrObject.to_str(llnew)
+
+                # Calculate the length of the final string
+                # Note that step cannot be zero thanks to trap in slice.__new__
+                new_string_length: int = 0
+                if step < 0:
+                    if stop < start:
+                        new_string_length = int((start - stop - 1) / (-step)) + 1
+                else:
+                    if start < stop:
+                        new_string_length = int((stop - start - 1) / step) + 1
+
+                if new_string_length == 0:
+                    return ""
+
+                llnew = StrObject.alloc(new_string_length)
+                
+                current = start
+                i = 0
+                if step > 0:
+                    while current < stop:
+                        # ptr_copy_slice(dst, dstart, dend, src, sstart, send)
+                        ptr_copy_slice(llnew.utf8, i, i+1, ll.utf8, current, current+1)
+                        current += step
+                        i += 1
+                else:
+                    current = start
+                    while current > stop:
+                        ptr_copy_slice(llnew.utf8, i, i+1, ll.utf8, current, current+1)
+                        current += step
+                        i += 1
+
+                return StrObject.to_str(llnew)
+            return OpSpec(_getitem_slice, [self, wam_i])
+        
+        return OpSpec.NULL
+
+    def __add__(self: str, other: str) -> str:
+        a = StrObject.from_str(self)
+        b = StrObject.from_str(other)
+        out = StrObject.alloc(a.length + b.length)
+        out.hash = 0
+        ptr_copy_slice(out.utf8, 0, a.length, a.utf8, 0, a.length)
+        ptr_copy_slice(out.utf8, a.length, a.length + b.length, b.utf8, 0, b.length)
+        return StrObject.to_str(out)
+
+    def __mul__(self: str, n: i32) -> str:
+        ll = StrObject.from_str(self)
+        out = StrObject.alloc(ll.length * n)
+        out.hash = 0
+        l = ll.length
+        for i in range(n):
+            ptr_copy_slice(out.utf8, i * l, (i + 1) * l, ll.utf8, 0, l)
+        return StrObject.to_str(out)
+
     def encode(self: str, encoding: str) -> bytes:
         # we don't support circular imports and function-level imports. This is a hacky
         # workaround for 'from _bytes import BytesObject'
@@ -98,6 +195,166 @@ class methods:
             i = i + 1
         return True
 
+    def __repr__(self: str) -> str:
+        ll = StrObject.from_str(self)
+        # Choose quote: ' by default, but " if the string contains ' but not "
+        single = ord(b"'")
+        double = ord(b'"')
+        quote = single
+        for i in range(ll.length):
+            ci = ll.utf8[i]
+            if ci == single:
+                quote = double
+            if ci == double:
+                quote = single
+                # found ", stop scanning since ' wins on conflict
+                # (matches C behaviour: it 'break's here)
+                break
+
+        # First pass: compute the output length
+        out_len: i32 = 2  # surrounding quotes
+        for m in range(ll.length):
+            c = ll.utf8[m]
+            if c == ord(b"\\") or c == quote:
+                out_len = out_len + 2
+            elif c == ord(b"\n") or c == ord(b"\r") or c == ord(b"\t"):
+                out_len = out_len + 2
+            elif c < ord(b" "):
+                out_len = out_len + 4  # \xNN
+            else:
+                out_len = out_len + 1
+
+        # Second pass: fill the buffer
+        out = StrObject.alloc(out_len)
+        out.hash = 0
+        j: i32 = 0
+        out.utf8[j] = quote
+        j = j + 1
+        for k in range(ll.length):
+            c2 = ll.utf8[k]
+            if c2 == ord(b"\\"):
+                out.utf8[j] = ord(b"\\")
+                j = j + 1
+                out.utf8[j] = ord(b"\\")
+                j = j + 1
+            elif c2 == quote:
+                out.utf8[j] = ord(b"\\")
+                j = j + 1
+                out.utf8[j] = quote
+                j = j + 1
+            elif c2 == ord(b"\n"):
+                out.utf8[j] = ord(b"\\")
+                j = j + 1
+                out.utf8[j] = ord(b"n")
+                j = j + 1
+            elif c2 == ord(b"\r"):
+                out.utf8[j] = ord(b"\\")
+                j = j + 1
+                out.utf8[j] = ord(b"r")
+                j = j + 1
+            elif c2 == ord(b"\t"):
+                out.utf8[j] = ord(b"\\")
+                j = j + 1
+                out.utf8[j] = ord(b"t")
+                j = j + 1
+            elif c2 < ord(b" "):
+                # \xNN hex escape
+                out.utf8[j] = ord(b"\\")
+                j = j + 1
+                out.utf8[j] = ord(b"x")
+                j = j + 1
+                hi: i32 = i32(c2) >> 4
+                lo: i32 = i32(c2) & 15
+                if hi < 10:
+                    out.utf8[j] = u8(hi) + ord(b"0")
+                else:
+                    out.utf8[j] = u8(hi - 10) + ord(b"a")
+                j = j + 1
+                if lo < 10:
+                    out.utf8[j] = u8(lo) + ord(b"0")
+                else:
+                    out.utf8[j] = u8(lo - 10) + ord(b"a")
+                j = j + 1
+            else:
+                out.utf8[j] = c2
+                j = j + 1
+        out.utf8[j] = quote
+        return StrObject.to_str(out)
+
+    def replace(self: str, old: str, new: str) -> str:
+        ll_orig = StrObject.from_str(self)
+        ll_old = StrObject.from_str(old)
+        ll_new = StrObject.from_str(new)
+        orig_len = ll_orig.length
+        old_len = ll_old.length
+        new_len = ll_new.length
+
+        if old_len == 0:
+            # insert `new` before each byte and after the last
+            result_len = orig_len + (orig_len + 1) * new_len
+            res = StrObject.alloc(result_len)
+            res.hash = 0
+            pos: i32 = 0
+            for i in range(orig_len):
+                if new_len > 0:
+                    ptr_copy_slice(
+                        res.utf8, pos, pos + new_len, ll_new.utf8, 0, new_len
+                    )
+                    pos = pos + new_len
+                res.utf8[pos] = ll_orig.utf8[i]
+                pos = pos + 1
+            if new_len > 0:
+                ptr_copy_slice(res.utf8, pos, pos + new_len, ll_new.utf8, 0, new_len)
+            return StrObject.to_str(res)
+
+        # First pass: count occurrences
+        count: i32 = 0
+        i = 0
+        while i <= orig_len - old_len:
+            if (
+                ptr_cmp_slice(ll_orig.utf8, i, i + old_len, ll_old.utf8, 0, old_len)
+                == 0
+            ):
+                count = count + 1
+                i = i + old_len
+            else:
+                i = i + 1
+
+        if count == 0:
+            # Return the original string when no occurrences are found
+            res = StrObject.alloc(orig_len)
+            res.hash = 0
+            if orig_len > 0:
+                ptr_copy(res.utf8, ll_orig.utf8, orig_len)
+            return StrObject.to_str(res)
+
+        # Second pass: build the result
+        result_len = orig_len + count * (new_len - old_len)
+        res = StrObject.alloc(result_len)
+        res.hash = 0
+        pos = 0
+        i = 0
+        while i <= orig_len - old_len:
+            c = ptr_cmp_slice(ll_orig.utf8, i, i + old_len, ll_old.utf8, 0, old_len)
+            if c == 0:  # found
+                if new_len > 0:
+                    ptr_copy_slice(
+                        res.utf8, pos, pos + new_len, ll_new.utf8, 0, new_len
+                    )
+                    pos = pos + new_len
+                i = i + old_len
+            else:
+                res.utf8[pos] = ll_orig.utf8[i]
+                pos = pos + 1
+                i = i + 1
+        # Copy remaining tail
+        remaining = orig_len - i
+        if remaining > 0:
+            ptr_copy_slice(
+                res.utf8, pos, pos + remaining, ll_orig.utf8, i, i + remaining
+            )
+        return StrObject.to_str(res)
+
     def upper(self: str) -> str:
         # XXX: this works only for ASCII strings but it's good enough for now
         ll = StrObject.from_str(self)
@@ -111,54 +368,3 @@ class methods:
                 llnew.utf8[i] = ch
         return StrObject.to_str(llnew)
         
-    def _getitem_slice(self: str, slc: slice) -> str:
-        # Fast path for trivial slices:
-        if (slc.start == 0 or slc.start_is_none) and (slc.stop == -1 or slc.stop_is_none) and (slc.step == 1 or slc.step_is_none): return self
-        
-        indices = slc.indices(len(self))
-        start = indices.start
-        stop = indices.stop
-        step = indices.step
-
-        ll = StrObject.from_str(self)
-        
-        # Fast path for simple slices
-        if slc.step == 1:
-            length = stop - start
-            if length <= 0:
-                return ""
-            llnew = StrObject.alloc(length)
-            ptr_copy_slice(llnew.utf8, 0, length, ll.utf8, start, stop)
-            return StrObject.to_str(llnew)
-
-        # Calculate the length of the final string
-        # Note that step cannot be zero thanks to trap in slice.__new__
-        new_string_length: int = 0
-        if step < 0:
-            if stop < start:
-                new_string_length = int((start - stop - 1) / (-step)) + 1
-        else:
-            if start < stop:
-                new_string_length = int((stop - start - 1) / step) + 1
-
-        if new_string_length == 0:
-            return ""
-
-        llnew = StrObject.alloc(new_string_length)
-        
-        current = start
-        i = 0
-        if step > 0:
-            while current < stop:
-                # ptr_copy_slice(dst, dstart, dend, src, sstart, send)
-                ptr_copy_slice(llnew.utf8, i, i+1, ll.utf8, current, current+1)
-                current += step
-                i += 1
-        else:
-            current = start
-            while current > stop:
-                ptr_copy_slice(llnew.utf8, i, i+1, ll.utf8, current, current+1)
-                current += step
-                i += 1
-
-        return StrObject.to_str(llnew)

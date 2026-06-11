@@ -4,6 +4,7 @@ packages = [ "micropip"]
 [files]
 "pyscript.toml" = ""
 "hello_add.spy" = "examples/1_high_level/"
+"exit_code.spy" = "examples/1_high_level/"
 "bluefunc_pi.spy" = "examples/2_metaprogramming/"
 "bluefunc_adder.spy" = "examples/2_metaprogramming/"
 "point.spy" = "examples/3_low_level/"

@@ -340,7 +340,7 @@ class TestDoppler:
             return x + y
 
         def `test::add[str]::impl`(x: str, y: str) -> str:
-            return `operator::str_add`(x, y)
+            return `_str::methods::__add__`(x, y)
         """)
 
     def test_store_outer_var(self):

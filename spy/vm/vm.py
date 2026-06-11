@@ -15,7 +15,7 @@ from spy.libspy import LLSPyInstance
 from spy.linearize import linearize
 from spy.location import Loc
 from spy.util import func_equals
-from spy.vm.b import B
+from spy.vm.b import OP, B
 from spy.vm.bluecache import BlueCache
 from spy.vm.builtin import make_builtin_func
 from spy.vm.bytes import W_Bytes
@@ -894,11 +894,12 @@ class SPyVM:
 
         return W_MetaArg(self, color, w_functype.w_restype, w_res, loc)
 
-    def is_convertible_to(
-        self: "SPyVM",
+    @OP.builtin_func(color="blue")
+    def w_is_convertible_to(
+        vm: "SPyVM",
         wam_expT: W_MetaArg,
         wam: W_MetaArg,
-    ) -> bool:
+    ) -> W_Bool:
         """
         Tests whether given MetaArg is convertible to the desired type.
 
@@ -906,14 +907,14 @@ class SPyVM:
         opimpl, then throw it away, only to resolve the converter again later if necessary
         """
         try:
-            convop.CONVERT_maybe(self, wam_expT, wam)
+            convop.CONVERT_maybe(vm, wam_expT, wam)
         except SPyError as exc:
             if exc.match(W_TypeError):
-                return False
+                return B.w_False
             else:
                 raise exc
 
-        return True
+        return B.w_True
 
     # ======= operators ========
     #
