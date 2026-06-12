@@ -386,7 +386,7 @@ class methods:
             if self[search_position: search_position + sep_len] == sep:
                 result.append(self[last_consumed_position:search_position])
                 last_consumed_position = search_position + sep_len
-                search_position += sep_len + 1
+                search_position += sep_len
             else:
                 search_position += 1
 

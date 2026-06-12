@@ -105,9 +105,10 @@ class TestStr(CompilerTest):
             def split(s: str, sep: str) -> list[str]:
                 return s.split(sep)
         """)
-
         assert mod.split("a|b|c|d", "|") == ["a", "b", "c", "d"]
         assert mod.split("a||b|c||d", "||") == ["a", "b|c", "d"]
+        assert mod.split("abc|||", "|") == ["abc", "", "", ""]
+        assert mod.split("|abc", "|") == ["", "abc"]
         assert mod.split("abcd", "|") == ["abcd"]
         assert mod.split("", "|") == [""]
 
