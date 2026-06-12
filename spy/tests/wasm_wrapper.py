@@ -174,11 +174,13 @@ class WasmFuncWrapper:
             # converts them into a list, flattening nested structs
             assert isinstance(res, list)
             pyres = unflatten_struct(self.ll, w_T, res)
-            if w_T.fqn == FQN("_list::list[i32]::_ListImpl"):
-                # we support only reading list[i32] for tests
+            if w_T.fqn == FQN(
+                "_list::list[i32]::_ListImpl"
+            ):  # reading list[i32] for tests
                 return self._to_pylist_i32(pyres)
-            elif w_T.fqn == FQN("_list::list[str]::_ListImpl"):
-                # we support only reading list[str] for tests
+            elif w_T.fqn == FQN(
+                "_list::list[str]::_ListImpl"
+            ):  # reading list[str] for tests
                 return self._to_pylist_str(pyres)
             elif self.vm.is_list_type(w_T):
                 raise NotImplementedError(f"Reading {w_T.fqn} out of WASM memory")
@@ -232,7 +234,7 @@ class WasmFuncWrapper:
 
         addr = ll_ptr.addr
         list_length = self.ll.mem.read_i32(addr)
-        items_addr = self.ll.mem.read_i32(addr + 8)  # items poiter
+        items_addr = self.ll.mem.read_i32(addr + 8)
 
         def _read_str_from_addr(s_addr: int) -> str:
             """

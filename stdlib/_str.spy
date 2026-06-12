@@ -375,8 +375,6 @@ class methods:
         sep_len = len(sep)
         if sep_len == 0: raise ValueError("empty seperator")
 
-        ll = StrObject.from_str(self)
-
         result = list[str]()
         search_position: int = 0
         last_consumed_position: int = 0
