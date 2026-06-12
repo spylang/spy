@@ -147,7 +147,12 @@ async def init_vm(args: Init_Args) -> SPyVM:
         spy_toml = SpyToml.find_and_read(srcdir)
     extra_vm_modules = spy_toml.merge(args.extra_vm_modules)
 
-    vm = SPyVM(extra_vm_modules=extra_vm_modules)
+    if extra_vm_modules:
+        # Bundling requires a native zig toolchain; use the synchronous path.
+        vm = SPyVM(extra_vm_modules=extra_vm_modules)
+    else:
+        # No extra modules: use async_new() to support Pyodide/Node.
+        vm = await SPyVM.async_new()
 
     GLOBAL_VM = vm
 
