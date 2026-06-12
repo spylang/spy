@@ -177,6 +177,9 @@ class WasmFuncWrapper:
             if w_T.fqn == FQN("_list::list[i32]::_ListImpl"):
                 # we support only reading list[i32] for tests
                 return self._to_pylist_i32(pyres)
+            elif w_T.fqn == FQN("_list::list[str]::_ListImpl"):
+                # we support only reading list[str] for tests
+                return self._to_pylist_str(pyres)
             elif self.vm.is_list_type(w_T):
                 raise NotImplementedError(f"Reading {w_T.fqn} out of WASM memory")
             elif w_T.fqn == FQN("_dict::dict[i32, i32]::_dict"):
@@ -212,6 +215,46 @@ class WasmFuncWrapper:
             item_addr = items_addr + i * 4
             item = self.ll.mem.read_i32(item_addr)
             result.append(item)
+
+        return result
+
+    def _to_pylist_str(self, pyres: UnwrappedStruct) -> list[Any]:
+        assert "__ll__" in pyres._content
+        ll_ptr = pyres._content["__ll__"]
+        assert isinstance(ll_ptr, WasmPtr)
+
+        # Read ListData struct from memory
+        # struct ListData {
+        #     i32 length;
+        #     i32 capacity;
+        #     ptr[i32] items;  // represented as {addr, length} in debug mode
+        # }
+
+        addr = ll_ptr.addr
+        length = self.ll.mem.read_i32(addr)
+
+        # Where are the actual items located
+        items_addr = self.ll.mem.read_i32(addr + 8)
+
+        # Read the actual str items
+        # @struct
+        # class StrObject:
+        #     length: i32
+        #     hash: i32
+        #     utf8: gc_ptr[u8]
+
+        result = []
+        for i in range(length):
+            ...
+            # for each item in the list
+            # Get it's length s_length
+            # Get the address where it's data is s_data_addr
+            # New empty string s = ""
+            # for j in range(s_length):
+            # read a u8 from s_data_addr + j
+            # convert to ord and append to s
+            # Append s to list
+            # increment the item_address by 12 bytes
 
         return result
 
