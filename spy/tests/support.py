@@ -7,12 +7,12 @@ import pytest
 
 from spy.backend.c.cbackend import CBackend
 from spy.backend.interp import InterpModuleWrapper
-from spy.build.config import BuildConfig, BuildTarget
+from spy.build.config import BuildConfig, BuildTarget, BuildType
 from spy.build.ninja import NinjaWriter
 from spy.doppler import ErrorMode
 from spy.errors import SPyError
 from spy.libspy.bundle import link_bundle
-from spy.libspy.flags import get_ar, get_cflags
+from spy.libspy.flags import get_ar, get_cflags, get_include
 from spy.tests.cffi_wrapper import load_cffi_module
 from spy.tests.exe_wrapper import ExeWrapper
 from spy.tests.wasm_wrapper import WasmModuleWrapper
@@ -386,7 +386,13 @@ class CTest:
         ninja.write("test", [test_c], wasm_exports=exports)
         return ninja.build()
 
-    def c_compile_archive(self, src: str, *, name: str) -> py.path.local:
+    def c_compile_archive(
+        self,
+        src: str,
+        *,
+        name: str,
+        build_type: BuildType = "debug",
+    ) -> py.path.local:
         """
         Compile a C source string to a static archive (.a) using the same
         CFLAGS as libspy for self.target. Returns the path to the archive.
@@ -398,9 +404,23 @@ class CTest:
         a_file = self.tmpdir.join(f"{name}.a")
         c_file.write(src)
 
+        build_type_flag = "-DSPY_DEBUG" if build_type == "debug" else "-DSPY_RELEASE"
         cflags = get_cflags(self.target)
+        include_dir = get_include()
         cc = ["python", "-m", "ziglang", "cc"]
-        robust_run([*cc, *cflags, "-c", str(c_file), "-o", str(o_file)])
+        robust_run(
+            [
+                *cc,
+                *cflags,
+                build_type_flag,
+                "-I",
+                include_dir,
+                "-c",
+                str(c_file),
+                "-o",
+                str(o_file),
+            ]
+        )
 
         ar = get_ar(self.target).split()
         robust_run([*ar, "rcs", str(a_file), str(o_file)])

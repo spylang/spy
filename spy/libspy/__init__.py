@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Any, Optional
 
+import py.path
+
 import spy
 from spy.errors import SPyError
 from spy.llwasm import HostModule, LLWasmInstance, LLWasmModule, WasmTrap
@@ -29,6 +31,37 @@ else:
 # is it correct to always use debug/libspy.wasm? For tests it's surely fine
 # since we always compile them with SPY_DEBUG, but we need to double check
 # what to do when we do e.g. spy build --release fine sine
+
+
+def get_LLMOD(
+    extra_archives: list[py.path.local] = [],
+    extra_exports: list[str] = [],
+    *,
+    force_rebuild: bool = False,
+) -> LLWasmModule:
+    """
+    Return a LLWasmModule for libspy, optionally bundled with extra .a archives.
+
+    When extra_archives is empty, returns the prebuilt LLMOD (no build step).
+    When extra_archives is non-empty, links libspy.a + each extra archive into
+    a single bundle (cached by content hash) and returns a LLWasmModule for it.
+
+    extra_exports lists symbols from extra archives that are NOT decorated
+    with WASM_EXPORT. Symbols already annotated with WASM_EXPORT (including
+    all libspy symbols) are exported automatically and should not be listed.
+    """
+    if not extra_archives:
+        assert LLMOD is not None
+        return LLMOD
+
+    from spy.libspy.bundle_cache import get_or_build_bundle
+
+    libspy_a = BUILD.join("wasi", "debug", "libspy.a")
+    all_archives = [libspy_a] + list(extra_archives)
+    bundle_path = get_or_build_bundle(
+        all_archives, extra_exports, force_rebuild=force_rebuild
+    )
+    return LLWasmModule(str(bundle_path))
 
 
 async def async_get_LLMOD() -> LLWasmModule:

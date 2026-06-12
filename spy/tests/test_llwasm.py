@@ -269,6 +269,39 @@ class TestLLWasm(CTest):
         bundle_v2 = get_or_build_bundle([a_v2], exports=["answer"])
         assert bundle_v1 != bundle_v2
 
+    def test_get_LLMOD_with_extra_archive(self):
+        if self.llwasm_backend == "pyodide":
+            pytest.skip("emscripten bundling not yet implemented")
+
+        # An out-of-tree archive that calls spy_str_alloc from libspy.
+        # This test verifies that a side archive can #include "spy.h" and call
+        # libspy functions when bundled together.
+        src = r"""
+        #include "spy.h"
+        #include "spy/str.h"
+        #include <string.h>
+
+        spy_StrObject * WASM_EXPORT(make_hello)(void) {
+            const char *msg = "hello";
+            size_t n = strlen(msg);
+            spy_StrObject *s = spy_str_alloc(n);
+            memcpy(spy_StrObject_UTF8(s), msg, n);
+            return s;
+        }
+        """
+        import spy.libspy as libspy
+        from spy.libspy import LLSPyInstance
+
+        extra_a = self.c_compile_archive(src, name="side_str")
+        # make_hello is annotated with WASM_EXPORT so no extra_exports needed
+        llmod = libspy.get_LLMOD(extra_archives=[extra_a])
+        ll = LLSPyInstance(llmod)
+
+        ptr = ll.call("make_hello")
+        length, _, utf8 = ll.read_str(ptr)
+        assert utf8 == b"hello"
+        assert length == 5
+
     def test_HostModule(self):
         if self.llwasm_backend == "pyodide":
             pytest.skip("fixme")

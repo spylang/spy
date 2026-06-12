@@ -33,7 +33,8 @@ class HostModule:
 
 
 class LLWasmModuleBase:
-    pass
+    def all_export_names(self) -> list[str]:
+        raise NotImplementedError
 
 
 class LLWasmInstanceBase:
