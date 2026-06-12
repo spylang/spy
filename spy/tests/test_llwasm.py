@@ -225,6 +225,50 @@ class TestLLWasm(CTest):
         assert ll.call("b_double") == 202
         assert ll.call("a_get_shared") == 202
 
+    def test_bundle_cache(self):
+        if self.llwasm_backend == "pyodide":
+            pytest.skip("emscripten bundling not yet implemented")
+
+        from spy.libspy.bundle_cache import get_or_build_bundle
+
+        src = """
+        #include <stdint.h>
+        int32_t answer(void) { return 42; }
+        """
+        a = self.c_compile_archive(src, name="answer")
+
+        bundle1 = get_or_build_bundle([a], exports=["answer"])
+        mtime1 = bundle1.mtime()
+
+        bundle2 = get_or_build_bundle([a], exports=["answer"])
+        assert bundle1 == bundle2
+        assert bundle2.mtime() == mtime1
+
+        bundle3 = get_or_build_bundle([a], exports=["answer"], force_rebuild=True)
+        assert bundle3 == bundle1
+        assert bundle3.mtime() >= mtime1
+
+    def test_bundle_cache_invalidation(self):
+        if self.llwasm_backend == "pyodide":
+            pytest.skip("emscripten bundling not yet implemented")
+
+        from spy.libspy.bundle_cache import get_or_build_bundle
+
+        src_v1 = """
+        #include <stdint.h>
+        int32_t answer(void) { return 42; }
+        """
+        src_v2 = """
+        #include <stdint.h>
+        int32_t answer(void) { return 99; }
+        """
+        a_v1 = self.c_compile_archive(src_v1, name="answer_v1")
+        a_v2 = self.c_compile_archive(src_v2, name="answer_v2")
+
+        bundle_v1 = get_or_build_bundle([a_v1], exports=["answer"])
+        bundle_v2 = get_or_build_bundle([a_v2], exports=["answer"])
+        assert bundle_v1 != bundle_v2
+
     def test_HostModule(self):
         if self.llwasm_backend == "pyodide":
             pytest.skip("fixme")
