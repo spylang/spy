@@ -227,34 +227,38 @@ class WasmFuncWrapper:
         # struct ListData {
         #     i32 length;
         #     i32 capacity;
-        #     ptr[i32] items;  // represented as {addr, length} in debug mode
+        #     ptr[StrObject] items;  // represented as {addr, length} in debug mode
         # }
 
         addr = ll_ptr.addr
-        length = self.ll.mem.read_i32(addr)
+        list_length = self.ll.mem.read_i32(addr)
+        items_addr = self.ll.mem.read_i32(addr + 8)  # items poiter
 
-        # Where are the actual items located
-        items_addr = self.ll.mem.read_i32(addr + 8)
+        def _read_str_from_addr(s_addr: int) -> str:
+            """
+            Helper function to retrieve the data from StrObject:
 
-        # Read the actual str items
-        # @struct
-        # class StrObject:
-        #     length: i32
-        #     hash: i32
-        #     utf8: gc_ptr[u8]
+            struct StrObject {
+                size_t length;
+                int32_t hash;
+                spy_gc_ptr_u8 utf8;
+            }
+            """
+            s_length = self.ll.mem.read_i32(s_addr)
+            s_hash = self.ll.mem.read_i32(s_addr + 4)
+            s_utf8_addr = self.ll.mem.read_i32(s_addr + 8)
+
+            s = "".join(
+                chr(self.ll.mem.read_u8(s_utf8_addr + i)) for i in range(s_length)
+            )
+            return s
 
         result = []
-        for i in range(length):
-            ...
-            # for each item in the list
-            #   Get it's length s_length
-            #   Get the address where it's data is s_data_addr
-            #   New empty string s = ""
-            #   for j in range(s_length):
-            #       read a u8 from s_data_addr + j
-            #       convert to ord and append to s
-            #   Append s to list
-            #   increment the item_address by 12 bytes
+        for i in range(list_length):
+            item_addr = items_addr + i * 4
+            str_data_addr = self.ll.mem.read_i32(item_addr)
+            s = _read_str_from_addr(str_data_addr)
+            result.append(s)
 
         return result
 
