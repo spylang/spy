@@ -247,14 +247,14 @@ class WasmFuncWrapper:
         for i in range(length):
             ...
             # for each item in the list
-            # Get it's length s_length
-            # Get the address where it's data is s_data_addr
-            # New empty string s = ""
-            # for j in range(s_length):
-            # read a u8 from s_data_addr + j
-            # convert to ord and append to s
-            # Append s to list
-            # increment the item_address by 12 bytes
+            #   Get it's length s_length
+            #   Get the address where it's data is s_data_addr
+            #   New empty string s = ""
+            #   for j in range(s_length):
+            #       read a u8 from s_data_addr + j
+            #       convert to ord and append to s
+            #   Append s to list
+            #   increment the item_address by 12 bytes
 
         return result
 
