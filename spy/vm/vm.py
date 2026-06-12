@@ -128,9 +128,18 @@ class SPyVM:
         extra_vm_modules: list[str] = [],
     ) -> None:
         if ll is None:
-            assert libspy.LLMOD is not None
-            self.ll = LLSPyInstance(libspy.LLMOD)
+            # Import extra module packages first so we can collect their
+            # wasm_archive paths before constructing ll.
+            extra_regs = [
+                self._import_extra_vm_module(mod_path) for mod_path in extra_vm_modules
+            ]
+            extra_archives = [
+                reg.wasm_archive for reg in extra_regs if reg.wasm_archive is not None
+            ]
+            llmod = libspy.get_LLMOD(extra_archives)
+            self.ll = LLSPyInstance(llmod)
         else:
+            extra_regs = []
             self.ll = ll
 
         self.globals_w = {}
@@ -153,8 +162,8 @@ class SPyVM:
         self.make_module(TIME)
         self.make_module(SPY)
         self.make_module(_TESTING_HELPERS)
-        for mod_path in extra_vm_modules:
-            self._load_extra_vm_module(mod_path)
+        for reg in extra_regs:
+            self.make_module(reg)
         self.call_INITs()
         self._seed_human_aliases()
 
@@ -238,12 +247,13 @@ class SPyVM:
                 name = fqn.symbol_name
                 w_mod.setattr(name, w_obj)
 
-    def _load_extra_vm_module(self, mod_path: str) -> None:
+    def _import_extra_vm_module(self, mod_path: str) -> ModuleRegistry:
         """
-        Import and load an out-of-tree builtin module passed via --extra-vm-module.
+        Import an out-of-tree builtin module package and return its registry.
 
-        The convention is that the package exposes a MODULE object which is an instance
-        of ModuleRegistry.
+        The convention is that the package exposes a MODULE attribute which is
+        an instance of ModuleRegistry. If MODULE.wasm_archive is set, the archive
+        will be linked into the WASM bundle before ll is created.
         """
         # import the extra module even if it's not in sys.path
         p = py.path.local(mod_path)
@@ -259,7 +269,7 @@ class SPyVM:
         spec.loader.exec_module(pkg)  # type: ignore[union-attr]
         reg = pkg.MODULE
         assert isinstance(reg, ModuleRegistry)
-        self.make_module(reg)
+        return reg
 
     def call_INITs(self) -> None:
         for modname in self.modules_w:

@@ -1,6 +1,8 @@
 from types import FunctionType
 from typing import TYPE_CHECKING, Any, Callable, Optional, Type
 
+import py.path
+
 from spy.ast import Color, FuncKind
 from spy.fqn import FQN, QUALIFIERS
 from spy.location import Loc
@@ -23,11 +25,13 @@ class ModuleRegistry:
     fqn: FQN
     content: list[tuple[FQN, "W_Object", IRTag]]
     loc: Loc
+    wasm_archive: Optional[py.path.local]
 
     def __init__(self, modname: str) -> None:
         self.fqn = FQN(modname)
         self.content = []
         self.loc = Loc.here(-2)
+        self.wasm_archive = None
 
     def __repr__(self) -> str:
         return f"<ModuleRegistry '{self.fqn}'>"
