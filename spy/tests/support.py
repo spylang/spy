@@ -11,9 +11,12 @@ from spy.build.config import BuildConfig, BuildTarget
 from spy.build.ninja import NinjaWriter
 from spy.doppler import ErrorMode
 from spy.errors import SPyError
+from spy.libspy.bundle import link_bundle
+from spy.libspy.flags import get_ar, get_cflags
 from spy.tests.cffi_wrapper import load_cffi_module
 from spy.tests.exe_wrapper import ExeWrapper
 from spy.tests.wasm_wrapper import WasmModuleWrapper
+from spy.util import robust_run
 from spy.vm.vm import SPyVM
 
 Backend = Literal["interp", "doppler", "C"]
@@ -382,3 +385,38 @@ class CTest:
         ninja = NinjaWriter(config, self.build_dir)
         ninja.write("test", [test_c], wasm_exports=exports)
         return ninja.build()
+
+    def c_compile_archive(self, src: str, *, name: str) -> py.path.local:
+        """
+        Compile a C source string to a static archive (.a) using the same
+        CFLAGS as libspy for self.target. Returns the path to the archive.
+        """
+        assert self.target == "wasi", "c_compile_archive only supports wasi target"
+        src = textwrap.dedent(src)
+        c_file = self.tmpdir.join(f"{name}.c")
+        o_file = self.tmpdir.join(f"{name}.o")
+        a_file = self.tmpdir.join(f"{name}.a")
+        c_file.write(src)
+
+        cflags = get_cflags(self.target)
+        cc = ["python", "-m", "ziglang", "cc"]
+        robust_run([*cc, *cflags, "-c", str(c_file), "-o", str(o_file)])
+
+        ar = get_ar(self.target).split()
+        robust_run([*ar, "rcs", str(a_file), str(o_file)])
+        return a_file
+
+    def wasm_link_bundle(
+        self,
+        archives: list[py.path.local],
+        *,
+        exports: list[str],
+        name: str = "bundle",
+    ) -> py.path.local:
+        """
+        Link a list of .a archives into a single WASM reactor module.
+        Thin wrapper around spy.libspy.bundle.link_bundle.
+        """
+        out = self.tmpdir.join(f"{name}.wasm")
+        link_bundle(archives, exports, out=out)
+        return out

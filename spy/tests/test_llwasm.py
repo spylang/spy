@@ -188,6 +188,43 @@ class TestLLWasm(CTest):
 
         fn(self.selenium, test_wasm)
 
+    def test_bundle_multiple_archives(self):
+        if self.llwasm_backend == "pyodide":
+            pytest.skip("emscripten bundling not yet implemented")
+
+        part_a_src = """
+        #include <stdint.h>
+        int32_t shared_x = 100;
+        int32_t a_get_shared(void) { return shared_x; }
+        int32_t a_inc(void) { return ++shared_x; }
+        """
+
+        part_b_src = """
+        #include <stdint.h>
+        extern int32_t shared_x;
+        int32_t b_get_shared(void) { return shared_x; }
+        int32_t b_double(void) { shared_x *= 2; return shared_x; }
+        """
+
+        a_a = self.c_compile_archive(part_a_src, name="part_a")
+        b_a = self.c_compile_archive(part_b_src, name="part_b")
+
+        bundle = self.wasm_link_bundle(
+            archives=[a_a, b_a],
+            exports=["a_get_shared", "a_inc", "b_get_shared", "b_double"],
+        )
+
+        from spy.llwasm import LLWasmInstance
+
+        ll = LLWasmInstance.from_file(bundle)
+
+        assert ll.call("a_get_shared") == 100
+        assert ll.call("b_get_shared") == 100
+
+        assert ll.call("a_inc") == 101
+        assert ll.call("b_double") == 202
+        assert ll.call("a_get_shared") == 202
+
     def test_HostModule(self):
         if self.llwasm_backend == "pyodide":
             pytest.skip("fixme")
