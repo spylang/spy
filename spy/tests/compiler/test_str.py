@@ -100,6 +100,17 @@ class TestStr(CompilerTest):
         assert mod.get_slice("abc", slice(1, None, -1)) == "ba"
         assert mod.get_slice("abc", slice(None, -1, -1)) == ""
 
+    def test_split(self):
+        mod = self.compile("""
+            def split(s: str, sep: str) -> list[str]:
+                return s.split(sep)
+        """)
+
+        assert mod.split("a|b|c|d", "|") == ["a", "b", "c", "d"]
+        assert mod.split("a||b|c||d", "||") == ["a", "b|c", "d"]
+        assert mod.split("abcd", "|") == ["abcd"]
+        assert mod.split("", "|") == [""]
+
     def test_compare(self):
         mod = self.compile("""
         def eq(a: str, b: str) -> bool:

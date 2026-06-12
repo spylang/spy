@@ -367,4 +367,29 @@ class methods:
             else:
                 llnew.utf8[i] = ch
         return StrObject.to_str(llnew)
-        
+    
+    def split(self: str, sep: str) -> list[str]:
+        # Based on CPython stringlib/split.h
+        if len(self) == 0: return [""]
+
+        sep_len = len(sep)
+        if sep_len == 0: raise ValueError("empty seperator")
+
+        ll = StrObject.from_str(self)
+
+        result = list[str]()
+        search_position: int = 0
+        last_consumed_position: int = 0
+        sep_len = len(sep)
+
+        while search_position < len(self):
+            if self[search_position: search_position + sep_len] == sep:
+                result.append(self[last_consumed_position:search_position])
+                last_consumed_position = search_position + sep_len
+                search_position += sep_len + 1
+            else:
+                search_position += 1
+
+        result.append(self[last_consumed_position:])
+
+        return result
