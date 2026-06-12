@@ -10,17 +10,16 @@
 # In a real-world setup, the user would install qrcodegen via the system
 # package manager (apt/brew/...) or via a language-specific package manager.
 # Here we vendor the upstream source for self-containment.
-
-ZIG := $(shell python ../../../../spy/getzig.py)
-ifeq ($(ZIG),)
-    $(error zig not found)
-endif
+#
+# Compiler flags are derived from spy.libspy.flags so that out-of-tree
+# modules always stay in sync with libspy's own build flags.
 
 EMCC_AVAILABLE := $(shell which emcc 2>/dev/null)
 
 SRCS = qrcodegen.c
 
-CFLAGS := -Wall -std=c99 -fvisibility=hidden -fPIC -DNDEBUG -O3
+# Extra flags specific to this library (not from libspy.flags)
+EXTRA_CFLAGS := -Wall -std=c99 -DNDEBUG -O3
 
 BUILD_DIR := build/$(TARGET)
 
@@ -30,27 +29,16 @@ ifeq ($(TARGET),)
 
 # ---------- wasi target ----------
 else ifeq ($(TARGET), wasi)
-	CC := $(ZIG) cc
-	AR := $(ZIG) ar
-	CFLAGS := \
-		$(CFLAGS) \
-		--target=wasm32-wasi-musl \
-		-mmultivalue \
-		-Xclang -target-abi \
-		-Xclang experimental-mv \
-		-mbulk-memory
+	CC    := $(shell python -m spy.libspy.flags --cc  --target=wasi)
+	AR    := $(shell python -m spy.libspy.flags --ar  --target=wasi)
+	CFLAGS := $(shell python -m spy.libspy.flags --cflags --target=wasi) $(EXTRA_CFLAGS)
 	.DEFAULT_GOAL := build/wasi/libqrcodegen.a
 
 # -------- emscripten target --------
 else ifeq ($(TARGET), emscripten)
-	CC := emcc
-	AR := emar
-	CFLAGS := \
-		$(CFLAGS) \
-		-mmultivalue \
-		-Xclang -target-abi \
-		-Xclang experimental-mv \
-		-mbulk-memory
+	CC    := $(shell python -m spy.libspy.flags --cc  --target=emscripten)
+	AR    := $(shell python -m spy.libspy.flags --ar  --target=emscripten)
+	CFLAGS := $(shell python -m spy.libspy.flags --cflags --target=emscripten) $(EXTRA_CFLAGS)
 	ifeq ($(EMCC_AVAILABLE),)
 		$(warning Skipping emscripten target - emcc compiler not found in PATH)
 		.DEFAULT_GOAL := skip_emscripten
@@ -60,8 +48,9 @@ else ifeq ($(TARGET), emscripten)
 
 # ---------- native target ----------
 else ifeq ($(TARGET), native)
-	CC := cc
-	AR := ar
+	CC    := $(shell python -m spy.libspy.flags --cc  --target=native)
+	AR    := $(shell python -m spy.libspy.flags --ar  --target=native)
+	CFLAGS := $(shell python -m spy.libspy.flags --cflags --target=native) $(EXTRA_CFLAGS)
 	.DEFAULT_GOAL := build/native/libqrcodegen.a
 
 # ------- native-static target ------
@@ -70,9 +59,9 @@ else ifeq ($(TARGET), native-static)
 	$(warning Skipping native-static target - not supported on macOS)
 	.DEFAULT_GOAL := skip_native_static
   else
-	CC := $(ZIG) cc
-	AR := $(ZIG) ar
-	CFLAGS := $(CFLAGS) --target=native-native-musl
+	CC    := $(shell python -m spy.libspy.flags --cc  --target=native-static)
+	AR    := $(shell python -m spy.libspy.flags --ar  --target=native-static)
+	CFLAGS := $(shell python -m spy.libspy.flags --cflags --target=native-static) $(EXTRA_CFLAGS)
 	.DEFAULT_GOAL := build/native-static/libqrcodegen.a
   endif
 
