@@ -372,17 +372,37 @@ class methods:
         # Based on CPython stringlib/split.h
         if len(self) == 0: return [""]
 
-        sep_len = len(sep)
-        if sep_len == 0: raise ValueError("empty seperator")
+        sep_len_check = len(sep)
+        if sep_len_check == 0: raise ValueError("empty seperator")
+
+        llself = StrObject.from_str(self)
+        llsep = StrObject.from_str(sep)
 
         result = list[str]()
         search_position: int = 0
         last_consumed_position: int = 0
-        sep_len = len(sep)
+        sep_len = llsep.length
 
-        while search_position < len(self):
-            if self[search_position: search_position + sep_len] == sep:
-                result.append(self[last_consumed_position:search_position])
+        while search_position < llself.length:
+            ended = False
+            matched = True
+            for i in range(sep_len):
+                if search_position + i >= llself.length:
+                    matched=False
+                    ended = True
+                if not llself.utf8[search_position+i] == llsep.utf8[i]:
+                    matched = False
+                    break
+
+            if ended:
+                break
+            elif matched:
+                new_len = search_position-last_consumed_position
+                llnew = StrObject.alloc(new_len)
+                for j in range(new_len):
+                    llnew.utf8[j] = llself.utf8[last_consumed_position+j]
+
+                result.append(StrObject.to_str(llnew))
                 last_consumed_position = search_position + sep_len
                 search_position += sep_len
             else:
