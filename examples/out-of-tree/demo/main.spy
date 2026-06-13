@@ -2,7 +2,30 @@ import qrcodegen
 
 
 def main() -> None:
-    # TODO: once spyvm_qrcodegen exposes the bindings, this should encode a
-    # string into a QR code and print it as ASCII to stdout.
     text = "Hello from SPy!"
-    print(text)
+    qr = qrcodegen.encode(text)
+    size = qrcodegen.get_size(qr)
+    if size == 0:
+        print("failed to encode QR code")
+        return
+
+    # Render with ANSI background colors: each module is two spaces wide so
+    # that it looks square in a terminal (glyphs are taller than they are
+    # wide). Dark modules get a black background, light ones white. A quiet
+    # zone (light border) of 4 modules is recommended by the spec.
+    black = "\x1b[40m  "
+    white = "\x1b[47m  "
+    reset = "\x1b[0m"
+    border = 4
+    y = -border
+    while y < size + border:
+        line = ""
+        x = -border
+        while x < size + border:
+            if qrcodegen.get_module(qr, x, y):
+                line = line + black
+            else:
+                line = line + white
+            x = x + 1
+        print(line + reset)
+        y = y + 1

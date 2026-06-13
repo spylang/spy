@@ -64,6 +64,7 @@ nav:
     - reference/environment.md
   - Unsorted notes:
       - Low-level memory model: llmem.md
+      - llwasm, the low-level WASM layer: llwasm.md
 
 # Example navigation structure with subsections:
 # nav:
