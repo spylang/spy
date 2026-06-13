@@ -134,7 +134,7 @@ class SPyVM:
                 self._import_extra_vm_module(mod_path) for mod_path in extra_vm_modules
             ]
             extra_archives = [
-                reg.wasm_archive for reg in extra_regs if reg.wasm_archive is not None
+                archive for reg in extra_regs for archive in reg.wasm_archives
             ]
             llmod = libspy.get_LLMOD(extra_archives)
             self.ll = LLSPyInstance(llmod)

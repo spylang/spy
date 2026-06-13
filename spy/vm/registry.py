@@ -25,13 +25,16 @@ class ModuleRegistry:
     fqn: FQN
     content: list[tuple[FQN, "W_Object", IRTag]]
     loc: Loc
-    wasm_archive: Optional[py.path.local]
+    # .a archives (wasm32-wasi-musl) to bundle with libspy when this module is
+    # loaded in interpreted mode. Typically the module's own glue code plus any
+    # third-party library it wraps.
+    wasm_archives: list[py.path.local]
 
     def __init__(self, modname: str) -> None:
         self.fqn = FQN(modname)
         self.content = []
         self.loc = Loc.here(-2)
-        self.wasm_archive = None
+        self.wasm_archives = []
 
     def __repr__(self) -> str:
         return f"<ModuleRegistry '{self.fqn}'>"
