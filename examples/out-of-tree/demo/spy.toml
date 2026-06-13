@@ -9,5 +9,5 @@
 # CLI flags are additive on top of this file. To ignore spy.toml entirely,
 # pass `--no-spy-toml`.
 extra-vm-modules = [
-    "../qrcodegen-spy",
+    "../spyvm_qrcodegen",
 ]

@@ -1,10 +1,8 @@
 import qrcodegen
 
+
 def main() -> None:
     # TODO: once spyvm_qrcodegen exposes the bindings, this should encode a
     # string into a QR code and print it as ASCII to stdout.
     text = "Hello from SPy!"
     print(text)
-
-
-main()
