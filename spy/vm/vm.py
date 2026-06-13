@@ -64,7 +64,7 @@ from spy.vm.primitive import (
     w_DynamicType,
 )
 from spy.vm.property import W_ClassMethod, W_Property, W_StaticMethod
-from spy.vm.registry import ModuleRegistry
+from spy.vm.registry import CModuleBuildInfo, ModuleRegistry
 from spy.vm.str import W_Str
 from spy.vm.struct import UnwrappedStruct
 
@@ -120,6 +120,9 @@ class SPyVM:
     ast_color_map: Optional[dict[ast.Node, Color]]
     # If True, cache errors are collected and reported; if False, they're raised
     robust_import_caching: bool
+    # C-build metadata from out-of-tree builtin modules, keyed by modname.
+    # Consumed by the C backend to add -I flags and link extra archives.
+    c_build_infos: dict[str, CModuleBuildInfo]
 
     def __init__(
         self,
@@ -146,6 +149,7 @@ class SPyVM:
         self.irtags = {}
         self.modules_w = {}
         self.fqn_human_aliases = {}
+        self.c_build_infos = {}
         self.path = [str(STDLIB)]
         self.bluecache = BlueCache(self)
         self.emit_warning = lambda err: None
@@ -238,6 +242,8 @@ class SPyVM:
 
     def make_module(self, reg: ModuleRegistry) -> None:
         w_mod = W_Module(reg.fqn.modname, None)
+        if reg.build_info is not None:
+            self.c_build_infos[reg.fqn.modname] = reg.build_info
         self.register_module(w_mod)
         for fqn, w_obj, irtag in reg.content:
             # 1.register w_obj as a global constant

@@ -196,3 +196,6 @@ class Context:
         w_mod = self.vm.modules_w[modname]
         if not w_mod.is_builtin():
             self.tbh_includes.wl(f'#include "{modname}.h"')
+        elif modname in self.vm.c_build_infos:
+            for header in self.vm.c_build_infos[modname].headers:
+                self.tbh_includes.wl(f'#include "{header}"')

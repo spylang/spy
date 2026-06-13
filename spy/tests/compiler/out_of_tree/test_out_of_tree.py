@@ -10,7 +10,6 @@ MYMOD_PATH = py.path.local(__file__).dirpath("mymod")
 
 
 class TestOutOfTree(CompilerTest):
-    @skip_backends("C")
     def test_simple(self):
         # override self.vm with our custom SPyVM
         self.vm = SPyVM(extra_vm_modules=[str(MYMOD_PATH)])

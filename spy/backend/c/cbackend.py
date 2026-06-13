@@ -190,18 +190,41 @@ class CBackend:
                 print(f"---- {c_mod.cfile} ----")
                 print(highlight_src("C", c_mod.cfile.read()))  # type: ignore
 
+    def get_c_build_infos_flags(
+        self,
+    ) -> tuple[list[py.path.local], list[py.path.local]]:
+        """
+        Collect extra_include_dirs and extra_archives from all out-of-tree
+        builtin modules registered in the VM, resolved for self.config.target.
+        """
+        target = self.config.target
+        extra_include_dirs: list[py.path.local] = []
+        extra_archives: list[py.path.local] = []
+        for build_info in self.vm.c_build_infos.values():
+            extra_include_dirs.extend(build_info.include_dirs)
+            for build_dir, name in build_info.archive_specs:
+                extra_archives.append(build_dir.join(target, name))
+        return extra_include_dirs, extra_archives
+
     def write_build_script(self) -> None:
         assert self.cfiles != [], "call .cwrite() first"
         wasm_exports = []
         if self.config.target == "wasi" and self.config.kind == "lib":
             wasm_exports = self.get_wasm_exports()
 
+        extra_include_dirs, extra_archives = self.get_c_build_infos_flags()
         if self.config.kind == "py-cffi":
             assert wasm_exports == []
             self.build_script = self.cffi.write(self.cfiles)
         else:
             self.ninja = NinjaWriter(self.config, self.build_dir)
-            self.ninja.write(self.outname, self.cfiles, wasm_exports=wasm_exports)
+            self.ninja.write(
+                self.outname,
+                self.cfiles,
+                wasm_exports=wasm_exports,
+                extra_include_dirs=extra_include_dirs,
+                extra_archives=extra_archives,
+            )
             self.build_script = self.build_dir.join("build.ninja")
 
     def build(self) -> py.path.local:
