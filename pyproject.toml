@@ -51,6 +51,8 @@ docs = [
     "pygments==2.19.1"
 ]
 
+bench = ["numpy==2.4.6"]
+
 [project.urls]
 Homepage = "https://github.com/spylang/spy"
 
