@@ -59,7 +59,8 @@ jobs:
           cp spy/libspy/build/emscripten/release/libspy.wasm playground/
           cp dist/spylang-*.whl playground/
           cp -r assets playground/
-          ln -s ../examples examples
+          mkdir playground/examples
+          cp -r examples/[1-9]_* playground/examples
 
       - name: Remove build files from playground
         run: rm -f playground/Makefile
