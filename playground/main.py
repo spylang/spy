@@ -317,7 +317,7 @@ def main():
             ),
             ltk.Div().attr("id", "terminal"),
         )
-        .css("width", 1200)
+        .css({"width": "95%", "max-width": "1600px", "margin": "20px auto"})
         .css("font-size", 14)
         .attr("name", "Editor")
         .appendTo(ltk.window.document.body)
