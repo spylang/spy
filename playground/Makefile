@@ -51,3 +51,6 @@ local:
 clean:
 	rm -f libspy.mjs libspy.wasm spylang-*.whl
 	rm -rf assets examples
+
+serve:
+	python -m http.server

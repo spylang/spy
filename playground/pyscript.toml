@@ -4,8 +4,8 @@ packages = [ "micropip"]
 [files]
 "pyscript.toml" = ""
 
-"./examples/1_high_level/hello_add.spy" = "examples/1_high_level/"
 "./examples/1_high_level/hello.spy" = "examples/1_high_level/"
+"./examples/1_high_level/hello_add.spy" = "examples/1_high_level/"
 "./examples/1_high_level/fibo.spy" = "examples/1_high_level/"
 "./examples/1_high_level/factorial.spy" = "examples/1_high_level/"
 "./examples/1_high_level/collections.spy" = "examples/1_high_level/"
