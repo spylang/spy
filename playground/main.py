@@ -1,6 +1,7 @@
+# type: ignore
+
 import base64
 import sys
-import time
 import tomllib
 import zlib
 from pathlib import Path
@@ -53,7 +54,9 @@ class Editor(ltk.Div):
                 },
                 "lineNumbers": True,
                 "indentUnit": 4,
+                "indentWithTabs": False,
                 "matchBrackets": True,
+                "extraKeys": {"Tab": "indentMore", "Shift-Tab": "indentLess"},
             }
         )
         self.editor = ltk.window.CodeMirror(self.element[0], config)
@@ -66,15 +69,30 @@ class Editor(ltk.Div):
         )
 
 
-# Auto-discover example files from pyscript.toml
+# Auto-discover example files from pyscript.toml, grouped by category
 console.log("[Python] Loading example files from pyscript.toml...")
 with open("pyscript.toml", "rb") as f:
     config = tomllib.load(f)
-EXAMPLE_FILES = [
-    f"{dest}{source}"
-    for source, dest in config.get("files", {}).items()
-    if dest.startswith("examples/")
-]
+
+# CATEGORIES: dict mapping category dir name -> list of file paths
+# e.g. {"1_high_level": ["examples/1_high_level/hello.spy", ...], ...}
+CATEGORIES: dict[str, list[str]] = {}
+for source, dest in config.get("files", {}).items():
+    if dest.startswith("examples/"):
+        category = Path(source).parent.name  # e.g. "1_high_level"
+        CATEGORIES.setdefault(category, []).append(source)
+
+# Pretty labels for the outer tabs
+CATEGORY_LABELS = {
+    "1_high_level": "1 \u00b7 High Level",
+    "2_metaprogramming": "2 \u00b7 Metaprogramming",
+    "3_low_level": "3 \u00b7 Low Level",
+    "4_advanced": "4 \u00b7 Advanced",
+}
+
+
+def category_label(cat: str) -> str:
+    return CATEGORY_LABELS.get(cat, cat)
 
 
 def load_shared_code_from_url() -> None:
@@ -87,7 +105,10 @@ def load_shared_code_from_url() -> None:
             code = zlib.decompress(compressed).decode("utf-8")
             Path(SHARED_FILENAME).parent.mkdir(parents=True, exist_ok=True)
             Path(SHARED_FILENAME).write_text(code)
-            EXAMPLE_FILES.insert(0, SHARED_FILENAME)
+            shared_entry = {"shared": [SHARED_FILENAME]}
+            shared_entry.update(CATEGORIES)
+            CATEGORIES.clear()
+            CATEGORIES.update(shared_entry)
             console.log("[Python] Loaded shared code from URL into 'Shared' tab")
         except Exception as e:
             console.log(f"[Python] Failed to decode shared code from URL: {e}")
@@ -95,54 +116,68 @@ def load_shared_code_from_url() -> None:
 
 load_shared_code_from_url()
 
+# Currently selected file path
+current_file: str = next(iter(CATEGORIES.values()))[0]
+current_cat_idx: int = 0
 
-console.log(f"[Python] Creating editor with initial file: {EXAMPLE_FILES[0]}")
-editor = Editor(Path(EXAMPLE_FILES[0]).read_text())
+console.log(f"[Python] Creating editor with initial file: {current_file}")
+editor = Editor(Path(current_file).read_text())
 console.log("[Python] Editor created")
 
-display_filename = "test.spy"
 command_leader = "$"
 INPUT_TERMINAL_LEADER = f"{command_leader} spy "
-INPUT_TERMINAL_ENDER = f"{display_filename}"
+
+
+def display_filename() -> str:
+    return Path(current_file).name
+
 
 term_input = (
-    ltk.Input(INPUT_TERMINAL_LEADER + INPUT_TERMINAL_ENDER)
-    .css("width", "100%")
+    ltk.Input(INPUT_TERMINAL_LEADER + display_filename())
+    .css("flex", "1")
     .css("padding", 5)
     .attr("id", "terminal-input")
+    .attr("title", "Edit arguments then press Enter or click Run")
     .addClass("command-prompt")
 )
 
 
+def run_input_click(event):
+    """Run what is written in the terminal input"""
+    run_input_if_validated()
+
+
+term_input_run_btn = ltk.Button("Run ▶", run_input_click)
+term_input_run_btn.addClass("run-button").addClass("base-button")
+
+
 @ltk.callback
 def handle_term_enter(event):
+    """Run the command on Enter key"""
+    if event.key == "Enter":
+        run_input_if_validated()
+
+
+def run_input_if_validated():
     """Validate that the input field still starts with "$ spy (filename) and
     run the SPy cli with the indicated arguments
     """
-    if event.key == "Enter":
-        inp = event.target
-        value = inp.value
-
-        if value.startswith(INPUT_TERMINAL_LEADER):
-            _, _, argv = value.partition(INPUT_TERMINAL_LEADER)
-            run_spy_file_with_args(argv.split())
-        else:
-            print(f"{INPUT_TERMINAL_LEADER}{value} is not a valid command")
+    value = term_input.val()
+    if value.startswith(INPUT_TERMINAL_LEADER):
+        _, _, argv = value.partition(INPUT_TERMINAL_LEADER)
+        run_spy_file_with_args(argv.split())
+    else:
+        print(f"{value} is not a valid command")
 
 
 term_input.on("keydown", handle_term_enter)
-
-# Create tabs for example files (display only the filename, not the path)
-example_tabs = ltk.Tabs(
-    *[ltk.VBox().attr("name", Path(filepath).name) for filepath in EXAMPLE_FILES]
-)
 
 
 def run_spy_file_with_args(argv: list[str]):
     """Given a list of space-delimited arguments, pass them to the spy cli"""
     __terminal__.clear()
     text = editor.text()
-    with open(display_filename, "w") as f:
+    with open(display_filename(), "w") as f:
         f.write(text)
 
     spy.cli.app(argv)
@@ -152,13 +187,12 @@ def run_click(event):
     """Pass the text label of a button as args to the Spy cli"""
     element = ltk.find(event.target)
     flag_value = element.text().lower()
-    run_spy_file_with_args(flag_value.split() + [display_filename])
 
-    inp = ltk.window.document.getElementById("terminal-input")
-    console.log(
-        f"Setting input value to {command_leader} spy {flag_value} {display_filename} "
-    )
-    inp.value = f"{command_leader} spy {flag_value} {display_filename}"
+    new_input_value = f"{command_leader} spy {flag_value} {display_filename()}"
+    console.log("Setting input value to " + new_input_value)
+    term_input.val(new_input_value)
+
+    run_spy_file_with_args(flag_value.split() + [display_filename()])
 
 
 def ButtonLabel(text):
@@ -195,44 +229,86 @@ def RunShareButton():
     return btn
 
 
-@ltk.callback
-def tab_activated(event, ui=None):
-    # Load the selected example file into the editor
-    index = example_tabs.active()
-    filename = EXAMPLE_FILES[index]
-    src = Path(filename).read_text()
-    editor.text(src)
+filename_label = ltk.Label(display_filename())
+
+
+def load_file(filepath: str) -> None:
+    """Load a file into the editor and update the UI accordingly."""
+    global current_file
+    current_file = filepath
+    console.log(f"load_file: {filepath = }, {current_file = }")
+    editor.text(Path(filepath).read_text(encoding="utf-8"))
+    term_input.val(INPUT_TERMINAL_LEADER + display_filename())
+    filename_label.text(display_filename())
+
+
+def make_category_tabs() -> ltk.Tabs:
+    """Build the two-level tab widget: outer = categories, inner = files."""
+    inner_tabs_list: list[ltk.Tabs] = []
+
+    for cat, files in CATEGORIES.items():
+        file_tabs = ltk.Tabs(*[ltk.VBox().attr("name", Path(f).name) for f in files])
+
+        @ltk.callback
+        def on_file_tab(event, ui=None, _file_tabs=file_tabs, _files=files):
+            idx = _file_tabs.active()
+            console.log(f"on_file_tab: {_files[idx]}...")
+            load_file(_files[idx])
+
+        file_tabs.on("tabsactivate", on_file_tab)
+        file_tabs.find(".ui-tabs-panel").hide()
+        inner_tabs_list.append(file_tabs)
+
+    outer_tabs = ltk.Tabs(
+        *[
+            inner_tabs.attr("name", category_label(cat))
+            for cat, inner_tabs in zip(CATEGORIES.keys(), inner_tabs_list)
+        ]
+    )
+
+    @ltk.callback
+    def on_category_tab(event, ui=None):
+        # When switching category, load the first file of the new category
+        cat_idx = outer_tabs.active()
+        global current_cat_idx
+        if cat_idx == current_cat_idx:
+            return
+        current_cat_idx = cat_idx
+        cat = list(CATEGORIES.keys())[cat_idx]
+        load_file(CATEGORIES[cat][0])
+
+    outer_tabs.on("tabsactivate", on_category_tab)
+    return outer_tabs
 
 
 def main():
     console.log("[Python] main() function started - building GUI...")
 
-    # Register tab activation callback
-    example_tabs.on("tabsactivate", tab_activated)
-    example_tabs.find(".ui-tabs-panel").hide()
+    category_tabs = make_category_tabs()
 
     (
         ltk.VBox(
-            example_tabs,
+            category_tabs,
             ltk.HBox(
-                ltk.Label(f"{display_filename}"),
+                filename_label,
                 RunShareButton().css("margin-left", "auto"),
             ).css("margin", "5px"),
-            editor.css("border", "1px solid gray")
-            .css("height", 405)
-            .attr("id", "editor"),
+            editor.css("border", "1px solid gray").attr("id", "editor"),
             ltk.VBox(
                 ltk.Label("Try the SPy CLI:"),
-                term_input,
+                ltk.HBox(
+                    term_input,
+                    term_input_run_btn,
+                ).css({"width": "100%", "display": "flex", "gap": "5px"}),
                 ltk.Div(
                     ButtonLabel("Sample Flags:"),
                     RunSPyButton("execute"),
                     RunSPyButton("parse"),
+                    RunSPyButton("colorize"),
                     RunSPyButton("redshift"),
                     RunSPyButton("redshift --linearize"),
                     RunSPyButton("redshift --full-fqn"),
                     RunSPyButton("build --cdump"),
-                    RunSPyButton("colorize"),
                 ).css({"display": "flex", "gap": "5px", "vertical-align": "bottom"}),
             ).css(
                 {
@@ -241,7 +317,7 @@ def main():
             ),
             ltk.Div().attr("id", "terminal"),
         )
-        .css("width", 1200)
+        .css({"width": "95%", "max-width": "1600px", "margin": "20px auto"})
         .css("font-size", 14)
         .attr("name", "Editor")
         .appendTo(ltk.window.document.body)
