@@ -1,4 +1,4 @@
-from unsafe import gc_alloc, gc_ptr
+from unsafe import gc_alloc, gc_ptr, ptr_setbytes
 from operator import OpSpec, MetaArg
 
 
@@ -54,3 +54,14 @@ def array(DTYPE):
             return self
 
     return Self
+
+
+def empty[DTYPE](size: i32) -> array[DTYPE]:
+    return array[DTYPE](size)
+
+
+def zeros[DTYPE](size: i32) -> array[DTYPE]:
+    arr = array[DTYPE](size)
+    ll = arr.__ll__
+    ptr_setbytes(ll.items, 0, size)
+    return arr
