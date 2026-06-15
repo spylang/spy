@@ -50,7 +50,7 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-MEMKIND = Literal["raw", "gc"]
+MEMKIND = Literal["raw", "gc", "gc_atomic"]
 
 
 @UNSAFE.builtin_func(color="blue", kind="generic")
