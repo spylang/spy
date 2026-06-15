@@ -2,19 +2,21 @@ SRCS = mymod.c
 
 BUILD_DIR := build/$(TARGET)
 
+BUILD_TYPE ?= debug
+
+ifneq ($(TARGET),)
+	CC    := $(shell python -m spy.build.flags --cc  --target=$(TARGET))
+	AR    := $(shell python -m spy.build.flags --ar  --target=$(TARGET))
+	CFLAGS := $(shell python -m spy.build.flags --cflags --target=$(TARGET) --build-type=$(BUILD_TYPE))
+endif
+
 ifeq ($(TARGET),)
 	.DEFAULT_GOAL := usage
 
 else ifeq ($(TARGET), wasi)
-	CC    := $(shell python -m spy.build.flags --cc  --target=wasi)
-	AR    := $(shell python -m spy.build.flags --ar  --target=wasi)
-	CFLAGS := $(shell python -m spy.build.flags --cflags --target=wasi --build-type=debug)
 	.DEFAULT_GOAL := build/wasi/libmymod.a
 
 else ifeq ($(TARGET), native)
-	CC    := $(shell python -m spy.build.flags --cc  --target=native)
-	AR    := $(shell python -m spy.build.flags --ar  --target=native)
-	CFLAGS := $(shell python -m spy.build.flags --cflags --target=native --build-type=debug)
 	.DEFAULT_GOAL := build/native/libmymod.a
 
 else

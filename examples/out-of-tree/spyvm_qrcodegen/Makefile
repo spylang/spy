@@ -16,22 +16,22 @@ BUILD_DIR := build/$(TARGET)
 
 BUILD_TYPE ?= debug
 
+ifneq ($(TARGET),)
+	CC    := $(shell python -m spy.build.flags --cc  --target=$(TARGET))
+	AR    := $(shell python -m spy.build.flags --ar  --target=$(TARGET))
+	CFLAGS := $(shell python -m spy.build.flags --cflags --target=$(TARGET) --build-type=$(BUILD_TYPE)) $(EXTRA_CFLAGS)
+endif
+
 # ------- no target specified -------
 ifeq ($(TARGET),)
 	.DEFAULT_GOAL := all
 
 # ---------- wasi target ----------
 else ifeq ($(TARGET), wasi)
-	CC    := $(shell python -m spy.build.flags --cc  --target=wasi)
-	AR    := $(shell python -m spy.build.flags --ar  --target=wasi)
-	CFLAGS := $(shell python -m spy.build.flags --cflags --target=wasi --build-type=$(BUILD_TYPE)) $(EXTRA_CFLAGS)
 	.DEFAULT_GOAL := build/wasi/libqrcodegen_spy.a
 
 # -------- emscripten target --------
 else ifeq ($(TARGET), emscripten)
-	CC    := $(shell python -m spy.build.flags --cc  --target=emscripten)
-	AR    := $(shell python -m spy.build.flags --ar  --target=emscripten)
-	CFLAGS := $(shell python -m spy.build.flags --cflags --target=emscripten --build-type=$(BUILD_TYPE)) $(EXTRA_CFLAGS)
 	ifeq ($(EMCC_AVAILABLE),)
 		$(warning Skipping emscripten target - emcc compiler not found in PATH)
 		.DEFAULT_GOAL := skip_emscripten
@@ -41,9 +41,6 @@ else ifeq ($(TARGET), emscripten)
 
 # ---------- native target ----------
 else ifeq ($(TARGET), native)
-	CC    := $(shell python -m spy.build.flags --cc  --target=native)
-	AR    := $(shell python -m spy.build.flags --ar  --target=native)
-	CFLAGS := $(shell python -m spy.build.flags --cflags --target=native --build-type=$(BUILD_TYPE)) $(EXTRA_CFLAGS)
 	.DEFAULT_GOAL := build/native/libqrcodegen_spy.a
 
 # ------- native-static target ------
@@ -52,9 +49,6 @@ else ifeq ($(TARGET), native-static)
 	$(warning Skipping native-static target - not supported on macOS)
 	.DEFAULT_GOAL := skip_native_static
   else
-	CC    := $(shell python -m spy.build.flags --cc  --target=native-static)
-	AR    := $(shell python -m spy.build.flags --ar  --target=native-static)
-	CFLAGS := $(shell python -m spy.build.flags --cflags --target=native-static --build-type=$(BUILD_TYPE)) $(EXTRA_CFLAGS)
 	.DEFAULT_GOAL := build/native-static/libqrcodegen_spy.a
   endif
 
