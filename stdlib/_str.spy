@@ -139,7 +139,6 @@ class methods:
                 i = 0
                 if step > 0:
                     while current < stop:
-                        # ptr_copy_slice(dst, dstart, dend, src, sstart, send)
                         ptr_copy_slice(llnew.utf8, i, i+1, ll.utf8, current, current+1)
                         current += step
                         i += 1
@@ -434,7 +433,6 @@ class methods:
                     # add them as the final member of the result list
                     final_len = len_self - start_of_chunk
                     final = StrObject.alloc(final_len)
-                    # ptr_copy_slice(dst, dstart, dend, src, sstart, send)
                     ptr_copy_slice(final.utf8, 0, final_len, llself.utf8, start_of_chunk, len_self)
                     result.append(StrObject.to_str(final))
                 else:
@@ -446,7 +444,39 @@ class methods:
 
         if wam_sep.static_type == NoneType:
             def split_whitespace(_self:str) -> list[str]:
-                return ['haha']
+                # Based on CPython stringlib/split.h
+                len_self = len(_self)
+                if len_self == 0:
+                    return [""]
+
+                llself = StrObject.from_str(_self)
+                
+                # Walking through the string, alternate matching against whitespace and
+                # non-whitespace characters
+                result = list[str]()
+
+                # Starting positions in the target string
+                lead_pointer = 0
+                rear_pointer = 0
+
+                while True:
+                    # Look for a continuous group of whitespace
+                    while lead_pointer < len_self and _ll_isspace(llself.utf8[lead_pointer]):
+                        lead_pointer += 1
+                    if lead_pointer == len_self: break
+
+                    # Look for a continuous gorup of non-whitespace
+                    rear_pointer = lead_pointer
+                    while lead_pointer < len_self and not _ll_isspace(llself.utf8[lead_pointer]):
+                        lead_pointer += 1
+                    
+                    # Add the non-whitespace chunk to the result list
+                    llnew_len = lead_pointer - rear_pointer
+                    llnew = StrObject.alloc(llnew_len)
+                    ptr_copy_slice(llnew.utf8, 0, llnew_len, llself.utf8, rear_pointer, lead_pointer)
+                    result.append(StrObject.to_str(llnew))
+
+                return result
 
             return OpSpec(split_whitespace, [self])
 
@@ -457,7 +487,14 @@ class methods:
         llself = StrObject.from_str(self)
         for i in range(llself.length):
             ch = llself.utf8[i]
+            # These are all the indices < 256 for which str.isspace() is true
+            # in CPython:
             if not (u8(9) <= ch and ch <= u8(32)) or ch == u8(133) or ch == u8(160):
                 return False
         
         return True
+
+# A version of str.isspace that operates on single character indices (u8's)
+# For use in low level string code
+def _ll_isspace(ch: u8) -> bool:
+    return (u8(9) <= ch and ch <= u8(32)) or ch == u8(133) or ch == u8(160)
