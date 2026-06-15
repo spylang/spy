@@ -439,3 +439,12 @@ class methods:
 
         return result
 
+    def isspace(self: str) -> bool:
+        if len(self) == 0: return False
+        llself = StrObject.from_str(self)
+        for i in range(llself.length):
+            ch = llself.utf8[i]
+            if not (u8(9) <= ch and ch <= u8(32)) or ch == u8(133) or ch == u8(160):
+                return False
+        
+        return True

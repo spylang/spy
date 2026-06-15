@@ -104,13 +104,33 @@ class TestStr(CompilerTest):
         mod = self.compile("""
             def split(s: str, sep: str) -> list[str]:
                 return s.split(sep)
+
+            def split_whitespace(s: str) -> list[str]:
+                return s.split()
         """)
+
+        # Test for split on explicit step
         assert mod.split("a|b|c|d", "|") == ["a", "b", "c", "d"]
         assert mod.split("a||b|c||d", "||") == ["a", "b|c", "d"]
         assert mod.split("abc|||", "|") == ["abc", "", "", ""]
         assert mod.split("|abc", "|") == ["", "abc"]
         assert mod.split("abcd", "|") == ["abcd"]
         assert mod.split("", "|") == [""]
+
+    def test_isspace(self):
+        mod = self.compile("""
+            def iss(s: str) -> bool:
+                return s.isspace()
+        """)
+
+        assert not mod.iss("")
+        assert not mod.iss("a")
+        assert mod.iss(" ")
+        assert mod.iss("\t")
+        assert mod.iss("\r")
+        assert mod.iss("\n")
+        assert mod.iss(" \t\r\n")
+        assert not mod.iss(" \t\r\na")
 
     def test_compare(self):
         mod = self.compile("""
