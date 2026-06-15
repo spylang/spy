@@ -1,6 +1,6 @@
-import numpy as np
-
 from time import time
+
+import numpy as np
 
 size = 1000000
 

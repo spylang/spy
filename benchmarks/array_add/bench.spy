@@ -3,7 +3,8 @@ from time import time
 from lib_array1d import array, empty, zeros
 
 SIZE = 1000000
-N_TRIALS = 2
+N_TRIALS = 8
+
 
 def main() -> None:
     arr = array[f64](SIZE)
