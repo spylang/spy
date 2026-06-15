@@ -47,13 +47,13 @@ else ifeq ($(TARGET), emscripten)
 		$(SRCS) \
 		src/jsffi/jsffi.c
 
-	ifeq ($(EMCC_AVAILABLE),)
-		# emcc not found - display message and skip
-		$(warning Skipping emscripten target - emcc compiler not found in PATH)
-		.DEFAULT_GOAL := skip_emscripten
-	else
-		.DEFAULT_GOAL := build/emscripten/$(BUILD_TYPE)/libspy.mjs
-	endif
+  ifeq ($(EMCC_AVAILABLE),)
+    # emcc not found - display message and skip
+    $(warning Skipping emscripten target - emcc compiler not found in PATH)
+    .DEFAULT_GOAL := skip_emscripten
+  else
+    .DEFAULT_GOAL := build/emscripten/$(BUILD_TYPE)/libspy.mjs
+  endif
 
 # ---------- native target ----------
 else ifeq ($(TARGET), native)
