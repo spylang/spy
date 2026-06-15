@@ -4,6 +4,10 @@ This example demonstrates how to define and use an **out-of-tree builtin
 VM module** in SPy: a builtin module that lives outside the main SPy
 source tree, typically used to wrap an existing C library.
 
+**THIS IS LIKELY A TEMPORARY FEATURE**. The long term plan is to have a different and
+more direct way to write bindings to C libraries, but this is a good starting point for
+now.
+
 The example wraps [qrcodegen](https://www.nayuki.io/page/qr-code-generator-library)
 (by Project Nayuki, MIT licensed) and uses it to print a QR code to the
 terminal.
