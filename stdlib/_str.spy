@@ -368,76 +368,84 @@ class methods:
                 llnew.utf8[i] = ch
         return StrObject.to_str(llnew)
     
-      
-    def split(self: str, sep: str) -> list[str]:
-        # Based on CPython stringlib/split.h
-        len_self = len(self)
-        if len_self == 0:
-            return [""]
+    
+    @blue.metafunc
+    def split(self, wam_sep=None):
+        if wam_sep.static_type == str:
+            def split_sep(_self: str, sep: str) -> list[str]:
+                # Based on CPython stringlib/split.h
+                len_self = len(_self)
+                if len_self == 0:
+                    return [""]
 
-        sep_len_check = len(sep)
-        if sep_len_check == 0:
-            raise ValueError("empty separator")
+                sep_len_check = len(sep)
+                if sep_len_check == 0:
+                    raise ValueError("empty separator")
 
-        llself = StrObject.from_str(self)
-        llsep = StrObject.from_str(sep)
-        sep_len = llsep.length
+                llself = StrObject.from_str(_self)
+                llsep = StrObject.from_str(sep)
+                sep_len = llsep.length
+                
+                # For each starting position in the target string, look through len(sep) characters
+                # If all of them match the characters in sep, we have a match and should split here
+                # If not, increment starting position and try again
+                result = list[str]()
+
+                # Starting positions in the target string
+                search_position: int = 0 
+
+                # Start of the next "chunk" to be added after we find the next separator (or end of target string)
+                start_of_chunk: int = 0 
+
+                while search_position < llself.length:
+                    end_of_string = False
+                    matched = True
+                    for i in range(sep_len):
+                        if search_position + i >= llself.length:
+                            # Bail if we reach the end of the target string
+                            matched=False
+                            end_of_string = True
+                            break
+                        if not llself.utf8[search_position+i] == llsep.utf8[i]:
+                            matched = False
+                            break
+
+                    if end_of_string:
+                        break
+                    elif matched:
+                        # If we matched a separator, copy the items from start_of_chunk up to the 
+                        # separator as the latest list item
+                        new_len = search_position-start_of_chunk
+
+                        llnew = StrObject.alloc(new_len)
+                        for j in range(new_len):
+                            llnew.utf8[j] = llself.utf8[start_of_chunk+j]
+
+                        result.append(StrObject.to_str(llnew))
+                        start_of_chunk = search_position + sep_len
+                        search_position += sep_len
+                    else:
+                        search_position += 1
+                    
+
+                if start_of_chunk < len_self:
+                    # If we reach the end of the target string and we had characters after the final separator,
+                    # add them as the final member of the result list
+                    final_len = len_self - start_of_chunk
+                    final = StrObject.alloc(final_len)
+                    # ptr_copy_slice(dst, dstart, dend, src, sstart, send)
+                    ptr_copy_slice(final.utf8, 0, final_len, llself.utf8, start_of_chunk, len_self)
+                    result.append(StrObject.to_str(final))
+                else:
+                    # If the final characters were a separator, append an empty string
+                    result.append("")
+
+                return result
+            return OpSpec(split_sep, [self, wam_sep])
         
-        # For each starting position in the target string, look through len(sep) characters
-        # If all of them match the characters in sep, we have a match and should split here
-        # If not, increment starting position and try again
-        result = list[str]()
-
-        # Starting positions in the target string
-        search_position: int = 0 
-
-        # Start of the next "chunk" to be added after we find the next separator (or end of target string)
-        start_of_chunk: int = 0 
-
-        while search_position < llself.length:
-            end_of_string = False
-            matched = True
-            for i in range(sep_len):
-                if search_position + i >= llself.length:
-                    # Bail if we reach the end of the target string
-                    matched=False
-                    end_of_string = True
-                    break
-                if not llself.utf8[search_position+i] == llsep.utf8[i]:
-                    matched = False
-                    break
-
-            if end_of_string:
-                break
-            elif matched:
-                # If we matched a separator, copy the items from start_of_chunk up to the 
-                # separator as the latest list item
-                new_len = search_position-start_of_chunk
-
-                llnew = StrObject.alloc(new_len)
-                for j in range(new_len):
-                    llnew.utf8[j] = llself.utf8[start_of_chunk+j]
-
-                result.append(StrObject.to_str(llnew))
-                start_of_chunk = search_position + sep_len
-                search_position += sep_len
-            else:
-                search_position += 1
-            
-
-        if start_of_chunk < len_self:
-            # If we reach the end of the target string and we had characters after the final separator,
-            # add them as the final member of the result list
-            final_len = len_self - start_of_chunk
-            final = StrObject.alloc(final_len)
-            # ptr_copy_slice(dst, dstart, dend, src, sstart, send)
-            ptr_copy_slice(final.utf8, 0, final_len, llself.utf8, start_of_chunk, len_self)
-            result.append(StrObject.to_str(final))
-        else:
-            # If the final characters were a separator, append an empty string
-            result.append("")
-
-        return result
+        if wam_sep.static_type == NoneType:
+            return OpSpec.NULL    
+        return OpSpec.NULL
 
     def isspace(self: str) -> bool:
         if len(self) == 0: return False
