@@ -8,11 +8,11 @@ import pytest
 from spy.backend.c.cbackend import CBackend
 from spy.backend.interp import InterpModuleWrapper
 from spy.build.config import BuildConfig, BuildTarget, BuildType
+from spy.build.flags import get_ar, get_cflags
 from spy.build.ninja import NinjaWriter
 from spy.doppler import ErrorMode
 from spy.errors import SPyError
 from spy.libspy.bundle import link_bundle
-from spy.libspy.flags import get_ar, get_cflags, get_include
 from spy.tests.cffi_wrapper import load_cffi_module
 from spy.tests.exe_wrapper import ExeWrapper
 from spy.tests.wasm_wrapper import WasmModuleWrapper
@@ -404,17 +404,12 @@ class CTest:
         a_file = self.tmpdir.join(f"{name}.a")
         c_file.write(src)
 
-        build_type_flag = "-DSPY_DEBUG" if build_type == "debug" else "-DSPY_RELEASE"
-        cflags = get_cflags(self.target)
-        include_dir = get_include()
+        cflags = get_cflags(self.target, build_type)
         cc = ["python", "-m", "ziglang", "cc"]
         robust_run(
             [
                 *cc,
                 *cflags,
-                build_type_flag,
-                "-I",
-                include_dir,
                 "-c",
                 str(c_file),
                 "-o",

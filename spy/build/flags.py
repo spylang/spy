@@ -3,9 +3,10 @@ CLI helper that prints compiler flags for building out-of-tree modules
 against libspy.
 
 Usage:
-    python -m spy.libspy.flags --cflags --target=wasi
-    python -m spy.libspy.flags --include
-    python -m spy.libspy.flags --cc --target=wasi
+    python -m spy.build.flags --cflags --target=wasi --build-type=debug
+    python -m spy.build.flags --ldflags --target=wasi --build-type=release
+    python -m spy.build.flags --libdir --target=wasi --build-type=debug
+    python -m spy.build.flags --cc --target=wasi
 """
 
 import argparse
@@ -13,6 +14,8 @@ import sys
 from typing import Optional
 
 import spy.libspy
+
+BuildType = str  # "release" | "debug"
 
 # Base CFLAGS shared by all targets (mirrors spy/libspy/Makefile)
 _BASE_CFLAGS: list[str] = [
@@ -49,6 +52,28 @@ _TARGET_CFLAGS: dict[str, list[str]] = {
     ],
 }
 
+_TARGET_LDFLAGS: dict[str, list[str]] = {
+    "wasi": [
+        "--target=wasm32-wasi-musl",
+    ],
+    "emscripten": [],
+    "native": [],
+    "native-static": [
+        "--target=native-native-musl",
+        "-static",
+    ],
+}
+
+_BUILD_TYPE_CFLAGS: dict[str, list[str]] = {
+    "release": ["-DSPY_RELEASE", "-O3", "-flto"],
+    "debug": ["-DSPY_DEBUG", "-O0", "-g"],
+}
+
+_BUILD_TYPE_LDFLAGS: dict[str, list[str]] = {
+    "release": ["-flto"],
+    "debug": [],
+}
+
 _TARGET_CC: dict[str, str] = {
     "wasi": "python -m ziglang cc",
     "emscripten": "emcc",
@@ -64,25 +89,46 @@ _TARGET_AR: dict[str, str] = {
 }
 
 
-def get_cflags(target: str) -> list[str]:
+def _check_target(target: str) -> None:
     if target not in _TARGET_CFLAGS:
         raise ValueError(f"Unknown target: {target!r}. Valid: {list(_TARGET_CFLAGS)}")
-    return _BASE_CFLAGS + _TARGET_CFLAGS[target]
 
 
-def get_include() -> str:
-    return str(spy.libspy.INCLUDE)
+def _check_build_type(build_type: str) -> None:
+    if build_type not in _BUILD_TYPE_CFLAGS:
+        raise ValueError(
+            f"Unknown build_type: {build_type!r}. Valid: {list(_BUILD_TYPE_CFLAGS)}"
+        )
+
+
+def get_cflags(target: str, build_type: BuildType) -> list[str]:
+    _check_target(target)
+    _check_build_type(build_type)
+    include = ["-I", str(spy.libspy.INCLUDE)]
+    return (
+        _BASE_CFLAGS + _TARGET_CFLAGS[target] + _BUILD_TYPE_CFLAGS[build_type] + include
+    )
+
+
+def get_ldflags(target: str, build_type: BuildType) -> list[str]:
+    _check_target(target)
+    _check_build_type(build_type)
+    return _TARGET_LDFLAGS[target] + _BUILD_TYPE_LDFLAGS[build_type]
+
+
+def get_libdir(target: str, build_type: BuildType) -> str:
+    _check_target(target)
+    _check_build_type(build_type)
+    return str(spy.libspy.BUILD.join(target, build_type))
 
 
 def get_cc(target: str) -> str:
-    if target not in _TARGET_CC:
-        raise ValueError(f"Unknown target: {target!r}. Valid: {list(_TARGET_CC)}")
+    _check_target(target)
     return _TARGET_CC[target]
 
 
 def get_ar(target: str) -> str:
-    if target not in _TARGET_AR:
-        raise ValueError(f"Unknown target: {target!r}. Valid: {list(_TARGET_AR)}")
+    _check_target(target)
     return _TARGET_AR[target]
 
 
@@ -96,14 +142,25 @@ def main(argv: Optional[list[str]] = None) -> None:
         help="Build target",
     )
     parser.add_argument(
+        "--build-type",
+        choices=list(_BUILD_TYPE_CFLAGS),
+        default="debug",
+        help="Build type (default: debug)",
+    )
+    parser.add_argument(
         "--cflags",
         action="store_true",
         help="Print CFLAGS (requires --target)",
     )
     parser.add_argument(
-        "--include",
+        "--ldflags",
         action="store_true",
-        help="Print the libspy include directory (-I path)",
+        help="Print LDFLAGS (requires --target)",
+    )
+    parser.add_argument(
+        "--libdir",
+        action="store_true",
+        help="Print the libspy build directory (-L path, requires --target)",
     )
     parser.add_argument(
         "--cc",
@@ -123,10 +180,19 @@ def main(argv: Optional[list[str]] = None) -> None:
         if not args.target:
             print("error: --cflags requires --target", file=sys.stderr)
             sys.exit(1)
-        parts += get_cflags(args.target)
+        parts += get_cflags(args.target, args.build_type)
 
-    if args.include:
-        parts.append(f"-I{get_include()}")
+    if args.ldflags:
+        if not args.target:
+            print("error: --ldflags requires --target", file=sys.stderr)
+            sys.exit(1)
+        parts += get_ldflags(args.target, args.build_type)
+
+    if args.libdir:
+        if not args.target:
+            print("error: --libdir requires --target", file=sys.stderr)
+            sys.exit(1)
+        parts.append(f"-L{get_libdir(args.target, args.build_type)}")
 
     if args.cc:
         if not args.target:

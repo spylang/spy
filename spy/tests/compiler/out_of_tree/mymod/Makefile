@@ -6,15 +6,15 @@ ifeq ($(TARGET),)
 	.DEFAULT_GOAL := usage
 
 else ifeq ($(TARGET), wasi)
-	CC    := $(shell python -m spy.libspy.flags --cc  --target=wasi)
-	AR    := $(shell python -m spy.libspy.flags --ar  --target=wasi)
-	CFLAGS := $(shell python -m spy.libspy.flags --cflags --include --target=wasi) -DSPY_DEBUG -O0 -g
+	CC    := $(shell python -m spy.build.flags --cc  --target=wasi)
+	AR    := $(shell python -m spy.build.flags --ar  --target=wasi)
+	CFLAGS := $(shell python -m spy.build.flags --cflags --target=wasi --build-type=debug)
 	.DEFAULT_GOAL := build/wasi/libmymod.a
 
 else ifeq ($(TARGET), native)
-	CC    := $(shell python -m spy.libspy.flags --cc  --target=native)
-	AR    := $(shell python -m spy.libspy.flags --ar  --target=native)
-	CFLAGS := $(shell python -m spy.libspy.flags --cflags --include --target=native) -DSPY_DEBUG -O0 -g
+	CC    := $(shell python -m spy.build.flags --cc  --target=native)
+	AR    := $(shell python -m spy.build.flags --ar  --target=native)
+	CFLAGS := $(shell python -m spy.build.flags --cflags --target=native --build-type=debug)
 	.DEFAULT_GOAL := build/native/libmymod.a
 
 else
