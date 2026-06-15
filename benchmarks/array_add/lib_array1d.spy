@@ -1,0 +1,49 @@
+from unsafe import gc_alloc, gc_ptr
+from operator import OpSpec, MetaArg
+
+
+@struct
+class ArrayData[DTYPE]:
+    shape: gc_ptr[i32]
+    items: gc_ptr[DTYPE]
+
+
+@blue.generic
+def array(DTYPE):
+    ArrayData_c = ArrayData[DTYPE]
+
+    @struct
+    class Self:
+        __ll__: gc_ptr[ArrayData_c]
+
+        def __new__(n0: i32) -> Self:
+            ll = gc_alloc[ArrayData_c](1)
+            ll.shape = gc_alloc[i32](1)
+            ll.shape[0] = n0
+            total = n0
+            ll.items = gc_alloc[DTYPE](total)
+            return Self.__make__(ll)
+
+        def __getitem__(self: Self, i: i32) -> DTYPE:
+            return self.__ll__.items[i]
+
+        def __setitem__(self: Self, i: i32, val: DTYPE) -> None:
+            self.__ll__.items[i] = val
+
+        def size(self: Self) -> i32:
+            return self.__ll__.shape[0]
+
+        def __add__(self, other: Self) -> Self:
+            size = self.size()
+            assert size == other.size()
+            new = Self(size)
+            for idx in range(size):
+                new[idx] = self[idx] + other[idx]
+            return new
+
+        def fill(self, val: f64) -> None:
+            """Fill array with a constant value."""
+            for i in range(self.size()):
+                self[i] = val
+
+    return Self

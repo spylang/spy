@@ -1,0 +1,24 @@
+from time import time
+
+from lib_array1d import array
+
+size = 1000000
+
+
+def main() -> None:
+    arr = array[f64](size)
+    arr.fill(1.0)
+
+    for i in range(10):
+        res = arr + arr
+
+    duration = 10000000.
+
+    for ii in range(4):
+        t_start = time()
+        for _ in range(100):
+            res = arr + arr
+        duration_tmp = time() - t_start
+        duration = min(duration, duration_tmp)
+
+    print("spy:", duration, "s")
