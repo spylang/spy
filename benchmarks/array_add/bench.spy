@@ -12,7 +12,7 @@ def main() -> None:
     for i in range(10):
         res = arr + arr
 
-    duration = 10000000.
+    duration = 10000000.0
 
     for ii in range(4):
         t_start = time()
@@ -22,3 +22,12 @@ def main() -> None:
         duration = min(duration, duration_tmp)
 
     print("spy:", duration, "s")
+
+    for iii in range(4):
+        t_start = time()
+        for __ in range(100):
+            res = arr.inplace_add(arr)
+        duration_tmp = time() - t_start
+        duration = min(duration, duration_tmp)
+
+    print("spy (inplace):", duration, "s")

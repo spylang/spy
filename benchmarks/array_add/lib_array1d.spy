@@ -46,4 +46,11 @@ def array(DTYPE):
             for i in range(self.size()):
                 self[i] = val
 
+        def inplace_add(self, other: Self) -> Self:
+            size = self.size()
+            assert size == other.size()
+            for idx in range(size):
+                self[idx] = self[idx] + other[idx]
+            return self
+
     return Self
