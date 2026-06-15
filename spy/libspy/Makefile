@@ -7,29 +7,10 @@
 #   emscripten     wasm32-unknown-emscripten   emcc
 #
 # (*) the actual triplet for "native" depends on your system, of course
-
-ZIG := $(shell python ../getzig.py)
-# exit early if zig can't be found
-ifeq ($(ZIG),)
-    $(error zig not found)
-endif
-
+#
 EMCC_AVAILABLE := $(shell which emcc 2>/dev/null)
 
 SRCS = src/str.c src/bytes.c src/builtins.c src/debug.c src/unsafe.c src/operator.c src/posix.c
-
-# Base CFLAGS without optimization or debug settings
-#
-# XXX: do we really want -fPIC all the time? This is needed to generate CFFI
-# bindings, but it seems a waste in case of statically linked
-# executable. Maybe we should produce two versions, libspy.a and libspy-pic.a?
-CFLAGS := \
-    -fvisibility=hidden \
-    -Iinclude \
-    -fPIC
-
-# uncomment to enable debugging
-#CFLAGS := $(CFLAGS) -O0 -g
 
 # Add BUILD_TYPE with a default value
 BUILD_TYPE ?= release
@@ -37,20 +18,18 @@ BUILD_TYPE ?= release
 # Modify BUILD_DIR to include build type
 BUILD_DIR := build/$(TARGET)/$(BUILD_TYPE)
 
-# Add build type specific flags
-ifeq ($(BUILD_TYPE),release)
-    CFLAGS += -DNDEBUG -DSPY_RELEASE -O3
-else ifeq ($(BUILD_TYPE),debug)
-    CFLAGS += -DSPY_DEBUG -O0 -g
-else
-    $(error Invalid BUILD_TYPE: $(BUILD_TYPE). Must be 'release' or 'debug')
-endif
-
 # All compiler warnings are treated as errors
 ifeq ($(SPY_WERROR), true)
-	CFLAGS += "-Werror"
+	EXTRA_CFLAGS := -Werror
 else ifeq ($(SPY_WERROR), 1)
-	CFLAGS += "-Werror"
+	EXTRA_CFLAGS := -Werror
+endif
+
+# don't bother invoking spy.build.flags if we don't have a TARGET
+ifneq ($(TARGET),)
+	CC     := $(shell python -m spy.build.flags --cc     --target=$(TARGET))
+	AR     := $(shell python -m spy.build.flags --ar     --target=$(TARGET))
+	CFLAGS := $(shell python -m spy.build.flags --cflags --target=$(TARGET) --build-type=$(BUILD_TYPE)) $(EXTRA_CFLAGS)
 endif
 
 # ------- no target specified -------
@@ -59,19 +38,6 @@ ifeq ($(TARGET),)
 
 # ---------- wasi target ----------
 else ifeq ($(TARGET), wasi)
-	CC := $(ZIG) cc
-	LD := $(ZIG) wasm-ld
-	AR := $(ZIG) ar
-
-	CFLAGS := \
-		$(CFLAGS) \
-		-DSPY_TARGET_WASI \
-		--target=wasm32-wasi-musl \
-		-mmultivalue \
-		-Xclang -target-abi \
-		-Xclang experimental-mv \
-		-mbulk-memory
-
 	LDFLAGS := \
 		--no-entry \
 		--import-memory
@@ -80,17 +46,6 @@ else ifeq ($(TARGET), wasi)
 
 # -------- emscripten target --------
 else ifeq ($(TARGET), emscripten)
-    CC := emcc
-    AR := emar
-
-    CFLAGS := \
-        $(CFLAGS) \
-        -DSPY_TARGET_EMSCRIPTEN \
-		-mmultivalue \
-		-Xclang -target-abi \
-		-Xclang experimental-mv \
-		-mbulk-memory
-
 	LDFLAGS := \
 		-sWASM_BIGINT \
 		-sEXPORTED_RUNTIME_METHODS=HEAP8
@@ -99,24 +54,16 @@ else ifeq ($(TARGET), emscripten)
 		$(SRCS) \
 		src/jsffi/jsffi.c
 
-    ifeq ($(EMCC_AVAILABLE),)
-        # emcc not found - display message and skip
-        $(warning Skipping emscripten target - emcc compiler not found in PATH)
-        .DEFAULT_GOAL := skip_emscripten
+	ifeq ($(EMCC_AVAILABLE),)
+		# emcc not found - display message and skip
+		$(warning Skipping emscripten target - emcc compiler not found in PATH)
+		.DEFAULT_GOAL := skip_emscripten
 	else
-        .DEFAULT_GOAL := build/emscripten/$(BUILD_TYPE)/libspy.mjs
-    endif
+		.DEFAULT_GOAL := build/emscripten/$(BUILD_TYPE)/libspy.mjs
+	endif
 
 # ---------- native target ----------
 else ifeq ($(TARGET), native)
-	CC := cc
-	LD := ld
-	AR := ar
-
-	CFLAGS := \
-		$(CFLAGS) \
-		-DSPY_TARGET_NATIVE
-
 	.DEFAULT_GOAL := build/native/$(BUILD_TYPE)/libspy.a
 
 # ------- native-static target ------
@@ -125,14 +72,6 @@ else ifeq ($(TARGET), native-static)
     $(warning Skipping native-static target - not supported on macOS)
     .DEFAULT_GOAL := skip_native_static
   else
-	CC := $(ZIG) cc
-	AR := $(ZIG) ar
-
-	CFLAGS := \
-		$(CFLAGS) \
-		-DSPY_TARGET_NATIVE \
-		--target=native-native-musl
-
 	.DEFAULT_GOAL := build/native-static/$(BUILD_TYPE)/libspy.a
   endif
 

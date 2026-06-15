@@ -13,7 +13,11 @@ import argparse
 import sys
 from typing import Optional
 
-import spy.libspy
+import spy
+
+_LIBSPY = spy.ROOT.join("libspy")
+_INCLUDE = _LIBSPY.join("include")
+_BUILD = _LIBSPY.join("build")
 
 BuildType = str  # "release" | "debug"
 
@@ -104,7 +108,7 @@ def _check_build_type(build_type: str) -> None:
 def get_cflags(target: str, build_type: BuildType) -> list[str]:
     _check_target(target)
     _check_build_type(build_type)
-    include = ["-I", str(spy.libspy.INCLUDE)]
+    include = ["-I", str(_INCLUDE)]
     return (
         _BASE_CFLAGS + _TARGET_CFLAGS[target] + _BUILD_TYPE_CFLAGS[build_type] + include
     )
@@ -119,7 +123,7 @@ def get_ldflags(target: str, build_type: BuildType) -> list[str]:
 def get_libdir(target: str, build_type: BuildType) -> str:
     _check_target(target)
     _check_build_type(build_type)
-    return str(spy.libspy.BUILD.join(target, build_type))
+    return str(_BUILD.join(target, build_type))
 
 
 def get_cc(target: str) -> str:
