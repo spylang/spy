@@ -1,5 +1,6 @@
 """
-Content-addressed cache for WASM bundles produced by link_bundle().
+Link multiple .a archives into a single WASM reactor module, with a
+content-addressed cache.
 
 Cache layout:
     <spy-root>/../build/wasm-bundles/<hash>/bundle.wasm
@@ -22,9 +23,44 @@ import subprocess
 import py.path
 
 import spy
-from spy.libspy.bundle import link_bundle
+from spy.util import robust_run
 
 BUNDLE_CACHE_DIR = spy.ROOT.dirpath("build", "wasm-bundles")
+
+
+def link_bundle(
+    archives: list[py.path.local],
+    exports: list[str],
+    *,
+    out: py.path.local,
+) -> None:
+    """
+    Link one or more .a archives (wasm32-wasi-musl) into a single WASM
+    reactor module.
+
+    All archives are wrapped in --whole-archive so that symbols reachable
+    only via WASM exports are not discarded by the linker.
+
+    Args:
+        archives: list of .a archive paths (libspy.a first, then extras)
+        exports:  list of symbol names to expose as WASM exports
+        out:      output .wasm path
+    """
+    cmdline = [
+        "python",
+        "-m",
+        "ziglang",
+        "cc",
+        "--target=wasm32-wasi-musl",
+        "-mexec-model=reactor",
+        "-Wl,--whole-archive",
+        *[str(a) for a in archives],
+        "-Wl,--no-whole-archive",
+        *[f"-Wl,--export={name}" for name in exports],
+        "-o",
+        str(out),
+    ]
+    robust_run(cmdline)
 
 
 def _zig_version() -> str:

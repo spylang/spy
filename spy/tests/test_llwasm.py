@@ -1,10 +1,16 @@
 import os
+import textwrap
 
+import py.path
 import pytest
 from pytest_pyodide import run_in_pyodide  # type: ignore
 
 from spy import ROOT
+from spy.build.config import BuildType
+from spy.build.flags import get_ar, get_cflags
+from spy.build.wasm_bundle import link_bundle
 from spy.tests.support import CTest
+from spy.util import robust_run
 
 PYODIDE = ROOT.join("..", "pyodide", "node_modules", "pyodide")
 HAS_PYODIDE = PYODIDE.check(exists=True)
@@ -188,6 +194,48 @@ class TestLLWasm(CTest):
 
         fn(self.selenium, test_wasm)
 
+    def c_compile_archive(
+        self,
+        src: str,
+        *,
+        name: str,
+        build_type: BuildType = "debug",
+    ) -> py.path.local:
+        assert self.target == "wasi", "c_compile_archive only supports wasi target"
+        src = textwrap.dedent(src)
+        c_file = self.tmpdir.join(f"{name}.c")
+        o_file = self.tmpdir.join(f"{name}.o")
+        a_file = self.tmpdir.join(f"{name}.a")
+        c_file.write(src)
+
+        cflags = get_cflags(self.target, build_type)
+        cc = ["python", "-m", "ziglang", "cc"]
+        robust_run(
+            [
+                *cc,
+                *cflags,
+                "-c",
+                str(c_file),
+                "-o",
+                str(o_file),
+            ]
+        )
+
+        ar = get_ar(self.target).split()
+        robust_run([*ar, "rcs", str(a_file), str(o_file)])
+        return a_file
+
+    def wasm_link_bundle(
+        self,
+        archives: list[py.path.local],
+        *,
+        exports: list[str],
+        name: str = "bundle",
+    ) -> py.path.local:
+        out = self.tmpdir.join(f"{name}.wasm")
+        link_bundle(archives, exports, out=out)
+        return out
+
     def test_bundle_multiple_archives(self):
         if self.llwasm_backend == "pyodide":
             pytest.skip("emscripten bundling not yet implemented")
@@ -229,7 +277,7 @@ class TestLLWasm(CTest):
         if self.llwasm_backend == "pyodide":
             pytest.skip("emscripten bundling not yet implemented")
 
-        from spy.libspy.bundle_cache import get_or_build_bundle
+        from spy.build.wasm_bundle import get_or_build_bundle
 
         src = """
         #include <stdint.h>
@@ -252,7 +300,7 @@ class TestLLWasm(CTest):
         if self.llwasm_backend == "pyodide":
             pytest.skip("emscripten bundling not yet implemented")
 
-        from spy.libspy.bundle_cache import get_or_build_bundle
+        from spy.build.wasm_bundle import get_or_build_bundle
 
         src_v1 = """
         #include <stdint.h>

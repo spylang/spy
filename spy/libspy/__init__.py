@@ -4,6 +4,7 @@ from typing import Any, Optional
 import py.path
 
 import spy
+from spy.build.wasm_bundle import get_or_build_bundle
 from spy.errors import SPyError
 from spy.llwasm import HostModule, LLWasmInstance, LLWasmModule, WasmTrap
 from spy.location import Loc
@@ -53,8 +54,6 @@ def get_LLMOD(
     if not extra_archives:
         assert LLMOD is not None
         return LLMOD
-
-    from spy.libspy.bundle_cache import get_or_build_bundle
 
     libspy_a = BUILD.join("wasi", "debug", "libspy.a")
     all_archives = [libspy_a] + list(extra_archives)
