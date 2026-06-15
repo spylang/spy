@@ -105,8 +105,8 @@ class TestStr(CompilerTest):
             def split(s: str, sep: str) -> list[str]:
                 return s.split(sep)
 
-            #def split_whitespace(s: str) -> list[str]:
-            #    return s.split()
+            def split_whitespace(s: str) -> list[str]:
+                return s.split(None)
         """)
 
         # Test for split on explicit step
@@ -117,16 +117,15 @@ class TestStr(CompilerTest):
         assert mod.split("abcd", "|") == ["abcd"]
         assert mod.split("", "|") == [""]
 
-        return
         # split by whitespace
-        assert mod.split("a b c d "), ["a", "b", "c", "d"]
-        assert mod.split(" a b c d"), ["a", "b", "c", "d"]
-        assert mod.split(" a b c d "), ["a", "b", "c", "d"]
-        assert mod.split("         "), []
-        assert mod.split("  a    "), ["a"]
-        assert mod.split("  a    b   "), ["a", "b"]
-        assert mod.split("  a    b   c   "), ["a", "b", "c"]
-        assert mod.split("\n\ta \t\r b \v "), ["a", "b"]
+        assert mod.split_whitespace("a b c d ") == ["a", "b", "c", "d"]
+        assert mod.split_whitespace(" a b c d") == ["a", "b", "c", "d"]
+        assert mod.split_whitespace(" a b c d ") == ["a", "b", "c", "d"]
+        assert mod.split_whitespace("         ") == []
+        assert mod.split_whitespace("  a    ") == ["a"]
+        assert mod.split_whitespace("  a    b   ") == ["a", "b"]
+        assert mod.split_whitespace("  a    b   c   ") == ["a", "b", "c"]
+        assert mod.split_whitespace("\n\ta \t\r b \v ") == ["a", "b"]
 
     def test_isspace(self):
         mod = self.compile("""

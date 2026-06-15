@@ -24,6 +24,7 @@ from unsafe import (
 from unsafe import _alloc_BytesObject, _BytesObject_to_bytes
 from __spy__ import lookup_fqn
 from operator import OpSpec
+from types import NoneType
 
 
 # this MUST stay in sync with the equivalent struct declared in str.h
@@ -370,7 +371,7 @@ class methods:
     
     
     @blue.metafunc
-    def split(self, wam_sep=None):
+    def split(self, wam_sep):
         if wam_sep.static_type == str:
             def split_sep(_self: str, sep: str) -> list[str]:
                 # Based on CPython stringlib/split.h
@@ -442,9 +443,13 @@ class methods:
 
                 return result
             return OpSpec(split_sep, [self, wam_sep])
-        
+
         if wam_sep.static_type == NoneType:
-            return OpSpec.NULL    
+            def split_whitespace(_self:str) -> list[str]:
+                return ['haha']
+
+            return OpSpec(split_whitespace, [self])
+
         return OpSpec.NULL
 
     def isspace(self: str) -> bool:
