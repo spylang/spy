@@ -16,13 +16,19 @@ int32_t WASM_EXPORT(_spy_memcmp)(void *a, void *b, size_t n);
 
 #ifdef SPY_GC_NONE
 #  define spy_gc_alloc(size) spy_nogc_alloc(size)
+#  define spy_gc_alloc_pointerless(size) spy_nogc_alloc(size)
 #elif SPY_GC_BDWGC
 #  include <gc.h>
 static inline void *
 spy_gc_alloc_bdwgc(size_t size) {
     return GC_MALLOC(size);
 }
+static inline void *
+spy_gc_alloc_pointerless_bdwgc(size_t size) {
+    return GC_MALLOC_ATOMIC(size);
+}
 #  define spy_gc_alloc(size) spy_gc_alloc_bdwgc(size)
+#  define spy_gc_alloc_pointerless(size) spy_gc_alloc_pointerless_bdwgc(size)
 #else
 #  error "no GC selected"
 #endif
@@ -38,26 +44,33 @@ spy_gc_alloc_bdwgc(size_t size) {
    #endif
    } Ptr_T;
 
-   SPY_PTR_FUNCTIONS(raw, Ptr_T, T) defines all the accessor functions such as
+   SPY_PTR_FUNCTIONS(raw_alloc, Ptr_T, T) defines all the accessor functions such as
    Ptr_T$alloc, Ptr_T$load, etc.
 
    In SPY_RELEASE mode, a managed pointer is just a wrapper around an
    unmanaged C pointer, but in SPY_DEBUG it also contains the length of the
    array it points to, and every access is checked. The length is expressed in
    number of items, NOT size in bytes.
+
+   ALLOC_FUNC is one of:
+     - "raw_alloc"             (plain malloc, never collected)
+     - "gc_alloc"              (GC_MALLOC: zeroed, scanned)
+     - "gc_alloc_pointerless"  (GC_MALLOC_ATOMIC: not zeroed, not
+                                scanned; only for pointer-free T)
 */
+
 #ifdef SPY_DEBUG
 #  define SPY_PTR_FUNCTIONS _SPY_PTR_FUNCTIONS_CHECKED
 #else
 #  define SPY_PTR_FUNCTIONS _SPY_PTR_FUNCTIONS_UNCHECKED
 #endif
 
-#define _SPY_PTR_FUNCTIONS_UNCHECKED(MEMKIND, PTR, T)                                  \
+#define _SPY_PTR_FUNCTIONS_UNCHECKED(ALLOC_FUNC, PTR, T)                               \
     static inline PTR PTR##_from_addr(T *p) {                                          \
         return (PTR){p};                                                               \
     }                                                                                  \
     static inline PTR PTR##$alloc(size_t n) {                                          \
-        return (PTR){(T*)spy_##MEMKIND##_alloc(sizeof(T) * n)};                        \
+        return (PTR){(T*)spy_##ALLOC_FUNC(sizeof(T) * n)};                             \
     }                                                                                  \
     static inline T PTR##$deref(PTR p) {                                               \
         return *(p.p);                                                                 \
@@ -81,12 +94,12 @@ spy_gc_alloc_bdwgc(size_t size) {
         return p.p;                                                                    \
     }
 
-#define _SPY_PTR_FUNCTIONS_CHECKED(MEMKIND, PTR, T)                                    \
+#define _SPY_PTR_FUNCTIONS_CHECKED(ALLOC_FUNC, PTR, T)                                 \
     static inline PTR PTR##_from_addr(T *p) {                                          \
         return (PTR){p, 1};                                                            \
     }                                                                                  \
     static inline PTR PTR##$alloc(size_t n) {                                          \
-        return (PTR){(T*)spy_##MEMKIND##_alloc(sizeof(T) * n), (ptrdiff_t) n};         \
+        return (PTR){(T*)spy_##ALLOC_FUNC(sizeof(T) * n), (ptrdiff_t) n};              \
     }                                                                                  \
     static inline T PTR##$deref(PTR p) {                                               \
         return *(p.p);                                                                 \
@@ -137,7 +150,7 @@ typedef struct spy_unsafe$gc_ptr__builtins$u8 {
 #endif
 } spy_unsafe$gc_ptr__builtins$u8;
 
-SPY_PTR_FUNCTIONS(gc, spy_unsafe$gc_ptr__builtins$u8, uint8_t)
+SPY_PTR_FUNCTIONS(gc_alloc, spy_unsafe$gc_ptr__builtins$u8, uint8_t)
 #define spy_unsafe$gc_ptr__builtins$u8$NULL ((spy_unsafe$gc_ptr__builtins$u8){0})
 
 // short alias for manual use
