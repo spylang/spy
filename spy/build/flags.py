@@ -11,6 +11,7 @@ Usage:
 
 import argparse
 import sys
+from os import getenv
 from typing import Optional
 
 import spy
@@ -68,6 +69,9 @@ _TARGET_LDFLAGS: dict[str, list[str]] = {
     ],
 }
 
+_WARNING_CFLAGS: list[str] = ["-Werror=implicit-function-declaration"]
+_WARNING_AS_ERROR_CFLAGS: list[str] = ["-Werror", "-Wno-unreachable-code"]
+
 _BUILD_TYPE_CFLAGS: dict[str, list[str]] = {
     "release": ["-DSPY_RELEASE", "-O3", "-flto"],
     "debug": ["-DSPY_DEBUG", "-O0", "-g"],
@@ -105,12 +109,22 @@ def _check_build_type(build_type: str) -> None:
         )
 
 
-def get_cflags(target: str, build_type: BuildType) -> list[str]:
+def get_cflags(
+    target: str, build_type: BuildType, warning_as_error: bool = False
+) -> list[str]:
     _check_target(target)
     _check_build_type(build_type)
+    if warning_as_error or getenv("SPY_WERROR") in ("true", "1"):
+        warning_flags = _WARNING_AS_ERROR_CFLAGS
+    else:
+        warning_flags = _WARNING_CFLAGS
     include = ["-I", str(_INCLUDE)]
     return (
-        _BASE_CFLAGS + _TARGET_CFLAGS[target] + _BUILD_TYPE_CFLAGS[build_type] + include
+        _BASE_CFLAGS
+        + _TARGET_CFLAGS[target]
+        + _BUILD_TYPE_CFLAGS[build_type]
+        + warning_flags
+        + include
     )
 
 
@@ -152,6 +166,11 @@ def main(argv: Optional[list[str]] = None) -> None:
         help="Build type (default: debug)",
     )
     parser.add_argument(
+        "--warning-as-error",
+        action="store_true",
+        help="Treat warnings as errors (overrides SPY_WERROR env var)",
+    )
+    parser.add_argument(
         "--cflags",
         action="store_true",
         help="Print CFLAGS (requires --target)",
@@ -184,7 +203,7 @@ def main(argv: Optional[list[str]] = None) -> None:
         if not args.target:
             print("error: --cflags requires --target", file=sys.stderr)
             sys.exit(1)
-        parts += get_cflags(args.target, args.build_type)
+        parts += get_cflags(args.target, args.build_type, args.warning_as_error)
 
     if args.ldflags:
         if not args.target:

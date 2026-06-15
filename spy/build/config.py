@@ -2,7 +2,6 @@ import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
-from os import getenv
 from typing import Literal, Optional
 
 import spy.libspy
@@ -37,8 +36,6 @@ LDFLAGS = [
     "-lm"  # always include libm for now. Ideally we should do it only if needed
 ]
 
-WARNING_CFLAGS = ["-Werror=implicit-function-declaration"]
-WARNING_AS_ERROR_CFLAGS = ["-Werror", "-Wno-unreachable-code"]
 # fmt: on
 
 
@@ -56,7 +53,9 @@ class CompilerConfig:
             flags_target = config.target
 
         self.CC = get_cc(flags_target)
-        self.cflags += get_cflags(flags_target, config.build_type)
+        self.cflags += get_cflags(
+            flags_target, config.build_type, config.warning_as_error
+        )
         self.cflags += EXTRA_CFLAGS
 
         self.ldflags += LDFLAGS
@@ -84,11 +83,6 @@ class CompilerConfig:
                 "-L", libdir,
                 "-lspy",
             ]  # fmt: skip
-
-        if config.warning_as_error or getenv("SPY_WERROR") in ("true", "1"):
-            self.cflags += WARNING_AS_ERROR_CFLAGS
-        else:
-            self.cflags += WARNING_CFLAGS
 
         # target specific flags
         if config.target == "native":

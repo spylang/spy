@@ -18,18 +18,11 @@ BUILD_TYPE ?= release
 # Modify BUILD_DIR to include build type
 BUILD_DIR := build/$(TARGET)/$(BUILD_TYPE)
 
-# All compiler warnings are treated as errors
-ifeq ($(SPY_WERROR), true)
-	EXTRA_CFLAGS := -Werror
-else ifeq ($(SPY_WERROR), 1)
-	EXTRA_CFLAGS := -Werror
-endif
-
 # don't bother invoking spy.build.flags if we don't have a TARGET
 ifneq ($(TARGET),)
 	CC     := $(shell python -m spy.build.flags --cc     --target=$(TARGET))
 	AR     := $(shell python -m spy.build.flags --ar     --target=$(TARGET))
-	CFLAGS := $(shell python -m spy.build.flags --cflags --target=$(TARGET) --build-type=$(BUILD_TYPE)) $(EXTRA_CFLAGS)
+	CFLAGS := $(shell python -m spy.build.flags --cflags --target=$(TARGET) --build-type=$(BUILD_TYPE))
 endif
 
 # ------- no target specified -------
