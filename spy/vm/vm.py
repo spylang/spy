@@ -11,6 +11,7 @@ import py
 from spy import ROOT, ast, libspy
 from spy.analyze.symtable import Color, ImportRef, SymTable, maybe_blue
 from spy.ast import Color, FuncKind
+from spy.build.build_info import BuildInfoFunc
 from spy.doppler import ErrorMode, redshift
 from spy.errors import WIP, SPyError
 from spy.fqn import FQN, QUALIFIERS
@@ -64,7 +65,7 @@ from spy.vm.primitive import (
     w_DynamicType,
 )
 from spy.vm.property import W_ClassMethod, W_Property, W_StaticMethod
-from spy.vm.registry import CModuleBuildInfo, ModuleRegistry
+from spy.vm.registry import ModuleRegistry
 from spy.vm.str import W_Str
 from spy.vm.struct import UnwrappedStruct
 
@@ -120,9 +121,9 @@ class SPyVM:
     ast_color_map: Optional[dict[ast.Node, Color]]
     # If True, cache errors are collected and reported; if False, they're raised
     robust_import_caching: bool
-    # C-build metadata from out-of-tree builtin modules, keyed by modname.
-    # Consumed by the C backend to add -I flags and link extra archives.
-    c_build_infos: dict[str, CModuleBuildInfo]
+    # build_info callables from out-of-tree builtin modules, keyed by modname.
+    # Consumed by the C backend: call build_info(target, build_type) per module.
+    build_info_funcs: dict[str, BuildInfoFunc]
 
     def __init__(
         self,
@@ -130,15 +131,17 @@ class SPyVM:
         *,
         extra_vm_modules: list[str] = [],
     ) -> None:
+        self.build_info_funcs = {}
         if ll is None:
             # Import extra module packages first so we can collect their
             # wasm_archive paths before constructing ll.
             extra_regs = [
                 self._import_extra_vm_module(mod_path) for mod_path in extra_vm_modules
             ]
-            extra_archives = [
-                archive for reg in extra_regs for archive in reg.wasm_archives
-            ]
+            extra_archives = []
+            for build_info_fn in self.build_info_funcs.values():
+                for archive in build_info_fn("wasi", "debug").archives:
+                    extra_archives.append(py.path.local(archive))
             llmod = libspy.get_LLMOD(extra_archives)
             self.ll = LLSPyInstance(llmod)
         else:
@@ -149,7 +152,6 @@ class SPyVM:
         self.irtags = {}
         self.modules_w = {}
         self.fqn_human_aliases = {}
-        self.c_build_infos = {}
         self.path = [str(STDLIB)]
         self.bluecache = BlueCache(self)
         self.emit_warning = lambda err: None
@@ -242,8 +244,6 @@ class SPyVM:
 
     def make_module(self, reg: ModuleRegistry) -> None:
         w_mod = W_Module(reg.fqn.modname, None)
-        if reg.build_info is not None:
-            self.c_build_infos[reg.fqn.modname] = reg.build_info
         self.register_module(w_mod)
         for fqn, w_obj, irtag in reg.content:
             # 1.register w_obj as a global constant
@@ -258,8 +258,9 @@ class SPyVM:
         Import an out-of-tree builtin module package and return its registry.
 
         The convention is that the package exposes a MODULE attribute which is
-        an instance of ModuleRegistry. If MODULE.wasm_archive is set, the archive
-        will be linked into the WASM bundle before ll is created.
+        an instance of ModuleRegistry, and optionally a build_info callable
+        (target, build_type) -> BuildInfo. If build_info is present it is
+        stored in self.build_info_funcs keyed by the module name.
         """
         # import the extra module even if it's not in sys.path
         p = py.path.local(mod_path)
@@ -275,6 +276,9 @@ class SPyVM:
         spec.loader.exec_module(pkg)  # type: ignore[union-attr]
         reg = pkg.MODULE
         assert isinstance(reg, ModuleRegistry)
+        build_info_fn = getattr(pkg, "build_info", None)
+        if build_info_fn is not None:
+            self.build_info_funcs[reg.fqn.modname] = build_info_fn
         return reg
 
     def call_INITs(self) -> None:

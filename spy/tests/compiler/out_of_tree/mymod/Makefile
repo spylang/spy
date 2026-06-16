@@ -1,8 +1,7 @@
 SRCS = mymod.c
 
-BUILD_DIR := build/$(TARGET)
-
 BUILD_TYPE ?= debug
+BUILD_DIR := build/$(TARGET)/$(BUILD_TYPE)
 
 ifneq ($(TARGET),)
 	CC    := $(shell python -m spy.build.flags --cc  --target=$(TARGET))
@@ -14,10 +13,10 @@ ifeq ($(TARGET),)
 	.DEFAULT_GOAL := usage
 
 else ifeq ($(TARGET), wasi)
-	.DEFAULT_GOAL := build/wasi/libmymod.a
+	.DEFAULT_GOAL := build/wasi/$(BUILD_TYPE)/libmymod.a
 
 else ifeq ($(TARGET), native)
-	.DEFAULT_GOAL := build/native/libmymod.a
+	.DEFAULT_GOAL := build/native/$(BUILD_TYPE)/libmymod.a
 
 else
 	.DEFAULT_GOAL := usage
@@ -28,7 +27,7 @@ OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SRCS))
 $(BUILD_DIR):
 	mkdir -p $@
 
-build/$(TARGET)/libmymod.a: $(OBJS)
+build/$(TARGET)/$(BUILD_TYPE)/libmymod.a: $(OBJS)
 	$(AR) rcs $@ $(OBJS)
 
 $(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)

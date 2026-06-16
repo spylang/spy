@@ -1,26 +1,24 @@
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-import py.path
-
-from spy.vm.registry import CModuleBuildInfo, ModuleRegistry
+from spy.build.build_info import BuildInfo, BuildTarget, BuildType
+from spy.vm.registry import ModuleRegistry
 from spy.vm.str import W_Str
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-_HERE = py.path.local(__file__).dirpath()
+HERE = Path(__file__).parent
 
 MODULE = ModuleRegistry("mymod")
 
-MODULE.wasm_archives = [
-    _HERE.join("build", "wasi", "libmymod.a"),
-]
 
-MODULE.build_info = CModuleBuildInfo(
-    archive_specs=[(_HERE.join("build"), "libmymod.a")],
-    include_dirs=[_HERE],
-    headers=[_HERE.join("mymod.h")],
-)
+def build_info(target: BuildTarget, build_type: BuildType) -> BuildInfo:
+    return BuildInfo(
+        include_dirs=[f"{HERE}"],
+        headers=[f"{HERE}/mymod.h"],
+        archives=[f"{HERE}/build/{target}/{build_type}/libmymod.a"],
+    )
 
 
 @MODULE.builtin_func

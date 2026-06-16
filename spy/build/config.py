@@ -5,11 +5,10 @@ from dataclasses import dataclass
 from typing import Literal, Optional
 
 import spy.libspy
+from spy.build.build_info import BuildTarget, BuildType
 from spy.build.flags import get_cc, get_cflags, get_ldflags, get_libdir
 
-BuildTarget = Literal["native", "wasi", "emscripten"]
 OutputKind = Literal["exe", "lib", "py-cffi"]
-BuildType = Literal["release", "debug"]
 GCOption = Literal["none", "bdwgc"]
 
 

@@ -13,7 +13,7 @@ MYMOD_PATH = py.path.local(__file__).dirpath("mymod")
 
 @pytest.fixture(scope="module", autouse=True)
 def build_mymod():
-    archive = MYMOD_PATH.join("build", "wasi", "libmymod.a")
+    archive = MYMOD_PATH.join("build", "wasi", "debug", "libmymod.a")
     sources = MYMOD_PATH.listdir("*.c") + MYMOD_PATH.listdir("*.h")
     if archive.exists() and all(archive.mtime() >= src.mtime() for src in sources):
         return

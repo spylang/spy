@@ -5,6 +5,7 @@ import py.path
 from spy.backend.c.cffiwriter import CFFIWriter
 from spy.backend.c.cmodwriter import CModule, CModuleWriter
 from spy.backend.c.cstructwriter import CStructDefs, CStructWriter
+from spy.build.build_info import BuildInfo
 from spy.build.cffi import cffi_build
 from spy.build.config import BuildConfig
 from spy.build.ninja import NinjaWriter
@@ -190,21 +191,21 @@ class CBackend:
                 print(f"---- {c_mod.cfile} ----")
                 print(highlight_src("C", c_mod.cfile.read()))  # type: ignore
 
-    def get_c_build_infos_flags(
-        self,
-    ) -> tuple[list[py.path.local], list[py.path.local]]:
+    def get_merged_build_info(self) -> BuildInfo:
         """
-        Collect extra_include_dirs and extra_archives from all out-of-tree
-        builtin modules registered in the VM, resolved for self.config.target.
+        Call each module's build_info(target, build_type) and merge results
+        into a single BuildInfo for the current config.
         """
         target = self.config.target
-        extra_include_dirs: list[py.path.local] = []
-        extra_archives: list[py.path.local] = []
-        for build_info in self.vm.c_build_infos.values():
-            extra_include_dirs.extend(build_info.include_dirs)
-            for build_dir, name in build_info.archive_specs:
-                extra_archives.append(build_dir.join(target, name))
-        return extra_include_dirs, extra_archives
+        build_type = self.config.build_type
+        merged = BuildInfo()
+        for build_info_fn in self.vm.build_info_funcs.values():
+            info = build_info_fn(target, build_type)
+            merged.include_dirs.extend(info.include_dirs)
+            merged.archives.extend(info.archives)
+            merged.cflags.extend(info.cflags)
+            merged.ldflags.extend(info.ldflags)
+        return merged
 
     def write_build_script(self) -> None:
         assert self.cfiles != [], "call .cwrite() first"
@@ -212,7 +213,7 @@ class CBackend:
         if self.config.target == "wasi" and self.config.kind == "lib":
             wasm_exports = self.get_wasm_exports()
 
-        extra_include_dirs, extra_archives = self.get_c_build_infos_flags()
+        extra = self.get_merged_build_info()
         if self.config.kind == "py-cffi":
             assert wasm_exports == []
             self.build_script = self.cffi.write(self.cfiles)
@@ -222,8 +223,10 @@ class CBackend:
                 self.outname,
                 self.cfiles,
                 wasm_exports=wasm_exports,
-                extra_include_dirs=extra_include_dirs,
-                extra_archives=extra_archives,
+                extra_include_dirs=extra.include_dirs,
+                extra_archives=extra.archives,
+                extra_cflags=extra.cflags,
+                extra_ldflags=extra.ldflags,
             )
             self.build_script = self.build_dir.join("build.ninja")
 

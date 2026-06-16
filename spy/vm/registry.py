@@ -1,8 +1,5 @@
-from dataclasses import dataclass, field
 from types import FunctionType
 from typing import TYPE_CHECKING, Any, Callable, Optional, Type
-
-import py.path
 
 from spy.ast import Color, FuncKind
 from spy.fqn import FQN, QUALIFIERS
@@ -16,35 +13,6 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-@dataclass
-class CModuleBuildInfo:
-    """
-    C-build metadata for an out-of-tree builtin module.
-
-    Collected by SPyVM and consumed by the C backend to:
-      - add -I flags so the generated C code can #include the module's headers;
-      - emit #include directives for the module's public header in generated code;
-      - link the module's .a archives into the final binary.
-
-    Archive layout mirrors spy/libspy/build/:
-        <build_dir>/<target>/lib<name>.a
-
-    The C backend selects the right subdirectory based on the build target, so
-    the module only needs to declare the root and the archive filenames.
-    """
-
-    # Each entry is (build_dir, archive_name). Archives are resolved as
-    # build_dir/<target>/<archive_name>. Multiple entries are used when the
-    # module bundles several independent C libraries, each with its own build
-    # tree (e.g. glue code + vendored third-party library).
-    archive_specs: list[tuple[py.path.local, str]] = field(default_factory=list)
-    # Absolute paths to directories to add as -I flags when compiling.
-    include_dirs: list[py.path.local] = field(default_factory=list)
-    # Public header files to #include in generated C that calls this module.
-    # Paths are absolute; the C backend emits them verbatim.
-    headers: list[py.path.local] = field(default_factory=list)
-
-
 class ModuleRegistry:
     """
     Keep track of all the objects which belong to a certain module.
@@ -55,20 +23,11 @@ class ModuleRegistry:
     fqn: FQN
     content: list[tuple[FQN, "W_Object", IRTag]]
     loc: Loc
-    # .a archives (wasm32-wasi-musl) to bundle with libspy when this module is
-    # loaded in interpreted mode. Typically the module's own glue code plus any
-    # third-party library it wraps.
-    wasm_archives: list[py.path.local]
-    # C-build metadata consumed by the C backend. None for in-tree builtins
-    # (their headers ship with libspy and their symbols live in libspy.a).
-    build_info: Optional[CModuleBuildInfo]
 
     def __init__(self, modname: str) -> None:
         self.fqn = FQN(modname)
         self.content = []
         self.loc = Loc.here(-2)
-        self.wasm_archives = []
-        self.build_info = None
 
     def __repr__(self) -> str:
         return f"<ModuleRegistry '{self.fqn}'>"

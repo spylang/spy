@@ -6,7 +6,7 @@ import pytest
 from pytest_pyodide import run_in_pyodide  # type: ignore
 
 from spy import ROOT
-from spy.build.config import BuildType
+from spy.build.build_info import BuildType
 from spy.build.flags import get_ar, get_cflags
 from spy.build.wasm_bundle import link_bundle
 from spy.tests.support import CTest
