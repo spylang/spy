@@ -1,4 +1,7 @@
-bench: benchpy benchspy
+all: benchpy benchspy
+
+check-ci: all
+test: benchspy
 
 benchpy:
 	python bench_numpy.py

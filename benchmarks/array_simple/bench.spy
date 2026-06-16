@@ -17,7 +17,7 @@ def main() -> None:
             res = arr + arr
         duration_tmp = time() - t_start
         duration = min(duration, duration_tmp)
-    print("spy add:", duration, "s")
+    print("spy add:#", duration, "s")
 
     duration = 10000000.0
     for i_1 in range(N_TRIALS):
@@ -26,7 +26,7 @@ def main() -> None:
             res = arr.inplace_add(arr)
         duration_tmp = time() - t_start
         duration = min(duration, duration_tmp)
-    print("spy add inplace:", duration, "s")
+    print("spy add inplace:#", duration, "s")
 
     duration = 10000000.0
     for i_2 in range(N_TRIALS):
@@ -35,7 +35,7 @@ def main() -> None:
             res = empty[f64](SIZE)
         duration_tmp = time() - t_start
         duration = min(duration, duration_tmp)
-    print("spy empty:", duration, "s")
+    print("spy empty:#", duration, "s")
 
     duration = 10000000.0
     for i_3 in range(N_TRIALS):
@@ -44,4 +44,4 @@ def main() -> None:
             res = zeros[f64](SIZE)
         duration_tmp = time() - t_start
         duration = min(duration, duration_tmp)
-    print("spy zeros:", duration, "s")
+    print("spy zeros:#", duration, "s")
