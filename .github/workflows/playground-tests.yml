@@ -1,4 +1,4 @@
-name: Playground and Example Tests
+name: Playground, Example and Benchmark Tests
 
 on:
   push:
@@ -44,3 +44,62 @@ jobs:
       - name: Run examples
         run: |
           pytest -n auto examples
+
+  benchmark-tests:
+    name: benchmark-tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y libgc-dev
+
+      - name: Install project and benchmark dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .[dev,bench]
+
+      - name: Build libspy
+        run: |
+          cd spy/libspy
+          make
+
+      - name: Install Julia
+        uses: julia-actions/setup-julia@v2
+        with:
+          version: '1'
+
+      - name: Install uv and PyPy
+        run: |
+          pip install uv
+          uv python install pypy
+
+      - name: Install Codon
+        run: |
+          curl -L https://github.com/exaloop/codon/releases/latest/download/codon-linux-x86_64.tar.gz \
+            | tar -xz -C "$HOME"
+          mv $HOME/codon-deploy-linux-x86_64 $HOME/codon
+          echo "$HOME/codon/bin" >> $GITHUB_PATH
+
+      - name: Display tool versions
+        run: |
+          python --version
+          julia --version
+          echo -n "Codon " && codon --version
+          $(uv python find pypy --no-project) --version
+
+      - name: Run benchmark structure and SPy tests
+        run: |
+          pytest benchmarks/test_spy_bench.py -v
+
+      - name: Run full benchmark CI suite
+        run: |
+          pytest benchmarks/test_check_ci.py -v
