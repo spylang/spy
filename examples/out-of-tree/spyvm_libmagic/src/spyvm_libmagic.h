@@ -1,5 +1,5 @@
-#ifndef LIBMAGIC_SPY_H
-#define LIBMAGIC_SPY_H
+#ifndef SPYVM_LIBMAGIC_H
+#define SPYVM_LIBMAGIC_H
 
 #include <spy.h>
 #include <spy/bytes.h>
@@ -8,4 +8,4 @@
 spy_StrObject *spy_magic$describe(spy_BytesObject *data);
 spy_StrObject *spy_magic$mime(spy_BytesObject *data);
 
-#endif /* LIBMAGIC_SPY_H */
+#endif /* SPYVM_LIBMAGIC_H */

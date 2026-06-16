@@ -34,16 +34,16 @@ brew install libmagic         # macOS
 ```
 spyvm_libmagic/
 ├── __init__.py     # the ModuleRegistry: bindings + C-build metadata
-├── Makefile        # builds our glue into build/<target>/libmagic_spy.a (native only)
+├── Makefile        # builds our glue into build/<target>/spyvm_libmagic.a (native only)
 └── src/
-    ├── libmagic_spy.c   # glue: SPy bytes -> magic_buffer() -> SPy str
-    └── libmagic_spy.h
+    ├── spyvm_libmagic.c  # glue: SPy bytes -> magic_buffer() -> SPy str
+    └── spyvm_libmagic.h
 ```
 
 ## Building the glue
 
 ```bash
-make TARGET=native          # produces build/native/libmagic_spy.a
+make TARGET=native          # produces build/native/spyvm_libmagic.a
 ```
 
 There is intentionally no `wasi`/`emscripten` target.

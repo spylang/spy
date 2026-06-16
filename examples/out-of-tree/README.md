@@ -54,7 +54,7 @@ For libmagic (system library), only the glue is built, and only natively
 (there is no WASM build of libmagic):
 
 ```bash
-make -C spyvm_libmagic TARGET=native     # build/native/libmagic_spy.a
+make -C spyvm_libmagic TARGET=native     # build/native/spyvm_libmagic.a
 ```
 
 ## Running the demos

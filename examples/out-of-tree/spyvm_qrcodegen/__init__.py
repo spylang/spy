@@ -11,7 +11,7 @@ The package exposes a single name `MODULE` which is an instance of
 ModuleRegistry. The SPy CLI imports this package and reads `MODULE` to
 discover the module's name, contents, and C-build metadata.
 
-The C half lives in src/qrcodegen_spy.c; it #includes libspy's public
+The C half lives in src/spyvm_qrcodegen.c; it #includes libspy's public
 headers and the vendored qrcodegen headers, and exposes three WASM exports
 (spy_qrcodegen$encode, $get_size, $get_module). Build the archives with:
 
@@ -36,16 +36,16 @@ if TYPE_CHECKING:
 MODULE = ModuleRegistry("qrcodegen")
 
 # Single combined archive (glue + vendored qrcodegen) built by the Makefile.
-# Layout mirrors libspy/build/: build/<target>/libqrcodegen_spy.a
+# Layout mirrors libspy/build/: build/<target>/spyvm_qrcodegen.a
 _HERE = py.path.local(__file__).dirpath()
 MODULE.wasm_archives = [
-    _HERE.join("build", "wasi", "libqrcodegen_spy.a"),
+    _HERE.join("build", "wasi", "spyvm_qrcodegen.a"),
 ]
 
 MODULE.build_info = CModuleBuildInfo(
-    archive_specs=[(_HERE.join("build"), "libqrcodegen_spy.a")],
+    archive_specs=[(_HERE.join("build"), "spyvm_qrcodegen.a")],
     include_dirs=[_HERE.join("src"), _HERE.join("..", "vendor", "qrcodegen")],
-    headers=[_HERE.join("src", "qrcodegen_spy.h")],
+    headers=[_HERE.join("src", "spyvm_qrcodegen.h")],
 )
 
 

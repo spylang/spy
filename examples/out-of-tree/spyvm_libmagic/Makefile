@@ -1,14 +1,14 @@
 # Build the libmagic<->SPy glue code into a static archive.
 #
 # Unlike vendor/qrcodegen, libmagic is an *external system library*: we only
-# build our own glue here (src/libmagic_spy.c) and let the final SPy binary
+# build our own glue here (src/spyvm_libmagic.c) and let the final SPy binary
 # link the system library with -lmagic. There is no WASM build of libmagic, so
 # this Makefile only knows about native targets.
 #
 # Compiler flags are derived from spy.build.flags so that the glue stays in
 # sync with libspy's own build flags.
 
-SRCS = src/libmagic_spy.c
+SRCS = src/spyvm_libmagic.c
 
 # libmagic's own header lives in a standard system include dir.
 EXTRA_CFLAGS := -Wall -std=c99
@@ -29,7 +29,7 @@ ifeq ($(TARGET),)
 
 # ---------- native target ----------
 else ifeq ($(TARGET), native)
-	.DEFAULT_GOAL := build/native/libmagic_spy.a
+	.DEFAULT_GOAL := build/native/spyvm_libmagic.a
 
 # ------- native-static target ------
 else ifeq ($(TARGET), native-static)
@@ -37,7 +37,7 @@ else ifeq ($(TARGET), native-static)
 	$(warning Skipping native-static target - not supported on macOS)
 	.DEFAULT_GOAL := skip_native_static
   else
-	.DEFAULT_GOAL := build/native-static/libmagic_spy.a
+	.DEFAULT_GOAL := build/native-static/spyvm_libmagic.a
   endif
 
 # ---------- invalid target ---------
@@ -54,7 +54,7 @@ all:
 $(BUILD_DIR):
 	mkdir -p $@
 
-build/$(TARGET)/libmagic_spy.a: $(OBJS)
+build/$(TARGET)/spyvm_libmagic.a: $(OBJS)
 	$(AR) rcs $@ $(OBJS)
 
 $(BUILD_DIR)/%.o: src/%.c | $(BUILD_DIR)

@@ -12,7 +12,7 @@
  * The C backend calls these functions by their SPy c_name (spy_magic$*).
  */
 
-#include "libmagic_spy.h"
+#include "spyvm_libmagic.h"
 
 #include <magic.h>
 #include <string.h>

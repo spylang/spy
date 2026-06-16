@@ -15,7 +15,7 @@ This example differs from `spyvm_qrcodegen` in one key way: libmagic is an
     brew install libmagic         # macOS
 
 We do NOT vendor its source and we do NOT have a WASM build of it. The C half
-(src/libmagic_spy.c) is our own glue, compiled to a native-only archive; the
+(src/spyvm_libmagic.c) is our own glue, compiled to a native-only archive; the
 final binary additionally links the system library with `-lmagic`.
 
 Consequences:
@@ -47,9 +47,9 @@ MODULE.wasm_archives = []
 
 MODULE.build_info = CModuleBuildInfo(
     # Our own glue, built native-only by the Makefile.
-    archive_specs=[(_HERE.join("build"), "libmagic_spy.a")],
+    archive_specs=[(_HERE.join("build"), "spyvm_libmagic.a")],
     include_dirs=[_HERE.join("src")],
-    headers=[_HERE.join("src", "libmagic_spy.h")],
+    headers=[_HERE.join("src", "spyvm_libmagic.h")],
 )
 
 # TODO: the final binary also needs to link the external system library with

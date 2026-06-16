@@ -11,7 +11,7 @@
  * spy_qrcodegen$* on wasi (WASM_EXPORT is a no-op on native).
  */
 
-#include "qrcodegen_spy.h"
+#include "spyvm_qrcodegen.h"
 #include "qrcodegen.h"
 
 #include <string.h>

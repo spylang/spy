@@ -7,7 +7,7 @@
 
 EMCC_AVAILABLE := $(shell which emcc 2>/dev/null)
 
-SRCS = src/qrcodegen_spy.c ../vendor/qrcodegen/qrcodegen.c
+SRCS = src/spyvm_qrcodegen.c ../vendor/qrcodegen/qrcodegen.c
 
 # qrcodegen headers, on top of the flags coming from spy.build.flags.
 EXTRA_CFLAGS := -Wall -std=c99 -I../vendor/qrcodegen
@@ -28,7 +28,7 @@ ifeq ($(TARGET),)
 
 # ---------- wasi target ----------
 else ifeq ($(TARGET), wasi)
-	.DEFAULT_GOAL := build/wasi/libqrcodegen_spy.a
+	.DEFAULT_GOAL := build/wasi/spyvm_qrcodegen.a
 
 # -------- emscripten target --------
 else ifeq ($(TARGET), emscripten)
@@ -36,12 +36,12 @@ else ifeq ($(TARGET), emscripten)
 		$(warning Skipping emscripten target - emcc compiler not found in PATH)
 		.DEFAULT_GOAL := skip_emscripten
 	else
-		.DEFAULT_GOAL := build/emscripten/libqrcodegen_spy.a
+		.DEFAULT_GOAL := build/emscripten/spyvm_qrcodegen.a
 	endif
 
 # ---------- native target ----------
 else ifeq ($(TARGET), native)
-	.DEFAULT_GOAL := build/native/libqrcodegen_spy.a
+	.DEFAULT_GOAL := build/native/spyvm_qrcodegen.a
 
 # ------- native-static target ------
 else ifeq ($(TARGET), native-static)
@@ -49,7 +49,7 @@ else ifeq ($(TARGET), native-static)
 	$(warning Skipping native-static target - not supported on macOS)
 	.DEFAULT_GOAL := skip_native_static
   else
-	.DEFAULT_GOAL := build/native-static/libqrcodegen_spy.a
+	.DEFAULT_GOAL := build/native-static/spyvm_qrcodegen.a
   endif
 
 # ---------- invalid target ---------
@@ -68,7 +68,7 @@ all:
 $(BUILD_DIR):
 	mkdir -p $@
 
-build/$(TARGET)/libqrcodegen_spy.a: $(OBJS)
+build/$(TARGET)/spyvm_qrcodegen.a: $(OBJS)
 	$(AR) rcs $@ $(OBJS)
 
 $(BUILD_DIR)/%.o: src/%.c | $(BUILD_DIR)
