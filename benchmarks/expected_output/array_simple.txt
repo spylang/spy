@@ -1,0 +1,7 @@
+spy build --release bench.spy
+[release] build/bench 
+./build/bench
+spy add:
+spy add inplace:
+spy empty:
+spy zeros:

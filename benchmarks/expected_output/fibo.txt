@@ -1,0 +1,4 @@
+spy build --release fib.spy
+[release] build/fib 
+./build/fib
+Computed fib(40) =  102334155
