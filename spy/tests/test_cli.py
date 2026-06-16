@@ -131,13 +131,16 @@ class TestMain:
         src = """
         def main(argv: list[str]) -> None:
             for s in argv:
-                print(s) # Separate argv so we're sure we're not just seeing the input on the command line
+                print(s, "+") # Separate argv so we're sure we're not just seeing the input on the command line
         """
-        f = self.write("test.spy", src)
+        test = self.write("test.spy", src)
         argsets = [["execute"], []]  # No subcommand is equivalent to execute command
         for argset in argsets:
-            _, stdout = self.run(*argset, self.test.spy, "--timeit")
-            assert stdout == "hello world\n"
+            _, stdout = self.run(*argset, test, "1", "--timeit", "2")
+
+            # --timeit appears in argc and not as flag
+            assert "1 +\n--timeit +\n2" in stdout
+            assert "seconds" not in stdout
 
     def test_timeit(self):
         _, stdout = self.run("--timeit", self.main_spy)
@@ -432,7 +435,9 @@ class TestMain:
                 print(a)
         """
         f = self.write("test.spy", src)
-        res = self.runner.invoke(app, ["redshift", "-x", str(f), "aaa", "bbb", "ccc"])
+        res = self.runner.invoke(
+            app, ["redshift", "-x", str(f), "aaa", "bbb", "ccc", "--timeit"]
+        )
         assert res.exit_code == 0
         output = decolorize(res.output)
-        assert output.split() == [str(f), "aaa", "bbb", "ccc"]
+        assert output.split() == [str(f), "aaa", "bbb", "ccc", "--timeit"]
