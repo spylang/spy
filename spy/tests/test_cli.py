@@ -127,6 +127,18 @@ class TestMain:
             _, stdout = self.run(*argset, self.main_spy)
             assert stdout == "hello world\n"
 
+    def test_execute_argv(self):
+        src = """
+        def main(argv: list[str]) -> None:
+            for s in argv:
+                print(s) # Separate argv so we're sure we're not just seeing the input on the command line
+        """
+        f = self.write("test.spy", src)
+        argsets = [["execute"], []]  # No subcommand is equivalent to execute command
+        for argset in argsets:
+            _, stdout = self.run(*argset, self.test.spy, "--timeit")
+            assert stdout == "hello world\n"
+
     def test_timeit(self):
         _, stdout = self.run("--timeit", self.main_spy)
         assert "main()" in stdout
@@ -288,6 +300,30 @@ class TestMain:
         # by the test runner, check the output from timeit instead
         out, err = capfd.readouterr()
         assert "hello world" in out
+
+    def test_build_execute_argv(self, capfd):
+        src = """
+        def main(argv: list[str]) -> None:
+            for s in argv:
+                print(s, "+") # Separate argv so we're sure we're not just seeing the input on the command line
+        """
+        f = self.write("test.spy", src)
+        res, stdout = self.run(
+            "build",
+            "-x",
+            "--target", "native",
+            "--build-dir", self.tmpdir,
+            f,
+            "1",
+            "2",
+            "--timeit"
+        )  # fmt: skip
+        # hack hack hack since the stdout of the subprocess isn't captured
+        # by the test runner, check the output from timeit instead
+        out, err = capfd.readouterr()
+        # --timeit should be passed to the program as argv, not a flag for SPy
+        assert "1 +\n2 +\n--timeit" in out
+        assert "seconds" not in out
 
     @pytest.mark.skipif(PYODIDE_EXE is None, reason="./pyodide/venv not found")
     @pytest.mark.pyodide

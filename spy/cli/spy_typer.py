@@ -19,8 +19,18 @@ from spy.cli.commands.shared_args import Base_Args
 from spy.vendored.dataclass_typer import dataclass_typer
 
 
-class TyperDefaultCommand(typer.core.TyperCommand):
+class TyperStrictParseCommand(typer.core.TyperCommand):
+    def make_parser(self, ctx: click.Context) -> click.OptionParser:
+        """Creates the underlying option parser for this command."""
+        ctx.allow_interspersed_args = False
+        return super().make_parser(ctx)
+
+
+class TyperDefaultCommand(TyperStrictParseCommand):
     """Type that indicates if a command is the default command."""
+
+
+class TyperStrictDefaultCommand(TyperDefaultCommand, TyperStrictParseCommand): ...
 
 
 class SpyGroupConfig(TyperGroup):
@@ -110,6 +120,10 @@ class SpyGroupConfig(TyperGroup):
                 return cmd.name
         return lookup_name
 
+    def parse_args(self, ctx, args):
+        ctx.obj = {"args": args}
+        return super().parse_args(ctx, args)
+
 
 class SpyTyper(typer.Typer):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -120,14 +134,28 @@ class SpyTyper(typer.Typer):
         super().__init__(*args, **kwargs)
 
     def _command_with_default_option(
-        self: typer.Typer, default: bool = False, *args: Any, **kwargs: Any
+        self: typer.Typer,
+        default: bool = False,
+        strict_argv=False,
+        *args: Any,
+        **kwargs: Any,
     ) -> Callable[[CommandFunctionType], CommandFunctionType]:
         """
         Allow spy_command() to take a "default" argument, which marks
         a single subcommand to be selected if none is provided
+
+        Allow spy_command() to take a "strict_argv" argument, which
+        ensures that any options or flags after the filename(s) are
+        passed to argv for execution
         """
         if default:
-            kwargs["cls"] = TyperDefaultCommand
+            if strict_argv:
+                kwargs["cls"] = TyperStrictDefaultCommand
+            else:
+                kwargs["cls"] = TyperDefaultCommand
+        else:
+            if strict_argv:
+                kwargs["cls"] = TyperStrictParseCommand
         return super().command(*args, **kwargs)  # type: ignore
 
     def spy_command(self, user_func: Any, /, *cmd_args, **cmd_kwargs) -> Callable:  # type: ignore
