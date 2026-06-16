@@ -13,9 +13,8 @@ SRCS = src/spyvm_libmagic.c
 # libmagic's own header lives in a standard system include dir.
 EXTRA_CFLAGS := -Wall -std=c99
 
-BUILD_DIR := build/$(TARGET)
-
 BUILD_TYPE ?= debug
+BUILD_DIR := build/$(TARGET)/$(BUILD_TYPE)
 
 ifneq ($(TARGET),)
 	CC    := $(shell python -m spy.build.flags --cc  --target=$(TARGET))
@@ -29,7 +28,7 @@ ifeq ($(TARGET),)
 
 # ---------- native target ----------
 else ifeq ($(TARGET), native)
-	.DEFAULT_GOAL := build/native/spyvm_libmagic.a
+	.DEFAULT_GOAL := build/native/$(BUILD_TYPE)/spyvm_libmagic.a
 
 # ------- native-static target ------
 else ifeq ($(TARGET), native-static)
@@ -37,7 +36,7 @@ else ifeq ($(TARGET), native-static)
 	$(warning Skipping native-static target - not supported on macOS)
 	.DEFAULT_GOAL := skip_native_static
   else
-	.DEFAULT_GOAL := build/native-static/spyvm_libmagic.a
+	.DEFAULT_GOAL := build/native-static/$(BUILD_TYPE)/spyvm_libmagic.a
   endif
 
 # ---------- invalid target ---------
@@ -54,7 +53,7 @@ all:
 $(BUILD_DIR):
 	mkdir -p $@
 
-build/$(TARGET)/spyvm_libmagic.a: $(OBJS)
+build/$(TARGET)/$(BUILD_TYPE)/spyvm_libmagic.a: $(OBJS)
 	$(AR) rcs $@ $(OBJS)
 
 $(BUILD_DIR)/%.o: src/%.c | $(BUILD_DIR)

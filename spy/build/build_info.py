@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Callable, Literal, Optional
+from typing import Callable, Literal
 
 BuildTarget = Literal["native", "wasi", "emscripten"]
 BuildType = Literal["release", "debug"]
@@ -16,4 +16,4 @@ class BuildInfo:
     ldflags: list[str] = field(default_factory=list)
 
 
-BuildInfoFunc = Optional[Callable[[BuildTarget, BuildType], BuildInfo]]
+BuildInfoFunc = Callable[[BuildTarget, BuildType], BuildInfo]

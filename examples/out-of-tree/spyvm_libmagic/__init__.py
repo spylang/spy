@@ -20,51 +20,45 @@ final binary additionally links the system library with `-lmagic`.
 
 Consequences:
   - The module works only with the C backend (`spy build`), targeting `native`.
-    There is no `wasm_archives`, so the SPy interpreter cannot call into
-    libmagic: the builtin functions below raise NotImplementedError when
-    executed in interpreted mode.
+    Under wasi, build_info returns no archives and no ldflags, so the SPy
+    interpreter cannot call into libmagic: the builtin functions below raise
+    NotImplementedError when executed in interpreted mode.
 """
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
-import py.path
-
+from spy.build.build_info import BuildInfo, BuildTarget, BuildType
 from spy.vm.bytes import W_Bytes
-from spy.vm.registry import CModuleBuildInfo, ModuleRegistry
+from spy.vm.registry import ModuleRegistry
 from spy.vm.str import W_Str
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-# The module name as seen by SPy code (`import magic`).
 MODULE = ModuleRegistry("magic")
 
-_HERE = py.path.local(__file__).dirpath()
+HERE = Path(__file__).parent
 
-# No wasm_archives: libmagic has no WASM build, so the interpreter cannot call
-# into it (see the NotImplementedError raised by the builtins below).
-MODULE.wasm_archives = []
 
-MODULE.build_info = CModuleBuildInfo(
-    # Our own glue, built native-only by the Makefile.
-    archive_specs=[(_HERE.join("build"), "spyvm_libmagic.a")],
-    include_dirs=[_HERE.join("src")],
-    headers=[_HERE.join("src", "spyvm_libmagic.h")],
-)
-
-# TODO: the final binary also needs to link the external system library with
-# `-lmagic`. CModuleBuildInfo does not yet have a way to express "link this
-# system library"; this is the build-system extension we will design next.
-# Conceptually we want something like:
-#     MODULE.build_info.libraries = ["magic"]
+def build_info(target: BuildTarget, build_type: BuildType) -> BuildInfo:
+    if target == "wasi":
+        # no wasi build of libmagic; the builtins raise NotImplementedError
+        archives: list[str] = []
+        ldflags: list[str] = []
+    else:
+        archives = [f"{HERE}/build/{target}/{build_type}/spyvm_libmagic.a"]
+        ldflags = ["-lmagic"]
+    return BuildInfo(
+        include_dirs=[f"{HERE}/src"],
+        headers=[f"{HERE}/src/spyvm_libmagic.h"],
+        archives=archives,
+        ldflags=ldflags,
+    )
 
 
 @MODULE.builtin_func
 def w_describe(vm: "SPyVM", w_data: W_Bytes) -> W_Str:
-    """
-    Return a human-readable description of the given bytes, e.g.
-    "PNG image data, 640 x 480, 8-bit/color RGB". This is what `file` prints.
-    """
     raise NotImplementedError(
         "magic.describe() is not available in interpreted mode: "
         "libmagic has no WASM build. Compile with the C backend instead."
@@ -73,10 +67,6 @@ def w_describe(vm: "SPyVM", w_data: W_Bytes) -> W_Str:
 
 @MODULE.builtin_func
 def w_mime(vm: "SPyVM", w_data: W_Bytes) -> W_Str:
-    """
-    Return the MIME type of the given bytes, e.g. "image/png". Equivalent to
-    `file --mime-type`.
-    """
     raise NotImplementedError(
         "magic.mime() is not available in interpreted mode: "
         "libmagic has no WASM build. Compile with the C backend instead."
