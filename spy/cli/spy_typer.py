@@ -25,6 +25,19 @@ class TyperStrictParseCommand(typer.core.TyperCommand):
         ctx.allow_interspersed_args = False
         return super().make_parser(ctx)
 
+    def parse_args(self, ctx: click.Context, args: list[str]) -> list[str]:
+        args = super().parse_args(ctx, args)
+        possible_error_args = [
+            arg
+            for arg in ctx.params["argv"]
+            if arg.lstrip(ctx._opt_prefixes) in ctx.params
+        ]  # TODO this is not correct
+        if possible_error_args:
+            print(
+                f"{','.join(possible_error_args)} passed to 'spy {ctx.command.name} as part of argv; to pass it as a flag, it must proceeed the .spy file name"
+            )
+        return args
+
 
 class TyperDefaultCommand(TyperStrictParseCommand):
     """Type that indicates if a command is the default command."""
