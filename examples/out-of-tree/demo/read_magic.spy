@@ -1,0 +1,16 @@
+import magic
+
+
+def show(name: str, data: bytes) -> None:
+    print(name + ": " + magic.describe(data) + "  [" + magic.mime(data) + "]")
+
+
+def main(argv: list[str]) -> i32:
+    # A few well-known file signatures, as bytes literals. In a real program
+    # you would read these from a file, but SPy's file I/O is still limited, so
+    # we hard-code the magic numbers to keep the example self-contained.
+    show("png", b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR")
+    show("gif", b"GIF89a")
+    show("pdf", b"%PDF-1.7\n")
+    show("elf", b"\x7fELF\x02\x01\x01\x00")
+    return 0

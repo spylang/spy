@@ -10,4 +10,5 @@
 # pass `--no-spy-toml`.
 extra-vm-modules = [
     "../spyvm_qrcodegen",
+    "../spyvm_libmagic",
 ]
