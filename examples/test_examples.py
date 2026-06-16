@@ -60,10 +60,10 @@ def test_all_examples_have_expected_output(request) -> None:
 
     Without this guard, the parametrized test_example would simply not run for
     the new file, giving a false sense of coverage.
-    Skipped when --update-examples is active because that mode creates the files.
+    Skipped when --update-expected-output is active because that mode creates the files.
     """
-    if request.config.getoption("--update-examples"):
-        pytest.skip("--update-examples will create any missing files")
+    if request.config.getoption("--update-expected-output"):
+        pytest.skip("--update-expected-output will create any missing files")
 
     missing = [
         f for f in _spy_files if not (EXPECTED_OUTPUT_DIR / f"{f.stem}.txt").exists()
@@ -72,7 +72,7 @@ def test_all_examples_have_expected_output(request) -> None:
         names = "\n  ".join(f.name for f in missing)
         pytest.fail(
             f"Missing expected output for {len(missing)} example(s):\n  {names}\n\n"
-            f"Generate them with: pytest --update-examples"
+            f"Generate them with: pytest --update-expected-output"
         )
 
 
@@ -87,7 +87,7 @@ def test_example(spy_file: Path, request) -> None:
         f"--- stderr ---\n{result.stderr}"
     )
 
-    if request.config.getoption("--update-examples"):
+    if request.config.getoption("--update-expected-output"):
         EXPECTED_OUTPUT_DIR.mkdir(exist_ok=True)
         expected_file.write_text(_normalize_output(result.stdout))
         # A test must either pass or fail; we pass after a successful update.
@@ -95,7 +95,7 @@ def test_example(spy_file: Path, request) -> None:
 
     assert expected_file.exists(), (
         f"No expected output for {spy_file.name}. "
-        f"Generate it with: pytest --update-examples -k {spy_file.stem}"
+        f"Generate it with: pytest --update-expected-output -k {spy_file.stem}"
     )
 
     expected = expected_file.read_text()
@@ -105,5 +105,5 @@ def test_example(spy_file: Path, request) -> None:
         print_diff(expected, normalize_output, "expected", "got")
         pytest.fail(
             f"Output of {spy_file.name} differs from {expected_file.relative_to(EXAMPLES_DIR)}\n\n"
-            "Update the expected result with: pytest --update-examples"
+            "Update the expected result with: pytest --update-expected-output"
         )

@@ -38,10 +38,10 @@ pytest -x
 To run and update the expected output for a single example:
 
 ```bash
-pytest test_examples.py::test_example[collections] --update-examples
+pytest test_examples.py::test_example[collections] --update-expected-output
 ```
 
-The `--update-examples` flag runs the example with `spy` and writes (or
+The `--update-expected-output` flag runs the example with `spy` and writes (or
 overwrites) the corresponding file in `expected_output/`. Lines starting with
 `# ` are stripped from the output before saving, so examples can print volatile
 annotations (e.g. timings) without causing spurious test failures.
