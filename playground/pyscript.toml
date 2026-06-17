@@ -25,6 +25,7 @@ packages = [ "micropip"]
 "./examples/3_low_level/smallpoint.spy" = "examples/3_low_level/"
 "./examples/3_low_level/mem.spy" = "examples/3_low_level/"
 
+"./examples/4_advanced/generic_types.spy" = "examples/4_advanced/"
 "./examples/4_advanced/myarray.spy" = "examples/4_advanced/"
 "./examples/4_advanced/convert.spy" = "examples/4_advanced/"
 "./examples/4_advanced/type_name_and_fqn.spy" = "examples/4_advanced/"

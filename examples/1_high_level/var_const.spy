@@ -29,7 +29,9 @@ def main() -> None:
     # LIMIT = 6  # would raise: "x is const" — uncomment to see the error
 
     LIMIT2 = 10              # blue, since assigned once
-    LIMIT3 = LIMIT + LIMIT2  # also blue
+
+    # this is getting advanced, don't worry if it's not clear yet
+    LIMIT3 = LIMIT + LIMIT2  # also blue, since LIMIT and LIMIT2 are blue
     LIMIT4 = LIMIT + LIMIT2  # red because of the next assignment
 
     print("COLOR(LIMIT)", COLOR(LIMIT))    # blue

@@ -21,10 +21,8 @@ def add2(T):
     return impl
 
 
-"""
-Functions decorated with @blue.generic are called using square brackets [] instead of parentheses ().
-Other than that, they are identical to other blue functions.
-"""
+# Functions decorated with @blue.generic are called using square brackets [] instead of parentheses ().
+# Other than that, they are identical to other blue functions.
 
 
 def main() -> None:

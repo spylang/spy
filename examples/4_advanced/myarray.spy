@@ -1,12 +1,25 @@
 """
 This is one of the most advanced examples of SPy so far.
+It implements the basics of a generic array type using the low-level primitives
+introduced in the previous examples.
 
-It implements the basics of a generic array type.
-
-Note that structs are passed by values (i.e. copied).
+Things to notice:
+  - `Array1d[DTYPE]` is a generic struct — see generic_types.spy for an introduction
+    to generic types
+  - `Array1d` is a value type (passed by copy), but it holds a `gc_ptr` to `ArrayData`
+    which lives on the heap — so copying an `Array1d` is cheap (just a pointer copy)
+  - this is the current SPy idiom for objects that behave like references: wrap the
+    mutable heap-allocated data in a struct that holds a pointer to it
+  - `__new__` and `__make__` are the low-level constructor protocol for structs
+    (see point.spy and smallpoint.spy)
+  - `ptr_setbytes` and `ptr_copy` are used for efficient bulk memory operations
 """
 
 from unsafe import gc_alloc, gc_ptr, ptr_setbytes, ptr_copy
+
+# Remember that these generic types are just @blue.generic type factories
+# parametrized with DTYPE.
+# Note that the name of the concrete type is always "Self".
 
 
 @struct
@@ -14,23 +27,6 @@ class ArrayData[DTYPE]:
     length: i32
     capacity: i32
     items: gc_ptr[DTYPE]
-
-
-"""
-This generic class is just syntactic sugar for
-
-@blue.generic
-def ArrayData(DTYPE):
-    @struct
-    class Self:
-        length: i32
-        capacity: i32
-        items: gc_ptr[DTYPE]
-
-    return Self
-
-Note that the name of the concrete type is always "Self".
-"""
 
 
 @struct
