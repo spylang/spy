@@ -29,6 +29,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from spy.build.build_info import BuildInfo, BuildTarget, BuildType
+from spy.errors import SPyError
 from spy.vm.bytes import W_Bytes
 from spy.vm.registry import ModuleRegistry
 from spy.vm.str import W_Str
@@ -59,15 +60,17 @@ def build_info(target: BuildTarget, build_type: BuildType) -> BuildInfo:
 
 @MODULE.builtin_func
 def w_describe(vm: "SPyVM", w_data: W_Bytes) -> W_Str:
-    raise NotImplementedError(
+    raise SPyError(
+        "W_NotImplementedError",
         "magic.describe() is not available in interpreted mode: "
-        "libmagic has no WASM build. Compile with the C backend instead."
+        "libmagic has no WASM build. Compile with the C backend instead.",
     )
 
 
 @MODULE.builtin_func
 def w_mime(vm: "SPyVM", w_data: W_Bytes) -> W_Str:
-    raise NotImplementedError(
+    raise SPyError(
+        "W_NotImplementedError",
         "magic.mime() is not available in interpreted mode: "
-        "libmagic has no WASM build. Compile with the C backend instead."
+        "libmagic has no WASM build. Compile with the C backend instead.",
     )
