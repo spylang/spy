@@ -43,7 +43,7 @@ class TyperStrictParseCommand(typer.core.TyperCommand):
         possible_error_args: list[str] = [
             arg
             for arg in ctx.params["argv"]
-            if any(arg.lstrip(prefix) in ctx.params for prefix in ctx._opt_prefixes)
+            if any(arg in param.opts for param in ctx.command.params)
         ]
         if possible_error_args:
             print(
