@@ -389,6 +389,17 @@ class TestMain:
         status, out = getstatusoutput(f"{test_exe} aaa bbb ccc")
         assert out.split() == [str(test_exe), "aaa", "bbb", "ccc"]
 
+    def test_compile_argv_unused(self):
+        src = """
+        def main(argv: list[str]) -> i32:
+            return 0
+        """
+        f = self.write("test.spy", src)
+        self.run("build", f)
+        test_exe = self.tmpdir.join("build", "test")
+        status, out = getstatusoutput(f"{test_exe} aaa bbb ccc")
+        assert status == 0
+
     def test_redshift_argv(self):
         src = """
         def main(argv: list[str]) -> None:

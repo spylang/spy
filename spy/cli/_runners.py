@@ -14,6 +14,7 @@ from typing import (
 
 from spy.cli._tb import tb_hide_magic_frames_maybe
 from spy.cli.commands.shared_args import Base_Args
+from spy.cli.spy_toml import SpyToml
 from spy.doppler import ErrorMode
 from spy.errors import SPyError
 from spy.textbuilder import Color
@@ -125,6 +126,8 @@ def execute_spy_main(
 class Init_Args(Protocol):
     error_mode: ErrorMode
     filename: Path
+    extra_vm_modules: Optional[list[str]]
+    no_spy_toml: bool
 
 
 async def init_vm(args: Init_Args) -> SPyVM:
@@ -137,7 +140,19 @@ async def init_vm(args: Init_Args) -> SPyVM:
         sys.exit(1)
 
     srcdir = args.filename.parent
-    vm = await SPyVM.async_new()
+
+    if args.no_spy_toml:
+        spy_toml = SpyToml(srcdir / "spy.toml")
+    else:
+        spy_toml = SpyToml.find_and_read(srcdir)
+    extra_vm_modules = spy_toml.merge(args.extra_vm_modules)
+
+    if extra_vm_modules:
+        # Bundling requires a native zig toolchain; use the synchronous path.
+        vm = SPyVM(extra_vm_modules=extra_vm_modules)
+    else:
+        # No extra modules: use async_new() to support Pyodide/Node.
+        vm = await SPyVM.async_new()
 
     GLOBAL_VM = vm
 

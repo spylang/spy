@@ -196,3 +196,12 @@ class Context:
         w_mod = self.vm.modules_w[modname]
         if not w_mod.is_builtin():
             self.tbh_includes.wl(f'#include "{modname}.h"')
+        elif modname in self.vm.build_info_funcs:
+            build_info_fn = self.vm.build_info_funcs[modname]
+            headers_debug = build_info_fn("native", "debug").headers
+            headers_release = build_info_fn("native", "release").headers
+            assert headers_debug == headers_release, (
+                f"module '{modname}': headers must not vary by build_type"
+            )
+            for header in headers_debug:
+                self.tbh_includes.wl(f'#include "{header}"')

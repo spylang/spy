@@ -7,7 +7,8 @@ import pytest
 
 from spy.backend.c.cbackend import CBackend
 from spy.backend.interp import InterpModuleWrapper
-from spy.build.config import BuildConfig, BuildTarget
+from spy.build.build_info import BuildTarget
+from spy.build.config import BuildConfig
 from spy.build.ninja import NinjaWriter
 from spy.doppler import ErrorMode
 from spy.errors import SPyError
