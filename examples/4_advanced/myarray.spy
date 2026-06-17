@@ -1,9 +1,9 @@
 """
 This is one of the most advanced examples of SPy so far.
 
-It implements the basics of a generic array type
+It implements the basics of a generic array type.
 
-Note that struct are passed by values (i.e. copied).
+Note that structs are passed by values (i.e. copied).
 """
 
 from unsafe import gc_alloc, gc_ptr

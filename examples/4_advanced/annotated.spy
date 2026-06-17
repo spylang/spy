@@ -6,6 +6,7 @@ Things to notice:
   - this pattern shows how SPy can implement PEP 593-style annotations as a library,
     without any built-in support
 """
+
 from operator import OpSpec
 from __spy__ import interp_tuple
 

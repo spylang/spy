@@ -1,10 +1,14 @@
 """
 Things to notice:
-  - `*args_m` in a `@blue.metafunc` captures all arguments as a tuple of meta-args
-  - the number of arguments is known at redshift time via `len(args_m)`
-  - each call site is specialized
-  - mismatched types (e.g. `mysum(1, 'hello')`) raise TypeError at redshift time —
-    uncomment the last lines to see the errors
+  - `*args_m` captures all MetaArgs as a tuple; the number of arguments is known
+    at redshift time via `len(args_m)`, enabling dispatch on it
+  - each call site is specialized on both the number and types of arguments
+  - `T = m0.static_type` captures the static type as a blue value, which can
+    then be used as a type annotation in the inner red function
+  - for blue arguments, `m_x.blueval` gives the actual compile-time value;
+    here all arguments are red so only `static_type` is used
+  - mismatched types (e.g. `mysum(1, 'hello')`) raise `TypeError` at redshift
+    time — uncomment the last lines to see the errors
 """
 
 from operator import OpSpec

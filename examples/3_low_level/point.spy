@@ -2,7 +2,8 @@
 Things to notice:
   - the unsafe module allows C-level direct memory access to pointers and
     unsafe arrays
-  - @struct maps directly to C structs
+  - structs map directly to C structs
+  - structs are passed by values (i.e. copied)
   - most users will never have to deal with this directly: using the
     `unsafe` module is the equivalent of writing C extensions or using
     Cython
