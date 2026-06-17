@@ -313,6 +313,7 @@ def main():
                     RunSPyButton("redshift"),
                     RunSPyButton("redshift --linearize"),
                     RunSPyButton("redshift --full-fqn"),
+                    RunSPyButton("redshift --execute"),
                     RunSPyButton("build --cdump"),
                 ).css({"display": "flex", "gap": "5px", "vertical-align": "bottom"}),
             ).css(

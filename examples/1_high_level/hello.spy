@@ -1,12 +1,24 @@
 """
-Things to notice:
-  - every SPy program defines `main()` as its entry point
-  - `spy execute hello.spy` runs the program
-  - `spy colorize hello.spy` shows syntax highlighting (blue/red coloring)
-  - `spy redshift hello.spy` shows the fully compiled, type-specialized output
-  - `spy redshift --c hello.spy` emits C code
-"""
+## About the playground:
 
+The playground presents example files organized in 4 categories. You can discover
+SPy by following the proposed progression from left to right.
+
+You can use the `spy` CLI in the playground by typing a command in the input bar
+and pressing Enter or the Run button, or by clicking one of the shortcut buttons
+below the editor. These buttons correspond to the most useful commands for running
+and inspecting the compilation pipeline:
+
+  - `spy execute hello.spy`             run the program (interpreted)
+  - `spy colorize hello.spy`            show code with blue/red coloring
+  - `spy redshift hello.spy`            show the redshifted typed AST (as code)
+  - `spy redshift --execute hello.spy`  run the redshifted AST (interpreted)
+  - `spy build --cdump hello.spy`       emit C code
+
+Things to notice:
+  - Every SPy program defines `main()` as its entry point.
+    SPy libraries do not need a `main()` function.
+"""
 
 def main() -> None:
     print("Hello world!")
