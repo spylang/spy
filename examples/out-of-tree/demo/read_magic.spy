@@ -1,16 +1,21 @@
 import magic
-
-
-def show(name: str, data: bytes) -> None:
-    print(name + ": " + magic.describe(data) + "  [" + magic.mime(data) + "]")
+from _file import open
 
 
 def main(argv: list[str]) -> i32:
-    # A few well-known file signatures, as bytes literals. In a real program
-    # you would read these from a file, but SPy's file I/O is still limited, so
-    # we hard-code the magic numbers to keep the example self-contained.
-    show("png", b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR")
-    show("gif", b"GIF89a")
-    show("pdf", b"%PDF-1.7\n")
-    show("elf", b"\x7fELF\x02\x01\x01\x00")
+    if len(argv) != 2:
+        print("Usage: read_magic <filename>")
+        return 1
+
+    filename = argv[1]
+    f = open(filename, "r")
+    # We don't have binary I/O yet, so we open in text mode and then encode the
+    # content back to bytes. This works only because SPy doesn't perform any
+    # actual utf-8 validation on read: the raw bytes survive the round-trip
+    # unchanged. This is a temporary workaround until proper binary I/O lands.
+    text = f.read()
+    f.close()
+    data = text.encode("utf-8")
+
+    print(filename + ": " + magic.describe(data) + "  [" + magic.mime(data) + "]")
     return 0
