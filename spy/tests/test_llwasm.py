@@ -57,7 +57,13 @@ class TestLLWasm(CTest):
         self.llwasm_backend = llwasm_backend  # type: ignore
         if self.llwasm_backend == "pyodide":
             self.selenium = request.getfixturevalue("selenium")
-            self.run_in_pyodide_maybe = run_in_pyodide
+            # pytest_assert_rewrites=False prevents run_in_pyodide from shipping
+            # the assertion-rewritten module AST (which contains a magic "import
+            # _pytest.assertion.rewrite" statement) into pyodide. Otherwise
+            # pyodide tries to load the "pytest" package inside WASM, and the
+            # transitive load of its "iniconfig" dependency is flaky in CI. The
+            # asserts inside the fn() bodies still work as plain Python asserts.
+            self.run_in_pyodide_maybe = run_in_pyodide(pytest_assert_rewrites=False)
             self.target = "emscripten"
         else:
             self.selenium = None
