@@ -161,6 +161,7 @@ class CModuleWriter:
             returns_i32 = w_restype == B.w_i32
 
             if has_argv:
+                self.ctx.add_include_maybe(FQN("_list::list[str]::_ListImpl"))
                 self.tbc.wb("""
                     /* helper code for C->SPy argv wrapping */
 
