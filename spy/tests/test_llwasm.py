@@ -5,10 +5,13 @@ import py.path
 import pytest
 from pytest_pyodide import run_in_pyodide  # type: ignore
 
+import spy.libspy as libspy
 from spy import ROOT
 from spy.build.build_info import BuildType
 from spy.build.flags import get_ar, get_cflags
-from spy.build.wasm_bundle import link_bundle
+from spy.build.wasm_bundle import get_or_build_bundle, link_bundle
+from spy.libspy import LLSPyInstance
+from spy.llwasm import LLWasmInstance
 from spy.tests.support import CTest
 from spy.util import robust_run
 
@@ -229,11 +232,10 @@ class TestLLWasm(CTest):
         self,
         archives: list[py.path.local],
         *,
-        exports: list[str],
         name: str = "bundle",
     ) -> py.path.local:
         out = self.tmpdir.join(f"{name}.wasm")
-        link_bundle(archives, exports, out=out)
+        link_bundle(archives, out=out)
         return out
 
     def test_bundle_multiple_archives(self):
@@ -242,27 +244,24 @@ class TestLLWasm(CTest):
 
         part_a_src = """
         #include <stdint.h>
+        #include "spy.h"
         int32_t shared_x = 100;
-        int32_t a_get_shared(void) { return shared_x; }
-        int32_t a_inc(void) { return ++shared_x; }
+        int32_t WASM_EXPORT(a_get_shared)(void) { return shared_x; }
+        int32_t WASM_EXPORT(a_inc)(void) { return ++shared_x; }
         """
 
         part_b_src = """
         #include <stdint.h>
+        #include "spy.h"
         extern int32_t shared_x;
-        int32_t b_get_shared(void) { return shared_x; }
-        int32_t b_double(void) { shared_x *= 2; return shared_x; }
+        int32_t WASM_EXPORT(b_get_shared)(void) { return shared_x; }
+        int32_t WASM_EXPORT(b_double)(void) { shared_x *= 2; return shared_x; }
         """
 
         a_a = self.c_compile_archive(part_a_src, name="part_a")
         b_a = self.c_compile_archive(part_b_src, name="part_b")
 
-        bundle = self.wasm_link_bundle(
-            archives=[a_a, b_a],
-            exports=["a_get_shared", "a_inc", "b_get_shared", "b_double"],
-        )
-
-        from spy.llwasm import LLWasmInstance
+        bundle = self.wasm_link_bundle(archives=[a_a, b_a])
 
         ll = LLWasmInstance.from_file(bundle)
 
@@ -277,22 +276,18 @@ class TestLLWasm(CTest):
         if self.llwasm_backend == "pyodide":
             pytest.skip("emscripten bundling not yet implemented")
 
-        from spy.build.wasm_bundle import get_or_build_bundle
-
         src = """
         #include <stdint.h>
-        int32_t answer(void) { return 42; }
+        #include "spy.h"
+        int32_t WASM_EXPORT(answer)(void) { return 42; }
         """
         a = self.c_compile_archive(src, name="answer")
-
-        bundle1 = get_or_build_bundle([a], exports=["answer"])
+        bundle1 = get_or_build_bundle([a])
         mtime1 = bundle1.mtime()
-
-        bundle2 = get_or_build_bundle([a], exports=["answer"])
+        bundle2 = get_or_build_bundle([a])
         assert bundle1 == bundle2
         assert bundle2.mtime() == mtime1
-
-        bundle3 = get_or_build_bundle([a], exports=["answer"], force_rebuild=True)
+        bundle3 = get_or_build_bundle([a], force_rebuild=True)
         assert bundle3 == bundle1
         assert bundle3.mtime() >= mtime1
 
@@ -300,21 +295,20 @@ class TestLLWasm(CTest):
         if self.llwasm_backend == "pyodide":
             pytest.skip("emscripten bundling not yet implemented")
 
-        from spy.build.wasm_bundle import get_or_build_bundle
-
         src_v1 = """
         #include <stdint.h>
-        int32_t answer(void) { return 42; }
+        #include "spy.h"
+        int32_t WASM_EXPORT(answer)(void) { return 42; }
         """
         src_v2 = """
         #include <stdint.h>
-        int32_t answer(void) { return 99; }
+        #include "spy.h"
+        int32_t WASM_EXPORT(answer)(void) { return 99; }
         """
         a_v1 = self.c_compile_archive(src_v1, name="answer_v1")
         a_v2 = self.c_compile_archive(src_v2, name="answer_v2")
-
-        bundle_v1 = get_or_build_bundle([a_v1], exports=["answer"])
-        bundle_v2 = get_or_build_bundle([a_v2], exports=["answer"])
+        bundle_v1 = get_or_build_bundle([a_v1])
+        bundle_v2 = get_or_build_bundle([a_v2])
         assert bundle_v1 != bundle_v2
 
     def test_get_LLMOD_with_extra_archive(self):
@@ -337,11 +331,8 @@ class TestLLWasm(CTest):
             return s;
         }
         """
-        import spy.libspy as libspy
-        from spy.libspy import LLSPyInstance
-
         extra_a = self.c_compile_archive(src, name="side_str")
-        # make_hello is annotated with WASM_EXPORT so no extra_exports needed
+        # make_hello is annotated with WASM_EXPORT so it is exported automatically
         llmod = libspy.get_LLMOD(extra_archives=[extra_a])
         ll = LLSPyInstance(llmod)
 

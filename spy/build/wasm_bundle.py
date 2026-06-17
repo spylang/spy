@@ -8,7 +8,6 @@ Cache layout:
 
 The cache key is a SHA-256 hash of:
 - the content of each input .a archive
-- the sorted list of exports
 - the toolchain version (zig version string)
 
 The cache lives project-local (next to the spy package root) so that
@@ -30,7 +29,6 @@ BUNDLE_CACHE_DIR = spy.ROOT.dirpath("build", "wasm-bundles")
 
 def link_bundle(
     archives: list[py.path.local],
-    exports: list[str],
     *,
     out: py.path.local,
 ) -> None:
@@ -43,7 +41,6 @@ def link_bundle(
 
     Args:
         archives: list of .a archive paths (libspy.a first, then extras)
-        exports:  list of symbol names to expose as WASM exports
         out:      output .wasm path
     """
     cmdline = [
@@ -56,7 +53,6 @@ def link_bundle(
         "-Wl,--whole-archive",
         *[str(a) for a in archives],
         "-Wl,--no-whole-archive",
-        *[f"-Wl,--export={name}" for name in exports],
         "-o",
         str(out),
     ]
@@ -75,33 +71,28 @@ def _zig_version() -> str:
 
 def _compute_cache_key(
     archives: list[py.path.local],
-    exports: list[str],
 ) -> str:
     h = hashlib.sha256()
     for archive in archives:
         h.update(archive.read_binary())
-    for export in sorted(exports):
-        h.update(export.encode())
     h.update(_zig_version().encode())
     return h.hexdigest()
 
 
 def get_or_build_bundle(
     archives: list[py.path.local],
-    exports: list[str],
     *,
     force_rebuild: bool = False,
 ) -> py.path.local:
     """
-    Return a cached WASM bundle for the given archives and exports,
-    building it on first use.
+    Return a cached WASM bundle for the given archives, building it on first
+    use.
 
     Args:
         archives:      list of .a archives to link (libspy.a first, then extras)
-        exports:       WASM symbols to export from the bundle
         force_rebuild: bypass cache lookup and always rebuild
     """
-    cache_key = _compute_cache_key(archives, exports)
+    cache_key = _compute_cache_key(archives)
     cache_dir = BUNDLE_CACHE_DIR.join(cache_key)
     bundle_path = cache_dir.join("bundle.wasm")
     manifest_path = cache_dir.join("manifest.json")
@@ -110,11 +101,10 @@ def get_or_build_bundle(
         return bundle_path
 
     cache_dir.ensure(dir=True)
-    link_bundle(archives, exports, out=bundle_path)
+    link_bundle(archives, out=bundle_path)
 
     manifest = {
         "archives": [str(a) for a in archives],
-        "exports": sorted(exports),
         "zig_version": _zig_version(),
         "cache_key": cache_key,
     }

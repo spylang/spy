@@ -36,7 +36,6 @@ else:
 
 def get_LLMOD(
     extra_archives: list[py.path.local] = [],
-    extra_exports: list[str] = [],
     *,
     force_rebuild: bool = False,
 ) -> LLWasmModule:
@@ -46,10 +45,6 @@ def get_LLMOD(
     When extra_archives is empty, returns the prebuilt LLMOD (no build step).
     When extra_archives is non-empty, links libspy.a + each extra archive into
     a single bundle (cached by content hash) and returns a LLWasmModule for it.
-
-    extra_exports lists symbols from extra archives that are NOT decorated
-    with WASM_EXPORT. Symbols already annotated with WASM_EXPORT (including
-    all libspy symbols) are exported automatically and should not be listed.
     """
     if not extra_archives:
         assert LLMOD is not None
@@ -65,9 +60,7 @@ def get_LLMOD(
 
     libspy_a = BUILD.join("wasi", "debug", "libspy.a")
     all_archives = [libspy_a] + list(extra_archives)
-    bundle_path = get_or_build_bundle(
-        all_archives, extra_exports, force_rebuild=force_rebuild
-    )
+    bundle_path = get_or_build_bundle(all_archives, force_rebuild=force_rebuild)
     return LLWasmModule(str(bundle_path))
 
 
