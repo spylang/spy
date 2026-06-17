@@ -1,9 +1,16 @@
 """
 Things to notice:
-  - `int` is SPy's arbitrary-precision integer (like Python's), distinct from `i32`
+  - currently, `int` is just an alias to `i32`
   - recursive functions work as in Python, with full type inference on return values
   - timing shows the speedup from compilation vs CPython interpretation
-  - in SPy, main() does not need to be explicitely called
+  - in SPy, main() does not need to be explicitly called
+
+Note: SPy's performance comes from the compiler, not the interpreter. The interpreter
+is currently much slower than CPython — the goal is to reach CPython speed, but this
+is not yet achieved. The plan to get there is to implement the SPy interpreter in SPy
+itself, so that it can be compiled. To get compiled performance in the meantime,
+install SPy locally and run `spy build -x fibo.spy`. The playground does not yet
+support `spy build`.
 """
 
 from time import time

@@ -28,9 +28,9 @@ def main() -> None:
     const LIMIT = 5
     # LIMIT = 6  # would raise: "x is const" — uncomment to see the error
 
-    LIMIT2 = 10
-    LIMIT3 = LIMIT + LIMIT2
-    LIMIT4 = LIMIT + LIMIT2
+    LIMIT2 = 10              # blue, since assigned once
+    LIMIT3 = LIMIT + LIMIT2  # also blue
+    LIMIT4 = LIMIT + LIMIT2  # red because of the next assignment
 
     print("COLOR(LIMIT)", COLOR(LIMIT))    # blue
     print("COLOR(LIMIT2)", COLOR(LIMIT2))  # blue

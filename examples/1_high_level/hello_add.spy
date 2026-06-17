@@ -1,8 +1,13 @@
 """
 Things to notice:
-  - functions require signature
-  - after redshift, print is specialized
-  - with spy redshift --full-fqn, you can see that lookups are resolved early
+  - "red" functions require signature
+  - after "redshift", print is specialized
+
+Redshift is the compilation phase during which SPy applies:
+  - partial evaluation of all blue expressions and functions,
+  - concretization of all generic types,
+  - static dispatch of all function calls, and
+  - type checking.
 """
 
 

@@ -1,10 +1,13 @@
 """
 Things to notice:
-  - str supports: +, *, ==, !=, [], len(), replace(), upper(), isascii()
+  - str supports: +, *, ==, !=, [], len(), replace(), upper(), isascii(), ...
   - str can be converted to numeric types with explicit casts: i32(s), f64(s), ...
   - bytes literals use b'...' syntax
-  - bytes supports: len(), [], ==, !=, +, *, repr()
+  - bytes supports: len(), [], ==, !=, +, *, repr(), ...
   - ord() works on single-character str or bytes literals
+
+Warning: str and bytes are still missing many methods, but they can be implemented
+in SPy's own standard library, so contributions are welcome and relatively easy.
 """
 
 

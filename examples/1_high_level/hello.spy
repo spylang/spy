@@ -20,5 +20,6 @@ Things to notice:
     SPy libraries do not need a `main()` function.
 """
 
+
 def main() -> None:
     print("Hello world!")
