@@ -12,8 +12,7 @@ The C half lives in src/spyvm_qrcodegen.c; it #includes libspy's public
 headers and the vendored qrcodegen headers, and exposes three WASM exports
 (spy_qrcodegen$encode, $get_size, $get_module). Build the archives with:
 
-    make -C ../vendor/qrcodegen TARGET=wasi
-    make TARGET=wasi
+    make -C spyvm_qrcodegen
 """
 
 from pathlib import Path
