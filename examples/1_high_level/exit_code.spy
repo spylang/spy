@@ -5,6 +5,7 @@ Things to notice:
   - `argv` contains the script/executable name and the script arguments
 """
 
+
 def main(argv: list[str]) -> i32:
     print("argv:")
     for arg in argv:

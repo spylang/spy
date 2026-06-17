@@ -1,3 +1,13 @@
+"""
+Things to notice:
+  - `def add[T](...)` is syntactic sugar for `@blue.generic def add(T): ...`
+  - generic functions are called with `[]` for the type parameter, `()` for values
+  - `@blue.generic` functions are resolved entirely at redshift time:
+    each `add[i32]` and `add[str]` becomes a separate specialized red function
+  - `add2` shows the explicit desugaring — both forms are equivalent
+"""
+
+
 def add[T](x: T, y: T) -> T:
     return x + y
 

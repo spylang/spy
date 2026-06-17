@@ -1,2 +1,12 @@
+"""
+Things to notice:
+  - every SPy program defines `main()` as its entry point
+  - `spy execute hello.spy` runs the program
+  - `spy colorize hello.spy` shows syntax highlighting (blue/red coloring)
+  - `spy redshift hello.spy` shows the fully compiled, type-specialized output
+  - `spy redshift --c hello.spy` emits C code
+"""
+
+
 def main() -> None:
     print("Hello world!")

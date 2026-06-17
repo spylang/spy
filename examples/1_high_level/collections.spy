@@ -1,3 +1,12 @@
+"""
+Things to notice:
+  - tuples, dicts, and lists work as in Python
+  - types are inferred from usage: `a = (2, "SPy")` gives a `tuple[i32, str]`
+  - heterogeneous tuples are fully supported; dict and list require uniform types
+  - after redshift, collection operations are specialized and dispatch-free
+"""
+
+
 def main() -> None:
     a = (2, "SPy")
     print(a[0])

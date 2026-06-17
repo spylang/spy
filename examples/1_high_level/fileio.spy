@@ -1,3 +1,10 @@
+"""
+Things to notice:
+  - `open()`, `write()`, `close()`, and iteration over lines work as in Python
+  - context managers (`with`) are not yet supported (but it's in the roadmap)
+"""
+
+
 def main() -> None:
     f = open("/tmp/foo.txt", "w")
     for i in range(10):

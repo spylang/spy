@@ -1,3 +1,11 @@
+"""
+Things to notice:
+  - `Annotated` is a generic blue value (not a type) that wraps a type plus metadata
+  - `_extra` is captured as a blue `interp_tuple` — a tuple known entirely at redshift time
+  - `__convert_to__` is a metafunc that fires when the value is used where a `type` is expected
+  - this pattern shows how SPy can implement PEP 593-style annotations as a library,
+    without any built-in support
+"""
 from operator import OpSpec
 from __spy__ import interp_tuple
 

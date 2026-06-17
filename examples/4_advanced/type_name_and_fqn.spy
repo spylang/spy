@@ -1,3 +1,13 @@
+"""
+Things to notice:
+  - SPy types carry several name attributes at different levels of qualification
+  - `__full_fqn__` includes the module path; `__fqn__` is shorter; `__qualname__`
+    and `__name__` follow Python conventions
+  - for generic types, the type argument is part of the name (e.g. `Foo[i32]`)
+  - this is useful for debugging, error messages, and metaprogramming
+"""
+
+
 @struct
 class Foo[T]:
     pass

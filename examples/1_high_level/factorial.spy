@@ -1,3 +1,11 @@
+"""
+Things to notice:
+  - `i32` is a concrete 32-bit integer type (unlike Python's arbitrary-precision `int`)
+  - SPy primitive types include i8, i16, i32, i64, u8, u16, u32, u64, f32, f64
+  - `for` loops and `range()` work as in Python
+  - after redshift, the loop is compiled to efficient C code with no boxing
+"""
+
 import time
 
 

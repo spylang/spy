@@ -1,0 +1,48 @@
+"""
+Things to notice:
+  - module-level assignments are blue and immutable (const) by default
+  - `var` declares a mutable global variable — reassignment is then allowed
+  - `var` globals are especially useful for mutable pointers (e.g. gc_ptr[T])
+    which appear in low-level and advanced examples
+  - `const` inside a function declares a local blue constant: it is fully
+    resolved at redshift time and inlined as a literal (run `spy redshift` to see)
+  - local variables assigned only once with literals or blue variables are by default blue
+"""
+
+from __spy__ import COLOR
+
+
+# plain module-level assignment: immutable (const) by default
+N: i32 = 10
+
+# `var` makes the global mutable
+var counter: i32 = 0
+
+
+def increment() -> None:
+    counter = counter + 1
+
+
+def main() -> None:
+    # `const` declares a local blue constant, resolved at redshift time
+    const LIMIT = 5
+    # LIMIT = 6  # would raise: "x is const" — uncomment to see the error
+
+    LIMIT2 = 10
+    LIMIT3 = LIMIT + LIMIT2
+    LIMIT4 = LIMIT + LIMIT2
+
+    print("COLOR(LIMIT)", COLOR(LIMIT))    # blue
+    print("COLOR(LIMIT2)", COLOR(LIMIT2))  # blue
+    print("COLOR(LIMIT3)", COLOR(LIMIT3))  # blue
+    print("COLOR(LIMIT4)", COLOR(LIMIT4))  # red
+
+    LIMIT4 = 10
+
+    print("N+1:", N+1)
+    # N = 20  # would raise: "x is const" — uncomment to see the error
+
+    print("counter:", counter)
+    for i in range(LIMIT):
+        increment()
+    print("counter:", counter)

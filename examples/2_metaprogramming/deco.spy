@@ -1,3 +1,13 @@
+"""
+Things to notice:
+  - `@blue` decorators are applied entirely at redshift time
+  - `double` wraps `inc` at compile time: the resulting `inc` in red code
+    is already the doubled version — `double` itself disappears from the output
+  - this is the SPy equivalent of zero-cost compile-time code generation
+  - blue decorator functions do not need type annotations
+"""
+
+
 @blue
 def double(fn):
     def inner(x: i32) -> i32:
