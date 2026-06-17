@@ -55,6 +55,14 @@ def get_LLMOD(
         assert LLMOD is not None
         return LLMOD
 
+    for archive in extra_archives:
+        if not archive.check(file=True):
+            raise SPyError(
+                "W_ImportError",
+                f"cannot find the archive '{archive}'.\n"
+                f"Did you forget to build the spyvm extension module?",
+            )
+
     libspy_a = BUILD.join("wasi", "debug", "libspy.a")
     all_archives = [libspy_a] + list(extra_archives)
     bundle_path = get_or_build_bundle(
