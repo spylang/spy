@@ -1,7 +1,7 @@
 """
 Things to notice:
   - `def add[T](...)` is syntactic sugar for `@blue.generic def add(T): ...`
-  - generic functions are called with `[]` for the type parameter, `()` for values
+  - generic functions are called with `[]` for the parameters, `()` for values
   - `@blue.generic` functions are resolved entirely at redshift time:
     each `add[i32]` and `add[str]` becomes a separate specialized red function
   - `add2` shows the explicit desugaring — both forms are equivalent
@@ -12,13 +12,19 @@ def add[T](x: T, y: T) -> T:
     return x + y
 
 
-# the function above is syntax sugar for this
+# the function above is syntax sugar for this, i.e. a @blue.generic function factory
 @blue.generic
 def add2(T):
     def impl(x: T, y: T) -> T:
         return x + y
 
     return impl
+
+
+"""
+Functions decorated with @blue.generic are called using square brackets [] instead of parentheses ().
+Other than that, they are identical to other blue functions.
+"""
 
 
 def main() -> None:
