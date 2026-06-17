@@ -1,3 +1,12 @@
+"""
+Things to notice:
+  - `@blue.metafunc` allows dispatch on the *static type* of arguments at redshift time
+  - `m_x.static_type` gives the compile-time type of the argument — no runtime cost
+  - each call site gets a specialized implementation; unsupported types raise TypeError
+    at redshift time, not at runtime
+  - this is how SPy's built-in `print` is implemented internally
+"""
+
 from operator import OpSpec
 
 

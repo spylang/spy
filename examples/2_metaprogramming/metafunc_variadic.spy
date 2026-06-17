@@ -1,3 +1,12 @@
+"""
+Things to notice:
+  - `*args_m` in a `@blue.metafunc` captures all arguments as a tuple of meta-args
+  - the number of arguments is known at redshift time via `len(args_m)`
+  - each call site is specialized
+  - mismatched types (e.g. `mysum(1, 'hello')`) raise TypeError at redshift time —
+    uncomment the last lines to see the errors
+"""
+
 from operator import OpSpec
 
 
