@@ -21,20 +21,33 @@ from spy.vendored.dataclass_typer import dataclass_typer
 
 class TyperStrictParseCommand(typer.core.TyperCommand):
     def make_parser(self, ctx: click.Context) -> click.OptionParser:
-        """Creates the underlying option parser for this command."""
+        """
+        Turn off allow_interspersed_argsd for just this command, which
+        forces positional args and options to be separate. In particular,
+        this ensures that any values following the filename are
+        passed to argv instead of parsed as flags, even if they have the same name
+
+        spy execute a.spy --timeit --> argv[1] == "--timeit"
+        """
         ctx.allow_interspersed_args = False
         return super().make_parser(ctx)
 
     def parse_args(self, ctx: click.Context, args: list[str]) -> list[str]:
+        """
+        Show a hint if any of the values in argv match any of the possible option flags
+
+        >>> spy execute a.spy --timeit
+        '--timeit' passed to 'spy execute' as part of argv; to pass it as a flag, it must proceeed the .spy file name
+        """
         args = super().parse_args(ctx, args)
-        possible_error_args = [
+        possible_error_args: list[str] = [
             arg
             for arg in ctx.params["argv"]
-            if arg.lstrip(ctx._opt_prefixes) in ctx.params
-        ]  # TODO this is not correct
+            if any(arg.lstrip(prefix) in ctx.params for prefix in ctx._opt_prefixes)
+        ]
         if possible_error_args:
             print(
-                f"{','.join(possible_error_args)} passed to 'spy {ctx.command.name} as part of argv; to pass it as a flag, it must proceeed the .spy file name"
+                f"{','.join(f"'{arg}'" for arg in possible_error_args)} passed to 'spy {ctx.command.name}' as part of argv; to pass it as a flag, it must proceeed the .spy file name"
             )
         return args
 
@@ -133,10 +146,6 @@ class SpyGroupConfig(TyperGroup):
                 return cmd.name
         return lookup_name
 
-    def parse_args(self, ctx, args):
-        ctx.obj = {"args": args}
-        return super().parse_args(ctx, args)
-
 
 class SpyTyper(typer.Typer):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
@@ -149,7 +158,7 @@ class SpyTyper(typer.Typer):
     def _command_with_default_option(
         self: typer.Typer,
         default: bool = False,
-        strict_argv=False,
+        strict_argv: bool = False,
         *args: Any,
         **kwargs: Any,
     ) -> Callable[[CommandFunctionType], CommandFunctionType]:

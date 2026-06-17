@@ -428,6 +428,18 @@ class TestMain:
         status, out = getstatusoutput(f"{test_exe} aaa bbb ccc")
         assert out.split() == [str(test_exe), "aaa", "bbb", "ccc"]
 
+    def test_compile_argv_strict(self):
+        src = """
+        def main(argv: list[str]) -> None:
+            for a in argv:
+                print(a)
+        """
+        f = self.write("test.spy", src)
+        res = self.runner.invoke(app, ["build", "-x", str(f), "--timeit"])
+        assert res.exit_code == 0
+        output = decolorize(res.output)
+        assert "'--timeit' passed to 'spy build" in output
+
     def test_redshift_argv(self):
         src = """
         def main(argv: list[str]) -> None:
@@ -435,9 +447,13 @@ class TestMain:
                 print(a)
         """
         f = self.write("test.spy", src)
-        res = self.runner.invoke(
-            app, ["redshift", "-x", str(f), "aaa", "bbb", "ccc", "--timeit"]
-        )
+        res = self.runner.invoke(app, ["redshift", "-x", str(f), "aaa", "bbb", "ccc"])
         assert res.exit_code == 0
         output = decolorize(res.output)
-        assert output.split() == [str(f), "aaa", "bbb", "ccc", "--timeit"]
+        assert output.split() == [str(f), "aaa", "bbb", "ccc"]
+
+        # Test that --timeit is passed in argv instead of as flag
+        res = self.runner.invoke(app, ["redshift", "-x", str(f), "--timeit"])
+        assert res.exit_code == 0
+        output = decolorize(res.output)
+        assert "'--timeit' passed to 'spy redshift" in output
