@@ -38,9 +38,6 @@ class LLWasmModule(LLWasmModuleBase):
     def __repr__(self) -> str:
         return f"<LLWasmModule {self.filename}>"
 
-    def all_export_names(self) -> list[str]:
-        return [exp.name for exp in self.mod.exports]
-
     @classmethod
     async def async_new(cls, url: str) -> Self:
         raise NotImplementedError("this is needed only for emscripten")
