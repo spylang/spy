@@ -390,6 +390,11 @@ class methods:
                 # For each starting position in the target string, look through len(sep) characters
                 # If all of them match the characters in sep, we have a match and should split here
                 # If not, increment starting position and try again
+                 
+                # We would ideally pre-allocate a list with a reasonable guess at capacity
+                # CPython uses the maxsplit paramter+1 (WIP not implemented yet), or 
+                # 12 if maxsplit is not given or if maxsplit > 12. Would be good to add here
+                # when pre-allocating a list of a given size is possible
                 result = list[str]()
 
                 # Starting positions in the target string
