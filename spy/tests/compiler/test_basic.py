@@ -486,7 +486,6 @@ class TestBasic(CompilerTest):
         """
         errors = expect_errors(
             "keyword arguments not supported for this function",
-            ("`operator::i32_add` does not support keyword arguments", "i32_add"),
         )
         self.compile_raises(src, "foo", errors)
 
@@ -497,7 +496,6 @@ class TestBasic(CompilerTest):
         """
         errors = expect_errors(
             "keyword arguments not supported for this function",
-            ("keyword arguments not supported", "hash"),
         )
         self.compile_raises(src, "foo", errors)
 

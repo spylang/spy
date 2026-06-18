@@ -1,8 +1,7 @@
 from typing import TYPE_CHECKING
 
-from spy.errors import SPyError
 from spy.vm.b import B
-from spy.vm.function import W_Func, W_FuncArgs, W_FuncType
+from spy.vm.function import W_ASTFunc, W_Func, W_FuncArgs, W_FuncType
 from spy.vm.modules.operator.attrop import unwrap_name_maybe
 from spy.vm.opimpl import W_OpImpl
 from spy.vm.opspec import W_MetaArg, W_OpSpec
@@ -22,8 +21,7 @@ def w_CALL(vm: "SPyVM", wam_obj: W_MetaArg, wam_funcargs: W_MetaArg) -> W_OpImpl
 
     w_funcargs = wam_funcargs.w_blueval
     assert isinstance(w_funcargs, W_FuncArgs)
-    # in_args_wam is the source-order flat expansion used for ArgSpec.Arg(i) indices
-    in_args_wam = [wam_obj] + w_funcargs.to_list()
+    newargs_wam = [wam_obj] + w_funcargs.to_list()
     errmsg = "cannot call objects of type `{0}`"
 
     if isinstance(w_T, W_FuncType):
@@ -32,16 +30,17 @@ def w_CALL(vm: "SPyVM", wam_obj: W_MetaArg, wam_funcargs: W_MetaArg) -> W_OpImpl
         # message in case we try to call a plain function with [].
         assert w_T.pyclass is W_Func
         if w_T.kind == "plain":
-            w_opspec = W_Func.op_CALL(vm, wam_obj, wam_funcargs)
+            w_func = wam_obj.w_blueval
+            if w_funcargs.kwargs_wam and not isinstance(w_func, W_ASTFunc):
+                errmsg = "keyword arguments not supported for this function"
+            else:
+                w_opspec = W_Func.op_CALL(vm, wam_obj, wam_funcargs)
         elif w_T.kind == "metafunc":
             assert w_T.pyclass is W_Func
             if w_funcargs.kwargs_wam:
-                err = SPyError(
-                    "W_TypeError", "keyword arguments not supported for this function"
-                )
-                err.add("error", "keyword arguments not supported", wam_obj.loc)
-                raise err
-            w_opspec = W_Func.op_METACALL(vm, wam_obj, *w_funcargs.to_list())  # type: ignore
+                errmsg = "keyword arguments not supported for this function"
+            else:
+                w_opspec = W_Func.op_METACALL(vm, wam_obj, *w_funcargs.to_list())  # type: ignore
         elif w_T.kind == "generic":
             errmsg = "generic functions must be called via `[...]`"
         else:
@@ -50,12 +49,12 @@ def w_CALL(vm: "SPyVM", wam_obj: W_MetaArg, wam_funcargs: W_MetaArg) -> W_OpImpl
     elif w_T is B.w_dynamic:
         w_opspec = W_OpSpec(OP.w_dynamic_call)
     elif w_call := w_T.lookup_func(vm, "__call__"):
-        w_opspec = vm.fast_metacall(w_call, in_args_wam)
+        w_opspec = vm.fast_metacall(w_call, newargs_wam)
 
     return typecheck_opspec(
         vm,
         w_opspec,
-        in_args_wam,
+        newargs_wam,
         dispatch="single",
         errmsg=errmsg,
     )
@@ -73,18 +72,18 @@ def w_CALL_METHOD(
 
     w_funcargs = wam_funcargs.w_blueval
     assert isinstance(w_funcargs, W_FuncArgs)
-    in_args_wam = [wam_obj, wam_meth] + w_funcargs.to_list()
+    newargs_wam = [wam_obj, wam_meth] + w_funcargs.to_list()
 
     # if the type provides __call_method__, use it
     if w_call_method := w_T.lookup_func(vm, "__call_method__"):
-        w_opspec = vm.fast_metacall(w_call_method, in_args_wam)
+        w_opspec = vm.fast_metacall(w_call_method, newargs_wam)
     else:
         w_opspec = default_callmethod(vm, wam_obj, wam_meth, w_funcargs, meth)
 
     return typecheck_opspec(
         vm,
         w_opspec,
-        in_args_wam,
+        newargs_wam,
         dispatch="single",
         errmsg=f"method `{{0}}::{meth}` does not exist",
     )

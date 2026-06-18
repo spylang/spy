@@ -322,17 +322,6 @@ class W_Func(W_Object):
         if isinstance(w_func, W_ASTFunc):
             args_wam = w_func._bind_args(vm, w_funcargs)
         else:
-            if w_funcargs.kwargs_wam:
-                func_name = w_func.fqn.human_name(vm)
-                err = SPyError(
-                    "W_TypeError", "keyword arguments not supported for this function"
-                )
-                err.add(
-                    "error",
-                    f"`{func_name}` does not support keyword arguments",
-                    wam_func.loc,
-                )
-                raise err
             args_wam = w_funcargs.to_list()
         return W_OpSpec(w_func, args_wam, is_direct_call=True)
 
