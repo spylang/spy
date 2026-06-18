@@ -139,6 +139,7 @@ class methods:
                 i = 0
                 if step > 0:
                     while current < stop:
+                        # ptr_copy_slice(dst, dstart, dend, src, sstart, send)
                         ptr_copy_slice(llnew.utf8, i, i+1, ll.utf8, current, current+1)
                         current += step
                         i += 1
