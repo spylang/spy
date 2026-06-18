@@ -4,10 +4,9 @@ Things to notice:
   - after redshift, keyword args are reordered
 """
 
-
-def sub(x: i32, y:i32, z: i32) -> i32:
-    return x - (y - z)
+def compute(x: i32, y:i32, z: i32) -> i32:
+    return 100 * x + 10 * y + z
 
 def main() -> None:
     print("Hello from SPy 🥸")
-    print(sub(100, z=10, y=20))
+    print(compute(1, z=5, y=3))
