@@ -1,4 +1,4 @@
-title: SPy Builtins
+title: Builtin Functions
 
 <style> {
   font-family: "Lucida Console", "Courier New", monospace;
