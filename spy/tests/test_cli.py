@@ -134,7 +134,6 @@ class TestMain:
                 print(s, "+") # Separate argv so we're sure we're not just seeing the input on the command line
         """
         test = self.write("test.spy", src)
-        argsets = [["execute"], []]  # No subcommand is equivalent to execute command
 
         _, stdout = self.run("execute", test, "1", "--timeit", "2")
         # --timeit appears in argc and not as flag
