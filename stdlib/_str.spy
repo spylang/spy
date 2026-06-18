@@ -371,7 +371,7 @@ class methods:
     
     
     @blue.metafunc
-    def split(self, *args_m):
+    def split(m_self, *args_m):
         if len(args_m) == 1 and args_m[0].static_type == str:
             def split_sep(_self: str, sep: str) -> list[str]:
                 # Based on CPython stringlib/split.h
