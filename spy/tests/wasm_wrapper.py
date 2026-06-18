@@ -236,31 +236,12 @@ class WasmFuncWrapper:
         list_length = self.ll.mem.read_i32(addr)
         items_addr = self.ll.mem.read_i32(addr + 8)
 
-        def _read_str_from_addr(s_addr: int) -> str:
-            """
-            Helper function to retrieve the data from StrObject:
-
-            struct StrObject {
-                size_t length;
-                int32_t hash;
-                spy_gc_ptr_u8 utf8;
-            }
-            """
-            s_length = self.ll.mem.read_i32(s_addr)
-            s_hash = self.ll.mem.read_i32(s_addr + 4)
-            s_utf8_addr = self.ll.mem.read_i32(s_addr + 8)
-
-            s = "".join(
-                chr(self.ll.mem.read_u8(s_utf8_addr + i)) for i in range(s_length)
-            )
-            return s
-
         result = []
         for i in range(list_length):
             item_addr = items_addr + i * 4
             str_data_addr = self.ll.mem.read_i32(item_addr)
-            s = _read_str_from_addr(str_data_addr)
-            result.append(s)
+            _, _, b = self.ll.read_str(str_data_addr)
+            result.append(b.decode())
 
         return result
 
