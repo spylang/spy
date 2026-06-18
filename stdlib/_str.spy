@@ -419,8 +419,7 @@ class methods:
                         new_len = search_position-start_of_chunk
 
                         llnew = StrObject.alloc(new_len)
-                        for j in range(new_len):
-                            llnew.utf8[j] = llself.utf8[start_of_chunk+j]
+                        ptr_copy_slice(llnew.utf8, 0, new_len, llself.utf8, start_of_chunk, start_of_chunk+new_len)
 
                         result.append(StrObject.to_str(llnew))
                         start_of_chunk = search_position + sep_len
