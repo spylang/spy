@@ -1,0 +1,6 @@
+
+def f(a: i32) -> i32:
+    return a * 2
+
+def main() -> None:
+    f()
