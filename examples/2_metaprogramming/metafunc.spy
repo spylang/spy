@@ -1,16 +1,16 @@
 """
 Things to notice:
   - `@blue.metafunc` defines a function that runs at redshift time to dispatch
-    on the static types of its arguments — no runtime cost
-  - arguments prefixed with `m_` are MetaArgs: they carry information known at
-    redshift time, in particular `m_x.static_type` and `m_x.color`
-  - each call site gets a specialized implementation, depending on the MetaArgs
-  - the metafunc returns an `OpSpec`, which describes which red function will be
-    called at runtime and with which arguments
+    on the static types of its arguments — no runtime cost.
+  - Arguments prefixed with `m_` are MetaArgs: they carry information known at
+    redshift time, in particular `m_x.static_type` and `m_x.color`.
+  - Each call site gets a specialized implementation, depending on the MetaArgs.
+  - The metafunc returns an `OpSpec`, which describes which red function will be
+    called at runtime and with which arguments.
   - `OpSpec(func)` is the simple form: `func` will be called with the original
-    arguments as-is
-  - unsupported types raise `TypeError` at redshift time, not at runtime
-  - this is how SPy's built-in `print` is implemented internally
+    arguments as-is.
+  - Unsupported types raise `TypeError` at redshift time, not at runtime.
+  - This is how SPy's built-in `print` is implemented internally.
 
 Note on `OpSpec` — the return value of metafuncs:
   - `OpSpec(func)`: simple form — `func` is called with the original arguments

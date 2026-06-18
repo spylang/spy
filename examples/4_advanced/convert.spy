@@ -1,13 +1,13 @@
 """
 Things to notice:
   - `__convert_from__` is a metafunc that SPy calls automatically as a static method
-    when a value is used where a different type is expected (implicit conversion)
-  - it receives three MetaArgs: the expected type, the actual type, and the value
-  - it returns an `OpSpec` describing the conversion function to call
+    when a value is used where a different type is expected (implicit conversion).
+  - It receives three MetaArgs: the expected type, the actual type, and the value.
+  - It returns an `OpSpec` describing the conversion function to call.
   - `OpSpec.NULL` signals that this conversion is not supported for the given
-    types; SPy will then raise a type error at redshift time
-  - this mechanism allows user-defined types to integrate with SPy's type system
-    without any built-in support
+    types; SPy will then raise a type error at redshift time.
+  - This mechanism allows user-defined types to integrate with SPy's type system
+    without any built-in support.
 """
 
 from operator import OpSpec

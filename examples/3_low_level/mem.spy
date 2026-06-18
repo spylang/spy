@@ -1,12 +1,12 @@
 """
 Things to notice:
   - ptr_copy, ptr_move, ptr_setbytes, ptr_cmp are the primary mem ops; they work
-    on ptr[T] for any type T, and count is expressed in items, not bytes
-  - each op has a _slice variant that avoids the need for pointer arithmetic:
-      ptr_copy_slice(dst, dstart, dend, src, sstart, send)
-  - ptr_copy panics on overlapping regions; use ptr_move when regions may overlap
-  - bounds are checked at runtime: out-of-bounds access panics
-  - gc_alloc is used here; the GC handles memory release automatically
+    on ptr[T] for any type T, and count is expressed in items, not bytes.
+  - Each op has a _slice variant that avoids the need for pointer arithmetic:
+    `ptr_copy_slice(dst, dstart, dend, src, sstart, send)`.
+  - `ptr_copy` panics on overlapping regions; use ptr_move when regions may overlap.
+  - Bounds are checked at runtime: out-of-bounds access panics.
+  - `gc_alloc` is used here; the GC handles memory release automatically.
 
 Note: memcpy, memmove, memset, memcmp are byte-only shims (ptr[u8]/ptr[i8])
 that mirror the C standard library.

@@ -1,13 +1,13 @@
 """
 Things to notice:
-  - @blue funcs are completely resolved at redshift time
-  - make_adder is not present in the redshifted or .c file
-  - signatures in blue functions are optional
-  - parameters can be a type to get generics but other types can be used
-    (here i32 and float)
-  - generic functions with the [] syntax are just syntactic sugar for a
-    `@blue.generic` function factory
-  - redshift inserts type conversions
+  - @blue funcs are completely resolved at redshift time.
+  - `make_adder` is not present in the redshifted or .c file.
+  - signatures in blue functions are optional.
+  - Parameters can be a type to get generics but other types can be used
+    (here i32 and float).
+  - Generic functions with the [] syntax are just syntactic sugar for a
+    `@blue.generic` function factory.
+  - Redshift inserts type conversions.
 """
 
 

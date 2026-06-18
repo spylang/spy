@@ -1,7 +1,7 @@
 """
 Things to notice:
-  - `open()`, `write()`, `close()`, and iteration over lines work as in Python
-  - context managers (`with`) are not yet supported (but in the roadmap)
+  - `open()`, `write()`, `close()`, and iteration over lines work as in Python.
+  - Context managers (`with`) are not yet supported (but in the roadmap).
 """
 
 

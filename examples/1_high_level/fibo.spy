@@ -1,9 +1,9 @@
 """
 Things to notice:
-  - currently, `int` is just an alias to `i32`
-  - recursive functions work as in Python, with full type inference on return values
-  - timing shows the speedup from compilation vs CPython interpretation
-  - in SPy, main() does not need to be explicitly called
+  - Currently, `int` is just an alias to `i32`.
+  - Recursive functions work as in Python, with full type inference on return values.
+  - Timing shows the speedup from compilation vs CPython interpretation.
+  - In SPy, `main()` does not need to be explicitly called.
 
 Note: SPy's performance comes from the compiler, not the interpreter. The interpreter
 is currently much slower than CPython — the goal is to reach CPython speed, but this

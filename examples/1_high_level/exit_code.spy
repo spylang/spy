@@ -1,8 +1,8 @@
 """
 Things to notice:
-  - `main()` can take `argv` as a `list[str]` and can return an `i32` exit code
-  - the exit code is propagated to the OS
-  - `argv` contains the script/executable name and the script arguments
+  - `main()` can take `argv` as a `list[str]` and can return an `i32` exit code.
+  - The exit code is propagated to the OS.
+  - `argv` contains the script/executable name and the script arguments.
 """
 
 

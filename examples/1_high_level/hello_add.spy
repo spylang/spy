@@ -1,9 +1,9 @@
 """
 Things to notice:
-  - red functions require signature
-  - after redshift, print is specialized
-  - press the `redshift` button and study the output — this is a good first
-    example to understand what redshift does
+  - Red functions require signature.
+  - After redshift, print is specialized.
+  - Press the `redshift` button and study the output — this is a good first
+    example to understand what redshift does.
 
 Redshift is the compilation phase during which SPy applies:
   - partial evaluation of all blue expressions and functions,

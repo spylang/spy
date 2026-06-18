@@ -5,14 +5,14 @@ introduced in the previous examples.
 
 Things to notice:
   - `Array1d[DTYPE]` is a generic struct — see generic_types.spy for an introduction
-    to generic types
+    to generic types.
   - `Array1d` is a value type (passed by copy), but it holds a `gc_ptr` to `ArrayData`
-    which lives on the heap — so copying an `Array1d` is cheap (just a pointer copy)
-  - this is the current SPy idiom for objects that behave like references: wrap the
-    mutable heap-allocated data in a struct that holds a pointer to it
+    which lives on the heap — so copying an `Array1d` is cheap (just a pointer copy).
+  - This is the current SPy idiom for objects that behave like references: wrap the
+    mutable heap-allocated data in a struct that holds a pointer to it.
   - `__new__` and `__make__` are the low-level constructor protocol for structs
-    (see point.spy and smallpoint.spy)
-  - `ptr_setbytes` and `ptr_copy` are used for efficient bulk memory operations
+    (see point.spy and smallpoint.spy).
+  - `ptr_setbytes` and `ptr_copy` are used for efficient bulk memory operations.
 """
 
 from unsafe import gc_alloc, gc_ptr, ptr_setbytes, ptr_copy

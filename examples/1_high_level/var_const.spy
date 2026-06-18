@@ -1,12 +1,12 @@
 """
 Things to notice:
-  - module-level assignments are blue and immutable (const) by default
-  - `var` declares a mutable global variable — reassignment is then allowed
+  - Module-level assignments are blue and immutable (const) by default.
+  - `var` declares a mutable global variable — reassignment is then allowed.
   - `var` globals are especially useful for mutable pointers (e.g. gc_ptr[T])
-    which appear in low-level and advanced examples
+    which appear in low-level and advanced examples.
   - `const` inside a function declares a local blue constant: it is fully
-    resolved at redshift time and inlined as a literal (run `spy redshift` to see)
-  - local variables assigned only once with literals or blue variables are by default blue
+    resolved at redshift time and inlined as a literal (run `spy redshift` to see).
+  - Local variables assigned only once with literals or blue variables are by default blue.
 """
 
 from __spy__ import COLOR

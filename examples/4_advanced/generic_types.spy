@@ -1,12 +1,12 @@
 """
 Things to notice:
-  - a generic type is defined with `@struct` and parameters between []: `class Pair[T]`
-  - under the hood, `Pair` is a `@blue.generic` type factory: `Pair[i32]` and
-    `Pair[str]` are two distinct concrete types, resolved at redshift time
-  - generic methods work just like regular methods: `T` is in scope as a type
-  - generic types can be nested: `Pair[Pair[i32]]` is valid
-  - structs are passed by value (copied); for reference semantics, use a gc_ptr
-    (see myarray.spy)
+  - A generic type is defined with `@struct` and parameters between []: `class Pair[T]`.
+  - Under the hood, `Pair` is a `@blue.generic` type factory: `Pair[i32]` and
+    `Pair[str]` are two distinct concrete types, resolved at redshift time.
+  - Generic methods work just like regular methods: `T` is in scope as a type.
+  - Generic types can be nested: `Pair[Pair[i32]]` is valid.
+  - Structs are passed by value (copied); for reference semantics, use a gc_ptr
+    (see myarray.spy).
 """
 
 

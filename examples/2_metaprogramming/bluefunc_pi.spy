@@ -1,8 +1,8 @@
 """
 Things to notice:
-  - @blue funcs are completely resolved at redshift time
-  - get_pi is not present in the redshifted or .c file
-  - types in blue functions are optional
+  - @blue funcs are completely resolved at redshift time.
+  - `get_pi` is not present in the redshifted or .c file.
+  - Signatures in blue functions are optional.
 
 Note: `redshift --linearize` "linearises" the `__block__`, which can give
 simpler output for the print calls with more than one argument.
