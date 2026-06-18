@@ -1071,7 +1071,10 @@ class SPyVM:
         self, wam_func: W_MetaArg, args_wam: list[W_MetaArg], *, loc: Loc
     ) -> W_OpImpl:
         "func(*args) (metacall)"
-        return self.call_OP(loc, OPERATOR.w_CALL, [wam_func] + args_wam)
+        from spy.vm.function import W_FuncArgs
+
+        wam_funcargs = W_FuncArgs.from_positional(self, args_wam, loc)
+        return self.call_OP(loc, OPERATOR.w_CALL, [wam_func, wam_funcargs])
 
     def call_wam(
         self, wam_func: W_MetaArg, args_wam: list[W_MetaArg], *, loc: Loc

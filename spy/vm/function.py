@@ -305,7 +305,7 @@ class W_Func(W_Object):
     # is 'plain' or 'generic'.
     @staticmethod
     def op_CALL(
-        vm: "SPyVM", wam_func: "W_MetaArg", *got_args_wam: "W_MetaArg"
+        vm: "SPyVM", wam_func: "W_MetaArg", wam_funcargs: "W_MetaArg"
     ) -> "W_OpSpec":
         """
         Return an OpSpec which directly calls this function.
@@ -316,9 +316,13 @@ class W_Func(W_Object):
         assert isinstance(w_func, W_Func)
         assert w_func.w_functype.kind != "metafunc"
 
-        args_wam = list(got_args_wam)
+        w_funcargs = wam_funcargs.w_blueval
+        assert isinstance(w_funcargs, W_FuncArgs)
+
         if isinstance(w_func, W_ASTFunc):
-            args_wam = w_func._fill_defaults_maybe(vm, args_wam)
+            args_wam = w_func._bind_args(vm, w_funcargs)
+        else:
+            args_wam = w_funcargs.to_list()
         return W_OpSpec(w_func, args_wam, is_direct_call=True)
 
     @staticmethod
@@ -370,6 +374,52 @@ class W_Func(W_Object):
             w_opspec._args_wam = list(args_wam)
 
         return w_opspec
+
+
+class W_FuncArgs(W_Object):
+    """
+    Encapsulates the payload of a function call: positional args and keyword
+    args in source order. Passed as a single W_MetaArg through the call_OP
+    machinery. Unpacked by w_CALL / _bind_args before typechecking.
+    """
+
+    args_wam: list["W_MetaArg"]
+    kwargs_wam: list[tuple[str, "W_MetaArg"]]  # source order
+
+    def __init__(
+        self,
+        args_wam: list["W_MetaArg"],
+        kwargs_wam: list[tuple[str, "W_MetaArg"]],
+    ) -> None:
+        self.args_wam = args_wam
+        self.kwargs_wam = kwargs_wam
+
+    @classmethod
+    def from_positional(
+        cls, vm: "SPyVM", args_wam: list["W_MetaArg"], loc: "Loc"
+    ) -> "W_MetaArg":
+        """
+        Wrap a positional-only args list into a blue W_MetaArg holding a W_FuncArgs.
+        Convenience for internal call sites that don't use kwargs.
+        """
+        from spy.vm.opspec import W_MetaArg as _W_MetaArg
+
+        w_fa = cls(args_wam, [])
+        return _W_MetaArg(vm, "blue", W_FuncArgs._w, w_fa, loc)
+
+    def to_list(self) -> list["W_MetaArg"]:
+        """Return a flat list in source order: positional args then kwargs values."""
+        return self.args_wam + [wam for _, wam in self.kwargs_wam]
+
+    def spy_key(self, vm: "SPyVM") -> Any:
+        args_keys = tuple(wam.spy_key(vm) for wam in self.args_wam)
+        kwargs_keys = tuple((name, wam.spy_key(vm)) for name, wam in self.kwargs_wam)
+        return ("W_FuncArgs", args_keys, kwargs_keys)
+
+
+# W_FuncArgs is internal and never visible at the SPy level, but needs a
+# registered type so vm.dynamic_type() works when wrapping it in a W_MetaArg.
+W_FuncArgs._w = W_Type.declare(FQN("builtins::funcargs"))
 
 
 # =========== W_ASTFunc and compilation stages ========
@@ -467,33 +517,57 @@ class W_ASTFunc(W_Func):
         frame = ASTFrame(vm, self, args_w)
         return frame.run(args_w)
 
-    def _fill_defaults_maybe(
-        self, vm: "SPyVM", got_args_wam: list["W_MetaArg"]
-    ) -> list["W_MetaArg"]:
+    def _bind_args(self, vm: "SPyVM", w_funcargs: "W_FuncArgs") -> list["W_MetaArg"]:
         """
-        If got_args_wam is not long enough and we have default values, add them.
+        Resolve W_FuncArgs into a fully positional list of W_MetaArg in param
+        order, matching keyword args to params by name and filling defaults.
         """
         from spy.vm.opspec import W_MetaArg
 
-        if not self.defaults_w:
-            return got_args_wam
+        got_posargs_wam = list(w_funcargs.args_wam)
+        got_kwargs_wam: dict[str, W_MetaArg] = dict(w_funcargs.kwargs_wam)
 
-        n_params = len(self.w_functype.params)
-        n_got = len(got_args_wam)
-        n_defaults = len(self.defaults_w)
-        n_missing = n_params - n_got
+        defaults_wam: dict[str, W_MetaArg] = {}
+        n_default_w = len(self.defaults_w)
+        if n_default_w > 0:
+            param_names = [arg.name for arg in self.funcdef.args]
+            params_with_defaults = param_names[-n_default_w:]
+            default_locs = [d.loc for d in self.funcdef.defaults]
+            for w_default, loc, param_name in zip(
+                self.defaults_w, default_locs, params_with_defaults
+            ):
+                wam = W_MetaArg.from_w_obj(vm, w_default, loc=loc)
+                defaults_wam[param_name] = wam
 
-        if n_missing <= 0 or n_missing > n_defaults:
-            return got_args_wam
+        n_pos_params = len(got_posargs_wam)
+        args_wam = got_posargs_wam.copy()
+        remaining_args = self.funcdef.args[n_pos_params:]
 
-        # defaults align to the end of the param list
-        args_wam = list(got_args_wam)
-        start = n_defaults - n_missing
-        defaults_w = self.defaults_w[start:]
-        default_locs = [d.loc for d in self.funcdef.defaults[start:]]
-        for w_default, loc in zip(defaults_w, default_locs):
-            wam = W_MetaArg.from_w_obj(vm, w_default, loc=loc)
-            args_wam.append(wam)
+        for func_arg in remaining_args:
+            param_name = func_arg.name
+            if param_name in got_kwargs_wam:
+                args_wam.append(got_kwargs_wam.pop(param_name))
+            elif param_name in defaults_wam:
+                args_wam.append(defaults_wam.pop(param_name))
+            else:
+                func_name = self.funcdef.name
+                err = SPyError(
+                    "W_TypeError",
+                    f"{func_name}() missing required argument `{param_name}`",
+                )
+                err.add("error", "missing required argument", func_arg.loc)
+                raise err
+
+        if got_kwargs_wam:
+            unused = ", ".join(f"`{k}`" for k in got_kwargs_wam)
+            err = SPyError("W_TypeError", f"unexpected keyword arguments: {unused}")
+            err.add(
+                "error",
+                "unexpected keyword arguments",
+                next(iter(got_kwargs_wam.values())).loc,
+            )
+            raise err
+
         return args_wam
 
 

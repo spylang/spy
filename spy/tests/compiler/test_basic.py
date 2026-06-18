@@ -456,6 +456,27 @@ class TestBasic(CompilerTest):
         """)
         assert mod.bar(3) == 1.5
 
+    def test_function_call_keywords(self):
+        mod = self.compile("""
+        def foo(small: i32, big: i32) -> i32:
+            return big - small
+
+        def bar(big: i32) -> i32:
+            return foo(big=big, small=7)
+        """)
+        assert mod.bar(10) == 3
+        assert mod.bar(15) == 8
+
+    def test_function_call_pos_with_keywords(self):
+        mod = self.compile("""
+        def foo(a: i32, b: i32, c: i32) -> i32:
+            return a - b // c
+
+        def bar(a: i32, b: i32, c: i32) -> i32:
+            return foo(a, c=c, b=b)
+        """)
+        assert mod.bar(1, 10, 5) == -1
+
     def test_conversions(self):
         mod = self.compile("""
         def a(x: i32) -> f64:
@@ -531,9 +552,8 @@ class TestBasic(CompilerTest):
             return inc()
         """
         errors = expect_errors(
-            "this function takes 1 argument but 0 arguments were supplied",
-            ("1 argument missing", "inc"),
-            ("function defined here", "def inc(x: i32) -> i32"),
+            "inc() missing required argument `x`",
+            ("missing required argument", "x: i32"),
         )
         self.compile_raises(src, "foo", errors)
 
@@ -1533,9 +1553,8 @@ class TestBasic(CompilerTest):
             return add()
         """
         errors = expect_errors(
-            "this function takes from 1 to 2 arguments but 0 arguments were supplied",
-            ("1 argument missing", "add"),
-            ("function defined here", "def add(x: int, y: int = 1) -> int"),
+            "add() missing required argument `x`",
+            ("missing required argument", "x: int"),
         )
         self.compile_raises(src, "foo", errors)
 
