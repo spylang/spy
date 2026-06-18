@@ -165,9 +165,11 @@ class AbstractFrame:
 
     def store_local(self, name: str, w_value: W_Object) -> None:
         lv = self.locals[name]
-        # XXX: this sanity check fails in some tests. Uncomment it and fix the tests!
-        ## if not isinstance(w_value, W_Cell):
-        ##     assert self.vm.isinstance(w_value, lv.w_T)  # sanity check
+        # sanity check
+        if isinstance(w_value, W_Cell):
+            assert self.vm.isinstance(w_value.get(), lv.w_T)
+        else:
+            assert self.vm.isinstance(w_value, lv.w_T)
         lv.w_val = w_value
 
     def load_local(self, name: str) -> W_Object:
