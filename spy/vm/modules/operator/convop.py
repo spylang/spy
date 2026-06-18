@@ -13,8 +13,10 @@ from spy.vm.primitive import (
     W_F64,
     W_I8,
     W_I32,
+    W_I64,
     W_U8,
     W_U32,
+    W_U64,
     W_Bool,
     W_Complex128,
     W_Dynamic,
@@ -239,6 +241,78 @@ def w_f32_to_i32(vm: "SPyVM", w_x: W_F32) -> W_I32:
     return vm.wrap(int(val))
 
 
+@OP.builtin_func
+def w_i64_to_f64(vm: "SPyVM", w_x: W_I64) -> W_F64:
+    val = vm.unwrap_i64(w_x)
+    return vm.wrap(float(val))
+
+
+@OP.builtin_func
+def w_u64_to_f64(vm: "SPyVM", w_x: W_U64) -> W_F64:
+    val = vm.unwrap_u64(w_x)
+    return vm.wrap(float(val))
+
+
+@OP.builtin_func
+def w_i32_to_i64(vm: "SPyVM", w_x: W_I32) -> W_I64:
+    return W_I64(w_x.value)
+
+
+@OP.builtin_func
+def w_u32_to_i64(vm: "SPyVM", w_x: W_U32) -> W_I64:
+    return W_I64(w_x.value)
+
+
+@OP.builtin_func
+def w_i8_to_i64(vm: "SPyVM", w_x: W_I8) -> W_I64:
+    return W_I64(w_x.value)
+
+
+@OP.builtin_func
+def w_u8_to_i64(vm: "SPyVM", w_x: W_U8) -> W_I64:
+    return W_I64(w_x.value)
+
+
+@OP.builtin_func
+def w_i64_to_u64(vm: "SPyVM", w_x: W_I64) -> W_U64:
+    return W_U64(w_x.value)
+
+
+@OP.builtin_func
+def w_u64_to_i64(vm: "SPyVM", w_x: W_U64) -> W_I64:
+    return W_I64(w_x.value)
+
+
+@OP.builtin_func
+def w_f64_to_i64(vm: "SPyVM", w_x: W_F64) -> W_I64:
+    i64_MIN, i64_MAX = -(2**63), 2**63 - 1
+    val = vm.unwrap_f64(w_x)
+    # saturate by returning the integer directly: i64_MAX (2**63-1) is not
+    # representable as a double, so going through float() would round it up to
+    # 2**63 and overflow
+    if math.isnan(val):
+        return W_I64(0)
+    elif val >= 2**63:
+        return W_I64(i64_MAX)
+    elif val < i64_MIN:
+        return W_I64(i64_MIN)
+    return W_I64(int(val))
+
+
+@OP.builtin_func
+def w_f32_to_i64(vm: "SPyVM", w_x: W_F32) -> W_I64:
+    i64_MIN, i64_MAX = -(2**63), 2**63 - 1
+    val = vm.unwrap_f32(w_x)
+    # saturate by returning the integer directly: see w_f64_to_i64
+    if math.isnan(val):
+        return W_I64(0)
+    elif val >= 2**63:
+        return W_I64(i64_MAX)
+    elif val < i64_MIN:
+        return W_I64(i64_MIN)
+    return W_I64(int(val))
+
+
 @OP.builtin_func(color="blue")
 def w_from_dynamic(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     """
@@ -291,3 +365,11 @@ MM.register("convert", "i32", "u8", OP.w_i32_to_u8)
 MM.register("convert", "u8", "i32", OP.w_u8_to_i32)
 MM.register("convert", "i32", "u32", OP.w_i32_to_u32)
 MM.register("convert", "u32", "i32", OP.w_u32_to_i32)
+MM.register("convert", "i8", "i64", OP.w_i8_to_i64)
+MM.register("convert", "u8", "i64", OP.w_u8_to_i64)
+MM.register("convert", "i32", "i64", OP.w_i32_to_i64)
+MM.register("convert", "u32", "i64", OP.w_u32_to_i64)
+MM.register("convert", "i64", "f64", OP.w_i64_to_f64)
+MM.register("convert", "u64", "f64", OP.w_u64_to_f64)
+MM.register("convert", "i64", "u64", OP.w_i64_to_u64)
+MM.register("convert", "u64", "i64", OP.w_u64_to_i64)

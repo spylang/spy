@@ -92,6 +92,10 @@ class InterpFuncWrapper:
                 arg = fixedint.UInt8(arg)
             elif w_T is B.w_u32:
                 arg = fixedint.UInt32(arg)
+            elif w_T is B.w_i64:
+                arg = fixedint.Int64(arg)
+            elif w_T is B.w_u64:
+                arg = fixedint.UInt64(arg)
             elif w_T is B.w_f32:
                 arg = float32(arg)
             w_arg = self.vm.wrap(arg)

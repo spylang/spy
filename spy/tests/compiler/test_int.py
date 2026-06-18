@@ -4,7 +4,7 @@ from spy.errors import SPyError
 from spy.tests.support import CompilerTest
 
 
-@pytest.fixture(params=["i32", "u32", "i8", "u8"])
+@pytest.fixture(params=["i32", "u32", "i8", "u8", "i64", "u64"])
 def int_type(request):
     return request.param
 
@@ -82,6 +82,97 @@ class TestInt(CompilerTest):
         assert mod.bar(42) == 42
         assert mod.bar(-1) == -1
 
+    def test_i64_conversion(self):
+        mod = self.compile("""
+        def i32_to_i64_imp(x: i32) -> i64:
+            return x
+
+        def i8_to_i64_imp(x: i8) -> i64:
+            return x
+
+        def u8_to_i64_imp(x: u8) -> i64:
+            return x
+
+        def u32_to_i64_imp(x: u32) -> i64:
+            return x
+
+        def i64_to_f64_imp(x: i64) -> f64:
+            return x
+
+        def i8_to_i64_exp(x: i8) -> i64:
+            return i64(x)
+
+        def u8_to_i64_exp(x: u8) -> i64:
+            return i64(x)
+
+        def i32_to_i64_exp(x: i32) -> i64:
+            return i64(x)
+
+        def u32_to_i64_exp(x: u32) -> i64:
+            return i64(x)
+
+        def f64_to_i64_exp(x: f64) -> i64:
+            return i64(x)
+
+        def f32_to_i64_exp(x: f32) -> i64:
+            return i64(x)
+
+        def u64_to_i64_exp(x: u64) -> i64:
+            return i64(x)
+        """)
+        assert mod.i32_to_i64_imp(42) == 42
+        assert mod.i32_to_i64_imp(-1) == -1
+        assert mod.i8_to_i64_imp(-1) == -1
+        assert mod.u8_to_i64_imp(255) == 255
+        assert mod.u32_to_i64_imp(2**32 - 1) == 2**32 - 1
+        assert mod.i64_to_f64_imp(42) == 42.0
+        assert mod.i8_to_i64_exp(-1) == -1
+        assert mod.u8_to_i64_exp(255) == 255
+        assert mod.i32_to_i64_exp(-1) == -1
+        assert mod.u32_to_i64_exp(2**32 - 1) == 2**32 - 1
+        assert mod.f64_to_i64_exp(12.5) == 12
+        assert mod.f64_to_i64_exp(float(2**63)) == 2**63 - 1
+        assert mod.f64_to_i64_exp(float(-(2**63)) * 2) == -(2**63)
+        assert mod.f64_to_i64_exp(float("nan")) == 0
+        assert mod.f32_to_i64_exp(12.5) == 12
+        assert mod.f32_to_i64_exp(float(2**63)) == 2**63 - 1
+        assert mod.f32_to_i64_exp(float(-(2**63)) * 2) == -(2**63)
+        assert mod.f32_to_i64_exp(float("nan")) == 0
+        assert mod.u64_to_i64_exp(2**64 - 1) == -1
+
+    def test_u64_conversion(self):
+        mod = self.compile("""
+        def u64_to_f64_imp(x: u64) -> f64:
+            return x
+
+        def i64_to_u64_exp(x: i64) -> u64:
+            return u64(x)
+        """)
+        assert mod.u64_to_f64_imp(42) == 42.0
+        assert mod.i64_to_u64_exp(-1) == 2**64 - 1
+
+    def test_i64_u64_str(self):
+        mod = self.compile("""
+        def i64_str(x: i64) -> str:
+            return str(x)
+
+        def u64_str(x: u64) -> str:
+            return str(x)
+        """)
+        assert mod.i64_str(-9223372036854775808) == "-9223372036854775808"
+        assert mod.u64_str(18446744073709551615) == "18446744073709551615"
+
+    def test_i64_u64_repr(self):
+        mod = self.compile("""
+        def i64_repr(x: i64) -> str:
+            return repr(x)
+
+        def u64_repr(x: u64) -> str:
+            return repr(x)
+        """)
+        assert mod.i64_repr(-9223372036854775808) == "-9223372036854775808"
+        assert mod.u64_repr(18446744073709551615) == "18446744073709551615"
+
     def test_float_to_int(self):
         mod = self.compile("""
         def to_i32(x: f64) -> i32: return i32(x)
@@ -126,7 +217,7 @@ class TestInt(CompilerTest):
             mod.floordiv(11, 0)
 
     def test_division_mixed_signs(self, int_type):
-        if int_type in ("u8", "u32"):
+        if int_type in ("u8", "u32", "u64"):
             pytest.skip("Skipping for negative operands in floordiv test")
 
         mod = self.compile(f"""
@@ -154,7 +245,7 @@ class TestInt(CompilerTest):
         is_unsigned = int_type.startswith("u")
         if is_unsigned:
             with SPyError.raises("W_TypeError", match=f"cannot do -`{int_type}`"):
-                mod.neg(-5)
+                mod.neg(5)
         else:
             assert mod.neg(-5) == 5
 
@@ -239,6 +330,8 @@ class TestInt(CompilerTest):
             "u32": ("4294967296", "-1"),
             "i8": ("128", "-129"),
             "u8": ("256", "-1"),
+            "i64": ("9223372036854775808", "-9223372036854775809"),
+            "u64": ("18446744073709551616", "-1"),
         }
         too_big, too_small = limits[int_type]
         with SPyError.raises("W_OverflowError", match="out of range"):
