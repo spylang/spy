@@ -5,7 +5,7 @@ title: Built-in Types
 
 Types are first class objects in SPy - they can be passed, modified, printed etc. just like any other object. The dynamic type of an object can be retrieved using the [type()](../reference/python_builtins.md#typeobject) builtin
 
-SPy types have attributes that are not present on other objects for identifying the type by name, either for human-readability or identifing the functions origin. A brief example:
+SPy types have attributes that are not present on other objects for identifying the type by name, either for human-readability or identifying the functions origin. A brief example:
 
 ```py
 #a.spy
@@ -42,6 +42,6 @@ __full_fqn__  a::Foo[i32]::Self
 
 ### \_\_full_fqn\_\_
 
-:   An expended representation of the FQN, and the most complete name used in the SPy internals. This is what is shown when runnning `spy redshift --full-fqn`.
+:   An expended representation of the FQN, and the most complete name used in the SPy internals. This is what is shown when running `spy redshift --full-fqn`.
 
 
