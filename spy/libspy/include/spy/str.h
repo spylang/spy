@@ -135,6 +135,10 @@ int8_t spy_operator$str_to_i8(spy_StrObject *s);
 
 uint8_t spy_operator$str_to_u8(spy_StrObject *s);
 
+int64_t spy_operator$str_to_i64(spy_StrObject *s);
+
+uint64_t spy_operator$str_to_u64(spy_StrObject *s);
+
 spy_Complex128 WASM_EXPORT(spy_str_to_complex128)(spy_StrObject *s);
 
 #endif /* SPY_STR_H */

@@ -44,11 +44,11 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
     w_T = vm.dynamic_type(w_val)
     if w_T in (
         B.w_i32,
+        B.w_i64,
+        B.w_u64,
         B.w_i8,
         B.w_u8,
         B.w_u32,
-        B.w_i64,
-        B.w_u64,
         B.w_f32,
         B.w_f64,
         B.w_complex128,
