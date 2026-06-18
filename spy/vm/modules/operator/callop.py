@@ -1,5 +1,6 @@
 from typing import TYPE_CHECKING
 
+from spy.errors import SPyError
 from spy.vm.b import B
 from spy.vm.function import W_Func, W_FuncArgs, W_FuncType
 from spy.vm.modules.operator.attrop import unwrap_name_maybe
@@ -34,6 +35,12 @@ def w_CALL(vm: "SPyVM", wam_obj: W_MetaArg, wam_funcargs: W_MetaArg) -> W_OpImpl
             w_opspec = W_Func.op_CALL(vm, wam_obj, wam_funcargs)
         elif w_T.kind == "metafunc":
             assert w_T.pyclass is W_Func
+            if w_funcargs.kwargs_wam:
+                err = SPyError(
+                    "W_TypeError", "keyword arguments not supported for this function"
+                )
+                err.add("error", "keyword arguments not supported", wam_obj.loc)
+                raise err
             w_opspec = W_Func.op_METACALL(vm, wam_obj, *w_funcargs.to_list())  # type: ignore
         elif w_T.kind == "generic":
             errmsg = "generic functions must be called via `[...]`"
@@ -105,13 +112,7 @@ def default_callmethod(
             [wam_obj] + w_funcargs.args_wam,
             w_funcargs.kwargs_wam,
         )
-        wam_new_funcargs = W_MetaArg(
-            vm,
-            "blue",
-            vm.dynamic_type(new_funcargs),
-            new_funcargs,
-            wam_obj.loc,
-        )
+        wam_new_funcargs = W_MetaArg.from_w_obj(vm, new_funcargs, loc=wam_obj.loc)
 
         kind = w_func.w_functype.kind
         if kind == "plain":

@@ -413,6 +413,11 @@ class Call(Expr):
     args: list[Expr]
     kwargs: list[tuple["StrLiteral", Expr]] = field(default_factory=list)
 
+    def all_arg_exprs(self) -> "Iterator[Expr]":
+        yield from self.args
+        for _, expr in self.kwargs:
+            yield expr
+
 
 @astnode
 class Slice(Expr):
@@ -429,6 +434,11 @@ class CallMethod(Expr):
     method: StrLiteral
     args: list[Expr]
     kwargs: list[tuple["StrLiteral", Expr]] = field(default_factory=list)
+
+    def all_arg_exprs(self) -> "Iterator[Expr]":
+        yield from self.args
+        for _, expr in self.kwargs:
+            yield expr
 
 
 @astnode

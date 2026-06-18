@@ -322,6 +322,17 @@ class W_Func(W_Object):
         if isinstance(w_func, W_ASTFunc):
             args_wam = w_func._bind_args(vm, w_funcargs)
         else:
+            if w_funcargs.kwargs_wam:
+                func_name = w_func.fqn.human_name(vm)
+                err = SPyError(
+                    "W_TypeError", "keyword arguments not supported for this function"
+                )
+                err.add(
+                    "error",
+                    f"`{func_name}` does not support keyword arguments",
+                    wam_func.loc,
+                )
+                raise err
             args_wam = w_funcargs.to_list()
         return W_OpSpec(w_func, args_wam, is_direct_call=True)
 
@@ -395,17 +406,9 @@ class W_FuncArgs(W_Object):
         self.kwargs_wam = kwargs_wam
 
     @classmethod
-    def from_positional(
-        cls, vm: "SPyVM", args_wam: list["W_MetaArg"], loc: "Loc"
-    ) -> "W_MetaArg":
-        """
-        Wrap a positional-only args list into a blue W_MetaArg holding a W_FuncArgs.
-        Convenience for internal call sites that don't use kwargs.
-        """
-        from spy.vm.opspec import W_MetaArg as _W_MetaArg
-
-        w_fa = cls(args_wam, [])
-        return _W_MetaArg(vm, "blue", W_FuncArgs._w, w_fa, loc)
+    def from_args(cls, *args_wam: "W_MetaArg") -> "W_FuncArgs":
+        """Create a positional-only W_FuncArgs from individual args."""
+        return cls(list(args_wam), [])
 
     def to_list(self) -> list["W_MetaArg"]:
         """Return a flat list in source order: positional args then kwargs values."""

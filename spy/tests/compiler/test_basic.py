@@ -477,6 +477,30 @@ class TestBasic(CompilerTest):
         """)
         assert mod.bar(1, 10, 5) == -1
 
+    def test_function_call_kwargs_not_supported_for_builtins(self):
+        src = """
+        from operator import i32_add
+
+        def foo() -> i32:
+            return i32_add(x=1, y=2)
+        """
+        errors = expect_errors(
+            "keyword arguments not supported for this function",
+            ("`operator::i32_add` does not support keyword arguments", "i32_add"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    def test_function_call_kwargs_not_supported_for_metafuncs(self):
+        src = """
+        def foo() -> i32:
+            return hash(x=1)
+        """
+        errors = expect_errors(
+            "keyword arguments not supported for this function",
+            ("keyword arguments not supported", "hash"),
+        )
+        self.compile_raises(src, "foo", errors)
+
     def test_conversions(self):
         mod = self.compile("""
         def a(x: i32) -> f64:
