@@ -488,6 +488,10 @@ class methods:
         return OpSpec.NULL
 
     def isspace(self: str) -> bool:
+        """
+        A very barebones implementation of str.isspace which only works for ascii characters
+        When unicode support is implemented, this will need a rewrite
+        """
         if len(self) == 0: return False
         llself = StrObject.from_str(self)
         for i in range(llself.length):
@@ -499,7 +503,12 @@ class methods:
         
         return True
 
-# A version of str.isspace that operates on single character indices (u8's)
-# For use in low level string code
 def _ll_isspace(ch: u8) -> bool:
+    """
+    A version of str.isspace that operates on single character indices (u8's)
+    For use in low level string code
+
+    As with str.isspace(), only valid for ascii characters, will need a rewrite when
+    unicode support is expanded.
+    """
     return (u8(9) <= ch and ch <= u8(32)) or ch == u8(133) or ch == u8(160)
