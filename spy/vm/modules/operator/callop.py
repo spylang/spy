@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 from spy.vm.b import B
-from spy.vm.function import W_ASTFunc, W_Func, W_FuncArgs, W_FuncType
+from spy.vm.function import W_Func, W_FuncArgs, W_FuncType
 from spy.vm.modules.operator.attrop import unwrap_name_maybe
 from spy.vm.opimpl import W_OpImpl
 from spy.vm.opspec import W_MetaArg, W_OpSpec
@@ -30,17 +30,10 @@ def w_CALL(vm: "SPyVM", wam_obj: W_MetaArg, wam_funcargs: W_MetaArg) -> W_OpImpl
         # message in case we try to call a plain function with [].
         assert w_T.pyclass is W_Func
         if w_T.kind == "plain":
-            w_func = wam_obj.w_blueval
-            if w_funcargs.kwargs_wam and not isinstance(w_func, W_ASTFunc):
-                errmsg = "keyword arguments not supported for this function"
-            else:
-                w_opspec = W_Func.op_CALL(vm, wam_obj, wam_funcargs)
+            w_opspec = W_Func.op_CALL(vm, wam_obj, wam_funcargs)
         elif w_T.kind == "metafunc":
             assert w_T.pyclass is W_Func
-            if w_funcargs.kwargs_wam:
-                errmsg = "keyword arguments not supported for this function"
-            else:
-                w_opspec = W_Func.op_METACALL(vm, wam_obj, *w_funcargs.to_list())  # type: ignore
+            w_opspec = W_Func.op_METACALL(vm, wam_obj, wam_funcargs)
         elif w_T.kind == "generic":
             errmsg = "generic functions must be called via `[...]`"
         else:
@@ -76,7 +69,10 @@ def w_CALL_METHOD(
 
     # if the type provides __call_method__, use it
     if w_call_method := w_T.lookup_func(vm, "__call_method__"):
-        w_opspec = vm.fast_metacall(w_call_method, newargs_wam)
+        if w_funcargs.kwargs_wam:
+            errmsg = "keyword arguments not supported for this function"
+        else:
+            w_opspec = vm.fast_metacall(w_call_method, newargs_wam)
     else:
         w_opspec = default_callmethod(vm, wam_obj, wam_meth, w_funcargs, meth)
 
@@ -117,7 +113,7 @@ def default_callmethod(
         if kind == "plain":
             return W_Func.op_CALL(vm, wam_func, wam_new_funcargs)
         elif kind == "metafunc":
-            return W_Func.op_METACALL(vm, wam_func, *new_funcargs.to_list())  # type: ignore
+            return W_Func.op_METACALL(vm, wam_func, wam_new_funcargs)
         else:
             return W_OpSpec.NULL
 

@@ -322,15 +322,23 @@ class W_Func(W_Object):
         if isinstance(w_func, W_ASTFunc):
             args_wam = w_func._bind_args(vm, w_funcargs)
         else:
+            if w_funcargs.kwargs_wam:
+                err = SPyError(
+                    "W_TypeError", "keyword arguments not supported for this function"
+                )
+                err.add("error", "keyword arguments not supported", wam_func.loc)
+                raise err
             args_wam = w_funcargs.to_list()
         return W_OpSpec(w_func, args_wam, is_direct_call=True)
 
     @staticmethod
     def op_METACALL(
-        vm: "SPyVM", wam_func: "W_MetaArg", *args_wam: "W_MetaArg"
+        vm: "SPyVM", wam_func: "W_MetaArg", wam_funcargs: "W_MetaArg"
     ) -> "W_OpSpec":
         """
-        Call this function and use the return value as the OpSpec
+        Call this function and use the return value as the OpSpec.
+        Mirrors op_CALL: W_ASTFunc metafuncs support kwargs via _bind_args;
+        W_BuiltinFunc metafuncs do not.
         """
         from spy.vm.opspec import W_MetaArg, W_OpSpec
         from spy.vm.typechecker import typecheck_opspec
@@ -339,11 +347,25 @@ class W_Func(W_Object):
         assert isinstance(w_func, W_Func)
         assert w_func.w_functype.kind == "metafunc"
 
+        w_funcargs = wam_funcargs.w_blueval
+        assert isinstance(w_funcargs, W_FuncArgs)
+
+        if w_funcargs.kwargs_wam:
+            err = SPyError(
+                "W_TypeError", "keyword arguments not supported for this function"
+            )
+            err.add("error", "keyword arguments not supported", wam_func.loc)
+            raise err
+
         # Now we want to call the metafunc to get the opspec to return.  Note
         # that we cannot just vm.fast_call() it, because we don't know whether
         # the metafunc has the right signature. Instead, we do a full
         # OpSpec/typecheck/OpImpl dance, to raise proper TypeErrors if needed.
         # This is a bit of code duplication with callop.w_CALL, but too bad.
+        #
+        # Metafuncs receive their arguments as MetaArg-typed values, so each
+        # call-site wam is wrapped inside another W_MetaArg of type operator::MetaArg.
+        args_wam = w_funcargs.to_list()
         meta_args_wam = [W_MetaArg.from_w_obj(vm, wam) for wam in args_wam]
         w_meta_opspec = W_OpSpec(w_func, meta_args_wam)
         w_meta_opimpl = typecheck_opspec(
@@ -367,11 +389,11 @@ class W_Func(W_Object):
             raise err
 
         # if we return a simple opspec, it will be called with arguments
-        # [wam_func, *args_wam]. But what we want is to call it with just
-        # *args_wam. This is the equivalent of passing "list(args_wam)" in
+        # [wam_func, *meta_args_wam]. But what we want is to call it with just
+        # *meta_args_wam. This is the equivalent of passing "list(args_wam)" in
         # op_CALL.
         if w_opspec.is_simple():
-            w_opspec._args_wam = list(args_wam)
+            w_opspec._args_wam = args_wam
 
         return w_opspec
 
@@ -519,6 +541,17 @@ class W_ASTFunc(W_Func):
         got_posargs_wam = list(w_funcargs.args_wam)
         got_kwargs_wam: dict[str, W_MetaArg] = dict(w_funcargs.kwargs_wam)
 
+        # check for positional args that are also provided as kwargs
+        for i, func_arg in enumerate(self.funcdef.args[: len(got_posargs_wam)]):
+            if func_arg.name in got_kwargs_wam:
+                func_name = self.funcdef.name
+                err = SPyError(
+                    "W_TypeError",
+                    f"{func_name}() got multiple values for argument `{func_arg.name}`",
+                )
+                err.add("error", "multiple values for argument", func_arg.loc)
+                raise err
+
         defaults_wam: dict[str, W_MetaArg] = {}
         n_default_w = len(self.defaults_w)
         if n_default_w > 0:
@@ -531,9 +564,8 @@ class W_ASTFunc(W_Func):
                 wam = W_MetaArg.from_w_obj(vm, w_default, loc=loc)
                 defaults_wam[param_name] = wam
 
-        n_pos_params = len(got_posargs_wam)
         args_wam = got_posargs_wam.copy()
-        remaining_args = self.funcdef.args[n_pos_params:]
+        remaining_args = self.funcdef.args[len(got_posargs_wam) :]
 
         for func_arg in remaining_args:
             param_name = func_arg.name
