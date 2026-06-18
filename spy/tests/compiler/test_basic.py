@@ -247,8 +247,8 @@ class TestBasic(CompilerTest):
         # a runtime error. The compilation always succeed.
         mod = self.compile("""
         def foo() -> str:
-            x: i32 = 1
-            y: object = x
+            var x: i32 = 1
+            var y: object = x
             return y
         """)
         msg = "Invalid cast. Expected `str`, got `i32`"

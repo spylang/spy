@@ -141,3 +141,13 @@ class TestFloat(CompilerTest):
         assert mod.f32_to_f64(42.0) == 42.0
         assert mod.f64_to_i32(42.0) == 42
         assert mod.f32_to_i32(42.0) == 42
+
+    def test_prebuilt_const(self):
+        src = """
+        def foo() -> f64:
+            x: f32 = 1.25
+            y: f64 = 2.5
+            return x + y
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 3.75

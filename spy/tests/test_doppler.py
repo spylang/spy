@@ -6,6 +6,7 @@ import pytest
 from spy import ast
 from spy.analyze.symtable import Color
 from spy.backend.spy import FQN_FORMAT, SPyBackend
+from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.util import print_diff
 from spy.vm.function import W_ASTFunc
@@ -27,9 +28,9 @@ class TestDoppler:
         f.write(src)
         self.vm.import_("test")
 
-    def redshift(self, src: str) -> None:
+    def redshift(self, src: str, *, error_mode="eager") -> None:
         self.import_src(src)
-        self.vm.redshift(error_mode="eager")
+        self.vm.redshift(error_mode=error_mode)
 
     def assert_dump(
         self,
@@ -286,37 +287,15 @@ class TestDoppler:
 `list[i32]::new`(), 1), 12)
         """)
 
-    def test_type_conversion(self):
+    def test_pure_blue_call_folded(self):
         src = """
-        def foo(x: f64) -> None:
-            pass
-
-        def convert_in_call() -> None:
-            foo(42)
-
-        def convert_in_locals(x: i32) -> bool:
-            flag: bool = x
-            return x
-
-        def convert_in_conditions(x: i32) -> None:
-            if x:
-                pass
+        def foo() -> f64:
+            return 1 + 2.5
         """
         self.redshift(src)
         self.assert_dump("""
-        def foo(x: f64) -> None:
-            pass
-
-        def convert_in_call() -> None:
-            `test::foo`(`operator::i32_to_f64`(42))
-
-        def convert_in_locals(x: i32) -> bool:
-            flag: bool = `operator::i32_to_bool`(x)
-            return `operator::i32_to_bool`(x)
-
-        def convert_in_conditions(x: i32) -> None:
-            if `operator::i32_to_bool`(x):
-                pass
+        def foo() -> f64:
+            return 3.5
         """)
 
     def test_blue_namespace(self):
@@ -540,3 +519,77 @@ class TestDoppler:
         """,
             funcname="foo",
         )
+
+    def test_residual_type_conversion(self):
+        src = """
+        def bar(x: f64) -> None:
+            pass
+
+        def foo(x: i32) -> f64:
+            bar(x)           # func arg conv
+            flag: bool = x   # local var conv
+            if x:            # 'if conditional' conv
+                pass
+            return x         # return value conv
+        """
+        self.redshift(src)
+        self.assert_dump("""
+        def bar(x: f64) -> None:
+            pass
+
+        def foo(x: i32) -> f64:
+            `test::bar`(`operator::i32_to_f64`(x))
+            flag: bool = `operator::i32_to_bool`(x)
+            if `operator::i32_to_bool`(x):
+                pass
+            return `operator::i32_to_f64`(x)
+       """)
+
+    def test_eager_type_conversion(self):
+        src = """
+        def bar(x: f64) -> None:
+            pass
+
+        def foo() -> f64:
+            x = 42
+            bar(x)               # func arg conv
+            var flag: bool = x   # local var conv
+            if x:                # 'if conditional' conv
+                pass
+            return x             # return value conv
+        """
+        self.redshift(src)
+        self.assert_dump("""
+        def bar(x: f64) -> None:
+            pass
+
+        def foo() -> f64:
+            `test::bar`(42.0)
+            flag: bool = True
+            if True:
+                pass
+            return 42.0
+        """)
+
+    def test_eager_conversion_becomes_static_error(self):
+        src = """
+        def foo() -> str:
+            x: object = 1
+            return x
+        """
+        with SPyError.raises(
+            "W_TypeError", match="Invalid cast. Expected `str`, got `i32`"
+        ):
+            self.redshift(src)
+
+    def test_eager_conversion_become_lazy_error(self):
+        src = """
+        def foo() -> str:
+            x: object = 1
+            return x
+        """
+        self.redshift(src, error_mode="lazy")
+        self.assert_dump("""
+        def foo() -> str:
+            raise TypeError('Invalid cast. Expected `str`, got `i32`') # /.../test.spy:4
+        """)
