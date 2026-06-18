@@ -379,10 +379,14 @@ class methods:
                 if len_self == 0:
                     return [""]
 
-                sep_len_check = len(sep)
-                if sep_len_check == 0:
-                    raise ValueError("empty separator")
+                    
+                    sep_len_check = len(sep)
+                    if sep_len_check == 0:
+                        raise ValueError("empty separator")
 
+                # TODO - CPython has an additional branch here if the separator is only
+                # a single char. Would be good to do in a future PR
+                        
                 llself = StrObject.from_str(_self)
                 llsep = StrObject.from_str(sep)
                 sep_len = llsep.length
