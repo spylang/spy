@@ -32,25 +32,6 @@ class TyperStrictParseCommand(typer.core.TyperCommand):
         ctx.allow_interspersed_args = False
         return super().make_parser(ctx)
 
-    def parse_args(self, ctx: click.Context, args: list[str]) -> list[str]:
-        """
-        Show a hint if any of the values in argv match any of the possible option flags
-
-        >>> spy execute a.spy --timeit
-        '--timeit' passed to 'spy execute' as part of argv; to pass it as a flag, it must proceeed the .spy file name
-        """
-        args = super().parse_args(ctx, args)
-        possible_error_args: list[str] = [
-            arg
-            for arg in ctx.params["argv"]
-            if any(arg in param.opts for param in ctx.command.params)
-        ]
-        if possible_error_args:
-            print(
-                f"{','.join(f"'{arg}'" for arg in possible_error_args)} passed to 'spy {ctx.command.name}' as part of argv; to pass it as a flag, it must proceeed the .spy file name"
-            )
-        return args
-
 
 class TyperDefaultCommand(TyperStrictParseCommand):
     """Type that indicates if a command is the default command."""
