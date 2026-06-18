@@ -1208,6 +1208,10 @@ class AbstractFrame:
         wam_obj = self.eval_expr(op.target)
         wam_meth = self.eval_expr(op.method)
         args_wam = [self.eval_expr(arg) for arg in op.args]
+        for kwarg_name, kw_arg in op.kwargs:
+            wam_value = self.eval_expr(kw_arg)
+            wam_value.kwarg_name = kwarg_name.value
+            args_wam.append(wam_value)
         w_opimpl = self.vm.call_OP(
             op.loc, OP.w_CALL_METHOD, [wam_obj, wam_meth] + args_wam
         )

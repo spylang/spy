@@ -674,6 +674,7 @@ class DopplerFrame(ASTFrame):
         v_obj = self.shifted_expr[op.target]
         v_meth = self.shifted_expr[op.method]
         newargs_v = [self.shifted_expr[arg] for arg in op.args]
+        newargs_v += [self.shifted_expr[arg] for _, arg in op.kwargs]
         return self.shift_opimpl(op, w_opimpl, [v_obj, v_meth] + newargs_v)
 
     def eval_expr_BlockExpr(self, block: ast.BlockExpr) -> W_MetaArg:
