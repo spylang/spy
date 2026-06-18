@@ -127,6 +127,25 @@ class TestMain:
             _, stdout = self.run(*argset, self.main_spy)
             assert stdout == "hello world\n"
 
+    def test_execute_argv(self):
+        src = """
+        def main(argv: list[str]) -> None:
+            for s in argv:
+                print(s, "+") # Separate argv so we're sure we're not just seeing the input on the command line
+        """
+        test = self.write("test.spy", src)
+
+        _, stdout = self.run("execute", test, "1", "--timeit", "2")
+        # --timeit appears in argc and not as flag
+        assert "1 +\n--timeit +\n2" in stdout
+        assert "seconds" not in stdout
+
+        # Default command is execute - make sure the default action also doesn't affect argv
+        _, stdout = self.run(test, "1", "--timeit", "2")
+        # --timeit appears in argc and not as flag
+        assert "1 +\n--timeit +\n2" in stdout
+        assert "seconds" not in stdout
+
     def test_timeit(self):
         _, stdout = self.run("--timeit", self.main_spy)
         assert "main()" in stdout
@@ -289,6 +308,30 @@ class TestMain:
         out, err = capfd.readouterr()
         assert "hello world" in out
 
+    def test_build_execute_argv(self, capfd):
+        src = """
+        def main(argv: list[str]) -> None:
+            for s in argv:
+                print(s, "+") # Separate argv so we're sure we're not just seeing the input on the command line
+        """
+        f = self.write("test.spy", src)
+        res, stdout = self.run(
+            "build",
+            "-x",
+            "--target", "native",
+            "--build-dir", self.tmpdir,
+            f,
+            "1",
+            "2",
+            "--timeit"
+        )  # fmt: skip
+        # hack hack hack since the stdout of the subprocess isn't captured
+        # by the test runner, check the output from timeit instead
+        out, err = capfd.readouterr()
+        # --timeit should be passed to the program as argv, not a flag for SPy
+        assert "1 +\n2 +\n--timeit" in out
+        assert "seconds" not in out
+
     @pytest.mark.skipif(PYODIDE_EXE is None, reason="./pyodide/venv not found")
     @pytest.mark.pyodide
     def test_execute_pyodide(self):
@@ -407,7 +450,9 @@ class TestMain:
                 print(a)
         """
         f = self.write("test.spy", src)
-        res = self.runner.invoke(app, ["redshift", "-x", str(f), "aaa", "bbb", "ccc"])
+        res = self.runner.invoke(
+            app, ["redshift", "-x", str(f), "aaa", "bbb", "ccc", "--timeit"]
+        )
         assert res.exit_code == 0
         output = decolorize(res.output)
-        assert output.split() == [str(f), "aaa", "bbb", "ccc"]
+        assert output.split() == [str(f), "aaa", "bbb", "ccc", "--timeit"]
