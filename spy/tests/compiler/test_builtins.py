@@ -141,6 +141,10 @@ class TestBuiltins(CompilerTest):
             return hash(x)
         def test_hash_bool(x: bool) -> int:
             return hash(x)
+        def test_hash_i64(x: i64) -> i32:
+            return hash(x)
+        def test_hash_u64(x: u64) -> i32:
+            return hash(x)
         """
         mod = self.compile(src)
         for x in (0, 100):
@@ -150,6 +154,10 @@ class TestBuiltins(CompilerTest):
             assert test(-1) == hash(2)
         for x in (True, False):
             assert mod.test_hash_bool(x) == hash(x)
+        for x in (0, 100):
+            assert mod.test_hash_i64(x) == hash(x)
+            assert mod.test_hash_u64(x) == hash(x)
+        assert mod.test_hash_i64(-1) == hash(2)
 
     @no_C
     def test_builtin_func_dedup(self):
