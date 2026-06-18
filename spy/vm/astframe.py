@@ -154,6 +154,7 @@ class AbstractFrame:
                 color = "blue"
             else:
                 color = "red"
+
         self.locals[name] = LocalVar(
             varname=name, decl_loc=loc, color=color, w_T=w_type, w_val=None
         )
@@ -163,7 +164,11 @@ class AbstractFrame:
             self.declare_local(name, "red", B.w_bool, Loc.fake())
 
     def store_local(self, name: str, w_value: W_Object) -> None:
-        self.locals[name].w_val = w_value
+        lv = self.locals[name]
+        # XXX: this sanity check fails in some tests. Uncomment it and fix the tests!
+        ## if not isinstance(w_value, W_Cell):
+        ##     assert self.vm.isinstance(w_value, lv.w_T)  # sanity check
+        lv.w_val = w_value
 
     def load_local(self, name: str) -> W_Object:
         localvar = self.locals.get(name)
