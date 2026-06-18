@@ -142,7 +142,6 @@ class TestFloat(CompilerTest):
         assert mod.f64_to_i32(42.0) == 42
         assert mod.f32_to_i32(42.0) == 42
 
-    @pytest.mark.skip("FIXME")
     def test_prebuilt_const(self):
         src = """
         def foo() -> f64:

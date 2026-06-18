@@ -417,10 +417,9 @@ class DopplerFrame(ASTFrame):
             if wam.color == "blue" and w_typeconv_opimpl.is_pure():
                 # apply it eagerly: see the case "local var conv" in
                 # test_doppler::test_eager_type_conversion
-                w_res = w_typeconv_opimpl._execute(
-                    self.vm, [lv.w_T, wam.w_static_T, wam.w_val]
-                )
-                new_expr = make_const(self.vm, expr.loc, w_res)
+                wam = self.vm.eval_opimpl(w_typeconv_opimpl, [wam], loc=expr.loc)
+                assert wam.color == "blue"
+                new_expr = make_const(self.vm, expr.loc, wam.w_val)
             else:
                 # add a residual call to the convert function
                 expT = make_const(self.vm, lv.decl_loc, lv.w_T)
