@@ -916,7 +916,13 @@ class SPyVM:
         assert w_functype.is_argcount_ok(len(args_w))
         for param, w_arg in zip(w_functype.all_params(), args_w):
             assert self.isinstance(w_arg, param.w_T)
-        return w_func.raw_call(self, args_w)
+        w_res = w_func.raw_call(self, args_w)
+        assert self.isinstance(w_res, w_functype.w_restype), (
+            f"{w_func.fqn}: expected return type "
+            f"`{w_functype.w_restype.fqn}`, got "
+            f"`{self.dynamic_type(w_res).fqn}`"
+        )
+        return w_res
 
     def eval_opimpl(
         self,

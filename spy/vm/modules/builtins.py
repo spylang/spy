@@ -168,7 +168,7 @@ def w_hash_i8(vm: "SPyVM", w_x: W_I8) -> W_I32:
     x = vm.unwrap_i8(w_x)
     if x == -1:
         return vm.wrap(2)
-    return vm.wrap(x)
+    return vm.wrap(int(x))
 
 
 @BUILTINS.builtin_func
@@ -180,7 +180,7 @@ def w_hash_i32(vm: "SPyVM", w_x: W_I32) -> W_I32:
 
 @BUILTINS.builtin_func
 def w_hash_u8(vm: "SPyVM", w_x: W_U8) -> W_I32:
-    return vm.wrap(vm.unwrap_u8(w_x))
+    return vm.wrap(int(vm.unwrap_u8(w_x)))
 
 
 @BUILTINS.builtin_func
