@@ -392,7 +392,7 @@ class methods:
                 # If not, increment starting position and try again
                  
                 # We would ideally pre-allocate a list with a reasonable guess at capacity
-                # CPython uses the maxsplit paramter+1 (WIP not implemented yet), or 
+                # CPython uses the maxsplit parameter+1 (WIP not implemented yet), or 
                 # 12 if maxsplit is not given or if maxsplit > 12. Would be good to add here
                 # when pre-allocating a list of a given size is possible
                 result = list[str]()
@@ -470,7 +470,7 @@ class methods:
                         lead_pointer += 1
                     if lead_pointer == len_self: break
 
-                    # Look for a continuous gorup of non-whitespace
+                    # Look for a continuous group of non-whitespace
                     rear_pointer = lead_pointer
                     while lead_pointer < len_self and not _ll_isspace(llself.utf8[lead_pointer]):
                         lead_pointer += 1
