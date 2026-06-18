@@ -370,8 +370,8 @@ class methods:
     
     
     @blue.metafunc
-    def split(self, wam_sep):
-        if wam_sep.static_type == str:
+    def split(self, *args_m):
+        if len(args_m) == 1 and args_m[0].static_type == str:
             def split_sep(_self: str, sep: str) -> list[str]:
                 # Based on CPython stringlib/split.h
                 len_self = len(_self)
@@ -440,9 +440,9 @@ class methods:
                     result.append("")
 
                 return result
-            return OpSpec(split_sep, [self, wam_sep])
+            return OpSpec(split_sep)
 
-        if wam_sep.static_type == NoneType:
+        elif len(args_m) == 0:
             def split_whitespace(_self:str) -> list[str]:
                 # Based on CPython stringlib/split.h
                 len_self = len(_self)
@@ -478,7 +478,7 @@ class methods:
 
                 return result
 
-            return OpSpec(split_whitespace, [self])
+            return OpSpec(split_whitespace)
 
         return OpSpec.NULL
 

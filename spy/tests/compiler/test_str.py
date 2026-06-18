@@ -106,7 +106,7 @@ class TestStr(CompilerTest):
                 return s.split(sep)
 
             def split_whitespace(s: str) -> list[str]:
-                return s.split(None)
+                return s.split()
         """)
 
         # Test for split on explicit step
