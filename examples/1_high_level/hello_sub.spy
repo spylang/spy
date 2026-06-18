@@ -1,0 +1,13 @@
+"""
+Things to notice:
+  - keyword args can be passed in any order
+  - after redshift, keyword args are reordered
+"""
+
+
+def sub(x: i32, y:i32, z: i32) -> i32:
+    return x - (y - z)
+
+def main() -> None:
+    print("Hello from SPy 🥸")
+    print(sub(100, z=10, y=20))

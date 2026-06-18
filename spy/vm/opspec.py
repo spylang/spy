@@ -95,6 +95,7 @@ class W_MetaArg(W_Object):
     loc: Loc
     _w_val: Optional[W_Object]
     sym: Optional[Symbol]
+    kwarg_name: Optional[str]
 
     # see DEBUG_METAARG
     debug_counter: ClassVar[int] = 0
@@ -121,6 +122,7 @@ class W_MetaArg(W_Object):
         self._w_val = w_val
         self.loc = loc
         self.sym = sym
+        self.kwarg_name = None
         if DEBUG_METAARG:
             self.debug_id = W_MetaArg.debug_counter
             W_MetaArg.debug_counter += 1

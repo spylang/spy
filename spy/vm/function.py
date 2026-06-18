@@ -318,7 +318,8 @@ class W_Func(W_Object):
 
         args_wam = list(got_args_wam)
         if isinstance(w_func, W_ASTFunc):
-            args_wam = w_func._fill_defaults_maybe(vm, args_wam)
+            args_wam = w_func._bind_args(vm, args_wam)
+
         return W_OpSpec(w_func, args_wam, is_direct_call=True)
 
     @staticmethod
@@ -467,33 +468,66 @@ class W_ASTFunc(W_Func):
         frame = ASTFrame(vm, self, args_w)
         return frame.run(args_w)
 
-    def _fill_defaults_maybe(
+    def _bind_args(
         self, vm: "SPyVM", got_args_wam: list["W_MetaArg"]
     ) -> list["W_MetaArg"]:
         """
-        If got_args_wam is not long enough and we have default values, add them.
+        Reorder keyword arguments (unpack W_KeywordArg) and supply default values
         """
         from spy.vm.opspec import W_MetaArg
 
-        if not self.defaults_w:
-            return got_args_wam
+        got_posargs_wam: list[W_MetaArg] = []
+        got_kwargs_wam: dict[str, W_MetaArg] = {}
+        for arg in got_args_wam:
+            if arg.kwarg_name is None:
+                got_posargs_wam.append(arg)
+            else:
+                got_kwargs_wam[arg.kwarg_name] = arg
 
-        n_params = len(self.w_functype.params)
-        n_got = len(got_args_wam)
-        n_defaults = len(self.defaults_w)
-        n_missing = n_params - n_got
+        defaults_wam = {}
+        n_default_w = len(self.defaults_w)
+        if n_default_w > 0:
+            param_names = [arg.name for arg in self.funcdef.args]
+            params_with_defaults = param_names[-n_default_w:]
+            default_locs = [d.loc for d in self.funcdef.defaults]
+            for w_default, loc, param_name in zip(
+                self.defaults_w, default_locs, params_with_defaults
+            ):
+                wam = W_MetaArg.from_w_obj(vm, w_default, loc=loc)
+                defaults_wam[param_name] = wam
 
-        if n_missing <= 0 or n_missing > n_defaults:
-            return got_args_wam
+        # positional args match first
+        n_pos_params = len(got_posargs_wam)
+        args_wam = got_posargs_wam.copy()
+        remaining_args = self.funcdef.args[n_pos_params:]
 
-        # defaults align to the end of the param list
-        args_wam = list(got_args_wam)
-        start = n_defaults - n_missing
-        defaults_w = self.defaults_w[start:]
-        default_locs = [d.loc for d in self.funcdef.defaults[start:]]
-        for w_default, loc in zip(defaults_w, default_locs):
-            wam = W_MetaArg.from_w_obj(vm, w_default, loc=loc)
-            args_wam.append(wam)
+        # match remaining args to keywords or defaults
+        for func_arg in remaining_args:
+            param_name = func_arg.name
+            if param_name in got_kwargs_wam:
+                args_wam.append(got_kwargs_wam.pop(param_name))
+            elif param_name in defaults_wam:
+                args_wam.append(defaults_wam.pop(param_name))
+            else:
+                func_name = self.funcdef.name
+                err = SPyError(
+                    "W_TypeError",
+                    f"{func_name}() missing required argument `{param_name}`",
+                )
+                err.add("error", "missing required argument", func_arg.loc)
+                raise err
+
+        # unused keywords
+        if got_kwargs_wam:
+            unused = ", ".join(f"`{k}`" for k in got_kwargs_wam)
+            err = SPyError("W_TypeError", f"unexpected keyword arguments: {unused}")
+            err.add(
+                "error",
+                "unexpected keyword arguments",
+                next(iter(got_kwargs_wam.values())).loc,
+            )
+            raise err
+
         return args_wam
 
 

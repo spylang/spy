@@ -1171,6 +1171,11 @@ class AbstractFrame:
     def eval_expr_Call(self, call: ast.Call) -> W_MetaArg:
         wam_func = self.eval_expr(call.func)
         args_wam = [self.eval_expr(arg) for arg in call.args]
+        for kwarg_name, kw_arg in call.kwargs:
+            wam_value = self.eval_expr(kw_arg)
+            wam_value.kwarg_name = kwarg_name.value
+            args_wam.append(wam_value)
+
         w_opimpl = self.vm.call_OP(call.loc, OP.w_CALL, [wam_func] + args_wam)
 
         # special case getattr, hasattr and setattr: if we arrive at this point it means that the
