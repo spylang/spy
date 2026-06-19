@@ -40,9 +40,15 @@ def w_CALL(vm: "SPyVM", wam_obj: W_MetaArg, wam_funcargs: W_MetaArg) -> W_OpImpl
             assert False, f"unknown FuncKind: {w_T.kind}"
 
     elif w_T is B.w_dynamic:
-        w_opspec = W_OpSpec(OP.w_dynamic_call)
+        if w_funcargs.kwargs_wam:
+            errmsg = "keyword arguments not supported for this function"
+        else:
+            w_opspec = W_OpSpec(OP.w_dynamic_call)
     elif w_call := w_T.lookup_func(vm, "__call__"):
-        w_opspec = vm.fast_metacall(w_call, newargs_wam)
+        if w_funcargs.kwargs_wam:
+            errmsg = "keyword arguments not supported for this function"
+        else:
+            w_opspec = vm.fast_metacall(w_call, newargs_wam)
 
     return typecheck_opspec(
         vm,

@@ -499,6 +499,19 @@ class TestBasic(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
+    def test_function_call_kwargs_not_supported_for_dynamic(self):
+        src = """
+        def bar(f: dynamic) -> i32:
+            return f(x=1, y=2)
+
+        def foo() -> i32:
+            return bar(1)
+        """
+        errors = expect_errors(
+            "keyword arguments not supported for this function",
+        )
+        self.compile_raises(src, "foo", errors)
+
     def test_conversions(self):
         mod = self.compile("""
         def a(x: i32) -> f64:
