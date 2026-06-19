@@ -188,7 +188,6 @@ class W_I64(W_Object):
         return self.value
 
     def spy_key(self, vm: "SPyVM") -> fixedint.Int64:
-        assert False, "TODO: not reachable until i64 literals exist"
         return self.value
 
     @builtin_method("__str__")
@@ -233,7 +232,6 @@ class W_U64(W_Object):
         return self.value
 
     def spy_key(self, vm: "SPyVM") -> fixedint.UInt64:
-        assert False, "TODO: not reachable until u64 literals exist"
         return self.value
 
     @builtin_method("__str__")

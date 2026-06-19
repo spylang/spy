@@ -173,6 +173,18 @@ class TestInt(CompilerTest):
         assert mod.i64_repr(-9223372036854775808) == "-9223372036854775808"
         assert mod.u64_repr(18446744073709551615) == "18446744073709551615"
 
+    def test_i64_u64_spy_key(self):
+        mod = self.compile("""
+        @blue
+        def fmt(x: i64, y: u64) -> str:
+            return str(x) + ", " + str(y)
+
+        def foo() -> str:
+            return fmt(i64(1), u64(2))
+
+        """)
+        assert mod.foo() == "1, 2"
+
     def test_float_to_int(self):
         mod = self.compile("""
         def to_i32(x: f64) -> i32: return i32(x)
