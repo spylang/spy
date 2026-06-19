@@ -317,6 +317,17 @@ class TestSPyBackend(CompilerTest):
         self.compile(src)
         self.assert_dump(src)
 
+    def test_prefixed_int_literal(self):
+        src = """
+        def foo() -> None:
+            i8(1)
+            u8(2)
+            i64(3)
+            u64(4)
+        """
+        self.compile(src)
+        self.assert_dump(src)
+
     def test_if(self):
         src = """
         def foo() -> None:
