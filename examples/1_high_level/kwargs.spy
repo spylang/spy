@@ -1,0 +1,12 @@
+"""
+Things to notice:
+  - keyword args can be passed in any order
+  - after redshift, keyword args are reordered
+"""
+
+def compute(x: i32, y:i32, z: i32) -> i32:
+    return 100 * x + 10 * y + z
+
+def main() -> None:
+    print("Hello from SPy 🥸")
+    print(compute(1, z=5, y=3))
