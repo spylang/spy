@@ -42,7 +42,7 @@ jobs:
       - name: Install SPy
         run: |
           # to be able to call `python -m spy.build.flags`
-          pip install .
+          pip install -e .
 
       - name: Build libspy
         run: make -C spy/libspy TARGET=emscripten
