@@ -197,7 +197,7 @@ class TestCallOp(CompilerTest):
         x = mod.foo(5, 7)
         assert x == 12
 
-    def test_call_instance_kwargs_not_supported(self):
+    def test_dunder_call_keyword_args_unsupported(self):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry("ext")
 

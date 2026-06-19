@@ -477,7 +477,7 @@ class TestBasic(CompilerTest):
         """)
         assert mod.bar(1, 10, 5) == -1
 
-    def test_function_call_kwargs_not_supported_for_builtins(self):
+    def test_builtin_keyword_args_unsupported(self):
         src = """
         from operator import i32_add
 
@@ -489,7 +489,7 @@ class TestBasic(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    def test_function_call_kwargs_not_supported_for_metafuncs(self):
+    def test_metafunc_keyword_args_unsupported(self):
         src = """
         def foo() -> i32:
             return hash(x=1)
@@ -499,7 +499,7 @@ class TestBasic(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    def test_function_call_kwargs_not_supported_for_dynamic(self):
+    def test_dynamic_keyword_args_unsupported(self):
         src = """
         def bar(f: dynamic) -> i32:
             return f(x=1, y=2)
