@@ -45,7 +45,7 @@ jobs:
           pip install -e .
 
       - name: Build libspy
-        run: make -C spy/libspy TARGET=emscripten
+        run: make -C spy/libspy TARGET=emscripten BUILD_TYPE=debug
 
       - name: Build Python wheel
         run: |
@@ -60,8 +60,8 @@ jobs:
 
       - name: Copy built files to playground
         run: |
-          cp spy/libspy/build/emscripten/release/libspy.mjs playground/
-          cp spy/libspy/build/emscripten/release/libspy.wasm playground/
+          cp spy/libspy/build/emscripten/debug/libspy.mjs playground/
+          cp spy/libspy/build/emscripten/debug/libspy.wasm playground/
           cp dist/spylang-*.whl playground/
           cp -r assets playground/
           mkdir playground/examples
