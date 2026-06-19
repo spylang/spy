@@ -337,8 +337,7 @@ class W_Func(W_Object):
     ) -> "W_OpSpec":
         """
         Call this function and use the return value as the OpSpec.
-        Mirrors op_CALL: W_ASTFunc metafuncs support kwargs via _bind_args;
-        W_BuiltinFunc metafuncs do not.
+        Keyword arguments are not supported for metafuncs.
         """
         from spy.vm.opspec import W_MetaArg, W_OpSpec
         from spy.vm.typechecker import typecheck_opspec
@@ -418,11 +417,9 @@ class W_FuncArgs(W_Object):
 
     @classmethod
     def from_args(cls, *args_wam: "W_MetaArg") -> "W_FuncArgs":
-        """Create a positional-only W_FuncArgs from individual args."""
         return cls(list(args_wam), [])
 
     def to_list(self) -> list["W_MetaArg"]:
-        """Return a flat list in source order: positional args then kwargs values."""
         return self.args_wam + [wam for _, wam in self.kwargs_wam]
 
     def spy_key(self, vm: "SPyVM") -> Any:
