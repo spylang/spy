@@ -89,6 +89,21 @@ spy_builtins$u8$__str__(uint8_t x) {
 }
 
 spy_StrObject *
+spy_builtins$u32$__str__(uint32_t x) {
+    return spy_str_from_format("%u", (unsigned int)x);
+}
+
+spy_StrObject *
+spy_builtins$i64$__str__(int64_t x) {
+    return spy_str_from_format("%lld", (long long)x);
+}
+
+spy_StrObject *
+spy_builtins$u64$__str__(uint64_t x) {
+    return spy_str_from_format("%llu", (unsigned long long)x);
+}
+
+spy_StrObject *
 spy_builtins$f64$__str__(double x) {
     return spy_str_from_format("%g", x);
 }
@@ -162,6 +177,77 @@ spy_operator$str_to_u8(spy_StrObject *s) {
     int64_t val = spy_str_parse_i64(s);
     spy_check_range(val, 0LL, 255LL, "u8");
     return (uint8_t)val;
+}
+
+int64_t
+spy_operator$str_to_i64(spy_StrObject *s) {
+    // spy_StrObject is not null-terminated, so we copy it
+    char buf[64];
+    size_t len = s->length;
+    if (len >= sizeof(buf)) {
+        spy_panic(
+            "ValueError", "invalid literal for int() with base 10", __FILE__, __LINE__
+        );
+    }
+    memcpy(buf, spy_StrObject_UTF8(s), len);
+    buf[len] = '\0';
+
+    char *end;
+    errno = 0;
+    int64_t val = strtoll(buf, &end, 10);
+    if (end == buf || *end != '\0') {
+        char msg[128];
+        snprintf(msg, sizeof(msg), "invalid literal for int() with base 10: '%s'", buf);
+        spy_panic("ValueError", msg, __FILE__, __LINE__);
+    }
+    if (errno == ERANGE) {
+        spy_panic(
+            "OverflowError",
+            "i64 value out of range [-9223372036854775808, 9223372036854775807]",
+            __FILE__, __LINE__
+        );
+    }
+    return val;
+}
+
+uint64_t
+spy_operator$str_to_u64(spy_StrObject *s) {
+    // spy_StrObject is not null-terminated, so we copy it
+    char buf[64];
+    size_t len = s->length;
+    if (len >= sizeof(buf)) {
+        spy_panic(
+            "ValueError", "invalid literal for int() with base 10", __FILE__, __LINE__
+        );
+    }
+    memcpy(buf, spy_StrObject_UTF8(s), len);
+    buf[len] = '\0';
+
+    // Reject negative numbers (strtoull accepts them with wrapping)
+    const char *p = buf;
+    while (*p == ' ')
+        p++;
+    if (*p == '-') {
+        char msg[128];
+        snprintf(msg, sizeof(msg), "u64 value out of range [0, 18446744073709551615]");
+        spy_panic("OverflowError", msg, __FILE__, __LINE__);
+    }
+
+    char *end;
+    errno = 0;
+    uint64_t val = strtoull(buf, &end, 10);
+    if (end == buf || *end != '\0' || errno != 0) {
+        if (errno == ERANGE) {
+            spy_panic(
+                "OverflowError", "u64 value out of range [0, 18446744073709551615]",
+                __FILE__, __LINE__
+            );
+        }
+        char msg[128];
+        snprintf(msg, sizeof(msg), "invalid literal for int() with base 10: '%s'", buf);
+        spy_panic("ValueError", msg, __FILE__, __LINE__);
+    }
+    return val;
 }
 
 spy_Complex128

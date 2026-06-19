@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Any
 
+import fixedint
 import py.path
 import wasmtime
 
@@ -90,6 +91,8 @@ class WasmFuncWrapper:
     def py2wasm(self, pyval: Any, w_T: W_Type) -> Any:
         if w_T in (B.w_i32, B.w_u32, B.w_i8, B.w_u8, B.w_f64, B.w_bool):
             return pyval
+        elif w_T in (B.w_i64, B.w_u64):
+            return int(pyval)
         elif w_T is B.w_complex128:
             return (pyval.real, pyval.imag)
         elif w_T is B.w_f32:
@@ -137,8 +140,23 @@ class WasmFuncWrapper:
         if w_T is TYPES.w_NoneType:
             assert res is None
             return None
-        elif w_T in (B.w_i8, B.w_u8, B.w_i32, B.w_u32, B.w_f64, B.w_f32):
+        elif w_T in (B.w_f64, B.w_f32):
             return res
+        # return fixedints for the integer types, to match what the interp
+        # backend does (vm.unwrap -> spy_unwrap). For u64 this also takes care
+        # of reinterpreting the signed i64 returned by WASM as unsigned.
+        elif w_T is B.w_i8:
+            return fixedint.Int8(res)
+        elif w_T is B.w_u8:
+            return fixedint.UInt8(res)
+        elif w_T is B.w_i32:
+            return fixedint.Int32(res)
+        elif w_T is B.w_u32:
+            return fixedint.UInt32(res)
+        elif w_T is B.w_i64:
+            return fixedint.Int64(res)
+        elif w_T is B.w_u64:
+            return fixedint.UInt64(res)
         elif w_T is B.w_complex128:
             real, imag = res
             return complex(real, imag)

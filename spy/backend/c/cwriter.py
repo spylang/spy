@@ -277,9 +277,14 @@ class CFuncWriter:
         w_val = const.w_val
         if w_T is B.w_bool:
             return C.Literal(str(vm.unwrap_bool(w_val)).lower())
-        elif w_T in (B.w_i32, B.w_i8, B.w_u8):
+        elif w_T in (B.w_i32, B.w_u32, B.w_i8, B.w_u8):
             intval = int(vm.unwrap(w_val))
             return C.Literal(str(intval))
+        elif w_T in (B.w_i64, B.w_u64):
+            intval = int(vm.unwrap(w_val))
+            # use LL/ULL suffix to ensure 64-bit literals compile correctly
+            suffix = "LL" if w_T is B.w_i64 else "ULL"
+            return C.Literal(f"{intval}{suffix}")
         elif w_T is B.w_f64:
             return C.Literal(str(vm.unwrap_f64(w_val)))
         elif w_T is B.w_complex128:
@@ -474,6 +479,36 @@ class CFuncWriter:
         FQN("operator::u32_gt"): ">",
         FQN("operator::u32_ge"): ">=",
         #
+        FQN("operator::i64_add"): "+",
+        FQN("operator::i64_sub"): "-",
+        FQN("operator::i64_mul"): "*",
+        FQN("operator::i64_lshift"): "<<",
+        FQN("operator::i64_rshift"): ">>",
+        FQN("operator::i64_and"): "&",
+        FQN("operator::i64_or"): "|",
+        FQN("operator::i64_xor"): "^",
+        FQN("operator::i64_eq"): "==",
+        FQN("operator::i64_ne"): "!=",
+        FQN("operator::i64_lt"): "<",
+        FQN("operator::i64_le"): "<=",
+        FQN("operator::i64_gt"): ">",
+        FQN("operator::i64_ge"): ">=",
+        #
+        FQN("operator::u64_add"): "+",
+        FQN("operator::u64_sub"): "-",
+        FQN("operator::u64_mul"): "*",
+        FQN("operator::u64_lshift"): "<<",
+        FQN("operator::u64_rshift"): ">>",
+        FQN("operator::u64_and"): "&",
+        FQN("operator::u64_or"): "|",
+        FQN("operator::u64_xor"): "^",
+        FQN("operator::u64_eq"): "==",
+        FQN("operator::u64_ne"): "!=",
+        FQN("operator::u64_lt"): "<",
+        FQN("operator::u64_le"): "<=",
+        FQN("operator::u64_gt"): ">",
+        FQN("operator::u64_ge"): ">=",
+        #
         FQN("operator::f64_add"): "+",
         FQN("operator::f64_sub"): "-",
         FQN("operator::f64_mul"): "*",
@@ -499,6 +534,7 @@ class CFuncWriter:
     FQN2UnaryOp = {
         FQN("operator::i8_neg"): "-",
         FQN("operator::i32_neg"): "-",
+        FQN("operator::i64_neg"): "-",
         FQN("operator::f64_neg"): "-",
     }
 

@@ -132,6 +132,8 @@ class Context:
         self._d[B.w_u8] = C_Type("uint8_t")
         self._d[B.w_i32] = C_Type("int32_t")
         self._d[B.w_u32] = C_Type("uint32_t")
+        self._d[B.w_i64] = C_Type("int64_t")
+        self._d[B.w_u64] = C_Type("uint64_t")
         self._d[B.w_f64] = C_Type("double")
         self._d[B.w_f32] = C_Type("float")
         self._d[B.w_complex128] = C_Type("spy_Complex128")
