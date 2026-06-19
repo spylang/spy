@@ -89,6 +89,21 @@ spy_builtins$u8$__str__(uint8_t x) {
 }
 
 spy_StrObject *
+spy_builtins$u32$__str__(uint32_t x) {
+    return spy_str_from_format("%u", (unsigned int)x);
+}
+
+spy_StrObject *
+spy_builtins$i64$__str__(int64_t x) {
+    return spy_str_from_format("%lld", (long long)x);
+}
+
+spy_StrObject *
+spy_builtins$u64$__str__(uint64_t x) {
+    return spy_str_from_format("%llu", (unsigned long long)x);
+}
+
+spy_StrObject *
 spy_builtins$f64$__str__(double x) {
     return spy_str_from_format("%g", x);
 }

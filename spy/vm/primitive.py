@@ -286,6 +286,12 @@ class W_I8(W_Object):
         i = vm.unwrap(w_self)
         return vm.wrap(str(i))
 
+    @builtin_method("__repr__")
+    @staticmethod
+    def w_repr(vm: "SPyVM", w_self: "W_I8") -> "W_Str":
+        i = vm.unwrap(w_self)
+        return vm.wrap(str(i))
+
 
 @B.builtin_type("u8", lazy_definition=True)
 class W_U8(W_Object):
@@ -321,6 +327,12 @@ class W_U8(W_Object):
     @builtin_method("__str__")
     @staticmethod
     def w_str(vm: "SPyVM", w_self: "W_U8") -> "W_Str":
+        u = vm.unwrap(w_self)
+        return vm.wrap(str(u))
+
+    @builtin_method("__repr__")
+    @staticmethod
+    def w_repr(vm: "SPyVM", w_self: "W_U8") -> "W_Str":
         u = vm.unwrap(w_self)
         return vm.wrap(str(u))
 
