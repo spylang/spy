@@ -9,4 +9,6 @@ def test_sizeof_primitives():
     assert sizeof(B.w_i32) == 4
     assert sizeof(B.w_u32) == 4
     assert sizeof(B.w_f32) == 4
+    assert sizeof(B.w_i64) == 8
+    assert sizeof(B.w_u64) == 8
     assert sizeof(B.w_f64) == 8
