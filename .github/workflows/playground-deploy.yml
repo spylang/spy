@@ -39,6 +39,11 @@ jobs:
       - name: Setup Emscripten
         uses: mymindstorm/setup-emsdk@v14
 
+      - name: Install SPy
+        run: |
+          # to be able to call `python -m spy.build.flags`
+          pip install .
+
       - name: Build libspy
         run: make -C spy/libspy TARGET=emscripten
 
