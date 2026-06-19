@@ -68,6 +68,7 @@ def w_CALL_METHOD(
     w_opspec = W_OpSpec.NULL
     w_T = wam_obj.w_static_T
     meth = unwrap_name_maybe(vm, wam_meth)
+    errmsg = f"method `{{0}}::{meth}` does not exist"
 
     w_funcargs = wam_funcargs.w_blueval
     assert isinstance(w_funcargs, W_FuncArgs)
@@ -87,7 +88,7 @@ def w_CALL_METHOD(
         w_opspec,
         newargs_wam,
         dispatch="single",
-        errmsg=f"method `{{0}}::{meth}` does not exist",
+        errmsg=errmsg,
     )
 
 
