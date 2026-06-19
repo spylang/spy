@@ -79,14 +79,13 @@ spy_unsafe$_StrObject_to_str$impl(spy_gc_ptr_StrObject p) {
 #endif
 
 // Layout info exported for str.py.
-typedef struct {
-    size_t size;
-    size_t length_offset;
-    size_t hash_offset;
-    size_t utf8_offset;
-} _spy_StrObject_Layout;
-
-_spy_StrObject_Layout WASM_EXPORT(_spy_StrObject_layout)(void);
+// NOTE: we export individual uint32_t fields instead of a struct, because
+// struct-returning functions use the sret ABI in Emscripten/WASM and return
+// None/undefined to Python callers instead of an iterable.
+uint32_t WASM_EXPORT(_spy_StrObject_size)(void);
+uint32_t WASM_EXPORT(_spy_StrObject_length_offset)(void);
+uint32_t WASM_EXPORT(_spy_StrObject_hash_offset)(void);
+uint32_t WASM_EXPORT(_spy_StrObject_utf8_offset)(void);
 
 spy_StrObject *WASM_EXPORT(spy_str_alloc)(size_t length);
 

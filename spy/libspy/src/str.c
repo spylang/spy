@@ -5,15 +5,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-_spy_StrObject_Layout
-_spy_StrObject_layout(void) {
-    return (_spy_StrObject_Layout){
-        .size = sizeof(spy_StrObject),
-        .length_offset = offsetof(spy_StrObject, length),
-        .hash_offset = offsetof(spy_StrObject, hash),
-        .utf8_offset = offsetof(spy_StrObject, utf8),
-    };
-}
+uint32_t
+_spy_StrObject_size(void) { return (uint32_t)sizeof(spy_StrObject); }
+
+uint32_t
+_spy_StrObject_length_offset(void) { return (uint32_t)offsetof(spy_StrObject, length); }
+
+uint32_t
+_spy_StrObject_hash_offset(void) { return (uint32_t)offsetof(spy_StrObject, hash); }
+
+uint32_t
+_spy_StrObject_utf8_offset(void) { return (uint32_t)offsetof(spy_StrObject, utf8); }
 
 spy_StrObject *
 spy_str_alloc(size_t length) {

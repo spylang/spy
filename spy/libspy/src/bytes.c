@@ -2,15 +2,17 @@
 #include <stddef.h>
 #include <stdint.h>
 
-_spy_BytesObject_Layout
-_spy_BytesObject_layout(void) {
-    return (_spy_BytesObject_Layout){
-        .size = sizeof(spy_BytesObject),
-        .length_offset = offsetof(spy_BytesObject, length),
-        .hash_offset = offsetof(spy_BytesObject, hash),
-        .data_offset = offsetof(spy_BytesObject, data),
-    };
-}
+uint32_t
+_spy_BytesObject_size(void) { return (uint32_t)sizeof(spy_BytesObject); }
+
+uint32_t
+_spy_BytesObject_length_offset(void) { return (uint32_t)offsetof(spy_BytesObject, length); }
+
+uint32_t
+_spy_BytesObject_hash_offset(void) { return (uint32_t)offsetof(spy_BytesObject, hash); }
+
+uint32_t
+_spy_BytesObject_data_offset(void) { return (uint32_t)offsetof(spy_BytesObject, data); }
 
 spy_BytesObject *
 spy_bytes_alloc(size_t length) {

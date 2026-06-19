@@ -116,7 +116,7 @@ class LibSPyHost(HostModule):
 
 @dataclass
 class StrLayout:
-    # See also the struct _spy_StrObject_layout in str.h
+    # See also spy_StrObject in str.h
     size: int
     length_offset: int
     hash_offset: int
@@ -125,7 +125,7 @@ class StrLayout:
 
 @dataclass
 class BytesLayout:
-    # See also the struct _spy_BytesObject_layout in bytes.h
+    # See also spy_BytesObject in bytes.h
     size: int
     length_offset: int
     hash_offset: int
@@ -148,10 +148,18 @@ class LLSPyInstance(LLWasmInstance):
         self.libspy = LibSPyHost()
         hostmods = [self.libspy] + hostmods
         super().__init__(llmod, hostmods, instance=instance)
-        layout = self.call("_spy_StrObject_layout")
-        self.str_layout = StrLayout(*layout)
-        blayout = self.call("_spy_BytesObject_layout")
-        self.bytes_layout = BytesLayout(*blayout)
+        self.str_layout = StrLayout(
+            size=self.call("_spy_StrObject_size"),
+            length_offset=self.call("_spy_StrObject_length_offset"),
+            hash_offset=self.call("_spy_StrObject_hash_offset"),
+            utf8_offset=self.call("_spy_StrObject_utf8_offset"),
+        )
+        self.bytes_layout = BytesLayout(
+            size=self.call("_spy_BytesObject_size"),
+            length_offset=self.call("_spy_BytesObject_length_offset"),
+            hash_offset=self.call("_spy_BytesObject_hash_offset"),
+            data_offset=self.call("_spy_BytesObject_data_offset"),
+        )
 
     def read_bytes(self, ptr: int) -> tuple[int, int, bytes]:
         """

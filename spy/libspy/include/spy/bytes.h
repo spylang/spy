@@ -67,14 +67,13 @@ spy_unsafe$_BytesObject_to_bytes$impl(spy_gc_ptr_BytesObject p) {
 }
 
 // Layout info exported for bytes.py.
-typedef struct {
-    size_t size;
-    size_t length_offset;
-    size_t hash_offset;
-    size_t data_offset;
-} _spy_BytesObject_Layout;
-
-_spy_BytesObject_Layout WASM_EXPORT(_spy_BytesObject_layout)(void);
+// NOTE: we export individual uint32_t fields instead of a struct, because
+// struct-returning functions use the sret ABI in Emscripten/WASM and return
+// None/undefined to Python callers instead of an iterable.
+uint32_t WASM_EXPORT(_spy_BytesObject_size)(void);
+uint32_t WASM_EXPORT(_spy_BytesObject_length_offset)(void);
+uint32_t WASM_EXPORT(_spy_BytesObject_hash_offset)(void);
+uint32_t WASM_EXPORT(_spy_BytesObject_data_offset)(void);
 
 spy_BytesObject *WASM_EXPORT(spy_bytes_alloc)(size_t length);
 
