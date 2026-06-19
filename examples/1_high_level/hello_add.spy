@@ -1,6 +1,6 @@
 """
 Things to notice:
-  - Red functions require signature.
+  - Red functions require type annotations.
   - After redshift, print is specialized.
   - Press the `redshift` button and study the output — this is a good first
     example to understand what redshift does.

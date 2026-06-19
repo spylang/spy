@@ -1,6 +1,6 @@
 """
 Things to notice:
-  - `@blue` decorators are applied entirely at redshift time.
+  - `@blue` decorators are applied entirely at import time.
   - `double` wraps `inc` at compile time: the resulting `inc` in red code
     is already the doubled version — `double` itself disappears from the output.
   - This is the SPy equivalent of zero-cost compile-time code generation.

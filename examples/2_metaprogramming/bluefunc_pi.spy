@@ -2,7 +2,7 @@
 Things to notice:
   - @blue funcs are completely resolved at redshift time.
   - `get_pi` is not present in the redshifted or .c file.
-  - Signatures in blue functions are optional.
+  - Type annotations in blue functions are optional and default to `dynamic`.
 
 Note: `redshift --linearize` "linearises" the `__block__`, which can give
 simpler output for the print calls with more than one argument.

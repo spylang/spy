@@ -1,6 +1,6 @@
 """
 Things to notice:
-  - A generic type is defined with `@struct` and parameters between []: `class Pair[T]`.
+  - A generic type is defined with parameters between []: `class Pair[T]`.
   - Under the hood, `Pair` is a `@blue.generic` type factory: `Pair[i32]` and
     `Pair[str]` are two distinct concrete types, resolved at redshift time.
   - Generic methods work just like regular methods: `T` is in scope as a type.
