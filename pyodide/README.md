@@ -40,14 +40,6 @@ Once `spy` is installed, you can run spy under pyodide-node like this:
 $ ./venv/bin/python -m spy ../examples/hello.spy
 ```
 
-Alternatively, from the repo root you can use the `pyodide.sh` helper, which
-behaves like `python` but runs inside the pyodide venv (and unsets PYTHONPATH,
-which on the host can shadow stdlib modules like `pdb` and break imports):
-
-```
-$ ./pyodide.sh -m spy examples/1_high_level/hello.spy
-```
-
 ## Install emsdk
 
 `llwasm/emscripten.py` doesn't work on official emscripten, because it relieas
