@@ -1,7 +1,7 @@
 import pytest
 
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest, expect_errors
+from spy.tests.support import CompilerTest, expect_errors, skip_backends
 
 
 @pytest.fixture(params=["i32", "u32", "i8", "u8", "i64", "u64"])
@@ -338,6 +338,23 @@ class TestInt(CompilerTest):
             mod.foo(too_big)
         with SPyError.raises("W_OverflowError", match="out of range"):
             mod.foo(too_small)
+
+    @skip_backends("C", reason="C parser uses strtoll and doesn't match int() yet")
+    def test_int_from_str_advanced(self, int_type):
+        # interp delegates to Python's int(), which accepts surrounding
+        # whitespace and underscore separators. The C backend uses strtoll and
+        # is stricter; we will align it in a future PR.
+        mod = self.compile(f"""
+        T = {int_type}
+        def foo(s: str) -> T:
+            return T(s)
+        """)
+        assert mod.foo("  42  ") == 42
+        assert mod.foo("42\n") == 42
+        assert mod.foo("+42") == 42
+        assert mod.foo("1_2_3") == 123
+        if not int_type.startswith("u"):
+            assert mod.foo("  -5  ") == -5
 
     def test_int_literals(self):
         # a bare literal defaults to i32; explicitly-prefixed literals can hold
