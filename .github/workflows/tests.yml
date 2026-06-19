@@ -185,6 +185,15 @@ jobs:
         run: |
           npm --prefix pyodide install
 
+      - name: Create pyodide venv
+        # needed by test_cli::test_execute_pyodide, which otherwise is silently
+        # skipped. The `pyodide` command comes from pyodide-build, see
+        # pyodide/README.md
+        run: |
+          cd pyodide
+          pyodide venv venv
+          ./venv/bin/pip install -e ..
+
       - name: Build libspy
         run: |
           cd spy/libspy

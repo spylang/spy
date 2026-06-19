@@ -206,6 +206,7 @@ CLAUDE.local.md
 /playground/*.whl
 /playground/assets/
 /playground/examples
+/playground/.pyodide-cache/
 
 # pixi environments
 .pixi/*
