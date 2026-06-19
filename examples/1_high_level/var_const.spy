@@ -1,0 +1,61 @@
+"""
+This example presents the only deviance from Python's grammar in SPy,
+associated with two keywords, `var` and `const`.
+
+It is in particular related to a notable semantics difference for module-level code:
+after imports, the modules are frozen (immutable) and module-level assignments create
+by default blue and immutable (const) variables.
+
+However:
+  - `var` declares a mutable global variable — reassignment is then allowed.
+  - `var` globals are especially useful for mutable pointers (e.g. gc_ptr[T])
+    which appear in low-level and advanced examples.
+
+Local variables are by default var and red, with two exceptions:
+  - `const` inside a function declares a local blue constant: it is fully
+    resolved at redshift time and inlined as a literal (run `spy redshift` to see).
+  - Local variables assigned only once with literals or blue variables are by default blue.
+"""
+
+from __spy__ import COLOR
+
+
+# plain module-level assignment: immutable (const) by default
+N: i32 = 10
+
+# `var` makes the global mutable
+var counter: i32 = 0
+
+
+def increment() -> None:
+    counter = counter + 1
+
+
+def main() -> None:
+    # `const` declares a local blue constant, resolved at redshift time
+    const LIMIT = 5
+    # LIMIT = 6  # would raise: "x is const" — uncomment to see the error
+
+    # equivalent to `const LIMIT2 = 10`
+    LIMIT2 = 10              # blue, since assigned once
+    # (if a name is assigned only once outside a loop, it's tagged as const)
+    # however, no error would be raised if a developer adds another `LIMIT2 = ...`
+
+    # this is getting advanced, don't worry if it's not clear yet
+    LIMIT3 = LIMIT + LIMIT2  # also blue, since LIMIT and LIMIT2 are blue
+    LIMIT4 = LIMIT + LIMIT2  # var and red because of the next assignment
+
+    print("COLOR(LIMIT)", COLOR(LIMIT))    # blue
+    print("COLOR(LIMIT2)", COLOR(LIMIT2))  # blue
+    print("COLOR(LIMIT3)", COLOR(LIMIT3))  # blue
+    print("COLOR(LIMIT4)", COLOR(LIMIT4))  # red
+
+    LIMIT4 = 10
+
+    print("N+1:", N+1)
+    # N = 20  # would raise: "x is const" — uncomment to see the error
+
+    print("counter:", counter)
+    for i in range(LIMIT):
+        increment()
+    print("counter:", counter)

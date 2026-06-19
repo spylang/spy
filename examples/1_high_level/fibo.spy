@@ -1,3 +1,18 @@
+"""
+Things to notice:
+  - Currently, `int` is just an alias to `i32`.
+  - Recursive functions work as in Python, with full type inference on return values.
+  - Timing shows the speedup from compilation vs CPython interpretation.
+  - In SPy, `main()` does not need to be explicitly called.
+
+Note: SPy's performance comes from the compiler, not the interpreter. The interpreter
+is currently much slower than CPython — the goal is to reach CPython speed, but this
+is not yet achieved. The plan to get there is to implement the SPy interpreter in SPy
+itself, so that it can be compiled. To get compiled performance in the meantime,
+install SPy locally and run `spy build -x fibo.spy`. The playground does not yet
+support `spy build`.
+"""
+
 from time import time
 
 
@@ -16,4 +31,5 @@ def main() -> None:
     print("#", str(t_end - t_start), "s")
 
 
+# uncomment this line to run with a Python interpreter
 # main()
