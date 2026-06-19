@@ -27,6 +27,11 @@ spy_builtins$hash_u8(uint8_t x) {
 }
 
 static inline int32_t
+spy_builtins$hash_u32(uint32_t x) {
+    return (int32_t)x;
+}
+
+static inline int32_t
 spy_builtins$hash_i64(int64_t x) {
     if (x == -1) {
         return 2;
