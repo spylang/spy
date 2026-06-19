@@ -8,6 +8,9 @@ import textwrap
 from types import NoneType
 from typing import NoReturn, Optional
 
+import fixedint
+from fixedint.base import FixedInt
+
 import spy.ast
 from spy.analyze.symtable import ImportRef, VarKind
 from spy.errors import SPyError
@@ -831,13 +834,61 @@ class Parser:
             return spy.ast.Literal(new_loc, -value.value)
         return spy.ast.UnaryOp(py_node.loc, op, value)
 
+    ITYPES: dict[str, type[FixedInt]] = {
+        "i8": fixedint.Int8,
+        "u8": fixedint.UInt8,
+        "i32": fixedint.Int32,
+        "u32": fixedint.UInt32,
+        "i64": fixedint.Int64,
+        "u64": fixedint.UInt64,
+    }
+
+    def _parse_int_literal_prefix(
+        self, prefix: str, py_arg: py_ast.expr
+    ) -> Optional[spy.ast.Literal]:
+        """
+        Parse the argument of an explicitly-prefixed int literal, e.g. the `42`
+        in `i32(42)`. Return None if the argument is not an integer literal (so
+        that e.g. `i32(x)` falls through to the normal conversion path).
+        """
+        # the argument can be a bare int, or a negated one (`-1` parses as
+        # USub(Constant(1)))
+        sign = 1
+        if isinstance(py_arg, py_ast.UnaryOp) and isinstance(py_arg.op, py_ast.USub):
+            sign = -1
+            py_arg = py_arg.operand
+        if not (isinstance(py_arg, py_ast.Constant) and type(py_arg.value) is int):
+            return None
+
+        cls = self.ITYPES[prefix]
+        lo, hi = cls.minval, cls.maxval
+        val = sign * py_arg.value
+        if val < lo or val > hi:
+            self.error(
+                f"{prefix} literal {val} is out of range [{lo}, {hi}]",
+                "integer literal out of range",
+                py_arg.loc,
+            )
+        return spy.ast.Literal(py_arg.loc, cls(val))
+
     def from_py_expr_Call(
         self, py_node: py_ast.Call
-    ) -> spy.ast.Call | spy.ast.CallMethod | spy.ast.BlockExpr:
+    ) -> spy.ast.Call | spy.ast.CallMethod | spy.ast.BlockExpr | spy.ast.Literal:
         if isinstance(py_node.func, py_ast.Name) and py_node.func.id == "__block__":
             return self._parse_block_expr(py_node)
         if py_node.keywords:
             self.unsupported(py_node.keywords[0], "keyword arguments")
+
+        # explicitly-prefixed integer literal, e.g. i32(42) or i64(-1)
+        if (
+            isinstance(py_node.func, py_ast.Name)
+            and py_node.func.id in self.ITYPES
+            and len(py_node.args) == 1
+        ):
+            lit = self._parse_int_literal_prefix(py_node.func.id, py_node.args[0])
+            if lit is not None:
+                return lit
+
         func = self.from_py_expr(py_node.func)
         args = [self.from_py_expr(py_arg) for py_arg in py_node.args]
         if isinstance(func, spy.ast.GetAttr):

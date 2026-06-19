@@ -876,6 +876,51 @@ class TestParser:
         assert funcdef.body[1].value.loc.get_src() == "-  101"  # type: ignore
         assert funcdef.body[2].value.loc.get_src() == "-    102"  # type: ignore
 
+    def test_int_literals(self):
+        # a bare literal is a plain int; an explicitly-prefixed one is the
+        # corresponding fixedint. i8(x) is not a literal and stays a Call.
+        mod = self.parse("""
+        def foo() -> None:
+            42
+            i64(42)
+            i64(-1)
+            i8(x)
+        """)
+        body = mod.get_funcdef("foo").body
+        expected = """
+        [
+            StmtExpr(
+                value=Literal(value=42),
+            ),
+            StmtExpr(
+                value=Literal(value=Int64(42)),
+            ),
+            StmtExpr(
+                value=Literal(value=Int64(-1)),
+            ),
+            StmtExpr(
+                value=Call(
+                    func=Name(id='i8'),
+                    args=[
+                        Name(id='x'),
+                    ],
+                ),
+            ),
+        ]
+        """
+        self.assert_dump(body, expected)
+
+    def test_prefixed_int_literal_out_of_range(self):
+        src = """
+        def foo() -> u8:
+            return u8(256)
+        """
+        self.expect_errors(
+            src,
+            "u8 literal 256 is out of range [0, 255]",
+            ("integer literal out of range", "256"),
+        )
+
     @pytest.mark.parametrize("op", "== != < <= > >= is is_not in not_in".split())
     def test_CompareOp(self, op):
         op = op.replace("_", " ")  # is_not ==> is not
