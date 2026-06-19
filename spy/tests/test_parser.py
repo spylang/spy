@@ -913,6 +913,7 @@ class TestParser:
                         args=[
                             Name(id='x'),
                         ],
+                        kwargs=[],
                     ),
                 ),
             ],
