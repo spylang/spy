@@ -886,29 +886,39 @@ class TestParser:
             i64(-1)
             i8(x)
         """)
-        body = mod.get_funcdef("foo").body
+        funcdef = mod.get_funcdef("foo")
         expected = """
-        [
-            StmtExpr(
-                value=Literal(value=42),
-            ),
-            StmtExpr(
-                value=Literal(value=Int64(42)),
-            ),
-            StmtExpr(
-                value=Literal(value=Int64(-1)),
-            ),
-            StmtExpr(
-                value=Call(
-                    func=Name(id='i8'),
-                    args=[
-                        Name(id='x'),
-                    ],
+        FuncDef(
+            color='red',
+            kind='plain',
+            name='foo',
+            args=[],
+            return_type=Literal(value=None),
+            defaults=[],
+            docstring=None,
+            body=[
+                StmtExpr(
+                    value=Literal(value=42),
                 ),
-            ),
-        ]
+                StmtExpr(
+                    value=Literal(value=Int64(42)),
+                ),
+                StmtExpr(
+                    value=Literal(value=Int64(-1)),
+                ),
+                StmtExpr(
+                    value=Call(
+                        func=Name(id='i8'),
+                        args=[
+                            Name(id='x'),
+                        ],
+                    ),
+                ),
+            ],
+            decorators=[],
+        )
         """
-        self.assert_dump(body, expected)
+        self.assert_dump(funcdef, expected)
 
     def test_prefixed_int_literal_out_of_range(self):
         src = """

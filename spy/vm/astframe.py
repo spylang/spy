@@ -918,7 +918,7 @@ class AbstractFrame:
             Int64,
             UInt64,
         )
-        if T is int and not (Int32.minval <= val <= Int32.maxval):
+        if T is int and not (Int32.minval <= val <= Int32.maxval):  # type: ignore
             # unprefixed int literals default to i32: let's raise a helpful error
             # message if we are out of range.
             raise SPyError.simple(

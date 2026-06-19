@@ -655,10 +655,10 @@ class SPyVM:
     def wrap(self, value: fixedint.UInt32) -> W_U32: ...  # type: ignore[overload-cannot-match]
 
     @overload
-    def wrap(self, value: fixedint.Int64) -> W_I64: ...  # type: ignore[overload-overlap]
+    def wrap(self, value: fixedint.Int64) -> W_I64: ...  # type: ignore[overload-cannot-match]
 
     @overload
-    def wrap(self, value: fixedint.UInt64) -> W_U64: ...  # type: ignore[overload-overlap]
+    def wrap(self, value: fixedint.UInt64) -> W_U64: ...  # type: ignore[overload-cannot-match]
 
     @overload
     def wrap(self, value: float) -> W_F64: ...
