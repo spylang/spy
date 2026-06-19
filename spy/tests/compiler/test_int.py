@@ -1,7 +1,7 @@
 import pytest
 
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest
+from spy.tests.support import CompilerTest, expect_errors
 
 
 @pytest.fixture(params=["i32", "u32", "i8", "u8", "i64", "u64"])
@@ -338,3 +338,34 @@ class TestInt(CompilerTest):
             mod.foo(too_big)
         with SPyError.raises("W_OverflowError", match="out of range"):
             mod.foo(too_small)
+
+    def test_int_literals(self):
+        # a bare literal defaults to i32; explicitly-prefixed literals can hold
+        # values bigger than i32
+        mod = self.compile("""
+        def bare() -> i32:
+            return 42
+
+        def big_i64() -> i64:
+            return i64(2147483648)
+
+        def big_u64() -> u64:
+            return u64(9223372036854775808)
+        """)
+        assert mod.bare() == 42
+        assert mod.big_i64() == 2147483648
+        assert mod.big_u64() == 9223372036854775808
+
+    def test_bare_literal_too_big_for_i32(self):
+        # the default type of a bare literal is i32; a bigger literal is an
+        # error suggesting the explicit i64()/u64() form
+        src = """
+        def foo() -> i64:
+            return 2147483648
+        """
+        errors = expect_errors(
+            "integer literal 2147483648 is out of range for i32; "
+            "use i64(2147483648) or u64(2147483648) to get a 64-bit value",
+            ("integer literal out of range", "2147483648"),
+        )
+        self.compile_raises(src, "foo", errors)
