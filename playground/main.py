@@ -430,11 +430,18 @@ def main():
         ).css("margin", "5px"),
         editor.css("border", "1px solid gray").attr("id", "editor"),
         ltk.VBox(
-            ltk.Label("Try the SPy CLI:"),
             ltk.HBox(
+                ltk.Label("Try the SPy CLI:").css("white-space", "nowrap"),
                 term_input,
                 term_input_run_btn,
-            ).css({"width": "100%", "display": "flex", "gap": "5px"}),
+            ).css(
+                {
+                    "width": "100%",
+                    "display": "flex",
+                    "gap": "5px",
+                    "align-items": "center",
+                }
+            ),
             ltk.Div(
                 ButtonLabel("Sample Flags:"),
                 RunSPyButton("execute"),
@@ -445,12 +452,8 @@ def main():
                 RunSPyButton("redshift --full-fqn"),
                 RunSPyButton("redshift --execute"),
                 RunSPyButton("build --cdump"),
-            ).css({"display": "flex", "gap": "5px", "vertical-align": "bottom"}),
-        ).css(
-            {
-                "align-items": "flex-start",
-            }
-        ),
+            ).css({"display": "flex", "gap": "5px", "flex-wrap": "wrap"}),
+        ).css({"align-items": "flex-start"}),
         ltk.Div().attr("id", "terminal"),
     ).addClass("editor-panel")
 

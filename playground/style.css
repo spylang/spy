@@ -327,14 +327,12 @@ button.run-button:active {
         width: 100%;
     }
 
+    /* Shrink CLI label on small screens */
+    .ltk-label { font-size: 12px; }
+
     /* Shrink editor height a bit to leave room for terminal */
     #editor {
         height: 280px;
-    }
-
-    /* Buttons row: allow wrapping */
-    #editor ~ div div {
-        flex-wrap: wrap;
     }
 
     /* Terminal: constrain height on small screens */
