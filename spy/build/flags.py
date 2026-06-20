@@ -119,20 +119,10 @@ def get_cflags(
     else:
         warning_flags = _WARNING_CFLAGS
     include = ["-I", str(_INCLUDE)]
-
-    build_type_cflags = _BUILD_TYPE_CFLAGS[build_type]
-
-    # XXX: workaround for issue #578. When compiling with -flto for Emscripten,
-    # functions returning structs by value yield None in Pyodide instead of an
-    # iterable (the sret ABI is not handled correctly by the JS wrappers in
-    # that case). The root cause is not fully understood.
-    if target == "emscripten":
-        build_type_cflags = [f for f in build_type_cflags if f != "-flto"]
-
     return (
         _BASE_CFLAGS
         + _TARGET_CFLAGS[target]
-        + build_type_cflags
+        + _BUILD_TYPE_CFLAGS[build_type]
         + warning_flags
         + include
     )
