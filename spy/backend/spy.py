@@ -157,10 +157,13 @@ class SPyBackend:
             name = str(fqn)
         elif self.fqn_format == "short":
             name = fqn.human_name(self.vm)  # don't show builtins::
-            # strip the current module prefix everywhere it appears
-            # (including inside generic type qualifiers)
+            # Strip the current module prefix wherever it appears as a genuine
+            # namespace start: at the beginning of the string, or immediately
+            # after ` or [ (the only delimiters that introduce a fresh FQN in
+            # the rendered output).
             if self.modname:
-                name = name.replace(f"{self.modname}::", "")
+                escaped = re.escape(self.modname)
+                name = re.sub(rf"(^|[`\[]){escaped}::", r"\1", name)
         else:
             assert False
         #
