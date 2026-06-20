@@ -128,3 +128,72 @@ button.run-button:active {
     font-family: monospace;
     color: #666;
 }
+
+/* ===== File Explorer Sidebar ===== */
+
+.file-explorer {
+    width: 200px;
+    min-width: 160px;
+    flex-shrink: 0;
+    background: #f0f0f0;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    margin-right: 12px;
+    padding: 6px 0;
+    font-size: 13px;
+    align-self: flex-start;
+}
+
+.fe-category {
+    padding: 6px 10px;
+    font-weight: 600;
+    color: #444;
+    cursor: pointer;
+    user-select: none;
+    background: #e4e4e4;
+    border-bottom: 1px solid #ccc;
+}
+
+.fe-category:first-child {
+    border-radius: 5px 5px 0 0;
+}
+
+.fe-category:hover {
+    background: #d8d8d8;
+}
+
+.fe-category .caret {
+    font-style: normal;
+    color: #666;
+}
+
+.fe-file-list {
+    padding: 3px 0;
+    border-bottom: 1px solid #ddd;
+}
+
+.fe-file-item {
+    padding: 5px 10px 5px 22px;
+    cursor: pointer;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fe-file-item:hover {
+    background: #dce8f8;
+    color: #0055cc;
+}
+
+.fe-file-active {
+    background: #cce0ff;
+    color: #003a99;
+    font-weight: 500;
+}
+
+/* Editor panel takes all remaining width */
+.editor-panel {
+    flex: 1;
+    min-width: 0;
+}

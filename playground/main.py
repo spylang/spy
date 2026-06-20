@@ -118,7 +118,6 @@ load_shared_code_from_url()
 
 # Currently selected file path
 current_file: str = next(iter(CATEGORIES.values()))[0]
-current_cat_idx: int = 0
 
 console.log(f"[Python] Creating editor with initial file: {current_file}")
 editor = Editor(Path(current_file).read_text())
@@ -247,83 +246,103 @@ def load_file(filepath: str) -> None:
     filename_label.text(display_filename())
 
 
-def make_category_tabs() -> ltk.Tabs:
-    """Build the two-level tab widget: outer = categories, inner = files."""
-    inner_tabs_list: list[ltk.Tabs] = []
+def make_file_explorer() -> ltk.Div:
+    """Build a file-explorer sidebar: collapsible category sections with file items."""
+    explorer = ltk.Div().addClass("file-explorer")
 
     for cat, files in CATEGORIES.items():
-        file_tabs = ltk.Tabs(*[ltk.VBox().attr("name", Path(f).name) for f in files])
+        label = category_label(cat)
 
+        # Category header (clickable to collapse/expand)
+        header = ltk.Div(ltk.Span("▾ ").addClass("caret"), ltk.Span(label))
+        header.addClass("fe-category")
+
+        # File list container
+        file_list = ltk.Div().addClass("fe-file-list")
+
+        for filepath in files:
+            fname = Path(filepath).name
+            item = ltk.Div(fname).addClass("fe-file-item")
+            if filepath == current_file:
+                item.addClass("fe-file-active")
+
+            @ltk.callback
+            def on_file_click(event, _fp=filepath, _item=item):
+                # Deactivate all items, activate clicked one
+                ltk.find(".fe-file-item").removeClass("fe-file-active")
+                _item.addClass("fe-file-active")
+                load_file(_fp)
+
+            item.on("click", on_file_click)
+            file_list.append(item)
+
+        # Toggle collapse on header click
         @ltk.callback
-        def on_file_tab(event, ui=None, _file_tabs=file_tabs, _files=files):
-            idx = _file_tabs.active()
-            console.log(f"on_file_tab: {_files[idx]}...")
-            load_file(_files[idx])
+        def on_header_click(event, _fl=file_list, _hdr=header):
+            caret = _hdr.find(".caret")
+            if _fl.is_(":visible"):
+                _fl.hide()
+                caret.text("▸ ")
+            else:
+                _fl.show()
+                caret.text("▾ ")
 
-        file_tabs.on("tabsactivate", on_file_tab)
-        file_tabs.find(".ui-tabs-panel").hide()
-        inner_tabs_list.append(file_tabs)
+        header.on("click", on_header_click)
+        explorer.append(header)
+        explorer.append(file_list)
 
-    outer_tabs = ltk.Tabs(
-        *[
-            inner_tabs.attr("name", category_label(cat))
-            for cat, inner_tabs in zip(CATEGORIES.keys(), inner_tabs_list)
-        ]
-    )
-
-    @ltk.callback
-    def on_category_tab(event, ui=None):
-        # When switching category, load the first file of the new category
-        cat_idx = outer_tabs.active()
-        global current_cat_idx
-        if cat_idx == current_cat_idx:
-            return
-        current_cat_idx = cat_idx
-        cat = list(CATEGORIES.keys())[cat_idx]
-        load_file(CATEGORIES[cat][0])
-
-    outer_tabs.on("tabsactivate", on_category_tab)
-    return outer_tabs
+    return explorer
 
 
 def main():
     console.log("[Python] main() function started - building GUI...")
 
-    category_tabs = make_category_tabs()
+    file_explorer = make_file_explorer()
+
+    editor_panel = ltk.VBox(
+        ltk.HBox(
+            filename_label,
+            RunShareButton().css("margin-left", "auto"),
+        ).css("margin", "5px"),
+        editor.css("border", "1px solid gray").attr("id", "editor"),
+        ltk.VBox(
+            ltk.Label("Try the SPy CLI:"),
+            ltk.HBox(
+                term_input,
+                term_input_run_btn,
+            ).css({"width": "100%", "display": "flex", "gap": "5px"}),
+            ltk.Div(
+                ButtonLabel("Sample Flags:"),
+                RunSPyButton("execute"),
+                RunSPyButton("parse"),
+                RunSPyButton("colorize"),
+                RunSPyButton("redshift"),
+                RunSPyButton("redshift --linearize"),
+                RunSPyButton("redshift --full-fqn"),
+                RunSPyButton("redshift --execute"),
+                RunSPyButton("build --cdump"),
+            ).css({"display": "flex", "gap": "5px", "vertical-align": "bottom"}),
+        ).css(
+            {
+                "align-items": "flex-start",
+            }
+        ),
+        ltk.Div().attr("id", "terminal"),
+    ).addClass("editor-panel")
 
     (
-        ltk.VBox(
-            category_tabs,
-            ltk.HBox(
-                filename_label,
-                RunShareButton().css("margin-left", "auto"),
-            ).css("margin", "5px"),
-            editor.css("border", "1px solid gray").attr("id", "editor"),
-            ltk.VBox(
-                ltk.Label("Try the SPy CLI:"),
-                ltk.HBox(
-                    term_input,
-                    term_input_run_btn,
-                ).css({"width": "100%", "display": "flex", "gap": "5px"}),
-                ltk.Div(
-                    ButtonLabel("Sample Flags:"),
-                    RunSPyButton("execute"),
-                    RunSPyButton("parse"),
-                    RunSPyButton("colorize"),
-                    RunSPyButton("redshift"),
-                    RunSPyButton("redshift --linearize"),
-                    RunSPyButton("redshift --full-fqn"),
-                    RunSPyButton("redshift --execute"),
-                    RunSPyButton("build --cdump"),
-                ).css({"display": "flex", "gap": "5px", "vertical-align": "bottom"}),
-            ).css(
-                {
-                    "align-items": "flex-start",
-                }
-            ),
-            ltk.Div().attr("id", "terminal"),
+        ltk.HBox(
+            file_explorer,
+            editor_panel,
         )
-        .css({"width": "95%", "max-width": "1600px", "margin": "20px auto"})
+        .css(
+            {
+                "width": "95%",
+                "max-width": "1600px",
+                "margin": "20px auto",
+                "align-items": "flex-start",
+            }
+        )
         .css("font-size", 14)
         .attr("name", "Editor")
         .appendTo(ltk.window.document.body)
