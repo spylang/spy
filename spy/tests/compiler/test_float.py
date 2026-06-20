@@ -145,11 +145,15 @@ class TestFloat(CompilerTest):
         def f32_to_f64(x: f32) -> f64: return f64(x)
         def f64_to_i32(x: f64) -> i32: return i32(x)
         def f32_to_i32(x: f32) -> i32: return i32(x)
+        def i32_to_f32(x: i32) -> f32: return f32(x)
+        def f64_to_f32(x: f64) -> f32: return f32(x)
         """)
         assert mod.i32_to_f64(42) == 42.0
         assert mod.f32_to_f64(42.0) == 42.0
         assert mod.f64_to_i32(42.0) == 42
         assert mod.f32_to_i32(42.0) == 42
+        assert mod.i32_to_f32(42) == 42.0
+        assert mod.f64_to_f32(42.5) == 42.5
 
     def test_prebuilt_const(self):
         src = """
