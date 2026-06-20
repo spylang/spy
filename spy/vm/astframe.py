@@ -1,4 +1,5 @@
 from contextlib import contextmanager
+from ctypes import c_float as float32
 from types import NoneType
 from typing import TYPE_CHECKING, Iterator, Optional, Sequence
 
@@ -908,6 +909,7 @@ class AbstractFrame:
         assert T in (
             int,
             float,
+            float32,
             complex,
             bool,
             NoneType,

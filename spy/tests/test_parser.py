@@ -920,6 +920,54 @@ class TestParser:
         """
         self.assert_dump(funcdef, expected)
 
+    def test_float_literals(self):
+        # a bare float is a plain f64; an explicitly-prefixed f32 becomes a
+        # c_float. f32(x) is not a literal and stays a Call.
+        mod = self.parse("""
+        def foo() -> None:
+            1.5
+            f64(2.5)
+            f64(-1.5)
+            f32(3.5)
+            f32(x)
+        """)
+        funcdef = mod.get_funcdef("foo")
+        expected = """
+        FuncDef(
+            color='red',
+            kind='plain',
+            name='foo',
+            args=[],
+            return_type=Literal(value=None),
+            defaults=[],
+            docstring=None,
+            body=[
+                StmtExpr(
+                    value=Literal(value=1.5),
+                ),
+                StmtExpr(
+                    value=Literal(value=2.5),
+                ),
+                StmtExpr(
+                    value=Literal(value=-1.5),
+                ),
+                StmtExpr(
+                    value=Literal(value=c_float(3.5)),
+                ),
+                StmtExpr(
+                    value=Call(
+                        func=Name(id='f32'),
+                        args=[
+                            Name(id='x'),
+                        ],
+                    ),
+                ),
+            ],
+            decorators=[],
+        )
+        """
+        self.assert_dump(funcdef, expected)
+
     def test_prefixed_int_literal_out_of_range(self):
         src = """
         def foo() -> u8:

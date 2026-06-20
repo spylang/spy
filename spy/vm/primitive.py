@@ -382,6 +382,20 @@ class W_F32(W_Object):
     def __init__(self, value: float | float32) -> None:
         self.value = float32(value) if type(value) is float else value  # type: ignore[assignment]
 
+    @builtin_method("__new__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_NEW(vm: "SPyVM", wam_cls: "W_MetaArg", *args_wam: "W_MetaArg") -> "W_OpSpec":
+        from spy.vm.opspec import W_OpSpec
+
+        if len(args_wam) != 1:
+            return W_OpSpec.NULL
+        wam_arg = args_wam[0]
+        if wam_arg.w_static_T == B.w_i32:
+            return W_OpSpec(OP.w_i32_to_f32, [wam_arg])
+        elif wam_arg.w_static_T == B.w_f64:
+            return W_OpSpec(OP.w_f64_to_f32, [wam_arg])
+        return W_OpSpec.NULL
+
     def __repr__(self) -> str:
         return f"W_F32({self.value.value:.7g})"
 
