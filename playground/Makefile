@@ -3,7 +3,7 @@
 # Paths relative to playground directory
 ROOT_DIR := ..
 LIBSPY_DIR := $(ROOT_DIR)/spy/libspy
-BUILD_DIR := $(LIBSPY_DIR)/build/emscripten/release
+BUILD_DIR := $(LIBSPY_DIR)/build/emscripten/debug
 DIST_DIR := $(ROOT_DIR)/dist
 
 # Use $PYTHON from environment if set, otherwise default to just 'python'
@@ -25,7 +25,7 @@ WHEEL_NAME := spylang-$(VERSION)-py3-none-any.whl
 # This mirrors the steps from .github/workflows/playground.yml
 local:
 	@echo "Building libspy for emscripten..."
-	$(MAKE) -C $(LIBSPY_DIR) TARGET=emscripten
+	$(MAKE) -C $(LIBSPY_DIR) TARGET=emscripten BUILD_TYPE=debug
 
 	@echo "Building Python wheel..."
 	$(PYTHON) -m build --wheel --outdir $(DIST_DIR) $(ROOT_DIR)
