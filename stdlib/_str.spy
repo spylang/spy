@@ -281,6 +281,27 @@ class methods:
         out.utf8[j] = quote
         return StrObject.to_str(out)
 
+    def __contains__(self: str, target: str) -> bool:
+        ll_orig = StrObject.from_str(self)
+        ll_target = StrObject.from_str(target)
+        orig_len = ll_orig.length
+        target_len = ll_target.length
+
+        if target_len == 0:
+            return True
+        if target_len > orig_len:
+            return False
+
+        end_of_loop = orig_len - target_len
+        for i in range(end_of_loop + 1):
+            if (
+                ptr_cmp_slice(ll_orig.utf8, i, i + target_len, ll_target.utf8, 0, target_len)
+                == 0
+            ):
+                return True
+
+        return False
+
     def replace(self: str, old: str, new: str) -> str:
         ll_orig = StrObject.from_str(self)
         ll_old = StrObject.from_str(old)

@@ -7,7 +7,7 @@ from spy.vm.b import BUILTINS, OP, B
 from spy.vm.builtin import builtin_method
 from spy.vm.object import W_Object
 from spy.vm.opspec import W_MetaArg, W_OpSpec
-from spy.vm.primitive import W_I32, W_Bool
+from spy.vm.primitive import W_I32
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -49,6 +49,7 @@ class W_Str(W_Object):
         "_getitem_slice": FQN("_str::methods::_getitem_slice"),
         "encode": FQN("_str::methods::encode"),
         "replace": FQN("_str::methods::replace"),
+        "__contains__": FQN("_str::methods::__contains__"),
         "__repr__": FQN("_str::methods::__repr__"),
         "__len__": FQN("_str::methods::__len__"),
         "__getitem__": FQN("_str::methods::__getitem__"),
@@ -132,9 +133,4 @@ class W_Str(W_Object):
         ptr_c = vm.ll.call("spy_str_replace", w_original.ptr, w_old.ptr, w_new.ptr)
         return W_Str.from_ptr(vm, ptr_c)
 
-    @builtin_method("__contains__")
-    @staticmethod
-    def w_contains(vm: "SPyVM", w_container: "W_Str", w_target: "W_Str") -> W_Bool:
-        res = vm.ll.call("spy_str_contains", w_container.ptr, w_target.ptr)
-        return vm.wrap(bool(res))
     

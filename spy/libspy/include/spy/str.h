@@ -49,8 +49,6 @@ SPY_PTR_FUNCTIONS(gc, spy_unsafe$gc_ptr___str$StrObject, spy_StrObject)
 // short alias for manual use
 typedef spy_unsafe$gc_ptr___str$StrObject spy_gc_ptr_StrObject;
 
-bool WASM_EXPORT(spy_str_contains)(spy_StrObject *container, spy_StrObject *target);
-
 static inline spy_gc_ptr_StrObject
 spy_unsafe$_str_to_StrObject$impl(spy_StrObject *s) {
     return spy_unsafe$gc_ptr___str$StrObject_from_addr(s);
@@ -110,7 +108,6 @@ int32_t WASM_EXPORT(spy_str_hash)(spy_StrObject *s);
 #define spy_operator$str_ne spy_str_ne
 #define spy_operator$str_to_complex128 spy_str_to_complex128
 #define spy_builtins$str$replace spy_str_replace
-#define spy_builtins$str$__contains__ spy_str_contains
 #define spy_builtins$str$__getitem__ spy_str_getitem
 #define spy_builtins$str$__len__ spy_str_len
 #define spy_builtins$str$__str__ spy_str_identity
