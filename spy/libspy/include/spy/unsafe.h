@@ -246,28 +246,31 @@ typedef spy_unsafe$gc_ptr__builtins$u8 spy_gc_ptr_u8;
 #endif
 
 #ifdef SPY_DEBUG
-#  define spy_ptr_setbytes(dst, value, n)                                                   \
+#  define spy_ptr_setbytes(dst, value, n)                                              \
       do {                                                                             \
           if ((size_t)(n) > (size_t)(dst).length)                                      \
-              spy_panic("PanicError", "ptr_setbytes out of bounds", __FILE__, __LINE__);    \
+              spy_panic(                                                               \
+                  "PanicError", "ptr_setbytes out of bounds", __FILE__, __LINE__       \
+              );                                                                       \
           memset((dst).p, (value), (n) * sizeof(*(dst).p));                            \
       } while (0)
 #else
-#  define spy_ptr_setbytes(dst, value, n) memset((dst).p, (value), (n) * sizeof(*(dst).p))
+#  define spy_ptr_setbytes(dst, value, n)                                              \
+      memset((dst).p, (value), (n) * sizeof(*(dst).p))
 #endif
 
 #ifdef SPY_DEBUG
-#  define spy_ptr_setbytes_slice(dst, ds, de, value)                                        \
+#  define spy_ptr_setbytes_slice(dst, ds, de, value)                                   \
       do {                                                                             \
           ptrdiff_t _spy_n = (de) - (ds);                                              \
           if (_spy_n < 0 || (ds) < 0 || (de) > (dst).length)                           \
               spy_panic(                                                               \
-                  "PanicError", "ptr_setbytes_slice out of bounds", __FILE__, __LINE__      \
+                  "PanicError", "ptr_setbytes_slice out of bounds", __FILE__, __LINE__ \
               );                                                                       \
           memset((dst).p + (ds), (value), _spy_n * sizeof(*(dst).p));                  \
       } while (0)
 #else
-#  define spy_ptr_setbytes_slice(dst, ds, de, value)                                        \
+#  define spy_ptr_setbytes_slice(dst, ds, de, value)                                   \
       memset((dst).p + (ds), (value), ((de) - (ds)) * sizeof(*(dst).p))
 #endif
 

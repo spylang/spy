@@ -551,7 +551,7 @@ class TestStr(CompilerTest):
         mod = self.compile(src)
         with SPyError.raises("W_ValueError"):
             mod.encode("x", "ascii")
-    
+
     def test_str_in(self):
         mod = self.compile("""
         def foo(s: str, target: str) -> bool:
