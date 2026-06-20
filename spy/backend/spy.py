@@ -364,8 +364,14 @@ class SPyBackend:
             return repr(int(vm.unwrap_i32(w_val)))
         elif w_T is B.w_f64:
             return repr(float(vm.unwrap_f64(w_val)))
+        elif w_T is B.w_f32:
+            return f"f32({float(vm.unwrap_f32(w_val))})"
         elif w_T is B.w_complex128:
             return repr(vm.unwrap_complex128(w_val))
+        elif w_T in (B.w_i8, B.w_u8, B.w_u32, B.w_i64, B.w_u64):
+            val = vm.unwrap(w_val)
+            prefix = self.IPREFIX[type(val)]
+            return f"{prefix}({int(val)})"
         elif w_T is TYPES.w_NoneType:
             assert w_val is B.w_None
             return "None"
