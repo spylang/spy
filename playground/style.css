@@ -197,3 +197,62 @@ button.run-button:active {
     flex: 1;
     min-width: 0;
 }
+
+/* Mobile select dropdown (hidden on desktop) */
+.fe-mobile-bar {
+    display: none;
+    padding: 6px 0 8px;
+}
+
+.fe-mobile-select {
+    width: 100%;
+    font-size: 15px;
+    padding: 6px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: white;
+}
+
+/* ===== Responsive: mobile (≤ 600px) ===== */
+@media (max-width: 600px) {
+    /* Switch to vertical stacked layout */
+    .ltk-hbox[name="Editor"] {
+        flex-direction: column !important;
+    }
+
+    /* Hide sidebar, show dropdown instead */
+    .fe-desktop-only {
+        display: none !important;
+    }
+
+    .fe-mobile-bar {
+        display: block;
+    }
+
+    /* Editor takes full width */
+    .editor-panel {
+        width: 100%;
+    }
+
+    /* Shrink editor height a bit to leave room for terminal */
+    #editor {
+        height: 280px;
+    }
+
+    /* Buttons row: allow wrapping */
+    #editor ~ div div {
+        flex-wrap: wrap;
+    }
+
+    /* Terminal: constrain height on small screens */
+    #terminal {
+        min-height: 120px;
+        resize: vertical;
+    }
+
+    /* Outer container: full width, tighter margin */
+    .ltk-hbox[name="Editor"] {
+        width: 100% !important;
+        margin: 8px auto !important;
+    }
+}

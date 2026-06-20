@@ -246,9 +246,50 @@ def load_file(filepath: str) -> None:
     filename_label.text(display_filename())
 
 
+def make_mobile_select() -> ltk.Div:
+    """Build a <select> dropdown for mobile, grouped by category with <optgroup>."""
+    from js import document
+
+    sel = document.createElement("select")
+    sel.className = "fe-mobile-select"
+
+    # Build filepath -> index map for programmatic selection
+    all_paths: list[str] = []
+    for cat, files in CATEGORIES.items():
+        grp = document.createElement("optgroup")
+        grp.label = category_label(cat)
+        for filepath in files:
+            opt = document.createElement("option")
+            opt.value = filepath
+            opt.textContent = Path(filepath).name
+            if filepath == current_file:
+                opt.selected = True
+            grp.appendChild(opt)
+            all_paths.append(filepath)
+        sel.appendChild(grp)
+
+    @ltk.callback
+    def on_select_change(event):
+        filepath = sel.value
+        # Sync active state in sidebar too (in case both are rendered)
+        ltk.find(".fe-file-item").removeClass("fe-file-active")
+        ltk.find(f".fe-file-item:contains('{Path(filepath).name}')").addClass(
+            "fe-file-active"
+        )
+        load_file(filepath)
+
+    ltk.window.jQuery(sel).on("change", on_select_change)
+
+    wrapper = ltk.Div()
+    wrapper.addClass("fe-mobile-bar")
+    wrapper.element.append(ltk.window.jQuery(sel))
+    return wrapper
+
+
 def make_file_explorer() -> ltk.Div:
     """Build a file-explorer sidebar: collapsible category sections with file items."""
     explorer = ltk.Div().addClass("file-explorer")
+    explorer.addClass("fe-desktop-only")
 
     for cat, files in CATEGORIES.items():
         label = category_label(cat)
@@ -298,8 +339,10 @@ def main():
     console.log("[Python] main() function started - building GUI...")
 
     file_explorer = make_file_explorer()
+    mobile_select = make_mobile_select()
 
     editor_panel = ltk.VBox(
+        mobile_select,
         ltk.HBox(
             filename_label,
             RunShareButton().css("margin-left", "auto"),
