@@ -1,8 +1,7 @@
-"""
-## About the playground:
+"""About the playground:
 
 The playground presents example files organized in 4 categories. You can discover
-SPy by following the proposed progression from left to right.
+SPy by following the proposed progression from top to bottom.
 
 You can use the `spy` CLI in the playground by typing a command in the input bar
 and pressing Enter or the Run button, or by clicking one of the shortcut buttons
