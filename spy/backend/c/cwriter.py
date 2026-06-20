@@ -287,6 +287,10 @@ class CFuncWriter:
             return C.Literal(f"{intval}{suffix}")
         elif w_T is B.w_f64:
             return C.Literal(str(vm.unwrap_f64(w_val)))
+        elif w_T is B.w_f32:
+            # the 'f' suffix makes it a float literal, avoiding double->float
+            # narrowing warnings
+            return C.Literal(f"{vm.unwrap_f32(w_val)}f")
         elif w_T is B.w_complex128:
             val = vm.unwrap_complex128(w_val)
             return C.Literal(

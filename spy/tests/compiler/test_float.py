@@ -13,11 +13,20 @@ def float_type(request):
 
 class TestFloat(CompilerTest):
     def test_literal(self):
-        mod = self.compile("""
-        def foo() -> f64:
-            return 12.3
-        """)
-        assert mod.foo() == 12.3
+        src = """
+        def a() -> f64:
+            return 1.5  # implicitly f64
+
+        def b() -> f64:
+            return f64(2.5)
+
+        def c() -> f32:
+            return f32(3.5)
+        """
+        mod = self.compile(src)
+        assert mod.a() == 1.5
+        assert mod.b() == 2.5
+        assert mod.c() == 3.5
 
     def test_BinOp(self, float_type):
         mod = self.compile(f"""
