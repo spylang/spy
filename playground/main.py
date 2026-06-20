@@ -335,11 +335,92 @@ def make_file_explorer() -> ltk.Div:
     return explorer
 
 
+ABOUT_HTML = """
+<div class="about-body">
+  <p>
+    The playground presents example files organized in 4 categories.
+    Explore SPy by following the proposed progression from top to bottom
+    in the file explorer (or the dropdown on mobile).
+  </p>
+  <p>
+    Use the <strong>SPy CLI</strong> by typing a command in the input bar and pressing
+    <kbd>Enter</kbd> or the <strong>Run ▶</strong> button, or by clicking one of the
+    shortcut buttons. The most useful commands are:
+  </p>
+  <ul>
+    <li><code>spy execute hello.spy</code> — run the program (interpreted)</li>
+    <li><code>spy colorize hello.spy</code> — show blue/red coloring</li>
+    <li><code>spy redshift hello.spy</code> — show the redshifted typed AST</li>
+    <li><code>spy redshift --execute hello.spy</code> — run the redshifted AST</li>
+    <li><code>spy build --cdump hello.spy</code> — emit C code</li>
+  </ul>
+  <p>
+    The playground does not yet support <code>spy build</code>.
+  </p>
+</div>
+"""
+
+
+def make_about_button() -> ltk.Div:
+    """An ℹ button that opens a modal <dialog> with the about text."""
+    from js import document
+
+    # Build the <dialog> element directly
+    dialog = document.createElement("dialog")
+    dialog.className = "about-dialog"
+    dialog.innerHTML = (
+        "<h3 class='about-dialog-title'>ℹ About the SPy Playground</h3>"
+        + ABOUT_HTML
+        + "<button class='about-close-btn' autofocus>Close</button>"
+    )
+    document.body.appendChild(dialog)
+
+    # Close button inside dialog
+    close_btn = dialog.querySelector(".about-close-btn")
+
+    @ltk.callback
+    def on_close(event):
+        dialog.close()
+
+    ltk.window.jQuery(close_btn).on("click", on_close)
+
+    # Click on backdrop (the dialog element outside its content box) also closes
+    @ltk.callback
+    def on_backdrop_click(event):
+        rect = dialog.getBoundingClientRect()
+        if (
+            event.clientX < rect.left
+            or event.clientX > rect.right
+            or event.clientY < rect.top
+            or event.clientY > rect.bottom
+        ):
+            dialog.close()
+
+    ltk.window.jQuery(dialog).on("click", on_backdrop_click)
+
+    # The ℹ trigger button
+    btn = ltk.Button("ℹ \u00b7 About", lambda e: None)
+    btn.addClass("about-open-btn")
+
+    @ltk.callback
+    def on_open(event):
+        dialog.showModal()
+
+    btn.on("click", on_open)
+    return btn
+
+
 def main():
     console.log("[Python] main() function started - building GUI...")
 
     file_explorer = make_file_explorer()
     mobile_select = make_mobile_select()
+    about_btn = make_about_button()
+
+    sidebar = ltk.VBox(
+        about_btn,
+        file_explorer,
+    ).addClass("sidebar")
 
     editor_panel = ltk.VBox(
         mobile_select,
@@ -375,7 +456,7 @@ def main():
 
     (
         ltk.HBox(
-            file_explorer,
+            sidebar,
             editor_panel,
         )
         .css(
