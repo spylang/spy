@@ -37,6 +37,19 @@ class Base_Args:
         Option("--no-spyc", help="Disable loading/saving of .spyc cache files"),
     ] = False
 
+    extra_vm_modules: Annotated[
+        Optional[list[str]],
+        Option(
+            "--extra-vm-module",
+            help="Path to an out-of-tree builtin module to load (additive with spy.toml)",
+        ),
+    ] = None
+
+    no_spy_toml: Annotated[
+        bool,
+        Option("--no-spy-toml", help="Ignore spy.toml project manifest"),
+    ] = False
+
 
 def filename_callback(value: Path) -> Path:
     # filename is required for almost all commands; it must be a file

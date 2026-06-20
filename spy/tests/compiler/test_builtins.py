@@ -133,23 +133,36 @@ class TestBuiltins(CompilerTest):
 
     def test_hash(self):
         src = """
-        def test_hash_i8(x: i8) -> int:
-            return hash(x)
-        def test_hash_i32(x: i32) -> int:
-            return hash(x)
-        def test_hash_u8(x: u8) -> int:
-            return hash(x)
-        def test_hash_bool(x: bool) -> int:
-            return hash(x)
+        def test_hash_i8(x: i8) -> int:     return hash(x)
+        def test_hash_i32(x: i32) -> int:   return hash(x)
+        def test_hash_i64(x: i64) -> i32:   return hash(x)
+
+        def test_hash_u8(x: u8) -> int:     return hash(x)
+        def test_hash_u32(x: u32) -> int:   return hash(x)
+        def test_hash_u64(x: u64) -> i32:   return hash(x)
+
+        def test_hash_bool(x: bool) -> int: return hash(x)
         """
         mod = self.compile(src)
-        for x in (0, 100):
-            for test in (mod.test_hash_i8, mod.test_hash_i32, mod.test_hash_u8):
-                assert test(x) == hash(x)
-        for test in (mod.test_hash_i8, mod.test_hash_i32):
-            assert test(-1) == hash(2)
-        for x in (True, False):
-            assert mod.test_hash_bool(x) == hash(x)
+        assert mod.test_hash_i8(0) == hash(0)
+        assert mod.test_hash_i8(100) == hash(100)
+        assert mod.test_hash_i8(-1) == hash(2)
+        assert mod.test_hash_i32(0) == hash(0)
+        assert mod.test_hash_i32(100) == hash(100)
+        assert mod.test_hash_i32(-1) == hash(2)
+        assert mod.test_hash_i64(0) == hash(0)
+        assert mod.test_hash_i64(100) == hash(100)
+        assert mod.test_hash_i64(-1) == hash(2)
+
+        assert mod.test_hash_u8(0) == hash(0)
+        assert mod.test_hash_u8(100) == hash(100)
+        assert mod.test_hash_u32(0) == hash(0)
+        assert mod.test_hash_u32(100) == hash(100)
+        assert mod.test_hash_u64(0) == hash(0)
+        assert mod.test_hash_u64(100) == hash(100)
+
+        assert mod.test_hash_bool(True) == hash(True)
+        assert mod.test_hash_bool(False) == hash(False)
 
     @no_C
     def test_builtin_func_dedup(self):

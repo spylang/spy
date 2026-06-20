@@ -180,7 +180,12 @@ def run_spy_file_with_args(argv: list[str]):
     with open(display_filename(), "w") as f:
         f.write(text)
 
-    spy.cli.app(argv)
+    # This try/except avoids SystemExit being turned into an error.
+    # No such issue with Firefox but this is useful for others browsers.
+    try:
+        spy.cli.app(argv)
+    except SystemExit:
+        pass
 
 
 def run_click(event):
@@ -308,6 +313,7 @@ def main():
                     RunSPyButton("redshift"),
                     RunSPyButton("redshift --linearize"),
                     RunSPyButton("redshift --full-fqn"),
+                    RunSPyButton("redshift --execute"),
                     RunSPyButton("build --cdump"),
                 ).css({"display": "flex", "gap": "5px", "vertical-align": "bottom"}),
             ).css(

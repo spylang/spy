@@ -2,6 +2,8 @@ from contextlib import contextmanager
 from types import NoneType
 from typing import TYPE_CHECKING, Iterator, Optional, Sequence
 
+from fixedint import Int8, Int32, Int64, UInt8, UInt32, UInt64
+
 from spy import ast
 from spy.analyze.symtable import Color, Symbol, SymTable, maybe_blue
 from spy.errors import WIP, SPyError
@@ -154,6 +156,7 @@ class AbstractFrame:
                 color = "blue"
             else:
                 color = "red"
+
         self.locals[name] = LocalVar(
             varname=name, decl_loc=loc, color=color, w_T=w_type, w_val=None
         )
@@ -163,7 +166,13 @@ class AbstractFrame:
             self.declare_local(name, "red", B.w_bool, Loc.fake())
 
     def store_local(self, name: str, w_value: W_Object) -> None:
-        self.locals[name].w_val = w_value
+        lv = self.locals[name]
+        # sanity check
+        if isinstance(w_value, W_Cell):
+            assert self.vm.isinstance(w_value.get(), lv.w_T)
+        else:
+            assert self.vm.isinstance(w_value, lv.w_T)
+        lv.w_val = w_value
 
     def load_local(self, name: str) -> W_Object:
         localvar = self.locals.get(name)
@@ -891,24 +900,45 @@ class AbstractFrame:
         assert const.w_T is not None
         return W_MetaArg(self.vm, "blue", const.w_T, const.w_val, const.loc)
 
-    def eval_expr_Literal(self, const: ast.Literal) -> W_MetaArg:
+    def eval_expr_Literal(self, lit: ast.Literal) -> W_MetaArg:
         # unsupported literals are rejected directly by the parser, see
         # Parser.from_py_expr_Literal
-        T = type(const.value)
-        assert T in (int, float, complex, bool, NoneType)
-        if const.w_T is not None and const.w_T in (B.w_i8, B.w_u8, B.w_u32):
-            assert False, "TODO"
-        w_val = self.vm.wrap(const.value)
+        val = lit.value
+        T = type(val)
+        assert T in (
+            int,
+            float,
+            complex,
+            bool,
+            NoneType,
+            Int8,
+            UInt8,
+            Int32,
+            UInt32,
+            Int64,
+            UInt64,
+        )
+        if T is int and not (Int32.minval <= val <= Int32.maxval):  # type: ignore
+            # unprefixed int literals default to i32: let's raise a helpful error
+            # message if we are out of range.
+            raise SPyError.simple(
+                "W_ValueError",
+                f"integer literal {val} is out of range for i32; "
+                f"use i64({val}) or u64({val}) to get a 64-bit value",
+                "integer literal out of range",
+                lit.loc,
+            )
+        w_val = self.vm.wrap(val)
         w_T = self.vm.dynamic_type(w_val)
-        return W_MetaArg(self.vm, "blue", w_T, w_val, const.loc)
+        return W_MetaArg(self.vm, "blue", w_T, w_val, lit.loc)
 
-    def eval_expr_StrLiteral(self, const: ast.StrLiteral) -> W_MetaArg:
-        w_val = self.vm.wrap(const.value)
-        return W_MetaArg(self.vm, "blue", B.w_str, w_val, const.loc)
+    def eval_expr_StrLiteral(self, lit: ast.StrLiteral) -> W_MetaArg:
+        w_val = self.vm.wrap(lit.value)
+        return W_MetaArg(self.vm, "blue", B.w_str, w_val, lit.loc)
 
-    def eval_expr_BytesLiteral(self, const: ast.BytesLiteral) -> W_MetaArg:
-        w_val = self.vm.wrap(const.value)
-        return W_MetaArg(self.vm, "blue", B.w_bytes, w_val, const.loc)
+    def eval_expr_BytesLiteral(self, lit: ast.BytesLiteral) -> W_MetaArg:
+        w_val = self.vm.wrap(lit.value)
+        return W_MetaArg(self.vm, "blue", B.w_bytes, w_val, lit.loc)
 
     def eval_expr_FQNConst(self, const: ast.FQNConst) -> W_MetaArg:
         w_value = self.vm.lookup_global(const.fqn)

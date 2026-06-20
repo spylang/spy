@@ -53,11 +53,21 @@ class NinjaWriter:
         cfiles: list[py.path.local],
         *,
         wasm_exports: list[str] = [],
+        extra_include_dirs: list[str] = [],
+        extra_archives: list[str] = [],
+        extra_cflags: list[str] = [],
+        extra_ldflags: list[str] = [],
     ) -> None:
         comp = CompilerConfig(self.config)
         self.out = basename + comp.ext
         if self.config.kind == "lib":
             comp.ldflags += [f"-Wl,--export={name}" for name in wasm_exports]
+        for d in extra_include_dirs:
+            comp.cflags += ["-I", d]
+        for archive in extra_archives:
+            comp.ldflags += [archive]
+        comp.cflags += extra_cflags
+        comp.ldflags += extra_ldflags
 
         # generate build.ninja
         build_ninja = self.build_dir.join("build.ninja")

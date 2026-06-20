@@ -18,7 +18,7 @@ The `main` function may be typed to return an `int` (`i32`). If so, the return v
 
 ```py
 #retcode.spy
-def main() -> int
+def main() -> int:
     return 123
 ```
 ```
@@ -47,7 +47,7 @@ As with CPython, args[0] is the name of the string passed to the uv runtime. Thi
 ```py
 #argname.spy
 def main(argv: list[str]) -> None:
-    print(args[0])
+    print(argv[0])
 ```
 ```
 $ uv run spy argname.spy

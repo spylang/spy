@@ -3,7 +3,7 @@
 # Paths relative to playground directory
 ROOT_DIR := ..
 LIBSPY_DIR := $(ROOT_DIR)/spy/libspy
-BUILD_DIR := $(LIBSPY_DIR)/build/emscripten/release
+BUILD_DIR := $(LIBSPY_DIR)/build/emscripten/debug
 DIST_DIR := $(ROOT_DIR)/dist
 
 # Use $PYTHON from environment if set, otherwise default to just 'python'

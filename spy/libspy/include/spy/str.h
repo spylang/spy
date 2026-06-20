@@ -125,9 +125,23 @@ spy_StrObject *spy_builtins$i8$__str__(int8_t x);
 
 spy_StrObject *spy_builtins$u8$__str__(uint8_t x);
 
+spy_StrObject *spy_builtins$u32$__str__(uint32_t x);
+
+spy_StrObject *spy_builtins$i64$__str__(int64_t x);
+
+spy_StrObject *spy_builtins$u64$__str__(uint64_t x);
+
 spy_StrObject *spy_builtins$f64$__str__(double x);
 
 spy_StrObject *spy_builtins$bool$__str__(bool x);
+
+// for the numeric types, __repr__ is the same as __str__
+#define spy_builtins$i32$__repr__ spy_builtins$i32$__str__
+#define spy_builtins$i8$__repr__ spy_builtins$i8$__str__
+#define spy_builtins$u8$__repr__ spy_builtins$u8$__str__
+#define spy_builtins$u32$__repr__ spy_builtins$u32$__str__
+#define spy_builtins$i64$__repr__ spy_builtins$i64$__str__
+#define spy_builtins$u64$__repr__ spy_builtins$u64$__str__
 
 // str -> numeric conversion operators
 int32_t spy_operator$str_to_i32(spy_StrObject *s);
@@ -137,6 +151,10 @@ uint32_t spy_operator$str_to_u32(spy_StrObject *s);
 int8_t spy_operator$str_to_i8(spy_StrObject *s);
 
 uint8_t spy_operator$str_to_u8(spy_StrObject *s);
+
+int64_t spy_operator$str_to_i64(spy_StrObject *s);
+
+uint64_t spy_operator$str_to_u64(spy_StrObject *s);
 
 spy_Complex128 WASM_EXPORT(spy_str_to_complex128)(spy_StrObject *s);
 

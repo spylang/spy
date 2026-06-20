@@ -22,7 +22,7 @@ from spy.vm.modules.__spy__.interp_list import (
 )
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opspec import W_MetaArg, W_OpSpec
-from spy.vm.primitive import W_F64, W_I8, W_I32, W_U8, W_Bool
+from spy.vm.primitive import W_F64, W_I8, W_I32, W_I64, W_U8, W_U32, W_U64, W_Bool
 from spy.vm.str import W_Str
 
 if TYPE_CHECKING:
@@ -168,7 +168,7 @@ def w_hash_i8(vm: "SPyVM", w_x: W_I8) -> W_I32:
     x = vm.unwrap_i8(w_x)
     if x == -1:
         return vm.wrap(2)
-    return vm.wrap(x)
+    return vm.wrap(int(x))
 
 
 @BUILTINS.builtin_func
@@ -180,7 +180,13 @@ def w_hash_i32(vm: "SPyVM", w_x: W_I32) -> W_I32:
 
 @BUILTINS.builtin_func
 def w_hash_u8(vm: "SPyVM", w_x: W_U8) -> W_I32:
-    return vm.wrap(vm.unwrap_u8(w_x))
+    return vm.wrap(int(vm.unwrap_u8(w_x)))
+
+
+@BUILTINS.builtin_func
+def w_hash_u32(vm: "SPyVM", w_x: W_U32) -> W_I32:
+    x = vm.unwrap_u32(w_x)
+    return vm.wrap(W_I32(x).value)
 
 
 @BUILTINS.builtin_func
@@ -191,6 +197,20 @@ def w_hash_bool(vm: "SPyVM", w_x: W_Bool) -> W_I32:
         return vm.wrap(1)
     else:
         assert False, "unreachable"
+
+
+@BUILTINS.builtin_func
+def w_hash_i64(vm: "SPyVM", w_x: W_I64) -> W_I32:
+    x = vm.unwrap_i64(w_x)
+    if x == -1:
+        return vm.wrap(2)
+    return vm.wrap(W_I32(x).value)
+
+
+@BUILTINS.builtin_func
+def w_hash_u64(vm: "SPyVM", w_x: W_U64) -> W_I32:
+    x = vm.unwrap_u64(w_x)
+    return vm.wrap(W_I32(x).value)
 
 
 @BUILTINS.builtin_func
@@ -209,8 +229,14 @@ def w_hash(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
         return W_OpSpec(B.w_hash_i32)
     elif w_T is B.w_u8:
         return W_OpSpec(B.w_hash_u8)
+    elif w_T is B.w_u32:
+        return W_OpSpec(B.w_hash_u32)
     elif w_T is B.w_bool:
         return W_OpSpec(B.w_hash_bool)
+    elif w_T is B.w_i64:
+        return W_OpSpec(B.w_hash_i64)
+    elif w_T is B.w_u64:
+        return W_OpSpec(B.w_hash_u64)
     elif w_T is B.w_str:
         return W_OpSpec(B.w_hash_str)
 

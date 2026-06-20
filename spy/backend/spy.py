@@ -1,9 +1,17 @@
 import re
-from typing import Literal, Optional, TypeGuard
+from typing import TYPE_CHECKING, Literal, Optional, TypeGuard
+
+# fixedint/__init__.pyi overrides FixedInt and mypy thinks it's a function;
+# convince it back that it's a type (see also spy/vm/primitive.py)
+if TYPE_CHECKING:
+    from fixedint import _FixedInt as FixedInt
+else:
+    from fixedint import FixedInt
 
 from spy import ast
 from spy.analyze.scope import SymTable
 from spy.fqn import FQN
+from spy.parser import Parser
 from spy.textbuilder import TextBuilder
 from spy.util import magic_dispatch
 from spy.vm.b import TYPES, B
@@ -368,8 +376,16 @@ class SPyBackend:
         else:
             raise NotImplementedError(f"WIP: {w_T}")
 
+    IPREFIX = {cls: name for name, cls in Parser.ITYPES.items()}
+
     def fmt_expr_Literal(self, const: ast.Literal) -> str:
-        return repr(const.value)
+        # for prefixed literals the value is a fixedint, whose repr is e.g.
+        # "Int32(42)"; emit the SPy source form i32(42) instead
+        val = const.value
+        if isinstance(val, FixedInt):
+            prefix = self.IPREFIX[type(val)]
+            return f"{prefix}({int(val)})"
+        return repr(val)
 
     def fmt_expr_StrLiteral(self, const: ast.StrLiteral) -> str:
         return repr(const.value)

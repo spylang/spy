@@ -48,6 +48,8 @@ class W_Str(W_Object):
         "encode": FQN("_str::methods::encode"),
         "replace": FQN("_str::methods::replace"),
         "__contains__": FQN("_str::methods::__contains__"),
+        "split": FQN("_str::methods::split"),
+        "isspace": FQN("_str::methods::isspace"),
         "__repr__": FQN("_str::methods::__repr__"),
         "__len__": FQN("_str::methods::__len__"),
         "__getitem__": FQN("_str::methods::__getitem__"),

@@ -132,6 +132,8 @@ class Context:
         self._d[B.w_u8] = C_Type("uint8_t")
         self._d[B.w_i32] = C_Type("int32_t")
         self._d[B.w_u32] = C_Type("uint32_t")
+        self._d[B.w_i64] = C_Type("int64_t")
+        self._d[B.w_u64] = C_Type("uint64_t")
         self._d[B.w_f64] = C_Type("double")
         self._d[B.w_f32] = C_Type("float")
         self._d[B.w_complex128] = C_Type("spy_Complex128")
@@ -196,3 +198,12 @@ class Context:
         w_mod = self.vm.modules_w[modname]
         if not w_mod.is_builtin():
             self.tbh_includes.wl(f'#include "{modname}.h"')
+        elif modname in self.vm.build_info_funcs:
+            build_info_fn = self.vm.build_info_funcs[modname]
+            headers_debug = build_info_fn("native", "debug").headers
+            headers_release = build_info_fn("native", "release").headers
+            assert headers_debug == headers_release, (
+                f"module '{modname}': headers must not vary by build_type"
+            )
+            for header in headers_debug:
+                self.tbh_includes.wl(f'#include "{header}"')

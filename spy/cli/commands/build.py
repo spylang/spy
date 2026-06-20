@@ -13,7 +13,8 @@ from typer import Option
 
 from spy.analyze.importing import ImportAnalyzer
 from spy.backend.c.cbackend import CBackend
-from spy.build.config import BuildConfig, BuildTarget, GCOption, OutputKind
+from spy.build.build_info import BuildTarget
+from spy.build.config import BuildConfig, GCOption, OutputKind
 from spy.cli._runners import init_vm, nullcontext, timer
 from spy.cli.commands.shared_args import (
     Base_Args,
@@ -182,7 +183,7 @@ async def build(args: Build_Args) -> None:
 
     if args.execute:
         with timer() if args.timeit else nullcontext():
-            subprocess.run([str(executable)])
+            subprocess.run([str(executable)] + (args.argv or []))
 
 
 def get_build_dir(args: Build_Args) -> py.path.local:

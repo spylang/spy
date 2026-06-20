@@ -26,9 +26,9 @@ app = SpyTyper(
 
 # This is the order commands will appear in the --help
 
-app.spy_command(execute, name="execute", default=True)
-app.spy_command(build, name="build")
-app.spy_command(redshift, name="redshift | rs")
+app.spy_command(execute, name="execute", default=True, strict_argv=True)
+app.spy_command(build, name="build", strict_argv=True)
+app.spy_command(redshift, name="redshift | rs", strict_argv=True)
 app.spy_command(colorize, name="colorize")
 app.spy_command(parse, name="parse")
 app.spy_command(pyparse, name="pyparse")

@@ -44,9 +44,12 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
     w_T = vm.dynamic_type(w_val)
     if w_T in (
         B.w_i32,
+        B.w_i64,
+        B.w_u64,
         B.w_i8,
         B.w_u8,
         B.w_u32,
+        B.w_f32,
         B.w_f64,
         B.w_complex128,
         B.w_bool,
@@ -91,6 +94,20 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
     if vm.ast_color_map is not None:
         vm.ast_color_map[res] = "blue"
     return res
+
+
+def unmake_const_maybe(vm: "SPyVM", expr: ast.Expr) -> Optional[W_Object]:
+    """
+    The inverse of make_const: if `expr` is a constant AST node, return its
+    W_Object value. Otherwise return None.
+    """
+    if isinstance(expr, ast.Const):
+        return expr.w_val
+    elif isinstance(expr, ast.StrLiteral):
+        return vm.wrap(expr.value)
+    elif isinstance(expr, ast.FQNConst):
+        return vm.lookup_global(expr.fqn)
+    return None
 
 
 class DopplerFrame(ASTFrame):
@@ -394,17 +411,26 @@ class DopplerFrame(ASTFrame):
         new_expr = self.shift_expr(expr, wam)
         assert new_expr.w_T is not None, "shift_expr should return a typed ast.Expr"
 
+        # do we need a type conversion because we are assigning to a local var?
         w_typeconv_opimpl = self.typecheck_maybe(wam, varname)
         if w_typeconv_opimpl:
             assert varname is not None
             lv = self.locals[varname]
-            expT = make_const(self.vm, lv.decl_loc, lv.w_T)
-            gotT = make_const(self.vm, wam.loc, wam.w_static_T)
-            new_expr = self.shift_opimpl(
-                expr,
-                w_typeconv_opimpl,
-                [expT, gotT, new_expr],
-            )
+            if wam.color == "blue" and w_typeconv_opimpl.is_pure():
+                # apply it eagerly: see the case "local var conv" in
+                # test_doppler::test_eager_type_conversion
+                wam = self.vm.eval_opimpl(w_typeconv_opimpl, [wam], loc=expr.loc)
+                assert wam.color == "blue"
+                new_expr = make_const(self.vm, expr.loc, wam.w_val)
+            else:
+                # add a residual call to the convert function
+                expT = make_const(self.vm, lv.decl_loc, lv.w_T)
+                gotT = make_const(self.vm, wam.loc, wam.w_static_T)
+                new_expr = self.shift_opimpl(
+                    expr,
+                    w_typeconv_opimpl,
+                    [expT, gotT, new_expr],
+                )
 
         self.shifted_expr[expr] = new_expr
         # record the color of the ORIGINAL expression
@@ -501,7 +527,22 @@ class DopplerFrame(ASTFrame):
                 expT = getarg(spec.expT)
                 gotT = getarg(spec.gotT)
                 arg = getarg(spec.arg)
-                return self.shift_opimpl(arg, spec.w_conv_opimpl, [expT, gotT, arg])
+
+                # try to evaluate the conversion eagerly, if the opimpl is pure and the
+                # the arg is known. See the case "func arg conv" in
+                # test_doppler::test_eager_type_conversion
+                is_pure = spec.w_conv_opimpl.is_pure()
+                if is_pure and (w_arg := unmake_const_maybe(self.vm, arg)) is not None:
+                    w_expT = unmake_const_maybe(self.vm, expT)
+                    w_gotT = unmake_const_maybe(self.vm, gotT)
+                    assert w_expT is not None and w_gotT is not None
+                    w_res = spec.w_conv_opimpl._execute(
+                        self.vm, [w_expT, w_gotT, w_arg]
+                    )
+                    return make_const(self.vm, arg.loc, w_res)
+                else:
+                    # no eager evaluation: insert a residual call to the conversion func
+                    return self.shift_opimpl(arg, spec.w_conv_opimpl, [expT, gotT, arg])
             else:
                 assert False
 
