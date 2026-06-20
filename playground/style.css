@@ -119,8 +119,16 @@ button.run-button:active {
     font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
     font-size: 13px;
     min-height: 200px;
-    overflow: auto;
+    height: 200px;
+    overflow: hidden;
     resize: both;
+}
+
+#terminal py-terminal {
+    display: block;
+    height: 100%;
+    overflow-y: auto;
+    box-sizing: border-box;
 }
 
 /* Command prompt - only style the "$ spy" prompt span */
