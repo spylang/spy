@@ -1,7 +1,7 @@
 import ast as py_ast
 import textwrap
 
-from spy.magic_py_parse import magic_py_parse, preprocess
+from spy.magic_py_parse import magic_py_parse, preprocess, undo_preprocess
 from spy.parser import Parser
 from spy.tests.support import expect_errors
 
@@ -38,6 +38,32 @@ def test_preprocess_const():
     const····y     : i32 = 200
     """)
     assert src2 == expected
+
+
+def test_undo_preprocess_var_and_const():
+    src = textwrap.dedent(
+        """
+        def main():
+            var·x: i32 = 1
+            const····y: i32 = 2
+        """
+    )
+
+    got = undo_preprocess(src)
+    expected = textwrap.dedent(
+        """
+        def main():
+            var x: i32 = 1
+            const y: i32 = 2
+        """
+    )
+    assert got == expected
+
+
+def test_undo_preprocess_non_spy_names_unchanged():
+    src = "value = var_name + const_value\n"
+    got = undo_preprocess(src)
+    assert got == src
 
 
 def test_magic_py_parse():

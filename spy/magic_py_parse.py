@@ -35,12 +35,15 @@ does exactly that.
 """
 
 import ast as py_ast
+import re
 from io import BytesIO
 from tokenize import NAME, TokenError, TokenInfo, tokenize
 
 from spy.errors import SPyError
 from spy.location import Loc
 from spy.vendored import untokenize
+
+SPY_DECL_RE = re.compile(r"\b(var|const)·+([A-Za-z_][A-Za-z0-9_]*)\b")
 
 
 def magic_py_parse(src: str, filename: str = "<string>") -> py_ast.Module:
@@ -100,3 +103,13 @@ def preprocess(src: str, filename: str = "<string>") -> str:
             newtokens.append(tok0)
         i += 1
     return untokenize.untokenize(newtokens)
+
+
+def undo_preprocess(src: str) -> str:
+    """
+    The opposite of preprocess.
+
+    If preprocess converts e.g. `var x` into `var·x`, this does the opposite.
+    Used e.g. by 'spy format' to reconstruct the user code after passing it to ruff.
+    """
+    return SPY_DECL_RE.sub(r"\1 \2", src)
