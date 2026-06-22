@@ -127,6 +127,25 @@ class TestMain:
             _, stdout = self.run(*argset, self.main_spy)
             assert stdout == "hello world\n"
 
+    def test_execute_argv(self):
+        src = """
+        def main(argv: list[str]) -> None:
+            for s in argv:
+                print(s, "+") # Separate argv so we're sure we're not just seeing the input on the command line
+        """
+        test = self.write("test.spy", src)
+
+        _, stdout = self.run("execute", test, "1", "--timeit", "2")
+        # --timeit appears in argc and not as flag
+        assert "1 +\n--timeit +\n2" in stdout
+        assert "seconds" not in stdout
+
+        # Default command is execute - make sure the default action also doesn't affect argv
+        _, stdout = self.run(test, "1", "--timeit", "2")
+        # --timeit appears in argc and not as flag
+        assert "1 +\n--timeit +\n2" in stdout
+        assert "seconds" not in stdout
+
     def test_timeit(self):
         _, stdout = self.run("--timeit", self.main_spy)
         assert "main()" in stdout
@@ -289,13 +308,37 @@ class TestMain:
         out, err = capfd.readouterr()
         assert "hello world" in out
 
+    def test_build_execute_argv(self, capfd):
+        src = """
+        def main(argv: list[str]) -> None:
+            for s in argv:
+                print(s, "+") # Separate argv so we're sure we're not just seeing the input on the command line
+        """
+        f = self.write("test.spy", src)
+        res, stdout = self.run(
+            "build",
+            "-x",
+            "--target", "native",
+            "--build-dir", self.tmpdir,
+            f,
+            "1",
+            "2",
+            "--timeit"
+        )  # fmt: skip
+        # hack hack hack since the stdout of the subprocess isn't captured
+        # by the test runner, check the output from timeit instead
+        out, err = capfd.readouterr()
+        # --timeit should be passed to the program as argv, not a flag for SPy
+        assert "1 +\n2 +\n--timeit" in out
+        assert "seconds" not in out
+
     @pytest.mark.skipif(PYODIDE_EXE is None, reason="./pyodide/venv not found")
     @pytest.mark.pyodide
     def test_execute_pyodide(self):
         # pyodide under node cannot access /tmp/, so we cannot try to execute
         # files which we wrote to self.tmpdir. Instead, let's try to execute
-        # examples/hello.spy
-        hello_spy = spy.ROOT.dirpath().join("examples", "hello.spy")
+        # examples/1_high_level/hello.spy
+        hello_spy = spy.ROOT.dirpath().join("examples", "1_high_level", "hello.spy")
         assert hello_spy.exists()
         res, stdout = self.run_external(PYODIDE_EXE, hello_spy)
         assert stdout == "Hello world!\n"
@@ -345,6 +388,23 @@ class TestMain:
         _, stdout = self.run("imports", self.main_spy)
         assert stdout.startswith("Import tree:")
 
+    def test_fmt_file(self):
+        src = """
+        def main( ) -> None:
+            print("hello world")
+        """
+        src = textwrap.dedent(src)
+        file = self.write("ugly.spy", src)
+
+        self.run("format", file)
+
+        expected = """\
+        def main() -> None:
+            print("hello world")
+        """
+        expected = textwrap.dedent(expected)
+        assert file.read() == expected
+
     def test_interp_exit_code(self):
         src = """
         def main() -> i32:
@@ -389,6 +449,17 @@ class TestMain:
         status, out = getstatusoutput(f"{test_exe} aaa bbb ccc")
         assert out.split() == [str(test_exe), "aaa", "bbb", "ccc"]
 
+    def test_compile_argv_unused(self):
+        src = """
+        def main(argv: list[str]) -> i32:
+            return 0
+        """
+        f = self.write("test.spy", src)
+        self.run("build", f)
+        test_exe = self.tmpdir.join("build", "test")
+        status, out = getstatusoutput(f"{test_exe} aaa bbb ccc")
+        assert status == 0
+
     def test_redshift_argv(self):
         src = """
         def main(argv: list[str]) -> None:
@@ -396,7 +467,9 @@ class TestMain:
                 print(a)
         """
         f = self.write("test.spy", src)
-        res = self.runner.invoke(app, ["redshift", "-x", str(f), "aaa", "bbb", "ccc"])
+        res = self.runner.invoke(
+            app, ["redshift", "-x", str(f), "aaa", "bbb", "ccc", "--timeit"]
+        )
         assert res.exit_code == 0
         output = decolorize(res.output)
-        assert output.split() == [str(f), "aaa", "bbb", "ccc"]
+        assert output.split() == [str(f), "aaa", "bbb", "ccc", "--timeit"]

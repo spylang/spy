@@ -1,7 +1,8 @@
 import re
+from textwrap import dedent
 
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest, skip_backends
+from spy.tests.support import CompilerTest, only_interp, skip_backends
 
 
 class TestStr(CompilerTest):
@@ -19,6 +20,19 @@ class TestStr(CompilerTest):
             return 'hello àèìòù'
         """)
         assert mod.foo() == "hello àèìòù"
+
+    def test_empty_str_as_StrObject(self):
+        src = """
+        from unsafe import _str_to_StrObject
+        from _str import StrObject
+
+        def get_length(s: str) -> i32:
+            data = _str_to_StrObject(s)
+            utf8 = data.utf8
+            return data.length
+        """
+        mod = self.compile(src)
+        assert mod.get_length("") == 0
 
     def test_add(self):
         mod = self.compile("""
@@ -52,7 +66,7 @@ class TestStr(CompilerTest):
         """)
         assert mod.identity("hello") == "hello"
 
-    def test_getitem(self):
+    def test_getitem_int(self):
         mod = self.compile("""
         def foo(a: str, i: i32) -> str:
             return a[i]
@@ -64,6 +78,69 @@ class TestStr(CompilerTest):
             mod.foo("ABCDE", 5)
         with SPyError.raises("W_IndexError", match="string index out of bound"):
             mod.foo("ABCDE", -6)
+
+    def test_getitem_slice(self):
+        mod = self.compile("""
+            def get_slice(s: str, slc: slice) -> str:
+                return s.__getitem__(slc)
+        """)
+
+        assert mod.get_slice("abc", slice(0, 1000, None)) == "abc"
+        assert mod.get_slice("abc", slice(0, 3, None)) == "abc"
+        assert mod.get_slice("abc", slice(0, 1, None)) == "a"
+        assert mod.get_slice("abc", slice(0, 0, None)) == ""
+        assert mod.get_slice("abc", slice(0, 2, None)) == "ab"
+        assert mod.get_slice("abc", slice(1, 3, None)) == "bc"
+        assert mod.get_slice("abc", slice(1, 2, None)) == "b"
+        assert mod.get_slice("abc", slice(2, 2, None)) == ""
+        assert mod.get_slice("abc", slice(1000, 1000, None)) == ""
+        assert mod.get_slice("abc", slice(2000, 1000, None)) == ""
+        assert mod.get_slice("abc", slice(2, 1, None)) == ""
+        assert mod.get_slice("abc", slice(None, None, -1)) == "cba"
+        assert mod.get_slice("abc", slice(1, None, -1)) == "ba"
+        assert mod.get_slice("abc", slice(None, -1, -1)) == ""
+
+    def test_split(self):
+        mod = self.compile("""
+            def split(s: str, sep: str) -> list[str]:
+                return s.split(sep)
+
+            def split_whitespace(s: str) -> list[str]:
+                return s.split()
+        """)
+
+        # Test for split on explicit step
+        assert mod.split("a|b|c|d", "|") == ["a", "b", "c", "d"]
+        assert mod.split("a||b|c||d", "||") == ["a", "b|c", "d"]
+        assert mod.split("abc|||", "|") == ["abc", "", "", ""]
+        assert mod.split("|abc", "|") == ["", "abc"]
+        assert mod.split("abcd", "|") == ["abcd"]
+        assert mod.split("", "|") == [""]
+
+        # split by whitespace
+        assert mod.split_whitespace("a b c d ") == ["a", "b", "c", "d"]
+        assert mod.split_whitespace(" a b c d") == ["a", "b", "c", "d"]
+        assert mod.split_whitespace(" a b c d ") == ["a", "b", "c", "d"]
+        assert mod.split_whitespace("         ") == []
+        assert mod.split_whitespace("  a    ") == ["a"]
+        assert mod.split_whitespace("  a    b   ") == ["a", "b"]
+        assert mod.split_whitespace("  a    b   c   ") == ["a", "b", "c"]
+        assert mod.split_whitespace("\n\ta \t\r b \v ") == ["a", "b"]
+
+    def test_isspace(self):
+        mod = self.compile("""
+            def iss(s: str) -> bool:
+                return s.isspace()
+        """)
+
+        assert not mod.iss("")
+        assert not mod.iss("a")
+        assert mod.iss(" ")
+        assert mod.iss("\t")
+        assert mod.iss("\r")
+        assert mod.iss("\n")
+        assert mod.iss(" \t\r\n")
+        assert not mod.iss(" \t\r\na")
 
     def test_compare(self):
         mod = self.compile("""
@@ -115,6 +192,9 @@ class TestStr(CompilerTest):
         def str_u8(x: u8) -> str:
             return str(x)
 
+        def str_u32(x: u32) -> str:
+            return str(x)
+
         def str_f64(x: f64) -> str:
             return str(x)
 
@@ -128,12 +208,34 @@ class TestStr(CompilerTest):
         assert mod.str_i8(-128) == "-128"
         assert mod.str_u8(0) == "0"
         assert mod.str_u8(255) == "255"
+        assert mod.str_u32(0) == "0"
+        assert mod.str_u32(4294967295) == "4294967295"
         assert mod.str_f64(-10.5) == "-10.5"
         assert mod.str_f64(0.0) in ("0", "0.0")
         assert mod.str_f64(3.14) == "3.14"
         assert mod.str_f64(123.456) == "123.456"
         assert mod.str_bool(True) == "True"
         assert mod.str_bool(False) == "False"
+
+    def test_repr_numbers(self):
+        mod = self.compile("""
+        def repr_i32(x: i32) -> str:
+            return repr(x)
+
+        def repr_i8(x: i8) -> str:
+            return repr(x)
+
+        def repr_u8(x: u8) -> str:
+            return repr(x)
+
+        def repr_u32(x: u32) -> str:
+            return repr(x)
+        """)
+        assert mod.repr_i32(-10) == "-10"
+        assert mod.repr_i32(123) == "123"
+        assert mod.repr_i8(-128) == "-128"
+        assert mod.repr_u8(255) == "255"
+        assert mod.repr_u32(4294967295) == "4294967295"
 
     def test_repr_blue(self):
         src = """
@@ -251,6 +353,28 @@ class TestStr(CompilerTest):
         assert mod.foo_i32() == "42"
         assert mod.foo_f64() == "12.3"
         assert mod.foo_bool() == "True"
+
+    def test_isascii(self):
+        # isascii is defined in stdlib/_str.spy, so this also tests that "lazy
+        # attributes" work.
+        src = """
+        def isascii(s: str) -> bool:
+            return s.isascii()
+        """
+        mod = self.compile(src)
+        assert mod.isascii("hello")
+        assert not mod.isascii("àèìòù")
+
+    def test_upper(self):
+        src = """
+        def upper(s: str) -> str:
+            return s.upper()
+        """
+        mod = self.compile(src)
+        assert mod.upper("hello") == "HELLO"
+        assert mod.upper("Hello World") == "HELLO WORLD"
+        assert mod.upper("ABC123") == "ABC123"
+        assert mod.upper("") == ""
 
     def test_str_replace(self):
         mod = self.compile("""
@@ -408,3 +532,22 @@ class TestStr(CompilerTest):
         # assert mod.foo("abc", "", "-", 0) == "abc"  # count not supported
         # assert mod.foo("abc", "ab", "--", 0) == "abc"  # count not supported
         assert mod.foo("abc", "xy", "--") == "abc"
+
+    def test_encode(self):
+        src = """
+        def encode(s: str) -> bytes:
+            return s.encode("utf-8")
+        """
+        mod = self.compile(src)
+        assert mod.encode("hello") == b"hello"
+        assert mod.encode("") == b""
+        assert mod.encode("àèìòù") == "àèìòù".encode("utf-8")
+
+    def test_encode_unsupported(self):
+        src = """
+        def encode(s: str, enc: str) -> bytes:
+            return s.encode(enc)
+        """
+        mod = self.compile(src)
+        with SPyError.raises("W_ValueError"):
+            mod.encode("x", "ascii")

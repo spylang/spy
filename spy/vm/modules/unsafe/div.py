@@ -1,3 +1,4 @@
+from ctypes import c_float as float32
 from typing import TYPE_CHECKING, Annotated, Any, Protocol
 
 from spy.errors import SPyError
@@ -142,7 +143,7 @@ def w_f32_unchecked_div(vm: "SPyVM", w_a: W_F32, w_b: W_F32) -> W_F32:
     a = vm.unwrap_f32(w_a)
     b = vm.unwrap_f32(w_b)
     res = vm.ll.call("spy_unsafe$f32_unchecked_div", a, b)
-    return vm.wrap(res)
+    return vm.wrap(float32(res))
 
 
 @UNSAFE.builtin_func
@@ -150,7 +151,7 @@ def w_f32_unchecked_floordiv(vm: "SPyVM", w_a: W_F32, w_b: W_F32) -> W_F32:
     a = vm.unwrap_f32(w_a)
     b = vm.unwrap_f32(w_b)
     res = vm.ll.call("spy_unsafe$f32_unchecked_floordiv", a, b)
-    return vm.wrap(res)
+    return vm.wrap(float32(res))
 
 
 @UNSAFE.builtin_func
@@ -158,7 +159,7 @@ def w_f32_unchecked_mod(vm: "SPyVM", w_a: W_F32, w_b: W_F32) -> W_F32:
     a = vm.unwrap_f32(w_a)
     b = vm.unwrap_f32(w_b)
     res = vm.ll.call("spy_unsafe$f32_unchecked_mod", a, b)
-    return vm.wrap(res)
+    return vm.wrap(float32(res))
 
 
 @UNSAFE.builtin_func
@@ -184,7 +185,7 @@ def w_f32_ieee754_div(vm: "SPyVM", w_a: W_F32, w_b: W_F32) -> W_F32:
     a = vm.unwrap_f32(w_a)
     b = vm.unwrap_f32(w_b)
     res = vm.ll.call("spy_unsafe$f32_ieee754_div", a, b)
-    return vm.wrap(res)
+    return vm.wrap(float32(res))
 
 
 MM = MultiMethodTable()

@@ -75,6 +75,44 @@ MM.register("<=", "u32", "u32", OP.w_u32_le)
 MM.register(">" , "u32", "u32", OP.w_u32_gt)
 MM.register(">=", "u32", "u32", OP.w_u32_ge)
 
+# i64 ops
+MM.register("+",  "i64", "i64", OP.w_i64_add)
+MM.register("-",  "i64", "i64", OP.w_i64_sub)
+MM.register("*",  "i64", "i64", OP.w_i64_mul)
+MM.register("/",  "i64", "i64", OP.w_i64_div)
+MM.register("//", "i64", "i64", OP.w_i64_floordiv)
+MM.register("%",  "i64", "i64", OP.w_i64_mod)
+MM.register("<<", "i64", "i64", OP.w_i64_lshift)
+MM.register(">>", "i64", "i64", OP.w_i64_rshift)
+MM.register("&",  "i64", "i64", OP.w_i64_and)
+MM.register("|",  "i64", "i64", OP.w_i64_or)
+MM.register("^",  "i64", "i64", OP.w_i64_xor)
+MM.register("==", "i64", "i64", OP.w_i64_eq)
+MM.register("!=", "i64", "i64", OP.w_i64_ne)
+MM.register("<" , "i64", "i64", OP.w_i64_lt)
+MM.register("<=", "i64", "i64", OP.w_i64_le)
+MM.register(">" , "i64", "i64", OP.w_i64_gt)
+MM.register(">=", "i64", "i64", OP.w_i64_ge)
+
+# u64 ops
+MM.register("+",  "u64", "u64", OP.w_u64_add)
+MM.register("-",  "u64", "u64", OP.w_u64_sub)
+MM.register("*",  "u64", "u64", OP.w_u64_mul)
+MM.register("/",  "u64", "u64", OP.w_u64_div)
+MM.register("//", "u64", "u64", OP.w_u64_floordiv)
+MM.register("%",  "u64", "u64", OP.w_u64_mod)
+MM.register("<<", "u64", "u64", OP.w_u64_lshift)
+MM.register(">>", "u64", "u64", OP.w_u64_rshift)
+MM.register("&",  "u64", "u64", OP.w_u64_and)
+MM.register("|",  "u64", "u64", OP.w_u64_or)
+MM.register("^",  "u64", "u64", OP.w_u64_xor)
+MM.register("==", "u64", "u64", OP.w_u64_eq)
+MM.register("!=", "u64", "u64", OP.w_u64_ne)
+MM.register("<" , "u64", "u64", OP.w_u64_lt)
+MM.register("<=", "u64", "u64", OP.w_u64_le)
+MM.register(">" , "u64", "u64", OP.w_u64_gt)
+MM.register(">=", "u64", "u64", OP.w_u64_ge)
+
 # i32 ops
 MM.register("+",  "i32", "i32", OP.w_i32_add)
 MM.register("-",  "i32", "i32", OP.w_i32_sub)
@@ -199,10 +237,9 @@ for num_t in ["i32", "f64"]:
     MM.register("!=", num_t, "complex128", OP.w_complex128_ne)
 
 # str ops
-MM.register("+",  "str", "str", OP.w_str_add)
-MM.register("*",  "str", "i32", OP.w_str_mul)
 MM.register("==", "str", "str", OP.w_str_eq)
 MM.register("!=", "str", "str", OP.w_str_ne)
+
 
 # bool ops
 MM.register("==", "bool", "bool", OP.w_bool_eq)
@@ -243,7 +280,7 @@ def w_ADD(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("+", wam_l, wam_r):
         pass
-    elif w_add := w_ltype.lookup_func("__add__"):
+    elif w_add := w_ltype.lookup_func(vm, "__add__"):
         w_opspec = vm.fast_metacall(w_add, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
@@ -259,7 +296,7 @@ def w_SUB(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("-", wam_l, wam_r):
         pass
-    elif w_sub := w_ltype.lookup_func("__sub__"):
+    elif w_sub := w_ltype.lookup_func(vm, "__sub__"):
         w_opspec = vm.fast_metacall(w_sub, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
@@ -275,7 +312,7 @@ def w_MUL(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("*", wam_l, wam_r):
         pass
-    elif w_mul := w_ltype.lookup_func("__mul__"):
+    elif w_mul := w_ltype.lookup_func(vm, "__mul__"):
         w_opspec = vm.fast_metacall(w_mul, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
@@ -291,7 +328,7 @@ def w_DIV(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("/", wam_l, wam_r):
         pass
-    elif w_div := w_ltype.lookup_func("__div__"):
+    elif w_div := w_ltype.lookup_func(vm, "__div__"):
         w_opspec = vm.fast_metacall(w_div, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
@@ -307,7 +344,7 @@ def w_FLOORDIV(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("//", wam_l, wam_r):
         pass
-    elif w_floordiv := w_ltype.lookup_func("__floordiv__"):
+    elif w_floordiv := w_ltype.lookup_func(vm, "__floordiv__"):
         w_opspec = vm.fast_metacall(w_floordiv, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
@@ -327,7 +364,7 @@ def w_MOD(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("%", wam_l, wam_r):
         pass
-    elif w_mod := w_ltype.lookup_func("__mod__"):
+    elif w_mod := w_ltype.lookup_func(vm, "__mod__"):
         w_opspec = vm.fast_metacall(w_mod, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
@@ -363,7 +400,7 @@ def w_LSHIFT(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("<<", wam_l, wam_r):
         pass
-    elif w_lshift := w_ltype.lookup_func("__lshift__"):
+    elif w_lshift := w_ltype.lookup_func(vm, "__lshift__"):
         w_opspec = vm.fast_metacall(w_lshift, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
@@ -383,7 +420,7 @@ def w_RSHIFT(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec(">>", wam_l, wam_r):
         pass
-    elif w_rshift := w_ltype.lookup_func("__rshift__"):
+    elif w_rshift := w_ltype.lookup_func(vm, "__rshift__"):
         w_opspec = vm.fast_metacall(w_rshift, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
@@ -403,7 +440,7 @@ def w_AND(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("&", wam_l, wam_r):
         pass
-    elif w_and := w_ltype.lookup_func("__and__"):
+    elif w_and := w_ltype.lookup_func(vm, "__and__"):
         w_opspec = vm.fast_metacall(w_and, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
@@ -419,7 +456,7 @@ def w_OR(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("|", wam_l, wam_r):
         pass
-    elif w_or := w_ltype.lookup_func("__or__"):
+    elif w_or := w_ltype.lookup_func(vm, "__or__"):
         w_opspec = vm.fast_metacall(w_or, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
@@ -435,7 +472,7 @@ def w_XOR(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("^", wam_l, wam_r):
         pass
-    elif w_xor := w_ltype.lookup_func("__xor__"):
+    elif w_xor := w_ltype.lookup_func(vm, "__xor__"):
         w_opspec = vm.fast_metacall(w_xor, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
@@ -466,7 +503,7 @@ def w_EQ(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     w_rtype = wam_r.w_static_T
     if w_opspec := MM.get_binary_opspec("==", wam_l, wam_r):
         pass
-    elif w_eq := w_ltype.lookup_func("__eq__"):
+    elif w_eq := w_ltype.lookup_func(vm, "__eq__"):
         w_opspec = vm.fast_metacall(w_eq, [wam_l, wam_r])
     elif can_use_reference_eq(vm, w_ltype, w_rtype):
         w_opspec = W_OpSpec(OP.w_object_is)
@@ -489,7 +526,7 @@ def w_NE(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     w_rtype = wam_r.w_static_T
     if w_opspec := MM.get_binary_opspec("!=", wam_l, wam_r):
         pass
-    elif w_ne := w_ltype.lookup_func("__ne__"):
+    elif w_ne := w_ltype.lookup_func(vm, "__ne__"):
         w_opspec = vm.fast_metacall(w_ne, [wam_l, wam_r])
     elif can_use_reference_eq(vm, w_ltype, w_rtype):
         w_opspec = W_OpSpec(OP.w_object_isnot)
@@ -602,7 +639,7 @@ def w_LT(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("<", wam_l, wam_r):
         pass
-    elif w_lt := w_ltype.lookup_func("__lt__"):
+    elif w_lt := w_ltype.lookup_func(vm, "__lt__"):
         w_opspec = vm.fast_metacall(w_lt, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
@@ -618,7 +655,7 @@ def w_LE(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("<=", wam_l, wam_r):
         pass
-    elif w_le := w_ltype.lookup_func("__le__"):
+    elif w_le := w_ltype.lookup_func(vm, "__le__"):
         w_opspec = vm.fast_metacall(w_le, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
@@ -638,7 +675,7 @@ def w_GT(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec(">", wam_l, wam_r):
         pass
-    elif w_gt := w_ltype.lookup_func("__gt__"):
+    elif w_gt := w_ltype.lookup_func(vm, "__gt__"):
         w_opspec = vm.fast_metacall(w_gt, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
@@ -654,7 +691,7 @@ def w_GE(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec(">=", wam_l, wam_r):
         pass
-    elif w_ge := w_ltype.lookup_func("__ge__"):
+    elif w_ge := w_ltype.lookup_func(vm, "__ge__"):
         w_opspec = vm.fast_metacall(w_ge, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL

@@ -120,6 +120,8 @@ class TestBuiltin:
         assert w_x is w_y
 
     def test_builtin_method(self):
+        vm = SPyVM()
+
         @builtin_type("test", "Foo")
         class W_Foo(W_Object):
             @builtin_method("make")
@@ -129,7 +131,7 @@ class TestBuiltin:
 
         w_foo = W_Foo._w
         w_make = w_foo.dict_w["make"]
-        assert w_foo.lookup_func("make") is w_make
+        assert w_foo.lookup_func(vm, "make") is w_make
         assert isinstance(w_make, W_BuiltinFunc)
         assert w_make.w_functype.fqn.debug_human_name == "def() -> test::Foo"
         assert w_make.w_functype.w_restype is W_Foo._w
@@ -160,9 +162,10 @@ class TestBuiltin:
         w_super = W_Super._w
         w_sub = W_Sub._w
 
+        vm = SPyVM()
         w_foo = w_super.dict_w["foo"]
-        assert w_super.lookup_func("foo") is w_foo
-        assert w_sub.lookup_func("foo") is w_foo
+        assert w_super.lookup_func(vm, "foo") is w_foo
+        assert w_sub.lookup_func(vm, "foo") is w_foo
 
     def test_metafunc_wrong_color(self):
         class W_Foo(W_Object):

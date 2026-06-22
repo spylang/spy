@@ -394,7 +394,7 @@ class ScopeAnalyzer:
         self._declare_target_maybe(assignexpr.target, assignexpr.value)
         self.declare(assignexpr.value)
 
-    def _declare_target_maybe(self, target: ast.StrConst, value: ast.Expr) -> None:
+    def _declare_target_maybe(self, target: ast.StrLiteral, value: ast.Expr) -> None:
         # if target name does not exist elsewhere, we treat it as an implicit
         # declaration
         level, scope, sym = self.lookup_ref(target.value)
@@ -410,7 +410,7 @@ class ScopeAnalyzer:
             # possible second assignment: promote to var if needed
             self._promote_const_to_var_maybe(target)
 
-    def _promote_const_to_var_maybe(self, target: ast.StrConst) -> None:
+    def _promote_const_to_var_maybe(self, target: ast.StrLiteral) -> None:
         level, scope, sym = self.lookup_ref(target.value)
         if (
             sym
@@ -579,6 +579,11 @@ class ScopeAnalyzer:
     def flatten_Tuple(self, tup: ast.Tuple) -> None:
         self.mod_scope.implicit_imports.add("_tuple")
         for item in tup.items:
+            self.flatten(item)
+
+    def flatten_Slice(self, slc: ast.Slice) -> None:
+        self.mod_scope.implicit_imports.add("_slice")
+        for item in (slc.start, slc.stop, slc.step):
             self.flatten(item)
 
     def flatten_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:

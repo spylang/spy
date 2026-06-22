@@ -7,6 +7,14 @@ The goal is be able to parse lines such as:
 
 We want to reuse the Python parser, but the lines above is not valid syntax.
 
+The idea is to convert the code above into:
+    var·x: i32 = 0
+    const·y: i32 = 0
+
+'·' is U+00B7 MIDDLE DOT, which is a valid unicode char for an indentifier. This means
+that 'var·x' will be parsed as a single valide NAME token by Python, and then the SPy
+parser will be able to special case it later.
+
 The idea is the following:
 
 1. tokenize the source
@@ -14,14 +22,11 @@ The idea is the following:
 2. search for pairs of NAMEs starting with 'var' (from the point of view of
    the tokenizer, 'var' is a plain NAME)
 
-3. remove the 'var' token, and keep track of the location in which it was seen
+3. replace 'var name' with 'var·name'
 
 4. turn back the (modified) tokens into source code
 
 5. parse the generated source code into an AST
-
-6. add a new field "is_var: bool" to all ast.Name nodes, using the infos
-   gathered at point (3)
 
 It is important to make sure that whitespace is preserved as much as possible,
 because we want the AST to contain location info which match the actual file
@@ -30,24 +35,15 @@ does exactly that.
 """
 
 import ast as py_ast
-from dataclasses import dataclass
+import re
 from io import BytesIO
 from tokenize import NAME, TokenError, TokenInfo, tokenize
-from typing import Literal
 
 from spy.errors import SPyError
 from spy.location import Loc
 from spy.vendored import untokenize
 
-VarKind = Literal["var", "const"]
-
-
-@dataclass(frozen=True)
-class LocInfo:
-    lineno: int
-    end_lineno: int
-    col_offset: int
-    end_col_offset: int
+SPY_DECL_RE = re.compile(r"\b(var|const)·+([A-Za-z_][A-Za-z0-9_]*)\b")
 
 
 def magic_py_parse(src: str, filename: str = "<string>") -> py_ast.Module:
@@ -55,25 +51,14 @@ def magic_py_parse(src: str, filename: str = "<string>") -> py_ast.Module:
     Like ast.parse, but supports the new "var" and "const" syntax. See the module
     docstring for more info.
     """
-    src2, varkind_locs = preprocess(src, filename)
+    src2 = preprocess(src, filename)
     try:
-        py_mod = py_ast.parse(src2, filename=filename)
+        return py_ast.parse(src2, filename=filename)
     except SyntaxError as e:
         lineno = e.lineno or 1
         loc = Loc(filename, lineno, lineno, 0, -1)
         # this happens e.g. if we have an incomplete `if`, see test_magic_py_parse_error
         raise SPyError.simple("W_ParseError", e.msg, "", loc)
-
-    for node in py_ast.walk(py_mod):
-        if isinstance(node, py_ast.Name):
-            assert node.end_lineno is not None
-            assert node.end_col_offset is not None
-            loc_info = LocInfo(
-                node.lineno, node.end_lineno, node.col_offset, node.end_col_offset
-            )
-            node.spy_varkind = varkind_locs.get(loc_info)
-
-    return py_mod
 
 
 def get_tokens(src: str) -> list[TokenInfo]:
@@ -81,9 +66,7 @@ def get_tokens(src: str) -> list[TokenInfo]:
     return list(tokenize(readline))
 
 
-def preprocess(
-    src: str, filename: str = "<string>"
-) -> tuple[str, dict[LocInfo, VarKind]]:
+def preprocess(src: str, filename: str = "<string>") -> str:
     try:
         tokens = get_tokens(src)
     except (SyntaxError, TokenError) as e:
@@ -98,43 +81,35 @@ def preprocess(
     newtokens = []
     i = 0
     N = len(tokens)
-    varkind_locs: dict[LocInfo, VarKind] = {}
 
     while i < N - 1:
         tok0 = tokens[i]
         tok1 = tokens[i + 1]
         if tok0.type == NAME and tok0.string in ("var", "const") and tok1.type == NAME:
-            varkind: VarKind = tok0.string  # type: ignore
-            # tok0 is 'var'
-            # tok1 is the name
-            # basically, we want to turn:
-            #     var x: i32 = 100
-            # into:
-            #     x    : i32 = 100
-            #
-            # so that the Locs in the final AST maps to the correct places in
-            # the original source code.
+            # merge `var x` (or `const x`) into a single NAME token `var·x`
+            # (resp. `const·x`), preserving the original column offsets by
+            # padding the gap with U+00B7 MIDDLE DOT chars.
             var_l0, var_c0 = tok0.start
             var_l1, var_c1 = tok0.end
             name_l0, name_c0 = tok1.start
             name_l1, name_c1 = tok1.end
             assert var_l0 == var_l1 == name_l0 == name_l1, "multiline var not supported"
-            spaces = " " * (name_c0 - var_c0)
-            newtok = TokenInfo(
-                NAME, tok1.string + spaces, tok0.start, tok1.end, tok1.line
-            )
+            dots = "·" * (name_c0 - var_c1)  # U+00B7 MIDDLE DOT
+            newstring = tok0.string + dots + tok1.string
+            newtok = TokenInfo(NAME, newstring, tok0.start, tok1.end, tok1.line)
             newtokens.append(newtok)
-            # compute the location info of the future ast.Name
-            loc_info = LocInfo(
-                lineno=var_l0,
-                end_lineno=var_l0,
-                col_offset=var_c0,
-                end_col_offset=var_c0 + len(tok1.string),
-            )
-            varkind_locs[loc_info] = varkind
             i += 1
         else:
             newtokens.append(tok0)
         i += 1
-    src2 = untokenize.untokenize(newtokens)
-    return src2, varkind_locs
+    return untokenize.untokenize(newtokens)
+
+
+def undo_preprocess(src: str) -> str:
+    """
+    The opposite of preprocess.
+
+    If preprocess converts e.g. `var x` into `var·x`, this does the opposite.
+    Used e.g. by 'spy format' to reconstruct the user code after passing it to ruff.
+    """
+    return SPY_DECL_RE.sub(r"\1 \2", src)

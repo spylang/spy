@@ -1,0 +1,46 @@
+"""
+Things to notice:
+  - `*args_m` captures all MetaArgs as a tuple; the number of arguments is known
+    at redshift time via `len(args_m)`, enabling dispatch on it.
+  - Each call site is specialized on both the number and types of arguments.
+  - `T = m0.static_type` captures the static type as a blue value, which can
+    then be used as a type annotation in the inner red function.
+  - For blue arguments, `m_x.blueval` gives the actual compile-time value;
+    here all arguments are red so only `static_type` is used.
+  - Mismatched types (e.g. `mysum(1, 'hello')`) raise `TypeError` at redshift
+    time — uncomment the last lines to see the errors.
+"""
+
+from operator import OpSpec
+
+
+@blue.metafunc
+def mysum(*args_m):
+    if len(args_m) == 2:
+        m0, m1 = args_m
+        T = m0.static_type
+
+        def mysum2(v0: T, v1: T) -> T:
+            return v0 + v1
+
+        return OpSpec(mysum2)
+
+    elif len(args_m) == 3:
+        m0, m1, m2 = args_m
+        T = m0.static_type
+
+        def mysum3(v0: T, v1: T, v2: T) -> T:
+            return v0 + v1 + v2
+
+        return OpSpec(mysum3)
+
+    else:
+        raise TypeError("invalid number of arguments")
+
+
+def main() -> None:
+    print(mysum(1, 2))
+    print(mysum(1, 2, 3))
+    print(mysum("hello ", "world"))
+    # print(mysum(1, 'hello'))
+    # print(mysum(1, 2, 3, 4))

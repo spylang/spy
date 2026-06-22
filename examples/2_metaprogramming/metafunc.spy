@@ -1,0 +1,48 @@
+"""
+Things to notice:
+  - `@blue.metafunc` defines a function that runs at redshift time to dispatch
+    on the static types of its arguments — no runtime cost.
+  - Arguments prefixed with `m_` are MetaArgs: they carry information known at
+    redshift time, in particular `m_x.static_type` and `m_x.color`.
+  - Each call site gets a specialized implementation, depending on the MetaArgs.
+  - The metafunc returns an `OpSpec`, which describes which red function will be
+    called at runtime and with which arguments.
+  - `OpSpec(func)` is the simple form: `func` will be called with the original
+    arguments as-is.
+  - Unsupported types raise `TypeError` at redshift time, not at runtime.
+  - This is how SPy's built-in `print` is implemented internally.
+
+Note on `OpSpec` — the return value of metafuncs:
+  - `OpSpec(func)`: simple form — `func` is called with the original arguments
+  - `OpSpec(func, args)`: complex form — `func` is called with pre-filled arguments
+    (some values are baked in at redshift time)
+  - `OpSpec.const(value)`: the result is a compile-time constant, no call at runtime
+  - `OpSpec.NULL`: signals that this case is not handled
+"""
+
+from operator import OpSpec
+
+
+@blue.metafunc
+def myprint(m_x):
+    if m_x.static_type == int:
+
+        def myprint_int(x: int) -> None:
+            print(x)
+
+        return OpSpec(myprint_int)
+
+    if m_x.static_type == str:
+
+        def myprint_str(x: str) -> None:
+            print(x)
+
+        return OpSpec(myprint_str)
+
+    raise TypeError("don't know how to print this")
+
+
+def main() -> None:
+    print(42)
+    myprint("hello")
+    # myprint(5.2)  # raises TypeError, but it's expected

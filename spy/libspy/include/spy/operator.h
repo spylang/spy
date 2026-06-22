@@ -16,6 +16,8 @@
 #define u8 uint8_t
 #define i32 int32_t
 #define u32 uint32_t
+#define i64 int64_t
+#define u64 uint64_t
 #define f32 float
 #define f64 double
 
@@ -27,13 +29,23 @@ DEFINE_CONV(i32, f64)
 DEFINE_CONV(i32, f32)
 
 DEFINE_CONV(i8, i32)
+DEFINE_CONV(i8, i64)
 DEFINE_CONV(i8, f64)
 
 DEFINE_CONV(u8, i32)
+DEFINE_CONV(u8, i64)
 DEFINE_CONV(u8, f64)
 
 DEFINE_CONV(u32, i32)
+DEFINE_CONV(u32, i64)
 DEFINE_CONV(u32, f64)
+
+DEFINE_CONV(i32, i64)
+
+DEFINE_CONV(i64, u64)
+DEFINE_CONV(u64, i64)
+DEFINE_CONV(i64, f64)
+DEFINE_CONV(u64, f64)
 
 DEFINE_CONV(f32, f64)
 
@@ -43,6 +55,8 @@ DEFINE_CONV(f64, f32)
 #undef u8
 #undef i32
 #undef u32
+#undef i64
+#undef u64
 #undef f32
 #undef f64
 
@@ -74,9 +88,42 @@ spy_operator$f32_to_i32(float x) {
     return (int32_t)x;
 }
 
+// Saturating float->int64 conversions.
+// Note: double cannot represent INT64_MAX exactly, so we use >= 2^63 rather
+// than > INT64_MAX to avoid undefined behaviour on the comparison.
+static inline int64_t
+spy_operator$f64_to_i64(double x) {
+    if (isnan(x))
+        return 0;
+    if (x >= (double)(1ULL << 63))
+        return INT64_MAX;
+    if (x < (double)INT64_MIN)
+        return INT64_MIN;
+    return (int64_t)x;
+}
+
+static inline int64_t
+spy_operator$f32_to_i64(float x) {
+    if (isnan(x))
+        return 0;
+    if (x >= (float)(1ULL << 63))
+        return INT64_MAX;
+    if (x < (float)INT64_MIN)
+        return INT64_MIN;
+    return (int64_t)x;
+}
+
 static inline void
-spy_operator$raise(spy_Str *etype, spy_Str *message, spy_Str *fname, int32_t lineno) {
-    spy_panic(etype->utf8, message->utf8, fname->utf8, lineno);
+spy_operator$raise(
+    spy_StrObject *etype,
+    spy_StrObject *message,
+    spy_StrObject *fname,
+    int32_t lineno
+) {
+    spy_panic(
+        spy_StrObject_CHARS(etype), spy_StrObject_CHARS(message),
+        spy_StrObject_CHARS(fname), lineno
+    );
 }
 
 static inline double
@@ -361,6 +408,69 @@ spy_unsafe$u32_unchecked_mod(uint32_t x, uint32_t y) {
         spy_panic("PanicError", "integer modulo by zero", __FILE__, __LINE__);
     }
 #endif
+    return x % y;
+}
+
+static inline double
+spy_operator$i64_div(int64_t x, int64_t y) {
+    if (y == 0) {
+        spy_panic("ZeroDivisionError", "division by zero", __FILE__, __LINE__);
+    }
+    return (double)x / y;
+}
+
+static inline int64_t
+spy_operator$i64_floordiv(int64_t x, int64_t y) {
+    if (y == 0) {
+        spy_panic(
+            "ZeroDivisionError", "integer division or modulo by zero", __FILE__,
+            __LINE__
+        );
+    }
+    int64_t q = x / y;
+    int64_t r = x % y;
+    if ((r != 0) && ((x ^ y) < 0)) {
+        q -= 1;
+    }
+    return q;
+}
+
+static inline int64_t
+spy_operator$i64_mod(int64_t x, int64_t y) {
+    if (y == 0) {
+        spy_panic("ZeroDivisionError", "integer modulo by zero", __FILE__, __LINE__);
+    }
+    int64_t r = x % y;
+    if ((r != 0) && ((x ^ y) < 0)) {
+        r += y;
+    }
+    return r;
+}
+
+static inline double
+spy_operator$u64_div(uint64_t x, uint64_t y) {
+    if (y == 0) {
+        spy_panic("ZeroDivisionError", "division by zero", __FILE__, __LINE__);
+    }
+    return (double)x / y;
+}
+
+static inline uint64_t
+spy_operator$u64_floordiv(uint64_t x, uint64_t y) {
+    if (y == 0) {
+        spy_panic(
+            "ZeroDivisionError", "integer division or modulo by zero", __FILE__,
+            __LINE__
+        );
+    }
+    return x / y;
+}
+
+static inline uint64_t
+spy_operator$u64_mod(uint64_t x, uint64_t y) {
+    if (y == 0) {
+        spy_panic("ZeroDivisionError", "integer modulo by zero", __FILE__, __LINE__);
+    }
     return x % y;
 }
 

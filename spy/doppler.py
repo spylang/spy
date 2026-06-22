@@ -10,11 +10,11 @@ from spy.location import Loc
 from spy.util import magic_dispatch
 from spy.vm.astframe import ASTFrame
 from spy.vm.b import B
-from spy.vm.exc import W_StaticError
+from spy.vm.exc import W_Exception, W_StaticError
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
-from spy.vm.modules.types import TYPES, W_Loc
+from spy.vm.modules.types import TYPES
 from spy.vm.object import W_Object
 from spy.vm.opimpl import ArgSpec, W_OpImpl
 from spy.vm.opspec import W_MetaArg
@@ -36,22 +36,35 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
     """
     Create an AST node to represent a constant of the given w_val.
 
-    For primitive types, it's easy, we can just reuse ast.Constant.
+    For primitive types, we use ast.Const (an IR-only typed node).
     For non primitive types, we assign an unique FQN to the w_val, and we
     return ast.FQNConst.
     """
     res: ast.Expr
     w_T = vm.dynamic_type(w_val)
-    if w_T in (B.w_i32, B.w_f64, B.w_complex128, B.w_bool, TYPES.w_NoneType):
-        # this is a primitive, we can just use ast.Constant
-        value = vm.unwrap(w_val)
-        if isinstance(value, FixedInt):  # type: ignore
-            value = int(value)
-        res = ast.Constant(loc, value, w_T=w_T)
+    if w_T in (
+        B.w_i32,
+        B.w_i64,
+        B.w_u64,
+        B.w_i8,
+        B.w_u8,
+        B.w_u32,
+        B.w_f32,
+        B.w_f64,
+        B.w_complex128,
+        B.w_bool,
+        TYPES.w_NoneType,
+    ):
+        res = ast.Const(loc, w_val, w_T=w_T)
 
     elif w_T is B.w_str:
         value = vm.unwrap_str(w_val)
-        res = ast.StrConst(loc, value, w_T=w_T)
+        res = ast.StrLiteral(loc, value, w_T=w_T)
+
+    elif w_T is B.w_bytes:
+        value = vm.unwrap(w_val)
+        assert isinstance(value, bytes)
+        res = ast.BytesLiteral(loc, value, w_T=w_T)
 
     elif w_T is SPY.w_interp_tuple:
         assert isinstance(w_val, W_InterpTuple)
@@ -68,12 +81,10 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
         res = ast.Tuple(loc, items, w_T=w_T)
 
     elif w_T is TYPES.w_Loc:
-        # note that here we have two locs: 'loc' is as usual the location
-        # where the const comes from; 'value' is the actual value of the
-        # const, which happen to be of type Loc.
-        assert isinstance(w_val, W_Loc)
-        value = w_val.loc
-        res = ast.LocConst(loc, value, w_T=w_T)
+        res = ast.Const(loc, w_val, w_T=w_T)
+
+    elif isinstance(w_val, W_Exception):
+        res = ast.Const(loc, w_val, w_T=w_T)
 
     else:
         # this is a non-primitive prebuilt constant.
@@ -83,6 +94,20 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
     if vm.ast_color_map is not None:
         vm.ast_color_map[res] = "blue"
     return res
+
+
+def unmake_const_maybe(vm: "SPyVM", expr: ast.Expr) -> Optional[W_Object]:
+    """
+    The inverse of make_const: if `expr` is a constant AST node, return its
+    W_Object value. Otherwise return None.
+    """
+    if isinstance(expr, ast.Const):
+        return expr.w_val
+    elif isinstance(expr, ast.StrLiteral):
+        return vm.wrap(expr.value)
+    elif isinstance(expr, ast.FQNConst):
+        return vm.lookup_global(expr.fqn)
+    return None
 
 
 class DopplerFrame(ASTFrame):
@@ -175,8 +200,9 @@ class DopplerFrame(ASTFrame):
         """
         Turn the given stmt into a "raise"
         """
-        fqn = self.vm.make_fqn_const(err.w_exc)
-        exc = ast.FQNConst(fqn=fqn, loc=stmt.loc)
+        w_exc = err.w_exc
+        w_T = self.vm.dynamic_type(w_exc)
+        exc = ast.Const(loc=stmt.loc, w_val=w_exc, w_T=w_T)
         return self.shift_stmt(ast.Raise(exc=exc, loc=stmt.loc))
 
     def record_node_color(self, node: ast.Node, color: Color) -> None:
@@ -385,17 +411,26 @@ class DopplerFrame(ASTFrame):
         new_expr = self.shift_expr(expr, wam)
         assert new_expr.w_T is not None, "shift_expr should return a typed ast.Expr"
 
+        # do we need a type conversion because we are assigning to a local var?
         w_typeconv_opimpl = self.typecheck_maybe(wam, varname)
         if w_typeconv_opimpl:
             assert varname is not None
             lv = self.locals[varname]
-            expT = make_const(self.vm, lv.decl_loc, lv.w_T)
-            gotT = make_const(self.vm, wam.loc, wam.w_static_T)
-            new_expr = self.shift_opimpl(
-                expr,
-                w_typeconv_opimpl,
-                [expT, gotT, new_expr],
-            )
+            if wam.color == "blue" and w_typeconv_opimpl.is_pure():
+                # apply it eagerly: see the case "local var conv" in
+                # test_doppler::test_eager_type_conversion
+                wam = self.vm.eval_opimpl(w_typeconv_opimpl, [wam], loc=expr.loc)
+                assert wam.color == "blue"
+                new_expr = make_const(self.vm, expr.loc, wam.w_val)
+            else:
+                # add a residual call to the convert function
+                expT = make_const(self.vm, lv.decl_loc, lv.w_T)
+                gotT = make_const(self.vm, wam.loc, wam.w_static_T)
+                new_expr = self.shift_opimpl(
+                    expr,
+                    w_typeconv_opimpl,
+                    [expT, gotT, new_expr],
+                )
 
         self.shifted_expr[expr] = new_expr
         # record the color of the ORIGINAL expression
@@ -492,15 +527,34 @@ class DopplerFrame(ASTFrame):
                 expT = getarg(spec.expT)
                 gotT = getarg(spec.gotT)
                 arg = getarg(spec.arg)
-                return self.shift_opimpl(arg, spec.w_conv_opimpl, [expT, gotT, arg])
+
+                # try to evaluate the conversion eagerly, if the opimpl is pure and the
+                # the arg is known. See the case "func arg conv" in
+                # test_doppler::test_eager_type_conversion
+                is_pure = spec.w_conv_opimpl.is_pure()
+                if is_pure and (w_arg := unmake_const_maybe(self.vm, arg)) is not None:
+                    w_expT = unmake_const_maybe(self.vm, expT)
+                    w_gotT = unmake_const_maybe(self.vm, gotT)
+                    assert w_expT is not None and w_gotT is not None
+                    w_res = spec.w_conv_opimpl._execute(
+                        self.vm, [w_expT, w_gotT, w_arg]
+                    )
+                    return make_const(self.vm, arg.loc, w_res)
+                else:
+                    # no eager evaluation: insert a residual call to the conversion func
+                    return self.shift_opimpl(arg, spec.w_conv_opimpl, [expT, gotT, arg])
             else:
                 assert False
 
         real_args = [getarg(spec) for spec in w_opimpl.args]
         return real_args
 
-    def shift_expr_Constant(self, const: ast.Constant, wam: W_MetaArg) -> ast.Expr:
+    def shift_expr_Const(self, const: ast.Const, wam: W_MetaArg) -> ast.Expr:
         return const.replace(w_T=wam.w_static_T)
+
+    def shift_expr_Literal(self, const: ast.Literal, wam: W_MetaArg) -> ast.Expr:
+        w_val = self.vm.wrap(const.value)
+        return ast.Const(const.loc, w_val, w_T=wam.w_static_T)
 
     def shift_expr_Name(self, name: ast.Name, wam: W_MetaArg) -> ast.Expr:
         return self.specialized_names[name].replace(w_T=wam.w_static_T)

@@ -40,6 +40,7 @@
 
 #include "spy/__spy__.h"
 #include "spy/builtins.h"
+#include "spy/bytes.h"
 #include "spy/complex.h"
 #include "spy/debug.h"
 #include "spy/gc.h"

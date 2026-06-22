@@ -56,7 +56,7 @@ class TestParser:
                         kind='plain',
                         name='foo',
                         args=[],
-                        return_type=Constant(value=None),
+                        return_type=Literal(value=None),
                         defaults=[],
                         docstring=None,
                         body=[
@@ -98,7 +98,7 @@ class TestParser:
                                 kind='simple',
                             ),
                         ],
-                        return_type=Constant(value=None),
+                        return_type=Literal(value=None),
                         defaults=[],
                         docstring=None,
                         body=[
@@ -135,9 +135,9 @@ class TestParser:
                     kind='simple',
                 ),
             ],
-            return_type=Constant(value=None),
+            return_type=Literal(value=None),
             defaults=[
-                Constant(value=42),
+                Literal(value=42),
             ],
             docstring=None,
             body=[
@@ -194,7 +194,7 @@ class TestParser:
             kind='plain',
             name='foo',
             args=[],
-            return_type=Constant(value=None),
+            return_type=Literal(value=None),
             defaults=[],
             docstring=None,
             body=[
@@ -222,7 +222,7 @@ class TestParser:
             kind='plain',
             name='foo',
             args=[],
-            return_type=Constant(value=None),
+            return_type=Literal(value=None),
             defaults=[],
             docstring=None,
             body=[
@@ -232,7 +232,7 @@ class TestParser:
                 Name(id='deco1'),
                 GetAttr(
                     value=Name(id='deco2'),
-                    attr=StrConst(value='attr'),
+                    attr=StrLiteral(value='attr'),
                 ),
                 Call(
                     func=Name(id='deco3'),
@@ -265,7 +265,7 @@ class TestParser:
             docstring=None,
             body=[
                 Return(
-                    value=Constant(value=42),
+                    value=Literal(value=42),
                 ),
             ],
             decorators=[
@@ -293,7 +293,7 @@ class TestParser:
             docstring=None,
             body=[
                 Return(
-                    value=Constant(value=42),
+                    value=Literal(value=42),
                 ),
             ],
             decorators=[],
@@ -319,7 +319,7 @@ class TestParser:
             docstring='hello',
             body=[
                 Return(
-                    value=Constant(value=42),
+                    value=Literal(value=42),
                 ),
             ],
             decorators=[],
@@ -345,7 +345,7 @@ class TestParser:
             docstring=None,
             body=[
                 Return(
-                    value=Constant(value=42),
+                    value=Literal(value=42),
                 ),
             ],
             decorators=[],
@@ -371,7 +371,7 @@ class TestParser:
             docstring=None,
             body=[
                 Return(
-                    value=Constant(value=42),
+                    value=Literal(value=42),
                 ),
             ],
             decorators=[],
@@ -449,7 +449,7 @@ class TestParser:
                 body=[
                     VarDef(
                         kind=None,
-                        name=StrConst(value='x'),
+                        name=StrLiteral(value='x'),
                         type=Name(id='T'),
                         value=None,
                     ),
@@ -477,7 +477,7 @@ class TestParser:
             docstring=None,
             body=[
                 Return(
-                    value=Constant(value=42),
+                    value=Literal(value=42),
                 ),
             ],
             decorators=[],
@@ -520,12 +520,12 @@ class TestParser:
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         Return(
-            value=Constant(value=None),
+            value=Literal(value=None),
         )
         """
         self.assert_dump(stmt, expected)
 
-    def test_StrConst(self):
+    def test_StrLiteral(self):
         mod = self.parse("""
         def foo() -> i32:
             return "hello"
@@ -533,7 +533,7 @@ class TestParser:
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         Return(
-            value=StrConst(value='hello'),
+            value=StrLiteral(value='hello'),
         )
         """
         self.assert_dump(stmt, expected)
@@ -549,8 +549,8 @@ class TestParser:
             value=GetItem(
                 value=Name(id='mylist'),
                 args=[
-                    Constant(value=0),
-                    Constant(value=1),
+                    Literal(value=0),
+                    Literal(value=1),
                 ],
             ),
         )
@@ -567,10 +567,10 @@ class TestParser:
         SetItem(
             target=Name(id='mylist'),
             args=[
-                Constant(value=0),
-                Constant(value=1),
+                Literal(value=0),
+                Literal(value=1),
             ],
-            value=Constant(value=42),
+            value=Literal(value=42),
         )
         """
         self.assert_dump(stmt, expected)
@@ -584,9 +584,9 @@ class TestParser:
         vardef_expected = """
         VarDef(
             kind=None,
-            name=StrConst(value='x'),
+            name=StrLiteral(value='x'),
             type=Name(id='i32'),
-            value=Constant(value=42),
+            value=Literal(value=42),
         )
         """
         self.assert_dump(vardef, vardef_expected)
@@ -600,9 +600,9 @@ class TestParser:
         expected = f"""
         VarDef(
             kind='const',
-            name=StrConst(value='x'),
+            name=StrLiteral(value='x'),
             type=Name(id='i32'),
-            value=Constant(value=42),
+            value=Literal(value=42),
         )
         """
         self.assert_dump(vardef, expected)
@@ -616,9 +616,9 @@ class TestParser:
         expected = """
         VarDef(
             kind='var',
-            name=StrConst(value='x'),
+            name=StrLiteral(value='x'),
             type=Auto(),
-            value=Constant(value=42),
+            value=Literal(value=42),
         )
         """
         self.assert_dump(vardef, expected)
@@ -632,9 +632,9 @@ class TestParser:
         expected = """
         VarDef(
             kind='const',
-            name=StrConst(value='y'),
+            name=StrLiteral(value='y'),
             type=Auto(),
-            value=Constant(value=42),
+            value=Literal(value=42),
         )
         """
         self.assert_dump(vardef, expected)
@@ -655,33 +655,33 @@ class TestParser:
                 GlobalVarDef(
                     vardef=VarDef(
                         kind=None,
-                        name=StrConst(value='a'),
+                        name=StrLiteral(value='a'),
                         type=Auto(),
-                        value=Constant(value=1),
+                        value=Literal(value=1),
                     ),
                 ),
                 GlobalVarDef(
                     vardef=VarDef(
                         kind=None,
-                        name=StrConst(value='b'),
+                        name=StrLiteral(value='b'),
                         type=Name(id='i32'),
-                        value=Constant(value=42),
+                        value=Literal(value=42),
                     ),
                 ),
                 GlobalVarDef(
                     vardef=VarDef(
                         kind='var',
-                        name=StrConst(value='c'),
+                        name=StrLiteral(value='c'),
                         type=Name(id='i32'),
-                        value=Constant(value=43),
+                        value=Literal(value=43),
                     ),
                 ),
                 GlobalVarDef(
                     vardef=VarDef(
                         kind='const',
-                        name=StrConst(value='d'),
+                        name=StrLiteral(value='d'),
                         type=Name(id='i32'),
-                        value=Constant(value=44),
+                        value=Literal(value=44),
                     ),
                 ),
             ],
@@ -699,9 +699,9 @@ class TestParser:
         Return(
             value=List(
                 items=[
-                    Constant(value=1),
-                    Constant(value=2),
-                    Constant(value=3),
+                    Literal(value=1),
+                    Literal(value=2),
+                    Literal(value=3),
                 ],
             ),
         )
@@ -718,9 +718,9 @@ class TestParser:
         Return(
             value=Tuple(
                 items=[
-                    Constant(value=1),
-                    Constant(value=2),
-                    Constant(value=3),
+                    Literal(value=1),
+                    Literal(value=2),
+                    Literal(value=3),
                 ],
             ),
         )
@@ -737,16 +737,16 @@ class TestParser:
         stmt = mod.get_funcdef("foo").body[0]
         expected = f"""
             Assign(
-                target=StrConst(value='dict_test'),
+                target=StrLiteral(value='dict_test'),
                 value=Dict(
                     items=[
                         KeyValuePair(
-                            key=StrConst(value='key1'),
-                            value=Constant(value=10),
+                            key=StrLiteral(value='key1'),
+                            value=Literal(value=10),
                         ),
                         KeyValuePair(
                             key=Name(id='key2'),
-                            value=Constant(value=30),
+                            value=Literal(value=30),
                         ),
                     ],
                 ),
@@ -779,7 +779,7 @@ class TestParser:
             value=BinOp(
                 op='{op}',
                 left=Name(id='x'),
-                right=Constant(value=1),
+                right=Literal(value=1),
             ),
         )
         """
@@ -815,8 +815,8 @@ class TestParser:
         expected = f"""
         AugAssign(
             op='{op}',
-            target=StrConst(value='x'),
-            value=Constant(value=42),
+            target=StrLiteral(value='x'),
+            value=Literal(value=42),
         )
         """
         self.assert_dump(stmt, expected)
@@ -854,18 +854,18 @@ class TestParser:
             kind='plain',
             name='foo',
             args=[],
-            return_type=Constant(value=None),
+            return_type=Literal(value=None),
             defaults=[],
             docstring=None,
             body=[
                 StmtExpr(
-                    value=Constant(value=-100),
+                    value=Literal(value=-100),
                 ),
                 StmtExpr(
-                    value=Constant(value=-101),
+                    value=Literal(value=-101),
                 ),
                 StmtExpr(
-                    value=Constant(value=-102),
+                    value=Literal(value=-102),
                 ),
             ],
             decorators=[],
@@ -875,6 +875,109 @@ class TestParser:
         assert funcdef.body[0].value.loc.get_src() == "-100"  # type: ignore
         assert funcdef.body[1].value.loc.get_src() == "-  101"  # type: ignore
         assert funcdef.body[2].value.loc.get_src() == "-    102"  # type: ignore
+
+    def test_int_literals(self):
+        # a bare literal is a plain int; an explicitly-prefixed one is the
+        # corresponding fixedint. i8(x) is not a literal and stays a Call.
+        mod = self.parse("""
+        def foo() -> None:
+            42
+            i64(42)
+            i64(-1)
+            i8(x)
+        """)
+        funcdef = mod.get_funcdef("foo")
+        expected = """
+        FuncDef(
+            color='red',
+            kind='plain',
+            name='foo',
+            args=[],
+            return_type=Literal(value=None),
+            defaults=[],
+            docstring=None,
+            body=[
+                StmtExpr(
+                    value=Literal(value=42),
+                ),
+                StmtExpr(
+                    value=Literal(value=Int64(42)),
+                ),
+                StmtExpr(
+                    value=Literal(value=Int64(-1)),
+                ),
+                StmtExpr(
+                    value=Call(
+                        func=Name(id='i8'),
+                        args=[
+                            Name(id='x'),
+                        ],
+                    ),
+                ),
+            ],
+            decorators=[],
+        )
+        """
+        self.assert_dump(funcdef, expected)
+
+    def test_float_literals(self):
+        # a bare float is a plain f64; an explicitly-prefixed f32 becomes a
+        # c_float. f32(x) is not a literal and stays a Call.
+        mod = self.parse("""
+        def foo() -> None:
+            1.5
+            f64(2.5)
+            f64(-1.5)
+            f32(3.5)
+            f32(x)
+        """)
+        funcdef = mod.get_funcdef("foo")
+        expected = """
+        FuncDef(
+            color='red',
+            kind='plain',
+            name='foo',
+            args=[],
+            return_type=Literal(value=None),
+            defaults=[],
+            docstring=None,
+            body=[
+                StmtExpr(
+                    value=Literal(value=1.5),
+                ),
+                StmtExpr(
+                    value=Literal(value=2.5),
+                ),
+                StmtExpr(
+                    value=Literal(value=-1.5),
+                ),
+                StmtExpr(
+                    value=Literal(value=c_float(3.5)),
+                ),
+                StmtExpr(
+                    value=Call(
+                        func=Name(id='f32'),
+                        args=[
+                            Name(id='x'),
+                        ],
+                    ),
+                ),
+            ],
+            decorators=[],
+        )
+        """
+        self.assert_dump(funcdef, expected)
+
+    def test_prefixed_int_literal_out_of_range(self):
+        src = """
+        def foo() -> u8:
+            return u8(256)
+        """
+        self.expect_errors(
+            src,
+            "u8 literal 256 is out of range [0, 255]",
+            ("integer literal out of range", "256"),
+        )
 
     @pytest.mark.parametrize("op", "== != < <= > >= is is_not in not_in".split())
     def test_CompareOp(self, op):
@@ -889,7 +992,7 @@ class TestParser:
             value=CmpOp(
                 op='{op}',
                 left=Name(id='x'),
-                right=Constant(value=1),
+                right=Literal(value=1),
             ),
         )
         """
@@ -914,8 +1017,8 @@ class TestParser:
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         Assign(
-            target=StrConst(value='x'),
-            value=Constant(value=42),
+            target=StrLiteral(value='x'),
+            value=Literal(value=42),
         )
         """
         self.assert_dump(stmt, expected)
@@ -951,9 +1054,9 @@ class TestParser:
         expected = """
         UnpackAssign(
             targets=[
-                StrConst(value='a'),
-                StrConst(value='b'),
-                StrConst(value='c'),
+                StrLiteral(value='a'),
+                StrLiteral(value='b'),
+                StrLiteral(value='c'),
             ],
             value=Name(id='x'),
         )
@@ -971,9 +1074,9 @@ class TestParser:
             value=Call(
                 func=Name(id='bar'),
                 args=[
-                    Constant(value=1),
-                    Constant(value=2),
-                    Constant(value=3),
+                    Literal(value=1),
+                    Literal(value=2),
+                    Literal(value=3),
                 ],
             ),
         )
@@ -1001,10 +1104,10 @@ class TestParser:
         Return(
             value=CallMethod(
                 target=Name(id='a'),
-                method=StrConst(value='b'),
+                method=StrLiteral(value='b'),
                 args=[
-                    Constant(value=1),
-                    Constant(value=2),
+                    Literal(value=1),
+                    Literal(value=2),
                 ],
             ),
         )
@@ -1025,9 +1128,9 @@ class TestParser:
                             ),
                             args=[
                                 Slice(
-                                    start=Constant(value=1),
-                                    stop=Constant(value=None),
-                                    step=Constant(value=2),
+                                    start=Literal(value=1),
+                                    stop=Literal(value=None),
+                                    step=Literal(value=2),
                                 ),
                             ],
                         ),
@@ -1047,9 +1150,9 @@ class TestParser:
                             value=Name(id='l'),
                             args=[
                                 Slice(
-                                    start=Constant(value=1),
-                                    stop=Constant(value=2),
-                                    step=Constant(value=-1),
+                                    start=Literal(value=1),
+                                    stop=Literal(value=2),
+                                    step=Literal(value=-1),
                                 ),
                             ],
                         ),
@@ -1070,12 +1173,12 @@ class TestParser:
             test=Name(id='x'),
             then_body=[
                 Return(
-                    value=Constant(value=1),
+                    value=Literal(value=1),
                 ),
             ],
             else_body=[
                 Return(
-                    value=Constant(value=2),
+                    value=Literal(value=2),
                 ),
             ],
         )
@@ -1090,7 +1193,7 @@ class TestParser:
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         StmtExpr(
-            value=Constant(value=42),
+            value=Literal(value=42),
         )
         """
         self.assert_dump(stmt, expected)
@@ -1104,7 +1207,7 @@ class TestParser:
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         While(
-            test=Constant(value=True),
+            test=Literal(value=True),
             body=[
                 Pass(),
             ],
@@ -1122,11 +1225,11 @@ class TestParser:
         expected = """
         For(
             seq=0,
-            target=StrConst(value='i'),
+            target=StrLiteral(value='i'),
             iter=Call(
                 func=Name(id='range'),
                 args=[
-                    Constant(value=10),
+                    Literal(value=10),
                 ],
             ),
             body=[
@@ -1179,12 +1282,12 @@ class TestParser:
         expected0 = """
         For(
             seq=0,
-            target=StrConst(value='i'),
+            target=StrLiteral(value='i'),
             iter=Name(id='x'),
             body=[
                 For(
                     seq=1,
-                    target=StrConst(value='j'),
+                    target=StrLiteral(value='j'),
                     iter=Name(id='x'),
                     body=[
                         Pass(),
@@ -1198,7 +1301,7 @@ class TestParser:
         expected1 = """
         For(
             seq=2,
-            target=StrConst(value='z'),
+            target=StrLiteral(value='z'),
             iter=Name(id='x'),
             body=[
                 Pass(),
@@ -1219,7 +1322,7 @@ class TestParser:
             exc=Call(
                 func=Name(id='ValueError'),
                 args=[
-                    StrConst(value='error message'),
+                    StrLiteral(value='error message'),
                 ],
             ),
         )
@@ -1303,9 +1406,9 @@ class TestParser:
                 GlobalVarDef(
                     vardef=VarDef(
                         kind=None,
-                        name=StrConst(value='x'),
+                        name=StrLiteral(value='x'),
                         type=Auto(),
-                        value=Constant(value=42),
+                        value=Literal(value=42),
                     ),
                 ),
             ],
@@ -1326,14 +1429,14 @@ class TestParser:
         assert isclass(nodes[0], "Module")
         assert isclass(nodes[1], "GlobalFuncDef")
         assert isclass(nodes[2], "FuncDef")
-        assert isclass(nodes[3], "Constant") and nodes[3].value is None
+        assert isclass(nodes[3], "Literal") and nodes[3].value is None
         assert isclass(nodes[4], "If")
-        assert isclass(nodes[5], "Constant") and nodes[5].value is True
+        assert isclass(nodes[5], "Literal") and nodes[5].value is True
         assert isclass(nodes[6], "Assign")
-        assert isclass(nodes[7], "StrConst") and nodes[7].value == "x"
+        assert isclass(nodes[7], "StrLiteral") and nodes[7].value == "x"
         assert isclass(nodes[8], "BinOp")
         assert isclass(nodes[9], "Name") and nodes[9].id == "y"
-        assert isclass(nodes[10], "Constant") and nodes[10].value == 1
+        assert isclass(nodes[10], "Literal") and nodes[10].value == 1
         assert len(nodes) == 11
         #
         nodes2 = list(mod.walk(ast.Stmt))
@@ -1354,11 +1457,11 @@ class TestParser:
                 x = y + 1
         """)
         nodes: list[Any] = list(mod.walk_postorder())
-        assert isclass(nodes[0], "Constant") and nodes[0].value is None
-        assert isclass(nodes[1], "Constant") and nodes[1].value is True
-        assert isclass(nodes[2], "StrConst") and nodes[2].value == "x"
+        assert isclass(nodes[0], "Literal") and nodes[0].value is None
+        assert isclass(nodes[1], "Literal") and nodes[1].value is True
+        assert isclass(nodes[2], "StrLiteral") and nodes[2].value == "x"
         assert isclass(nodes[3], "Name") and nodes[3].id == "y"
-        assert isclass(nodes[4], "Constant") and nodes[4].value == 1
+        assert isclass(nodes[4], "Literal") and nodes[4].value == 1
         assert isclass(nodes[5], "BinOp")
         assert isclass(nodes[6], "Assign")
         assert isclass(nodes[7], "If")
@@ -1380,16 +1483,16 @@ class TestParser:
         def foo() -> None:
             x = 1 + 2
         """)
-        with pytest.raises(Exception, match="Constant.*is untyped"):
+        with pytest.raises(Exception, match="Literal.*is untyped"):
             mod.assert_fully_typed()
         #
         for expr in mod.walk(ast.Expr):
             expr.w_T = B.w_i32  # type: ignore
         mod.assert_fully_typed()
         #
-        one = mod.find(ast.Constant, src="1")
+        one = mod.find(ast.Literal, src="1")
         one.w_T = None  # type: ignore
-        with pytest.raises(Exception, match="Constant.*is untyped"):
+        with pytest.raises(Exception, match="Literal.*is untyped"):
             mod.assert_fully_typed()
 
     def test_inner_FuncDef(self):
@@ -1419,7 +1522,7 @@ class TestParser:
                                 kind='plain',
                                 name='bar',
                                 args=[],
-                                return_type=Constant(value=None),
+                                return_type=Literal(value=None),
                                 defaults=[],
                                 docstring=None,
                                 body=[
@@ -1446,7 +1549,7 @@ class TestParser:
         StmtExpr(
             value=GetAttr(
                 value=Name(id='a'),
-                attr=StrConst(value='b'),
+                attr=StrLiteral(value='b'),
             ),
         )
         """
@@ -1461,8 +1564,8 @@ class TestParser:
         expected = """
         SetAttr(
             target=Name(id='a'),
-            attr=StrConst(value='b'),
-            value=Constant(value=42),
+            attr=StrLiteral(value='b'),
+            value=Literal(value=42),
         )
         """
         self.assert_dump(stmt, expected)
@@ -1520,7 +1623,7 @@ class TestParser:
             body=[
                 VarDef(
                     kind=None,
-                    name=StrConst(value='x'),
+                    name=StrLiteral(value='x'),
                     type=Name(id='i32'),
                     value=None,
                 ),
@@ -1545,13 +1648,13 @@ class TestParser:
             body=[
                 VarDef(
                     kind=None,
-                    name=StrConst(value='x'),
+                    name=StrLiteral(value='x'),
                     type=Name(id='i32'),
                     value=None,
                 ),
                 VarDef(
                     kind=None,
-                    name=StrConst(value='y'),
+                    name=StrLiteral(value='y'),
                     type=Name(id='i32'),
                     value=None,
                 ),
@@ -1575,13 +1678,13 @@ class TestParser:
             body=[
                 VarDef(
                     kind=None,
-                    name=StrConst(value='x'),
+                    name=StrLiteral(value='x'),
                     type=Name(id='i32'),
-                    value=Constant(value=42),
+                    value=Literal(value=42),
                 ),
                 Assign(
-                    target=StrConst(value='y'),
-                    value=Constant(value=1),
+                    target=StrLiteral(value='y'),
+                    value=Literal(value=1),
                 ),
             ],
         )
@@ -1606,7 +1709,7 @@ class TestParser:
             body=[
                 VarDef(
                     kind=None,
-                    name=StrConst(value='x'),
+                    name=StrLiteral(value='x'),
                     type=Name(id='i32'),
                     value=None,
                 ),
@@ -1615,7 +1718,7 @@ class TestParser:
                     kind='plain',
                     name='foo',
                     args=[],
-                    return_type=Constant(value=None),
+                    return_type=Literal(value=None),
                     defaults=[],
                     docstring=None,
                     body=[
@@ -1652,7 +1755,7 @@ class TestParser:
                     kind='var_positional',
                 ),
             ],
-            return_type=Constant(value=None),
+            return_type=Literal(value=None),
             defaults=[],
             docstring=None,
             body=[
@@ -1672,7 +1775,7 @@ class TestParser:
         while_stmt = mod.get_funcdef("foo").body[0]
         expected = """
         While(
-            test=Constant(value=True),
+            test=Literal(value=True),
             body=[
                 Break(),
             ],
@@ -1689,7 +1792,7 @@ class TestParser:
         while_stmt = mod.get_funcdef("foo").body[0]
         expected = """
         While(
-            test=Constant(value=True),
+            test=Literal(value=True),
             body=[
                 Continue(),
             ],
@@ -1708,11 +1811,11 @@ class TestParser:
         expected = """
         For(
             seq=0,
-            target=StrConst(value='i'),
+            target=StrLiteral(value='i'),
             iter=Call(
                 func=Name(id='range'),
                 args=[
-                    Constant(value=10),
+                    Literal(value=10),
                 ],
             ),
             body=[
@@ -1720,7 +1823,7 @@ class TestParser:
                     test=CmpOp(
                         op='==',
                         left=Name(id='i'),
-                        right=Constant(value=5),
+                        right=Literal(value=5),
                     ),
                     then_body=[
                         Break(),
@@ -1743,11 +1846,11 @@ class TestParser:
         expected = """
         For(
             seq=0,
-            target=StrConst(value='i'),
+            target=StrLiteral(value='i'),
             iter=Call(
                 func=Name(id='range'),
                 args=[
-                    Constant(value=10),
+                    Literal(value=10),
                 ],
             ),
             body=[
@@ -1755,7 +1858,7 @@ class TestParser:
                     test=CmpOp(
                         op='==',
                         left=Name(id='i'),
-                        right=Constant(value=5),
+                        right=Literal(value=5),
                     ),
                     then_body=[
                         Continue(),
@@ -1781,8 +1884,8 @@ class TestParser:
             if_stmt.test,
             """
             AssignExpr(
-                target=StrConst(value='x'),
-                value=Constant(value=1),
+                target=StrLiteral(value='x'),
+                value=Literal(value=1),
             )
             """,
         )
@@ -1804,8 +1907,8 @@ class TestParser:
             BlockExpr(
                 body=[
                     Assign(
-                        target=StrConst(value='x'),
-                        value=Constant(value=1),
+                        target=StrLiteral(value='x'),
+                        value=Literal(value=1),
                     ),
                 ],
                 value=Name(id='x'),

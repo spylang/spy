@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Any
 
+import fixedint
 import py.path
 import wasmtime
 
@@ -8,12 +9,13 @@ from spy.fqn import FQN
 from spy.libspy import LLSPyInstance
 from spy.llwasm import LLWasmType
 from spy.vm.b import TYPES, B
+from spy.vm.bytes import ll_bytes_new
 from spy.vm.cell import W_Cell
 from spy.vm.function import W_ASTFunc, W_Func, W_FuncType
 from spy.vm.modules.rawbuffer import RB
 from spy.vm.modules.unsafe.ptr import W_PtrType
 from spy.vm.object import W_Type
-from spy.vm.str import ll_spy_Str_new
+from spy.vm.str import ll_str_new
 from spy.vm.struct import UnwrappedStruct, W_StructType
 from spy.vm.vm import SPyVM
 
@@ -89,13 +91,18 @@ class WasmFuncWrapper:
     def py2wasm(self, pyval: Any, w_T: W_Type) -> Any:
         if w_T in (B.w_i32, B.w_u32, B.w_i8, B.w_u8, B.w_f64, B.w_bool):
             return pyval
+        elif w_T in (B.w_i64, B.w_u64):
+            return int(pyval)
         elif w_T is B.w_complex128:
             return (pyval.real, pyval.imag)
         elif w_T is B.w_f32:
             return float(pyval)
         elif w_T is B.w_str:
             # XXX: with the GC, we need to think how to keep this alive
-            return ll_spy_Str_new(self.ll, pyval)
+            return ll_str_new(self.ll, pyval)
+        elif w_T is B.w_bytes:
+            # XXX: with the GC, we need to think how to keep this alive
+            return ll_bytes_new(self.ll, pyval)
         elif isinstance(w_T, W_PtrType):
             assert isinstance(pyval, WasmPtr)
             return (pyval.addr, pyval.length)
@@ -103,6 +110,9 @@ class WasmFuncWrapper:
             # the function accepts a struct by value; wasmtime allows to pass
             # a flat sequence of fields. This is the opposite of what we do in
             # to_py_result. It works only for flat structs with simple types.
+            if isinstance(pyval, slice):
+                # convert slice into the equivalent UnwrappedStruct
+                pyval = self.vm.unwrap(self.vm.wrap(pyval))
             assert isinstance(pyval, UnwrappedStruct)
             return tuple(pyval._content.values())
         else:
@@ -130,19 +140,34 @@ class WasmFuncWrapper:
         if w_T is TYPES.w_NoneType:
             assert res is None
             return None
-        elif w_T in (B.w_i8, B.w_u8, B.w_i32, B.w_u32, B.w_f64, B.w_f32):
+        elif w_T in (B.w_f64, B.w_f32):
             return res
+        # return fixedints for the integer types, to match what the interp
+        # backend does (vm.unwrap -> spy_unwrap). For u64 this also takes care
+        # of reinterpreting the signed i64 returned by WASM as unsigned.
+        elif w_T is B.w_i8:
+            return fixedint.Int8(res)
+        elif w_T is B.w_u8:
+            return fixedint.UInt8(res)
+        elif w_T is B.w_i32:
+            return fixedint.Int32(res)
+        elif w_T is B.w_u32:
+            return fixedint.UInt32(res)
+        elif w_T is B.w_i64:
+            return fixedint.Int64(res)
+        elif w_T is B.w_u64:
+            return fixedint.UInt64(res)
         elif w_T is B.w_complex128:
             real, imag = res
             return complex(real, imag)
         elif w_T is B.w_bool:
             return bool(res)
         elif w_T is B.w_str:
-            # res is a  spy_Str*
-            addr = res
-            length = self.ll.mem.read_i32(addr)
-            utf8 = self.ll.mem.read(addr + 8, length)
+            _, _, utf8 = self.ll.read_str(res)
             return utf8.decode("utf-8")
+        elif w_T is B.w_bytes:
+            _, _, data = self.ll.read_bytes(res)
+            return data
         elif w_T is RB.w_RawBuffer:
             # res is a  spy_RawBuffer*
             # On wasm32, it looks like this:
@@ -167,9 +192,14 @@ class WasmFuncWrapper:
             # converts them into a list, flattening nested structs
             assert isinstance(res, list)
             pyres = unflatten_struct(self.ll, w_T, res)
-            if w_T.fqn == FQN("_list::list[i32]::_ListImpl"):
-                # we support only reading list[i32] for tests
+            if w_T.fqn == FQN(
+                "_list::list[i32]::_ListImpl"
+            ):  # reading list[i32] for tests
                 return self._to_pylist_i32(pyres)
+            elif w_T.fqn == FQN(
+                "_list::list[str]::_ListImpl"
+            ):  # reading list[str] for tests
+                return self._to_pylist_str(pyres)
             elif self.vm.is_list_type(w_T):
                 raise NotImplementedError(f"Reading {w_T.fqn} out of WASM memory")
             elif w_T.fqn == FQN("_dict::dict[i32, i32]::_dict"):
@@ -205,6 +235,31 @@ class WasmFuncWrapper:
             item_addr = items_addr + i * 4
             item = self.ll.mem.read_i32(item_addr)
             result.append(item)
+
+        return result
+
+    def _to_pylist_str(self, pyres: UnwrappedStruct) -> list[Any]:
+        assert "__ll__" in pyres._content
+        ll_ptr = pyres._content["__ll__"]
+        assert isinstance(ll_ptr, WasmPtr)
+
+        # Read ListData struct from memory
+        # struct ListData {
+        #     i32 length;
+        #     i32 capacity;
+        #     ptr[StrObject] items;  // represented as {addr, length} in debug mode
+        # }
+
+        addr = ll_ptr.addr
+        list_length = self.ll.mem.read_i32(addr)
+        items_addr = self.ll.mem.read_i32(addr + 8)
+
+        result = []
+        for i in range(list_length):
+            item_addr = items_addr + i * 4
+            str_data_addr = self.ll.mem.read_i32(item_addr)
+            _, _, b = self.ll.read_str(str_data_addr)
+            result.append(b.decode())
 
         return result
 
@@ -282,11 +337,10 @@ def unflatten_struct(
                 content[w_field.name] = WasmPtr(addr, length)
                 idx += 2
             elif w_field.w_T is B.w_str:
-                # str fields are spy_Str* pointers; read from WASM memory
+                # str fields are spy_StrObject* pointers; read from WASM memory
                 addr = flat_values[idx]
                 if ll is not None:
-                    length = ll.mem.read_i32(addr)
-                    utf8 = ll.mem.read(addr + 8, length)
+                    _, _, utf8 = ll.read_str(addr)
                     content[w_field.name] = utf8.decode("utf-8")
                 else:
                     content[w_field.name] = addr

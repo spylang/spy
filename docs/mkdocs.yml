@@ -44,7 +44,11 @@ markdown_extensions:
       alternate_style: true
   - toc:
       permalink: true
+      toc_depth: 3
   - def_list
+
+plugins:
+  - mkdocs-typer2
 
 nav:
   - Home: index.md
@@ -52,12 +56,18 @@ nav:
   - Language features:
     - howto/main_function.md
     - howto/generics.md
-  - API Reference:
-    - api_reference/python_builtins.md
-    - api_reference/spy_builtins.md
-    - api_reference/spy_module.md
+  - Reference:
+    - reference/python_builtins.md
+    - reference/spy_builtin_functions.md
+    - reference/builtin_types.md
+    - reference/spy_module.md
+    - reference/cli.md
+    - reference/environment.md
   - Unsorted notes:
       - Low-level memory model: llmem.md
+  - AI-generated docs:
+      - ai-generated/index.md
+      - llwasm, the low-level WASM layer: ai-generated/llwasm.md
 
 # Example navigation structure with subsections:
 # nav:

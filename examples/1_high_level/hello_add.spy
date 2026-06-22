@@ -1,0 +1,25 @@
+"""
+Things to notice:
+  - Red functions require type annotations.
+  - After redshift, print is specialized.
+  - Press the `redshift` button and study the output — this is a good first
+    example to understand what redshift does.
+
+Redshift is the compilation phase during which SPy applies:
+  - partial evaluation of all blue expressions and functions,
+  - concretization of all generic types,
+  - static dispatch of all function calls, and
+  - type checking.
+
+The distinction between "blue" (compile-time) and "red" (runtime) is central
+to SPy and will be explained in the next examples.
+"""
+
+
+def add(x: i32, y: i32) -> i32:
+    return x + y
+
+
+def main() -> None:
+    print("Hello from SPy 🥸")
+    print(add(10, 20))

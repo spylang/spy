@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Annotated, Any, Protocol
 
 from spy.errors import SPyError
 from spy.vm.object import W_Object
-from spy.vm.primitive import W_F64, W_I8, W_I32, W_U8, W_U32, W_Bool
+from spy.vm.primitive import W_F64, W_I8, W_I32, W_I64, W_U8, W_U32, W_U64, W_Bool
 
 from . import OP
 
@@ -142,7 +142,8 @@ def make_unsigned_pow(T: str, pyclass: type[W_Object]) -> None:
 make_ops("i32", W_I32)
 make_signed_pow("i32", W_I32)
 make_ops("u32", W_U32)
-make_unsigned_pow("u32", W_U32)
+make_ops("i64", W_I64)
+make_ops("u64", W_U64)
 make_ops("i8", W_I8)
 make_signed_pow("i8", W_I8)
 make_ops("u8", W_U8)

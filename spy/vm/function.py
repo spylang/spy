@@ -241,6 +241,12 @@ class W_Func(W_Object):
 
     _pure_fqns = {
         FQN("builtins::type::__new__"),
+        FQN("_str::methods::__add__"),
+        FQN("_str::methods::__mul__"),
+        FQN("_str::methods::__getitem__"),
+        FQN("_str::methods::__len__"),
+        FQN("_str::methods::__repr__"),
+        FQN("_str::methods::replace"),
     }
 
     def compute_inner_ns(self, args_w: Sequence[W_Object]) -> FQN:

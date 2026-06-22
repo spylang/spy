@@ -1,0 +1,24 @@
+"""
+Things to notice:
+  - @blue funcs are completely resolved at redshift time.
+  - `make_adder` is not present in the redshifted or .c file.
+  - Type annotations in blue functions are optional and default to `dynamic`.
+  - Parameters can be a type to get generics but other types can be used
+    (here i32 and float).
+  - Generic functions with the [] syntax are just syntactic sugar for a
+    `@blue.generic` function factory.
+  - Redshift inserts type conversions.
+"""
+
+
+def make_adder[T, x](y: T) -> T:
+    return x + y
+
+
+add_4 = make_adder[i32, 4]
+add_pi = make_adder[f64, 3.1415]
+
+
+def main() -> None:
+    print(add_4(38))
+    print(add_pi(10))

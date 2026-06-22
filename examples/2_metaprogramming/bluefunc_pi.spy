@@ -1,0 +1,37 @@
+"""
+Things to notice:
+  - @blue funcs are completely resolved at redshift time.
+  - `get_pi` is not present in the redshifted or .c file.
+  - Type annotations in blue functions are optional and default to `dynamic`.
+
+Note: `redshift --linearize` "linearises" the `__block__`, which can give
+simpler output for the print calls with more than one argument.
+"""
+
+
+@blue
+def get_pi():
+    """
+    Compute an approximation of PI using the Leibniz series
+    """
+    tol = 0.001
+    pi_approx = 0.0
+    k = 0
+    term = 1.0  # Initial term to enter the loop
+
+    while abs(term) > tol:
+        if k % 2 == 0:
+            term = 1.0 / (2 * k + 1)
+        else:
+            term = -1 * 1.0 / (2 * k + 1)
+
+        pi_approx = pi_approx + term
+        k = k + 1
+
+    return 4 * pi_approx
+
+
+def main() -> None:
+    pi = get_pi()
+    print("pi:", pi)
+    print("tau:", 2 * pi)

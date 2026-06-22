@@ -1,12 +1,37 @@
-name = "SPy playground Copy"
+name = "SPy playground"
 packages = [ "micropip"]
 
 [files]
 "pyscript.toml" = ""
-"hello_add.spy" = "examples/"
-"bluefunc_adder.spy" = "examples/"
-"point.spy" = "examples/"
-"myarray.spy" = "examples/"
+
+"./examples/1_high_level/hello.spy" = "examples/1_high_level/"
+"./examples/1_high_level/hello_add.spy" = "examples/1_high_level/"
+"./examples/1_high_level/var_const.spy" = "examples/1_high_level/"
+"./examples/1_high_level/factorial.spy" = "examples/1_high_level/"
+"./examples/1_high_level/fibo.spy" = "examples/1_high_level/"
+"./examples/1_high_level/exit_code.spy" = "examples/1_high_level/"
+"./examples/1_high_level/collections.spy" = "examples/1_high_level/"
+"./examples/1_high_level/str_bytes.spy" = "examples/1_high_level/"
+"./examples/1_high_level/fileio.spy" = "examples/1_high_level/"
+
+"./examples/2_metaprogramming/bluefunc_pi.spy" = "examples/2_metaprogramming/"
+"./examples/2_metaprogramming/bluefunc_adder.spy" = "examples/2_metaprogramming/"
+"./examples/2_metaprogramming/blue_generic.spy" = "examples/2_metaprogramming/"
+"./examples/2_metaprogramming/deco.spy" = "examples/2_metaprogramming/"
+"./examples/2_metaprogramming/metafunc.spy" = "examples/2_metaprogramming/"
+"./examples/2_metaprogramming/metafunc_variadic.spy" = "examples/2_metaprogramming/"
+
+"./examples/3_low_level/point.spy" = "examples/3_low_level/"
+"./examples/3_low_level/smallpoint.spy" = "examples/3_low_level/"
+"./examples/3_low_level/mem.spy" = "examples/3_low_level/"
+
+"./examples/4_advanced/generic_types.spy" = "examples/4_advanced/"
+"./examples/4_advanced/myarray.spy" = "examples/4_advanced/"
+"./examples/4_advanced/convert.spy" = "examples/4_advanced/"
+"./examples/4_advanced/type_name_and_fqn.spy" = "examples/4_advanced/"
+"./examples/4_advanced/annotated.spy" = "examples/4_advanced/"
+"./examples/4_advanced/unroll_nested_loops.spy" = "examples/4_advanced/"
+
 "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/jquery.py" = "ltk/jquery.py"
 "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/widgets.py" = "ltk/widgets.py"
 "https://raw.githubusercontent.com/pyscript/ltk/main/ltk/pubsub.py" = "ltk/pubsub.py"

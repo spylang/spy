@@ -2,14 +2,13 @@ import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
-from os import getenv
 from typing import Literal, Optional
 
 import spy.libspy
+from spy.build.build_info import BuildTarget, BuildType
+from spy.build.flags import get_cc, get_cflags, get_ldflags, get_libdir
 
-BuildTarget = Literal["native", "wasi", "emscripten"]
 OutputKind = Literal["exe", "lib", "py-cffi"]
-BuildType = Literal["release", "debug"]
 GCOption = Literal["none", "bdwgc"]
 
 
@@ -27,30 +26,15 @@ class BuildConfig:
 # ======= CFLAGS and LDFLAGS logic =======
 
 # fmt: off
-CFLAGS = [
+EXTRA_CFLAGS = [
     "--std=c99",
     "-Wfatal-errors",
     "-fdiagnostics-color=always",  # force colors
-    "-I", str(spy.libspy.INCLUDE)
 ]
 LDFLAGS = [
     "-lm"  # always include libm for now. Ideally we should do it only if needed
 ]
 
-WARNING_CFLAGS = ["-Werror=implicit-function-declaration"]
-WARNING_AS_ERROR_CFLAGS = ["-Werror", "-Wno-unreachable-code"]
-
-RELEASE_CFLAGS  = ["-DSPY_RELEASE", "-O3", "-flto"]
-RELEASE_LDFLAGS = ["-flto"]
-
-DEBUG_CFLAGS    = ["-DSPY_DEBUG", "-O0", "-g"]
-DEBUG_LDFLAGS: list[str] = []
-
-WASM_CFLAGS = [
-    "-mmultivalue",
-    "-Xclang", "-target-abi",
-    "-Xclang", "experimental-mv"
-]
 # fmt: on
 
 
@@ -61,78 +45,60 @@ class CompilerConfig:
         self.cflags = []
         self.ldflags = []
 
-        self.cflags += CFLAGS
-        self.cflags += [f"-DSPY_TARGET_{config.target.upper()}"]
-
-        # e.g. 'spy/libspy/build/native/release/'
-        self.ldflags += LDFLAGS
         if config.static:
             assert config.target == "native"
-            libdir_target = "native-static"
+            flags_target = "native-static"
         else:
-            libdir_target = config.target
-        libdir = spy.libspy.BUILD.join(libdir_target, config.build_type)
+            flags_target = config.target
+
+        self.CC = get_cc(flags_target)
+        self.cflags += get_cflags(
+            flags_target, config.build_type, config.warning_as_error
+        )
+        self.cflags += EXTRA_CFLAGS
+
+        self.ldflags += LDFLAGS
+        self.ldflags += get_ldflags(flags_target, config.build_type)
+
+        libdir = get_libdir(flags_target, config.build_type)
         if config.target == "wasi" and config.kind == "lib":
             # WASM libs are mostly used by tests: in this case we want to make sure to
-            # include the whole libspy.a, so that helper functions usch as spy_str_alloc
+            # include the whole libspy.a, so that helper functions such as spy_str_alloc
             # are always available.
             #
             # If you don't pass --whole-archive, the linker will silently discard all
             # the .o files which are not used (so e.g. if you never call any str_*
             # function, str.o is discarded and spy_str_alloc is not present at all).
-            libspy_a = str(libdir.join("libspy.a"))
+            libspy_a = str(
+                spy.libspy.BUILD.join(flags_target, config.build_type, "libspy.a")
+            )
             self.ldflags += [
                 "-Wl,--whole-archive",
                 libspy_a,
                 "-Wl,--no-whole-archive",
-            ]  # fmt: skp
+            ]  # fmt: skip
         else:
             self.ldflags += [
-                "-L", str(libdir),
+                "-L", libdir,
                 "-lspy",
             ]  # fmt: skip
 
-        if config.warning_as_error or getenv("SPY_WERROR") in ("true", "1"):
-            self.cflags += WARNING_AS_ERROR_CFLAGS
-        else:
-            self.cflags += WARNING_CFLAGS
-
-        if config.build_type == "release":
-            self.cflags += RELEASE_CFLAGS
-            self.ldflags += RELEASE_LDFLAGS
-        else:
-            self.cflags += DEBUG_CFLAGS
-            self.ldflags += DEBUG_CFLAGS
-
         # target specific flags
-        if config.target == "native" and config.static:
-            self.CC = "python -m ziglang cc"
-            self.ext = ""
-            self.cflags += ["--target=native-native-musl"]
-            self.ldflags += ["--target=native-native-musl", "-static"]
-
-        elif config.target == "native":
-            self.CC = "cc"
+        if config.target == "native":
             self.ext = ""
 
         elif config.target == "wasi":
-            # self.CC = 'zig cc'
-            self.CC = "python -m ziglang cc"
             self.ext = ".wasm"
-            self.cflags += WASM_CFLAGS
-            self.cflags += ["--target=wasm32-wasi-musl"]
-            self.ldflags += ["--target=wasm32-wasi-musl"]
             if config.kind == "lib":
                 self.ldflags += ["-mexec-model=reactor"]
 
         elif config.target == "emscripten":
-            self.CC = "emcc"
             self.ext = ".mjs"
             post_js = spy.libspy.SRC.join("emscripten_extern_post.js")
-            self.cflags += WASM_CFLAGS
             self.ldflags += [
                 "-sWASM_BIGINT",
                 "-sERROR_ON_UNDEFINED_SYMBOLS=0",
+                "-sEXPORTED_RUNTIME_METHODS=HEAP8",  # for exporting function in wasm, and running on CI
                 f"--extern-post-js={post_js}",
             ]
 

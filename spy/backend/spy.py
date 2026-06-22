@@ -1,15 +1,24 @@
 import re
-from typing import Literal, Optional, TypeGuard
+from typing import TYPE_CHECKING, Literal, Optional, TypeGuard
+
+# fixedint/__init__.pyi overrides FixedInt and mypy thinks it's a function;
+# convince it back that it's a type (see also spy/vm/primitive.py)
+if TYPE_CHECKING:
+    from fixedint import _FixedInt as FixedInt
+else:
+    from fixedint import FixedInt
 
 from spy import ast
 from spy.analyze.scope import SymTable
 from spy.fqn import FQN
+from spy.parser import Parser
 from spy.textbuilder import TextBuilder
 from spy.util import magic_dispatch
 from spy.vm.b import TYPES, B
 from spy.vm.exc import W_Exception
 from spy.vm.function import W_ASTFunc
 from spy.vm.modules.__spy__.interp_list import W_InterpList
+from spy.vm.modules.types import W_Loc as W_Loc
 from spy.vm.object import W_Object, W_Type
 from spy.vm.vm import SPyVM
 
@@ -345,10 +354,49 @@ class SPyBackend:
         # including ast.Auto).
         return ""
 
-    def fmt_expr_Constant(self, const: ast.Constant) -> str:
+    def fmt_expr_Const(self, const: ast.Const) -> str:
+        vm = self.vm
+        w_T = const.w_T
+        w_val = const.w_val
+        if w_T is B.w_bool:
+            return repr(vm.unwrap_bool(w_val))
+        elif w_T is B.w_i32:
+            return repr(int(vm.unwrap_i32(w_val)))
+        elif w_T is B.w_f64:
+            return repr(float(vm.unwrap_f64(w_val)))
+        elif w_T is B.w_f32:
+            return f"f32({float(vm.unwrap_f32(w_val))})"
+        elif w_T is B.w_complex128:
+            return repr(vm.unwrap_complex128(w_val))
+        elif w_T in (B.w_i8, B.w_u8, B.w_u32, B.w_i64, B.w_u64):
+            val = vm.unwrap(w_val)
+            prefix = self.IPREFIX[type(val)]
+            return f"{prefix}({int(val)})"
+        elif w_T is TYPES.w_NoneType:
+            assert w_val is B.w_None
+            return "None"
+        elif w_T is TYPES.w_Loc:
+            assert isinstance(w_val, W_Loc)
+            r = w_val.loc._repr()
+            return f"Loc('{r}')"
+        else:
+            raise NotImplementedError(f"WIP: {w_T}")
+
+    IPREFIX = {cls: name for name, cls in Parser.ITYPES.items()}
+
+    def fmt_expr_Literal(self, const: ast.Literal) -> str:
+        # for prefixed literals the value is a fixedint, whose repr is e.g.
+        # "Int32(42)"; emit the SPy source form i32(42) instead
+        val = const.value
+        if isinstance(val, FixedInt):
+            prefix = self.IPREFIX[type(val)]
+            return f"{prefix}({int(val)})"
+        return repr(val)
+
+    def fmt_expr_StrLiteral(self, const: ast.StrLiteral) -> str:
         return repr(const.value)
 
-    def fmt_expr_StrConst(self, const: ast.StrConst) -> str:
+    def fmt_expr_BytesLiteral(self, const: ast.BytesLiteral) -> str:
         return repr(const.value)
 
     def fmt_expr_FQNConst(self, const: ast.FQNConst) -> str:
@@ -361,10 +409,6 @@ class SPyBackend:
             m = w_val.message
             return f"{t}({m!r})"
         return self.fmt_fqn(const.fqn)
-
-    def fmt_expr_LocConst(self, const: ast.LocConst) -> str:
-        r = const.value._repr()
-        return f"Loc('{r}')"
 
     def fmt_expr_Name(self, name: ast.Name) -> str:
         return name.id
@@ -500,15 +544,15 @@ class SPyBackend:
             # `operator::raise('TypeError', ...)` -->."raise TypeError(...)"
             assert len(call.args) == 4
             etype, msg, fname, lineno = call.args
-            assert isinstance(etype, ast.StrConst)
-            assert isinstance(msg, ast.StrConst)
-            assert isinstance(fname, ast.StrConst)
-            assert isinstance(lineno, ast.Constant)
+            assert isinstance(etype, ast.StrLiteral)
+            assert isinstance(msg, ast.StrLiteral)
+            assert isinstance(fname, ast.StrLiteral)
+            assert isinstance(lineno, ast.Const)
             E = etype.value
             m = self.fmt_expr(msg)
             # show only the last part of the filename
             f = fname.value.split("/")[-1]
-            l = lineno.value
+            l = int(self.vm.unwrap_i32(lineno.w_val))
             if m == "''":
                 return f"raise {etype.value} # /.../{f}:{l}"
             else:

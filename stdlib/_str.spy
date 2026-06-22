@@ -1,0 +1,521 @@
+"""
+This module contains the applevel part of the `str` type.
+
+At the C level, `str` is defined by the spy_StrObject struct and related helper
+functions defined in str.h and str.c
+
+At interp level, the W_Str type is defined in vm/str.py.
+
+Finally, some of the methods are implemented at applevel in this file.
+
+The StrObject struct defined here MUST stay in sync with the one defined in C. It is
+possible to cast between str and gc_ptr[StrObject] using StrObject.{from,to}_str.
+"""
+
+from unsafe import (
+    gc_ptr,
+    ptr_copy,
+    ptr_copy_slice,
+    ptr_cmp_slice,
+    _str_to_StrObject,
+    _alloc_StrObject,
+    _StrObject_to_str,
+)
+from unsafe import _alloc_BytesObject, _BytesObject_to_bytes
+from __spy__ import lookup_fqn
+from operator import OpSpec
+from types import NoneType
+
+
+# this MUST stay in sync with the equivalent struct declared in str.h
+@struct
+class StrObject:
+    length: i32
+    hash: i32
+    utf8: gc_ptr[u8]
+
+    @staticmethod
+    def alloc(n: i32) -> gc_ptr[StrObject]:
+        """
+        Allocate a new StrObject AND the its utf8 buffer.
+        If you want a split allocation, you must gc_malloc[StrObject] manually.
+        """
+        return _alloc_StrObject(n)
+
+    @staticmethod
+    def from_str(s: str) -> gc_ptr[StrObject]:
+        """
+        Cast `s` into its low level gc_ptr[StrObject].
+
+        This is just a cast and the returned ptr points to the same area of memory as
+        `s`. You must be careful NOT to modify the content, else as modifications are
+        visible from the outside.
+        """
+        return _str_to_StrObject(s)
+
+    @staticmethod
+    def to_str(ll: gc_ptr[StrObject]) -> str:
+        """
+        Cast a `ll` into a high level `str`.
+
+        Once a newly-allocated StrObject is casted to `str`, it should be considered
+        "locked" and immutable.
+        """
+        return _StrObject_to_str(ll)
+
+
+@struct
+class methods:
+    """
+    This is a special "fake" empty struct.
+
+    It is used solely as a container for str methods defined at applevel, which are
+    referenced by W_Str.lazy_attributes.
+
+    Because of that, the 'self' must be manually annotated with the `str` type.
+    """
+
+    # each method defined here should also have a corresponding entry in
+    # W_Str.__spy_lazy_attributes__.
+
+    def __len__(self: str) -> i32:
+        ll = StrObject.from_str(self)
+        return ll.length
+
+    @blue.metafunc
+    def __getitem__(self, wam_i):
+        if wam_i.static_type == i32:
+            def _getitem_int(s: str, i: i32) -> str:
+                # XXX this is wrong: it should return a code point
+                ll = StrObject.from_str(s)
+                n = ll.length
+                if i < 0:
+                    i = i + n
+                if i < 0 or i >= n:
+                    raise IndexError("string index out of bound")
+                out = StrObject.alloc(1)
+                out.hash = 0
+                out.utf8[0] = ll.utf8[i]
+                return StrObject.to_str(out)
+            return OpSpec(_getitem_int, [self, wam_i])
+        
+        if wam_i.static_type == slice:
+            def _getitem_slice(s: str, slc: slice) -> str:
+                # Fast path for trivial slices:
+                if (slc.start == 0 or slc.start_is_none) and (slc.stop == -1 or slc.stop_is_none) and (slc.step == 1 or slc.step_is_none): return s
+                
+                indices = slc.indices(len(s))
+                start = indices.start
+                stop = indices.stop
+                step = indices.step
+
+                ll = StrObject.from_str(s)
+                
+                # Fast path for simple slices
+                if slc.step == 1:
+                    length = stop - start
+                    if length <= 0:
+                        return ""
+                    llnew = StrObject.alloc(length)
+                    ptr_copy_slice(llnew.utf8, 0, length, ll.utf8, start, stop)
+                    return StrObject.to_str(llnew)
+
+                # Calculate the length of the final string
+                # Note that step cannot be zero thanks to trap in slice.__new__
+                new_string_length: int = 0
+                if step < 0:
+                    if stop < start:
+                        new_string_length = int((start - stop - 1) / (-step)) + 1
+                else:
+                    if start < stop:
+                        new_string_length = int((stop - start - 1) / step) + 1
+
+                if new_string_length == 0:
+                    return ""
+
+                llnew = StrObject.alloc(new_string_length)
+                
+                current = start
+                i = 0
+                if step > 0:
+                    while current < stop:
+                        # ptr_copy_slice(dst, dstart, dend, src, sstart, send)
+                        ptr_copy_slice(llnew.utf8, i, i+1, ll.utf8, current, current+1)
+                        current += step
+                        i += 1
+                else:
+                    current = start
+                    while current > stop:
+                        ptr_copy_slice(llnew.utf8, i, i+1, ll.utf8, current, current+1)
+                        current += step
+                        i += 1
+
+                return StrObject.to_str(llnew)
+            return OpSpec(_getitem_slice, [self, wam_i])
+        
+        return OpSpec.NULL
+
+    def __add__(self: str, other: str) -> str:
+        a = StrObject.from_str(self)
+        b = StrObject.from_str(other)
+        out = StrObject.alloc(a.length + b.length)
+        out.hash = 0
+        ptr_copy_slice(out.utf8, 0, a.length, a.utf8, 0, a.length)
+        ptr_copy_slice(out.utf8, a.length, a.length + b.length, b.utf8, 0, b.length)
+        return StrObject.to_str(out)
+
+    def __mul__(self: str, n: i32) -> str:
+        ll = StrObject.from_str(self)
+        out = StrObject.alloc(ll.length * n)
+        out.hash = 0
+        l = ll.length
+        for i in range(n):
+            ptr_copy_slice(out.utf8, i * l, (i + 1) * l, ll.utf8, 0, l)
+        return StrObject.to_str(out)
+
+    def encode(self: str, encoding: str) -> bytes:
+        # we don't support circular imports and function-level imports. This is a hacky
+        # workaround for 'from _bytes import BytesObject'
+        BytesObject = lookup_fqn("_bytes::BytesObject")
+        if encoding != "utf-8":
+            raise ValueError("only 'utf-8' encoding is supported")
+        ll = StrObject.from_str(self)
+        out = _alloc_BytesObject(ll.length)
+        out.hash = 0
+        if ll.length > 0:
+            ptr_copy(out.data, ll.utf8, ll.length)
+        return _BytesObject_to_bytes(out)
+
+    def isascii(self: str) -> bool:
+        ll = StrObject.from_str(self)
+        i = 0
+        max_ascii: u8 = 127
+        while i < ll.length:
+            if ll.utf8[i] > max_ascii:
+                return False
+            i = i + 1
+        return True
+
+    def __repr__(self: str) -> str:
+        ll = StrObject.from_str(self)
+        # Choose quote: ' by default, but " if the string contains ' but not "
+        single = ord(b"'")
+        double = ord(b'"')
+        quote = single
+        for i in range(ll.length):
+            ci = ll.utf8[i]
+            if ci == single:
+                quote = double
+            if ci == double:
+                quote = single
+                # found ", stop scanning since ' wins on conflict
+                # (matches C behaviour: it 'break's here)
+                break
+
+        # First pass: compute the output length
+        out_len: i32 = 2  # surrounding quotes
+        for m in range(ll.length):
+            c = ll.utf8[m]
+            if c == ord(b"\\") or c == quote:
+                out_len = out_len + 2
+            elif c == ord(b"\n") or c == ord(b"\r") or c == ord(b"\t"):
+                out_len = out_len + 2
+            elif c < ord(b" "):
+                out_len = out_len + 4  # \xNN
+            else:
+                out_len = out_len + 1
+
+        # Second pass: fill the buffer
+        out = StrObject.alloc(out_len)
+        out.hash = 0
+        j: i32 = 0
+        out.utf8[j] = quote
+        j = j + 1
+        for k in range(ll.length):
+            c2 = ll.utf8[k]
+            if c2 == ord(b"\\"):
+                out.utf8[j] = ord(b"\\")
+                j = j + 1
+                out.utf8[j] = ord(b"\\")
+                j = j + 1
+            elif c2 == quote:
+                out.utf8[j] = ord(b"\\")
+                j = j + 1
+                out.utf8[j] = quote
+                j = j + 1
+            elif c2 == ord(b"\n"):
+                out.utf8[j] = ord(b"\\")
+                j = j + 1
+                out.utf8[j] = ord(b"n")
+                j = j + 1
+            elif c2 == ord(b"\r"):
+                out.utf8[j] = ord(b"\\")
+                j = j + 1
+                out.utf8[j] = ord(b"r")
+                j = j + 1
+            elif c2 == ord(b"\t"):
+                out.utf8[j] = ord(b"\\")
+                j = j + 1
+                out.utf8[j] = ord(b"t")
+                j = j + 1
+            elif c2 < ord(b" "):
+                # \xNN hex escape
+                out.utf8[j] = ord(b"\\")
+                j = j + 1
+                out.utf8[j] = ord(b"x")
+                j = j + 1
+                hi: i32 = i32(c2) >> 4
+                lo: i32 = i32(c2) & 15
+                if hi < 10:
+                    out.utf8[j] = u8(hi) + ord(b"0")
+                else:
+                    out.utf8[j] = u8(hi - 10) + ord(b"a")
+                j = j + 1
+                if lo < 10:
+                    out.utf8[j] = u8(lo) + ord(b"0")
+                else:
+                    out.utf8[j] = u8(lo - 10) + ord(b"a")
+                j = j + 1
+            else:
+                out.utf8[j] = c2
+                j = j + 1
+        out.utf8[j] = quote
+        return StrObject.to_str(out)
+
+    def replace(self: str, old: str, new: str) -> str:
+        ll_orig = StrObject.from_str(self)
+        ll_old = StrObject.from_str(old)
+        ll_new = StrObject.from_str(new)
+        orig_len = ll_orig.length
+        old_len = ll_old.length
+        new_len = ll_new.length
+
+        if old_len == 0:
+            # insert `new` before each byte and after the last
+            result_len = orig_len + (orig_len + 1) * new_len
+            res = StrObject.alloc(result_len)
+            res.hash = 0
+            pos: i32 = 0
+            for i in range(orig_len):
+                if new_len > 0:
+                    ptr_copy_slice(
+                        res.utf8, pos, pos + new_len, ll_new.utf8, 0, new_len
+                    )
+                    pos = pos + new_len
+                res.utf8[pos] = ll_orig.utf8[i]
+                pos = pos + 1
+            if new_len > 0:
+                ptr_copy_slice(res.utf8, pos, pos + new_len, ll_new.utf8, 0, new_len)
+            return StrObject.to_str(res)
+
+        # First pass: count occurrences
+        count: i32 = 0
+        i = 0
+        while i <= orig_len - old_len:
+            if (
+                ptr_cmp_slice(ll_orig.utf8, i, i + old_len, ll_old.utf8, 0, old_len)
+                == 0
+            ):
+                count = count + 1
+                i = i + old_len
+            else:
+                i = i + 1
+
+        if count == 0:
+            # Return the original string when no occurrences are found
+            res = StrObject.alloc(orig_len)
+            res.hash = 0
+            if orig_len > 0:
+                ptr_copy(res.utf8, ll_orig.utf8, orig_len)
+            return StrObject.to_str(res)
+
+        # Second pass: build the result
+        result_len = orig_len + count * (new_len - old_len)
+        res = StrObject.alloc(result_len)
+        res.hash = 0
+        pos = 0
+        i = 0
+        while i <= orig_len - old_len:
+            c = ptr_cmp_slice(ll_orig.utf8, i, i + old_len, ll_old.utf8, 0, old_len)
+            if c == 0:  # found
+                if new_len > 0:
+                    ptr_copy_slice(
+                        res.utf8, pos, pos + new_len, ll_new.utf8, 0, new_len
+                    )
+                    pos = pos + new_len
+                i = i + old_len
+            else:
+                res.utf8[pos] = ll_orig.utf8[i]
+                pos = pos + 1
+                i = i + 1
+        # Copy remaining tail
+        remaining = orig_len - i
+        if remaining > 0:
+            ptr_copy_slice(
+                res.utf8, pos, pos + remaining, ll_orig.utf8, i, i + remaining
+            )
+        return StrObject.to_str(res)
+
+    def upper(self: str) -> str:
+        # XXX: this works only for ASCII strings but it's good enough for now
+        ll = StrObject.from_str(self)
+        llnew = StrObject.alloc(ll.length)
+        llnew.hash = 0
+        for i in range(ll.length):
+            ch = ll.utf8[i]
+            if ord(b"a") <= ch and ch <= ord(b"z"):
+                llnew.utf8[i] = ch - (ord(b"a") - ord(b"A"))
+            else:
+                llnew.utf8[i] = ch
+        return StrObject.to_str(llnew)
+    
+    @blue.metafunc
+    def split(m_self, *args_m):
+        if len(args_m) == 1 and args_m[0].static_type == str:
+            return OpSpec(_split_sep)
+
+        elif len(args_m) == 0:
+            return OpSpec(_split_whitespace)
+
+        return OpSpec.NULL
+
+
+    def isspace(self: str) -> bool:
+        """
+        A very barebones implementation of str.isspace which only works for ascii characters
+        When unicode support is implemented, this will need a rewrite
+        """
+        if len(self) == 0: return False
+        llself = StrObject.from_str(self)
+        for i in range(llself.length):
+            ch = llself.utf8[i]
+            # These are all the indices < 256 for which str.isspace() is true
+            # in CPython:
+            if not (u8(9) <= ch and ch <= u8(32)) or ch == u8(133) or ch == u8(160):
+                return False
+        
+        return True
+
+def _ll_isspace(ch: u8) -> bool:
+    """
+    A version of str.isspace that operates on single character indices (u8's)
+    For use in low level string code
+
+    As with str.isspace(), only valid for ascii characters, will need a rewrite when
+    unicode support is expanded.
+    """
+    return (u8(9) <= ch and ch <= u8(32)) or ch == u8(133) or ch == u8(160)
+
+def _split_sep(self: str, sep: str) -> list[str]:
+    # impl for metafunc methods::split
+    # Based on CPython stringlib/split.h
+    len_self = len(self)
+    if len_self == 0:
+        return [""]
+
+        
+        sep_len_check = len(sep)
+        if sep_len_check == 0:
+            raise ValueError("empty separator")
+
+    # TODO - CPython has an additional branch here if the separator is only
+    # a single char. Would be good to do in a future PR
+            
+    llself = StrObject.from_str(self)
+    llsep = StrObject.from_str(sep)
+    sep_len = llsep.length
+    
+    # For each starting position in the target string, look through len(sep) characters
+    # If all of them match the characters in sep, we have a match and should split here
+    # If not, increment starting position and try again
+        
+    # We would ideally pre-allocate a list with a reasonable guess at capacity
+    # CPython uses the maxsplit parameter+1 (WIP not implemented yet), or 
+    # 12 if maxsplit is not given or if maxsplit > 12. Would be good to add here
+    # when pre-allocating a list of a given size is possible
+    result = list[str]()
+
+    # Starting positions in the target string
+    search_position: int = 0 
+
+    # Start of the next "chunk" to be added after we find the next separator (or end of target string)
+    start_of_chunk: int = 0 
+
+    while search_position < llself.length:
+        end_of_string = False
+        matched = True
+        for i in range(sep_len):
+            if search_position + i >= llself.length:
+                # Bail if we reach the end of the target string
+                matched=False
+                end_of_string = True
+                break
+            if not llself.utf8[search_position+i] == llsep.utf8[i]:
+                matched = False
+                break
+
+        if end_of_string:
+            break
+        elif matched:
+            # If we matched a separator, copy the items from start_of_chunk up to the 
+            # separator as the latest list item
+            new_len = search_position-start_of_chunk
+
+            llnew = StrObject.alloc(new_len)
+            ptr_copy_slice(llnew.utf8, 0, new_len, llself.utf8, start_of_chunk, start_of_chunk+new_len)
+
+            result.append(StrObject.to_str(llnew))
+            start_of_chunk = search_position + sep_len
+            search_position += sep_len
+        else:
+            search_position += 1
+        
+
+    if start_of_chunk < len_self:
+        # If we reach the end of the target string and we had characters after the final separator,
+        # add them as the final member of the result list
+        final_len = len_self - start_of_chunk
+        final = StrObject.alloc(final_len)
+        ptr_copy_slice(final.utf8, 0, final_len, llself.utf8, start_of_chunk, len_self)
+        result.append(StrObject.to_str(final))
+    else:
+        # If the final characters were a separator, append an empty string
+        result.append("")
+
+    return result
+
+def _split_whitespace(self:str) -> list[str]:
+    # impl for metafunc methods::split
+    # Based on CPython stringlib/split.h
+    len_self = len(self)
+    if len_self == 0:
+        return [""]
+
+    llself = StrObject.from_str(self)
+    
+    # Walking through the string, alternate matching against whitespace and
+    # non-whitespace characters
+    result = list[str]()
+
+    # Starting positions in the target string
+    lead_pointer = 0
+    rear_pointer = 0
+
+    while True:
+        # Look for a continuous group of whitespace
+        while lead_pointer < len_self and _ll_isspace(llself.utf8[lead_pointer]):
+            lead_pointer += 1
+        if lead_pointer == len_self: break
+
+        # Look for a continuous group of non-whitespace
+        rear_pointer = lead_pointer
+        while lead_pointer < len_self and not _ll_isspace(llself.utf8[lead_pointer]):
+            lead_pointer += 1
+        
+        # Add the non-whitespace chunk to the result list
+        llnew_len = lead_pointer - rear_pointer
+        llnew = StrObject.alloc(llnew_len)
+        ptr_copy_slice(llnew.utf8, 0, llnew_len, llself.utf8, rear_pointer, lead_pointer)
+        result.append(StrObject.to_str(llnew))
+
+    return result

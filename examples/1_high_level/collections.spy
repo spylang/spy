@@ -1,0 +1,36 @@
+"""
+Things to notice:
+  - Tuples, dicts, and lists work as in Python.
+  - Types are inferred from usage: `a = (2, "SPy")` gives a `tuple[i32, str]`.
+  - Heterogeneous tuples are fully supported; dict and list require uniform types.
+  - The length and element types of tuples must be known at compile time;
+    `tuple[T, ...]` is not supported yet (but will be).
+  - After redshift, collection operations are specialized and dispatch-free.
+
+Notes:
+
+  - `interp_` variants without type limitations exist:
+    `from __spy__ import interp_tuple, interp_list, interp_dict`.
+    For example, `interp_list[dynamic](1, "a", int)` is supported.
+    However, they can only be used in blue functions if you want to be able to build.
+
+  - The static versions are still missing many methods, but they are implemented
+    in SPy's own standard library, so contributions are welcome and relatively easy.
+"""
+
+
+def main() -> None:
+    a = (2, "SPy")
+    print(a[0])
+    print(a[1])
+    print(a)
+
+    b = {"a": 20}
+    print(b["a"])
+    print(b)
+
+    l = [""]
+    l[0] = "Hello"
+    l.append("SPy")
+    print(l[0], l[1])
+    print(l)

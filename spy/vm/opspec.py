@@ -121,6 +121,10 @@ class W_MetaArg(W_Object):
         self._w_val = w_val
         self.loc = loc
         self.sym = sym
+        # XXX: this sanity check fails in some tests. Uncomment it and fix the tests!
+        if w_val is not None:
+            # sanity check
+            assert vm.isinstance(w_val, w_static_T)
         if DEBUG_METAARG:
             self.debug_id = W_MetaArg.debug_counter
             W_MetaArg.debug_counter += 1

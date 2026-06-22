@@ -1,6 +1,9 @@
 from contextlib import contextmanager
+from ctypes import c_float as float32
 from types import NoneType
 from typing import TYPE_CHECKING, Iterator, Optional, Sequence
+
+from fixedint import Int8, Int32, Int64, UInt8, UInt32, UInt64
 
 from spy import ast
 from spy.analyze.symtable import Color, Symbol, SymTable, maybe_blue
@@ -154,6 +157,7 @@ class AbstractFrame:
                 color = "blue"
             else:
                 color = "red"
+
         self.locals[name] = LocalVar(
             varname=name, decl_loc=loc, color=color, w_T=w_type, w_val=None
         )
@@ -163,7 +167,13 @@ class AbstractFrame:
             self.declare_local(name, "red", B.w_bool, Loc.fake())
 
     def store_local(self, name: str, w_value: W_Object) -> None:
-        self.locals[name].w_val = w_value
+        lv = self.locals[name]
+        # sanity check
+        if isinstance(w_value, W_Cell):
+            assert self.vm.isinstance(w_value.get(), lv.w_T)
+        else:
+            assert self.vm.isinstance(w_value, lv.w_T)
+        lv.w_val = w_value
 
     def load_local(self, name: str) -> W_Object:
         localvar = self.locals.get(name)
@@ -550,7 +560,7 @@ class AbstractFrame:
         self.exec_stmt(specialized)
 
     def _specialize_assign_common(
-        self, loc: Loc, target: ast.StrConst, value: ast.Expr, expr: bool
+        self, loc: Loc, target: ast.StrLiteral, value: ast.Expr, expr: bool
     ) -> ast.AssignLocal | ast.AssignCell | ast.AssignExprLocal | ast.AssignExprCell:
         varname = target.value
         sym = self.symtable.lookup(varname)
@@ -617,7 +627,9 @@ class AbstractFrame:
     def exec_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
         self._execute_AssignLocal(assign.target, assign.value)
 
-    def _execute_AssignLocal(self, target: ast.StrConst, value: ast.Expr) -> W_MetaArg:
+    def _execute_AssignLocal(
+        self, target: ast.StrLiteral, value: ast.Expr
+    ) -> W_MetaArg:
         varname = target.value
         lv = self.locals.get(varname)
         if lv is None:
@@ -636,7 +648,7 @@ class AbstractFrame:
         self._execute_AssignCell(assign.target, assign.target_fqn, assign.value)
 
     def _execute_AssignCell(
-        self, target: ast.StrConst, target_fqn: FQN, value: ast.Expr
+        self, target: ast.StrLiteral, target_fqn: FQN, value: ast.Expr
     ) -> W_MetaArg:
         wam = self.eval_expr(value)
         if not self.redshifting:
@@ -693,7 +705,7 @@ class AbstractFrame:
             expr = ast.GetItem(
                 loc=unpack.value.loc,
                 value=unpack.value,
-                args=[ast.Constant(loc=unpack.value.loc, value=i)],
+                args=[ast.Literal(loc=unpack.value.loc, value=i)],
             )
             # fabricate an ast.Assign
             # XXX: ideally we should cache the specialization instead of
@@ -798,7 +810,7 @@ class AbstractFrame:
         # way, 'continue' works out of the box.
         iter_name = f"_$iter{for_node.seq}"
         iter_sym = self.symtable.lookup(iter_name)
-        iter_target = ast.StrConst(for_node.loc, iter_name)
+        iter_target = ast.StrLiteral(for_node.loc, iter_name)
 
         # it = X.__fastiter__()
         init_iter = ast.Assign(
@@ -807,7 +819,7 @@ class AbstractFrame:
             value=ast.CallMethod(
                 loc=for_node.loc,
                 target=for_node.iter,
-                method=ast.StrConst(for_node.loc, "__fastiter__"),
+                method=ast.StrLiteral(for_node.loc, "__fastiter__"),
                 args=[],
             ),
         )
@@ -818,7 +830,7 @@ class AbstractFrame:
             value=ast.CallMethod(
                 loc=for_node.loc,
                 target=ast.NameLocalDirect(for_node.loc, iter_sym),
-                method=ast.StrConst(for_node.loc, "__item__"),
+                method=ast.StrLiteral(for_node.loc, "__item__"),
                 args=[],
             ),
         )
@@ -829,7 +841,7 @@ class AbstractFrame:
             value=ast.CallMethod(
                 loc=for_node.loc,
                 target=ast.NameLocalDirect(for_node.loc, iter_sym),
-                method=ast.StrConst(for_node.loc, "__next__"),
+                method=ast.StrLiteral(for_node.loc, "__next__"),
                 args=[],
             ),
         )
@@ -839,7 +851,7 @@ class AbstractFrame:
             test=ast.CallMethod(
                 loc=for_node.loc,
                 target=ast.NameLocalDirect(for_node.loc, iter_sym),
-                method=ast.StrConst(for_node.loc, "__continue_iteration__"),
+                method=ast.StrLiteral(for_node.loc, "__continue_iteration__"),
                 args=[],
             ),
             body=[assign_item, advance_iter] + for_node.body,
@@ -885,22 +897,50 @@ class AbstractFrame:
             auto.loc,
         )
 
-    def eval_expr_Constant(self, const: ast.Constant) -> W_MetaArg:
+    def eval_expr_Const(self, const: ast.Const) -> W_MetaArg:
+        assert const.w_T is not None
+        return W_MetaArg(self.vm, "blue", const.w_T, const.w_val, const.loc)
+
+    def eval_expr_Literal(self, lit: ast.Literal) -> W_MetaArg:
         # unsupported literals are rejected directly by the parser, see
-        # Parser.from_py_expr_Constant
-        T = type(const.value)
-        assert T in (int, float, complex, bool, NoneType)
-        w_val = self.vm.wrap(const.value)
+        # Parser.from_py_expr_Literal
+        val = lit.value
+        T = type(val)
+        assert T in (
+            int,
+            float,
+            float32,
+            complex,
+            bool,
+            NoneType,
+            Int8,
+            UInt8,
+            Int32,
+            UInt32,
+            Int64,
+            UInt64,
+        )
+        if T is int and not (Int32.minval <= val <= Int32.maxval):  # type: ignore
+            # unprefixed int literals default to i32: let's raise a helpful error
+            # message if we are out of range.
+            raise SPyError.simple(
+                "W_ValueError",
+                f"integer literal {val} is out of range for i32; "
+                f"use i64({val}) or u64({val}) to get a 64-bit value",
+                "integer literal out of range",
+                lit.loc,
+            )
+        w_val = self.vm.wrap(val)
         w_T = self.vm.dynamic_type(w_val)
-        return W_MetaArg(self.vm, "blue", w_T, w_val, const.loc)
+        return W_MetaArg(self.vm, "blue", w_T, w_val, lit.loc)
 
-    def eval_expr_StrConst(self, const: ast.StrConst) -> W_MetaArg:
-        w_val = self.vm.wrap(const.value)
-        return W_MetaArg(self.vm, "blue", B.w_str, w_val, const.loc)
+    def eval_expr_StrLiteral(self, lit: ast.StrLiteral) -> W_MetaArg:
+        w_val = self.vm.wrap(lit.value)
+        return W_MetaArg(self.vm, "blue", B.w_str, w_val, lit.loc)
 
-    def eval_expr_LocConst(self, const: ast.LocConst) -> W_MetaArg:
-        w_val = self.vm.wrap(const.value)
-        return W_MetaArg(self.vm, "blue", TYPES.w_Loc, w_val, const.loc)
+    def eval_expr_BytesLiteral(self, lit: ast.BytesLiteral) -> W_MetaArg:
+        w_val = self.vm.wrap(lit.value)
+        return W_MetaArg(self.vm, "blue", B.w_bytes, w_val, lit.loc)
 
     def eval_expr_FQNConst(self, const: ast.FQNConst) -> W_MetaArg:
         w_value = self.vm.lookup_global(const.fqn)
@@ -1058,7 +1098,9 @@ class AbstractFrame:
             ),
         )
 
-    def _set_assignexpr_color(self, target: ast.StrConst, wam: W_MetaArg) -> W_MetaArg:
+    def _set_assignexpr_color(
+        self, target: ast.StrLiteral, wam: W_MetaArg
+    ) -> W_MetaArg:
         sym = self.symtable.lookup(target.value)
         if sym.varkind == "var":
             return wam.as_red(self.vm)

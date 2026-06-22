@@ -111,6 +111,26 @@ pixi run doc-serve
 pixi run test-xdist
 ```
 
+### Optional build dependencies
+
+The `spy build` command compiles the C code produced by the SPy pipeline into a native
+or WebAssembly binary. Depending on the target:
+
+- **Native** (`--target native`): requires a system C compiler (e.g. `gcc` or `clang`),
+typically available via your system package manager (`build-essential` on Debian/Ubuntu).
+
+- **Emscripten** (`--target emscripten`): requires the
+[Emscripten SDK](https://github.com/emscripten-core/emsdk).
+Install and activate the `latest` toolchain so that `emcc` is on your `PATH` — see the
+[emsdk instructions](https://github.com/emscripten-core/emsdk#downloads--how-do-i-get-the-latest-emscripten-build).
+In CI, this is handled by the `mymindstorm/setup-emsdk` GitHub Action.
+
+- **WASI** (`--target wasi`): uses [Zig](https://ziglang.org/) as the compiler, which is
+a hard SPy dependency and is installed automatically alongside SPy — no extra setup required.
+
+These are only needed if you intend to produce compiled binaries; the interpreter and
+redshift modes work without them.
+
 ### Testing
 
 Run the test suite:
