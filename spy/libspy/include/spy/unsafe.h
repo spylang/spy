@@ -55,7 +55,7 @@ spy_gc_alloc_bdwgc(size_t size) {
         return (PTR){p};                                                               \
     }                                                                                  \
     static inline PTR PTR##$alloc(size_t n) {                                          \
-        return (PTR){spy_##MEMKIND##_alloc(sizeof(T) * n)};                            \
+        return (PTR){(T*)spy_##MEMKIND##_alloc(sizeof(T) * n)};                        \
     }                                                                                  \
     static inline T PTR##$deref(PTR p) {                                               \
         return *(p.p);                                                                 \
@@ -84,7 +84,7 @@ spy_gc_alloc_bdwgc(size_t size) {
         return (PTR){p, 1};                                                            \
     }                                                                                  \
     static inline PTR PTR##$alloc(size_t n) {                                          \
-        return (PTR){spy_##MEMKIND##_alloc(sizeof(T) * n), n};                         \
+        return (PTR){(T*)spy_##MEMKIND##_alloc(sizeof(T) * n), (ptrdiff_t) n};         \
     }                                                                                  \
     static inline T PTR##$deref(PTR p) {                                               \
         return *(p.p);                                                                 \
