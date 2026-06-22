@@ -382,7 +382,7 @@ def w_POW(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     w_ltype = wam_l.w_static_T
     if w_opspec := MM.get_binary_opspec("**", wam_l, wam_r):
         pass
-    elif w_pow := w_ltype.lookup_func("__pow__"):
+    elif w_pow := w_ltype.lookup_func(vm, "__pow__"):
         w_opspec = vm.fast_metacall(w_pow, [wam_l, wam_r])
     else:
         w_opspec = W_OpSpec.NULL
