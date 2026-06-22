@@ -128,7 +128,7 @@ def make_pow(T: str, pyclass: type[W_Object]) -> None:
                     "W_ZeroDivisionError", "0 cannot be raised to a negative power"
                 )
             raise SPyError("W_ValueError", "integer ** negative exponent")
-        return vm.wrap(w_a.value ** w_b.value)
+        return vm.wrap(w_a.value**w_b.value)
 
 
 make_ops("i32", W_I32)
