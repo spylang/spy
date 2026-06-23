@@ -396,33 +396,6 @@ class methods:
         
         return True
 
-    def _find_byte(self: str, ch: u8, start: i32, end: i32) -> i32:
-        ll = StrObject.from_str(self)
-        i = start
-        while i < end and not ll.utf8[i] == ch:
-            i = i + 1
-        result: i32 = -1
-        if i < end:
-            result = i
-        return result
-
-    def _exact_match(self: str, sub: str, idx: i32) -> bool:
-        # True iff `sub` occurs in self starting exactly at idx
-        ll = StrObject.from_str(self)
-        lsub = StrObject.from_str(sub)
-        m = lsub.length
-        result = True
-        if idx + m > ll.length:
-            result = False
-        else:
-            i = 0
-            while i < m:
-                if not ll.utf8[idx + i] == lsub.utf8[i]:
-                    result = False
-                    break
-                i = i + 1
-        return result
-
     @blue.metafunc
     def find(m_self, *args_m):
         # str.find(sub[, start[, end]]) -> i32
@@ -446,38 +419,62 @@ def _ll_isspace(ch: u8) -> bool:
     return (u8(9) <= ch and ch <= u8(32)) or ch == u8(133) or ch == u8(160)
 
 # core str.find: normalize start/end like Python slice indices, then scan for
-# sub's first byte (_find_byte) and verify it (_exact_match).
+# sub's first byte and match rest of sub.
 def _str_find(self: str, sub: str, start: i32, end: i32) -> i32:
-    n = len(self)
+    len_self = len(self)
+    len_sub = len(sub)
+
+    # negative start counts from the end, clamped to 0
     if start < 0:
-        start = start + n
+        start = start + len_self
         if start < 0:
             start = 0
+    # negative end counts from the end, clamped to 0
     if end < 0:
-        end = end + n
+        end = end + len_self
         if end < 0:
             end = 0
-    if end > n:
-        end = n
-    result: i32 = -1
+    # end past the string is clamped to the length
+    if end > len_self:
+        end = len_self
+    # empty range: nothing to search
     if start > end:
-        return result
-    m = len(sub)
-    if m == 0:
-        return start
-    first: u8 = StrObject.from_str(sub).utf8[0]
-    last = end - m
-    pos = start
-    while pos <= last:
-        candidate = self._find_byte(first, pos, last+1)
-        if candidate == -1:
-            break
-        if self._exact_match(sub, candidate):
-            result = candidate
-            break
-        pos = candidate + 1
-    return result
+        return -1
 
+    if len_sub == 0:
+        return start
+
+    if len_self == 0:
+        return -1
+
+    ll_self = StrObject.from_str(self)
+    ll_sub = StrObject.from_str(sub)
+    first_byte: u8 = ll_sub.utf8[0]
+
+    # last index at which sub could still fit; end <= len_self guarantees room
+    upper_bound = end - len_sub
+    pos = start
+    while pos <= upper_bound:
+
+        # find the next occurrence of sub's first byte
+        while pos <= upper_bound and not ll_self.utf8[pos] == first_byte:
+            pos = pos + 1
+        if pos > upper_bound:
+            return -1
+
+        # verify the rest of sub matches at pos
+        i = 1
+        matched = True
+        while i < len_sub:
+            if not ll_self.utf8[pos + i] == ll_sub.utf8[i]:
+                matched = False
+                break
+            i = i + 1
+        if matched:
+            return pos
+            
+        pos = pos + 1
+    return -1
 
 def _find_1(self: str, sub: str) -> i32:
     return _str_find(self, sub, 0, len(self))
