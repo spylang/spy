@@ -118,6 +118,33 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 3
 
+    def test_binop_right_nested_same_precedence(self):
+        mod = self.compile("""
+        def sub(a: i32, b: i32, c: i32) -> i32:
+            return a - (b - c)
+
+        def sub_add(a: i32, b: i32, c: i32) -> i32:
+            return a - (b + c)
+
+        def div(a: i32, b: i32, c: i32) -> i32:
+            return a // (b // c)
+
+        def div_mul(a: i32, b: i32, c: i32) -> i32:
+            return a // (b * c)
+
+        def mod(a: i32, b: i32, c: i32) -> i32:
+            return a % (b % c)
+
+        def shift(a: i32, b: i32, c: i32) -> i32:
+            return a >> (b >> c)
+        """)
+        assert mod.sub(100, 10, 5) == 95  # 100 - (10 - 5)
+        assert mod.sub_add(100, 10, 5) == 85  # 100 - (10 + 5)
+        assert mod.div(100, 20, 2) == 10  # 100 // (20 // 2)
+        assert mod.div_mul(100, 5, 4) == 5  # 100 // (5 * 4)
+        assert mod.mod(100, 20, 7) == 4  # 100 % (20 % 7)
+        assert mod.shift(1024, 4, 1) == 256  # 1024 >> (4 >> 1)
+
     def test_local_variables(self):
         mod = self.compile("""
         def foo() -> i32:

@@ -176,6 +176,37 @@ class SPyBackend:
     def fmt_expr(self, expr: ast.Expr) -> str:
         return magic_dispatch(self, "fmt_expr", expr)
 
+    def is_operator_call(self, expr: ast.Expr) -> TypeGuard[ast.Call]:
+        return (
+            isinstance(expr, ast.Call)
+            and isinstance(expr.func, ast.FQNConst)
+            and (expr.func.fqn in self.FQN2BinOp or expr.func.fqn in self.FQN2CmpOp)
+        )
+
+    def xform_call_binop(self, call: ast.Call) -> ast.Expr:
+        """
+        Convert an operator::* call into the equivalent BinOp/CmpOp.
+
+        Operands that are themselves operator::* calls are converted recursively.
+        Non-call nodes are not explored.
+        """
+        if not self.is_operator_call(call):
+            return call
+        assert isinstance(call.func, ast.FQNConst)
+        left, right = call.args
+        if self.is_operator_call(left):
+            left = self.xform_call_binop(left)
+        if self.is_operator_call(right):
+            right = self.xform_call_binop(right)
+
+        fqn = call.func.fqn
+        if fqn in self.FQN2BinOp:
+            return ast.BinOp(call.loc, self.FQN2BinOp[fqn], left, right)
+        elif fqn in self.FQN2CmpOp:
+            return ast.CmpOp(call.loc, self.FQN2CmpOp[fqn], left, right)
+        else:
+            raise TypeError("Unexpected operator call", fqn)
+
     # declarations
 
     def emit_decl_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> None:
@@ -422,9 +453,16 @@ class SPyBackend:
     def fmt_expr_BinOp(self, binop: ast.BinOp) -> str:
         l = self.fmt_expr(binop.left)
         r = self.fmt_expr(binop.right)
+        # a same-precedence operand on the side opposite the associativity
+        # would be regrouped if we printed it without parens (e.g. `a - (b - c)`
+        # must not become `a - b - c`), so we parenthesize it.
         if binop.left.precedence < binop.precedence:
             l = f"({l})"
+        elif binop.left.precedence == binop.precedence and binop.associativity == "R":
+            l = f"({l})"
         if binop.right.precedence < binop.precedence:
+            r = f"({r})"
+        elif binop.right.precedence == binop.precedence and binop.associativity == "L":
             r = f"({r})"
         return f"{l} {binop.op} {r}"
 
@@ -529,17 +567,9 @@ class SPyBackend:
             return None
         fqn = call.func.fqn
 
-        if fqn in self.FQN2BinOp:
+        if self.is_operator_call(call):
             # `operator::i32_add`(a, b) --> "a + b"
-            assert len(call.args) == 2
-            op = self.FQN2BinOp[fqn]
-            binop = ast.BinOp(call.loc, op, call.args[0], call.args[1])
-            return self.fmt_expr_BinOp(binop)
-        elif fqn in self.FQN2CmpOp:
-            assert len(call.args) == 2
-            op = self.FQN2CmpOp[fqn]
-            cmpop = ast.CmpOp(call.loc, op, call.args[0], call.args[1])
-            return self.fmt_expr_CmpOp(cmpop)
+            return self.fmt_expr(self.xform_call_binop(call))
         elif fqn == FQN("operator::raise"):
             # `operator::raise('TypeError', ...)` -->."raise TypeError(...)"
             assert len(call.args) == 4
