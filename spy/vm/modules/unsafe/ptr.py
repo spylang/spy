@@ -24,11 +24,11 @@ on each:
     point to
 """
 
-from typing import TYPE_CHECKING, Annotated, Any, Literal, Optional, Self
+from typing import TYPE_CHECKING, Annotated, Any, Literal, Self
 
 import fixedint
 
-from spy.errors import WIP, SPyError
+from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.vm.b import B
@@ -40,7 +40,7 @@ from spy.vm.member import Member
 from spy.vm.modules.types import W_Loc
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_I32, W_Bool, W_Dynamic
-from spy.vm.struct import W_StructField, W_StructType
+from spy.vm.struct import W_StructType
 from spy.vm.w import W_Func, W_Object, W_Str, W_Type
 
 from . import UNSAFE
@@ -105,6 +105,60 @@ def w_gc_ref(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     return w_reftype
 
 
+@UNSAFE.builtin_type("PtrField")
+class W_PtrField(W_Object):
+    """
+    Descriptor for struct fields accessed through ptr[T] or ref[T].
+
+    Analogous to W_StructField, but for memory-located structs.
+    Stored in W_PtrType.dict_w / W_RefType.dict_w, one per struct field.
+    """
+
+    __spy_storage_category__ = "value"
+
+    def __init__(self, name: str, w_T: W_Type, offset: int, memkind: MEMKIND) -> None:
+        self.name = name
+        self.w_T = w_T
+        self.offset = offset
+        self.memkind = memkind
+
+    def spy_key(self, vm: "SPyVM") -> Any:
+        return ("PtrField", self.name, self.w_T.spy_key(vm), self.offset, self.memkind)
+
+    def __repr__(self) -> str:
+        n = self.name
+        t = self.w_T.fqn.debug_human_name
+        k = self.memkind
+        return f"<spy ptr field {n}: `{t}` (+{self.offset}, {k})>"
+
+    @builtin_method("__get__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_GET(vm: "SPyVM", wam_self: W_MetaArg, wam_ptr: W_MetaArg) -> W_OpSpec:
+        w_field = wam_self.w_blueval
+        assert isinstance(w_field, W_PtrField)
+        w_memkind = vm.wrap(w_field.memkind)
+        wam_name = W_MetaArg.from_w_obj(vm, vm.wrap(w_field.name))
+        wam_offset = W_MetaArg.from_w_obj(vm, vm.wrap(w_field.offset))
+        # ptr_getfield[field_T, memkind](ptr, name, offset)
+        w_func = vm.fast_call(UNSAFE.w_ptr_getfield, [w_field.w_T, w_memkind])
+        assert isinstance(w_func, W_Func)
+        return W_OpSpec(w_func, [wam_ptr, wam_name, wam_offset])
+
+    @builtin_method("__set__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_SET(
+        vm: "SPyVM", wam_self: W_MetaArg, wam_ptr: W_MetaArg, wam_v: W_MetaArg
+    ) -> W_OpSpec:
+        w_field = wam_self.w_blueval
+        assert isinstance(w_field, W_PtrField)
+        wam_name = W_MetaArg.from_w_obj(vm, vm.wrap(w_field.name))
+        wam_offset = W_MetaArg.from_w_obj(vm, vm.wrap(w_field.offset))
+        # ptr_setfield[field_T](ptr, name, offset, v)
+        w_func = vm.fast_call(UNSAFE.w_ptr_setfield, [w_field.w_T])
+        assert isinstance(w_func, W_Func)
+        return W_OpSpec(w_func, [wam_ptr, wam_name, wam_offset, wam_v])
+
+
 @UNSAFE.builtin_type("_memloctype")
 class W_MemLocType(W_Type):
     """
@@ -113,11 +167,14 @@ class W_MemLocType(W_Type):
 
     memkind: MEMKIND
     w_itemT: Annotated[W_Type, Member("itemtype")]
+    is_ready: bool
 
-    def spy_dir(self, vm: "SPyVM") -> set[str]:
-        names = super().spy_dir(vm)
-        names.update(self.w_itemT.spy_dir(vm))
-        return names
+    def repr_hints(self) -> list[str]:
+        hints = super().repr_hints()
+        # is_ready may not be set yet during construction
+        if not getattr(self, "is_ready", True):
+            hints.append("not ready")
+        return hints
 
 
 @UNSAFE.builtin_type("rawptrtype")
@@ -132,7 +189,24 @@ class W_PtrType(W_MemLocType):
         w_T = cls.from_pyclass(fqn, W_Ptr)
         w_T.memkind = memkind
         w_T.w_itemT = w_itemT
+        w_T.is_ready = False
+        if isinstance(w_itemT, W_StructType):
+            if w_itemT.is_defined():
+                w_T._populate_fields()
+                w_T.is_ready = True
+            # else: not-yet-defined struct (e.g. recursive self-reference);
+            # fields will be back-filled by W_StructType.define_from_classbody
+        else:
+            w_T.is_ready = True
         return w_T
+
+    def _populate_fields(self) -> None:
+        assert not self.is_ready
+        assert isinstance(self.w_itemT, W_StructType)
+        for w_field in self.w_itemT.iterfields_w():
+            self.dict_w[w_field.name] = W_PtrField(
+                w_field.name, w_field.w_T, w_field.offset, self.memkind
+            )
 
     # w_NULL: ???
     # PtrTypes have a NULL member, which you can use like that:
@@ -188,7 +262,23 @@ class W_RefType(W_MemLocType):
         w_T = cls.from_pyclass(fqn, W_Ref)
         w_T.memkind = memkind
         w_T.w_itemT = w_itemT
+        w_T.is_ready = False
+        if isinstance(w_itemT, W_StructType):
+            if w_itemT.is_defined():
+                w_T._populate_fields()
+                w_T.is_ready = True
+            # else: not-yet-defined struct; back-filled by define_from_classbody
+        else:
+            w_T.is_ready = True
         return w_T
+
+    def _populate_fields(self) -> None:
+        assert not self.is_ready
+        assert isinstance(self.w_itemT, W_StructType)
+        for w_field in self.w_itemT.iterfields_w():
+            self.dict_w[w_field.name] = W_PtrField(
+                w_field.name, w_field.w_T, w_field.offset, self.memkind
+            )
 
     def as_ptrtype(self, vm: "SPyVM") -> W_PtrType:
         if self.memkind == "raw":
@@ -243,64 +333,6 @@ class W_MemLoc(W_Object):
             # I think we can get here if we have something typed 'ptr' as
             # opposed to e.g. 'ptr[i32]'
             assert False, "FIXME: raise a nice error"
-
-    @builtin_method("__getattribute__", color="blue", kind="metafunc")
-    @staticmethod
-    def w_GETATTRIBUTE(
-        vm: "SPyVM", wam_self: W_MetaArg, wam_name: W_MetaArg
-    ) -> W_OpSpec:
-        return W_MemLoc.op_ATTR("get", vm, wam_self, wam_name, None)
-
-    @builtin_method("__setattr__", color="blue", kind="metafunc")
-    @staticmethod
-    def w_SETATTR(
-        vm: "SPyVM", wam_self: W_MetaArg, wam_name: W_MetaArg, wam_v: W_MetaArg
-    ) -> W_OpSpec:
-        return W_MemLoc.op_ATTR("set", vm, wam_self, wam_name, wam_v)
-
-    @staticmethod
-    def op_ATTR(
-        opkind: str,
-        vm: "SPyVM",
-        wam_self: W_MetaArg,
-        wam_name: W_MetaArg,
-        wam_v: Optional[W_MetaArg],
-    ) -> W_OpSpec:
-        """
-        Implement both w_GETATTRIBUTE and w_SETATTR.
-        """
-        w_T = W_MemLoc._get_memlocT(wam_self)
-        w_itemT = w_T.w_itemT
-        # attributes are supported only on ptr-to-structs
-        if not w_itemT.is_struct(vm):
-            return W_OpSpec.NULL
-
-        assert isinstance(w_itemT, W_StructType)
-        name = wam_name.blue_unwrap_str(vm)
-        if name not in w_itemT.dict_w:
-            return W_OpSpec.NULL
-
-        w_obj = w_itemT.dict_w[name]
-        if not isinstance(w_obj, W_StructField):
-            raise WIP("don't know how to read this attribute from a ptr-to-struct")
-        w_field = w_obj
-
-        offset = w_field.offset
-        wam_offset = W_MetaArg.from_w_obj(vm, vm.wrap(offset))
-
-        if opkind == "get":
-            # ptr_getfield[field_T, memkind](ptr, name, offset)
-            assert wam_v is None
-            w_memkind = vm.wrap(w_T.memkind)
-            w_func = vm.fast_call(UNSAFE.w_ptr_getfield, [w_field.w_T, w_memkind])
-            assert isinstance(w_func, W_Func)
-            return W_OpSpec(w_func, [wam_self, wam_name, wam_offset])
-        else:
-            # ptr_setfield[field_T](ptr, name, offset, v)
-            assert wam_v is not None
-            w_func = vm.fast_call(UNSAFE.w_ptr_setfield, [w_field.w_T])
-            assert isinstance(w_func, W_Func)
-            return W_OpSpec(w_func, [wam_self, wam_name, wam_offset, wam_v])
 
 
 class W_Ptr(W_MemLoc):
