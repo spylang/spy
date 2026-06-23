@@ -193,7 +193,6 @@ class W_PtrType(W_MemLocType):
         if isinstance(w_itemT, W_StructType):
             if w_itemT.is_defined():
                 w_T._populate_fields()
-                w_T.is_ready = True
             # else: not-yet-defined struct (e.g. recursive self-reference);
             # fields will be back-filled by W_StructType.define_from_classbody
         else:
@@ -207,6 +206,7 @@ class W_PtrType(W_MemLocType):
             self.dict_w[w_field.name] = W_PtrField(
                 w_field.name, w_field.w_T, w_field.offset, self.memkind
             )
+        self.is_ready = True
 
     # w_NULL: ???
     # PtrTypes have a NULL member, which you can use like that:
@@ -266,7 +266,6 @@ class W_RefType(W_MemLocType):
         if isinstance(w_itemT, W_StructType):
             if w_itemT.is_defined():
                 w_T._populate_fields()
-                w_T.is_ready = True
             # else: not-yet-defined struct; back-filled by define_from_classbody
         else:
             w_T.is_ready = True
@@ -279,6 +278,7 @@ class W_RefType(W_MemLocType):
             self.dict_w[w_field.name] = W_PtrField(
                 w_field.name, w_field.w_T, w_field.offset, self.memkind
             )
+        self.is_ready = True
 
     def as_ptrtype(self, vm: "SPyVM") -> W_PtrType:
         if self.memkind == "raw":
