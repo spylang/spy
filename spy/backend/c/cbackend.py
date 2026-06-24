@@ -9,6 +9,7 @@ from spy.build.build_info import BuildInfo
 from spy.build.cffi import cffi_build
 from spy.build.config import BuildConfig
 from spy.build.ninja import NinjaWriter
+from spy.fqn import FQN
 from spy.highlight import highlight_src
 from spy.vm.cell import W_Cell
 from spy.vm.function import W_ASTFunc
@@ -164,6 +165,10 @@ class CBackend:
             else:
                 self.c_modules[modname].content.append((fqn, w_obj))
 
+        self.c_structdefs["globals"].content = _topo_sort_struct_content(
+            self.c_structdefs["globals"].content
+        )
+
     def cwrite(self) -> None:
         """
         Convert all non-builtins modules into .c files
@@ -261,3 +266,46 @@ class CBackend:
         wasm_exports.extend(libspy_exports)
 
         return wasm_exports
+
+
+def _topo_sort_struct_content(
+    content: list[tuple[FQN, W_Type]],
+) -> list[tuple[FQN, W_Type]]:
+    """
+    Re-order all type entries so that each type is emitted after the types it
+    depends on.
+
+    Ordering constraints:
+    - W_StructType X depends on any type Y used as a by-value field of X,
+      since C requires field types to be fully defined.
+    - W_PtrType/W_RefType depends on its w_itemT, since emit_PtrType writes
+      an inline struct body in the forward declaration using the item type's
+      typedef name.
+    """
+    all_types: dict[FQN, W_Type] = {fqn: w_t for fqn, w_t in content}
+
+    visited: set[FQN] = set()
+    ordered: list[tuple[FQN, W_Type]] = []
+
+    # depth-first traversal of nested types
+    def visit(fqn: FQN) -> None:
+        if fqn in visited:
+            return
+        visited.add(fqn)
+        w_t = all_types[fqn]
+        if isinstance(w_t, W_StructType):
+            if w_t.is_defined():
+                for field in w_t.iterfields_w():
+                    dep_fqn = field.w_T.fqn
+                    if dep_fqn in all_types:
+                        visit(dep_fqn)
+        elif isinstance(w_t, W_MemLocType):
+            dep_fqn = w_t.w_itemT.fqn
+            if dep_fqn in all_types:
+                visit(dep_fqn)
+        ordered.append((fqn, w_t))
+
+    for fqn in all_types:
+        visit(fqn)
+
+    return ordered
