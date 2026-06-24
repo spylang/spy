@@ -319,7 +319,6 @@ class TestUnsafePtr(CompilerTest):
         assert not mod.ne(p0, p0)
         assert mod.ne(p0, p1)
 
-    @pytest.mark.skip("FIXME")
     def test_ref_eq(self, memkind):
         # ref equality delegates to itemT.__eq__, so it compares THE VALUES
         # here we check all combinations of {ref[T],T} == {ref[T],T}
@@ -381,7 +380,6 @@ class TestUnsafePtr(CompilerTest):
         assert not mod.ne_ref_T(42, 42)
         assert not mod.ne_T_ref(42, 42)
 
-    @pytest.mark.skip("FIXME")
     def test_ref_dunder_methods(self, memkind):
         k = memkind
         mod = self.compile(f"""

@@ -24,7 +24,7 @@ on each:
     point to
 """
 
-from typing import TYPE_CHECKING, Annotated, Any, Literal, Self
+from typing import TYPE_CHECKING, Annotated, Any, Literal, Optional, Self
 
 import fixedint
 
@@ -289,6 +289,49 @@ class W_RefType(W_MemLocType):
         assert isinstance(w_ptrtype, W_PtrType)
         return w_ptrtype
 
+    def lookup(self, vm: "SPyVM", name: str) -> Optional[W_Object]:
+        """
+        Overriding lookup is more or less equivalent to override (part of)
+        type.__getattribute__.
+
+        The idea is that at first we search in RefType[T].__dict__: this is how we find
+        e.g. __convert_to__.
+
+        If we don't find anything, then we also search T.__mro__.  This means that
+        e.g. if T implements `__getitem__`, `__eq__` or a normal method `foo`, Ref[T]
+        will also automatically implements them.
+
+        It's worth noting how conversion works. Imagine this:
+
+            @struct
+            class T:
+                def foo(self) -> None:
+                    ...
+
+            r: gc_ref[T] = ...
+            r.foo()
+
+        `r.foo()` does `gc_ref[T].lookup()`, which in turns do `T.lookup()`, finds the
+        function `T::foo` and turns the method call into this:
+
+            def `T::foo`(self: T) -> None:
+                ...
+
+            `T::foo`(r)
+
+        However, `T:foo` takes a `T`, not a `gc_ref[T]`. But `gc_ref[T]` implements a
+        `__conver_to__` towards `T`, so ultimately it becomes the following, which
+        works:
+
+            `T::foo`(r.deref())
+        """
+        # do a lookup in ref[T] first
+        w_obj = super().lookup(vm, name)
+        if w_obj is None:
+            # else, do a lookup in T
+            w_obj = self.w_itemT.lookup(vm, name)
+        return w_obj
+
 
 @UNSAFE.builtin_type("_memloc")
 class W_MemLoc(W_Object):
@@ -452,11 +495,18 @@ class W_Ptr(W_MemLoc):
 
 
 class W_Ref(W_MemLoc):
-    __spy_storage_category__ = "value"
+    """
+    A reference to a memory location.
 
-    def spy_key(self, vm: "SPyVM") -> Any:
-        t = self.w_T.spy_key(vm)
-        return ("ref", t, self.addr, self.length)
+    Under the hood, `ref[T]` is impemented like a `ptr[T]`, but functionality wise it's
+    more or less equivalent to a `T`. In C++ terms, this is more similar to a `T&` than
+    to a `T*`.
+
+    In particular, methods and __dunder__ methods are looked up also in T. See the
+    docstring of W_RefType.lookup for more details.
+    """
+
+    __spy_storage_category__ = "reference"
 
     @builtin_method("__convert_to__", color="blue", kind="metafunc")
     @staticmethod
@@ -482,22 +532,6 @@ class W_Ref(W_MemLoc):
 
         else:
             return W_OpSpec.NULL
-
-    @builtin_method("__call_method__", color="blue", kind="metafunc")
-    @staticmethod
-    def w_CALL_METHOD(
-        vm: "SPyVM", wam_T: "W_MetaArg", wam_name: "W_MetaArg", *args_wam: "W_MetaArg"
-    ) -> "W_OpSpec":
-        ref_T = wam_T.w_static_T
-        assert isinstance(ref_T, W_RefType)
-        w_T = ref_T.w_itemT
-
-        name = wam_name.blue_unwrap_str(vm)
-        w_meth = w_T.lookup(vm, name)
-        if not isinstance(w_meth, W_ASTFunc):
-            return W_OpSpec.NULL
-        else:
-            return W_OpSpec(w_meth, [wam_T, *args_wam])
 
 
 @UNSAFE.builtin_func(color="blue")

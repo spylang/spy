@@ -701,7 +701,13 @@ class W_Type(W_Object):
 
     def lookup(self, vm: "SPyVM", name: str) -> Optional[W_Object]:
         """
-        Lookup the given attribute into the applevel dict
+        Lookup the given attribute into the applevel dict.
+
+        This is more or less the equivalent of _PyType_Lookup and implements the core
+        "walk the MRO __dict__s" logic.
+
+        Overriding it is more or less equivalent to override the "core" part of
+        type.__getattribute__.  See e.g. W_RefType.lookup for an example.
         """
         for w_T in self.get_mro():
             if w_obj := w_T.dict_w.get(name):
