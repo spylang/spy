@@ -569,6 +569,18 @@ class W_Type(W_Object):
         assert self._dict_w is not None
         T = Annotated[W_Object, self]
 
+        # XXX: is this logic fully correct or subtly wrong? I honestly don't know.
+        #
+        # According to this, we add an __eq__ unless it exists *in our __dict__*.
+        # But what should happen if __eq__ exists in a superclass?
+        # Currently, we just ignore it and regenerate a new __eq__, which then uses
+        # spy_key() and thus should be correct.
+        #
+        # Note also that it's hard to do the full MRO lookup here: at this point, our
+        # superclasses might not be fully defined yet because of lazy_definition=True
+        # (e.g., `object`). So if we want to do a full MRO lookup, we need to call this
+        # method later somehow.
+
         if MM.lookup("==", self, self) is None and "__eq__" not in self._dict_w:
             # no suitable __eq__ found, generate one
             @builtin_method("__eq__")  # type: ignore
