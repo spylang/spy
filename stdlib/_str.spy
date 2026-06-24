@@ -418,9 +418,9 @@ def _ll_isspace(ch: u8) -> bool:
     """
     return (u8(9) <= ch and ch <= u8(32)) or ch == u8(133) or ch == u8(160)
 
-# core str.find: normalize start/end like Python slice indices, then scan for
-# sub's first byte and match rest of sub.
 def _str_find(self: str, sub: str, start: i32, end: i32) -> i32:
+    # core str.find: normalize start/end like Python slice indices, then scan and match
+    # against the substring
     len_self = len(self)
     len_sub = len(sub)
 
