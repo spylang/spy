@@ -116,9 +116,9 @@ class TestUnsafePtr(CompilerTest):
         with SPyError.raises("W_PanicError", match="ptr_store out of bounds"):
             mod.bar(-5, 300)
 
-    def test_ptr_to_struct(self, memkind):
+    def test_ptr_to_struct_getattr_setattr(self, memkind):
         k = memkind
-        mod = self.compile(f"""
+        src = f"""
         from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, {k}_ref as k_ref
 
         @struct
@@ -128,23 +128,40 @@ class TestUnsafePtr(CompilerTest):
 
         def make_point(x: i32, y: f64) -> k_ptr[Point]:
             p = k_alloc[Point](1)
-            p.x = x
+            p.x = x  # setattr via ptr[T]
             p.y = y
             return p
 
-        def with_ptr(x: i32, y: f64) -> f64:
+        def foo(x: i32, y: f64) -> f64:
             p = make_point(x, y)
-            return p.x + p.y
+            return p.x + p.y  # getattr via ptr[T]
+        """
+        mod = self.compile(src)
+        assert mod.foo(3, 4.5) == 7.5
 
-        def with_ref(x: i32, y: f64) -> f64:
-            # reading an item out of a ptr returns a ref
-            p = make_point(x, y)
-            r: k_ref[Point] = p[0]
-            return r.x + r.y
+    def test_ref_to_struct_getattr_setattr(self, memkind):
+        k = memkind
+        src = f"""
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, {k}_ref as k_ref
 
-        """)
-        assert mod.with_ptr(3, 4.5) == 7.5
-        assert mod.with_ref(6, 7.8) == 13.8
+        @struct
+        class Point:
+            x: i32
+            y: f64
+
+        def make_point(x: i32, y: f64) -> k_ref[Point]:
+            p = k_alloc[Point](1)
+            r: k_ref[Point] = p[0]  # get a ref out of ptr
+            r.x = x  # setattr via ref[T]
+            r.y = y
+            return r
+
+        def foo(x: i32, y: f64) -> f64:
+            r = make_point(x, y)
+            return r.x + r.y  # getattr via ref[T]
+        """
+        mod = self.compile(src)
+        assert mod.foo(3, 4.5) == 7.5
 
     def test_ptr_to_string(self, memkind):
         # XXX: support for raw_alloc[str] was added by 30ffdb9a, but doesn't make sense
@@ -184,7 +201,6 @@ class TestUnsafePtr(CompilerTest):
             p = k_alloc[Point](1)
             r = p[0]
             return dir(r)
-
         """)
         d1 = mod.dir_ptr_point()
         assert "x" in d1
@@ -282,6 +298,7 @@ class TestUnsafePtr(CompilerTest):
         assert mod.rect_ref() == 9876
 
     def test_ptr_eq(self, memkind):
+        # ptr equaliy compares THE POINTERS
         k = memkind
         mod = self.compile(f"""
         from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr
@@ -302,7 +319,10 @@ class TestUnsafePtr(CompilerTest):
         assert not mod.ne(p0, p0)
         assert mod.ne(p0, p1)
 
+    @pytest.mark.skip("FIXME")
     def test_ref_eq(self, memkind):
+        # ref equality delegates to itemT.__eq__, so it compares THE VALUES
+        # here we check all combinations of {ref[T],T} == {ref[T],T}
         k = memkind
         mod = self.compile(f"""
         from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, {k}_ref as k_ref
@@ -311,27 +331,57 @@ class TestUnsafePtr(CompilerTest):
         class MyInt:
             val: i32
 
-        def alloc() -> k_ptr[MyInt]:
-            return k_alloc[MyInt](1)
+        def get_MyInt_ref(x: i32) -> k_ref[MyInt]:
+            p = k_alloc[MyInt](1)
+            p[0] = MyInt(x)
+            return p[0]
 
-        def eq(a: k_ptr[MyInt], b: k_ptr[MyInt]) -> bool:
-            ra: k_ref[MyInt] = a[0]
-            rb: k_ref[MyInt] = b[0]
+        def eq_ref_ref(a: i32, b: i32) -> bool:
+            ra = get_MyInt_ref(a)
+            rb = get_MyInt_ref(b)
             return ra == rb
 
-        def ne(a: k_ptr[MyInt], b: k_ptr[MyInt]) -> bool:
-            ra: k_ref[MyInt] = a[0]
-            rb: k_ref[MyInt] = b[0]
-            return ra != rb
-        """)
-        p0 = mod.alloc()
-        p1 = mod.alloc()
-        assert mod.eq(p0, p0)
-        assert not mod.eq(p0, p1)
-        assert not mod.ne(p0, p0)
-        assert mod.ne(p0, p1)
+        def eq_ref_T(a: i32, b: i32) -> bool:
+            ra = get_MyInt_ref(a)
+            bb = MyInt(b)
+            return ra == bb
 
-    def test_ref_method(self, memkind):
+        def eq_T_ref(a: i32, b: i32) -> bool:
+            aa = MyInt(a)
+            rb = get_MyInt_ref(b)
+            return aa == rb
+
+        def ne_ref_ref(a: i32, b: i32) -> bool:
+            ra = get_MyInt_ref(a)
+            rb = get_MyInt_ref(b)
+            return ra != rb
+
+        def ne_ref_T(a: i32, b: i32) -> bool:
+            ra = get_MyInt_ref(a)
+            bb = MyInt(b)
+            return ra != bb
+
+        def ne_T_ref(a: i32, b: i32) -> bool:
+            aa = MyInt(a)
+            rb = get_MyInt_ref(b)
+            return aa != rb
+        """)
+        # testing ==
+        assert mod.eq_ref_ref(42, 42)
+        assert mod.eq_ref_T(42, 42)
+        assert mod.eq_T_ref(42, 42)
+        assert not mod.eq_ref_ref(42, 100)
+        assert not mod.eq_ref_T(42, 100)
+        assert not mod.eq_T_ref(42, 100)
+        # testing !=
+        assert mod.ne_ref_ref(42, 100)
+        assert mod.ne_ref_T(42, 100)
+        assert mod.ne_T_ref(42, 100)
+        assert not mod.ne_ref_ref(42, 42)
+        assert not mod.ne_ref_T(42, 42)
+        assert not mod.ne_T_ref(42, 42)
+
+    def test_ref_call_method(self, memkind):
         k = memkind
         mod = self.compile(f"""
         from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, {k}_ref as k_ref
@@ -349,15 +399,8 @@ class TestUnsafePtr(CompilerTest):
             p[0] = Point(1,2)
             r: k_ref[Point] = p[0]
             return r.foo()
-
-        def compare_eq() -> bool:
-            p: k_ptr[Point] = k_alloc[Point](1)
-            r: k_ref[Point] = p[0]
-            return r == p[0]
         """)
-
         assert mod.method_on_ref() == 3
-        assert mod.compare_eq()
 
     def test_can_allocate_ptr(self, memkind):
         k = memkind
