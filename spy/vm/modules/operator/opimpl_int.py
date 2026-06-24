@@ -86,6 +86,16 @@ def make_ops(T: str, pyclass: type[W_Object]) -> None:
     def w_xor(vm: "SPyVM", w_a: WT, w_b: WT) -> WT:
         return _binop(vm, w_a, w_b, lambda a, b: a ^ b)
 
+    @OP.builtin_func(f"{T}_pow")
+    def w_pow(vm: "SPyVM", w_a: WT, w_b: WT) -> WT:
+        if w_b.value < 0:
+            if w_a.value == 0:
+                raise SPyError(
+                    "W_ZeroDivisionError", "0 cannot be raised to a negative power"
+                )
+            raise SPyError("W_ValueError", "integer ** negative exponent")
+        return _binop(vm, w_a, w_b, lambda a, b: a**b)
+
     @OP.builtin_func(f"{T}_eq")
     def w_eq(vm: "SPyVM", w_a: WT, w_b: WT) -> W_Bool:
         return _binop(vm, w_a, w_b, lambda a, b: a == b)
@@ -113,17 +123,6 @@ def make_ops(T: str, pyclass: type[W_Object]) -> None:
     @OP.builtin_func(f"{T}_neg")
     def w_neg(vm: "SPyVM", w_a: WT) -> WT:
         return _unary_op(vm, w_a, lambda a: -a)
-
-    @OP.builtin_func(f"{T}_pow")
-    def w_pow(vm: "SPyVM", w_a: WT, w_b: WT) -> WT:
-        b = w_b.value
-        if b < 0:
-            if w_a.value == 0:
-                raise SPyError(
-                    "W_ZeroDivisionError", "0 cannot be raised to a negative power"
-                )
-            raise SPyError("W_ValueError", "integer ** negative exponent")
-        return vm.wrap(w_a.value**w_b.value)
 
 
 make_ops("i32", W_I32)
