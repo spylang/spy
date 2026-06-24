@@ -5,7 +5,7 @@ This is just a small part of the tests: the majority of the functionality is
 tested by tests/compiler/*.py.
 """
 
-from spy.backend.c.c_ast import BinOp, Literal, UnaryOp, make_table
+from spy.backend.c.c_ast import BinOp, Expr, Literal, UnaryOp, make_table
 from spy.backend.c.context import C_Ident
 
 
@@ -50,6 +50,15 @@ class TestExpr:
         )
         # fmt: on
         assert str(expr) == "1 * (2 + 3 * 4)"
+
+    def test_BinOp_associativity(self):
+        def sub(l: Expr, r: Expr) -> BinOp:
+            return BinOp("-", left=l, right=r)
+
+        a, b, c = Literal("a"), Literal("b"), Literal("c")
+        assert str(sub(a, sub(b, c))) == "a - (b - c)"
+        assert str(sub(sub(a, b), c)) == "a - b - c"
+        assert str(sub(a, BinOp("+", left=b, right=c))) == "a - (b + c)"
 
     def test_UnaryOp(self):
         # fmt: off

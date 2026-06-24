@@ -105,6 +105,26 @@ class TestSPyBackend(CompilerTest):
             c = (1 + 2) * 3
         """)
 
+    def test_expr_associativity(self):
+        mod = self.compile("""
+        def foo(a: i32, b: i32, c: i32) -> None:
+            x = a - (b - c)
+            xf = a - b - c
+            y = (a - b) - c
+            z = a - (b + c)
+            w = a // (b // c)
+            v = (a ** b) ** c
+        """)
+        self.assert_dump("""
+        def foo(a: i32, b: i32, c: i32) -> None:
+            x = a - (b - c)
+            xf = a - b - c
+            y = a - b - c
+            z = a - (b + c)
+            w = a // (b // c)
+            v = (a ** b) ** c
+        """)
+
     def test_bool_ops(self):
         mod = self.compile("""
         def foo(a: bool, b: bool, c: bool) -> bool:

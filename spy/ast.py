@@ -457,6 +457,21 @@ class BinOp(Expr):
         "@":  12,
         "**": 14,
     }
+    _associativity = {
+        "|":  "L",
+        "^":  "L",
+        "&":  "L",
+        "<<": "L",
+        ">>": "L",
+        "+":  "L",
+        "-":  "L",
+        "*":  "L",
+        "/":  "L",
+        "//": "L",
+        "%":  "L",
+        "@":  "L",
+        "**": "R",
+    }
     # fmt: on
 
     @property
@@ -466,6 +481,14 @@ class BinOp(Expr):
     # this is just to make mypy happy
     @precedence.setter
     def precedence(self, newval: int) -> None:
+        raise TypeError("readonly attribute")
+
+    @property
+    def associativity(self) -> str:
+        return self._associativity[self.op]
+
+    @associativity.setter
+    def associativity(self, newval: str) -> None:
         raise TypeError("readonly attribute")
 
     def shortrepr(self) -> Optional[str]:
