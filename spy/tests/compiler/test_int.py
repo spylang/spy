@@ -297,11 +297,9 @@ class TestInt(CompilerTest):
         assert mod.pow(0, 0) == 1
         assert mod.pow(0, 5) == 0
 
-    def test_pow_negative_base(self, int_type):
-        if int_type.startswith("u"):
-            pytest.skip("Skipping negative base test for unsigned types")
+    def test_pow_negative_base(self, signed_int_type):
         mod = self.compile(f"""
-        T = {int_type}
+        T = {signed_int_type}
         def pow(x: T, y: T) -> T:
             return x ** y
         """)
