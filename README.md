@@ -81,7 +81,7 @@ make -C spy/libspy
 ```sh
 uv venv .venv -p 3.12
 . .venv/bin/activate
-uv pip install -e .[dev]
+uv sync --all-extras
 make -C spy/libspy
 ```
 
