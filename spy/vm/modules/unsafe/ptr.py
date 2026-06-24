@@ -169,24 +169,14 @@ class W_MemLocType(W_Type):
     w_itemT: Annotated[W_Type, Member("itemtype")]
     is_ready: bool
 
-    def repr_hints(self) -> list[str]:
-        hints = super().repr_hints()
-        # is_ready may not be set yet during construction
-        if not getattr(self, "is_ready", True):
-            hints.append("not ready")
-        return hints
-
-
-@UNSAFE.builtin_type("rawptrtype")
-class W_PtrType(W_MemLocType):
-    """
-    A specialized ptr type.
-    raw_ptr[i32] -> W_PtrType(fqn, "raw", B.w_i32)
-    """
-
     @classmethod
     def from_itemtype(cls, fqn: FQN, memkind: MEMKIND, w_itemT: W_Type) -> Self:
-        w_T = cls.from_pyclass(fqn, W_Ptr)
+        if cls is W_PtrType:
+            w_T = cls.from_pyclass(fqn, W_Ptr)
+        elif cls is W_RefType:
+            w_T = cls.from_pyclass(fqn, W_Ref)
+        else:
+            assert False
         w_T.memkind = memkind
         w_T.w_itemT = w_itemT
         w_T.is_ready = False
@@ -207,6 +197,21 @@ class W_PtrType(W_MemLocType):
                 w_field.name, w_field.w_T, w_field.offset, self.memkind
             )
         self.is_ready = True
+
+    def repr_hints(self) -> list[str]:
+        hints = super().repr_hints()
+        # is_ready may not be set yet during construction
+        if not getattr(self, "is_ready", True):
+            hints.append("not ready")
+        return hints
+
+
+@UNSAFE.builtin_type("rawptrtype")
+class W_PtrType(W_MemLocType):
+    """
+    A specialized ptr type.
+    raw_ptr[i32] -> W_PtrType(fqn, "raw", B.w_i32)
+    """
 
     # w_NULL: ???
     # PtrTypes have a NULL member, which you can use like that:
@@ -256,29 +261,6 @@ class W_RefType(W_MemLocType):
     raw_ref[i32] -> W_RefType(fqn, "raw", B.w_i32)
     gc_ref[i32] -> W_RefType(fqn, "gc", B.w_i32)
     """
-
-    @classmethod
-    def from_itemtype(cls, fqn: FQN, memkind: MEMKIND, w_itemT: W_Type) -> Self:
-        w_T = cls.from_pyclass(fqn, W_Ref)
-        w_T.memkind = memkind
-        w_T.w_itemT = w_itemT
-        w_T.is_ready = False
-        if isinstance(w_itemT, W_StructType):
-            if w_itemT.is_defined():
-                w_T._populate_fields()
-            # else: not-yet-defined struct; back-filled by define_from_classbody
-        else:
-            w_T.is_ready = True
-        return w_T
-
-    def _populate_fields(self) -> None:
-        assert not self.is_ready
-        assert isinstance(self.w_itemT, W_StructType)
-        for w_field in self.w_itemT.iterfields_w():
-            self.dict_w[w_field.name] = W_PtrField(
-                w_field.name, w_field.w_T, w_field.offset, self.memkind
-            )
-        self.is_ready = True
 
     def as_ptrtype(self, vm: "SPyVM") -> W_PtrType:
         if self.memkind == "raw":
