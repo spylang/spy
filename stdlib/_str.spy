@@ -396,6 +396,18 @@ class methods:
         
         return True
 
+    @blue.metafunc
+    def find(m_self, *args_m):
+        # str.find(sub[, start[, end]]) -> i32
+        nargs = len(args_m)
+        if nargs == 1:
+            return OpSpec(_find_1)
+        elif nargs == 2:
+            return OpSpec(_find_2)
+        elif nargs == 3:
+            return OpSpec(_find_3)
+        return OpSpec.NULL
+
 def _ll_isspace(ch: u8) -> bool:
     """
     A version of str.isspace that operates on single character indices (u8's)
@@ -405,6 +417,67 @@ def _ll_isspace(ch: u8) -> bool:
     unicode support is expanded.
     """
     return (u8(9) <= ch and ch <= u8(32)) or ch == u8(133) or ch == u8(160)
+
+def _str_find(self: str, sub: str, start: i32, end: i32) -> i32:
+    # core str.find: normalize start/end like Python slice indices, then scan and match
+    # against the substring
+    len_self = len(self)
+    len_sub = len(sub)
+
+    # negative start counts from the end, clamped to 0
+    if start < 0:
+        start = start + len_self
+        if start < 0:
+            start = 0
+    # negative end counts from the end, clamped to 0
+    if end < 0:
+        end = end + len_self
+        if end < 0:
+            end = 0
+    # end past the string is clamped to the length
+    if end > len_self:
+        end = len_self
+    # empty range: nothing to search
+    if start > end:
+        return -1
+
+    if len_sub == 0:
+        return start
+
+    if len_self == 0:
+        return -1
+
+    ll_self = StrObject.from_str(self)
+    ll_sub = StrObject.from_str(sub)
+
+    # last index at which sub could still fit; end <= len_self guarantees room
+    upper_bound = end - len_sub
+    pos = start
+    while pos <= upper_bound:
+        # check whether sub matches at pos
+        i = 0
+        matched = True
+        while i < len_sub:
+            if not ll_self.utf8[pos + i] == ll_sub.utf8[i]:
+                matched = False
+                break
+            i = i + 1
+        if matched:
+            return pos
+        pos = pos + 1
+    return -1
+
+def _find_1(self: str, sub: str) -> i32:
+    return _str_find(self, sub, 0, len(self))
+
+
+def _find_2(self: str, sub: str, start: i32) -> i32:
+    return _str_find(self, sub, start, len(self))
+
+
+def _find_3(self: str, sub: str, start: i32, end: i32) -> i32:
+    return _str_find(self, sub, start, end)
+
 
 def _split_sep(self: str, sep: str) -> list[str]:
     # impl for metafunc methods::split
