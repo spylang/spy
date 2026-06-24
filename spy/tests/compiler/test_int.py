@@ -9,6 +9,11 @@ def int_type(request):
     return request.param
 
 
+@pytest.fixture(params=["i32", "i8", "i64"])
+def signed_int_type(request):
+    return request.param
+
+
 class TestInt(CompilerTest):
     def test_i8_conversion(self):
         mod = self.compile("""
@@ -278,6 +283,58 @@ class TestInt(CompilerTest):
         assert mod.b_or(127, 0) == 127 | 0
         assert mod.b_xor(16, 15) == 16 ^ 15
         assert mod.b_xor(16, 0) == 16 ^ 0
+
+    def test_pow(self, int_type):
+        mod = self.compile(f"""
+        T = {int_type}
+        def pow(x: T, y: T) -> T:
+            return x ** y
+        """)
+        assert mod.pow(2, 3) == 8
+        assert mod.pow(3, 2) == 9
+        assert mod.pow(5, 0) == 1
+        assert mod.pow(10, 2) == 100
+        assert mod.pow(0, 0) == 1
+        assert mod.pow(0, 5) == 0
+
+    def test_pow_negative_base(self, signed_int_type):
+        mod = self.compile(f"""
+        T = {signed_int_type}
+        def pow(x: T, y: T) -> T:
+            return x ** y
+        """)
+        assert mod.pow(-2, 3) == -8
+        assert mod.pow(-2, 2) == 4
+        assert mod.pow(-1, 5) == -1
+        assert mod.pow(-1, 4) == 1
+
+    def test_pow_zero_negative_exp_raises(self, signed_int_type):
+        mod = self.compile(f"""
+        T = {signed_int_type}
+        def pow(x: T, y: T) -> T:
+            return x ** y
+        """)
+        with SPyError.raises(
+            "W_ZeroDivisionError", match="0 cannot be raised to a negative power"
+        ):
+            mod.pow(0, -1)
+
+    def test_pow_negative_exponent_raises(self, signed_int_type):
+        mod = self.compile(f"""
+        T = {signed_int_type}
+        def pow(x: T, y: T) -> T:
+            return x ** y
+        """)
+        with SPyError.raises("W_ValueError", match="integer \\*\\* negative exponent"):
+            mod.pow(2, -1)
+
+    def test_pow_overflow_wraps(self):
+        mod = self.compile("""
+        def f(x: i32, y: i32) -> i32:
+            return x ** y
+        """)
+        # 2**31 overflows i32 and wraps to i32::MIN (-2147483648)
+        assert mod.f(2, 31) == -2147483648
 
     def test_cmp(self, int_type):
         mod = self.compile(f"""

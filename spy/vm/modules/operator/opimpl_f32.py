@@ -55,6 +55,11 @@ def w_f32_mod(vm: "SPyVM", w_a: W_F32, w_b: W_F32) -> W_F32:
 
 
 @OP.builtin_func
+def w_f32_pow(vm: "SPyVM", w_a: W_F32, w_b: W_F32) -> W_F32:
+    return _f32_op_f32(vm, w_a, w_b, "pow")
+
+
+@OP.builtin_func
 def w_f32_eq(vm: "SPyVM", w_a: W_F32, w_b: W_F32) -> W_Bool:
     return _f32_op_bool(vm, w_a, w_b, "eq")
 
