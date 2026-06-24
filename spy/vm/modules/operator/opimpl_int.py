@@ -114,11 +114,6 @@ def make_ops(T: str, pyclass: type[W_Object]) -> None:
     def w_neg(vm: "SPyVM", w_a: WT) -> WT:
         return _unary_op(vm, w_a, lambda a: -a)
 
-
-def make_pow(T: str, pyclass: type[W_Object]) -> None:
-    w_T = pyclass._w
-    WT = Annotated[W_IntLike, w_T]
-
     @OP.builtin_func(f"{T}_pow")
     def w_pow(vm: "SPyVM", w_a: WT, w_b: WT) -> WT:
         b = w_b.value
@@ -132,14 +127,8 @@ def make_pow(T: str, pyclass: type[W_Object]) -> None:
 
 
 make_ops("i32", W_I32)
-make_pow("i32", W_I32)
 make_ops("u32", W_U32)
-make_pow("u32", W_U32)
 make_ops("i64", W_I64)
-make_pow("i64", W_I64)
 make_ops("u64", W_U64)
-make_pow("u64", W_U64)
 make_ops("i8", W_I8)
-make_pow("i8", W_I8)
 make_ops("u8", W_U8)
-make_pow("u8", W_U8)
