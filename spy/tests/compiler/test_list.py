@@ -179,3 +179,18 @@ class TestList(CompilerTest):
             ("help: use an explicit type: `l: list[T] = []`", "l"),
         )
         self.compile_raises(src, "foo", errors)
+
+    def test_list_of_structs_init(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo() -> i32:
+            lst: list[Point] = [Point(10, 2)]
+            return lst[0].x + lst[0].y
+        """
+        mod = self.compile(src)
+        res = mod.foo()
+        assert res == 12
