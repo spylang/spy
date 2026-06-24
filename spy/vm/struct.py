@@ -63,6 +63,23 @@ class W_StructType(W_Type):
             vm.add_global(w_eq.fqn, w_eq)
             vm.add_global(w_ne.fqn, w_ne)
 
+        self._backfill_ptr_fields(vm)
+
+    def _backfill_ptr_fields(self, vm: "SPyVM") -> None:
+        """
+        If ptr[T] or ref[T] were created BEFORE we were fully defined, then they
+        lack the W_PtrField members. Add them now.
+        """
+        from spy.vm.modules.unsafe.ptr import W_MemLocType
+
+        for kind in ("raw_ptr", "gc_ptr", "raw_ref", "gc_ref"):
+            fqn = FQN("unsafe").join(kind, [self.fqn])
+            w_ptrtype = vm.lookup_global_maybe(fqn)
+            if w_ptrtype is not None:
+                assert isinstance(w_ptrtype, W_MemLocType)
+                assert not w_ptrtype.is_ready
+                w_ptrtype._populate_fields()
+
     def lazy_define_from_classbody(self, body: ClassBody) -> None:
         """
         Partially define the struct type.
