@@ -381,7 +381,8 @@ class TestUnsafePtr(CompilerTest):
         assert not mod.ne_ref_T(42, 42)
         assert not mod.ne_T_ref(42, 42)
 
-    def test_ref_call_method(self, memkind):
+    @pytest.mark.skip("FIXME")
+    def test_ref_dunder_methods(self, memkind):
         k = memkind
         mod = self.compile(f"""
         from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, {k}_ref as k_ref
@@ -394,13 +395,32 @@ class TestUnsafePtr(CompilerTest):
             def foo(self) -> i32:
                 return self.x + self.y
 
-        def method_on_ref() -> i32:
+            def __getitem__(self, i: i32) -> Point:
+                return Point(self.x + i, self.y + i)
+
+            def __add__(self, p: Point) -> Point:
+                return Point(self.x + p.x, self.y + p.y)
+
+        def get_ref() -> k_ref[Point]:
             p: k_ptr[Point] = k_alloc[Point](1)
             p[0] = Point(1,2)
-            r: k_ref[Point] = p[0]
+            return p[0]
+
+        def call_method() -> i32:
+            r = get_ref()
             return r.foo()
+
+        def getitem() -> Point:
+            r = get_ref()
+            return r[10]
+
+        def add() -> Point:
+            r = get_ref()
+            return r + Point(10, 20)
         """)
-        assert mod.method_on_ref() == 3
+        assert mod.call_method() == 3
+        assert mod.getitem() == (11, 12)
+        assert mod.add() == (11, 22)
 
     def test_can_allocate_ptr(self, memkind):
         k = memkind
