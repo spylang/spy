@@ -22,20 +22,20 @@ class TestCBackend:
     @pytest.fixture
     def vm(self, tmpdir):
         self.tmpdir = tmpdir
-        self.vm = SPyVM()
-        self.vm.path.append(str(tmpdir))
-        yield
-        self.vm = None  # type: ignore
+        vm = SPyVM()
+        vm.path.append(str(tmpdir))
+        return vm
 
-    def compile_until_CBackend(self, src: str, modname: str = "test") -> CBackend:
+    def compile_until_CBackend(self, vm: SPyVM, src: str) -> CBackend:
         # XXX: there is a lot of code duplication with other similar tests
+        modname = "test"
         srcfile = self.tmpdir.join(f"{modname}.spy")
         srcfile.write(textwrap.dedent(src))
-        self.vm.import_(modname)
-        self.vm.redshift(error_mode="eager")
+        vm.import_(modname)
+        vm.redshift(error_mode="eager")
         builddir = self.tmpdir.join("build").ensure(dir=True)
         config = BuildConfig(target="wasi", kind="lib", build_type="debug", opt_level=0)
-        backend = CBackend(self.vm, modname, config, builddir, dump_c=False)
+        backend = CBackend(vm, modname, config, builddir, dump_c=False)
         return backend
 
     def test_make_table(self):
@@ -127,7 +127,7 @@ class TestCBackend:
             b: Point
             color: gc_ptr[Color]
         """
-        backend = self.compile_until_CBackend(src)
+        backend = self.compile_until_CBackend(vm, src)
 
         def deps(fqn_str: str) -> list[str]:
             return [str(d) for d in backend.get_type_deps(FQN(fqn_str))]
@@ -161,7 +161,7 @@ class TestCBackend:
             o = Outer.__make__(Vec2[i32].__make__(1, 2))
             return o.v.a + o.v.b
         """
-        backend = self.compile_until_CBackend(src)
+        backend = self.compile_until_CBackend(vm, src)
         backend.split_fqns()
         order = [str(fqn) for fqn, _ in backend.c_structdefs["globals"].content]
         i_inner = order.index("test::Vec2[i32]::Inner")
