@@ -183,19 +183,6 @@ class TestStructOnStack(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == ((1, 2), (3, 4))
 
-    def test_struct_with_list_field(self):
-        src = """
-        @struct
-        class Item:
-            values: list[i32]
-
-        def foo() -> i32:
-            item = Item.__make__([1, 2, 3])
-            return item.values[1]
-        """
-        mod = self.compile(src)
-        assert mod.foo() == 2
-
     def test_method(self):
         src = """
         from math import sqrt

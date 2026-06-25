@@ -1,3 +1,4 @@
+from graphlib import TopologicalSorter
 from typing import Optional
 
 import py.path
@@ -116,19 +117,9 @@ class CBackend:
             )
             self.c_modules[modname] = c_mod
 
-        # for now we create a global with all types CStructDefs. Eventually we
-        # want to split them into multiple independent ones
-        #
-        # NOTE: currently structdefs work because of a very specific property.
-        # The point is that when we have nested structs, C requires that
-        # structs are defined be in topological order: i.e. the "inner" func
-        # first, the "outer" func next.
-        #
-        # As long as we have a single "spy_structdefs.h" file, we are
-        # guaranteed to have the structs in the right order: this happens
-        # because similarly to C you must define structs before being able to
-        # use them as fields for another struct, which means that the various
-        # W_Struct objects are put in vm.globals_w in the right order.
+        # We need to emit .h files with the struct defs.  For now we create a single
+        # "structdefs.h" file with ALL the structs, topologically sorted to ensure that
+        # is struct B has a field (by value) of type struct A, we emit A before B.
         #
         # See test_importing::test_circular_type_ref for an example of that.
         #
@@ -142,11 +133,9 @@ class CBackend:
         #      modname, but keep in mind that in case of circular deps it will
         #      be impossible to guarantee the correspondance fqn.modname <=>
         #      modname.h)
-        self.c_structdefs["globals"] = CStructDefs(
-            hfile=bdir.join("src", "spy_structdefs.h"), content=[]
-        )
+        structdefs: list[tuple[FQN, W_Type]] = []
 
-        # Put each FQN into the corresponding CModule or CStructDefs
+        # Put each FQN into the corresponding CModule or structdefs
         for fqn, w_obj in self.vm.globals_w.items():
             # ignore W_Modules
             if fqn.is_module():
@@ -161,12 +150,14 @@ class CBackend:
                 continue
 
             if isinstance(w_obj, W_Type):
-                self.c_structdefs["globals"].content.append((fqn, w_obj))
+                structdefs.append((fqn, w_obj))
             else:
                 self.c_modules[modname].content.append((fqn, w_obj))
 
-        self.c_structdefs["globals"].content = _topo_sort_struct_content(
-            self.c_structdefs["globals"].content
+        structdefs = self.topo_sort_structdefs(structdefs)
+        self.c_structdefs["globals"] = CStructDefs(
+            hfile=bdir.join("src", "spy_structdefs.h"),
+            content=structdefs,
         )
 
     def cwrite(self) -> None:
@@ -267,45 +258,37 @@ class CBackend:
 
         return wasm_exports
 
+    def get_type_deps(self, fqn: FQN) -> list[FQN]:
+        """
+        Return the FQNs of the types which `fqn` depends on, i.e. which need
+        to be fully defined before `fqn` itself can be defined in C.
 
-def _topo_sort_struct_content(
-    content: list[tuple[FQN, W_Type]],
-) -> list[tuple[FQN, W_Type]]:
-    """
-    Re-order all type entries so that each type is emitted after the types it
-    depends on.
+        A struct depends on the struct types of its by-value fields. Pointer
+        and ref fields are NOT dependencies: a forward declaration of the
+        pointee is enough, which is what makes mutually recursive types via
+        pointers work.
+        """
+        w_type = self.vm.lookup_global(fqn)
+        if not isinstance(w_type, W_StructType) or not w_type.is_defined():
+            return []
+        deps: list[FQN] = []
+        seen: set[FQN] = set()
+        for field in w_type.iterfields_w():
+            w_fieldT = field.w_T
+            if not isinstance(w_fieldT, W_StructType):
+                continue
+            dep_fqn = w_fieldT.fqn
+            if dep_fqn != fqn and dep_fqn not in seen:
+                seen.add(dep_fqn)
+                deps.append(dep_fqn)
+        return deps
 
-    Ordering constraints:
-    - W_StructType X depends on any type Y used as a by-value field of X,
-      since C requires field types to be fully defined.
-    - W_PtrType/W_RefType depends on its w_itemT, since emit_PtrType writes
-      an inline struct body in the forward declaration using the item type's
-      typedef name.
-    """
-    all_types: dict[FQN, W_Type] = {fqn: w_t for fqn, w_t in content}
-
-    visited: set[FQN] = set()
-    ordered: list[tuple[FQN, W_Type]] = []
-
-    # depth-first traversal of nested types
-    def visit(fqn: FQN) -> None:
-        if fqn in visited:
-            return
-        visited.add(fqn)
-        w_t = all_types[fqn]
-        if isinstance(w_t, W_StructType):
-            if w_t.is_defined():
-                for field in w_t.iterfields_w():
-                    dep_fqn = field.w_T.fqn
-                    if dep_fqn in all_types:
-                        visit(dep_fqn)
-        elif isinstance(w_t, W_MemLocType):
-            dep_fqn = w_t.w_itemT.fqn
-            if dep_fqn in all_types:
-                visit(dep_fqn)
-        ordered.append((fqn, w_t))
-
-    for fqn in all_types:
-        visit(fqn)
-
-    return ordered
+    def topo_sort_structdefs(
+        self, content: list[tuple[FQN, W_Type]]
+    ) -> list[tuple[FQN, W_Type]]:
+        all_types: dict[FQN, W_Type] = dict(content)
+        ts: TopologicalSorter[FQN] = TopologicalSorter()
+        for fqn in all_types:
+            deps = [d for d in self.get_type_deps(fqn) if d in all_types]
+            ts.add(fqn, *deps)
+        return [(fqn, all_types[fqn]) for fqn in ts.static_order()]
