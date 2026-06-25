@@ -7,6 +7,7 @@ from spy.backend.c.cffiwriter import CFFIWriter
 from spy.backend.c.context import C_Type, Context
 from spy.fqn import FQN
 from spy.textbuilder import TextBuilder
+from spy.vm.modules.unsafe.funcptr import W_CFuncPtrType
 from spy.vm.modules.unsafe.ptr import W_PtrType, W_RefType
 from spy.vm.object import W_Type
 from spy.vm.struct import W_StructType
@@ -98,6 +99,8 @@ class CStructWriter:
             assert fqn == w_type.fqn  # sanity check
             if isinstance(w_type, W_StructType):
                 self.emit_StructType(fqn, w_type)
+            elif isinstance(w_type, W_CFuncPtrType):
+                self.emit_CFuncPtrType(fqn, w_type)
             elif isinstance(w_type, W_PtrType):
                 self.emit_PtrType(fqn, w_type)
             elif isinstance(w_type, W_RefType):
@@ -154,6 +157,17 @@ class CStructWriter:
                 tb.wl(f"{c_fieldtype} {w_field.name};")
         tb.wl("};")
         tb.wl("")
+
+    def emit_CFuncPtrType(self, fqn: FQN, w_cfp: W_CFuncPtrType) -> None:
+        c_name = w_cfp.fqn.c_name
+        c_ret = self.ctx.w2c(w_cfp.w_restype)
+        if w_cfp.w_argtypes_w:
+            c_params = ", ".join(
+                str(self.ctx.w2c(a)) for a in w_cfp.w_argtypes_w
+            )
+        else:
+            c_params = "void"
+        self.tbh_fwdecl.wl(f"typedef {c_ret} (*{c_name})({c_params});")
 
     def emit_PtrType(self, fqn: FQN, w_ptrtype: W_PtrType) -> None:
         c_ptrtype = C_Type(w_ptrtype.fqn.c_name)

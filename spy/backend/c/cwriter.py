@@ -13,6 +13,7 @@ from spy.vm.b import TYPES, B
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.irtag import IRTag
 from spy.vm.modules.posix import W__FILE
+from spy.vm.modules.unsafe.funcptr import W_CFuncPtr
 from spy.vm.modules.unsafe.ptr import W_Ptr
 
 if TYPE_CHECKING:
@@ -360,6 +361,9 @@ class CFuncWriter:
             # appropriate fqn name, see Context.new_ptr_type
             assert w_obj.addr == 0, "only NULL ptrs can be constants"
             return C.Literal(const.fqn.c_name)
+        elif isinstance(w_obj, W_CFuncPtr):
+            # A c_func_ptr value is the underlying function symbol; no boxing.
+            return C.Literal(w_obj.w_func.fqn.c_name)
         elif isinstance(w_obj, W_Func):
             return C.Literal(const.fqn.c_name)
         elif isinstance(w_obj, W__FILE):

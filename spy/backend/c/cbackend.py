@@ -14,6 +14,7 @@ from spy.fqn import FQN
 from spy.highlight import highlight_src
 from spy.vm.cell import W_Cell
 from spy.vm.function import W_ASTFunc
+from spy.vm.modules.unsafe.funcptr import W_CFuncPtr, W_CFuncPtrType
 from spy.vm.modules.unsafe.ptr import W_MemLocType
 from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import W_I32
@@ -145,11 +146,15 @@ class CBackend:
             modname = fqn.modname
             w_mod = self.vm.modules_w[modname]
             if w_mod.filepath is None and not isinstance(
-                w_obj, (W_MemLocType, W_StructType)
+                w_obj, (W_MemLocType, W_StructType, W_CFuncPtrType)
             ):
                 continue
 
-            if isinstance(w_obj, W_Type):
+            if isinstance(w_obj, W_CFuncPtr):
+                # c_func_ptr values are blue constants that lower to bare function
+                # symbol names; no C global variable is emitted for them.
+                continue
+            elif isinstance(w_obj, W_Type):
                 structdefs.append((fqn, w_obj))
             else:
                 self.c_modules[modname].content.append((fqn, w_obj))

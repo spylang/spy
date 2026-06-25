@@ -47,6 +47,7 @@ from spy.vm.modules.rawbuffer import RAW_BUFFER
 from spy.vm.modules.time import TIME
 from spy.vm.modules.types import TYPES, W_Loc
 from spy.vm.modules.unsafe import UNSAFE
+from spy.vm.modules.unsafe.funcptr import W_CFuncPtr
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import W_OpImpl
 from spy.vm.opspec import W_MetaArg, W_OpSpec
@@ -490,6 +491,13 @@ class SPyVM:
             return fqn
 
         # no FQN yet, we need to assign it one.
+        if isinstance(w_val, W_CFuncPtr):
+            # A c_func_ptr wrapper: give it a unique FQN derived from the
+            # underlying function's key, then register it so future lookups work.
+            fqn = w_val.w_func.fqn.join("@cfuncptr", [])
+            self.add_global(fqn, w_val)
+            return fqn
+
         if isinstance(w_val, W_ASTFunc):
             # this is a W_ASTFunc which is NOT in the globals. The only
             # possibility is that it's a function which has already been
