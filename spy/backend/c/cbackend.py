@@ -269,6 +269,11 @@ class CBackend:
         pointers work.
         """
         w_type = self.vm.lookup_global(fqn)
+        if isinstance(w_type, W_MemLocType):
+            # A ptr/ref type emits `typedef struct PTR { T *p; ...} PTR;` into
+            # the forward-decl section: it needs T's own typedef to appear
+            # first.
+            return [w_type.w_itemT.fqn]
         if not isinstance(w_type, W_StructType) or not w_type.is_defined():
             return []
         deps: list[FQN] = []
