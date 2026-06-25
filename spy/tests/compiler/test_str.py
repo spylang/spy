@@ -173,6 +173,43 @@ class TestStr(CompilerTest):
         assert mod.find("aXbXcXqzx", "qzx") == 6
         assert mod.find("qaqbqcqzx", "qzx") == 6
 
+    def test_count(self):
+        mod = self.compile("""
+            def count(s: str, sub: str) -> i32:
+                return s.count(sub)
+
+            def count_start(s: str, sub: str, start: i32) -> i32:
+                return s.count(sub, start)
+
+            def count_range(s: str, sub: str, start: i32, end: i32) -> i32:
+                return s.count(sub, start, end)
+        """)
+
+        # basic
+        assert mod.count("hello world", "o") == 2
+        assert mod.count("hello world", "l") == 3
+        assert mod.count("abcabc", "bc") == 2
+        assert mod.count("hello", "xyz") == 0
+
+        # non-overlapping
+        assert mod.count("aaaa", "aa") == 2
+        assert mod.count("aaaaa", "aa") == 2
+
+        # empty needle counts the gaps between characters
+        assert mod.count("abc", "") == 4
+        assert mod.count("", "") == 1
+        assert mod.count("", "a") == 0
+        assert mod.count_start("abc", "", 1) == 3
+        assert mod.count_range("abcabc", "", 0, 4) == 5
+        assert mod.count_range("abc", "", 2, 1) == 0
+
+        # with start
+        assert mod.count_start("abcabc", "bc", 2) == 1
+
+        # with start and end
+        assert mod.count_range("abcabc", "bc", 0, 4) == 1
+        assert mod.count_range("aaaa", "a", 1, 3) == 2
+
     def test_isspace(self):
         mod = self.compile("""
             def iss(s: str) -> bool:
