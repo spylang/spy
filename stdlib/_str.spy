@@ -408,6 +408,18 @@ class methods:
             return OpSpec(_find_3)
         return OpSpec.NULL
 
+    @blue.metafunc
+    def count(m_self, *args_m):
+        # str.count(sub[, start[, end]]) -> i32
+        nargs = len(args_m)
+        if nargs == 1:
+            return OpSpec(_count_1)
+        elif nargs == 2:
+            return OpSpec(_count_2)
+        elif nargs == 3:
+            return OpSpec(_count_3)
+        return OpSpec.NULL
+
 def _ll_isspace(ch: u8) -> bool:
     """
     A version of str.isspace that operates on single character indices (u8's)
@@ -477,6 +489,37 @@ def _find_2(self: str, sub: str, start: i32) -> i32:
 
 def _find_3(self: str, sub: str, start: i32, end: i32) -> i32:
     return _str_find(self, sub, start, end)
+
+
+def _str_count(self: str, sub: str, start: i32, end: i32) -> i32:
+    # number of non-overlapping occurrences of sub. Repeatedly find()s forward,
+    # stepping past each match (by 1 for the empty sub, which matches everywhere).
+    #
+    # Possible optimization: the empty sub always yields (normalized end - start
+    # + 1), so it could be computed from len() without scanning. That would also
+    # be codepoint-correct for free once len() is unicode-aware. Left as a scan
+    # for now since the closed form needs its own start/end normalization.
+    step = len(sub)
+    if step == 0:
+        step = 1
+    count: i32 = 0
+    idx = _str_find(self, sub, start, end)
+    while idx != -1:
+        count = count + 1
+        idx = _str_find(self, sub, idx + step, end)
+    return count
+
+
+def _count_1(self: str, sub: str) -> i32:
+    return _str_count(self, sub, 0, len(self))
+
+
+def _count_2(self: str, sub: str, start: i32) -> i32:
+    return _str_count(self, sub, start, len(self))
+
+
+def _count_3(self: str, sub: str, start: i32, end: i32) -> i32:
+    return _str_count(self, sub, start, end)
 
 
 def _split_sep(self: str, sep: str) -> list[str]:
