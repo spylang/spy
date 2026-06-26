@@ -506,17 +506,21 @@ class Parser:
         return spy.ast.Return(py_node.loc, value)
 
     def from_py_global_Assign(self, py_node: py_ast.Assign) -> spy.ast.VarDef:
-        assign = self.from_py_stmt_Assign(py_node)
-        assert isinstance(assign, spy.ast.Assign)
+        stmt = self.from_py_stmt_Assign(py_node)
+        # `var x = ...` and `const x = ...` are already lowered to VarDef
+        # by from_py_stmt_Assign; only bare `x = ...` returns Assign.
+        if isinstance(stmt, spy.ast.VarDef):
+            return stmt
+        assert isinstance(stmt, spy.ast.Assign)
         assert len(py_node.targets) == 1
         assert isinstance(py_node.targets[0], py_ast.Name)
         varkind, _ = parse_var_name(py_node.targets[0].id)
         vardef = spy.ast.VarDef(
             loc=py_node.loc,
             kind=varkind,
-            name=assign.target,
+            name=stmt.target,
             type=spy.ast.Auto(loc=py_node.loc),
-            value=assign.value,
+            value=stmt.value,
         )
         return vardef
 
