@@ -5,6 +5,7 @@
 #include <stddef.h>
 
 void *WASM_EXPORT(spy_gc_alloc)(size_t size);
+void *WASM_EXPORT(spy_gc_alloc_atomic)(size_t size);
 void *WASM_EXPORT(spy_raw_alloc)(size_t size);
 
 // note: these are needed to implement unsafe.memcpy&co in the interp (via vm.ll.call),
@@ -16,13 +17,26 @@ int32_t WASM_EXPORT(_spy_memcmp)(void *a, void *b, size_t n);
 
 // When compiling with bdwgc, override spy_gc_alloc with an inline that calls
 // GC_MALLOC. This takes precedence over the function in libspy.a.
+//
+// spy_gc_alloc_atomic uses GC_MALLOC_ATOMIC instead: it tells the collector
+// that the allocated block contains NO pointers, so (a) it doesn't need to
+// be scanned during collection, and (b) bdwgc does not zero it before
+// returning it (unlike GC_MALLOC). This is the right choice for buffers of
+// primitive types (e.g. arrays of f64/i32/u8/...), and is significantly
+// faster. It must NEVER be used for memory that may contain gc_ptr/gc_ref
+// values, or those objects could be collected while still reachable.
 #ifdef SPY_GC_BDWGC
 #  include <gc.h>
 static inline void *
 spy_gc_alloc_bdwgc(size_t size) {
     return GC_MALLOC(size);
 }
+static inline void *
+spy_gc_alloc_atomic_bdwgc(size_t size) {
+    return GC_MALLOC_ATOMIC(size);
+}
 #  define spy_gc_alloc(size) spy_gc_alloc_bdwgc(size)
+#  define spy_gc_alloc_atomic(size) spy_gc_alloc_atomic_bdwgc(size)
 #endif
 
 /* Define the struct and accessor functions to represent a managed pointer to
@@ -43,7 +57,17 @@ spy_gc_alloc_bdwgc(size_t size) {
    unmanaged C pointer, but in SPY_DEBUG it also contains the length of the
    array it points to, and every access is checked. The length is expressed in
    number of items, NOT size in bytes.
+
+   MEMKIND is one of "raw", "gc", or "gc_atomic":
+     - "raw"       -> spy_raw_alloc        (plain malloc, never collected)
+     - "gc"        -> spy_gc_alloc         (GC_MALLOC: zeroed, scanned)
+     - "gc_atomic" -> spy_gc_alloc_atomic  (GC_MALLOC_ATOMIC: not zeroed, not
+                                             scanned; only for pointer-free T)
+   PTR$alloc expands MEMKIND via spy_##MEMKIND##_alloc(...); the alias below
+   makes spy_gc_atomic_alloc resolve to spy_gc_alloc_atomic.
 */
+#define spy_gc_atomic_alloc(size) spy_gc_alloc_atomic(size)
+
 #ifdef SPY_DEBUG
 #  define SPY_PTR_FUNCTIONS _SPY_PTR_FUNCTIONS_CHECKED
 #else

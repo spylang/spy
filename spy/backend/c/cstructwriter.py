@@ -7,6 +7,7 @@ from spy.backend.c.cffiwriter import CFFIWriter
 from spy.backend.c.context import C_Type, Context
 from spy.fqn import FQN
 from spy.textbuilder import TextBuilder
+from spy.vm.modules.unsafe.misc import contains_gc_ptr
 from spy.vm.modules.unsafe.ptr import W_PtrType, W_RefType
 from spy.vm.object import W_Type
 from spy.vm.struct import W_StructType
@@ -183,6 +184,11 @@ class CStructWriter:
         self.tbh_fwdecl.wl()
 
         memkind = w_ptrtype.memkind
+        if memkind == "gc" and not contains_gc_ptr(w_itemT):
+            # T contains no gc_ptr/gc_ref, so it's safe (and faster) to
+            # allocate it with GC_MALLOC_ATOMIC: the collector doesn't need
+            # to scan it. See spy/libspy/include/spy/unsafe.h.
+            memkind = "gc_atomic"
         self.tbh_ptrs_def.wb(f"""
         SPY_PTR_FUNCTIONS({memkind}, {c_ptrtype}, {c_itemT});
         #define {c_ptrtype}$NULL (({c_ptrtype}){{0}})

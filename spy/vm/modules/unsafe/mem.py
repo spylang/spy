@@ -10,7 +10,7 @@ from spy.vm.struct import W_Struct, W_StructType
 from spy.vm.w import W_Object, W_Type
 
 from . import UNSAFE
-from .misc import sizeof
+from .misc import contains_gc_ptr, sizeof
 from .ptr import W_Ptr, W_PtrType, w_gc_ptr, w_raw_ptr
 
 if TYPE_CHECKING:
@@ -43,6 +43,13 @@ def w_gc_alloc(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     assert isinstance(w_ptrtype, W_PtrType)
     ITEMSIZE = sizeof(w_T)
 
+    # if T contains no gc_ptr/gc_ref, we can use the "atomic" allocator
+    # (GC_MALLOC_ATOMIC instead of GC_MALLOC in the bdwgc backend): the
+    # collector doesn't need to scan the result for pointers, and it's
+    # significantly faster. See spy/libspy/include/spy/unsafe.h and
+    # spy/backend/c/cstructwriter.py for the C-backend equivalent.
+    alloc_name = "spy_gc_alloc" if contains_gc_ptr(w_T) else "spy_gc_alloc_atomic"
+
     # unsafe::gc_ptr[i32]::alloc
     #
     # this is a special builtin function, its C equivalent is automatically
@@ -51,7 +58,7 @@ def w_gc_alloc(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     def w_fn(vm: "SPyVM", w_n: W_I32) -> Annotated[W_Ptr, w_ptrtype]:
         n = vm.unwrap_i32(w_n)
         size = ITEMSIZE * n
-        addr = vm.ll.call("spy_gc_alloc", size)
+        addr = vm.ll.call(alloc_name, size)
         return W_Ptr(w_ptrtype, addr, n)  # type: ignore
 
     return w_fn
