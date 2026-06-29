@@ -1,9 +1,9 @@
 name: Build PR Docs Preview
 
 # Splitting the preview docs build into an (untrusted) build step (this one)
-# and a trusted deployment step helps prevent a class of issues that allow 
+# and a trusted deployment step helps prevent a class of issues that allow
 # secret exfiltration from a repo.
-# See https://securitylab.github.com/resources/github-actions-preventing-pwn-requests/ 
+# See https://securitylab.github.com/resources/github-actions-preventing-pwn-requests/
 permissions:
   contents: read
 
@@ -31,20 +31,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.1.0
         with:
-          python-version: '3.12'
-          cache: 'pip'
+          python-version: "3.12"
+          enable-cache: true
 
-      - name: Install dependencies
+      - name: Install venv
         run: |
-           pip install .[docs]
+          uv sync --no-dev --group docs --locked
 
       - name: Build and mkdocs
         run: |
-          mkdocs build --config-file docs/mkdocs.yml --site-dir ./site -v
-          
+          uv run mkdocs build --config-file docs/mkdocs.yml --site-dir ./site -v
+
       - name: Upload preview artifact
         uses: actions/upload-artifact@v4
         with:

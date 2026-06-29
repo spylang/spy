@@ -58,15 +58,15 @@ jobs:
           echo "alias=$ALIAS" >> $GITHUB_OUTPUT
           echo "Deploying version: $VERSION from ${{ github.ref }}"
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.1.0
         with:
-          python-version: '3.12'
-          cache: 'pip'
+          python-version: "3.12"
+          enable-cache: true
 
-      - name: Install dependencies
+      - name: Install venv
         run: |
-           pip install .[docs]
+          uv sync --no-dev --group docs --locked
 
       - name: Configure Git in docs repository
         working-directory: /tmp/spy-docs

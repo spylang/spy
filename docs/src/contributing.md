@@ -27,7 +27,7 @@ Create a virtual environment for your project, and install both the SPy dependen
     ```
 === "uv"
     ```bash
-    uv sync --group docs
+    uv sync --group docs --locked
     ```
 
 Build a copy of the docs locally, and start a live server to view the current state of the docs:

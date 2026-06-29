@@ -18,29 +18,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-          cache: "pip"
-
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libgc-dev
 
-      - name: Install project
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install venv
         run: |
-          python -m pip install --upgrade pip
-          pip install -e .[dev]
+          uv sync --locked
 
       - name: Build libspy
         run: |
           cd spy/libspy
-          make
+          uv run make
 
       - name: Run playground tests
         run: |
-          pytest playground/tests/ -v
+          uv run pytest playground/tests/ -v
 
       - name: Run examples
         run: |
-          pytest -n auto examples
+          uv run pytest -n auto examples

@@ -53,18 +53,10 @@ jobs:
       #     $PWD/${WASI_FILENAME}/bin/clang --version
       #     echo "$PWD/${WASI_FILENAME}/bin" >> $GITHUB_PATH
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: "pip"
-
       - name: Display versions
         run: |
           echo PATH="$PATH"
           echo
-          echo python && python --version && echo
-          echo pip && pip --version && echo
           echo clang && clang --version && echo
           echo gcc && gcc --version && echo
 
@@ -76,31 +68,36 @@ jobs:
             brew install bdw-gc
           fi
 
-      - name: Install project
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install venv
         run: |
-          python -m pip install --upgrade pip
-          pip install -e .[dev]
+          uv sync --locked
 
       - name: Linter
         run: |
-          ruff check .
+          uv run ruff check .
 
       - name: Format check
         run: |
-          ruff format --check .
+          uv run ruff format --check .
 
       - name: Build libspy
         run: |
           cd spy/libspy
-          make
+          uv run make
 
       - name: Run tests
         run: |
-          pytest -n auto -m "not mypy" --junit-xml=test-results.xml
+          uv run pytest -n auto -m "not mypy" --junit-xml=test-results.xml
 
       - name: Run mypy
         run: |
-          mypy
+          uv run mypy
 
       - name: Surface failing tests
         if: always()
@@ -111,7 +108,7 @@ jobs:
           display-options: fEX
           fail-on-empty: true
           title: Test results
-  
+
   pyodide-test:
     name: pyodide-test-${{ matrix.os }}-${{ matrix.python-version}}
     runs-on: ${{ matrix.os }}
@@ -135,18 +132,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: "pip"
-
       - name: Display versions
         run: |
           echo PATH="$PATH"
           echo
-          echo python && python --version && echo
-          echo pip && pip --version && echo
           echo clang && clang --version && echo
           echo gcc && gcc --version && echo
 
@@ -158,19 +147,24 @@ jobs:
             brew install bdw-gc
           fi
 
-      - name: Install project
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      - name: Install venv
         run: |
-          python -m pip install --upgrade pip
-          pip install -e .[dev]
+          uv sync --locked
 
       - name: Linter
         run: |
-          ruff check .
+          uv run ruff check .
 
       - name: Format check
         run: |
-          ruff format --check .
-      
+          uv run ruff format --check .
+
       - name: Install EMCC
         run: |
           git clone https://github.com/emscripten-core/emsdk.git
@@ -180,7 +174,7 @@ jobs:
           source ./emsdk_env.sh
           echo "$PWD/upstream/emscripten" >> $GITHUB_PATH
           echo "EMSDK=$PWD" >> $GITHUB_ENV
-      
+
       - name: Install pyodide
         run: |
           npm --prefix pyodide install
@@ -191,18 +185,17 @@ jobs:
         # pyodide/README.md
         run: |
           cd pyodide
-          pyodide venv venv
+          uv run pyodide venv venv
           ./venv/bin/pip install -e ..
 
       - name: Build libspy
         run: |
           cd spy/libspy
-          make
+          uv run make
 
       - name: Run tests
         run: |
-          pip install pytest-xdist
-          pytest -n auto -m pyodide --junit-xml=pyodide-test-results.xml
+          uv run pytest -n auto -m pyodide --junit-xml=pyodide-test-results.xml
 
       # - name: Run mypy
       #   run: |
