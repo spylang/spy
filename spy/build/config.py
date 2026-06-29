@@ -110,6 +110,7 @@ class CompilerConfig:
 
         # GC flags
         if config.gc == "bdwgc":
+            self.cflags = [f for f in self.cflags if f != "-DSPY_GC_NONE"]
             self.cflags += ["-DSPY_GC_BDWGC"]
             if config.static:
                 self._build_bdwgc_static()
