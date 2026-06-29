@@ -18,7 +18,7 @@ dependencies = [
     "ziglang==0.13.0; sys_platform != 'emscripten'",
 ]
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
     "pdbpp>=0.11.7",
     "pytest==8.3.4",
