@@ -18,7 +18,7 @@ on:
 
 jobs:
   test:
-    name: test-${{ matrix.os }}-${{ matrix.python-version}}
+    name: test-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     env:
       SPY_WERROR: true
@@ -28,7 +28,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        python-version: ["3.12"]
 
     steps:
       - name: Setup tmate session
@@ -71,7 +70,6 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v8.1.0
         with:
-          python-version: "3.12"
           enable-cache: true
 
       - name: Install venv
@@ -110,7 +108,7 @@ jobs:
           title: Test results
 
   pyodide-test:
-    name: pyodide-test-${{ matrix.os }}-${{ matrix.python-version}}
+    name: pyodide-test-${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     env:
       SPY_WERROR: true
@@ -120,7 +118,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
-        python-version: ["3.12"]
 
     steps:
       - name: Setup tmate session
@@ -150,7 +147,6 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v8.1.0
         with:
-          python-version: "3.12"
           enable-cache: true
 
       - name: Install venv

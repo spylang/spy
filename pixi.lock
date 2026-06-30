@@ -821,7 +821,7 @@ packages:
   - pexpect==4.9.0 ; sys_platform != 'emscripten'
   - wasmtime==8.0.1 ; sys_platform != 'emscripten'
   - ziglang==0.13.0 ; sys_platform != 'emscripten'
-  requires_python: '>=3.12'
+  requires_python: ~=3.12.0
 - pypi: https://files.pythonhosted.org/packages/02/be/5d2d47b1fb58943194fb59dcf222f7c4e35122ec0ffe8c36e18b5d728f0b/tblib-3.2.2-py3-none-any.whl
   name: tblib
   version: 3.2.2
