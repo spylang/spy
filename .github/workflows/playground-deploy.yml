@@ -23,38 +23,33 @@ jobs:
     env:
       SPY_WERROR: true
 
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.1.0
         with:
-          python-version: "3.13"
+          enable-cache: true
 
-      - name: Install ziglang
-        run: python -m pip install ziglang==0.13.0
+      - name: Install venv
+        run: |
+          # to be able to call `python -m spy.build.flags`
+          uv sync --no-dev --locked
 
       - name: Setup Emscripten
         uses: mymindstorm/setup-emsdk@v14
 
-      - name: Install SPy
-        run: |
-          # to be able to call `python -m spy.build.flags`
-          pip install -e .
-
       - name: Build libspy
-        run: make -C spy/libspy TARGET=emscripten BUILD_TYPE=debug
+        run: uv run make -C spy/libspy TARGET=emscripten BUILD_TYPE=debug
 
       - name: Build Python wheel
         run: |
-          python -m pip install --upgrade pip build
-          python -m build --wheel
+          uv run python -m build --wheel
 
       - name: Update main.py with wheel filename
         run: |
-          VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          VERSION=$(uv run python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
           WHEEL_NAME="spylang-${VERSION}-py3-none-any.whl"
           sed -i "s|spylang-.*-py3-none-any\.whl|${WHEEL_NAME}|g" playground/main.py
 
