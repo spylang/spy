@@ -603,15 +603,43 @@ class Parser:
         else:
             self.unsupported(py_target, "assign to complex expressions")
 
-    def from_py_stmt_AugAssign(self, py_node: py_ast.AugAssign) -> spy.ast.AugAssign:
+    def from_py_stmt_AugAssign(self, py_node: py_ast.AugAssign) -> spy.ast.Stmt:
         py_target = py_node.target
+        opname = type(py_node.op).__name__
+        op = self._binops[opname]
+
         if isinstance(py_target, py_ast.Name):
-            opname = type(py_node.op).__name__
-            op = self._binops[opname]
+            # Simple case: x += 1
             return spy.ast.AugAssign(
                 loc=py_node.loc,
                 op=op,
                 target=spy.ast.StrLiteral(py_target.loc, py_target.id),
+                value=self.from_py_expr(py_node.value),
+            )
+        elif isinstance(py_target, py_ast.Attribute):
+            # Attribute access: a.b += 1
+            return spy.ast.AugSetAttr(
+                loc=py_node.loc,
+                op=op,
+                target=self.from_py_expr(py_target.value),
+                attr=spy.ast.StrConst(py_target.loc, py_target.attr),
+                value=self.from_py_expr(py_node.value),
+            )
+        elif isinstance(py_target, py_ast.Subscript):
+            # Subscript access: arr[i] += 1
+            target = self.from_py_expr(py_target.value)
+            index = self.from_py_expr(py_target.slice)
+
+            if isinstance(index, spy.ast.Tuple):
+                args = index.items
+            else:
+                args = [index]
+
+            return spy.ast.AugSetItem(
+                loc=py_node.loc,
+                op=op,
+                target=target,
+                args=args,
                 value=self.from_py_expr(py_node.value),
             )
         else:

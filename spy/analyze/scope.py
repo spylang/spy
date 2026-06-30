@@ -385,6 +385,25 @@ class ScopeAnalyzer:
         self._promote_const_to_var_maybe(augassign.target)
         self.declare(augassign.value)
 
+    def _declare_hidden_local(self, name: str, value: ast.Expr) -> None:
+        self.define_name(name, "var", "auto", value.loc, value.loc)
+
+    def declare_AugSetAttr(self, augsetattr: ast.AugSetAttr) -> None:
+        target_name = augsetattr.target_name()
+        self._declare_hidden_local(target_name, augsetattr.target)
+        self.declare(augsetattr.target)
+        self.declare(augsetattr.value)
+
+    def declare_AugSetItem(self, augsetitem: ast.AugSetItem) -> None:
+        target_name = augsetitem.target_name()
+        self._declare_hidden_local(target_name, augsetitem.target)
+        self.declare(augsetitem.target)
+        for i, arg in enumerate(augsetitem.args):
+            arg_name = augsetitem.arg_name(i)
+            self._declare_hidden_local(arg_name, arg)
+            self.declare(arg)
+        self.declare(augsetitem.value)
+
     def declare_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
         for target in unpack.targets:
             self._declare_target_maybe(target, unpack.value)
