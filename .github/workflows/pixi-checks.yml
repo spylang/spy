@@ -23,6 +23,24 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        # default fetch-depth: 1, fast initial checkout
+
+      - name: Fetch full commit history (no blobs)
+        if: github.event_name == 'pull_request'
+        run: git fetch --filter=blob:none --unshallow
+
+      - name: Check uv.lock and pixi.lock changed together
+        if: github.event_name == 'pull_request'
+        run: |
+          BASE_SHA="${{ github.event.pull_request.base.sha }}"
+          UV_CHANGED=$(git diff --quiet $BASE_SHA -- uv.lock && echo no || echo yes)
+          PIXI_CHANGED=$(git diff --quiet $BASE_SHA -- pixi.lock && echo no || echo yes)
+          echo "uv.lock changed in this PR:   $UV_CHANGED"
+          echo "pixi.lock changed in this PR: $PIXI_CHANGED"
+          if [ "$UV_CHANGED" != "$PIXI_CHANGED" ]; then
+            echo "::error::Only one of uv.lock/pixi.lock was modified in this PR. Run both 'pixi lock' and 'uv lock' and commit any resulting changes."
+            exit 1
+          fi
 
       - uses: prefix-dev/setup-pixi@v0.9.4
         with:
