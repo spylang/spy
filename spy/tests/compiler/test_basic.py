@@ -456,6 +456,62 @@ class TestBasic(CompilerTest):
         """)
         assert mod.bar(3) == 1.5
 
+    def test_function_call_keywords(self):
+        mod = self.compile("""
+        def foo(small: i32, big: i32) -> i32:
+            return big - small
+
+        def bar(big: i32) -> i32:
+            return foo(big=big, small=7)
+        """)
+        assert mod.bar(10) == 3
+        assert mod.bar(15) == 8
+
+    def test_function_call_pos_with_keywords(self):
+        mod = self.compile("""
+        def foo(a: i32, b: i32, c: i32) -> i32:
+            return a - b // c
+
+        def bar(a: i32, b: i32, c: i32) -> i32:
+            return foo(a, c=c, b=b)
+        """)
+        assert mod.bar(1, 10, 5) == -1
+
+    def test_builtin_keyword_args_unsupported(self):
+        src = """
+        from operator import i32_add
+
+        def foo() -> i32:
+            return i32_add(x=1, y=2)
+        """
+        errors = expect_errors(
+            "keyword arguments not supported for this function",
+        )
+        self.compile_raises(src, "foo", errors)
+
+    def test_metafunc_keyword_args_unsupported(self):
+        src = """
+        def foo() -> i32:
+            return hash(x=1)
+        """
+        errors = expect_errors(
+            "keyword arguments not supported for this function",
+        )
+        self.compile_raises(src, "foo", errors)
+
+    def test_dynamic_keyword_args_unsupported(self):
+        src = """
+        def bar(f: dynamic) -> i32:
+            return f(x=1, y=2)
+
+        def foo() -> i32:
+            return bar(1)
+        """
+        errors = expect_errors(
+            "keyword arguments not supported for this function",
+        )
+        self.compile_raises(src, "foo", errors)
+
     def test_conversions(self):
         mod = self.compile("""
         def a(x: i32) -> f64:
@@ -531,9 +587,8 @@ class TestBasic(CompilerTest):
             return inc()
         """
         errors = expect_errors(
-            "this function takes 1 argument but 0 arguments were supplied",
-            ("1 argument missing", "inc"),
-            ("function defined here", "def inc(x: i32) -> i32"),
+            "inc() missing required argument `x`",
+            ("missing required argument", "x: i32"),
         )
         self.compile_raises(src, "foo", errors)
 
@@ -1533,9 +1588,8 @@ class TestBasic(CompilerTest):
             return add()
         """
         errors = expect_errors(
-            "this function takes from 1 to 2 arguments but 0 arguments were supplied",
-            ("1 argument missing", "add"),
-            ("function defined here", "def add(x: int, y: int = 1) -> int"),
+            "add() missing required argument `x`",
+            ("missing required argument", "x: int"),
         )
         self.compile_raises(src, "foo", errors)
 

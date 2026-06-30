@@ -239,6 +239,7 @@ class TestParser:
                     args=[
                         Name(id='arg'),
                     ],
+                    kwargs=[],
                 ),
             ],
         )
@@ -912,6 +913,7 @@ class TestParser:
                         args=[
                             Name(id='x'),
                         ],
+                        kwargs=[],
                     ),
                 ),
             ],
@@ -1078,20 +1080,43 @@ class TestParser:
                     Literal(value=2),
                     Literal(value=3),
                 ],
+                kwargs=[],
             ),
         )
         """
         self.assert_dump(stmt, expected)
 
-    def test_Call_errors(self):
-        src = """
+    def test_Call_kwargs(self):
+        mod = self.parse("""
         def foo() -> i32:
             return Bar(1, 2, x=3)
+        """)
+        stmt = mod.get_funcdef("foo").body[0]
+        expected = """
+        Return(
+            value=Call(
+                func=Name(id='Bar'),
+                args=[
+                    Literal(value=1),
+                    Literal(value=2),
+                ],
+                kwargs=[
+                    (StrLiteral(w_T=None, value='x'), Literal(w_T=None, value=3)),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    def test_Call_double_star_kwargs_unsupported(self):
+        src = """
+        def foo() -> i32:
+            return bar(1, **kwargs)
         """
         self.expect_errors(
             src,
-            "not implemented yet: keyword arguments",
-            ("this is not supported", "x=3"),
+            "not implemented yet: ** var-keyword arguments",
+            ("this is not supported", "**kwargs"),
         )
 
     def test_CallMethod(self):
@@ -1109,6 +1134,7 @@ class TestParser:
                     Literal(value=1),
                     Literal(value=2),
                 ],
+                kwargs=[],
             ),
         )
         """
@@ -1231,6 +1257,7 @@ class TestParser:
                 args=[
                     Literal(value=10),
                 ],
+                kwargs=[],
             ),
             body=[
                 Pass(),
@@ -1324,6 +1351,7 @@ class TestParser:
                 args=[
                     StrLiteral(value='error message'),
                 ],
+                kwargs=[],
             ),
         )
         """
@@ -1817,6 +1845,7 @@ class TestParser:
                 args=[
                     Literal(value=10),
                 ],
+                kwargs=[],
             ),
             body=[
                 If(
@@ -1852,6 +1881,7 @@ class TestParser:
                 args=[
                     Literal(value=10),
                 ],
+                kwargs=[],
             ),
             body=[
                 If(

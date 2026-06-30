@@ -139,9 +139,16 @@ def w_dynamic_hasattr(vm: "SPyVM", w_obj: W_Dynamic, w_name: W_Str) -> W_Dynamic
 
 @OP.builtin_func
 def w_dynamic_call(vm: "SPyVM", w_obj: W_Dynamic, *args_w: W_Dynamic) -> W_Dynamic:
+    from spy.location import Loc
+    from spy.vm.function import W_FuncArgs
+
     all_args_w = [w_obj] + list(args_w)
-    all_args_wam = [W_MetaArg.from_w_obj(vm, w_x) for i, w_x in enumerate(all_args_w)]
-    w_opimpl = vm.call_OP(None, OP.w_CALL, all_args_wam)
+    all_args_wam = [W_MetaArg.from_w_obj(vm, w_x) for w_x in all_args_w]
+    wam_func = all_args_wam[0]
+    wam_funcargs = W_MetaArg.from_w_obj(
+        vm, W_FuncArgs.from_args(*all_args_wam[1:]), loc=Loc.here()
+    )
+    w_opimpl = vm.call_OP(None, OP.w_CALL, [wam_func, wam_funcargs])
     return w_opimpl._execute(vm, all_args_w)  # XXX
 
 

@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from spy.vm.function import W_FuncType
+from spy.vm.function import W_FuncArgs, W_FuncType
 from spy.vm.opimpl import W_OpImpl
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 
@@ -20,7 +20,10 @@ def w_GETITEM(vm: "SPyVM", wam_obj: W_MetaArg, *args_wam: W_MetaArg) -> W_OpImpl
     newargs_wam = [wam_obj] + list(args_wam)
     if isinstance(w_T, W_FuncType) and w_T.kind == "generic":
         # special case: for generic W_Funcs, "[]" means "call"
-        w_opspec = w_T.pyclass.op_CALL(vm, wam_obj, *args_wam)  # type: ignore
+        wam_funcargs = W_MetaArg.from_w_obj(
+            vm, W_FuncArgs.from_args(*args_wam), loc=wam_obj.loc
+        )
+        w_opspec = w_T.pyclass.op_CALL(vm, wam_obj, wam_funcargs)  # type: ignore
     elif w_getitem := w_T.lookup_func(vm, "__getitem__"):
         w_opspec = vm.fast_metacall(w_getitem, newargs_wam)
 
