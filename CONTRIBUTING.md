@@ -7,21 +7,20 @@ Thanks for helping improve SPy! Follow these quick steps:
 - Clone the repo
 
   ```bash
-  git clone git clone git@github.com:your-user-name/spy.git
+  git clone git@github.com:your-user-name/spy.git
   cd spy
   ```
 
-- Create and activate a virtualenv
-
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate
-   ```
-
-- Install dev dependencies and build runtime
+- Create the virtualenv and install SPy with its dev dependencies
 
   ```bash
-  pip install -e .[dev]
+  uv sync
+  ```
+
+- Activate a virtualenv and build runtime
+
+  ```bash
+  source .venv/bin/activate
   make -C spy/libspy
   ```
 
@@ -34,7 +33,7 @@ Thanks for helping improve SPy! Follow these quick steps:
 - Install pre-commit
 
   ```bash
-  pip install pre-commit
+  uv pip install pre-commit
   pre-commit install
   ```
 
