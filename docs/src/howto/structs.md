@@ -27,7 +27,7 @@ Structs may also be defined with the [generic class syntax](../howto/generics.md
 
 ## Attributes
 
-Attributes of structs do not support assignment after creation, nor can new attributes be assigned to an instance of a struct after creation:
+Structs are shallow immutable. Attributes cannot be set after creation, nor can new attributes be assigned to an instance of a struct class after creation:
 
 ```py
 @struct
@@ -106,7 +106,7 @@ def main() -> None:
     print(p.age) # 6
 ```
 
-User-facing constructors can be customized by overwriting the `__new__` method; the `__make__` must be called within to handle the initialization of the complete struct. Note that `__new__` functions like a staticmethod (it does not take a `self` parameter)
+User-facing constructors can be customized by overwriting the `__new__` method; the `__make__` must be called within to handle the initialization of the complete struct. Note that, as in Python, `__new__` functions like a staticmethod (it does not take a `self` parameter)
 
 ```py
 @struct
