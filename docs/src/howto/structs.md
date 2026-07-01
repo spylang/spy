@@ -9,7 +9,7 @@ Class construction and layout are a part of SPy that's rapidly evolving. All of 
 
 ## Declaration
 
-Structs are declared with the `@struct` decorator on a class definition. Their fixed list of fields follows with type annotations. Note that default values for these fields are not currently supported.
+Structs are declared with the `@struct` decorator on a CPython-style class definition. Their fixed list of fields follows with type annotations. Note that default values for these fields are not currently supported.
 
 ```py
 @struct
