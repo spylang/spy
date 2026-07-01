@@ -144,6 +144,46 @@ def main() -> None:
     print(p.name, "has", len(p.books), "books") # Alice has 0 books
 ```
 
+By convention, if a struct is simply being used to wrap a lower-level type (to add constructors, methods, etc), that lower level type is denoted as `__ll__`.
+
+See the [smallpoint example](https://github.com/spylang/spy/examples/3_low_level/smallpoint.spy) for a more in-depth example and explanation. See the implementations of the [list](https://github.com/spylang/spy/stdlib/_list.spy), [dict](https://github.com/spylang/spy/stdlib/_dict.spy), and [file](https://github.com/spylang/spy/stdlib/_file.spy) objects in spy for usage of this pattern in the SPy standard library.
+
+/// info
+Eventually, the `__ll__` notation may likely be special-cased to make it a truly private attribute within the struct. Currently, it is just a naming convetion.
+///
+
+```py
+from unsafe import gc_ptr, gc_alloc
+
+@struct
+class BookData:
+    name: str
+    stars: int # out of 10
+
+@struct
+class Book:
+    __ll__: gc_ptr[BookData]
+
+    def __new__(name: str, stars: float) -> Book:
+        data = gc_alloc[BookData](1)
+        data.name = name
+        data.stars = stars
+        return Book.__make__(data)
+
+    def plus_one_star(self) -> None:
+        self.__ll__.stars = self.__ll__.stars + 1.0
+
+    def __repr__(self) -> str:
+        return "Book(name='" + self.__ll__.name + "', stars=" + str(self.__ll__.stars) + ")"
+
+
+def main() -> None:
+    b = Book("An Introduction to Python", 10.0)
+    print(b) # Book(name='An Introduction to Python', stars=10.0)
+    b.plus_one_star() # Book(name='An Introduction to Python', stars=11.0)
+    print(b)
+```
+
 <!-- 
     TODO Add notes about metafuncs as constructors. This may be more generally useful once typing for things
     like `str | None` is available.
