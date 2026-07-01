@@ -155,3 +155,7 @@ Methods may also be [blue functions](../reference/spy_builtin_functions.md#blue)
 ## Inheritance
 
 Inheriting from a base class is not currently implemented in SPy.
+
+## Structs as Arguments
+
+When used as a function argument, Structs are passed by value, meaning a copy of the struct is created for each call. The performance implications of this should be kept in mind for large structs.
