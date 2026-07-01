@@ -90,6 +90,26 @@ def main() -> None:
     print(p.name, "is", p.age[0], "years old") # Alice is 100 years old
 ```
 
+## Pointers to Structs
+
+If a struct is manually allocated using `gc_alloc` or similar, its attributes can be mutated. See the [low level memory docuementary on heap-allocated structs](../llmem.md#heap-allocated-structs) for more info.
+
+```py
+from unsafe import gc_alloc, gc_ptr
+
+@struct
+class Point:
+    x: int
+
+# spy build foo.spy
+def main() -> None:
+    p = gc_alloc[Point](1)
+    p.x = 1
+    print(p.x)
+    p.x = 2
+    print(p.x)
+```
+
 ## Constructors
 
 Structs use a default constructor which populates all their attributes in-order, and all attributes must be provided each time the default constructor is called. E.g. the example above, the constructor `p = Person('Alice', 99, [])` requires an empty list to be passed for the `books` attribute. We can call this constructor explicitly using the `__make__` method:
