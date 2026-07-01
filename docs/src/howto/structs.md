@@ -1,7 +1,7 @@
-title: Struct Classes
+title: Structs
 ---
 
-Struct classes (currently the only classes in SPy) are immutable data structures analogous to C structs.
+Structs (currently the only classes in SPy) are immutable data structures analogous to C structs.
 
 /// warning
 Class construction and layout are a part of SPy that's rapidly evolving. All of the constructs, names, functions, or decorators here are likely to change!
@@ -9,7 +9,7 @@ Class construction and layout are a part of SPy that's rapidly evolving. All of 
 
 ## Declaration
 
-Struct classes are declared with the `@struct` decorator on the class definition. Their fixed list of fields follows with type annotations. Note that default values for these fields are not currently supported.
+Structs are declared with the `@struct` decorator on a class definition. Their fixed list of fields follows with type annotations. Note that default values for these fields are not currently supported.
 
 ```py
 @struct
@@ -23,11 +23,11 @@ def main() -> None:
     
 ```
 
-Struct classes may also be defined with the [generic class syntax](../howto/generics.md#generic-class-syntax), which is syntactic sugar for a generic function which defines an internal struct. See the [generics](../howto/generics.md) documentation for more info.
+Structs may also be defined with the [generic class syntax](../howto/generics.md#generic-class-syntax), which is syntactic sugar for a generic function which defines an internal struct. See the [generics](../howto/generics.md) documentation for more info.
 
 ## Attributes
 
-Attributes of struct classes do not support assignment after creation, nor can new attributes be assigned to an instance of a struct class after creation:
+Attributes of structs do not support assignment after creation, nor can new attributes be assigned to an instance of a struct after creation:
 
 ```py
 @struct
@@ -92,7 +92,7 @@ def main() -> None:
 
 ## Constructors
 
-Struct classes use a default constructor which populates all their attributes in-order, and all attributes must be provided each time the default constructor is called. E.g. the example above, the constructor `p = Person('Alice', 99, [])` requires an empty list to be passed for the `books` attribute. We can call this constructor explicitly using the `__make__` method:
+Structs use a default constructor which populates all their attributes in-order, and all attributes must be provided each time the default constructor is called. E.g. the example above, the constructor `p = Person('Alice', 99, [])` requires an empty list to be passed for the `books` attribute. We can call this constructor explicitly using the `__make__` method:
 
 ```py
 @struct
@@ -131,7 +131,7 @@ def main() -> None:
 
 ## Methods
 
-Struct classes may have methods defined inside their class body; the struct object itself is passed as the first parameter (usually called `self`), just as in CPython:
+Structs may have methods defined inside their class body; the struct object itself is passed as the first parameter (usually called `self`), just as in CPython:
 
 ```py
 @struct
