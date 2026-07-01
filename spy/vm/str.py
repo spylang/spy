@@ -2,11 +2,10 @@ from typing import TYPE_CHECKING
 
 from spy.fqn import FQN
 from spy.libspy import LLSPyInstance
-from spy.vm.b import BUILTINS, OP, B
+from spy.vm.b import OP, B
 from spy.vm.builtin import builtin_method
-from spy.vm.object import W_Object, W_Type
+from spy.vm.object import W_Object
 from spy.vm.opspec import W_MetaArg, W_OpSpec
-from spy.vm.primitive import W_F64, W_I32
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -48,6 +47,7 @@ class W_Str(W_Object):
         "_getitem_slice": FQN("_str::methods::_getitem_slice"),
         "encode": FQN("_str::methods::encode"),
         "replace": FQN("_str::methods::replace"),
+        "__contains__": FQN("_str::methods::__contains__"),
         "split": FQN("_str::methods::split"),
         "isspace": FQN("_str::methods::isspace"),
         "find": FQN("_str::methods::find"),
@@ -119,3 +119,10 @@ class W_Str(W_Object):
     @staticmethod
     def w_str(vm: "SPyVM", w_s: "W_Str") -> "W_Str":
         return w_s
+
+    @builtin_method("__repr__")
+    @staticmethod
+    def w_repr(vm: "SPyVM", w_s: "W_Str") -> "W_Str":
+        assert isinstance(w_s, W_Str)
+        ptr = vm.ll.call("spy_str_repr", w_s.ptr)
+        return W_Str.from_ptr(vm, ptr)

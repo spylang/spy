@@ -799,3 +799,39 @@ class TestList(CompilerTest):
         mod = self.compile(src)
         res = mod.foo()
         assert res == [0, 1, 2, 3, 4]
+
+    def test_list_in(self):
+        mod = self.compile("""
+        from _list import list
+
+        def test_i32_found() -> bool:
+            lst = list[int]()
+            lst.append(1)
+            lst.append(2)
+            lst.append(3)
+            return 2 in lst
+
+        def test_i32_not_found() -> bool:
+            lst = list[int]()
+            lst.append(1)
+            lst.append(2)
+            lst.append(3)
+            return 0 in lst
+
+        def test_str_found() -> bool:
+            lst = list[str]()
+            lst.append("hello")
+            lst.append("world")
+            return "world" in lst
+
+        def test_str_not_found() -> bool:
+            lst = list[str]()
+            lst.append("hello")
+            lst.append("world")
+            return "foo" in lst
+        """)
+
+        assert mod.test_i32_found() == True
+        assert mod.test_i32_not_found() == False
+        assert mod.test_str_found() == True
+        assert mod.test_str_not_found() == False

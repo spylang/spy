@@ -1,6 +1,6 @@
 import pytest
 
-from spy.tests.support import CompilerTest
+from spy.tests.support import CompilerTest, expect_errors
 
 
 class TestTange(CompilerTest):
@@ -56,3 +56,47 @@ class TestTange(CompilerTest):
         """)
         assert mod.foo()
         assert not mod.bar()
+
+    def test_contains_true(self):
+        mod = self.compile("""
+        from _tuple import tuple
+
+        def c(v: int) -> bool:
+            t = tuple[int, int](1, 2)
+            return v in t
+        """)
+        assert mod.c(2) == True
+
+    def test_contains_false(self):
+        mod = self.compile("""
+        from _tuple import tuple
+
+        def c(v: int) -> bool:
+            t = tuple[int, int](1, 3)
+            return v in t
+        """)
+        assert mod.c(2) == False
+
+    def test_contains_heterogeneous(self):
+        mod = self.compile("""
+        from _tuple import tuple
+
+        def c(v: int) -> bool:
+            t = tuple[str, int]("hello", 42)
+            return v in t
+        """)
+        assert mod.c(42) == True
+        assert mod.c(43) == False
+
+    def test_contains_type_mismatch(self):
+        src = """
+        from _tuple import tuple
+
+        def c() -> bool:
+            t = tuple[int, int](1, 2)
+            return "z" in t
+        """
+        errors = expect_errors(
+            "argument is not of any of the tuple's element types",
+        )
+        self.compile_raises(src, "c", errors)

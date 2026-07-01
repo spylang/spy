@@ -98,3 +98,43 @@ class TestRange(CompilerTest):
         assert mod.fmt2(5, 5) == ""
         assert mod.fmt3(0, 0, 1) == ""
         assert mod.fmt3(10, 10, -1) == ""
+
+    def test_contains(self):
+        src = """
+        from _range import range
+
+        def c1(v: int) -> bool:
+            return v in range(10)
+
+        def c2(v: int) -> bool:
+            return v in range(0, 10, 2)
+
+        def c3(v: int) -> bool:
+            return v in range(1, 10, 3)
+
+        def c4(v: int) -> bool:
+            return v in range(10, 0, -1)
+
+        def c5(v: int) -> bool:
+            return v in range(10, 0, -2)
+        """
+        mod = self.compile(src)
+
+        assert mod.c1(0) == True
+        assert mod.c1(5) == True
+        assert mod.c1(9) == True
+        assert mod.c1(10) == False
+        assert mod.c1(-1) == False
+
+        assert mod.c2(4) == True
+        assert mod.c2(3) == False
+
+        assert mod.c3(1) == True
+        assert mod.c3(4) == True
+        assert mod.c3(2) == False
+
+        assert mod.c4(10) == True
+        assert mod.c4(5) == True
+        assert mod.c4(0) == False
+        assert mod.c5(8) == True
+        assert mod.c5(7) == False

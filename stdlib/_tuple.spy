@@ -50,4 +50,44 @@ def tuple(*items_T):
 
             return OpSpec(get, [m_self])
 
+        @blue.metafunc
+        def __contains__(m_self, m_v):
+            T = m_v.static_type
+
+            @blue
+            def has_match(idx):
+                if idx == len(items_T):
+                    return False
+                if items_T[idx] == T:
+                    return True
+                return has_match(idx + 1)
+
+            if not has_match(0):
+                raise TypeError(
+                    "argument is not of any of the tuple's element types"
+                )
+
+            # build the runtime comparison chain recursively for each fields that match the type
+            @blue
+            def build(idx):
+                if idx == len(items_T):
+                    def check_none(self: _tup, v: T) -> bool:
+                        return False
+                    return check_none
+
+                rest = build(idx + 1)
+                
+                if items_T[idx] == T:
+                    attr = "_item" + str(idx)
+
+                    def check_or_rest(self: _tup, v: T) -> bool:
+                        if getattr(self, attr) == v:
+                            return True
+                        return rest(self, v)
+                    return check_or_rest
+
+                return rest
+
+            return OpSpec(build(0), [m_self, m_v])
+
     return _tup
