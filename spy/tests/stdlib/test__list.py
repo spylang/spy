@@ -804,34 +804,21 @@ class TestList(CompilerTest):
         mod = self.compile("""
         from _list import list
 
-        def test_i32_found() -> bool:
+        def i32_contains(x: i32) -> bool:
             lst = list[int]()
             lst.append(1)
             lst.append(2)
             lst.append(3)
-            return 2 in lst
+            return x in lst
 
-        def test_i32_not_found() -> bool:
-            lst = list[int]()
-            lst.append(1)
-            lst.append(2)
-            lst.append(3)
-            return 0 in lst
-
-        def test_str_found() -> bool:
+        def str_contains(x: str) -> bool:
             lst = list[str]()
             lst.append("hello")
             lst.append("world")
-            return "world" in lst
-
-        def test_str_not_found() -> bool:
-            lst = list[str]()
-            lst.append("hello")
-            lst.append("world")
-            return "foo" in lst
+            return x in lst
         """)
 
-        assert mod.test_i32_found() == True
-        assert mod.test_i32_not_found() == False
-        assert mod.test_str_found() == True
-        assert mod.test_str_not_found() == False
+        assert mod.i32_contains(2) == True
+        assert mod.i32_contains(0) == False
+        assert mod.str_contains("world") == True
+        assert mod.str_contains("foo") == False
