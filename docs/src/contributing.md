@@ -17,7 +17,9 @@ Next, clone the repo to your machine:
   cd spy
   ```
 
-Create a virtual environment for your project, and install both the SPy dependencies and the docs-specific dependencies. Any package installer and virtual environment will work; here are a couple of options:
+Create a virtual environment for your project, and install both the SPy dependencies
+and the docs-specific dependencies. Any package installer and virtual environment will work,
+but `uv` is preferred as it's the one tested in CI. Here are a couple of options:
 
 === "uv"
     ```bash

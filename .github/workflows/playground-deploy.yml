@@ -34,7 +34,7 @@ jobs:
 
       - name: Install venv
         run: |
-          # to be able to call `python -m spy.build.flags`
+          # we need to have spy installed BEFORE the "build libspy" pass because the Makefile calls `python -m spy.build.flags`
           uv sync --no-dev --locked
 
       - name: Setup Emscripten
