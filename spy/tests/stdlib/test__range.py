@@ -103,38 +103,28 @@ class TestRange(CompilerTest):
         src = """
         from _range import range
 
-        def c1(v: int) -> bool:
-            return v in range(10)
+        def range1_contains(x: int, n: int) -> bool:
+            return x in range(n)
 
-        def c2(v: int) -> bool:
-            return v in range(0, 10, 2)
-
-        def c3(v: int) -> bool:
-            return v in range(1, 10, 3)
-
-        def c4(v: int) -> bool:
-            return v in range(10, 0, -1)
-
-        def c5(v: int) -> bool:
-            return v in range(10, 0, -2)
+        def range3_contains(x: int, start: int, stop: int, step: int) -> bool:
+            return x in range(start, stop, step)
         """
         mod = self.compile(src)
 
-        assert mod.c1(0) == True
-        assert mod.c1(5) == True
-        assert mod.c1(9) == True
-        assert mod.c1(10) == False
-        assert mod.c1(-1) == False
+        assert mod.range1_contains(0, 3) == True
+        assert mod.range1_contains(2, 3) == True
+        assert mod.range1_contains(3, 3) == False
+        assert mod.range1_contains(-1, 3) == False
 
-        assert mod.c2(4) == True
-        assert mod.c2(3) == False
+        assert mod.range3_contains(4, 0, 10, 2) == True
+        assert mod.range3_contains(3, 0, 10, 2) == False
 
-        assert mod.c3(1) == True
-        assert mod.c3(4) == True
-        assert mod.c3(2) == False
+        assert mod.range3_contains(1, 1, 10, 3) == True
+        assert mod.range3_contains(4, 1, 10, 3) == True
+        assert mod.range3_contains(2, 1, 10, 3) == False
 
-        assert mod.c4(10) == True
-        assert mod.c4(5) == True
-        assert mod.c4(0) == False
-        assert mod.c5(8) == True
-        assert mod.c5(7) == False
+        assert mod.range3_contains(10, 10, 0, -1) == True
+        assert mod.range3_contains(5, 10, 0, -1) == True
+        assert mod.range3_contains(0, 10, 0, -1) == False
+        assert mod.range3_contains(8, 10, 0, -2) == True
+        assert mod.range3_contains(7, 10, 0, -2) == False
