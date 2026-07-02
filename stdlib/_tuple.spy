@@ -52,41 +52,58 @@ def tuple(*items_T):
 
         @blue.metafunc
         def __contains__(m_self, m_v):
+            """
+            Implement the 'in' operator only on homogeneous tuples.
+
+            Everything here runs at redshift time: `build` recursively
+            unrolls the comparisons, so e.g. for tuple[i32, i32, i32] the
+            expression `v in t` compiles to a chain of specialized functions
+            equivalent to:
+
+                t._item0 == v or t._item1 == v or t._item2 == v
+
+            with no loop or dynamic dispatch left at runtime.
+            """
+            
             T = m_v.static_type
 
             @blue
-            def has_match(idx):
-                if idx == len(items_T):
-                    return False
-                if items_T[idx] == T:
+            def is_homogeneous(idx):
+                if idx == N:
                     return True
-                return has_match(idx + 1)
+                if items_T[idx] == items_T[0]:
+                    return is_homogeneous(idx + 1)
+                return False
 
-            if not has_match(0):
+            if not is_homogeneous(0):
+                raise TypeError("'in' is not supported on heterogeneous tuples")
+
+            @blue
+            def matches_item_type():
+                if N == 0:
+                    return True
+                return items_T[0] == T
+
+            if not matches_item_type():
                 raise TypeError(
-                    "argument is not of any of the tuple's element types"
+                    "type mismatch: argument is not of the tuple's element type"
                 )
 
-            # build the runtime comparison chain recursively for each fields that match the type
             @blue
             def build(idx):
-                if idx == len(items_T):
+                if idx == N:
                     def check_none(self: _tup, v: T) -> bool:
                         return False
                     return check_none
 
                 rest = build(idx + 1)
-                
-                if items_T[idx] == T:
-                    attr = "_item" + str(idx)
+                attr = "_item" + str(idx)
 
-                    def check_or_rest(self: _tup, v: T) -> bool:
-                        if getattr(self, attr) == v:
-                            return True
-                        return rest(self, v)
-                    return check_or_rest
-
-                return rest
+                def check_or_rest(self: _tup, v: T) -> bool:
+                    if getattr(self, attr) == v:
+                        return True
+                    return rest(self, v)
+                return check_or_rest
 
             return OpSpec(build(0), [m_self, m_v])
 
