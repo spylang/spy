@@ -26,6 +26,7 @@ BuildType = str  # "release" | "debug"
 _BASE_CFLAGS: list[str] = [
     "-fvisibility=hidden",
     "-fPIC",
+    "-DSPY_GC_NONE",
 ]
 
 # WASM-specific CFLAGS shared by wasi and emscripten
