@@ -117,10 +117,3 @@ class W_Str(W_Object):
     @staticmethod
     def w_str(vm: "SPyVM", w_s: "W_Str") -> "W_Str":
         return w_s
-
-    @builtin_method("__repr__")
-    @staticmethod
-    def w_repr(vm: "SPyVM", w_s: "W_Str") -> "W_Str":
-        assert isinstance(w_s, W_Str)
-        ptr = vm.ll.call("spy_str_repr", w_s.ptr)
-        return W_Str.from_ptr(vm, ptr)
