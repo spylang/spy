@@ -107,9 +107,6 @@ int32_t WASM_EXPORT(spy_str_hash)(spy_StrObject *s);
 #define spy_operator$str_eq spy_str_eq
 #define spy_operator$str_ne spy_str_ne
 #define spy_operator$str_to_complex128 spy_str_to_complex128
-#define spy_builtins$str$replace spy_str_replace
-#define spy_builtins$str$__getitem__ spy_str_getitem
-#define spy_builtins$str$__len__ spy_str_len
 #define spy_builtins$str$__str__ spy_str_identity
 
 static inline spy_StrObject *
