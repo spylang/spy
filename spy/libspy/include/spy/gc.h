@@ -8,7 +8,7 @@ typedef struct {
 } spy_GcRef;
 
 #ifdef SPY_GC_BDWGC
-#include <gc.h>
+#  include <gc.h>
 
 static inline spy_GcRef
 spy_GcAlloc(size_t size) {
