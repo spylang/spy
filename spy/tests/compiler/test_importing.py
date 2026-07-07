@@ -178,6 +178,7 @@ class TestImporting(CompilerTest):
         assert mods == ["a1", "a2", "aaa", "b1", "b2", "bbb", "main"]
 
     def test_circular_type_refs(self):
+        # See CBackend.split_fqns()
         src = """
         @blue.generic
         def Vec2(T):
@@ -200,6 +201,30 @@ class TestImporting(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == (1, 1)
+
+    def test_structdefs_toposort(self):
+        # this is technically not about importing, but it's related to
+        # test_circular_type_refs, so we keep it next to it. Ensure that we emit structs
+        # in topological order.  See CBackend.split_fqns()
+        src = """
+        @blue.generic
+        def Vec2(T):
+            @struct
+            class Inner:
+                a: T
+                b: T
+            return Inner
+
+        @struct
+        class Outer:
+            v: Vec2[i32]
+
+        def foo() -> i32:
+            o = Outer.__make__(Vec2[i32].__make__(1, 2))
+            return o.v.a + o.v.b
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 3
 
     def test_multi_step_import(self):
         self.write_file("a.spy", "X = 42")

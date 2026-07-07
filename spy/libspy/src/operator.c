@@ -121,6 +121,18 @@ spy_operator$f32_ge(float x, float y) {
 }
 
 float
+spy_operator$f32_pow(float x, float y) {
+    if (x == 0.0f && y < 0.0f) {
+        spy_panic("ZeroDivisionError", "0.0 cannot be raised to a negative power",
+                  __FILE__, __LINE__);
+    }
+    if (x < 0.0f && isfinite(y) && y != truncf(y)) {
+        spy_panic("ValueError", "math domain error", __FILE__, __LINE__);
+    }
+    return powf(x, y);
+}
+
+float
 spy_operator$f32_neg(float x) {
     return -x;
 }

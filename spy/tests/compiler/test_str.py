@@ -127,6 +127,89 @@ class TestStr(CompilerTest):
         assert mod.split_whitespace("  a    b   c   ") == ["a", "b", "c"]
         assert mod.split_whitespace("\n\ta \t\r b \v ") == ["a", "b"]
 
+    def test_find(self):
+        mod = self.compile("""
+            def find(s: str, sub: str) -> i32:
+                return s.find(sub)
+
+            def find_start(s: str, sub: str, start: i32) -> i32:
+                return s.find(sub, start)
+
+            def find_range(s: str, sub: str, start: i32, end: i32) -> i32:
+                return s.find(sub, start, end)
+        """)
+
+        # basic
+        assert mod.find("hello world", "world") == 6
+        assert mod.find("hello world", "o") == 4
+        assert mod.find("hello world", "xyz") == -1
+        assert mod.find("hello", "hello") == 0
+        assert mod.find("abcabc", "bc") == 1
+
+        # empty needle
+        assert mod.find("abc", "") == 0
+        assert mod.find("", "") == 0
+        assert mod.find("", "a") == -1
+
+        # with start
+        assert mod.find_start("abcabc", "bc", 2) == 4
+        assert mod.find_start("hello", "l", 3) == 3
+        assert mod.find_start("hello", "h", 1) == -1
+        assert mod.find_start("abc", "", 1) == 1
+        assert mod.find_start("abc", "", 5) == -1
+
+        # with start and end
+        assert mod.find_range("hello world", "world", 0, 11) == 6
+        assert mod.find_range("hello world", "world", 0, 10) == -1
+        assert mod.find_range("aXaXa", "X", 2, 5) == 3
+        assert mod.find_range("aaaa", "a", 1, 3) == 1
+
+        # negative start/end are clamped like slice indices
+        assert mod.find_start("hello world", "world", -5) == 6
+        assert mod.find_start("hello", "h", -100) == 0
+        assert mod.find_range("hello world", "o", 0, -3) == 4
+
+        # multi-char needle with false starts on the first byte
+        assert mod.find("aXbXcXqzx", "qzx") == 6
+        assert mod.find("qaqbqcqzx", "qzx") == 6
+
+    def test_count(self):
+        mod = self.compile("""
+            def count(s: str, sub: str) -> i32:
+                return s.count(sub)
+
+            def count_start(s: str, sub: str, start: i32) -> i32:
+                return s.count(sub, start)
+
+            def count_range(s: str, sub: str, start: i32, end: i32) -> i32:
+                return s.count(sub, start, end)
+        """)
+
+        # basic
+        assert mod.count("hello world", "o") == 2
+        assert mod.count("hello world", "l") == 3
+        assert mod.count("abcabc", "bc") == 2
+        assert mod.count("hello", "xyz") == 0
+
+        # non-overlapping
+        assert mod.count("aaaa", "aa") == 2
+        assert mod.count("aaaaa", "aa") == 2
+
+        # empty needle counts the gaps between characters
+        assert mod.count("abc", "") == 4
+        assert mod.count("", "") == 1
+        assert mod.count("", "a") == 0
+        assert mod.count_start("abc", "", 1) == 3
+        assert mod.count_range("abcabc", "", 0, 4) == 5
+        assert mod.count_range("abc", "", 2, 1) == 0
+
+        # with start
+        assert mod.count_start("abcabc", "bc", 2) == 1
+
+        # with start and end
+        assert mod.count_range("abcabc", "bc", 0, 4) == 1
+        assert mod.count_range("aaaa", "a", 1, 3) == 2
+
     def test_isspace(self):
         mod = self.compile("""
             def iss(s: str) -> bool:
@@ -551,3 +634,38 @@ class TestStr(CompilerTest):
         mod = self.compile(src)
         with SPyError.raises("W_ValueError"):
             mod.encode("x", "ascii")
+
+    def test_str_in(self):
+        mod = self.compile("""
+        def foo(s: str, target: str) -> bool:
+            return target in s
+        """)
+
+        # Basic positive cases
+        assert mod.foo("hello world", "h") == True
+        assert mod.foo("hello", "he") == True
+        assert mod.foo("hello", "lo") == True
+        assert mod.foo("hello", "hello") == True
+
+        # Basic negative cases
+        assert mod.foo("hello", "z") == False
+        assert mod.foo("hello", "hell0") == False
+
+        # Empty target
+        assert mod.foo("hello", "") == True
+        assert mod.foo("", "") == True
+
+        # Empty container
+        assert mod.foo("", "h") == False
+
+        # Target longer than container
+        assert mod.foo("hello", "helloo") == False
+
+        # Single-character strings
+        assert mod.foo("x", "x") == True
+        assert mod.foo("x", "y") == False
+
+        # Repeated characters
+        assert mod.foo("aaab", "aaab") == True
+        assert mod.foo("aaaa", "aaaa") == True
+        assert mod.foo("aaab", "aaaab") == False

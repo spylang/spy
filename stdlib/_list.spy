@@ -331,6 +331,17 @@ def list(T):
             ptr_move_slice(ll.items, idx, ll.length - 1, ll.items, idx + 1, ll.length)
             ll.length = ll.length - 1
 
+        def __contains__(self, value: T) -> bool:
+            ll = self.__ll__
+            i = 0
+            while i < ll.length:
+                if ll.items[i] == value:
+                    return True
+                i = i + 1
+            
+            return False
+
+
         @blue.metafunc
         def __eq__(m_self, m_other):
             if m_other.static_type == m_self.static_type:

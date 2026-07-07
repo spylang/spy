@@ -19,9 +19,6 @@ The contents of the `__spy__` module and SPy's builtins form the API surface of 
 
 : May be useful during metaprograming ensure that blue objects which are equal do not get optimized into the same object at redshift time. See, for example, the [implementation of `exal_expr_List`](https://github.com/spylang/spy/blob/main/spy/vm/astframe.py#L1161).
 
-### __STATIC_TYPE__(object) { #markdown data-toc-label='STATIC_TYPE()' }
-:   Returns the type of the expression determined in a static context. Useful in tests, and is used in some of SPy's internal machinery.
-
 ### __is_compiled__() -> bool { #markdown data-toc-label='is_compiled()' }
 :   Returns `False` when run in the interpreter, with or without redshifting. Returns `True` in compiled C code. Useful for testing and benchmarks, where it may be useful to adjust parameters depending on whether the code is compiled or not.
 

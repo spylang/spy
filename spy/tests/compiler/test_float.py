@@ -139,6 +139,68 @@ class TestFloat(CompilerTest):
         assert mod.add_u32(1.5, 2) == 3.5
         assert mod.add_f32(1.5, 2.0) == 3.5
 
+    def test_pow(self, float_type):
+        mod = self.compile(f"""
+        T = {float_type}
+        def pow(x: T, y: T) -> T:
+            return x ** y
+        """)
+        assert mod.pow(2.0, 3.0) == 8.0
+        assert mod.pow(3.0, 2.0) == 9.0
+        assert mod.pow(5.0, 0.0) == 1.0
+        assert math.isclose(mod.pow(2.0, 0.5), 1.4142135623730951, rel_tol=1e-6)
+        assert math.isclose(mod.pow(4.0, 0.5), 2.0, rel_tol=1e-6)
+        assert math.isclose(mod.pow(2.0, -1.0), 0.5, rel_tol=1e-6)
+
+    def test_pow_negative_base(self, float_type):
+        mod = self.compile(f"""
+        T = {float_type}
+        def pow(x: T, y: T) -> T:
+            return x ** y
+        """)
+        assert math.isclose(mod.pow(-2.0, 3.0), -8.0, rel_tol=1e-6)
+        assert math.isclose(mod.pow(-2.0, 2.0), 4.0, rel_tol=1e-6)
+        assert math.isclose(mod.pow(-1.0, 4.0), 1.0, rel_tol=1e-6)
+        assert math.isclose(mod.pow(-2.0, -1.0), -0.5, rel_tol=1e-6)
+        assert math.isclose(mod.pow(-2.0, -2.0), 0.25, rel_tol=1e-6)
+
+    def test_pow_negative_base_fractional_exp_raises(self, float_type):
+        mod = self.compile(f"""
+        T = {float_type}
+        def pow(x: T, y: T) -> T:
+            return x ** y
+        """)
+        with SPyError.raises("W_ValueError", match="math domain error"):
+            mod.pow(-5.0, 0.5)
+        with SPyError.raises("W_ValueError", match="math domain error"):
+            mod.pow(-2.0, 1.5)
+
+    def test_pow_zero_negative_exp_raises(self, float_type):
+        mod = self.compile(f"""
+        T = {float_type}
+        def pow(x: T, y: T) -> T:
+            return x ** y
+        """)
+        with SPyError.raises(
+            "W_ZeroDivisionError", match="0.0 cannot be raised to a negative power"
+        ):
+            mod.pow(0.0, -1.0)
+        with SPyError.raises(
+            "W_ZeroDivisionError", match="0.0 cannot be raised to a negative power"
+        ):
+            mod.pow(0.0, -2.0)
+
+    def test_pow_base_between_zero_and_one(self, float_type):
+        mod = self.compile(f"""
+        T = {float_type}
+        def pow(x: T, y: T) -> T:
+            return x ** y
+        """)
+        assert math.isclose(mod.pow(0.5, 2.0), 0.25, rel_tol=1e-6)
+        assert math.isclose(mod.pow(0.5, -1.0), 2.0, rel_tol=1e-6)
+        assert math.isclose(mod.pow(0.1, 2.0), 0.01, rel_tol=1e-5)
+        assert math.isclose(mod.pow(0.5, 0.5), 0.7071067811865476, rel_tol=1e-6)
+
     def test_explicit_conversion(self):
         mod = self.compile("""
         def i32_to_f64(x: i32) -> f64: return f64(x)

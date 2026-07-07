@@ -27,6 +27,7 @@ MM.register(">>", "i8", "i8", OP.w_i8_rshift)
 MM.register("&",  "i8", "i8", OP.w_i8_and)
 MM.register("|",  "i8", "i8", OP.w_i8_or)
 MM.register("^",  "i8", "i8", OP.w_i8_xor)
+MM.register("**", "i8", "i8", OP.w_i8_pow)
 MM.register("==", "i8", "i8", OP.w_i8_eq)
 MM.register("!=", "i8", "i8", OP.w_i8_ne)
 MM.register("<" , "i8", "i8", OP.w_i8_lt)
@@ -46,6 +47,7 @@ MM.register(">>", "u8", "u8", OP.w_u8_rshift)
 MM.register("&",  "u8", "u8", OP.w_u8_and)
 MM.register("|",  "u8", "u8", OP.w_u8_or)
 MM.register("^",  "u8", "u8", OP.w_u8_xor)
+MM.register("**", "u8", "u8", OP.w_u8_pow)
 MM.register("==", "u8", "u8", OP.w_u8_eq)
 MM.register("!=", "u8", "u8", OP.w_u8_ne)
 MM.register("<" , "u8", "u8", OP.w_u8_lt)
@@ -65,6 +67,7 @@ MM.register(">>", "u32", "u32", OP.w_u32_rshift)
 MM.register("&",  "u32", "u32", OP.w_u32_and)
 MM.register("|",  "u32", "u32", OP.w_u32_or)
 MM.register("^",  "u32", "u32", OP.w_u32_xor)
+MM.register("**", "u32", "u32", OP.w_u32_pow)
 MM.register("==", "u32", "u32", OP.w_u32_eq)
 MM.register("!=", "u32", "u32", OP.w_u32_ne)
 MM.register("<" , "u32", "u32", OP.w_u32_lt)
@@ -84,6 +87,7 @@ MM.register(">>", "i64", "i64", OP.w_i64_rshift)
 MM.register("&",  "i64", "i64", OP.w_i64_and)
 MM.register("|",  "i64", "i64", OP.w_i64_or)
 MM.register("^",  "i64", "i64", OP.w_i64_xor)
+MM.register("**", "i64", "i64", OP.w_i64_pow)
 MM.register("==", "i64", "i64", OP.w_i64_eq)
 MM.register("!=", "i64", "i64", OP.w_i64_ne)
 MM.register("<" , "i64", "i64", OP.w_i64_lt)
@@ -103,6 +107,7 @@ MM.register(">>", "u64", "u64", OP.w_u64_rshift)
 MM.register("&",  "u64", "u64", OP.w_u64_and)
 MM.register("|",  "u64", "u64", OP.w_u64_or)
 MM.register("^",  "u64", "u64", OP.w_u64_xor)
+MM.register("**", "u64", "u64", OP.w_u64_pow)
 MM.register("==", "u64", "u64", OP.w_u64_eq)
 MM.register("!=", "u64", "u64", OP.w_u64_ne)
 MM.register("<" , "u64", "u64", OP.w_u64_lt)
@@ -122,6 +127,7 @@ MM.register(">>", "i32", "i32", OP.w_i32_rshift)
 MM.register("&",  "i32", "i32", OP.w_i32_and)
 MM.register("|",  "i32", "i32", OP.w_i32_or)
 MM.register("^",  "i32", "i32", OP.w_i32_xor)
+MM.register("**", "i32", "i32", OP.w_i32_pow)
 MM.register("==", "i32", "i32", OP.w_i32_eq)
 MM.register("!=", "i32", "i32", OP.w_i32_ne)
 MM.register("<" , "i32", "i32", OP.w_i32_lt)
@@ -136,6 +142,7 @@ MM.register("*",  "f64", "f64", OP.w_f64_mul)
 MM.register("/",  "f64", "f64", OP.w_f64_div)
 MM.register("//", "f64", "f64", OP.w_f64_floordiv)
 MM.register("%",  "f64", "f64", OP.w_f64_mod)
+MM.register("**", "f64", "f64", OP.w_f64_pow)
 MM.register("==", "f64", "f64", OP.w_f64_eq)
 MM.register("!=", "f64", "f64", OP.w_f64_ne)
 MM.register("<" , "f64", "f64", OP.w_f64_lt)
@@ -155,6 +162,8 @@ for num_t in ("i8", "u8", "u32", "i32", "f32"):
     MM.register("*",  num_t, "f64", OP.w_f64_mul)
     MM.register("/",  "f64", num_t, OP.w_f64_div)
     MM.register("/",  num_t, "f64", OP.w_f64_div)
+    MM.register("**", "f64", num_t, OP.w_f64_pow)
+    MM.register("**", num_t, "f64", OP.w_f64_pow)
     MM.register("==", "f64", num_t, OP.w_f64_eq)
     MM.register("==", num_t, "f64", OP.w_f64_eq)
     MM.register("!=", "f64", num_t, OP.w_f64_ne)
@@ -175,6 +184,7 @@ MM.register("*",  "f32", "f32", OP.w_f32_mul)
 MM.register("/",  "f32", "f32", OP.w_f32_div)
 MM.register("//", "f32", "f32", OP.w_f32_floordiv)
 MM.register("%",  "f32", "f32", OP.w_f32_mod)
+MM.register("**", "f32", "f32", OP.w_f32_pow)
 MM.register("==", "f32", "f32", OP.w_f32_eq)
 MM.register("!=", "f32", "f32", OP.w_f32_ne)
 MM.register("<" , "f32", "f32", OP.w_f32_lt)
@@ -191,6 +201,8 @@ for int_t in ["i32"]:
     MM.register("*",  int_t, "f32", OP.w_f32_mul)
     MM.register("/",  "f32", int_t, OP.w_f32_div)
     MM.register("/",  int_t, "f32", OP.w_f32_div)
+    MM.register("**", "f32", int_t, OP.w_f32_pow)
+    MM.register("**", int_t, "f32", OP.w_f32_pow)
     MM.register("==", "f32", int_t, OP.w_f32_eq)
     MM.register("==", int_t, "f32", OP.w_f32_eq)
     MM.register("!=", "f32", int_t, OP.w_f32_ne)
@@ -360,6 +372,26 @@ def w_MOD(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
         w_opspec = W_OpSpec.NULL
     return typecheck_opspec(
         vm, w_opspec, [wam_l, wam_r], dispatch="multi", errmsg="cannot do `{0}` % `{1}`"
+    )
+
+
+@OP.builtin_func(color="blue")
+def w_POW(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
+    from spy.vm.typechecker import typecheck_opspec
+
+    w_ltype = wam_l.w_static_T
+    if w_opspec := MM.get_binary_opspec("**", wam_l, wam_r):
+        pass
+    elif w_pow := w_ltype.lookup_func(vm, "__pow__"):
+        w_opspec = vm.fast_metacall(w_pow, [wam_l, wam_r])
+    else:
+        w_opspec = W_OpSpec.NULL
+    return typecheck_opspec(
+        vm,
+        w_opspec,
+        [wam_l, wam_r],
+        dispatch="multi",
+        errmsg="cannot do `{0}` ** `{1}`",
     )
 
 
@@ -671,4 +703,25 @@ def w_GE(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
         [wam_l, wam_r],
         dispatch="multi",
         errmsg="cannot do `{0}` >= `{1}`",
+    )
+
+
+@OP.builtin_func(color="blue")
+def w_IN(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
+    from spy.vm.typechecker import typecheck_opspec
+
+    w_rtype = wam_r.w_static_T
+
+    # left and right operands are inverted here because the instruction "1 in list" will invoke "__contains__" on the right operand
+    if w_contains := w_rtype.lookup_func(vm, "__contains__"):
+        w_opspec = vm.fast_metacall(w_contains, [wam_r, wam_l])
+    else:
+        w_opspec = W_OpSpec.NULL
+
+    return typecheck_opspec(
+        vm,
+        w_opspec,
+        [wam_l, wam_r],
+        dispatch="multi",
+        errmsg="cannot do `{0}` in `{1}`",
     )

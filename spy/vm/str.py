@@ -2,11 +2,10 @@ from typing import TYPE_CHECKING
 
 from spy.fqn import FQN
 from spy.libspy import LLSPyInstance
-from spy.vm.b import BUILTINS, OP, B
+from spy.vm.b import OP, B
 from spy.vm.builtin import builtin_method
-from spy.vm.object import W_Object, W_Type
+from spy.vm.object import W_Object
 from spy.vm.opspec import W_MetaArg, W_OpSpec
-from spy.vm.primitive import W_F64, W_I32
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -48,8 +47,11 @@ class W_Str(W_Object):
         "_getitem_slice": FQN("_str::methods::_getitem_slice"),
         "encode": FQN("_str::methods::encode"),
         "replace": FQN("_str::methods::replace"),
+        "__contains__": FQN("_str::methods::__contains__"),
         "split": FQN("_str::methods::split"),
         "isspace": FQN("_str::methods::isspace"),
+        "find": FQN("_str::methods::find"),
+        "count": FQN("_str::methods::count"),
         "__repr__": FQN("_str::methods::__repr__"),
         "__len__": FQN("_str::methods::__len__"),
         "__getitem__": FQN("_str::methods::__getitem__"),

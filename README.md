@@ -61,27 +61,28 @@ automatically, with no system packages required.
 The most up-to-date version of the requirements and the installation steps is
 the [GitHub Actions workflow](https://github.com/spylang/spy/blob/main/.github/workflows/tests.yml).
 
-### pip
-
-**Prerequisites:** Python 3.12, and bdw-gc (`libgc-dev` on Debian/Ubuntu).
-
-```sh
-cd /path/to/spy/
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -e .[dev]
-# build the `libspy` runtime library
-make -C spy/libspy
-```
+All the following commands must be run from the root directory of the SPy
+repo, and without a virtual environment activated beforehand.
 
 ### uv
 
 **Prerequisite:** bdw-gc (`libgc-dev` on Debian/Ubuntu).
 
 ```sh
-uv venv .venv -p 3.12
+uv sync
 . .venv/bin/activate
-uv pip install -e .[dev]
+make -C spy/libspy
+```
+
+### pip
+
+**Prerequisites:** Python 3.12, and bdw-gc (`libgc-dev` on Debian/Ubuntu).
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -e .[dev]
+# build the `libspy` runtime library
 make -C spy/libspy
 ```
 

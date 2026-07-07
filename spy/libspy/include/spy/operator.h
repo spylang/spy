@@ -558,6 +558,7 @@ bool WASM_EXPORT(spy_operator$f32_lt)(float x, float y);
 bool WASM_EXPORT(spy_operator$f32_le)(float x, float y);
 bool WASM_EXPORT(spy_operator$f32_gt)(float x, float y);
 bool WASM_EXPORT(spy_operator$f32_ge)(float x, float y);
+float WASM_EXPORT(spy_operator$f32_pow)(float x, float y);
 float WASM_EXPORT(spy_operator$f32_neg)(float x);
 
 static inline bool
@@ -608,6 +609,139 @@ spy_operator$bool_ge(bool x, bool y) {
 static inline bool
 spy_operator$bool_not(bool x) {
     return !x;
+}
+
+// Power operations
+static inline int8_t
+spy_operator$i8_pow(int8_t base, int8_t exp) {
+    if (exp == 0) return 1;
+    if (exp < 0) {
+        if (base == 0) {
+            spy_panic("ZeroDivisionError", "0 cannot be raised to a negative power",
+                      __FILE__, __LINE__);
+        }
+        spy_panic("ValueError", "integer ** negative exponent", __FILE__, __LINE__);
+    }
+
+    // Use unsigned arithmetic to get well-defined wrapping on overflow.
+    uint8_t result = 1;
+    uint8_t b = (uint8_t)base;
+    int8_t e = exp;
+
+    while (e > 0) {
+        if (e & 1) result *= b;
+        b *= b;
+        e >>= 1;
+    }
+    return (int8_t)result;
+}
+
+static inline uint8_t
+spy_operator$u8_pow(uint8_t base, uint8_t exp) {
+    if (exp == 0) return 1;
+
+    uint8_t result = 1;
+    uint8_t b = base;
+    uint8_t e = exp;
+
+    while (e > 0) {
+        if (e & 1) result *= b;
+        b *= b;
+        e >>= 1;
+    }
+    return result;
+}
+
+static inline int32_t
+spy_operator$i32_pow(int32_t base, int32_t exp) {
+    if (exp == 0) return 1;
+    if (exp < 0) {
+        if (base == 0) {
+            spy_panic("ZeroDivisionError", "0 cannot be raised to a negative power",
+                      __FILE__, __LINE__);
+        }
+        spy_panic("ValueError", "integer ** negative exponent", __FILE__, __LINE__);
+    }
+
+    // Use unsigned arithmetic to get well-defined wrapping on overflow.
+    uint32_t result = 1;
+    uint32_t b = (uint32_t)base;
+    int32_t e = exp;
+
+    while (e > 0) {
+        if (e & 1) result *= b;
+        b *= b;
+        e >>= 1;
+    }
+    return (int32_t)result;
+}
+
+static inline uint32_t
+spy_operator$u32_pow(uint32_t base, uint32_t exp) {
+    if (exp == 0) return 1;
+
+    uint32_t result = 1;
+    uint32_t b = base;
+    uint32_t e = exp;
+
+    while (e > 0) {
+        if (e & 1) result *= b;
+        b *= b;
+        e >>= 1;
+    }
+    return result;
+}
+
+static inline int64_t
+spy_operator$i64_pow(int64_t base, int64_t exp) {
+    if (exp == 0) return 1;
+    if (exp < 0) {
+        if (base == 0) {
+            spy_panic("ZeroDivisionError", "0 cannot be raised to a negative power",
+                      __FILE__, __LINE__);
+        }
+        spy_panic("ValueError", "integer ** negative exponent", __FILE__, __LINE__);
+    }
+
+    // Use unsigned arithmetic to get well-defined wrapping on overflow.
+    uint64_t result = 1;
+    uint64_t b = (uint64_t)base;
+    int64_t e = exp;
+
+    while (e > 0) {
+        if (e & 1) result *= b;
+        b *= b;
+        e >>= 1;
+    }
+    return (int64_t)result;
+}
+
+static inline uint64_t
+spy_operator$u64_pow(uint64_t base, uint64_t exp) {
+    if (exp == 0) return 1;
+
+    uint64_t result = 1;
+    uint64_t b = base;
+    uint64_t e = exp;
+
+    while (e > 0) {
+        if (e & 1) result *= b;
+        b *= b;
+        e >>= 1;
+    }
+    return result;
+}
+
+static inline double
+spy_operator$f64_pow(double x, double y) {
+    if (x == 0.0 && y < 0.0) {
+        spy_panic("ZeroDivisionError", "0.0 cannot be raised to a negative power",
+                  __FILE__, __LINE__);
+    }
+    if (x < 0.0 && isfinite(y) && y != trunc(y)) {
+        spy_panic("ValueError", "math domain error", __FILE__, __LINE__);
+    }
+    return pow(x, y);
 }
 
 #endif /* SPY_OPERATOR_H */

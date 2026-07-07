@@ -179,3 +179,34 @@ class TestList(CompilerTest):
             ("help: use an explicit type: `l: list[T] = []`", "l"),
         )
         self.compile_raises(src, "foo", errors)
+
+    def test_list_of_structs_init(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo() -> i32:
+            lst: list[Point] = [Point(10, 2)]
+            return lst[0].x + lst[0].y
+        """
+        mod = self.compile(src)
+        res = mod.foo()
+        assert res == 12
+
+    def test_struct_with_list_field(self):
+        # NOTE: what this is actually testing is that in the C backend we do a
+        # topological sort of structdefs, i.e. that we emit list[i32] before Item. See
+        # also test_importing.test_structdefs_toposort and CBackend.split_fqns()
+        src = """
+        @struct
+        class Item:
+            values: list[i32]
+
+        def foo() -> i32:
+            item = Item.__make__([1, 2, 3])
+            return item.values[1]
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 2

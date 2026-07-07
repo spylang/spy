@@ -77,6 +77,7 @@ _from_token: dict[str, W_Func] = {
     "/": OP.w_DIV,
     "//": OP.w_FLOORDIV,
     "%": OP.w_MOD,
+    "**": OP.w_POW,
     "<<": OP.w_LSHIFT,
     ">>": OP.w_RSHIFT,
     "&": OP.w_AND,
@@ -93,6 +94,7 @@ _from_token: dict[str, W_Func] = {
     "is not": OP.w_ISNOT,
     "<universal_eq>": OP.w_UNIVERSAL_EQ,
     "<universal_ne>": OP.w_UNIVERSAL_NE,
+    "in": OP.w_IN,
 }
 
 _unary_from_token: dict[str, W_Func] = {"-": OP.w_NEG, "not": OP.w_NOT}

@@ -4,7 +4,7 @@
 #include "spy.h"
 #include <stddef.h>
 
-void *WASM_EXPORT(spy_gc_alloc)(size_t size);
+void *WASM_EXPORT(spy_nogc_alloc)(size_t size);
 void *WASM_EXPORT(spy_raw_alloc)(size_t size);
 
 // note: these are needed to implement unsafe.memcpy&co in the interp (via vm.ll.call),
@@ -14,15 +14,17 @@ void WASM_EXPORT(_spy_memmove)(void *dst, void *src, size_t n);
 void WASM_EXPORT(_spy_memset)(void *dst, int value, size_t n);
 int32_t WASM_EXPORT(_spy_memcmp)(void *a, void *b, size_t n);
 
-// When compiling with bdwgc, override spy_gc_alloc with an inline that calls
-// GC_MALLOC. This takes precedence over the function in libspy.a.
-#ifdef SPY_GC_BDWGC
+#ifdef SPY_GC_NONE
+#  define spy_gc_alloc(size) spy_nogc_alloc(size)
+#elif SPY_GC_BDWGC
 #  include <gc.h>
 static inline void *
 spy_gc_alloc_bdwgc(size_t size) {
     return GC_MALLOC(size);
 }
 #  define spy_gc_alloc(size) spy_gc_alloc_bdwgc(size)
+#else
+#  error "no GC selected"
 #endif
 
 /* Define the struct and accessor functions to represent a managed pointer to
@@ -246,28 +248,31 @@ typedef spy_unsafe$gc_ptr__builtins$u8 spy_gc_ptr_u8;
 #endif
 
 #ifdef SPY_DEBUG
-#  define spy_ptr_setbytes(dst, value, n)                                                   \
+#  define spy_ptr_setbytes(dst, value, n)                                              \
       do {                                                                             \
           if ((size_t)(n) > (size_t)(dst).length)                                      \
-              spy_panic("PanicError", "ptr_setbytes out of bounds", __FILE__, __LINE__);    \
+              spy_panic(                                                               \
+                  "PanicError", "ptr_setbytes out of bounds", __FILE__, __LINE__       \
+              );                                                                       \
           memset((dst).p, (value), (n) * sizeof(*(dst).p));                            \
       } while (0)
 #else
-#  define spy_ptr_setbytes(dst, value, n) memset((dst).p, (value), (n) * sizeof(*(dst).p))
+#  define spy_ptr_setbytes(dst, value, n)                                              \
+      memset((dst).p, (value), (n) * sizeof(*(dst).p))
 #endif
 
 #ifdef SPY_DEBUG
-#  define spy_ptr_setbytes_slice(dst, ds, de, value)                                        \
+#  define spy_ptr_setbytes_slice(dst, ds, de, value)                                   \
       do {                                                                             \
           ptrdiff_t _spy_n = (de) - (ds);                                              \
           if (_spy_n < 0 || (ds) < 0 || (de) > (dst).length)                           \
               spy_panic(                                                               \
-                  "PanicError", "ptr_setbytes_slice out of bounds", __FILE__, __LINE__      \
+                  "PanicError", "ptr_setbytes_slice out of bounds", __FILE__, __LINE__ \
               );                                                                       \
           memset((dst).p + (ds), (value), _spy_n * sizeof(*(dst).p));                  \
       } while (0)
 #else
-#  define spy_ptr_setbytes_slice(dst, ds, de, value)                                        \
+#  define spy_ptr_setbytes_slice(dst, ds, de, value)                                   \
       memset((dst).p + (ds), (value), ((de) - (ds)) * sizeof(*(dst).p))
 #endif
 

@@ -5,7 +5,7 @@ title: Builtin Functions
 }
 </style>
 
-SPy adds several new builtins to the global namespace. Currently, all of them happen to be decorators for classes or callables.
+SPy adds several new builtins to the global namespace.
 
 /// warning
 The contents of the `__spy__` module and SPy's builtins form the API surface of a language that's rapidly evolving. All of the constructs, names, functions, or decorators here are likely to change!
@@ -15,6 +15,10 @@ The contents of the `__spy__` module and SPy's builtins form the API surface of 
 For a deeper explanation of the current state of SPy's coloring nomenclature, see [this post by Antonio Cuni](https://antocuni.eu/2026/03/25/inside-spy-part-2-language-semantics/#blue-functions).
 ///
 
+## Functions
+
+### __STATIC_TYPE__(object) { #markdown data-toc-label='STATIC_TYPE()' }
+:   Returns the type of the expression determined in a static context. Useful in tests, and is used in some of SPy's internal machinery.
 
 ## Class and Callable Decorators
 
