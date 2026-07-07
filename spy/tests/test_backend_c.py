@@ -10,7 +10,7 @@ import textwrap
 import py.path
 import pytest
 
-from spy.backend.c.c_ast import BinOp, Literal, UnaryOp, make_table
+from spy.backend.c.c_ast import BinOp, Expr, Literal, UnaryOp, make_table
 from spy.backend.c.cbackend import CBackend
 from spy.backend.c.context import C_Ident
 from spy.build.config import BuildConfig
@@ -78,6 +78,15 @@ class TestCBackend:
         )
         # fmt: on
         assert str(expr) == "1 * (2 + 3 * 4)"
+
+    def test_BinOp_associativity(self):
+        def sub(l: Expr, r: Expr) -> BinOp:
+            return BinOp("-", left=l, right=r)
+
+        a, b, c = Literal("a"), Literal("b"), Literal("c")
+        assert str(sub(a, sub(b, c))) == "a - (b - c)"
+        assert str(sub(sub(a, b), c)) == "a - b - c"
+        assert str(sub(a, BinOp("+", left=b, right=c))) == "a - (b + c)"
 
     def test_UnaryOp(self):
         # fmt: off
