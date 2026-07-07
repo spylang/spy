@@ -45,6 +45,7 @@ def contains_gc_ptr(w_T: W_Type) -> bool:
     pointer-free is treated as if it *might* contain a pointer.
     """
     from spy.vm.modules.unsafe.ptr import W_PtrType, W_RefType
+    from spy.vm.object import W_Type
     from spy.vm.struct import W_StructType
 
     # primitive numeric/bool types: definitely pointer-free
@@ -68,4 +69,7 @@ def contains_gc_ptr(w_T: W_Type) -> bool:
     if isinstance(w_T, W_StructType):
         return any(contains_gc_ptr(w_field.w_T) for w_field in w_T.iterfields_w())
 
-    raise NotImplementedError
+    if isinstance(w_T, W_Type):
+        return True
+
+    raise NotImplementedError(f"{w_T=}")
