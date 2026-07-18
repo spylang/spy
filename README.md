@@ -76,12 +76,12 @@ make -C spy/libspy
 
 ### pip
 
-**Prerequisites:** Python 3.12, and bdw-gc (`libgc-dev` on Debian/Ubuntu).
+**Prerequisites:** Python 3.12, pip >= 25.1 (to support PEP 735 Dependency Groups), and bdw-gc (`libgc-dev` on Debian/Ubuntu).
 
 ```sh
 python3 -m venv .venv
 . .venv/bin/activate
-pip install -e .[dev]
+pip install -e . --group dev
 # build the `libspy` runtime library
 make -C spy/libspy
 ```
