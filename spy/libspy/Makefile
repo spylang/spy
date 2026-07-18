@@ -10,7 +10,10 @@
 #
 EMCC_AVAILABLE := $(shell which emcc 2>/dev/null)
 
-SRCS = src/str.c src/bytes.c src/builtins.c src/debug.c src/unsafe.c src/operator.c src/posix.c
+SRCS = src/str.c src/bytes.c src/builtins.c src/debug.c src/unsafe.c src/operator.c src/posix.c \
+       vendored/ryu/ryu/f2s.c
+
+RYU_CFLAGS := -I $(CURDIR)/vendored/ryu -DRYU_FLOAT_FULL_TABLE
 
 # Add BUILD_TYPE with a default value
 BUILD_TYPE ?= release
@@ -22,7 +25,7 @@ BUILD_DIR := build/$(TARGET)/$(BUILD_TYPE)
 ifneq ($(TARGET),)
 	CC     := $(shell python -m spy.build.flags --cc     --target=$(TARGET))
 	AR     := $(shell python -m spy.build.flags --ar     --target=$(TARGET))
-	CFLAGS := $(shell python -m spy.build.flags --cflags --target=$(TARGET) --build-type=$(BUILD_TYPE))
+	CFLAGS := $(shell python -m spy.build.flags --cflags --target=$(TARGET) --build-type=$(BUILD_TYPE)) $(RYU_CFLAGS)
 endif
 
 # ------- no target specified -------
