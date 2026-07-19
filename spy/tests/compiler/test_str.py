@@ -1,6 +1,8 @@
 import re
 from textwrap import dedent
 
+import pytest
+
 from spy.errors import SPyError
 from spy.tests.support import CompilerTest, only_interp, skip_backends
 
@@ -669,3 +671,61 @@ class TestStr(CompilerTest):
         assert mod.foo("aaab", "aaab") == True
         assert mod.foo("aaaa", "aaaa") == True
         assert mod.foo("aaab", "aaaab") == False
+
+
+class TestUnicodeCodePoints(CompilerTest):
+    @pytest.fixture
+    def get_codepoint(self):
+        src = """
+        from _str import unicode_codepoints, StrObject
+        def get_codepoint(s: str, i: int) -> int:
+            it = unicode_codepoints(StrObject.from_str(s))
+            j = 0
+            for codepoint in it:
+                if j == i:
+                    return codepoint
+                j += 1
+            return -1
+        """
+        mod = self.compile(src)
+        return mod.get_codepoint
+
+    def test_simple(self, get_codepoint):
+        input = "he"
+        assert get_codepoint(input, 0) == 104
+        assert get_codepoint(input, 1) == 101
+        assert get_codepoint(input, 2) == -1
+
+    def test_unicode(self, get_codepoint):
+        input = "hé桁🨀"
+        # h (1 utf byte)
+        assert get_codepoint(input, 0) == 104
+        # é (2 utf bytes)
+        assert get_codepoint(input, 1) == 233
+        # 桁 (3 utf bytes)
+        assert get_codepoint(input, 2) == 26689
+        # 🨀 (4 utf bytes)
+        assert get_codepoint(input, 3) == 129536
+        # end of string
+        assert get_codepoint(input, 4) == -1
+
+    def test_highest_unicode_char(self, get_codepoint):
+        input = "\U0010ffff"
+        assert get_codepoint(input, 0) == 0x10FFFF
+        assert get_codepoint(input, 1) == -1
+
+    def test_invalid_utf8(self):
+        src = """
+        from _str import unicode_codepoints, StrObject
+        from _bytes import BytesObject
+        def run_unicode_codepoints(bs: bytes) -> int:
+            bytes_object = BytesObject.from_bytes(bs)
+            s = StrObject.alloc(len(bs))
+            s.utf8 = bytes_object.data
+            for _ in unicode_codepoints(s):
+                pass
+        """
+        mod = self.compile(src)
+        input = b"\xff"
+        with pytest.raises(SPyError, match="invalid first utf-8 byte: 255"):
+            mod.run_unicode_codepoints(input)
