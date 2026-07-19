@@ -55,8 +55,9 @@ def _run(spy_file: Path) -> subprocess.CompletedProcess:
     )
 
 def _build_run(spy_file: Path) -> subprocess.CompletedProcess:
-    cmd = ["spy","build","-x", str(spy_file)]
-    print( "cmd >>>>>>>"," ".join(cmd))
+    cmd = ["spy","build", str(spy_file)]
+    subprocess.run(cmd)
+    cmd = [str(spy_file.parent)+'/build/'+str(spy_file.stem)]
     return subprocess.run(
         cmd,
         capture_output=True,
@@ -121,7 +122,9 @@ def run_example(spy_file: Path, request,runner = _run) -> None:
 def test_example_interp(spy_file: Path, request) -> None:
     run_example(spy_file,request)
 
-@pytest.mark.xfail
 @pytest.mark.parametrize("spy_file", _spy_files, ids=lambda f: f.stem)
 def test_example_build(spy_file: Path, request) -> None:
+    # There are four examples which fails in the c compiling stage - so they are marked as XFAIL
+    if spy_file.stem in ['collections','annotated','unroll_nested_loops','convert']:
+        pytest.xfail()
     run_example(spy_file,request,_build_run)
