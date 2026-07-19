@@ -28,6 +28,14 @@ class TestFloat(CompilerTest):
         assert mod.b() == 2.5
         assert mod.c() == 3.5
 
+    def test_f32_inf_const(self):
+        mod = self.compile("""
+        def positive_inf() -> f32:
+            largest = f32(3.4028234663852886e38)
+            return largest + largest
+        """)
+        assert mod.positive_inf() == float("inf")
+
     def test_BinOp(self, float_type):
         mod = self.compile(f"""
         T = {float_type}
