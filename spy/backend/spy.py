@@ -309,12 +309,25 @@ class SPyBackend:
         v = self.fmt_expr(node.value)
         self.wl(f"{t}.{a} = {v}")
 
+    def emit_stmt_AugSetAttr(self, node: ast.AugSetAttr) -> None:
+        t = self.fmt_expr(node.target)
+        a = node.attr.value
+        v = self.fmt_expr(node.value)
+        self.wl(f"{t}.{a} {node.op}= {v}")
+
     def emit_stmt_SetItem(self, node: ast.SetItem) -> None:
         t = self.fmt_expr(node.target)
         arglist = [self.fmt_expr(arg) for arg in node.args]
         args = ", ".join(arglist)
         v = self.fmt_expr(node.value)
         self.wl(f"{t}[{args}] = {v}")
+
+    def emit_stmt_AugSetItem(self, node: ast.AugSetItem) -> None:
+        t = self.fmt_expr(node.target)
+        arglist = [self.fmt_expr(arg) for arg in node.args]
+        args = ", ".join(arglist)
+        v = self.fmt_expr(node.value)
+        self.wl(f"{t}[{args}] {node.op}= {v}")
 
     def emit_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         varname = vardef.name.value
