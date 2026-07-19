@@ -145,27 +145,27 @@ pytest -n auto -v -x
 
 1. Execute a program in interpreted mode:
    ```
-   $ spy examples/hello.spy
+   $ spy examples/1_high_level/hello.spy
    Hello world!
    ```
 
 2. Perform redshift and dump the generated source code:
    ```
-   $ spy redshift examples/hello.spy
+   $ spy redshift examples/1_high_level/hello.spy
     def main() -> void:
         print_str('Hello world!')
     ```
 
 3. Perform redshift and THEN execute the code:
    ```
-   $ spy redshift -x examples/hello.spy
+   $ spy redshift -x examples/1_high_level/hello.spy
    Hello world!
    ```
 
 4. Compile to executable:
    ```
-   $ spy build examples/hello.spy --target native
-   $ ./examples/build/hello
+   $ spy build examples/1_high_level/hello.spy --target native
+   $ ./examples/1_high_level/build/hello
    Hello world!
    ```
 
@@ -189,11 +189,11 @@ compiler at that stage and dumps human-readable results.
 Examples:
 
 ```
-$ spy pyparse examples/hello.spy
-$ spy parse examples/hello.spy
-$ spy symtable examples/hello.spy
-$ spy redshift examples/hello.spy
-$ spy build --no-compile examples/hello.spy
+$ spy pyparse examples/1_high_level/hello.spy
+$ spy parse examples/1_high_level/hello.spy
+$ spy symtable examples/1_high_level/hello.spy
+$ spy redshift examples/1_high_level/hello.spy
+$ spy build --no-compile examples/1_high_level/hello.spy
 ```
 
 Moreover, the `execute` step performs the actual execution: it can happen
