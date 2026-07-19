@@ -264,8 +264,8 @@ class methods:
                 j = j + 1
                 out.utf8[j] = ord(b"x")
                 j = j + 1
-                hi: i32 = i32(c2) >> 4
-                lo: i32 = i32(c2) & 15
+                hi = i32(c2) >> 4
+                lo = i32(c2) & 15
                 if hi < 10:
                     out.utf8[j] = u8(hi) + ord(b"0")
                 else:

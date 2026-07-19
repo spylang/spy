@@ -349,6 +349,7 @@ class TestStr(CompilerTest):
             "it's",
             "\x00",
             "\x1f",
+            "\x1f\x1f",
             "café",
             "line1\nline2\ttabbed",
         ]
