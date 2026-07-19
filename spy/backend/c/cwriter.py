@@ -1,3 +1,4 @@
+import math
 from types import NoneType
 from typing import TYPE_CHECKING
 
@@ -288,9 +289,17 @@ class CFuncWriter:
         elif w_T is B.w_f64:
             return C.Literal(str(vm.unwrap_f64(w_val)))
         elif w_T is B.w_f32:
+            value = vm.unwrap_f32(w_val)
+            # Python's "inf" and "nan" spellings are not C literals. Use the
+            # C99 macros so folded non-finite values remain valid float constants.
+            if math.isnan(value):
+                return C.Literal("NAN")
+            if math.isinf(value):
+                sign = "-" if value < 0 else ""
+                return C.Literal(f"{sign}INFINITY")
             # the 'f' suffix makes it a float literal, avoiding double->float
             # narrowing warnings
-            return C.Literal(f"{vm.unwrap_f32(w_val)}f")
+            return C.Literal(f"{value}f")
         elif w_T is B.w_complex128:
             val = vm.unwrap_complex128(w_val)
             return C.Literal(
