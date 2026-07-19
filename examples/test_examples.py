@@ -54,6 +54,15 @@ def _run(spy_file: Path) -> subprocess.CompletedProcess:
         check=False,
     )
 
+def _build_run(spy_file: Path) -> subprocess.CompletedProcess:
+    cmd = ["spy","build","-x", str(spy_file)]
+    print( "cmd >>>>>>>"," ".join(cmd))
+    return subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
 
 def test_all_examples_have_expected_output(request) -> None:
     """Catch the case where a new .spy file was added without a saved expected output.
@@ -76,11 +85,11 @@ def test_all_examples_have_expected_output(request) -> None:
         )
 
 
-@pytest.mark.parametrize("spy_file", _spy_files, ids=lambda f: f.stem)
-def test_example(spy_file: Path, request) -> None:
-    expected_file = EXPECTED_OUTPUT_DIR / f"{spy_file.stem}.txt"
-    result = _run(spy_file)
 
+def run_example(spy_file: Path, request,runner = _run) -> None:
+    expected_file = EXPECTED_OUTPUT_DIR / f"{spy_file.stem}.txt"
+    result = runner(spy_file)
+    print(result.returncode,expected_returncode(spy_file))
     assert result.returncode == expected_returncode(spy_file), (
         f"spy exited with code {result.returncode}\n"
         f"--- stdout ---\n{result.stdout}"
@@ -107,3 +116,12 @@ def test_example(spy_file: Path, request) -> None:
             f"Output of {spy_file.name} differs from {expected_file.relative_to(EXAMPLES_DIR)}\n\n"
             "Update the expected result with: pytest --update-examples"
         )
+
+@pytest.mark.parametrize("spy_file", _spy_files, ids=lambda f: f.stem)
+def test_example_interp(spy_file: Path, request) -> None:
+    run_example(spy_file,request)
+
+@pytest.mark.xfail
+@pytest.mark.parametrize("spy_file", _spy_files, ids=lambda f: f.stem)
+def test_example_build(spy_file: Path, request) -> None:
+    run_example(spy_file,request,_build_run)
