@@ -1,3 +1,4 @@
+import math
 from ctypes import c_float as float32
 from typing import TYPE_CHECKING, Annotated, Any, Protocol
 
@@ -168,12 +169,13 @@ def w_f64_ieee754_div(vm: "SPyVM", w_a: W_F64, w_b: W_F64) -> W_F64:
     b = w_b.value
 
     if b == 0:
-        if a > 0:
-            result = float("inf")
-        elif a < 0:
-            result = float("-inf")
-        else:
+        # Python raises instead of producing an IEEE-754 result, so combine both
+        # operand signs explicitly; comparing with zero alone loses the sign of -0.0.
+        if a == 0:
             result = float("nan")
+        else:
+            sign = math.copysign(1.0, a) * math.copysign(1.0, b)
+            result = math.copysign(float("inf"), sign)
 
         return vm.wrap(result)
 

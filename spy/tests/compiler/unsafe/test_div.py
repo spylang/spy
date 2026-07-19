@@ -147,10 +147,15 @@ class TestUnsafeFloatDiv(CompilerTest):
         from unsafe import ieee754_div
         T = {float_type}
         def div(x: T, y: T) -> T: return ieee754_div(x, y)
+
+        def div_by_negative_zero(x: T) -> T:
+            negative_zero: T = -0.0
+            return ieee754_div(x, negative_zero)
         """)
         assert mod.div(1.5, 0.0) == float("inf")
         assert mod.div(-1.5, 0.0) == float("-inf")
         assert isnan(mod.div(0.0, 0.0))
+        assert mod.div_by_negative_zero(1.5) == float("-inf")
 
     def test_spy_zero_division_unchecked(self, float_type):
         mod = self.compile(f"""
