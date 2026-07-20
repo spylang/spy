@@ -672,10 +672,7 @@ class TestStr(CompilerTest):
         assert mod.foo("aaaa", "aaaa") == True
         assert mod.foo("aaab", "aaaab") == False
 
-
-class TestUnicodeCodePoints(CompilerTest):
-    @pytest.fixture
-    def get_codepoint(self):
+    def test_unicode_codepoints(self):
         src = """
         from _str import unicode_codepoints, StrObject
         def get_codepoint(s: str, i: int) -> int:
@@ -688,31 +685,22 @@ class TestUnicodeCodePoints(CompilerTest):
             return -1
         """
         mod = self.compile(src)
-        return mod.get_codepoint
 
-    def test_simple(self, get_codepoint):
-        input = "he"
-        assert get_codepoint(input, 0) == 104
-        assert get_codepoint(input, 1) == 101
-        assert get_codepoint(input, 2) == -1
-
-    def test_unicode(self, get_codepoint):
         input = "hé桁🨀"
         # h (1 utf byte)
-        assert get_codepoint(input, 0) == 104
+        assert mod.get_codepoint(input, 0) == ord("h")
         # é (2 utf bytes)
-        assert get_codepoint(input, 1) == 233
+        assert mod.get_codepoint(input, 1) == ord("é")
         # 桁 (3 utf bytes)
-        assert get_codepoint(input, 2) == 26689
+        assert mod.get_codepoint(input, 2) == ord("桁")
         # 🨀 (4 utf bytes)
-        assert get_codepoint(input, 3) == 129536
+        assert mod.get_codepoint(input, 3) == ord("🨀")
         # end of string
-        assert get_codepoint(input, 4) == -1
+        assert mod.get_codepoint(input, 4) == -1
 
-    def test_highest_unicode_char(self, get_codepoint):
         input = "\U0010ffff"
-        assert get_codepoint(input, 0) == 0x10FFFF
-        assert get_codepoint(input, 1) == -1
+        assert mod.get_codepoint(input, 0) == 0x10FFFF
+        assert mod.get_codepoint(input, 1) == -1
 
     def test_invalid_utf8(self):
         src = """
