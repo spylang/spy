@@ -378,17 +378,13 @@ class ScopeAnalyzer:
         self.pop_scope()
 
     def declare_Assign(self, assign: ast.Assign) -> None:
-        self._declare_target_maybe(assign.target, assign.value)
+        for target in assign.target.flatten():
+            self._declare_target_maybe(target, assign.value)
         self.declare(assign.value)
 
     def declare_AugAssign(self, augassign: ast.AugAssign) -> None:
         self._promote_const_to_var_maybe(augassign.target)
         self.declare(augassign.value)
-
-    def declare_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
-        for target in unpack.targets:
-            self._declare_target_maybe(target, unpack.value)
-        self.declare(unpack.value)
 
     def declare_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
         self._declare_target_maybe(assignexpr.target, assignexpr.value)
@@ -556,7 +552,11 @@ class ScopeAnalyzer:
         self.capture_maybe(name.id)
 
     def flatten_Assign(self, assign: ast.Assign) -> None:
-        self.capture_maybe(assign.target.value)
+        if isinstance(assign.target, ast.UnpackTarget):
+            self.mod_scope.implicit_imports.add("_tuple")
+        for target in assign.target.flatten():
+            assert isinstance(target, ast.StrLiteral)
+            self.capture_maybe(target.value)
         self.flatten(assign.value)
 
     def flatten_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
@@ -585,12 +585,6 @@ class ScopeAnalyzer:
         self.mod_scope.implicit_imports.add("_slice")
         for item in (slc.start, slc.stop, slc.step):
             self.flatten(item)
-
-    def flatten_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
-        self.mod_scope.implicit_imports.add("_tuple")
-        for target in unpack.targets:
-            self.flatten(target)
-        self.flatten(unpack.value)
 
     def flatten_Dict(self, dict: ast.Dict) -> None:
         self.mod_scope.implicit_imports.add("_dict")

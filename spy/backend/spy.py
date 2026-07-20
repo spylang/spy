@@ -270,13 +270,24 @@ class SPyBackend:
         self.wl(f"return {v}")
 
     def emit_stmt_Assign(self, assign: ast.Assign) -> None:
-        varname = assign.target.value
-        t = self.get_vartype_to_declare_maybe(varname)
-        v = self.fmt_expr(assign.value)
-        if t is not None:
-            self.wl(f"{varname}: {t} = {v}")
+        if isinstance(assign.target, ast.SingleTarget):
+            varname = assign.target.name.value
+            t = self.get_vartype_to_declare_maybe(varname)
+            v = self.fmt_expr(assign.value)
+            if t is not None:
+                self.wl(f"{varname}: {t} = {v}")
+            else:
+                self.wl(f"{varname} = {v}")
         else:
-            self.wl(f"{varname} = {v}")
+            unpack = assign.target
+            assert isinstance(unpack, ast.UnpackTarget)
+            names = []
+            for tt in unpack.targets:
+                assert isinstance(tt, ast.SingleTarget)
+                names.append(tt.name.value)
+            targets = ", ".join(names)
+            v = self.fmt_expr(assign.value)
+            self.wl(f"{targets} = {v}")
 
     def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
         varname = assign.target.value
@@ -297,11 +308,6 @@ class SPyBackend:
         op = node.op
         v = self.fmt_expr(node.value)
         self.wl(f"{varname} {op}= {v}")
-
-    def emit_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
-        targets = ", ".join([t.value for t in unpack.targets])
-        v = self.fmt_expr(unpack.value)
-        self.wl(f"{targets} = {v}")
 
     def emit_stmt_SetAttr(self, node: ast.SetAttr) -> None:
         t = self.fmt_expr(node.target)

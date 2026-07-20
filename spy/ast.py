@@ -5,12 +5,14 @@
 import ast as py_ast
 import dataclasses
 import typing
+from abc import abstractmethod
 from dataclasses import dataclass, field
 from typing import (
     TYPE_CHECKING,
     Any,
     Iterator,
     Optional,
+    Sequence,
     Type,
     dataclass_transform,
     no_type_check,
@@ -704,14 +706,31 @@ class StmtExpr(Stmt):
 
 
 @astnode
-class Assign(Stmt):
-    target: StrLiteral
-    value: Expr
+class AssignTarget(Node):
+    @abstractmethod
+    def flatten(self) -> Iterator[StrLiteral]: ...
 
 
 @astnode
-class UnpackAssign(Stmt):
-    targets: list[StrLiteral]
+class SingleTarget(AssignTarget):
+    name: StrLiteral
+
+    def flatten(self) -> Iterator[StrLiteral]:
+        yield self.name
+
+
+@astnode
+class UnpackTarget(AssignTarget):
+    targets: Sequence[AssignTarget]
+
+    def flatten(self) -> Iterator[StrLiteral]:
+        for target in self.targets:
+            yield from target.flatten()
+
+
+@astnode
+class Assign(Stmt):
+    target: AssignTarget
     value: Expr
 
 

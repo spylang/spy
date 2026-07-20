@@ -103,6 +103,30 @@ class TestScopeAnalyzer:
             "i32": MatchSymbol("i32", "const", "explicit", level=1),
         }
 
+    def test_capture_global(self):
+        scopes = self.analyze("""
+        var a: i32 = 0
+        def foo() -> None:
+            a = 1
+            b = 2
+        def bar() -> None:
+            a, b = 3, 4
+        """)
+        foo_def = self.mod.get_funcdef("foo")
+        foo_scope = scopes.by_funcdef(foo_def)
+        assert foo_scope._symbols == {
+            "a": MatchSymbol("a", "var", "explicit", storage="cell", level=1),
+            "b": MatchSymbol("b", "const", "auto"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+        }
+        bar_def = self.mod.get_funcdef("bar")
+        bar_scope = scopes.by_funcdef(bar_def)
+        assert bar_scope._symbols == {
+            "a": MatchSymbol("a", "var", "explicit", storage="cell", level=1),
+            "b": MatchSymbol("b", "const", "auto"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+        }
+
     def test_funcargs_and_locals(self):
         scopes = self.analyze("""
         def foo(a: i32) -> i32:
