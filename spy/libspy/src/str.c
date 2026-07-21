@@ -1,4 +1,6 @@
+#include "ryu/ryu.h"
 #include "spy.h"
+#include <assert.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <stddef.h>
@@ -106,6 +108,115 @@ spy_builtins$u64$__str__(uint64_t x) {
 spy_StrObject *
 spy_builtins$f64$__str__(double x) {
     return spy_str_from_format("%g", x);
+}
+
+/* Ryu finds the shortest digits but always renders them in scientific notation.
+   Reformat those digits to match CPython's repr conventions without changing the
+   round-trippable value. */
+static size_t
+spy_normalize_ryu_f32(char *out, char *raw) {
+    /* Ryu uses Java-style names for non-finite values, while CPython uses these
+       lowercase spellings. */
+    if (strcmp(raw, "NaN") == 0) {
+        memcpy(out, "nan", 3);
+        return 3;
+    }
+    if (strcmp(raw, "Infinity") == 0) {
+        memcpy(out, "inf", 3);
+        return 3;
+    }
+    if (strcmp(raw, "-Infinity") == 0) {
+        memcpy(out, "-inf", 4);
+        return 4;
+    }
+
+    char *e = strchr(raw, 'E');
+    assert(e != NULL);
+    int exponent = atoi(e + 1);
+    char digits[16];
+    size_t ndigits = 0;
+    char *p = raw;
+    size_t outpos = 0;
+    if (*p == '-') {
+        out[outpos++] = *p++;
+    }
+    while (p < e) {
+        if (*p != '.') {
+            digits[ndigits++] = *p;
+        }
+        p++;
+    }
+
+    /* CPython uses fixed notation for decimal exponents from -4 through 15. */
+    if (exponent >= -4 && exponent < 16) {
+        int decimal_pos = exponent + 1;
+        if (decimal_pos <= 0) {
+            out[outpos++] = '0';
+            out[outpos++] = '.';
+            for (int i = 0; i < -decimal_pos; i++) {
+                out[outpos++] = '0';
+            }
+            memcpy(out + outpos, digits, ndigits);
+            outpos += ndigits;
+        } else if ((size_t)decimal_pos < ndigits) {
+            memcpy(out + outpos, digits, (size_t)decimal_pos);
+            outpos += (size_t)decimal_pos;
+            out[outpos++] = '.';
+            memcpy(out + outpos, digits + decimal_pos, ndigits - (size_t)decimal_pos);
+            outpos += ndigits - (size_t)decimal_pos;
+        } else {
+            memcpy(out + outpos, digits, ndigits);
+            outpos += ndigits;
+            for (size_t i = ndigits; i < (size_t)decimal_pos; i++) {
+                out[outpos++] = '0';
+            }
+            /* Match CPython repr/str by preserving the floating-point type marker. */
+            out[outpos++] = '.';
+            out[outpos++] = '0';
+        }
+    } else {
+        out[outpos++] = digits[0];
+        if (ndigits > 1) {
+            out[outpos++] = '.';
+            memcpy(out + outpos, digits + 1, ndigits - 1);
+            outpos += ndigits - 1;
+        }
+        /* CPython uses a lowercase e, an explicit sign, and at least two
+           exponent digits. */
+        out[outpos++] = 'e';
+        if (exponent < 0) {
+            out[outpos++] = '-';
+            exponent = -exponent;
+        } else {
+            out[outpos++] = '+';
+        }
+        if (exponent < 10) {
+            out[outpos++] = '0';
+        }
+        if (exponent >= 10) {
+            out[outpos++] = (char)('0' + exponent / 10);
+        }
+        out[outpos++] = (char)('0' + exponent % 10);
+    }
+    return outpos;
+}
+
+/* Format binary32 with Ryu's shortest-round-trip digits and CPython float repr's
+   presentation conventions. This is exported so the interpreter and generated C
+   share one formatter instead of developing backend-specific behavior. */
+spy_StrObject *
+spy_f32_to_str(float x) {
+    /* Upstream's allocating f2s reserves 16 bytes; keep extra room here and in
+       the normalized buffer so the bounds remain obvious as formatting evolves. */
+    char raw[32];
+    int raw_length = f2s_buffered_n(x, raw);
+    raw[raw_length] = '\0';
+
+    char formatted[64];
+    size_t length = spy_normalize_ryu_f32(formatted, raw);
+    spy_StrObject *res = spy_str_alloc(length);
+    memcpy(spy_StrObject_UTF8(res), formatted, length);
+    return res;
 }
 
 spy_StrObject *

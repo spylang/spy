@@ -281,6 +281,9 @@ class TestStr(CompilerTest):
         def str_f64(x: f64) -> str:
             return str(x)
 
+        def str_f32(x: f32) -> str:
+            return str(x)
+
         def str_bool(x: bool) -> str:
             return str(x)
         """)
@@ -297,6 +300,7 @@ class TestStr(CompilerTest):
         assert mod.str_f64(0.0) in ("0", "0.0")
         assert mod.str_f64(3.14) == "3.14"
         assert mod.str_f64(123.456) == "123.456"
+        assert mod.str_f32(3.14) == "3.14"
         assert mod.str_bool(True) == "True"
         assert mod.str_bool(False) == "False"
 
@@ -313,12 +317,79 @@ class TestStr(CompilerTest):
 
         def repr_u32(x: u32) -> str:
             return repr(x)
+
+        def repr_f64(x: f64) -> str:
+            return repr(x)
+
+        def repr_f32(x: f32) -> str:
+            return repr(x)
+
+        def str_f32(x: f32) -> str:
+            return str(x)
         """)
         assert mod.repr_i32(-10) == "-10"
         assert mod.repr_i32(123) == "123"
         assert mod.repr_i8(-128) == "-128"
         assert mod.repr_u8(255) == "255"
         assert mod.repr_u32(4294967295) == "4294967295"
+        assert mod.repr_f64(3.14) == "3.14"
+        # The exact f32 value is 3.140000104904175, but 3.14 is the shortest
+        # decimal which converts back to the same f32.
+        assert mod.repr_f32(3.14) == "3.14"
+        # Keep the decimal point so an integral float is distinguishable from an int.
+        assert mod.repr_f32(1.0) == "1.0"
+        # Negative zero has a distinct IEEE-754 sign bit which CPython preserves.
+        assert mod.repr_f32(-0.0) == "-0.0"
+        # Match CPython's canonical lowercase spelling for NaN.
+        assert mod.repr_f32(float("nan")) == "nan"
+        # Ryu spells this "Infinity"; SPy follows CPython's lowercase spelling.
+        assert mod.repr_f32(float("inf")) == "inf"
+        # Preserve the sign while normalizing Ryu's "-Infinity" spelling.
+        assert mod.repr_f32(float("-inf")) == "-inf"
+        # Normalize Ryu's "1E20" to CPython's lowercase, explicitly signed exponent.
+        assert mod.repr_f32(1e20) == "1e+20"
+        # CPython pads a single-digit negative exponent to two digits.
+        assert mod.repr_f32(1e-5) == "1e-05"
+        # CPython switches to fixed notation at exponent -4.
+        assert mod.repr_f32(1e-4) == "0.0001"
+        # CPython keeps exponent 15 in fixed notation.
+        assert mod.repr_f32(1e15) == "1000000000000000.0"
+        # CPython switches to scientific notation at exponent 16.
+        assert mod.repr_f32(1e16) == "1e+16"
+        # str and repr share one formatter, including for values needing more digits.
+        x = 0.5000000596046448
+        assert mod.str_f32(x) == mod.repr_f32(x)
+
+    def test_repr_f32_roundtrip(self):
+        mod = self.compile("""
+        def repr_f32(x: f32) -> str:
+            return repr(x)
+
+        def f32_equal(x: f32, y: f32) -> bool:
+            return x == y
+        """)
+        # This is the f32 with bits 0x3f000001. Unlike 3.14, it needs more
+        # digits for its shortest round-trippable representation.
+        x = 0.5000000596046448
+        s = mod.repr_f32(x)
+        assert s == "0.50000006"
+        # f32 has no string-parsing constructor yet, so parse with Python and
+        # compare after both arguments have been converted to f32.
+        assert mod.f32_equal(x, float(s))
+
+        # The smallest positive subnormal still needs a shortest representation
+        # which survives decimal parsing.
+        x = 1.401298464324817e-45
+        s = mod.repr_f32(x)
+        assert s == "1e-45"
+        assert mod.f32_equal(x, float(s))
+
+        # The largest finite f32 exercises the other end of Ryu's exponent and
+        # significant-digit range.
+        x = 3.4028234663852886e38
+        s = mod.repr_f32(x)
+        assert s == "3.4028235e+38"
+        assert mod.f32_equal(x, float(s))
 
     def test_repr_blue(self):
         src = """
