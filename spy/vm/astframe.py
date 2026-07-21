@@ -14,7 +14,15 @@ from spy.util import magic_dispatch
 from spy.vm.b import B
 from spy.vm.cell import W_Cell
 from spy.vm.exc import W_TypeError
-from spy.vm.function import CLOSURE, FuncParam, LocalVar, W_ASTFunc, W_Func, W_FuncType
+from spy.vm.function import (
+    CLOSURE,
+    FuncParam,
+    LocalVar,
+    W_ASTFunc,
+    W_Func,
+    W_FuncArgs,
+    W_FuncType,
+)
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
 from spy.vm.modules.operator import OP, OP_from_token, OP_unary_from_token
@@ -1203,7 +1211,10 @@ class AbstractFrame:
     def eval_expr_Call(self, call: ast.Call) -> W_MetaArg:
         wam_func = self.eval_expr(call.func)
         args_wam = [self.eval_expr(arg) for arg in call.args]
-        w_opimpl = self.vm.call_OP(call.loc, OP.w_CALL, [wam_func] + args_wam)
+        kwargs_wam = [(name.value, self.eval_expr(expr)) for name, expr in call.kwargs]
+        w_funcargs = W_FuncArgs(args_wam, kwargs_wam)
+        wam_funcargs = W_MetaArg.from_w_obj(self.vm, w_funcargs, loc=call.loc)
+        w_opimpl = self.vm.call_OP(call.loc, OP.w_CALL, [wam_func, wam_funcargs])
 
         # special case getattr, hasattr and setattr: if we arrive at this point it means that the
         # call typed correctly (right number, type and color of arguments). The returned
@@ -1228,20 +1239,21 @@ class AbstractFrame:
             return self.eval_opimpl(call, w_opimpl, args_wam)
 
         else:
-            # normal case
-            return self.eval_opimpl(call, w_opimpl, [wam_func] + args_wam)
+            # source-order flat expansion so ArgSpec.Arg(i) indices match
+            return self.eval_opimpl(call, w_opimpl, [wam_func] + w_funcargs.to_list())
 
     def eval_expr_CallMethod(self, op: ast.CallMethod) -> W_Object:
         wam_obj = self.eval_expr(op.target)
         wam_meth = self.eval_expr(op.method)
         args_wam = [self.eval_expr(arg) for arg in op.args]
+        kwargs_wam = [(name.value, self.eval_expr(expr)) for name, expr in op.kwargs]
+        w_funcargs = W_FuncArgs(args_wam, kwargs_wam)
+        wam_funcargs = W_MetaArg.from_w_obj(self.vm, w_funcargs, loc=op.loc)
         w_opimpl = self.vm.call_OP(
-            op.loc, OP.w_CALL_METHOD, [wam_obj, wam_meth] + args_wam
+            op.loc, OP.w_CALL_METHOD, [wam_obj, wam_meth, wam_funcargs]
         )
         return self.eval_opimpl(
-            op,
-            w_opimpl,
-            [wam_obj, wam_meth] + args_wam,
+            op, w_opimpl, [wam_obj, wam_meth] + w_funcargs.to_list()
         )
 
     def eval_expr_GetItem(self, op: ast.GetItem) -> W_MetaArg:
@@ -1294,7 +1306,10 @@ class AbstractFrame:
         w_T = self.vm.getitem_w(w_ListType, w_itemtype, loc=lst.loc)  # list[i32]
         wam_T = W_MetaArg.from_w_obj(self.vm, w_T)
 
-        w_opimpl = self.vm.call_OP(lst.loc, OP.w_CALL, [wam_T])
+        wam_funcargs = W_MetaArg.from_w_obj(
+            self.vm, W_FuncArgs.from_args(), loc=lst.loc
+        )
+        w_opimpl = self.vm.call_OP(lst.loc, OP.w_CALL, [wam_T, wam_funcargs])
         wam_list = self.eval_opimpl(lst, w_opimpl, [wam_T])
 
         # 3. push items into the list
@@ -1304,9 +1319,10 @@ class AbstractFrame:
         wam_push = W_MetaArg.from_w_obj(self.vm, w_push)
 
         for item, wam_item in zip(lst.items, items_wam):
-            w_opimpl = self.vm.call_OP(
-                lst.loc, OP.w_CALL, [wam_push, wam_list, wam_item]
+            wam_funcargs = W_MetaArg.from_w_obj(
+                self.vm, W_FuncArgs.from_args(wam_list, wam_item), loc=lst.loc
             )
+            w_opimpl = self.vm.call_OP(lst.loc, OP.w_CALL, [wam_push, wam_funcargs])
             wam_list = self.eval_opimpl(item, w_opimpl, [wam_push, wam_list, wam_item])
 
         return wam_list
@@ -1317,7 +1333,10 @@ class AbstractFrame:
 
         wam_T = W_MetaArg.from_w_obj(self.vm, w_SliceType)
         args = [self.eval_expr(arg) for arg in (op.start, op.stop, op.step)]
-        w_opimpl = self.vm.call_OP(op.loc, OP.w_CALL, [wam_T] + args)
+        wam_funcargs = W_MetaArg.from_w_obj(
+            self.vm, W_FuncArgs.from_args(*args), loc=op.loc
+        )
+        w_opimpl = self.vm.call_OP(op.loc, OP.w_CALL, [wam_T, wam_funcargs])
         wam_slice = self.eval_opimpl(op, w_opimpl, [wam_T] + args)
         return wam_slice
 
@@ -1334,7 +1353,10 @@ class AbstractFrame:
         wam_T = W_MetaArg.from_w_obj(self.vm, w_T)
 
         # 3. instantiate it
-        w_opimpl = self.vm.call_OP(tup.loc, OP.w_CALL, [wam_T] + items_wam)
+        wam_funcargs = W_MetaArg.from_w_obj(
+            self.vm, W_FuncArgs.from_args(*items_wam), loc=tup.loc
+        )
+        w_opimpl = self.vm.call_OP(tup.loc, OP.w_CALL, [wam_T, wam_funcargs])
         wam_tuple = self.eval_opimpl(tup, w_opimpl, [wam_T] + items_wam)
         return wam_tuple
 
@@ -1387,7 +1409,10 @@ class AbstractFrame:
         w_T = self.vm.getitem_w(w_DictType, w_keytype, w_valuetype)  # dict[K, V]
         wam_T = W_MetaArg.from_w_obj(self.vm, w_T)
 
-        w_opimpl = self.vm.call_OP(dict.loc, OP.w_CALL, [wam_T])
+        wam_funcargs = W_MetaArg.from_w_obj(
+            self.vm, W_FuncArgs.from_args(), loc=dict.loc
+        )
+        w_opimpl = self.vm.call_OP(dict.loc, OP.w_CALL, [wam_T, wam_funcargs])
         wam_dict = self.eval_opimpl(dict, w_opimpl, [wam_T])
 
         # 3. push items into the dict
@@ -1397,9 +1422,10 @@ class AbstractFrame:
         wam_push = W_MetaArg.from_w_obj(self.vm, w_push)
 
         for pair, (wam_key, wam_val) in zip(dict.items, key_value_pair):
-            w_opimpl = self.vm.call_OP(
-                dict.loc, OP.w_CALL, [wam_push, wam_dict, wam_key, wam_val]
+            wam_funcargs = W_MetaArg.from_w_obj(
+                self.vm, W_FuncArgs.from_args(wam_dict, wam_key, wam_val), loc=dict.loc
             )
+            w_opimpl = self.vm.call_OP(dict.loc, OP.w_CALL, [wam_push, wam_funcargs])
             wam_dict = self.eval_opimpl(
                 pair, w_opimpl, [wam_push, wam_dict, wam_key, wam_val]
             )

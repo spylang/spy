@@ -904,8 +904,17 @@ class Parser:
     ) -> spy.ast.Call | spy.ast.CallMethod | spy.ast.BlockExpr | spy.ast.Literal:
         if isinstance(py_node.func, py_ast.Name) and py_node.func.id == "__block__":
             return self._parse_block_expr(py_node)
+        kwargs: list[tuple[spy.ast.StrLiteral, spy.ast.Expr]] = []
         if py_node.keywords:
-            self.unsupported(py_node.keywords[0], "keyword arguments")
+            for py_kw in py_node.keywords:
+                if py_kw.arg is None:
+                    self.unsupported(py_kw, "** var-keyword arguments")
+                kwargs.append(
+                    (
+                        spy.ast.StrLiteral(py_kw.loc, py_kw.arg),
+                        self.from_py_expr(py_kw.value),
+                    )
+                )
 
         # explicitly-prefixed integer literal, e.g. i32(42) or i64(-1)
         if (
@@ -931,10 +940,14 @@ class Parser:
         args = [self.from_py_expr(py_arg) for py_arg in py_node.args]
         if isinstance(func, spy.ast.GetAttr):
             return spy.ast.CallMethod(
-                loc=py_node.loc, target=func.value, method=func.attr, args=args
+                loc=py_node.loc,
+                target=func.value,
+                method=func.attr,
+                args=args,
+                kwargs=kwargs,
             )
         else:
-            return spy.ast.Call(loc=py_node.loc, func=func, args=args)
+            return spy.ast.Call(loc=py_node.loc, func=func, args=args, kwargs=kwargs)
 
     def _parse_block_expr(self, py_node: py_ast.Call) -> spy.ast.BlockExpr:
         if (
