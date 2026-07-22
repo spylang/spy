@@ -249,23 +249,34 @@ class DopplerFrame(ASTFrame):
 
     def shift_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
         self.exec_stmt_Assign(assign)
-        varname = assign.target.value
-        sym = self.symtable.lookup(varname)
-        if sym.is_local and self.locals[varname].color == "blue":
-            self.record_node_color(assign, "blue")
-            # redshift away assignments to blue locals, but preserve
-            # any side effects from BlockExpr bodies
-            shifted_value = self.shifted_expr[assign.value]
-            if isinstance(shifted_value, ast.BlockExpr):
-                return shifted_value.body
-            return []
+        if isinstance(assign.target, ast.SingleTarget):
+            varname = assign.target.name.value
+            sym = self.symtable.lookup(varname)
+            if sym.is_local and self.locals[varname].color == "blue":
+                self.record_node_color(assign, "blue")
+                # redshift away assignments to blue locals, but preserve
+                # any side effects from BlockExpr bodies
+                shifted_value = self.shifted_expr[assign.value]
+                if isinstance(shifted_value, ast.BlockExpr):
+                    return shifted_value.body
+                return []
+            else:
+                if sym.is_local:
+                    self.record_node_color(assign, self.locals[varname].color)
+                specialized = self.specialized_assigns[assign]
+                newname = assign.target.name.as_typed_node()
+                newvalue = self.shifted_expr[assign.value]
+                return [specialized.replace(target=newname, value=newvalue)]
         else:
-            if sym.is_local:
-                self.record_node_color(assign, self.locals[varname].color)
-            specialized = self.specialized_assigns[assign]
-            newtarget = assign.target.as_typed_node()
+            unpack = assign.target
+            assert isinstance(unpack, ast.UnpackTarget)
+            newtargets = []
+            for target in unpack.targets:
+                assert isinstance(target, ast.SingleTarget)
+                newtargets.append(target.replace(name=target.name.as_typed_node()))
+            unpack = unpack.replace(targets=newtargets)
             newvalue = self.shifted_expr[assign.value]
-            return [specialized.replace(target=newtarget, value=newvalue)]
+            return [assign.replace(target=unpack, value=newvalue)]
 
     def shift_stmt_AssignLocal(self, assign: ast.AssignLocal) -> list[ast.Stmt]:
         # specialized stmts such as AssignLocal and AssignCell are present
@@ -280,12 +291,6 @@ class DopplerFrame(ASTFrame):
     def shift_stmt_AugAssign(self, node: ast.AugAssign) -> list[ast.Stmt]:
         assign = self._desugar_AugAssign(node)
         return self.shift_stmt_Assign(assign)
-
-    def shift_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> list[ast.Stmt]:
-        newtargets = [target.as_typed_node() for target in unpack.targets]
-        self.exec_stmt_UnpackAssign(unpack)
-        newvalue = self.shifted_expr[unpack.value]
-        return [unpack.replace(targets=newtargets, value=newvalue)]
 
     def shift_stmt_SetAttr(self, node: ast.SetAttr) -> list[ast.Stmt]:
         self.exec_stmt(node)
