@@ -656,3 +656,62 @@ def _split_whitespace(self:str) -> list[str]:
         result.append(StrObject.to_str(llnew))
 
     return result
+        
+
+@struct
+class unicode_codepoints:
+    """Iterates over the unicode codepoints in a string."""
+    str: gc_ptr[StrObject]
+  
+    def __fastiter__(self) -> unicode_codepoints_iterator:
+        return unicode_codepoints_iterator(self.str, 0)
+
+@struct
+class unicode_codepoints_iterator:
+    str_ptr: gc_ptr[StrObject]
+    i: int
+   
+    def __next__(self) -> unicode_codepoints_iterator:
+        return unicode_codepoints_iterator(self.str_ptr, self.i + self.__item_len())
+    
+    def __item__(self) -> i32:
+        current_byte = self.str_ptr.utf8[self.i]
+        codepoint: i32 = current_byte & __first_byte_mask(current_byte)
+
+        for j in range(self.__item_len() - 1):
+            current_byte = self.str_ptr.utf8[self.i + j + 1] & u8(0b0011_1111)
+            codepoint = i32(current_byte) | (codepoint << 6)
+        
+        return codepoint
+    
+    # the opposite of StopIteration :)
+    def __continue_iteration__(self) -> bool:
+        return self.i < self.str_ptr.length
+
+    def __item_len(self) -> int:
+        current_byte: u8 = self.str_ptr.utf8[self.i]
+        if (current_byte & u8(0b1000_0000)) == u8(0):
+            return 1
+        elif (current_byte & u8(0b1110_0000)) == u8(0b1100_0000):
+            return 2
+        elif (current_byte & u8(0b1111_0000)) == u8(0b1110_0000):
+            return 3
+        elif (current_byte & u8(0b1111_1000)) == u8(0b1111_0000):
+            return 4
+        assert False, "invalid first utf-8 byte: " + str(current_byte)
+
+def __first_byte_mask(byte: u8) -> u8:
+    """returns the bitmaks for the first byte"""
+    if (byte & u8(0b1000_0000)) == u8(0):
+        # for 1-byte sequence
+        return u8(0b0111_1111)
+    elif (byte & u8(0b1110_0000)) == u8(0b1100_0000):
+        # for 2-byte sequence
+        return u8(0b0001_1111)
+    elif (byte & u8(0b1111_0000)) == u8(0b1110_0000):
+        # for 3-byte sequence
+        return u8(0b0000_1111)
+    elif (byte & u8(0b1111_1000)) == u8(0b1111_0000):
+        # for 4-byte sequence
+        return u8(0b0000_0111)
+    assert False, "invalid first utf-8 byte: " + str(byte)
