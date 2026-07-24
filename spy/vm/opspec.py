@@ -313,16 +313,6 @@ class W_MetaArg(W_Object):
         return w_self.w_blueval
 
 
-# enum {
-#     Null,
-#     WFunc { args_wam, wfunc },
-#     WConst { wvalue },
-# }
-
-
-# ======== app-level interface ========
-
-
 @OPERATOR.builtin_type("OpSpec", lazy_definition=True)
 class W_OpSpec(W_Object):
     NULL: ClassVar["W_OpSpec"]
@@ -391,9 +381,11 @@ class W_OpSpec(W_Object):
         assert self._w_func is not None
         return self._w_func.w_functype
 
+    # ======== app-level interface ========
+
     @builtin_staticmethod("const")
     @staticmethod
-    def w_OpSpec_const(vm: "SPyVM", w_obj: W_Object) -> "W_OpSpec":
+    def w_const(vm: "SPyVM", w_obj: W_Object) -> "W_OpSpec":
         return W_OpSpec.const(w_obj)
 
     @builtin_method("__new__", color="blue", kind="metafunc")
