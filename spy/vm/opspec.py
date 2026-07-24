@@ -33,7 +33,12 @@ from spy.analyze.symtable import Color, Symbol
 from spy.errors import SPyError
 from spy.location import Loc
 from spy.vm.b import OPERATOR, B
-from spy.vm.builtin import builtin_class_attr, builtin_method, builtin_property
+from spy.vm.builtin import (
+    builtin_class_attr,
+    builtin_method,
+    builtin_property,
+    builtin_staticmethod,
+)
 from spy.vm.function import W_Func, W_FuncType
 from spy.vm.member import Member
 from spy.vm.object import W_Object, W_Type
@@ -377,6 +382,11 @@ class W_OpSpec(W_Object):
         return self._w_func.w_functype
 
     # ======== app-level interface ========
+
+    @builtin_staticmethod("const")
+    @staticmethod
+    def w_const(vm: "SPyVM", w_obj: W_Object) -> "W_OpSpec":
+        return W_OpSpec.const(w_obj)
 
     @builtin_method("__new__", color="blue", kind="metafunc")
     @staticmethod
