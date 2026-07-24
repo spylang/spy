@@ -94,7 +94,7 @@ def main() -> None:
 
 ### __@force_inline__
 
-:   Causes the decorated function to be inlined **during redshifting**. 
+:   Causes the decorated function to be inlined **during redshifting**.
 
 :   Only functions with a single return statement at the end of the function can be forced inline. Blue functions cannot be forced inline, nor can forced-inline statements be used recursively.
 

@@ -338,7 +338,7 @@ def list(T):
                 if ll.items[i] == value:
                     return True
                 i = i + 1
-            
+
             return False
 
 

@@ -64,7 +64,7 @@ def tuple(*items_T):
 
             with no loop or dynamic dispatch left at runtime.
             """
-            
+
             T = m_v.static_type
 
             @blue
