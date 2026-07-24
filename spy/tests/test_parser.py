@@ -737,7 +737,9 @@ class TestParser:
         stmt = mod.get_funcdef("foo").body[0]
         expected = f"""
             Assign(
-                target=StrLiteral(value='dict_test'),
+                target=SingleTarget(
+                    name=StrLiteral(value='dict_test'),
+                ),
                 value=Dict(
                     items=[
                         KeyValuePair(
@@ -1017,7 +1019,9 @@ class TestParser:
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         Assign(
-            target=StrLiteral(value='x'),
+            target=SingleTarget(
+                name=StrLiteral(value='x'),
+            ),
             value=Literal(value=42),
         )
         """
@@ -1052,12 +1056,20 @@ class TestParser:
         """)
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
-        UnpackAssign(
-            targets=[
-                StrLiteral(value='a'),
-                StrLiteral(value='b'),
-                StrLiteral(value='c'),
-            ],
+        Assign(
+            target=UnpackTarget(
+                targets=[
+                    SingleTarget(
+                        name=StrLiteral(value='a'),
+                    ),
+                    SingleTarget(
+                        name=StrLiteral(value='b'),
+                    ),
+                    SingleTarget(
+                        name=StrLiteral(value='c'),
+                    ),
+                ],
+            ),
             value=Name(id='x'),
         )
         """
@@ -1433,11 +1445,12 @@ class TestParser:
         assert isclass(nodes[4], "If")
         assert isclass(nodes[5], "Literal") and nodes[5].value is True
         assert isclass(nodes[6], "Assign")
-        assert isclass(nodes[7], "StrLiteral") and nodes[7].value == "x"
-        assert isclass(nodes[8], "BinOp")
-        assert isclass(nodes[9], "Name") and nodes[9].id == "y"
-        assert isclass(nodes[10], "Literal") and nodes[10].value == 1
-        assert len(nodes) == 11
+        assert isclass(nodes[7], "SingleTarget")
+        assert isclass(nodes[8], "StrLiteral") and nodes[8].value == "x"
+        assert isclass(nodes[9], "BinOp")
+        assert isclass(nodes[10], "Name") and nodes[10].id == "y"
+        assert isclass(nodes[11], "Literal") and nodes[11].value == 1
+        assert len(nodes) == 12
         #
         nodes2 = list(mod.walk(ast.Stmt))
         expected2 = [node for node in nodes if isinstance(node, ast.Stmt)]
@@ -1460,15 +1473,15 @@ class TestParser:
         assert isclass(nodes[0], "Literal") and nodes[0].value is None
         assert isclass(nodes[1], "Literal") and nodes[1].value is True
         assert isclass(nodes[2], "StrLiteral") and nodes[2].value == "x"
-        assert isclass(nodes[3], "Name") and nodes[3].id == "y"
-        assert isclass(nodes[4], "Literal") and nodes[4].value == 1
-        assert isclass(nodes[5], "BinOp")
-        assert isclass(nodes[6], "Assign")
-        assert isclass(nodes[7], "If")
-        assert isclass(nodes[8], "FuncDef")
-        assert isclass(nodes[9], "GlobalFuncDef")
-        assert isclass(nodes[10], "Module")
-        assert len(nodes) == 11
+        assert isclass(nodes[4], "Name") and nodes[4].id == "y"
+        assert isclass(nodes[5], "Literal") and nodes[5].value == 1
+        assert isclass(nodes[6], "BinOp")
+        assert isclass(nodes[7], "Assign")
+        assert isclass(nodes[8], "If")
+        assert isclass(nodes[9], "FuncDef")
+        assert isclass(nodes[10], "GlobalFuncDef")
+        assert isclass(nodes[11], "Module")
+        assert len(nodes) == 12
         #
         nodes2 = list(mod.walk_postorder(ast.Stmt))
         expected2 = [node for node in nodes if isinstance(node, ast.Stmt)]
@@ -1683,7 +1696,9 @@ class TestParser:
                     value=Literal(value=42),
                 ),
                 Assign(
-                    target=StrLiteral(value='y'),
+                    target=SingleTarget(
+                        name=StrLiteral(value='y'),
+                    ),
                     value=Literal(value=1),
                 ),
             ],
@@ -1907,7 +1922,9 @@ class TestParser:
             BlockExpr(
                 body=[
                     Assign(
-                        target=StrLiteral(value='x'),
+                        target=SingleTarget(
+                            name=StrLiteral(value='x'),
+                        ),
                         value=Literal(value=1),
                     ),
                 ],

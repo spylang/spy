@@ -510,11 +510,12 @@ class Parser:
         assert isinstance(assign, spy.ast.Assign)
         assert len(py_node.targets) == 1
         assert isinstance(py_node.targets[0], py_ast.Name)
+        assert isinstance(assign.target, spy.ast.SingleTarget)
         varkind, _ = parse_var_name(py_node.targets[0].id)
         vardef = spy.ast.VarDef(
             loc=py_node.loc,
             kind=varkind,
-            name=assign.target,
+            name=assign.target.name,
             type=spy.ast.Auto(loc=py_node.loc),
             value=assign.value,
         )
@@ -568,7 +569,9 @@ class Parser:
                 # "x = 0" is an Assign
                 return spy.ast.Assign(
                     loc=py_node.loc,
-                    target=spy.ast.StrLiteral(py_target.loc, real_name),
+                    target=spy.ast.SingleTarget(
+                        py_target.loc, spy.ast.StrLiteral(py_target.loc, real_name)
+                    ),
                     value=self.from_py_expr(py_node.value),
                 )
         elif isinstance(py_target, py_ast.Attribute):
@@ -596,9 +599,16 @@ class Parser:
             targets = []
             for item in py_target.elts:
                 assert isinstance(item, py_ast.Name)
-                targets.append(spy.ast.StrLiteral(item.loc, item.id))
-            return spy.ast.UnpackAssign(
-                loc=py_node.loc, targets=targets, value=self.from_py_expr(py_node.value)
+                targets.append(
+                    spy.ast.SingleTarget(
+                        item.loc, spy.ast.StrLiteral(item.loc, item.id)
+                    )
+                )
+            newtarget = spy.ast.UnpackTarget(loc=py_target.loc, targets=targets)
+            return spy.ast.Assign(
+                loc=py_node.loc,
+                target=newtarget,
+                value=self.from_py_expr(py_node.value),
             )
         else:
             self.unsupported(py_target, "assign to complex expressions")

@@ -552,12 +552,15 @@ class AbstractFrame:
             self.store_local(varname, wam.w_val)
 
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
-        # see the commnet in __init__ about specialized_assigns
-        specialized = self.specialized_assigns.get(assign)
-        if specialized is None:
-            specialized = self._specialize_Assign(assign)
-            self.specialized_assigns[assign] = specialized
-        self.exec_stmt(specialized)
+        if isinstance(assign.target, ast.SingleTarget):
+            # see the comment in __init__ about specialized_assigns
+            specialized = self.specialized_assigns.get(assign)
+            if specialized is None:
+                specialized = self._specialize_Assign(assign)
+                self.specialized_assigns[assign] = specialized
+            self.exec_stmt(specialized)
+        else:
+            self.exec_stmt_Assign_unpack(assign)
 
     def _specialize_assign_common(
         self, loc: Loc, target: ast.StrLiteral, value: ast.Expr, expr: bool
@@ -608,8 +611,9 @@ class AbstractFrame:
             assert False
 
     def _specialize_Assign(self, assign: ast.Assign) -> ast.Stmt:
+        assert isinstance(assign.target, ast.SingleTarget)
         res = self._specialize_assign_common(
-            loc=assign.loc, target=assign.target, value=assign.value, expr=False
+            loc=assign.loc, target=assign.target.name, value=assign.value, expr=False
         )
         assert isinstance(res, (ast.AssignLocal, ast.AssignCell))
         return res
@@ -657,8 +661,9 @@ class AbstractFrame:
             w_cell.set(wam.w_val)
         return wam
 
-    def exec_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
-        wam_tup = self.eval_expr(unpack.value)
+    def exec_stmt_Assign_unpack(self, assign: ast.Assign) -> None:
+        assert isinstance(assign.target, ast.UnpackTarget)
+        wam_tup = self.eval_expr(assign.value)
         w_T = wam_tup.w_static_T
 
         is_interp_tuple = w_T is SPY.w_interp_tuple
@@ -669,7 +674,7 @@ class AbstractFrame:
                 "W_TypeError",
                 f"`{t}` does not support unpacking",
             )
-            err.add("error", f"this is `{t}`", unpack.value.loc)
+            err.add("error", f"this is `{t}`", assign.value.loc)
             raise err
 
         # check that the tuple has the right length
@@ -682,13 +687,14 @@ class AbstractFrame:
             assert isinstance(w_T, W_StructType)
             got = len(list(w_T.iterfields_w()))
 
-        exp = len(unpack.targets)
+        targets = assign.target.targets
+        exp = len(targets)
         if exp != got:
             # we cannot use ValueError because we want an exception type which
             # inherits from StaticError.
             targets_loc = Loc.combine(
-                start=unpack.targets[0].loc,
-                end=unpack.targets[-1].loc,
+                start=targets[0].loc,
+                end=targets[-1].loc,
             )
             err = SPyError(
                 "W_TypeError",
@@ -697,23 +703,23 @@ class AbstractFrame:
             exp_values = maybe_plural(exp, "value")
             got_values = maybe_plural(got, "value")
             err.add("error", f"expected {exp} {exp_values}", targets_loc)
-            err.add("error", f"got {got} {got_values}", unpack.value.loc)
+            err.add("error", f"got {got} {got_values}", assign.value.loc)
             raise err
 
-        for i, target in enumerate(unpack.targets):
+        for i, target in enumerate(targets):
             # fabricate an expr to get an individual item of the tuple
             expr = ast.GetItem(
-                loc=unpack.value.loc,
-                value=unpack.value,
-                args=[ast.Literal(loc=unpack.value.loc, value=i)],
+                loc=assign.value.loc,
+                value=assign.value,
+                args=[ast.Literal(loc=assign.value.loc, value=i)],
             )
             # fabricate an ast.Assign
             # XXX: ideally we should cache the specialization instead of
             # rebuilding it at every exec
-            assign = self._specialize_Assign(
-                ast.Assign(loc=unpack.loc, target=target, value=expr)
+            assign_item = self._specialize_Assign(
+                ast.Assign(loc=assign.loc, target=target, value=expr)
             )
-            self.exec_stmt(assign)
+            self.exec_stmt(assign_item)
 
     def exec_stmt_AugAssign(self, node: ast.AugAssign) -> None:
         # XXX: eventually we want to support things like __IADD__ etc, but for
@@ -725,7 +731,7 @@ class AbstractFrame:
         # transform "x += 1" into "x = x + 1"
         return ast.Assign(
             loc=node.loc,
-            target=node.target,
+            target=ast.SingleTarget(node.loc, node.target),
             value=ast.BinOp(
                 loc=node.loc,
                 op=node.op,
@@ -810,7 +816,9 @@ class AbstractFrame:
         # way, 'continue' works out of the box.
         iter_name = f"_$iter{for_node.seq}"
         iter_sym = self.symtable.lookup(iter_name)
-        iter_target = ast.StrLiteral(for_node.loc, iter_name)
+        iter_target = ast.SingleTarget(
+            for_node.loc, ast.StrLiteral(for_node.loc, iter_name)
+        )
 
         # it = X.__fastiter__()
         init_iter = ast.Assign(
@@ -826,7 +834,7 @@ class AbstractFrame:
         # i = it.__item__()
         assign_item = ast.Assign(
             loc=for_node.loc,
-            target=for_node.target,
+            target=ast.SingleTarget(for_node.loc, for_node.target),
             value=ast.CallMethod(
                 loc=for_node.loc,
                 target=ast.NameLocalDirect(for_node.loc, iter_sym),

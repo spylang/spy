@@ -177,9 +177,6 @@ class CFuncWriter:
             else:
                 self.tbc.wl(f"{target} = {v};")
 
-    def emit_stmt_Assign(self, assign: ast.Assign) -> None:
-        assert False, "ast.Assign nodes should not survive redshifting"
-
     def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
         target = assign.target.value
         v = self.fmt_expr(assign.value)
@@ -195,11 +192,16 @@ class CFuncWriter:
         c_varname = C_Ident(target)
         self.tbc.wl(f"{c_varname} = {v};")
 
-    def emit_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
-        if isinstance(unpack.value, ast.Tuple):
+    def emit_stmt_Assign(self, assign: ast.Assign) -> None:
+        unpack = assign.target
+        assert isinstance(unpack, ast.UnpackTarget), (
+            "simple ast.Assign nodes should not survive redshifting"
+        )
+        if isinstance(assign.value, ast.Tuple):
             # Blue tuple literal: directly assign each item to its target
-            for target, item in zip(unpack.targets, unpack.value.items):
-                c_target = C_Ident(target.value)
+            for target, item in zip(unpack.targets, assign.value.items):
+                assert isinstance(target, ast.SingleTarget)
+                c_target = C_Ident(target.name.value)
                 v = self.fmt_expr(item)
                 self.tbc.wl(f"{c_target} = {v};")
         else:
@@ -210,14 +212,15 @@ class CFuncWriter:
             #     a = tmp._item0;
             #     b = tmp._item1;
             # }
-            assert unpack.value.w_T is not None
-            c_tuple_type = self.ctx.w2c(unpack.value.w_T)
-            v = self.fmt_expr(unpack.value)
+            assert assign.value.w_T is not None
+            c_tuple_type = self.ctx.w2c(assign.value.w_T)
+            v = self.fmt_expr(assign.value)
             self.tbc.wl("{")
             with self.tbc.indent():
                 self.tbc.wl(f"{c_tuple_type} tmp = {v};")
                 for i, target in enumerate(unpack.targets):
-                    c_target = C_Ident(target.value)
+                    assert isinstance(target, ast.SingleTarget)
+                    c_target = C_Ident(target.name.value)
                     self.tbc.wl(f"{c_target} = tmp._item{i};")
             self.tbc.wl("}")
 
