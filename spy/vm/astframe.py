@@ -141,7 +141,7 @@ class AbstractFrame:
         #   - varkind is statically known and depends on the symbol
         #   - desired_color is the color of the wam that we determine during execution
         #
-        # The local variable will be "blue" IIF varkind is "const" and "desired_color"
+        # The local variable will be "blue" IF varkind is "const" and "desired_color"
         # is actually a "blue". Consider this case:
         #     x = 0                # const, blue
         #     y = some_red_func()  # const, red
@@ -900,7 +900,7 @@ class AbstractFrame:
     def eval_expr_Auto(self, auto: ast.Auto) -> W_MetaArg:
         raise SPyError.simple(
             "W_TypeError",
-            "Interal SPy error: ast.Auto expressions should be handled case-by-case",
+            "Internal SPy error: ast.Auto expressions should be handled case-by-case",
             "this is `auto`",
             auto.loc,
         )
@@ -1121,7 +1121,7 @@ class AbstractFrame:
         args_wam: list[W_MetaArg],
     ) -> W_MetaArg:
         """
-        Note: this is overrided by DopplerFrame to remember the w_opimpl.
+        Note: this is overridden by DopplerFrame to remember the w_opimpl.
         """
         return self.vm.eval_opimpl(
             w_opimpl,

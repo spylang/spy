@@ -26,7 +26,7 @@ dev = [
     "ruff~=0.14.0",
     "mypy==1.15.0",
     "types-pexpect==4.9.0.20250516; sys_platform != 'emscripten'",
-    # the followings are needed for "tests/compiler/test_cffi.py"
+    # the following are needed for "tests/compiler/test_cffi.py"
     "cffi",
     "setuptools",
     "pyperclip>=1.10",

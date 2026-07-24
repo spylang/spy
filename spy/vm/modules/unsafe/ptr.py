@@ -480,7 +480,7 @@ class W_Ref(W_MemLoc):
     """
     A reference to a memory location.
 
-    Under the hood, `ref[T]` is impemented like a `ptr[T]`, but functionality wise it's
+    Under the hood, `ref[T]` is implemented like a `ptr[T]`, but functionality wise it's
     more or less equivalent to a `T`. In C++ terms, this is more similar to a `T&` than
     to a `T*`.
 

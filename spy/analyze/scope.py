@@ -28,7 +28,7 @@ class ScopeAnalyzer:
       - names defined at module-level scopes are always available to all
         their inner scopes
 
-      - inside a function, assigment defines a local variable ONLY if this
+      - inside a function, assignment defines a local variable ONLY if this
         name does not exist in an outer scope. Note that this is different
         from Python rules. No more 'global' and 'nonlocal' declarations.
 

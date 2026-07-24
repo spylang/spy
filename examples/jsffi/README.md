@@ -9,7 +9,7 @@ This example shows:
   - and how to call spy code from JS
 
 **WARNING**: the `jsffi` module is just a proof of concept: it's incomplete, probably
-buggy, and has the minimum amout of logic which is needed to run this demo, nothing
+buggy, and has the minimum amount of logic which is needed to run this demo, nothing
 mode.
 
 ## How to compile and run

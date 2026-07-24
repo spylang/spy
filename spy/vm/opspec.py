@@ -81,7 +81,7 @@ class W_MetaArg(W_Object):
       - sym: the symbol associated with this objects (if any)
 
     In interpreter mode, MetaArgs represent concrete values, so they carry an
-    actualy object + its static type.
+    actually object + its static type.
 
     During redshifting, red MetaArgs are abstract: they carry around only the
     static types.

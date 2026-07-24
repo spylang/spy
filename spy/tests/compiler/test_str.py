@@ -264,7 +264,7 @@ class TestStr(CompilerTest):
 
     def test_str_numbers(self):
         # NOTE: float2str produces slightly different results in Python vs C
-        # backend: e.g. str(0.0) == '0' in Pytohn, '0.0' in the C backend.
+        # backend: e.g. str(0.0) == '0' in Python, '0.0' in the C backend.
         # Eventually, we want to port the formatting code from CPython, but
         # for now we just allow both results and keep the C backend simple.
         mod = self.compile("""

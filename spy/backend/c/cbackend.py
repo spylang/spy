@@ -131,7 +131,7 @@ class CBackend:
         #   3. ensure that structs in each SCC is in topological order
         #   4. emit one .h for each SCC (or maybe group multiple SCC by
         #      modname, but keep in mind that in case of circular deps it will
-        #      be impossible to guarantee the correspondance fqn.modname <=>
+        #      be impossible to guarantee the correspondence fqn.modname <=>
         #      modname.h)
         structdefs: list[tuple[FQN, W_Type]] = []
 

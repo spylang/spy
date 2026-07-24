@@ -565,7 +565,7 @@ def w_UNIVERSAL_EQ(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
 def w_UNIVERSAL_NE(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpImpl:
     from spy.vm.typechecker import typecheck_opspec
 
-    # XXX: see the commet in UNIVERSAL_EQ
+    # XXX: see the comment in UNIVERSAL_EQ
     w_opspec = W_OpSpec(OP.w_object_universal_ne)
     return typecheck_opspec(
         vm,

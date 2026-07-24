@@ -104,7 +104,7 @@ class Symbol:
 
     # level indicates in which scope the symbol resides:
     #   0: this Symbol is defined in the scope corresponding to
-    #      the curreny SymTable (i.e., it's a "local variable")
+    #      the current SymTable (i.e., it's a "local variable")
     #   1: this is the most immediate outer scope
     #   2: the outer-outer, etc.
     #

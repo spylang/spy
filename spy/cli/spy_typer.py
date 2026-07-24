@@ -95,7 +95,7 @@ class SpyGroupConfig(TyperGroup):
             and any(
                 (".spy" in arg or ".py" in arg) for arg in args
             )  # Hardcoded assumption that the default command takes something that looks like a filename.
-            # This is necessary to distinguish misformed subcommands from file names, i.e.
+            # This is necessary to distinguish malformed subcommands from file names, i.e.
             # `spy example.spy`` should run but `spy execuuute` should fail with a 'no such command' error
         ):
             args = [self.default_command] + args
