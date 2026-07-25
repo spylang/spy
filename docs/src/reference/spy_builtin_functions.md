@@ -114,4 +114,3 @@ def main() -> None:
 def main() -> None:
     `_print::_print_one[i32]::impl`(__block__(x$0: i32 = 1; x$0 + 1))
 ```
-

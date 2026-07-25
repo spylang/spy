@@ -43,5 +43,3 @@ __full_fqn__  a::Foo[i32]::Self
 ### \_\_full_fqn\_\_
 
 :   An expended representation of the FQN, and the most complete name used in the SPy internals. This is what is shown when running `spy redshift --full-fqn`.
-
-
