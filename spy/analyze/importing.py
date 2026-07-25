@@ -41,7 +41,7 @@ class ImportAnalyzer:
 
     This is very different than Python where `import` is a statement which can
     trigger dynamic loading of a new module. In SPy, `import` is just a
-    declaration which makes avaiable in the current module an entity which has
+    declaration which makes available in the current module an entity which has
     already been loaded.
 
     NOTE: eventually, we might want to slightly tweak the rules to allow
@@ -53,7 +53,7 @@ class ImportAnalyzer:
     all the modules found in that way, INCLUDING the `import`s which are not
     top-level.
 
-    This basicaly creates a tree of imports. E.g.:
+    This basically creates a tree of imports. E.g.:
 
         # main.spy
         import aaa
@@ -486,7 +486,7 @@ class ImportAnalyzer:
             print_tree(root, prefix="  ", indent="", marker="", visited=set())
 
     # ===========================================================
-    # visitor pattern to recurively find all "import" statements
+    # visitor pattern to recursively find all "import" statements
 
     def visit(self, mod: ast.Module) -> None:
         mod.visit("visit", self)

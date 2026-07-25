@@ -4,7 +4,7 @@ Terminology and naming conventions
 ==================================
 
 SPy is implemented in Python. Many concepts such as classes, objects,
-variables, etc. exist in both langauges, so we need a way to refer to them and
+variables, etc. exist in both languages, so we need a way to refer to them and
 avoid confusion:
 
   - "application level"  or "app-level" refers to the code written by the final
@@ -547,7 +547,7 @@ class W_Type(W_Object):
     def _storage_sanity_check(self, pyclass: Type[W_Object]) -> None:
         storage = pyclass.__spy_storage_category__
         if storage == "reference":
-            # ref types cannot ovverride interp-level __hash__ or  __eq__
+            # ref types cannot override interp-level __hash__ or  __eq__
             assert pyclass.__hash__ is object.__hash__
             assert pyclass.__eq__ is object.__eq__
         elif storage == "value":

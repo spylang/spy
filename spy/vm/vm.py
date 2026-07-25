@@ -430,7 +430,7 @@ class SPyVM:
         cannot call it directly, but you need to use vm.call.
 
         Registering a function with a FQN which is already in use is an
-        error. Howver, it is explicitly allowed to register the SAME function
+        error. However, it is explicitly allowed to register the SAME function
         with the SAME FQN multiple times. This is needed to allow this
         pattern:
 
@@ -507,7 +507,7 @@ class SPyVM:
             # However, this is not easily achievable at the moment, because we
             # create all module-level builtin functions AND all the
             # @builtin_method with make_builtin_func, bypassing the
-            # @vm.register_builtin_func pass. This happens becuse we don't
+            # @vm.register_builtin_func pass. This happens because we don't
             # have a vm available at that point, so it would require some
             # serious refactoring.
             fqn = w_val.fqn
@@ -682,7 +682,7 @@ class SPyVM:
 
     def wrap(self, value: Any) -> W_Object:
         """
-        Useful for tests: magic funtion which wraps the given interp-level
+        Useful for tests: magic function which wraps the given interp-level
         object into the most appropriate app-level W_* object.
         """
         T = type(value)
@@ -763,7 +763,7 @@ class SPyVM:
 
     def unwrap(self, w_value: W_Object) -> Any:
         """
-        Useful for tests: magic funtion which wraps the given app-level w_
+        Useful for tests: magic function which wraps the given app-level w_
         object into the most appropriate interp-level object. Opposite of
         wrap().
         """

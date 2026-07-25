@@ -403,7 +403,7 @@ class CFuncWriter:
     def fmt_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> C.Expr:
         # at the moment of writing, closed-over variables are always blue, so
         # they should not survive redshifting
-        assert False, "unexepcted NameOuterDirect"
+        assert False, "unexpected NameOuterDirect"
 
     def fmt_expr_AssignExpr(self, assignexpr: ast.AssignExpr) -> C.Expr:
         return self._fmt_assignexpr(assignexpr.target.value, assignexpr.value)

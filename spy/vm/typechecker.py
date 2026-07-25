@@ -121,7 +121,7 @@ def typecheck_opspec(
             arg = ArgSpec.Const(wam_out_arg.w_blueval, wam_out_arg.loc)
         else:
             # THIS IS PROBABLY A BUG, or at least a design issue. W_MetaArg compares by
-            # value and thus they are not supposed to have an identiy. However, by
+            # value and thus they are not supposed to have an identity. However, by
             # calling .index we are relying on the interp-level identity of W_MetaArg
             # objects, which is conceptually wrong. We should probably make W_MetaArg
             # reference types, but this likely introduces other problems.
@@ -175,7 +175,7 @@ def _opspec_null_error(
      - single dispatch means that the target (argument 0) doesn't
        support this operation, so we report its type and its definition
 
-     - multi dispatch means that all the types are equally imporant in
+     - multi dispatch means that all the types are equally important in
        determining whether an operation is supported, so we report all
        of them
     """

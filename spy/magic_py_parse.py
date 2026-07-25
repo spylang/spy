@@ -11,8 +11,8 @@ The idea is to convert the code above into:
     var·x: i32 = 0
     const·y: i32 = 0
 
-'·' is U+00B7 MIDDLE DOT, which is a valid unicode char for an indentifier. This means
-that 'var·x' will be parsed as a single valide NAME token by Python, and then the SPy
+'·' is U+00B7 MIDDLE DOT, which is a valid unicode char for an identifier. This means
+that 'var·x' will be parsed as a single valid NAME token by Python, and then the SPy
 parser will be able to special case it later.
 
 The idea is the following:

@@ -276,7 +276,7 @@ class W_Struct(W_Object):
     implementation in the interpreter. We might want to change the rules in
     the future.
 
-    The interp-level represenation of structs on heap and stack is
+    The interp-level representation of structs on heap and stack is
     very different:
 
       - heap: gc_alloc() allocs a bunch of bytes and the fields are

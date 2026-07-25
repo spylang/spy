@@ -77,7 +77,7 @@ class ErrorFormatter:
         srcline, underline = self.fmt_loc(f.loc, "red", "")
 
         if index is None:
-            # we are printin a traceback
+            # we are printing a traceback
             self.out.wl(f"  * {where} at {f.loc.filename}:{f.loc.line_start}")
             self.out.wl(f"  | {srcline}")
             self.out.wl(f"  | {underline}")

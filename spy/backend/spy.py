@@ -387,7 +387,7 @@ class SPyBackend:
     def fmt_expr_Auto(self, node: ast.Auto) -> str:
         # this should never happen when formatting a module using the SPy backend
         # (because ast.Auto is special-cased by emit_stmt_VarDef, but it happens when
-        # using the HTML backend (because it inconditionally formats ALL the ast.Expr,
+        # using the HTML backend (because it unconditionally formats ALL the ast.Expr,
         # including ast.Auto).
         return ""
 

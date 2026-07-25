@@ -301,7 +301,7 @@ class Linearizer:
     #   - pure: no side effects, no dependence on mutable state; never spilled.
     #
     #   - names: trivially side-effect free, but they are not pure because earlier calls
-    #     might modifiy their value. The gets added to `pending_spills`
+    #     might modify their value. The gets added to `pending_spills`
     #
     #   - side-effecting (impure Call, or anything not whitelisted): acts
     #     as a sequence point. Promote ``pending_spills`` into ``to_spill``

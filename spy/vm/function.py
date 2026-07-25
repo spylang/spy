@@ -175,7 +175,7 @@ class W_FuncType(W_Type):
     def arity(self) -> int:
         """
         Return the *minimum* number of arguments expected by the function.
-        In case of varargs, it's the number of non-varargs paramenters.
+        In case of varargs, it's the number of non-varargs parameters.
         """
         if self.has_varargs:
             return len(self.params) - 1

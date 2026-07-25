@@ -183,7 +183,7 @@ class Node:
           - if it exists, it is called. It is responsibility of the method to
             visit its children, if wanted
 
-          - if it doesn't exist, we recurively visit its children
+          - if it doesn't exist, we recursively visit its children
         """
         cls = self.__class__.__name__
         methname = f"{prefix}_{cls}"
@@ -308,7 +308,7 @@ class Expr(Node):
      0    :=
     """
 
-    # precedence must be overriden by subclasses. The weird type comment is
+    # precedence must be overridden by subclasses. The weird type comment is
     # needed to make mypy happy
     precedence = "<Expr.precedence not set>"  # type: int # type: ignore
 

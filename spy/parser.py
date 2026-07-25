@@ -647,7 +647,7 @@ class Parser:
     def from_py_stmt_For(self, py_node: py_ast.For) -> spy.ast.For:
         if py_node.orelse:
             # ideally, we would like to point to the 'else:' line, but we
-            # cannot easiy get it from the ast. Too bad, let's point at the
+            # cannot easily get it from the ast. Too bad, let's point at the
             # 'for'.
             msg = "not implemented yet: `else` clause in `for` loops"
             forloc = py_node.loc.replace(
