@@ -126,7 +126,11 @@ spy_operator$f32_pow(float x, float y) {
         spy_panic("ZeroDivisionError", "0.0 cannot be raised to a negative power",
                   __FILE__, __LINE__);
     }
-    if (x < 0.0f && isfinite(y) && y != truncf(y)) {
+    // Use __builtin_isfinite instead of isfinite: workaround for
+    // https://github.com/emscripten-core/emscripten/issues/27418
+    // Note: We use multivalue abi when building for wasi/emscripten.
+    // See also: spy/build/flags.py
+    if (x < 0.0f && __builtin_isfinite(y) && y != truncf(y)) {
         spy_panic("ValueError", "math domain error", __FILE__, __LINE__);
     }
     return powf(x, y);
