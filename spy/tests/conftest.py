@@ -6,7 +6,6 @@ import sys
 import hypothesis
 import py
 import pytest
-from pytest_pyodide import get_global_config
 
 from spy.util import cleanup_spyc_files
 
@@ -80,6 +79,8 @@ def pytest_addoption(parser):
         default=False,
         help="Remove all .spyc cache files from stdlib before running tests",
     )
+    if sys.platform == "emscripten":
+        parser.addoption("--dist-dir")
 
 
 @pytest.fixture(autouse=True)
@@ -118,14 +119,17 @@ def spy_backend_sanity_check_fixture(tmpdir_factory):
 # ===============
 
 
-def call_immediately(f):
-    f()
+def call_immediately_if_not_emscripten(f):
+    if sys.platform != "emscripten":
+        f()
     return f
 
 
-@call_immediately
+@call_immediately_if_not_emscripten
 def configure_pyodide():
     SPY_ROOT = ROOT.join("..", "..")  # the root of the repo
+
+    from pytest_pyodide import get_global_config
 
     pytest_pyodide_config = get_global_config()
     pytest_pyodide_config.set_flags(
