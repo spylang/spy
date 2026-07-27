@@ -2,6 +2,7 @@ import subprocess
 
 import py.path
 
+from spy.util import robust_run
 from spy.vm.vm import SPyVM
 
 
@@ -17,5 +18,7 @@ class ExeWrapper:
             cmdline = []
         cmdline += [str(self.f)]
         cmdline += list(args)
-        out = subprocess.check_output(cmdline)
-        return out.decode("utf-8")
+        out = robust_run(cmdline)
+        if out.returncode != 0:
+            raise Exception(f"Failed with exit code {out.returncode}")
+        return out.stdout.decode("utf-8")

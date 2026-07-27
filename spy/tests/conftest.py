@@ -6,7 +6,6 @@ import sys
 import hypothesis
 import py
 import pytest
-from pytest_pyodide import get_global_config
 
 from spy.util import cleanup_spyc_files
 
@@ -111,41 +110,3 @@ def spy_backend_sanity_check_fixture(tmpdir_factory):
 
     yield
     run_sanity_check_fixture(tmpdir_factory)
-
-
-# ===============
-# pyodide config
-# ===============
-
-
-def call_immediately(f):
-    f()
-    return f
-
-
-@call_immediately
-def configure_pyodide():
-    SPY_ROOT = ROOT.join("..", "..")  # the root of the repo
-
-    pytest_pyodide_config = get_global_config()
-    pytest_pyodide_config.set_flags(
-        "node",
-        pytest_pyodide_config.get_flags("node")
-        + ["--experimental-wasm-stack-switching"],
-    )
-    pytest_pyodide_config.set_load_pyodide_script(
-        "node",
-        """
-        let pyodide = await loadPyodide({
-            fullStdLib: false,
-            enableRunUntilComplete: true,
-        });
-        await pyodide.loadPackage(["pytest", "typing-extensions"]);
-        """,
-    )
-    pytest_pyodide_config.set_initialize_script(
-        f"""
-        pyodide.mountNodeFS("{SPY_ROOT}", "{SPY_ROOT}");
-        pyodide.runPython("import sys; sys.path.append('{SPY_ROOT}')");
-        """
-    )

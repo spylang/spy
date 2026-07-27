@@ -3,19 +3,18 @@ A pythonic way to instantiate Emscripten binaries.
 """
 
 from asyncio import Future
+from pathlib import Path
 from typing import Any, Callable, Optional
 
 import py.path
 from pyodide.code import run_js
-from pyodide.ffi import JsProxy, run_sync
+from pyodide.ffi import JsException, JsProxy, create_once_callable, run_sync, to_js
 from typing_extensions import Self
 
 from .base import HostModule, LLWasmInstanceBase, LLWasmMemoryBase, LLWasmModuleBase
 
-
-class WasmTrap(Exception):
-    # xxx add way to catch only actual aborts
-    pass
+# xxx add way to catch only actual aborts
+WasmTrap = JsException
 
 
 loadModule = run_js("""
@@ -84,10 +83,10 @@ class LLWasmInstance(LLWasmInstanceBase):
         Return a PROMISE of the emscripten instance of the given module,
         linking all needed imports
         """
+        from js import Object, WebAssembly  # type: ignore
+        from pyodide_js import FS  # type: ignore
 
         def adjust_imports(imports: Any) -> None:
-            from js import Object  # type: ignore
-
             env = imports.env
             for [name, val] in Object.entries(env):
                 if not getattr(val, "stub", False):
@@ -97,7 +96,15 @@ class LLWasmInstance(LLWasmInstanceBase):
                         setattr(env, name, x)
                         break
 
-        return llmod.instance_factory(adjustWasmImports=adjust_imports)
+        @create_once_callable
+        def connect_file_systems(module: Any) -> None:
+            module.connectFileSystems(FS)
+
+        return llmod.instance_factory(
+            adjustWasmImports=adjust_imports,
+            preRun=[connect_file_systems],
+            noInitialRun=True,
+        )
 
     @classmethod
     def from_file(cls, f: py.path.local, hostmods: list[HostModule] = []) -> Self:
@@ -106,6 +113,9 @@ class LLWasmInstance(LLWasmInstanceBase):
 
     def get_export(self, name: str) -> Any:
         return getattr(self.instance, "_" + name)
+
+    def all_exports(self) -> Any:
+        return [x.removeprefix("_") for x in dir(self.instance) if x.startswith("_")]
 
     def get_addr_of_global(self, name: str) -> int:
         addr = self.get_export(name)
@@ -125,7 +135,7 @@ class LLWasmMemory(LLWasmMemoryBase):
         """
         Read n bytes of memory at the given address.
         """
-        return self.jsmem.subarray(addr, addr + n).to_py()
+        return self.jsmem.subarray(addr, addr + n).to_bytes()
 
     def write(self, addr: int, b: bytes) -> None:
         self.jsmem.subarray(addr, addr + len(b)).assign(b)

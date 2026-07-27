@@ -1,7 +1,8 @@
-from spy.tests.support import CompilerTest, only_py_cffi
+from spy.tests.support import CompilerTest, only_py_cffi, skip_if_emscripten
 
 
 @only_py_cffi
+@skip_if_emscripten
 class TestPyCFFI(CompilerTest):
     def test_simple(self):
         mod = self.compile("""
