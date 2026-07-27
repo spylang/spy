@@ -226,9 +226,9 @@ if sys.platform == "emscripten":
         `unbuffer` is ignored: spawnSync cannot allocate a pty, so subcommands
         will see a pipe and likely turn off colors.
         """
+        from js import Uint8Array
         from pyodide.code import run_js
         from pyodide.ffi import run_sync, to_js
-        from js import Uint8Array
 
         child_process = run_sync(run_js("import('node:child_process')"))
         cmdline_s = [str(x) for x in cmdline]
@@ -240,7 +240,9 @@ if sys.platform == "emscripten":
         error = getattr(res, "error", None)
         if error is not None:
             raise OSError(f"cannot run {cmdline_s[0]}: {error.message}")
-        stdout, stderr = run_js("(res) => [new Uint8Array(res.stdout.buffer), new Uint8Array(res.stderr.buffer)]")(res)
+        stdout, stderr = run_js(
+            "(res) => [new Uint8Array(res.stdout.buffer), new Uint8Array(res.stderr.buffer)]"
+        )(res)
         proc = subprocess.CompletedProcess(
             args=cmdline_s,
             # status is null if the child was terminated by a signal

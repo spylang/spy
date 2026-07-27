@@ -30,7 +30,6 @@ dev = [
     "cffi",
     "setuptools",
     "pyperclip>=1.10",
-    "pytest_pyodide==0.59.2; sys_platform != 'emscripten'",
     "pyodide-py==0.27.7; sys_platform != 'emscripten'",
     # provides the `pyodide` command (used to create the pyodide venv, see
     # pyodide/README.md); 0.35.x is the first version which fixes the marker
@@ -97,7 +96,6 @@ markers = [
 
     # llwasm_backend
     "wasmtime: use the 'wasmtime' llwasm backend",
-    "pyodide: use the 'emscripten' llwasm backend and run the test on pyodide",
 
     # others
     "mypy: check mypy",

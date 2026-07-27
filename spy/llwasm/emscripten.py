@@ -107,6 +107,9 @@ class LLWasmInstance(LLWasmInstanceBase):
     def get_export(self, name: str) -> Any:
         return getattr(self.instance, "_" + name)
 
+    def all_exports(self) -> Any:
+        return [x.removeprefix("_") for x in dir(self.instance) if x.startswith("_")]
+
     def get_addr_of_global(self, name: str) -> int:
         addr = self.get_export(name)
         assert isinstance(addr, int)
