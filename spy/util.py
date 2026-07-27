@@ -6,6 +6,7 @@ import os
 import pickle
 import re
 import subprocess
+import sys
 import tempfile
 import typing
 from collections import defaultdict
@@ -171,6 +172,27 @@ def unbuffer_run(cmdline_s: Sequence[str]) -> subprocess.CompletedProcess:
         )
 
 
+def _raise_if_failed(
+    cmdline_s: Sequence[str], proc: subprocess.CompletedProcess
+) -> None:
+    if proc.returncode == 0:
+        return
+    FORCE_COLORS = True
+    lines = ["subprocess failed:"]
+    lines.append(" ".join(cmdline_s))
+    lines.append("")
+    errlines = []
+    if proc.stdout:
+        errlines += proc.stdout.decode("utf-8").splitlines()
+    if proc.stderr:
+        errlines += proc.stderr.decode("utf-8").splitlines()
+    if FORCE_COLORS:
+        errlines = [Color.set("default", line) for line in errlines]
+    lines += errlines
+    msg = "\n".join(lines)
+    raise Exception(msg)
+
+
 def robust_run(
     cmdline: Sequence[str | py.path.local], unbuffer: bool = False
 ) -> subprocess.CompletedProcess:
@@ -188,22 +210,46 @@ def robust_run(
         # Use capture_output=True to capture stdout and stderr separately
         proc = subprocess.run(cmdline_s, capture_output=True)
 
-    if proc.returncode != 0:
-        FORCE_COLORS = True
-        lines = ["subprocess failed:"]
-        lines.append(" ".join(cmdline_s))
-        lines.append("")
-        errlines = []
-        if proc.stdout:
-            errlines += proc.stdout.decode("utf-8").splitlines()
-        if proc.stderr:
-            errlines += proc.stderr.decode("utf-8").splitlines()
-        if FORCE_COLORS:
-            errlines = [Color.set("default", line) for line in errlines]
-        lines += errlines
-        msg = "\n".join(lines)
-        raise Exception(msg)
+    _raise_if_failed(cmdline_s, proc)
     return proc
+
+
+if sys.platform == "emscripten":
+
+    def robust_run(  # type: ignore[misc]
+        cmdline: Sequence[str | py.path.local], unbuffer: bool = False
+    ) -> subprocess.CompletedProcess:
+        """
+        Version of robust_run for pyodide: emscripten has no fork(), so
+        subprocess doesn't work and we delegate to node's child_process.
+
+        `unbuffer` is ignored: spawnSync cannot allocate a pty, so subcommands
+        will see a pipe and likely turn off colors.
+        """
+        from pyodide.code import run_js
+        from pyodide.ffi import run_sync, to_js
+        from js import Uint8Array
+
+        child_process = run_sync(run_js("import('node:child_process')"))
+        cmdline_s = [str(x) for x in cmdline]
+        # the child inherits node's cwd, which is unrelated to the cwd of the
+        # emscripten VFS
+        res = child_process.spawnSync(cmdline_s[0], to_js(cmdline_s[1:]))
+        # `error` is set only if the spawn itself failed (e.g. ENOENT), and
+        # missing JS properties raise AttributeError on a JsProxy
+        error = getattr(res, "error", None)
+        if error is not None:
+            raise OSError(f"cannot run {cmdline_s[0]}: {error.message}")
+        stdout, stderr = run_js("(res) => [new Uint8Array(res.stdout.buffer), new Uint8Array(res.stderr.buffer)]")(res)
+        proc = subprocess.CompletedProcess(
+            args=cmdline_s,
+            # status is null if the child was terminated by a signal
+            returncode=-1 if res.status is None else res.status,
+            stdout=stdout.to_bytes(),
+            stderr=stderr.to_bytes(),
+        )
+        _raise_if_failed(cmdline_s, proc)
+        return proc
 
 
 def func_equals(f: Callable, g: Callable) -> bool:

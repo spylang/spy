@@ -373,7 +373,10 @@ class CTest:
     def init(self, tmpdir):
         self.tmpdir = tmpdir
         # NOTE: target is overwritten by TestLLWasm.init_llwasm
-        self.target = "wasi"
+        if sys.platform == "emscripten":
+            self.target = "emscripten"
+        else:
+            self.target = "wasi"
         self.build_dir = self.tmpdir.join("build").ensure(dir=True)
 
     def write(self, src: str) -> py.path.local:

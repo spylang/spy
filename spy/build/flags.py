@@ -62,7 +62,9 @@ _TARGET_LDFLAGS: dict[str, list[str]] = {
     "wasi": [
         "--target=wasm32-wasi-musl",
     ],
-    "emscripten": [],
+    "emscripten": [
+        "-Wl,--whole-archive",
+    ],
     "native": [],
     "native-static": [
         "--target=native-native-musl",
