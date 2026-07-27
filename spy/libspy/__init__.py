@@ -18,7 +18,8 @@ DEPS = spy.ROOT.join("libspy", "deps")
 
 if IS_NODE:
     LIBSPY_WASM = BUILD.join("emscripten", "debug", "libspy.mjs")
-    LLMOD = None
+    from pyodide.ffi import run_sync
+    LLMOD = run_sync(LLWasmModule.async_new(str(LIBSPY_WASM)))
 elif IS_BROWSER or IS_DOCS_BUILD:
     LIBSPY_WASM = None  # type: ignore    # needs to be set by the embedder
     LLMOD = None
