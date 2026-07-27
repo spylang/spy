@@ -702,17 +702,17 @@ class TestParser:
                 GlobalVarDef(
                     vardef=VarDef(
                         kind='var',
-                        name=StrConst(value='c'),
+                        name=StrLiteral(value='c'),
                         type=Auto(),
-                        value=Constant(value=43),
+                        value=Literal(value=43),
                     ),
                 ),
                 GlobalVarDef(
                     vardef=VarDef(
                         kind='const',
-                        name=StrConst(value='d'),
+                        name=StrLiteral(value='d'),
                         type=Auto(),
-                        value=Constant(value=44),
+                        value=Literal(value=44),
                     ),
                 ),
             ],
