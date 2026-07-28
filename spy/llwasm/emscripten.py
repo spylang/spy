@@ -7,7 +7,7 @@ from typing import Any, Callable, Optional
 
 import py.path
 from pyodide.code import run_js
-from pyodide.ffi import JsProxy, run_sync
+from pyodide.ffi import JsProxy, run_sync, to_js
 from typing_extensions import Self
 
 from .base import HostModule, LLWasmInstanceBase, LLWasmMemoryBase, LLWasmModuleBase
@@ -25,6 +25,32 @@ loadModule = run_js("""
     };
     loadModule
 """)
+
+
+def find_wasm_binary(mod_url: str) -> str:
+    """
+    Compute the URL of the .wasm, given the URL of the .mjs.
+
+    This replicates Emscripten's findWasmBinary().
+    """
+    assert mod_url.endswith(".mjs"), f"unexpected module URL: {mod_url}"
+    return mod_url[: -len(".mjs")] + ".wasm"
+
+
+async def get_wasm_binary(url: str) -> Any:
+    """
+    Return the bytes of the wasm binary as a JS buffer.
+
+    This replicates Emscripten's getWasmBinary().
+    """
+    if "://" in url and not url.startswith("file://"):
+        from js import fetch  # type: ignore
+
+        res = await fetch(url)
+        return await res.arrayBuffer()
+    else:
+        f = py.path.local(url.removeprefix("file://"))
+        return to_js(f.read_binary())
 
 
 class LLWasmModule(LLWasmModuleBase):
@@ -84,10 +110,9 @@ class LLWasmInstance(LLWasmInstanceBase):
         Return a PROMISE of the emscripten instance of the given module,
         linking all needed imports
         """
+        from js import Object, WebAssembly  # type: ignore
 
         def adjust_imports(imports: Any) -> None:
-            from js import Object  # type: ignore
-
             env = imports.env
             for [name, val] in Object.entries(env):
                 if not getattr(val, "stub", False):
@@ -97,7 +122,21 @@ class LLWasmInstance(LLWasmInstanceBase):
                         setattr(env, name, x)
                         break
 
-        return llmod.instance_factory(adjustWasmImports=adjust_imports)
+        async def instantiate_wasm(imports: Any, success_callback: Any) -> None:
+            """
+            Module.instantiateWasm hook: given the import object and a callback,
+            we are responsible for creating the WASM instance and passing it to
+            success_callback.
+
+            This is the only way to customize the imports, but it means that we
+            have need to load the .wasm ourselves.
+            """
+            adjust_imports(imports)
+            binary = await get_wasm_binary(find_wasm_binary(llmod.url))
+            res = await WebAssembly.instantiate(binary, imports)
+            success_callback(res.instance)
+
+        return llmod.instance_factory(instantiateWasm=instantiate_wasm)
 
     @classmethod
     def from_file(cls, f: py.path.local, hostmods: list[HostModule] = []) -> Self:
