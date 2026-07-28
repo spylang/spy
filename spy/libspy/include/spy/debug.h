@@ -11,7 +11,7 @@ TODO: ideally, we want TWO different WASI modes:
   - for tests, we want the imports
   - for standalone executables, we want debug.c
 */
-#ifdef SPY_TARGET_WASI
+#if defined(SPY_TARGET_WASI) || defined(SPY_TARGET_EMSCRIPTEN)
 #  define IMP WASM_IMPORT
 #else
 #  define IMP(name) name
@@ -20,7 +20,7 @@ TODO: ideally, we want TWO different WASI modes:
 void IMP(spy_debug_log)(const char *s);
 void IMP(spy_debug_log_i32)(const char *s, int32_t n);
 
-#ifdef SPY_TARGET_WASI
+#if defined(SPY_TARGET_WASI) || defined(SPY_TARGET_EMSCRIPTEN)
 
 // for WASI/reactor targets, we expect the host to provide
 // spy_debug_set_panic_message

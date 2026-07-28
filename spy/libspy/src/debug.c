@@ -3,7 +3,28 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#if !defined(SPY_TARGET_WASI)
+#if defined(SPY_TARGET_EMSCRIPTEN)
+
+#include "emscripten.h"
+
+#define IMPORT_STUB(ret, name, rest...) \
+    EM_JS(ret, name, rest, {} name.stub = true)
+
+IMPORT_STUB(void, spy_debug_set_panic_message,(
+    const char *etype,
+    const char *message,
+    const char *fname,
+    int32_t lineno
+))
+
+IMPORT_STUB(void, spy_debug_log,(
+    const char *s
+))
+
+#endif
+
+
+#if !(defined(SPY_TARGET_WASI) || defined(SPY_TARGET_EMSCRIPTEN)) 
 
 void
 spy_debug_log(const char *s) {

@@ -7,15 +7,13 @@ from typing import Any, Callable, Optional
 
 import py.path
 from pyodide.code import run_js
-from pyodide.ffi import JsProxy, run_sync, to_js
+from pyodide.ffi import JsProxy, run_sync, to_js, JsException
 from typing_extensions import Self
 
 from .base import HostModule, LLWasmInstanceBase, LLWasmMemoryBase, LLWasmModuleBase
 
-
-class WasmTrap(Exception):
-    # xxx add way to catch only actual aborts
-    pass
+# xxx add way to catch only actual aborts
+WasmTrap = JsException
 
 
 loadModule = run_js("""
@@ -167,7 +165,7 @@ class LLWasmMemory(LLWasmMemoryBase):
         """
         Read n bytes of memory at the given address.
         """
-        return self.jsmem.subarray(addr, addr + n).to_py()
+        return self.jsmem.subarray(addr, addr + n).to_bytes()
 
     def write(self, addr: int, b: bytes) -> None:
         self.jsmem.subarray(addr, addr + len(b)).assign(b)
