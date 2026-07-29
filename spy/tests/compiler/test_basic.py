@@ -31,7 +31,6 @@ class TestBasic(CompilerTest):
         def foo() -> None:
             pass
         """)
-        # breakpoint()
         assert mod.foo() is None
 
     def test_NameError(self):

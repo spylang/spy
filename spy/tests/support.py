@@ -21,6 +21,8 @@ from spy.vm.vm import SPyVM
 Backend = Literal["interp", "doppler", "C"]
 ALL_BACKENDS = Backend.__args__  # type: ignore
 
+skip_if_emscripten = pytest.mark.skipif(sys.platform == "emscripten")
+
 
 def params_with_marks(params):
     """
