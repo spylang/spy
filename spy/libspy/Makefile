@@ -41,7 +41,8 @@ else ifeq ($(TARGET), wasi)
 else ifeq ($(TARGET), emscripten)
 	LDFLAGS := \
 		-sWASM_BIGINT \
-		-sEXPORTED_RUNTIME_METHODS=HEAP8
+		-sEXPORTED_RUNTIME_METHODS=HEAP8,FS \
+		-lnodefs.js
 
 	SRCS := \
 		$(SRCS) \

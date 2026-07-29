@@ -3,11 +3,12 @@ A pythonic way to instantiate Emscripten binaries.
 """
 
 from asyncio import Future
+from pathlib import Path
 from typing import Any, Callable, Optional
 
 import py.path
 from pyodide.code import run_js
-from pyodide.ffi import JsProxy, run_sync, to_js, JsException
+from pyodide.ffi import JsException, JsProxy, create_once_callable, run_sync, to_js
 from typing_extensions import Self
 
 from .base import HostModule, LLWasmInstanceBase, LLWasmMemoryBase, LLWasmModuleBase
@@ -134,7 +135,20 @@ class LLWasmInstance(LLWasmInstanceBase):
             res = await WebAssembly.instantiate(binary, imports)
             success_callback(res.instance)
 
-        return llmod.instance_factory(instantiateWasm=instantiate_wasm)
+        # TODO: This won't work in the browser. Ideally we would glue the whole vm
+        # file system to the ambient one.   
+        @create_once_callable
+        def mount_root_dirs(module: Any) -> None:
+            root_dirs = {str(x) for x in Path("/").glob("*") if x.is_dir()}
+            root_dirs.difference_update(["/dev", "/lib", "/proc"])
+            FS = module.FS
+            for path in root_dirs:
+                FS.mkdirTree(path)
+                FS.mount(FS.filesystems.NODEFS, Object.new(root=path), path)
+
+        return llmod.instance_factory(
+            instantiateWasm=instantiate_wasm, preRun=[mount_root_dirs]
+        )
 
     @classmethod
     def from_file(cls, f: py.path.local, hostmods: list[HostModule] = []) -> Self:

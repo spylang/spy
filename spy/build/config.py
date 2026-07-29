@@ -98,7 +98,8 @@ class CompilerConfig:
             self.ldflags += [
                 "-sWASM_BIGINT",
                 "-sERROR_ON_UNDEFINED_SYMBOLS=0",
-                "-sEXPORTED_RUNTIME_METHODS=HEAP8",  # for exporting function in wasm, and running on CI
+                "-sEXPORTED_RUNTIME_METHODS=HEAP8,FS",  # for exporting function in wasm, and running on CI
+                "-lnodefs.js",
                 f"--extern-post-js={post_js}",
             ]
 
