@@ -18,10 +18,7 @@ from spy.tests.exe_wrapper import ExeWrapper
 from spy.tests.wasm_wrapper import WasmModuleWrapper
 from spy.vm.vm import SPyVM
 
-if sys.platform == "emscripten":
-    Backend = Literal["interp", "doppler"]
-else:
-    Backend = Literal["interp", "doppler", "C"]
+Backend = Literal["interp", "doppler", "C"]
 ALL_BACKENDS = Backend.__args__  # type: ignore
 
 
@@ -134,6 +131,8 @@ class CompilerTest:
 
     @pytest.fixture
     def init(self, request, tmpdir, compiler_backend):
+        if compiler_backend == "native" and sys.platform == "emscripten":
+            pytest.skip("native backend doesn't work on emscripten")
         self.dump_c = request.config.getoption("--dump-c")
         self.dump_redshift = request.config.getoption("--dump-redshift")
         self.tmpdir = tmpdir
@@ -229,8 +228,9 @@ class CompilerTest:
             return interp_mod
 
         if self.backend == "C":
+            target = "emscripten" if sys.platform == "emscripten" else "wasi"
             config = BuildConfig(
-                target="wasi",
+                target=target,
                 kind="lib",
                 build_type="debug",
                 opt_level=self.OPT_LEVEL,

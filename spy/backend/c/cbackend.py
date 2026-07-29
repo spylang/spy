@@ -206,7 +206,8 @@ class CBackend:
     def write_build_script(self) -> None:
         assert self.cfiles != [], "call .cwrite() first"
         wasm_exports = []
-        if self.config.target == "wasi" and self.config.kind == "lib":
+        is_wasm = self.config.target == "wasi" or self.config.target == "emscripten"
+        if is_wasm and self.config.kind == "lib":
             wasm_exports = self.get_wasm_exports()
 
         extra = self.get_merged_build_info()

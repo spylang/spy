@@ -1,3 +1,4 @@
+import sys
 from dataclasses import dataclass
 from typing import Any
 
@@ -58,12 +59,14 @@ class WasmModuleWrapper:
     def read_function(self, w_func: W_Func) -> "WasmFuncWrapper":
         # sanity check
         wasm_func = self.ll.get_export(w_func.fqn.c_name)
-        assert isinstance(wasm_func, wasmtime.Func)
+        if sys.platform != "emscripten":
+            assert isinstance(wasm_func, wasmtime.Func)
         return WasmFuncWrapper(self.vm, self.ll, w_func.fqn.c_name, w_func.w_functype)
 
     def read_cell(self, w_cell: W_Cell) -> Any:
         wasm_glob = self.ll.get_export(w_cell.fqn.c_name)
-        assert isinstance(wasm_glob, wasmtime.Global)
+        if sys.platform != "emscripten":
+            assert isinstance(wasm_glob, wasmtime.Global)
         w_T = self.vm.dynamic_type(w_cell.get())
         t: LLWasmType
         if w_T is B.w_i32:
