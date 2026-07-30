@@ -1220,7 +1220,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "cffi" },
+    { name = "cffi", marker = "sys_platform != 'emscripten'" },
     { name = "hypothesis" },
     { name = "mypy", marker = "sys_platform != 'emscripten'" },
     { name = "pdbpp" },
@@ -1261,7 +1261,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "cffi" },
+    { name = "cffi", marker = "sys_platform != 'emscripten'" },
     { name = "hypothesis" },
     { name = "mypy", marker = "sys_platform != 'emscripten'", specifier = "==1.15.0" },
     { name = "pdbpp", specifier = ">=0.11.7" },
