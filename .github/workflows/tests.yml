@@ -172,7 +172,7 @@ jobs:
           uv venv -p cpython-3.14.2-emscripten-wasm32-musl .venv-pyodide
           VIRTUAL_ENV=.venv-pyodide \
             UV_PROJECT_ENVIRONMENT=.venv-pyodide \
-            uv pip install --extra-index-url=https://index.pyodide.org/0.28.3 .
+            uv pip install --extra-index-url=https://index.pyodide.org/0.28.3 . --group dev
 
 
       - name: Build libspy
