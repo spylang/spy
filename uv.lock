@@ -1222,7 +1222,7 @@ dependencies = [
 dev = [
     { name = "cffi" },
     { name = "hypothesis" },
-    { name = "mypy" },
+    { name = "mypy", marker = "sys_platform != 'emscripten'" },
     { name = "pdbpp" },
     { name = "pre-commit" },
     { name = "pyodide-build", marker = "sys_platform != 'emscripten'" },
@@ -1263,11 +1263,11 @@ requires-dist = [
 dev = [
     { name = "cffi" },
     { name = "hypothesis" },
-    { name = "mypy", specifier = "==1.15.0" },
+    { name = "mypy", marker = "sys_platform != 'emscripten'", specifier = "==1.15.0" },
     { name = "pdbpp", specifier = ">=0.11.7" },
     { name = "pre-commit", specifier = "==4.3.0" },
-    { name = "pyodide-build", marker = "sys_platform != 'emscripten'", specifier = "==0.35.1" },
-    { name = "pyodide-py", marker = "sys_platform != 'emscripten'", specifier = "==0.27.7" },
+    { name = "pyodide-build", marker = "sys_platform != 'emscripten'" },
+    { name = "pyodide-py", marker = "sys_platform != 'emscripten'" },
     { name = "pyperclip", specifier = ">=1.10" },
     { name = "pytest", specifier = "==8.3.4" },
     { name = "pytest-xdist", specifier = "==3.8.0" },

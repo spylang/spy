@@ -24,17 +24,16 @@ dev = [
     "pytest==8.3.4",
     "pytest-xdist==3.8.0",
     "ruff~=0.14.0; sys_platform != 'emscripten'",
-    "mypy==1.15.0",
+    "mypy==1.15.0; sys_platform != 'emscripten'", # mypy works on Emscripten but it's a waste of CI time
     "types-pexpect==4.9.0.20250516; sys_platform != 'emscripten'",
     # the following are needed for "tests/compiler/test_cffi.py"
     "cffi",
     "setuptools",
     "pyperclip>=1.10",
-    "pyodide-py==0.27.7; sys_platform != 'emscripten'",
+    "pyodide-py; sys_platform != 'emscripten'",
     # provides the `pyodide` command (used to create the pyodide venv, see
-    # pyodide/README.md); 0.35.x is the first version which fixes the marker
-    # evaluation bug, see https://github.com/pyodide/pyodide/issues/5491
-    "pyodide-build==0.35.1; sys_platform != 'emscripten'",
+    # pyodide/README.md)
+    "pyodide-build; sys_platform != 'emscripten'",
     "pre-commit==4.3.0",
     "rodney>=0.4.0; sys_platform != 'emscripten'",
     "hypothesis",
