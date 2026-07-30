@@ -127,7 +127,9 @@ class LLWasmInstance(LLWasmInstanceBase):
             module.connectFileSystems(FS)
 
         return llmod.instance_factory(
-            adjustImports=adjust_imports, preRun=[connect_file_systems]
+            adjustImports=adjust_imports,
+            preRun=[connect_file_systems],
+            noInitialRun=True,
         )
 
     @classmethod

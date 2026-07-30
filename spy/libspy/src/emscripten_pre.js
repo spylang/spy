@@ -41,16 +41,16 @@ function getProxyFSRoots(otherFS) {
  * /dev/shm cannot be removed.
  */
 function connectStdStreams(otherFS) {
-  debugger;
   const major = FS.createDevice.major++;
   const proxy_device = FS.makedev(major, 0);
 
-  FS.registerDevice(proxy_device, makeProxyDeviceStreamOps(otherFS));
+  const stream_ops = makeProxyDeviceStreamOps(otherFS);
+  FS.registerDevice(proxy_device, stream_ops);
   for (const dev of getProxyDevices(otherFS)) {
     FS.unlink(dev);
     FS.mkdev(dev, proxy_device);
   }
-  refreshStreams(otherFS);
+  refreshStreams(otherFS, stream_ops);
 }
 
 function getProxyDevices(otherFS) {
@@ -80,44 +80,68 @@ function translateErrnoError(cb) {
 function makeProxyDeviceStreamOps(otherFS) {
   return {
     open(stream) {
-      const otherStream = translateErrnoError(() =>
-        otherFS.open(stream.path, stream.flags),
-      );
+      let otherStream;
+      if (this.refreshingStreams) {
+      // Normally ProxyDeviceStreamOps.open will also open in Pyodide's FS, but
+      // the standard streams are already open in Pyodide. Instead, force file
+      // descriptors 0, 1, and 2 to directly point to existing Pyodide file
+      // descriptors 0, 1, and 2.
+        otherStream = translateErrnoError(() => otherFS.getStreamChecked(stream.fd));
+      } else {
+        otherStream = translateErrnoError(() =>
+          otherFS.open(stream.path, stream.flags),
+        );
+      }
       stream.nfd = otherStream.fd;
       stream.tty = otherStream.tty;
       stream.seekable = otherStream.seekable;
     },
     close(stream) {
       // flush any pending line data but don't close targetFD
-      translateErrnoError(() => otherFS.close(stream.nfd));
+      translateErrnoError(() => {
+        const otherStream = otherFS.getStreamChecked(stream.nfd);
+        otherFS.close(otherStream);
+      });
     },
     fsync(stream) {
-      translateErrnoError(() => otherFS.fsync(stream.nfd));
+      translateErrnoError(() => {
+        const otherStream = otherFS.getStreamChecked(stream.nfd);
+        otherFS.fsync(otherStream)
+      });
     },
-    read(stream, buffer, offset, length, pos) {
-      return translateErrnoError(() =>
-        otherFS.read(stream.nfd, buffer, offset, length, pos),
-      );
+    read(stream, buffer, offset, length, pos /* ignored */) {
+      if (!stream.seekable) {
+        // Hack: FS.read doesn't compose properly and forces pos to 0 even if
+        // the stream isn't seekable. Put it back to undefined.
+        pos = undefined;
+      }
+      return translateErrnoError(() => {
+        const otherStream = otherFS.getStreamChecked(stream.nfd);
+        return otherFS.read(otherStream, buffer, offset, length, pos);
+      });
     },
     write(stream, buffer, offset, length, pos) {
-      return translateErrnoError(() =>
-        otherFS.write(stream.nfd, buffer, offset, length, pos),
-      );
+      if (!stream.seekable) {
+        // Hack: FS.write doesn't compose properly and forces pos to 0 even if
+        // the stream isn't seekable. Put it back to undefined.
+        pos = undefined;
+      }
+      return translateErrnoError(() => {
+        const otherStream = otherFS.getStreamChecked(stream.nfd);
+        return otherFS.write(otherStream, buffer, offset, length, pos);
+      });
     },
     llseek: PROXYFS.llseek,
   };
 }
 
-function refreshStreams(otherFS) {
+function refreshStreams(otherFS, stream_ops) {
   FS.closeStream(0 /* stdin */);
   FS.closeStream(1 /* stdout */);
   FS.closeStream(2 /* stderr */);
-  // Have to close Pyodide's stdstreams too because ProxyDeviceStreamOps.open
-  // will also open in Pyodide's FS.
-  otherFS.closeStream(0 /* stdin */);
-  otherFS.closeStream(1 /* stdout */);
-  otherFS.closeStream(2 /* stderr */);
+  stream_ops.refreshingStreams = true;
   FS.open("/dev/stdin", 0 /* O_RDONLY */);
   FS.open("/dev/stdout", 1 /* O_WRONLY */);
   FS.open("/dev/stderr", 1 /* O_WRONLY */);
+  stream_ops.refreshingStreams = false;
 }
