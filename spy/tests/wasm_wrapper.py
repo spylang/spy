@@ -20,6 +20,9 @@ from spy.vm.str import ll_str_new
 from spy.vm.struct import UnwrappedStruct, W_StructType
 from spy.vm.vm import SPyVM
 
+if sys.platform != "emscripten":
+    import wasmtime
+
 
 @dataclass
 class WasmPtr:
