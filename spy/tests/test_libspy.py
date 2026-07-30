@@ -73,7 +73,6 @@ class TestLibSPy(CTest):
         """
         test_wasm = self.c_compile(src, exports=["crash"])
         ll = LLSPyInstance.from_file(test_wasm)
-        breakpoint()
         with SPyError.raises("W_PanicError", match="don't panic!") as excinfo:
             ll.call("crash")
         loc = excinfo.value.w_exc.annotations[0].loc

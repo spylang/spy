@@ -5,136 +5,118 @@ Module.instantiateWasm = (imports, successCallback) => {
     const res = await WebAssembly.instantiate(binary, imports);
     successCallback(res.instance, res.module);
   })();
-  return {}
-}
-
-
-
-/**
- * Calls the callback and handle node EAGAIN errors.
- *
- * In the long run, it may be helpful to allow C code to handle these errors on
- * their own, at least if the Emscripten file descriptor has O_NONBLOCK on it.
- * That way the code could do OTHER_ periodic tasks in the delay loop.
- *
- * This code is outside of the stream handler itself so if the user wants to
- * inject some code in this loop they could do it with:
- * ```js
- * read(buffer) {
- *   try {
- *     return doTheRead();
- *   } catch(e) {
- *     if (e && e.code === "EAGAIN") {
- *       // do periodic tasks
- *     }
- *     // in every case rethrow the error
- *     throw e;
- *   }
- * }
- * ```
- */
-function handleEAGAIN(cb) {
-  while (true) {
-    try {
-      return cb();
-    } catch (e) {
-      if (e && e.code === "EAGAIN") {
-        // Presumably this means we're in node and tried to read from/write to
-        // an O_NONBLOCK file descriptor. Synchronously sleep for 100ms as
-        // requested by EAGAIN and try again. In case for some reason we fail to
-        // sleep, propagate the error (it will turn into an EOFError).
-        if (syncSleep(100)) {
-          continue;
-        }
-      }
-      throw e;
-    }
-  }
-}
-
-function readWriteHelper(stream, cb, method) {
-  let nbytes;
-  try {
-    nbytes = handleEAGAIN(cb);
-  } catch (e) {
-    if (e && e.code && Module.ERRNO_CODES[e.code]) {
-      throw new FS.ErrnoError(Module.ERRNO_CODES[e.code]);
-    }
-    if (isErrnoError(e)) {
-      // the handler set an errno, propagate it
-      throw e;
-    }
-    console.error(`Error thrown in ${method}:`);
-    console.error(e);
-    throw new FS.ErrnoError(Module.ERRNO_CODES.EIO);
-  }
-  if (nbytes === undefined) {
-    // Prevent an infinite loop caused by incorrect code that doesn't return a
-    // value
-    // Maybe we should set nbytes = buffer.length here instead?
-    console.warn(
-      `${method} returned undefined; a correct implementation must return a number`,
-    );
-    throw new FS.ErrnoError(Module.ERRNO_CODES.EIO);
-  }
-  if (nbytes !== 0) {
-    stream.node.timestamp = Date.now();
-  }
-  return nbytes;
-}
-
-const DEVS = {};
-
-let OTHER_FS;
-const stream_ops = {
-  open: function (stream) {
-    const targetFD = FS.minor(stream.node.rdev);
-    stream.targetFD = targetFD;
-    const otherStream = OTHER_FS.getStreamChecked(targetFD);
-    stream.tty = otherStream.tty;
-    stream.seekable = false;
-  },
-  close: function (stream) {
-    // flush any pending line data. Don't close targetFD!
-    stream.stream_ops.fsync(stream);
-  },
-  fsync: function (stream) {
-    OTHER_FS.fsync(stream.targetFD);
-  },
-  read: function (stream, buffer, offset, length, pos) {
-    return OTHER_FS.read(OTHER_FS.getStreamChecked(stream.targetFD), buffer, offset, length, pos);
-  },
-  write: function (stream, buffer, offset, length, pos /* ignored */) {
-    return OTHER_FS.write(OTHER_FS.getStreamChecked(stream.targetFD), buffer, offset, length, pos);
-  },
+  return {};
 };
 
-function refreshStreams() {
+Module.connectFileSystems = (otherFS) => {
+  addOnInit(() => {
+    mountProxyFSRoots(otherFS);
+    connectStdStreams(otherFS);
+  });
+};
+
+/**
+ * Make root folders in libspy Emscripten point to root folders in Pyodide
+ * emscripten. We can't do it for /dev, /lib, or /proc so skip those.
+ */
+function mountProxyFSRoots(otherFS) {
+  for (const mount of getProxyFSRoots(otherFS)) {
+    FS.mkdirTree(mount);
+    FS.mount(FS.filesystems.NODEFS, { root: mount, fs: otherFS }, mount);
+  }
+}
+
+function getProxyFSRoots(otherFS) {
+  const filteredDirs = new Set([".", "..", "dev", "lib", "proc"]);
+  return otherFS
+    .readdir("/")
+    .filter((dir) => !filteredDirs.has(dir))
+    .map((dir) => "/" + dir);
+}
+
+/**
+ * Connect std streams in libspy Emscripten to the std streams in Pyodide
+ * Emscripten. This is meant to closely approximate what you'd get by removing
+ * the /dev directory and mounting it as a PROXYFS but that doesn't work because
+ * /dev/shm cannot be removed.
+ */
+function connectStdStreams(otherFS) {
+  const major = FS.createDevice.major++;
+  const proxy_device = FS.makedev(major, 0);
+
+  FS.registerDevice(proxy_device, makeProxyDeviceStreamOps(otherFS));
+  for (const dev of getProxyDevices(otherFS)) {
+    FS.unlink(dev);
+    FS.mkdev(dev, proxy_device);
+  }
+  refreshStreams(otherFS);
+}
+
+function getProxyDevices(otherFS) {
+  const filteredDevices = new Set([".", "..", "shm"]);
+  return otherFS
+    .readdir("/")
+    .filter((dev) => !filteredDevices.has(dev))
+    .map((dev) => "/dev/" + dev);
+}
+
+/**
+ * otherFS throws an otherFS.ErrnoError, we need to throw an FS.ErrnoError.
+ */
+function translateErrnoError(cb) {
+  try {
+    return cb();
+  } catch (e) {
+    if (!e.code) throw e;
+    throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+  }
+}
+
+/**
+ * Almost the same as proxyfs stream_ops, but adapted to proxy a device instead
+ * of a file system.
+ */
+function makeProxyDeviceStreamOps(otherFS) {
+  return {
+    open(stream) {
+      const otherStream = translateErrnoError(() =>
+        otherFS.open(stream.path, stream.flags),
+      );
+      stream.nfd = otherStream.fd;
+      stream.tty = otherStream.tty;
+      stream.seekable = otherStream.seekable;
+    },
+    close(stream) {
+      // flush any pending line data but don't close targetFD
+      translateErrnoError(() => otherFS.close(stream.nfd));
+    },
+    fsync(stream) {
+      translateErrnoError(() => otherFS.fsync(stream.nfd));
+    },
+    read(stream, buffer, offset, length, pos) {
+      return translateErrnoError(() =>
+        otherFS.read(stream.nfd, buffer, offset, length, pos),
+      );
+    },
+    write(stream, buffer, offset, length, pos) {
+      return translateErrnoError(() =>
+        otherFS.write(stream.nfd, buffer, offset, length, pos),
+      );
+    },
+    llseek: PROXYFS.llseek,
+  };
+}
+
+function refreshStreams(otherFS) {
   FS.closeStream(0 /* stdin */);
   FS.closeStream(1 /* stdout */);
   FS.closeStream(2 /* stderr */);
+  // Have to close Pyodide's stdstreams too because ProxyDeviceStreamOps.open
+  // will also open in Pyodide's FS.
+  otherFS.closeStream(0 /* stdin */);
+  otherFS.closeStream(1 /* stdout */);
+  otherFS.closeStream(2 /* stderr */);
   FS.open("/dev/stdin", 0 /* O_RDONLY */);
   FS.open("/dev/stdout", 1 /* O_WRONLY */);
   FS.open("/dev/stderr", 1 /* O_WRONLY */);
-}
-
-Module.connectStdStreams = (otherFS) => {
-  OTHER_FS = otherFS;
-  const major = FS.createDevice.major++;
-  DEVS.stdin = FS.makedev(major, 0);
-  DEVS.stdout = FS.makedev(major, 1);
-  DEVS.stderr = FS.makedev(major, 2);
-
-  FS.registerDevice(DEVS.stdin, stream_ops);
-  FS.registerDevice(DEVS.stdout, stream_ops);
-  FS.registerDevice(DEVS.stderr, stream_ops);
-  FS.unlink("/dev/stdin");
-  FS.unlink("/dev/stdout");
-  FS.unlink("/dev/stderr");
-
-  FS.mkdev("/dev/stdin", DEVS.stdin);
-  FS.mkdev("/dev/stdout", DEVS.stdout);
-  FS.mkdev("/dev/stderr", DEVS.stderr);
-
-  refreshStreams();
 }

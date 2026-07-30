@@ -92,8 +92,8 @@ class LibSPyHost(HostModule):
 
     # ========== WASM imports ==========
 
-    def env_spy_debug_have_imports(self) -> bool:
-        return True
+    def env_spy_debug_have_imports(self) -> None:
+        pass
 
     def env_spy_debug_log_import(self, ptr: int) -> None:
         s = self._read_cstr(ptr)

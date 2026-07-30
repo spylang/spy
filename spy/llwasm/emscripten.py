@@ -87,9 +87,6 @@ class LLWasmInstance(LLWasmInstanceBase):
 
         if instance is None:
             self.instance = run_sync(self.link_and_instantiate(llmod, hostmods))
-            from pyodide_js import FS
-
-            self.instance.connectStdStreams(FS)
         else:
             self.instance = instance
 
@@ -113,6 +110,7 @@ class LLWasmInstance(LLWasmInstanceBase):
         linking all needed imports
         """
         from js import Object, WebAssembly  # type: ignore
+        from pyodide_js import FS
 
         def adjust_imports(imports: Any) -> None:
             env = imports.env
@@ -124,19 +122,12 @@ class LLWasmInstance(LLWasmInstanceBase):
                         setattr(env, name, x)
                         break
 
-        # TODO: This won't work in the browser. Ideally we would glue the whole vm
-        # file system to the ambient one.
         @create_once_callable
-        def mount_root_dirs(module: Any) -> None:
-            root_dirs = {str(x) for x in Path("/").glob("*") if x.is_dir()}
-            root_dirs.difference_update(["/dev", "/lib", "/proc"])
-            FS = module.FS
-            for path in root_dirs:
-                FS.mkdirTree(path)
-                FS.mount(FS.filesystems.PROXYFS, Object.new(root=path, fs=FS), path)
+        def connect_file_systems(module: Any) -> None:
+            module.connectFileSystems(FS)
 
         return llmod.instance_factory(
-            adjustImports=adjust_imports, preRun=[mount_root_dirs]
+            adjustImports=adjust_imports, preRun=[connect_file_systems]
         )
 
     @classmethod
