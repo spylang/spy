@@ -38,7 +38,7 @@ void IMP(spy_debug_set_panic_message)(
     int32_t lineno
 );
 
-int spy_debug_have_imports(void);
+int IMP(spy_debug_have_imports)(void);
 
 static int inline spy_panic(
     const char *etype,

@@ -101,6 +101,7 @@ class CompilerConfig:
                 "-sERROR_ON_UNDEFINED_SYMBOLS=0",
                 "-sEXPORTED_RUNTIME_METHODS=HEAP8,FS,ERRNO_CODES",  # for exporting function in wasm, and running on CI
                 "-lnodefs.js",
+                "-lproxyfs.js",
                 f"--pre-js={pre_js}",
                 f"--extern-post-js={post_js}",
             ]

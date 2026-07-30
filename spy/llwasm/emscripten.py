@@ -133,7 +133,7 @@ class LLWasmInstance(LLWasmInstanceBase):
             FS = module.FS
             for path in root_dirs:
                 FS.mkdirTree(path)
-                FS.mount(FS.filesystems.NODEFS, Object.new(root=path), path)
+                FS.mount(FS.filesystems.PROXYFS, Object.new(root=path, fs=FS), path)
 
         return llmod.instance_factory(
             adjustImports=adjust_imports, preRun=[mount_root_dirs]

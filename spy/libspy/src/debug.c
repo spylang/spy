@@ -24,7 +24,11 @@ IMPORT_STUB(int, spy_debug_log_i32_import, (const char *s))
 
 #endif
 
-#if !defined(SPY_TARGET_WASI)
+#if defined(SPY_TARGET_WASI)
+int spy_debug_have_imports(void) {
+    return 0;
+}
+#endif
 
 void
 spy_debug_log(const char *s) {
@@ -119,5 +123,3 @@ spy_panic_helper(
 
     abort();
 }
-
-#endif /* !defined(SPY_TARGET_WASI) */

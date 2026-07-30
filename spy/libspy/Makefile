@@ -43,6 +43,7 @@ else ifeq ($(TARGET), emscripten)
 		-sWASM_BIGINT \
 		-sEXPORTED_RUNTIME_METHODS=HEAP8,FS \
 		-lnodefs.js \
+		-lproxyfs.js \
 		--pre-js=src/emscripten_pre.js
 
 	SRCS := \
