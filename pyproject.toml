@@ -27,7 +27,7 @@ dev = [
     "mypy==1.15.0; sys_platform != 'emscripten'", # mypy works on Emscripten but it's a waste of CI time
     "types-pexpect==4.9.0.20250516; sys_platform != 'emscripten'",
     # the following are needed for "tests/compiler/test_cffi.py"
-    "cffi",
+    "cffi; sys_platform != 'emscripten'", # should be available on Emscripten but having trouble installing it
     "setuptools",
     "pyperclip>=1.10",
     "pyodide-py; sys_platform != 'emscripten'",
