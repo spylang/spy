@@ -82,11 +82,13 @@ function makeProxyDeviceStreamOps(otherFS) {
     open(stream) {
       let otherStream;
       if (this.refreshingStreams) {
-      // Normally ProxyDeviceStreamOps.open will also open in Pyodide's FS, but
-      // the standard streams are already open in Pyodide. Instead, force file
-      // descriptors 0, 1, and 2 to directly point to existing Pyodide file
-      // descriptors 0, 1, and 2.
-        otherStream = translateErrnoError(() => otherFS.getStreamChecked(stream.fd));
+        // Normally ProxyDeviceStreamOps.open will also open in Pyodide's FS, but
+        // the standard streams are already open in Pyodide. Instead, force file
+        // descriptors 0, 1, and 2 to directly point to existing Pyodide file
+        // descriptors 0, 1, and 2.
+        otherStream = translateErrnoError(() =>
+          otherFS.getStreamChecked(stream.fd),
+        );
       } else {
         otherStream = translateErrnoError(() =>
           otherFS.open(stream.path, stream.flags),
@@ -106,10 +108,10 @@ function makeProxyDeviceStreamOps(otherFS) {
     fsync(stream) {
       translateErrnoError(() => {
         const otherStream = otherFS.getStreamChecked(stream.nfd);
-        otherFS.fsync(otherStream)
+        otherFS.fsync(otherStream);
       });
     },
-    read(stream, buffer, offset, length, pos /* ignored */) {
+    read(stream, buffer, offset, length, pos) {
       if (!stream.seekable) {
         // Hack: FS.read doesn't compose properly and forces pos to 0 even if
         // the stream isn't seekable. Put it back to undefined.
