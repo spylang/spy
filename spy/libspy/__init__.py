@@ -19,6 +19,7 @@ DEPS = spy.ROOT.join("libspy", "deps")
 if IS_NODE:
     LIBSPY_WASM = BUILD.join("emscripten", "debug", "libspy.mjs")
     from pyodide.ffi import run_sync
+
     LLMOD = run_sync(LLWasmModule.async_new(str(LIBSPY_WASM)))
 elif IS_BROWSER or IS_DOCS_BUILD:
     LIBSPY_WASM = None  # type: ignore    # needs to be set by the embedder
@@ -91,12 +92,15 @@ class LibSPyHost(HostModule):
 
     # ========== WASM imports ==========
 
-    def env_spy_debug_log(self, ptr: int) -> None:
+    def env_spy_debug_have_imports(self) -> bool:
+        return True
+
+    def env_spy_debug_log_import(self, ptr: int) -> None:
         s = self._read_cstr(ptr)
         self.log.append(s)
         print("[log]", s)
 
-    def env_spy_debug_log_i32(self, ptr: int, n: int) -> None:
+    def env_spy_debug_log_i32_import(self, ptr: int, n: int) -> None:
         s = self._read_cstr(ptr)
         msg = f"{s} {n}"
         self.log.append(msg)

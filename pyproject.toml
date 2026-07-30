@@ -75,7 +75,6 @@ stdlib = ["*.spy"]
 
 [tool.pytest.ini_options]
 testpaths = ["spy"]
-addopts = "--dist-dir=pyodide/node_modules/pyodide"
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
 # needed to ignore warnings caused by using pexpect to run ninja

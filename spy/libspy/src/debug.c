@@ -5,34 +5,44 @@
 
 #if defined(SPY_TARGET_EMSCRIPTEN)
 
-#include "emscripten.h"
+#  include "emscripten.h"
 
-#define IMPORT_STUB(ret, name, rest...) \
-    EM_JS(ret, name, rest, {} name.stub = true)
+#  define IMPORT_STUB(ret, name, rest...)                                              \
+      EM_JS(ret, name, rest, { return -1; } name.stub = true)
 
-IMPORT_STUB(void, spy_debug_set_panic_message,(
-    const char *etype,
-    const char *message,
-    const char *fname,
-    int32_t lineno
-))
+IMPORT_STUB(int, spy_debug_have_imports, (void))
 
-IMPORT_STUB(void, spy_debug_log,(
-    const char *s
-))
+IMPORT_STUB(
+    void,
+    spy_debug_set_panic_message,
+    (const char *etype, const char *message, const char *fname, int32_t lineno)
+)
+
+IMPORT_STUB(int, spy_debug_log_import, (const char *s))
+
+IMPORT_STUB(int, spy_debug_log_i32_import, (const char *s))
 
 #endif
 
-
-#if !(defined(SPY_TARGET_WASI) || defined(SPY_TARGET_EMSCRIPTEN)) 
+#if !defined(SPY_TARGET_WASI)
 
 void
 spy_debug_log(const char *s) {
+#  ifdef SPY_TARGET_EMSCRIPTEN
+    if (spy_debug_log_import(s) == 0) {
+        return;
+    }
+#  endif
     printf("%s\n", s);
 }
 
 void
 spy_debug_log_i32(const char *s, int32_t n) {
+#  ifdef SPY_TARGET_EMSCRIPTEN
+    if (spy_debug_log_i32_import(s) == 0) {
+        return;
+    }
+#  endif
     printf("%s %d\n", s, n);
 }
 
@@ -73,7 +83,12 @@ read_line_from_file(const char *filename, int line_number) {
 }
 
 void
-spy_panic(const char *etype, const char *message, const char *fname, int32_t lineno) {
+spy_panic_helper(
+    const char *etype,
+    const char *message,
+    const char *fname,
+    int32_t lineno
+) {
     /* write the error message to stderr, formatted line this:
           panic: IndexError: hello
              --> /tmp/prova.spy:2:2
