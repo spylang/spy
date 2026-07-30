@@ -130,6 +130,9 @@ spy_StrObject *spy_builtins$u64$__str__(uint64_t x);
 
 spy_StrObject *spy_builtins$f64$__str__(double x);
 
+spy_StrObject *WASM_EXPORT(spy_f32_to_str)(float x);
+#define spy_builtins$f32$__str__ spy_f32_to_str
+
 spy_StrObject *spy_builtins$bool$__str__(bool x);
 
 // for the numeric types, __repr__ is the same as __str__
@@ -139,6 +142,8 @@ spy_StrObject *spy_builtins$bool$__str__(bool x);
 #define spy_builtins$u32$__repr__ spy_builtins$u32$__str__
 #define spy_builtins$i64$__repr__ spy_builtins$i64$__str__
 #define spy_builtins$u64$__repr__ spy_builtins$u64$__str__
+#define spy_builtins$f64$__repr__ spy_builtins$f64$__str__
+#define spy_builtins$f32$__repr__ spy_builtins$f32$__str__
 
 // str -> numeric conversion operators
 int32_t spy_operator$str_to_i32(spy_StrObject *s);
