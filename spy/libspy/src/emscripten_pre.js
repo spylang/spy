@@ -1,3 +1,4 @@
+debugger;
 Module.instantiateWasm = (imports, successCallback) => {
   (async () => {
     Module.adjustImports?.(imports);
@@ -22,7 +23,7 @@ Module.connectFileSystems = (otherFS) => {
 function mountProxyFSRoots(otherFS) {
   for (const mount of getProxyFSRoots(otherFS)) {
     FS.mkdirTree(mount);
-    FS.mount(FS.filesystems.NODEFS, { root: mount, fs: otherFS }, mount);
+    FS.mount(FS.filesystems.PROXYFS, { root: mount, fs: otherFS }, mount);
   }
 }
 
