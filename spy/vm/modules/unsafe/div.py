@@ -1,3 +1,5 @@
+import math
+from ctypes import c_float as float32
 from typing import TYPE_CHECKING, Annotated, Any, Protocol
 
 from spy.errors import SPyError
@@ -18,8 +20,8 @@ def w_unchecked_div(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpSpec
     if w_opspec := MM.get_binary_opspec("unchecked_div", wam_l, wam_r):
         return w_opspec
     else:
-        l_type = wam_l.w_static_T.fqn.human_name
-        r_type = wam_r.w_static_T.fqn.human_name
+        l_type = wam_l.w_static_T.fqn.human_name(vm)
+        r_type = wam_r.w_static_T.fqn.human_name(vm)
 
         raise SPyError(
             "W_TypeError",
@@ -32,8 +34,8 @@ def w_unchecked_floordiv(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_O
     if w_opspec := MM.get_binary_opspec("unchecked_floordiv", wam_l, wam_r):
         return w_opspec
     else:
-        l_type = wam_l.w_static_T.fqn.human_name
-        r_type = wam_r.w_static_T.fqn.human_name
+        l_type = wam_l.w_static_T.fqn.human_name(vm)
+        r_type = wam_r.w_static_T.fqn.human_name(vm)
 
         raise SPyError(
             "W_TypeError",
@@ -46,8 +48,8 @@ def w_unchecked_mod(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpSpec
     if w_opspec := MM.get_binary_opspec("unchecked_mod", wam_l, wam_r):
         return w_opspec
     else:
-        l_type = wam_l.w_static_T.fqn.human_name
-        r_type = wam_r.w_static_T.fqn.human_name
+        l_type = wam_l.w_static_T.fqn.human_name(vm)
+        r_type = wam_r.w_static_T.fqn.human_name(vm)
 
         raise SPyError(
             "W_TypeError",
@@ -60,8 +62,8 @@ def w_ieee754_div(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpSpec:
     if w_opspec := MM.get_binary_opspec("ieee754_div", wam_l, wam_r):
         return w_opspec
     else:
-        l_type = wam_l.w_static_T.fqn.human_name
-        r_type = wam_r.w_static_T.fqn.human_name
+        l_type = wam_l.w_static_T.fqn.human_name(vm)
+        r_type = wam_r.w_static_T.fqn.human_name(vm)
 
         raise SPyError(
             "W_TypeError",
@@ -142,7 +144,7 @@ def w_f32_unchecked_div(vm: "SPyVM", w_a: W_F32, w_b: W_F32) -> W_F32:
     a = vm.unwrap_f32(w_a)
     b = vm.unwrap_f32(w_b)
     res = vm.ll.call("spy_unsafe$f32_unchecked_div", a, b)
-    return vm.wrap(res)
+    return vm.wrap(float32(res))
 
 
 @UNSAFE.builtin_func
@@ -150,7 +152,7 @@ def w_f32_unchecked_floordiv(vm: "SPyVM", w_a: W_F32, w_b: W_F32) -> W_F32:
     a = vm.unwrap_f32(w_a)
     b = vm.unwrap_f32(w_b)
     res = vm.ll.call("spy_unsafe$f32_unchecked_floordiv", a, b)
-    return vm.wrap(res)
+    return vm.wrap(float32(res))
 
 
 @UNSAFE.builtin_func
@@ -158,7 +160,7 @@ def w_f32_unchecked_mod(vm: "SPyVM", w_a: W_F32, w_b: W_F32) -> W_F32:
     a = vm.unwrap_f32(w_a)
     b = vm.unwrap_f32(w_b)
     res = vm.ll.call("spy_unsafe$f32_unchecked_mod", a, b)
-    return vm.wrap(res)
+    return vm.wrap(float32(res))
 
 
 @UNSAFE.builtin_func
@@ -167,12 +169,13 @@ def w_f64_ieee754_div(vm: "SPyVM", w_a: W_F64, w_b: W_F64) -> W_F64:
     b = w_b.value
 
     if b == 0:
-        if a > 0:
-            result = float("inf")
-        elif a < 0:
-            result = float("-inf")
-        else:
+        # Python raises instead of producing an IEEE-754 result, so combine both
+        # operand signs explicitly; comparing with zero alone loses the sign of -0.0.
+        if a == 0:
             result = float("nan")
+        else:
+            sign = math.copysign(1.0, a) * math.copysign(1.0, b)
+            result = math.copysign(float("inf"), sign)
 
         return vm.wrap(result)
 
@@ -184,7 +187,7 @@ def w_f32_ieee754_div(vm: "SPyVM", w_a: W_F32, w_b: W_F32) -> W_F32:
     a = vm.unwrap_f32(w_a)
     b = vm.unwrap_f32(w_b)
     res = vm.ll.call("spy_unsafe$f32_ieee754_div", a, b)
-    return vm.wrap(res)
+    return vm.wrap(float32(res))
 
 
 MM = MultiMethodTable()

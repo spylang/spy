@@ -92,7 +92,7 @@ class ImportRef:
         return f"<ImportRef {n}>"
 
 
-@dataclass
+@dataclass(frozen=True)
 class Symbol:
     name: str
     varkind: VarKind
@@ -104,7 +104,7 @@ class Symbol:
 
     # level indicates in which scope the symbol resides:
     #   0: this Symbol is defined in the scope corresponding to
-    #      the curreny SymTable (i.e., it's a "local variable")
+    #      the current SymTable (i.e., it's a "local variable")
     #   1: this is the most immediate outer scope
     #   2: the outer-outer, etc.
     #
@@ -190,11 +190,16 @@ class SymTable:
             loc = w_obj.def_loc if isinstance(w_obj, W_BuiltinFunc) else None
             add_sym(attr, ImportRef("builtins", attr), loc)
 
+        add_sym("abs", ImportRef("_builtins", "abs"))
+        add_sym("min", ImportRef("_builtins", "min"))
+        add_sym("max", ImportRef("_builtins", "max"))
         add_sym("range", ImportRef("_range", "range"))
         add_sym("list", ImportRef("_list", "list"))
         add_sym("tuple", ImportRef("_tuple", "tuple"))
         add_sym("slice", ImportRef("_slice", "Slice"))
         add_sym("dict", ImportRef("_dict", "dict"))
+        add_sym("file", ImportRef("_file", "file"))
+        add_sym("open", ImportRef("_file", "open"))
         return scope
 
     def __repr__(self) -> str:
@@ -238,6 +243,12 @@ class SymTable:
             print(
                 f"{indent}    [{sym.level}] {sym.varkind:5s} {sym_name} {storage} {impref}"
             )
+
+    def copy(self) -> "SymTable":
+        new_st = SymTable(self.name, self.color, self.kind)
+        new_st._symbols = dict(self._symbols)
+        new_st.implicit_imports = set(self.implicit_imports)
+        return new_st
 
     def add(self, sym: Symbol) -> None:
         assert sym.name not in self._symbols

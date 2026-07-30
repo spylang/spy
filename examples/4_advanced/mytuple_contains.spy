@@ -1,0 +1,105 @@
+"""
+Implement `in` for heterogeneous tuple-like structs, specialized at compile time.
+
+`mytuple` is a `@blue.generic` factory: `mytuple[str, i32, str]` creates a
+concrete `@struct` with fields `_item0`, `_item1`, `_item2`. Its `__contains__`
+is a `blue.metafunc`, so it runs at redshift time and can specialize on the
+*static type* of the searched value:
+
+  - it looks at `m_v.static_type`, the static type of the left operand of `in`;
+  - `has_match` (blue recursion) checks whether ANY tuple field has that type;
+    if none does, the result could never be True, so we raise a compile-time
+    TypeError instead of silently returning False;
+  - `build` (blue recursion again) unrolls a chain of comparison functions,
+    one per field whose type matches; fields of a different type are skipped
+    entirely, they don't even exist in the generated code.
+
+For example, given `t: mytuple[str, i32, str]`, after redshift:
+
+    42 in t         # i32: only _item1 has type i32, so this is just
+                    #   t._item1 == 42
+
+    "world" in t    # str: _item0 and _item2 match, so this becomes
+                    #   t._item0 == "world" or t._item2 == "world"
+
+with no loop, no type dispatch and no boxing left at runtime.
+
+Run `spy redshift examples/4_advanced/mytuple_contains.spy` to see the
+generated code.
+"""
+
+from operator import OpSpec
+
+
+@blue.generic
+def mytuple(*items_T):
+    @blue
+    def get_fields():
+        """
+        Return a dict like {
+            "_item0": int,
+            "_item1": int,
+        }
+        """
+        fields: dict[str, type] = {}
+        for i in range(len(items_T)):
+            fname = "_item" + str(i)
+            T = items_T[i]
+            fields[fname] = T
+        return fields
+
+    @struct
+    class _tup:
+        __extra_fields__ = get_fields()
+
+        @blue.metafunc
+        def __contains__(m_self, m_v):
+            T = m_v.static_type
+
+            @blue
+            def has_match(idx):
+                if idx == len(items_T):
+                    return False
+                if items_T[idx] == T:
+                    return True
+                return has_match(idx + 1)
+
+            if not has_match(0):
+                raise TypeError(
+                    "argument is not of any of the tuple's element types"
+                )
+
+            # build the runtime comparison chain recursively for each field
+            # that matches the type
+            @blue
+            def build(idx):
+                if idx == len(items_T):
+                    def check_none(self: _tup, v: T) -> bool:
+                        return False
+                    return check_none
+
+                rest = build(idx + 1)
+
+                if items_T[idx] == T:
+                    attr = "_item" + str(idx)
+
+                    def check_or_rest(self: _tup, v: T) -> bool:
+                        if getattr(self, attr) == v:
+                            return True
+                        return rest(self, v)
+                    return check_or_rest
+
+                return rest
+
+            return OpSpec(build(0), [m_self, m_v])
+
+    return _tup
+
+
+def main() -> None:
+    t = mytuple[str, i32, str]("hello", 42, "world")
+    print("world" in t)
+    print("foo" in t)
+    print(42 in t)
+    print(43 in t)
+    # `3.14 in t` would not even compile: no field has type f64

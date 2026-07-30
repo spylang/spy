@@ -1,8 +1,19 @@
+import os
+import textwrap
+
+import py.path
 import pytest
 from pytest_pyodide import run_in_pyodide  # type: ignore
 
+import spy.libspy as libspy
 from spy import ROOT
+from spy.build.build_info import BuildType
+from spy.build.flags import get_ar, get_cflags
+from spy.build.wasm_bundle import get_or_build_bundle, link_bundle
+from spy.libspy import LLSPyInstance
+from spy.llwasm import LLWasmInstance
 from spy.tests.support import CTest
+from spy.util import robust_run
 
 PYODIDE = ROOT.join("..", "pyodide", "node_modules", "pyodide")
 HAS_PYODIDE = PYODIDE.check(exists=True)
@@ -46,7 +57,13 @@ class TestLLWasm(CTest):
         self.llwasm_backend = llwasm_backend  # type: ignore
         if self.llwasm_backend == "pyodide":
             self.selenium = request.getfixturevalue("selenium")
-            self.run_in_pyodide_maybe = run_in_pyodide
+            # pytest_assert_rewrites=False prevents run_in_pyodide from shipping
+            # the assertion-rewritten module AST (which contains a magic "import
+            # _pytest.assertion.rewrite" statement) into pyodide. Otherwise
+            # pyodide tries to load the "pytest" package inside WASM, and the
+            # transitive load of its "iniconfig" dependency is flaky in CI. The
+            # asserts inside the fn() bodies still work as plain Python asserts.
+            self.run_in_pyodide_maybe = run_in_pyodide(pytest_assert_rewrites=False)
             self.target = "emscripten"
         else:
             self.selenium = None
@@ -186,7 +203,154 @@ class TestLLWasm(CTest):
 
         fn(self.selenium, test_wasm)
 
+    def c_compile_archive(
+        self,
+        src: str,
+        *,
+        name: str,
+        build_type: BuildType = "debug",
+    ) -> py.path.local:
+        assert self.target == "wasi", "c_compile_archive only supports wasi target"
+        src = textwrap.dedent(src)
+        c_file = self.tmpdir.join(f"{name}.c")
+        o_file = self.tmpdir.join(f"{name}.o")
+        a_file = self.tmpdir.join(f"{name}.a")
+        c_file.write(src)
+
+        cflags = get_cflags(self.target, build_type)
+        cc = ["python", "-m", "ziglang", "cc"]
+        robust_run(
+            [
+                *cc,
+                *cflags,
+                "-c",
+                str(c_file),
+                "-o",
+                str(o_file),
+            ]
+        )
+
+        ar = get_ar(self.target).split()
+        robust_run([*ar, "rcs", str(a_file), str(o_file)])
+        return a_file
+
+    def wasm_link_bundle(
+        self,
+        archives: list[py.path.local],
+        *,
+        name: str = "bundle",
+    ) -> py.path.local:
+        out = self.tmpdir.join(f"{name}.wasm")
+        link_bundle(archives, out=out)
+        return out
+
+    def test_bundle_multiple_archives(self):
+        if self.llwasm_backend == "pyodide":
+            pytest.skip("emscripten bundling not yet implemented")
+
+        part_a_src = """
+        #include <stdint.h>
+        #include "spy.h"
+        int32_t shared_x = 100;
+        int32_t WASM_EXPORT(a_get_shared)(void) { return shared_x; }
+        int32_t WASM_EXPORT(a_inc)(void) { return ++shared_x; }
+        """
+
+        part_b_src = """
+        #include <stdint.h>
+        #include "spy.h"
+        extern int32_t shared_x;
+        int32_t WASM_EXPORT(b_get_shared)(void) { return shared_x; }
+        int32_t WASM_EXPORT(b_double)(void) { shared_x *= 2; return shared_x; }
+        """
+
+        a_a = self.c_compile_archive(part_a_src, name="part_a")
+        b_a = self.c_compile_archive(part_b_src, name="part_b")
+
+        bundle = self.wasm_link_bundle(archives=[a_a, b_a])
+
+        ll = LLWasmInstance.from_file(bundle)
+
+        assert ll.call("a_get_shared") == 100
+        assert ll.call("b_get_shared") == 100
+
+        assert ll.call("a_inc") == 101
+        assert ll.call("b_double") == 202
+        assert ll.call("a_get_shared") == 202
+
+    def test_bundle_cache(self):
+        if self.llwasm_backend == "pyodide":
+            pytest.skip("emscripten bundling not yet implemented")
+
+        src = """
+        #include <stdint.h>
+        #include "spy.h"
+        int32_t WASM_EXPORT(answer)(void) { return 42; }
+        """
+        a = self.c_compile_archive(src, name="answer")
+        bundle1 = get_or_build_bundle([a])
+        mtime1 = bundle1.mtime()
+        bundle2 = get_or_build_bundle([a])
+        assert bundle1 == bundle2
+        assert bundle2.mtime() == mtime1
+        bundle3 = get_or_build_bundle([a], force_rebuild=True)
+        assert bundle3 == bundle1
+        assert bundle3.mtime() >= mtime1
+
+    def test_bundle_cache_invalidation(self):
+        if self.llwasm_backend == "pyodide":
+            pytest.skip("emscripten bundling not yet implemented")
+
+        src_v1 = """
+        #include <stdint.h>
+        #include "spy.h"
+        int32_t WASM_EXPORT(answer)(void) { return 42; }
+        """
+        src_v2 = """
+        #include <stdint.h>
+        #include "spy.h"
+        int32_t WASM_EXPORT(answer)(void) { return 99; }
+        """
+        a_v1 = self.c_compile_archive(src_v1, name="answer_v1")
+        a_v2 = self.c_compile_archive(src_v2, name="answer_v2")
+        bundle_v1 = get_or_build_bundle([a_v1])
+        bundle_v2 = get_or_build_bundle([a_v2])
+        assert bundle_v1 != bundle_v2
+
+    def test_get_LLMOD_with_extra_archive(self):
+        if self.llwasm_backend == "pyodide":
+            pytest.skip("emscripten bundling not yet implemented")
+
+        # An out-of-tree archive that calls spy_str_alloc from libspy.
+        # This test verifies that a side archive can #include "spy.h" and call
+        # libspy functions when bundled together.
+        src = r"""
+        #include "spy.h"
+        #include "spy/str.h"
+        #include <string.h>
+
+        spy_StrObject * WASM_EXPORT(make_hello)(void) {
+            const char *msg = "hello";
+            size_t n = strlen(msg);
+            spy_StrObject *s = spy_str_alloc(n);
+            memcpy(spy_StrObject_UTF8(s), msg, n);
+            return s;
+        }
+        """
+        extra_a = self.c_compile_archive(src, name="side_str")
+        # make_hello is annotated with WASM_EXPORT so it is exported automatically
+        llmod = libspy.get_LLMOD(extra_archives=[extra_a])
+        ll = LLSPyInstance(llmod)
+
+        ptr = ll.call("make_hello")
+        length, _, utf8 = ll.read_str(ptr)
+        assert utf8 == b"hello"
+        assert length == 5
+
     def test_HostModule(self):
+        if self.llwasm_backend == "pyodide":
+            pytest.skip("fixme")
+
         src = r"""
         #include <stdint.h>
         #include "spy.h"

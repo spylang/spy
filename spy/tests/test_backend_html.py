@@ -94,20 +94,25 @@ class TestHTMLBackend:
             raise KeyError(label)
         return result
 
-    def format_src(self, src: str, src_colors: list[dict[str, Any]]) -> str:
+    def format_src(self, src: str, src_colors: str) -> str:
         """
-        Apply src_colors to the given src. Return a string like:
-            [R]x[R] + [B]1[/B]
+        Apply src_colors compact string to src. Return a string like:
+            [R]x[/R] + [B]1[/B]
         """
-        COLOR_TAG = {"red": "R", "blue": "B"}
-        lines = src.split("\n")
-        for sc in sorted(src_colors, key=lambda c: (c["line"], -c["start"])):
-            line = lines[sc["line"]]
-            tag = COLOR_TAG[sc["color"]]
-            start, end = sc["start"], sc["end"]
-            line = f"{line[:start]}[{tag}]{line[start:end]}[/{tag}]{line[end:]}"
-            lines[sc["line"]] = line
-        return "\n".join(lines)
+        TAG_OPEN = {"R": "[R]", "B": "[B]"}
+        TAG_CLOSE = {"R": "[/R]", "B": "[/B]"}
+        result = []
+        src_idx = 0
+        for run in src_colors.split(" "):
+            tag, count = run[0], int(run[1:])
+            chunk = src[src_idx : src_idx + count]
+            if tag == "_":
+                result.append(chunk)
+            else:
+                result.append(f"{TAG_OPEN[tag]}{chunk}{TAG_CLOSE[tag]}")
+            src_idx += count
+        result.append(src[src_idx:])
+        return "".join(result)
 
     def assert_dump(
         self, d: dict[str, Any], expected: str, show_src: bool = False
@@ -162,7 +167,7 @@ class TestHTMLBackend:
                     op: <'+'> (leaf, emerald)
                     left: <Name: x> (expr, amber)
                         id: <'x'> (leaf, emerald)
-                    right: <Constant: 1> (expr, amber)
+                    right: <Literal: 1> (expr, amber)
                         value: <1> (leaf, emerald)
         """
         self.assert_dump(funcdef, expected)
@@ -198,7 +203,7 @@ class TestHTMLBackend:
                     left: <Name: x> (expr, amber)
                         | x
                         id: <'x'> (leaf, emerald)
-                    right: <Constant: 1> (expr, amber)
+                    right: <Literal: 1> (expr, amber)
                         | 1
                         value: <1> (leaf, emerald)
         """
@@ -217,8 +222,8 @@ class TestHTMLBackend:
                     fqn: <operator::i32_add> (leaf, emerald)
                 args[0]: <NameLocalDirect> (expr, amber)
                     sym: <x> (leaf, emerald)
-                args[1]: <Constant: 1> (expr, amber)
-                    value: <1> (leaf, emerald)
+                args[1]: <Const: W_I32(1)> (expr, amber)
+                    w_val: <W_I32(1)> (leaf, emerald)
         """
         self.assert_dump(ret, expected)
 
@@ -239,9 +244,9 @@ class TestHTMLBackend:
                 args[0]: <NameLocalDirect> (expr, amber)
                     | x
                     sym: <x> (leaf, emerald)
-                args[1]: <Constant: 1> (expr, amber)
+                args[1]: <Const: W_I32(1)> (expr, amber)
                     | 1
-                    value: <1> (leaf, emerald)
+                    w_val: <W_I32(1)> (leaf, emerald)
         """
         self.assert_dump(ret, expected, show_src=True)
 
@@ -260,7 +265,7 @@ class TestHTMLBackend:
                 op: <'+'> (leaf, emerald)
                 left: <Name: x> (expr, red)
                     id: <'x'> (leaf, emerald)
-                right: <Constant: 1> (expr, blue)
+                right: <Literal: 1> (expr, blue)
                     value: <1> (leaf, emerald)
         """
         self.assert_dump(ret, expected)
@@ -277,6 +282,60 @@ class TestHTMLBackend:
         assert src == "x + 1"
         assert fmt == "[R]x[/R] + [B]1[/B]"
 
+    def test_nested_multiline_src_is_dedented(self):
+        d = self.colorize("""
+        def foo(x: i32) -> i32:
+            for i in range(x):
+                pass
+            return x + 1
+        """)
+        # For is nested at col_start > 0 and is multi-line:
+        # its src must be dedented and src_colors must align with it
+        for_node = self.get_node(d, "For")
+        src = for_node["src"]
+        src_colors = for_node.get("src_colors", "")
+        assert src == "for i in range(x):\n    pass"
+        assert src_colors == "_9 B5 R3 _10"
+        fmt = self.format_src(src, src_colors)
+        assert fmt == "for i in [B]range[/B][R](x)[/R]:\n    pass"
+
+    def test_colorize_src_colors_no_overflow(self):
+        d = self.colorize("""
+        from operator import OpSpec
+
+        @struct
+        class Point:
+            x: i32
+            y: i32
+            def sum(self) -> i32:
+                return self.x + self.y
+        """)
+        classdef = self.get_node(d, "ClassDef: struct Point")
+        # ClassDef src comes from body_loc, which includes the full class body
+        assert classdef["src"] == (
+            "class Point:\n"
+            "    x: i32\n"
+            "    y: i32\n"
+            "    def sum(self) -> i32:\n"
+            "        return self.x + self.y"
+        )
+        # The method inside should still have its own src_colors
+        funcdef = self.get_node(d, "FuncDef: red sum")
+        assert funcdef.get("src_colors", "") != ""
+
+    def test_classdef_src_uses_body_loc(self):
+        d = self.parse("""
+        @struct
+        class Point:
+            x: i32
+            y: i32
+        """)
+        expected_src = "class Point:\n    x: i32\n    y: i32"
+        classdef = self.get_node(d, "ClassDef: struct Point")
+        assert classdef["src"] == expected_src
+        globalclassdef = self.get_node(d, "GlobalClassDef")
+        assert globalclassdef["src"] == expected_src
+
     def test_str_const_shortrepr(self):
         d = self.parse("""
         def foo() -> void:
@@ -286,11 +345,11 @@ class TestHTMLBackend:
         expected = """
         <VarDef> (stmt, default)
             kind: <None> (leaf, emerald)
-            name: <StrConst: 'x'> (expr, amber)
+            name: <StrLiteral: 'x'> (expr, amber)
                 value: <'x'> (leaf, emerald)
             type: <Name: str> (expr, amber)
                 id: <'str'> (leaf, emerald)
-            value: <StrConst: 'hello'> (expr, amber)
+            value: <StrLiteral: 'hello'> (expr, amber)
                 value: <'hello'> (leaf, emerald)
         """
         self.assert_dump(vardef, expected)

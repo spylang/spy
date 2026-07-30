@@ -38,6 +38,25 @@ class TestMetaFunc(CompilerTest):
         assert mod.test1() == 10
         assert mod.test2() == "hello world"
 
+    def test_method(self):
+        mod = self.compile("""
+        from operator import OpSpec
+
+        @struct
+        class Foo:
+            a: int
+
+            @blue.metafunc
+            def foo(m_self, m_x):
+                def impl(self: Foo, x: i32) -> i32:
+                    return x * self.a
+                return OpSpec(impl)
+
+        def test1() -> i32:
+            return Foo(2).foo(5)
+        """)
+        assert mod.test1() == 10
+
     def test_wrong_argcount(self):
         src = """
         @blue.metafunc
@@ -79,23 +98,6 @@ class TestMetaFunc(CompilerTest):
         """)
         w_T = mod.foo(unwrap=False)
         assert w_T is B.w_i32
-
-    @no_C
-    def test_COLOR(self):
-        mod = self.compile("""
-        from __spy__ import COLOR
-
-        def foo() -> str:
-            x = 42
-            return COLOR(x)
-
-        def bar() -> str:
-            x = 42
-            x = 43
-            return COLOR(x)
-        """)
-        assert mod.foo() == "blue"
-        assert mod.bar() == "red"
 
     @no_C
     def test_STATIC_TYPE_side_effects(self):

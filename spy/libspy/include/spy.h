@@ -30,6 +30,10 @@
 #  error "You must define either SPY_RELEASE or SPY_DEBUG"
 #endif
 
+#if defined(SPY_GC_NONE) + defined(SPY_GC_BDWGC) != 1
+#  error "You must define either SPY_GC_NONE or SPY_GC_BDWGC"
+#endif
+
 #if defined(__GNUC__) || defined(__clang__)
 #  define NORETURN __attribute__((noreturn))
 #elif defined(_MSC_VER)
@@ -40,6 +44,8 @@
 
 #include "spy/__spy__.h"
 #include "spy/builtins.h"
+#include "spy/bytes.h"
+#include "spy/complex.h"
 #include "spy/debug.h"
 #include "spy/gc.h"
 #include "spy/math.h"

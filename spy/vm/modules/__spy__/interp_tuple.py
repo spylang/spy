@@ -48,7 +48,7 @@ class W_InterpTuple(W_Object):
     of items of arbitrary types. It is meant to be used in blue code, and we
     need it to bootstrap SPy.
 
-    Eventally, it will become a "real" type-safe, generic type.
+    Eventually, it will become a "real" type-safe, generic type.
     """
 
     __spy_storage_category__ = "value"

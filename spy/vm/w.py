@@ -8,5 +8,5 @@ from spy.vm.module import W_Module
 from spy.vm.modules.__spy__.interp_list import W_InterpList
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opspec import W_OpSpec
-from spy.vm.primitive import W_F64, W_I32, W_Bool, W_Dynamic, W_NoneType
+from spy.vm.primitive import W_F64, W_I32, W_I64, W_U64, W_Bool, W_Dynamic, W_NoneType
 from spy.vm.str import W_Str

@@ -1,0 +1,16 @@
+"""
+Things to notice:
+  - `open()`, `write()`, `close()`, and iteration over lines work as in Python.
+  - Context managers (`with`) are not yet supported (but in the roadmap).
+"""
+
+
+def main() -> None:
+    f = open("/tmp/foo.txt", "w")
+    for i in range(10):
+        f.write("hello " + str(i) + "\n")
+    f.close()
+
+    f2 = open("/tmp/foo.txt")
+    for line in f2:
+        print(line)

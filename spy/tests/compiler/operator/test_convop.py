@@ -44,7 +44,7 @@ class W_MyClass(W_Object):
             # test_complex_OpSpec2: complex OpSpec which also uses expT
             @vm.register_builtin_func("ext")
             def w_to_str(vm: "SPyVM", w_expT: W_Type, w_self: W_MyClass) -> W_Str:
-                t = w_expT.fqn.human_name
+                t = w_expT.fqn.debug_human_name
                 x = vm.unwrap_i32(w_self.w_x)
                 return vm.wrap(f"<conv {x} to {t}>")
 

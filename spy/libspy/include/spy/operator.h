@@ -16,6 +16,8 @@
 #define u8 uint8_t
 #define i32 int32_t
 #define u32 uint32_t
+#define i64 int64_t
+#define u64 uint64_t
 #define f32 float
 #define f64 double
 
@@ -27,13 +29,23 @@ DEFINE_CONV(i32, f64)
 DEFINE_CONV(i32, f32)
 
 DEFINE_CONV(i8, i32)
+DEFINE_CONV(i8, i64)
 DEFINE_CONV(i8, f64)
 
 DEFINE_CONV(u8, i32)
+DEFINE_CONV(u8, i64)
 DEFINE_CONV(u8, f64)
 
 DEFINE_CONV(u32, i32)
+DEFINE_CONV(u32, i64)
 DEFINE_CONV(u32, f64)
+
+DEFINE_CONV(i32, i64)
+
+DEFINE_CONV(i64, u64)
+DEFINE_CONV(u64, i64)
+DEFINE_CONV(i64, f64)
+DEFINE_CONV(u64, f64)
 
 DEFINE_CONV(f32, f64)
 
@@ -43,6 +55,8 @@ DEFINE_CONV(f64, f32)
 #undef u8
 #undef i32
 #undef u32
+#undef i64
+#undef u64
 #undef f32
 #undef f64
 
@@ -74,9 +88,42 @@ spy_operator$f32_to_i32(float x) {
     return (int32_t)x;
 }
 
+// Saturating float->int64 conversions.
+// Note: double cannot represent INT64_MAX exactly, so we use >= 2^63 rather
+// than > INT64_MAX to avoid undefined behaviour on the comparison.
+static inline int64_t
+spy_operator$f64_to_i64(double x) {
+    if (isnan(x))
+        return 0;
+    if (x >= (double)(1ULL << 63))
+        return INT64_MAX;
+    if (x < (double)INT64_MIN)
+        return INT64_MIN;
+    return (int64_t)x;
+}
+
+static inline int64_t
+spy_operator$f32_to_i64(float x) {
+    if (isnan(x))
+        return 0;
+    if (x >= (float)(1ULL << 63))
+        return INT64_MAX;
+    if (x < (float)INT64_MIN)
+        return INT64_MIN;
+    return (int64_t)x;
+}
+
 static inline void
-spy_operator$raise(spy_Str *etype, spy_Str *message, spy_Str *fname, int32_t lineno) {
-    spy_panic(etype->utf8, message->utf8, fname->utf8, lineno);
+spy_operator$raise(
+    spy_StrObject *etype,
+    spy_StrObject *message,
+    spy_StrObject *fname,
+    int32_t lineno
+) {
+    spy_panic(
+        spy_StrObject_CHARS(etype), spy_StrObject_CHARS(message),
+        spy_StrObject_CHARS(fname), lineno
+    );
 }
 
 static inline double
@@ -365,6 +412,69 @@ spy_unsafe$u32_unchecked_mod(uint32_t x, uint32_t y) {
 }
 
 static inline double
+spy_operator$i64_div(int64_t x, int64_t y) {
+    if (y == 0) {
+        spy_panic("ZeroDivisionError", "division by zero", __FILE__, __LINE__);
+    }
+    return (double)x / y;
+}
+
+static inline int64_t
+spy_operator$i64_floordiv(int64_t x, int64_t y) {
+    if (y == 0) {
+        spy_panic(
+            "ZeroDivisionError", "integer division or modulo by zero", __FILE__,
+            __LINE__
+        );
+    }
+    int64_t q = x / y;
+    int64_t r = x % y;
+    if ((r != 0) && ((x ^ y) < 0)) {
+        q -= 1;
+    }
+    return q;
+}
+
+static inline int64_t
+spy_operator$i64_mod(int64_t x, int64_t y) {
+    if (y == 0) {
+        spy_panic("ZeroDivisionError", "integer modulo by zero", __FILE__, __LINE__);
+    }
+    int64_t r = x % y;
+    if ((r != 0) && ((x ^ y) < 0)) {
+        r += y;
+    }
+    return r;
+}
+
+static inline double
+spy_operator$u64_div(uint64_t x, uint64_t y) {
+    if (y == 0) {
+        spy_panic("ZeroDivisionError", "division by zero", __FILE__, __LINE__);
+    }
+    return (double)x / y;
+}
+
+static inline uint64_t
+spy_operator$u64_floordiv(uint64_t x, uint64_t y) {
+    if (y == 0) {
+        spy_panic(
+            "ZeroDivisionError", "integer division or modulo by zero", __FILE__,
+            __LINE__
+        );
+    }
+    return x / y;
+}
+
+static inline uint64_t
+spy_operator$u64_mod(uint64_t x, uint64_t y) {
+    if (y == 0) {
+        spy_panic("ZeroDivisionError", "integer modulo by zero", __FILE__, __LINE__);
+    }
+    return x % y;
+}
+
+static inline double
 spy_operator$f64_div(double x, double y) {
     if (y == 0) {
         spy_panic("ZeroDivisionError", "float division by zero", __FILE__, __LINE__);
@@ -448,6 +558,7 @@ bool WASM_EXPORT(spy_operator$f32_lt)(float x, float y);
 bool WASM_EXPORT(spy_operator$f32_le)(float x, float y);
 bool WASM_EXPORT(spy_operator$f32_gt)(float x, float y);
 bool WASM_EXPORT(spy_operator$f32_ge)(float x, float y);
+float WASM_EXPORT(spy_operator$f32_pow)(float x, float y);
 float WASM_EXPORT(spy_operator$f32_neg)(float x);
 
 static inline bool
@@ -498,6 +609,139 @@ spy_operator$bool_ge(bool x, bool y) {
 static inline bool
 spy_operator$bool_not(bool x) {
     return !x;
+}
+
+// Power operations
+static inline int8_t
+spy_operator$i8_pow(int8_t base, int8_t exp) {
+    if (exp == 0) return 1;
+    if (exp < 0) {
+        if (base == 0) {
+            spy_panic("ZeroDivisionError", "0 cannot be raised to a negative power",
+                      __FILE__, __LINE__);
+        }
+        spy_panic("ValueError", "integer ** negative exponent", __FILE__, __LINE__);
+    }
+
+    // Use unsigned arithmetic to get well-defined wrapping on overflow.
+    uint8_t result = 1;
+    uint8_t b = (uint8_t)base;
+    int8_t e = exp;
+
+    while (e > 0) {
+        if (e & 1) result *= b;
+        b *= b;
+        e >>= 1;
+    }
+    return (int8_t)result;
+}
+
+static inline uint8_t
+spy_operator$u8_pow(uint8_t base, uint8_t exp) {
+    if (exp == 0) return 1;
+
+    uint8_t result = 1;
+    uint8_t b = base;
+    uint8_t e = exp;
+
+    while (e > 0) {
+        if (e & 1) result *= b;
+        b *= b;
+        e >>= 1;
+    }
+    return result;
+}
+
+static inline int32_t
+spy_operator$i32_pow(int32_t base, int32_t exp) {
+    if (exp == 0) return 1;
+    if (exp < 0) {
+        if (base == 0) {
+            spy_panic("ZeroDivisionError", "0 cannot be raised to a negative power",
+                      __FILE__, __LINE__);
+        }
+        spy_panic("ValueError", "integer ** negative exponent", __FILE__, __LINE__);
+    }
+
+    // Use unsigned arithmetic to get well-defined wrapping on overflow.
+    uint32_t result = 1;
+    uint32_t b = (uint32_t)base;
+    int32_t e = exp;
+
+    while (e > 0) {
+        if (e & 1) result *= b;
+        b *= b;
+        e >>= 1;
+    }
+    return (int32_t)result;
+}
+
+static inline uint32_t
+spy_operator$u32_pow(uint32_t base, uint32_t exp) {
+    if (exp == 0) return 1;
+
+    uint32_t result = 1;
+    uint32_t b = base;
+    uint32_t e = exp;
+
+    while (e > 0) {
+        if (e & 1) result *= b;
+        b *= b;
+        e >>= 1;
+    }
+    return result;
+}
+
+static inline int64_t
+spy_operator$i64_pow(int64_t base, int64_t exp) {
+    if (exp == 0) return 1;
+    if (exp < 0) {
+        if (base == 0) {
+            spy_panic("ZeroDivisionError", "0 cannot be raised to a negative power",
+                      __FILE__, __LINE__);
+        }
+        spy_panic("ValueError", "integer ** negative exponent", __FILE__, __LINE__);
+    }
+
+    // Use unsigned arithmetic to get well-defined wrapping on overflow.
+    uint64_t result = 1;
+    uint64_t b = (uint64_t)base;
+    int64_t e = exp;
+
+    while (e > 0) {
+        if (e & 1) result *= b;
+        b *= b;
+        e >>= 1;
+    }
+    return (int64_t)result;
+}
+
+static inline uint64_t
+spy_operator$u64_pow(uint64_t base, uint64_t exp) {
+    if (exp == 0) return 1;
+
+    uint64_t result = 1;
+    uint64_t b = base;
+    uint64_t e = exp;
+
+    while (e > 0) {
+        if (e & 1) result *= b;
+        b *= b;
+        e >>= 1;
+    }
+    return result;
+}
+
+static inline double
+spy_operator$f64_pow(double x, double y) {
+    if (x == 0.0 && y < 0.0) {
+        spy_panic("ZeroDivisionError", "0.0 cannot be raised to a negative power",
+                  __FILE__, __LINE__);
+    }
+    if (x < 0.0 && isfinite(y) && y != trunc(y)) {
+        spy_panic("ValueError", "math domain error", __FILE__, __LINE__);
+    }
+    return pow(x, y);
 }
 
 #endif /* SPY_OPERATOR_H */

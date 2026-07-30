@@ -115,6 +115,9 @@ spy -O 1 -g your_file.spy         # With optimization and debug symbols
       ...
   ```
 
+- when writing tests, don't add a new class to group new tests in an existing file,
+  unless it's necessary. Prefer adding tests to the existing class. The general rule is
+  one `Test*` class per `test_*.py` file.
 
 
 ## GH PR Guidelines

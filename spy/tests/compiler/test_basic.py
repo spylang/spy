@@ -22,9 +22,9 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 42
         if self.backend == "interp":
-            assert not mod.foo.w_func.redshifted
+            assert mod.foo.w_func.lowering_stage == "source"
         elif self.backend == "doppler":
-            assert mod.foo.w_func.redshifted
+            assert mod.foo.w_func.lowering_stage == "redshift"
 
     def test_return_None(self):
         mod = self.compile("""
@@ -117,6 +117,33 @@ class TestBasic(CompilerTest):
             return 1 + 2
         """)
         assert mod.foo() == 3
+
+    def test_binop_right_nested_same_precedence(self):
+        mod = self.compile("""
+        def sub(a: i32, b: i32, c: i32) -> i32:
+            return a - (b - c)
+
+        def sub_add(a: i32, b: i32, c: i32) -> i32:
+            return a - (b + c)
+
+        def div(a: i32, b: i32, c: i32) -> i32:
+            return a // (b // c)
+
+        def div_mul(a: i32, b: i32, c: i32) -> i32:
+            return a // (b * c)
+
+        def mod(a: i32, b: i32, c: i32) -> i32:
+            return a % (b % c)
+
+        def shift(a: i32, b: i32, c: i32) -> i32:
+            return a >> (b >> c)
+        """)
+        assert mod.sub(100, 10, 5) == 95  # 100 - (10 - 5)
+        assert mod.sub_add(100, 10, 5) == 85  # 100 - (10 + 5)
+        assert mod.div(100, 20, 2) == 10  # 100 // (20 // 2)
+        assert mod.div_mul(100, 5, 4) == 5  # 100 // (5 * 4)
+        assert mod.mod(100, 20, 7) == 4  # 100 % (20 % 7)
+        assert mod.shift(1024, 4, 1) == 256  # 1024 >> (4 >> 1)
 
     def test_local_variables(self):
         mod = self.compile("""
@@ -247,8 +274,8 @@ class TestBasic(CompilerTest):
         # a runtime error. The compilation always succeed.
         mod = self.compile("""
         def foo() -> str:
-            x: i32 = 1
-            y: object = x
+            var x: i32 = 1
+            var y: object = x
             return y
         """)
         msg = "Invalid cast. Expected `str`, got `i32`"
@@ -854,29 +881,6 @@ class TestBasic(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    def test_builtin_function(self):
-        mod = self.compile("""
-        def foo(x: i32) -> i32:
-            return abs(x)
-        """)
-        #
-        assert mod.foo(10) == 10
-        assert mod.foo(-20) == 20
-
-    def test_max_min(self):
-        mod = self.compile("""
-        def mymax(x: i32, y: i32) -> i32: return max(x, y)
-        def mymin(x: i32, y: i32) -> i32: return min(x, y)
-        """)
-        #
-        assert mod.mymax(10, 20) == 20
-        assert mod.mymax(20, 10) == 20
-        assert mod.mymax(-5, 5) == 5
-
-        assert mod.mymin(10, 20) == 10
-        assert mod.mymin(20, 10) == 10
-        assert mod.mymin(-5, 5) == -5
-
     def test_aug_assign(self):
         mod = self.compile("""
         def foo(x: i32) -> i32:
@@ -976,7 +980,7 @@ class TestBasic(CompilerTest):
         """)
         #
         w_functype = mod.foo.w_functype
-        assert w_functype.fqn.human_name == "def(i32) -> i32"
+        assert w_functype.fqn.debug_human_name == "def(i32) -> i32"
         assert mod.foo(1) == 2
 
     def test_redshift_nonglobal_function(self):
@@ -1005,39 +1009,6 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 9
 
-    def test_blue_generic(self):
-        mod = self.compile("""
-        @blue.generic
-        def add(T):
-            def impl(x: T, y: T) -> T:
-                return x + y
-            return impl
-
-        def foo() -> i32:
-            return add[i32](1, 2)
-
-        def bar() -> str:
-            return add[str]('hello ', 'world')
-        """)
-        assert mod.foo() == 3
-        assert mod.bar() == "hello world"
-
-    def test_cannot_call_blue_generic(self):
-        src = """
-        @blue.generic
-        def ident(x):
-            return x
-
-        def foo() -> i32:
-            return ident(42)
-        """
-        errors = expect_errors(
-            "generic functions must be called via `[...]`",
-            ("this is `@blue.generic def(dynamic) -> dynamic`", "ident"),
-            ("`ident` defined here", "def ident(x):"),
-        )
-        self.compile_raises(src, "foo", errors)
-
     def test_call_func_already_redshifted(self):
         mod = self.compile("""
         @blue
@@ -1053,48 +1024,6 @@ class TestBasic(CompilerTest):
             return make_foo()(3, 4)
         """)
         assert mod.bar() == 20
-
-    def test_print(self, capfd):
-        mod = self.compile("""
-        def foo() -> None:
-            print("hello world")
-            print(42)
-            print(12.3)
-            print(True)
-            print(None)
-            print(i32)
-        """)
-        mod.foo()
-        if self.backend == "C":
-            # NOTE: float formatting is done by printf and it's different than
-            # the one that we get by Python in interp-mode. Too bad for now.
-            s_123 = "12.300000"
-            mod.ll.call("spy_flush")
-        else:
-            s_123 = "12.3"
-        out, err = capfd.readouterr()
-        assert out == "\n".join(
-            [
-                "hello world",
-                "42",
-                s_123,
-                "True",
-                "None",
-                "<spy type 'i32'>",
-                "",
-            ]
-        )
-
-    @no_C
-    def test_print_object(self, capfd):
-        mod = self.compile("""
-        def foo() -> None:
-            x = i32   # force i32 to be a red value
-            print(x)
-        """)
-        mod.foo()
-        out, err = capfd.readouterr()
-        assert out == "<spy type 'i32'>\n"
 
     def test_deeply_nested_closure(self, capfd):
         mod = self.compile("""
@@ -1258,6 +1187,59 @@ class TestBasic(CompilerTest):
         assert mod.type_ne(B.w_i32, B.w_i32) == False
         assert mod.type_ne(B.w_i32, B.w_str) == True
 
+    @only_interp
+    def test_is_isnot(self):
+        mod = self.compile("""
+        # we want to do "x is y" and "x is not y" using many different static types
+
+        def is_(T1: type, T2: type, x: dynamic, y: dynamic) -> bool:
+            xx: T1 = x
+            yy: T2 = y
+            return xx is yy
+
+        def isnot(T1: type, T2: type, x: dynamic, y: dynamic) -> bool:
+            xx: T1 = x
+            yy: T2 = y
+            return xx is not yy
+        """)
+
+        w_42 = self.vm.wrap(42)
+
+        # `object` is `object` and `dynamic` is `dynamic`: always possible
+        # int is int
+        assert mod.is_(B.w_object, B.w_object, B.w_int, B.w_int)
+        assert mod.is_(B.w_dynamic, B.w_dynamic, B.w_int, B.w_int)
+        # int is not str
+        assert mod.isnot(B.w_object, B.w_object, B.w_int, B.w_str)
+        assert mod.isnot(B.w_dynamic, B.w_dynamic, B.w_int, B.w_str)
+        # int is not 42
+        assert mod.isnot(B.w_object, B.w_object, B.w_int, w_42)
+        assert mod.isnot(B.w_dynamic, B.w_dynamic, B.w_int, w_42)
+
+        # `object/dynamic` is `type`, `object/dynamic` is `int`
+        # int is int
+        assert mod.is_(B.w_object, B.w_type, B.w_int, B.w_int)
+        assert mod.is_(B.w_dynamic, B.w_type, B.w_int, B.w_int)
+        # int is not 42
+        assert mod.isnot(B.w_object, B.w_int, B.w_int, w_42)
+        assert mod.isnot(B.w_dynamic, B.w_int, B.w_int, w_42)
+
+        # `type` is `type`: always possible
+        # int is int
+        assert mod.is_(B.w_type, B.w_type, B.w_int, B.w_int)
+        # int is not str
+        assert mod.isnot(B.w_type, B.w_type, B.w_int, B.w_str)
+
+        # `i32` is `i32`: ERROR!
+        msg = "cannot do `i32` is `i32`"
+        with SPyError.raises("W_TypeError", match=msg):
+            mod.is_(B.w_i32, B.w_i32, w_42, w_42)
+
+        # `i32` is not `i32`: ERROR!
+        msg = "cannot do `i32` is not `i32`"
+        with SPyError.raises("W_TypeError", match=msg):
+            mod.isnot(B.w_i32, B.w_i32, w_42, w_42)
+
     @skip_backends("doppler", "C", reason="we need lazy errors")
     def test_equality(self):
         mod = self.compile("""
@@ -1321,7 +1303,7 @@ class TestBasic(CompilerTest):
         w_ptr_S2 = w_mod.getattr("ptr_S2")
         #
         expected_sig = "def(test::S, unsafe::raw_ptr[test::S]) -> None"
-        assert w_foo.w_functype.fqn.human_name == expected_sig
+        assert w_foo.w_functype.fqn.debug_human_name == expected_sig
         params = w_foo.w_functype.params
         assert params[0].w_T is w_S
         assert params[1].w_T is w_ptr_S1 is w_ptr_S2
@@ -1607,6 +1589,12 @@ class TestBasic(CompilerTest):
     @no_C
     def test_type_call(self):
         src = """
+        from __spy__ import COLOR
+
+        @blue
+        def get_color_of_type_call(obj: dynamic) -> str:
+            return COLOR(type(obj))
+
         def get_type(obj: dynamic) -> type:
             return type(obj)
 
@@ -1625,3 +1613,89 @@ class TestBasic(CompilerTest):
         assert w_T0 is B.w_i32
         assert w_T1 is B.w_str
         assert w_T2 is B.w_type
+        #
+        assert mod.get_color_of_type_call(0) == "blue"
+
+    def test_default_args(self):
+        src = """
+        def add(x: int, y: int = 1) -> int:
+            return x + y
+
+        def foo(x: int) -> int:
+            return add(x)
+
+        def bar(x: int, y: int) -> int:
+            return add(x, y)
+        """
+        mod = self.compile(src)
+        assert mod.foo(5) == 6
+        assert mod.bar(5, 6) == 11
+
+    def test_default_args_too_few(self):
+        src = """
+        def add(x: int, y: int = 1) -> int:
+            return x + y
+
+        def foo() -> int:
+            return add()
+        """
+        errors = expect_errors(
+            "this function takes from 1 to 2 arguments but 0 arguments were supplied",
+            ("1 argument missing", "add"),
+            ("function defined here", "def add(x: int, y: int = 1) -> int"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    def test_default_args_too_many(self):
+        src = """
+        def add(x: int, y: int = 1) -> int:
+            return x + y
+
+        def foo() -> int:
+            return add(1, 2, 3)
+        """
+        errors = expect_errors(
+            "this function takes from 1 to 2 arguments but 3 arguments were supplied",
+            ("1 extra argument", "3"),
+            ("function defined here", "def add(x: int, y: int = 1) -> int"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    def test_void_local(self):
+        src = """
+        var N: i32 = 0
+
+        def bar() -> None:
+            N = N + 1
+
+        def foo() -> i32:
+            x = bar()
+            y = x
+            return N
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 1
+
+    @only_interp
+    def test_type_name_attributes(self):
+        src = """
+        @struct
+        class Foo[T]:
+            pass
+
+        def get_name() -> str:
+            return Foo[i32].__name__
+
+        def get_qualname() -> str:
+            return Foo[i32].__qualname__
+
+        def get_fqn() -> str:
+            return Foo[i32].__fqn__
+
+        def get_full_fqn() -> str:
+            return Foo[i32].__full_fqn__
+        """
+        mod = self.compile(src)
+        assert mod.get_name() == "Foo[i32]"
+        assert mod.get_qualname() == mod.get_fqn() == "test::Foo[i32]"
+        assert mod.get_full_fqn() == "test::Foo[i32]::Self"

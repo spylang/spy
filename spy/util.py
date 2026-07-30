@@ -3,12 +3,14 @@ import inspect
 import itertools
 import linecache
 import os
+import pickle
 import re
 import subprocess
+import tempfile
 import typing
 from collections import defaultdict
 from pathlib import Path
-from typing import Callable, Generic, Iterator, Literal, Sequence, TypeVar
+from typing import Any, Callable, Generic, Iterator, Literal, Sequence, TypeVar
 
 import py.path
 
@@ -153,7 +155,7 @@ def unbuffer_run(cmdline_s: Sequence[str]) -> subprocess.CompletedProcess:
         cmd = cmdline_s[0]
         args = list(cmdline_s[1:])
         child = pexpect.spawn(command=cmd, args=args)
-        child.expect(pexpect.EOF)
+        child.expect(pexpect.EOF, timeout=60)
         child.wait()  # avoid a race condition on child.exitstatus
 
         # child.exitstatus is never None if child.wait() finished
@@ -275,6 +277,41 @@ def colors_coordinates(ast_module, ast_color_map) -> dict[int, list[tuple[str, s
     return dict(coords)
 
 
+def build_char_color_map(
+    src: str, spans: list[tuple[int, int, str]]
+) -> list[str | None]:
+    """
+    Build a per-character color array from a list of (start, end_exclusive, color) spans.
+    Later spans overwrite earlier ones, so innermost/last-applied colors win.
+    """
+    color_map: list[str | None] = [None] * len(src)
+    for start, end, color in spans:
+        for i in range(start, min(end, len(src))):
+            color_map[i] = color
+    return color_map
+
+
+def encode_color_map(color_map: list[str | None]) -> str:
+    """
+    Run-length encode a per-character color map to a compact string.
+    E.g. [None, None, 'red', 'red', 'blue'] -> "_2 R2 B1"
+    Returns "" if no characters are colored.
+    """
+    if not any(c is not None for c in color_map):
+        return ""
+    _TAG = {None: "_", "red": "R", "blue": "B"}
+    result = []
+    i = 0
+    while i < len(color_map):
+        c = color_map[i]
+        j = i + 1
+        while j < len(color_map) and color_map[j] == c:
+            j += 1
+        result.append(f"{_TAG[c]}{j - i}")
+        i = j
+    return " ".join(result)
+
+
 def format_colors_as_json(coords_dict: dict[int, list[tuple[str, str]]]) -> str:
     """
     Convert color coordinates to JSON format for editor integration.
@@ -373,6 +410,22 @@ def cleanup_spyc_files(*paths: str | py.path.local, verbose: bool = False) -> in
             print(f"{n} file(s) removed")
 
     return n
+
+
+def save_pickle_atomic(obj: Any, path: py.path.local) -> None:
+    """
+    Pickle obj to path using a write-then-rename strategy so that concurrent
+    readers never observe a partially-written file.
+    """
+    dest_dir = str(path.dirpath())
+    fd, tmp_path = tempfile.mkstemp(dir=dest_dir, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "wb") as f:
+            pickle.dump(obj, f)
+        os.replace(tmp_path, str(path))
+    except BaseException:
+        os.unlink(tmp_path)
+        raise
 
 
 if __name__ == "__main__":

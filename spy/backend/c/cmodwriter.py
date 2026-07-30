@@ -7,8 +7,10 @@ import py.path
 from spy.backend.c.cffiwriter import CFFIWriter
 from spy.backend.c.context import Context
 from spy.backend.c.cwriter import CFuncWriter
+from spy.errors import WIP
 from spy.fqn import FQN
 from spy.textbuilder import TextBuilder
+from spy.vm.b import B
 from spy.vm.cell import W_Cell
 from spy.vm.function import W_ASTFunc, W_BuiltinFunc
 from spy.vm.module import W_Module
@@ -150,15 +152,70 @@ class CModuleWriter:
         self.tbc.wl()
         self.tbc_content = self.tbc.make_nested_builder()
 
-        # Main function
         fqn_main = FQN([self.c_mod.modname, "main"])
         if self.is_main_mod and fqn_main in self.ctx.vm.globals_w:
-            self.tbc.wb(f"""
-                int main(void) {{
-                    {fqn_main.c_name}();
-                    return 0;
-                }}
-            """)
+            w_main = self.ctx.vm.globals_w[fqn_main]
+            assert isinstance(w_main, W_ASTFunc)
+
+            w_restype, has_argv = self.ctx.vm.typecheck_main(w_main)
+            returns_i32 = w_restype == B.w_i32
+
+            if has_argv:
+                self.ctx.add_include_maybe(FQN("_list::list[str]::_ListImpl"))
+                self.tbc.wb("""
+                    /* helper code for C->SPy argv wrapping */
+
+                    #define spy_list_str spy__list$list__builtins$str$_ListImpl
+                    #define spy_list_str_new spy__list$list__builtins$str$new
+                    #define spy_list_str_push spy__list$list__builtins$str$_ListImpl$_push
+
+                    spy_list_str spy_wrap_argv(int argc, const char *argv[]) {
+                        spy_list_str lst = spy_list_str_new();
+                        for (int i = 0; i < argc; i++) {
+                            size_t length = strlen(argv[i]);
+                            spy_StrObject *s = spy_str_alloc(length);
+                            char *buf = (char *)spy_StrObject_UTF8(s);
+                            memcpy(buf, argv[i], length);
+                            lst = spy_list_str_push(lst, s);
+                        }
+                        return lst;
+                    }
+
+                    #undef spy_list_str
+                    #undef spy_list_str_new
+                    #undef spy_list_str_push
+
+                    /* end of helper code */
+                """)
+
+            if has_argv and returns_i32:
+                main_src = f"""
+                    int main(int argc, const char *argv[]) {{
+                        return {fqn_main.c_name}(spy_wrap_argv(argc, argv));
+                    }}
+                    """
+            elif has_argv and not returns_i32:
+                main_src = f"""
+                    int main(int argc, const char *argv[]) {{
+                        {fqn_main.c_name}(spy_wrap_argv(argc, argv));
+                        return 0;
+                    }}
+                    """
+            elif not has_argv and returns_i32:
+                main_src = f"""
+                    int main(void) {{
+                        return {fqn_main.c_name}();
+                    }}
+                    """
+            else:
+                main_src = f"""
+                    int main(void) {{
+                        {fqn_main.c_name}();
+                        return 0;
+                    }}
+                    """
+
+            self.tbc.wb(main_src)
 
     def emit_jsffi_error_maybe(self) -> None:
         if self.jsffi_error_emitted:
@@ -183,8 +240,8 @@ class CModuleWriter:
 
         # ==== functions ====
         if isinstance(w_obj, W_ASTFunc):
-            # emit red functions, ignore blue ones
-            if w_obj.color == "red":
+            # emit red functions, ignore blue ones and @force_inline (no call sites)
+            if w_obj.color == "red" and not w_obj.is_force_inline:
                 self.emit_func(fqn, w_obj)
 
         elif isinstance(w_obj, W_BuiltinFunc):
@@ -195,23 +252,23 @@ class CModuleWriter:
         elif isinstance(w_obj, W_Cell):
             w_content = w_obj.get()
             w_T = self.ctx.vm.dynamic_type(w_content)
-            # we support only int global variables for now
-            assert isinstance(w_content, W_I32), "WIP: var type not supported"
-            intval = self.ctx.vm.unwrap(w_content)
-            c_type = self.ctx.w2c(w_T)
-            self.tbh_globals.wl(f"extern {c_type} {fqn.c_name};")
-            self.tbc_globals.wl(f"{c_type} {fqn.c_name} = {intval};")
-
-        # ==== misc consts ====
-        elif isinstance(w_T, W_PtrType):
-            # for now, we only support NULL constnts
-            assert isinstance(w_obj, W_Ptr)
-            assert w_obj.addr == 0, (
-                "only NULL pointers can be stored in constants for now"
-            )
-            c_type = self.ctx.w2c(w_T)
-            self.tbh_globals.wl(f"extern {c_type} {fqn.c_name};")
-            self.tbc_globals.wl(f"{c_type} {fqn.c_name} = {{0}};")
+            # we support only int and pointer global variables for now
+            if isinstance(w_content, W_I32):
+                intval = self.ctx.vm.unwrap(w_content)
+                c_type = self.ctx.w2c(w_T)
+                self.tbh_globals.wl(f"extern {c_type} {fqn.c_name};")
+                self.tbc_globals.wl(f"{c_type} {fqn.c_name} = {intval};")
+            elif isinstance(w_T, W_PtrType):
+                # for now, we only support NULL constnts
+                assert isinstance(w_content, W_Ptr)
+                assert w_content.addr == 0, (
+                    "only NULL pointers can be stored in constants for now"
+                )
+                c_type = self.ctx.w2c(w_T)
+                self.tbh_globals.wl(f"extern {c_type} {fqn.c_name};")
+                self.tbc_globals.wl(f"{c_type} {fqn.c_name} = {{0}};")
+            else:
+                raise WIP("var type `{w_T}` not supported")
 
         else:
             raise NotImplementedError("WIP")

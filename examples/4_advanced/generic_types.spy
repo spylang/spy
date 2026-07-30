@@ -1,0 +1,67 @@
+"""
+Things to notice:
+  - A generic type is defined with parameters between []: `class Pair[T]`.
+  - Under the hood, `Pair` is a `@blue.generic` type factory: `Pair[i32]` and
+    `Pair[str]` are two distinct concrete types, resolved at redshift time.
+  - Generic methods work just like regular methods: `T` is in scope as a type.
+  - Generic types can be nested: `Pair[Pair[i32]]` is valid.
+  - Structs are passed by value (copied); for reference semantics, use a gc_ptr
+    (see myarray.spy).
+"""
+
+
+@struct
+class Pair[T]:
+    first: T
+    second: T
+
+    # Self is the name of the concrete type
+    def swap(self) -> Self:
+        return Self(self.second, self.first)
+
+    def __repr__(self) -> str:
+        return "Pair[" + repr(self.first) + ", " + repr(self.second) + "]"
+
+
+# This generic class is just syntactic sugar for
+
+
+@blue.generic
+def PairWOSyntacticSugar(T):
+    @struct
+    class Self:
+        first: T
+        second: T
+
+        # Self is the name of the concrete type
+        def swap(self) -> Self:
+            return Self(self.second, self.first)
+
+        def __repr__(self) -> str:
+            return (
+                "PairWOSyntacticSugar["
+                + repr(self.first)
+                + ", "
+                + repr(self.second)
+                + "]"
+            )
+
+    return Self
+
+
+def main() -> None:
+    p = Pair[i32](1, 2)
+    print(p)
+
+    p2 = PairWOSyntacticSugar[i32](1, 2)
+    print(p2)
+
+    q = p.swap()
+    print(q)
+
+    s = Pair[str]("hello", "world")
+    print(s)
+
+    # nested generic types
+    p_of_p = Pair[Pair[i32]](p, q)
+    print(p_of_p)

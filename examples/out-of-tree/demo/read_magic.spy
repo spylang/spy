@@ -1,0 +1,21 @@
+import magic
+from _file import open
+
+
+def main(argv: list[str]) -> i32:
+    if len(argv) != 2:
+        print("Usage: read_magic <filename>")
+        return 1
+
+    filename = argv[1]
+    f = open(filename, "r")
+    # We don't have binary I/O yet, so we open in text mode and then encode the
+    # content back to bytes. This works only because SPy doesn't perform any
+    # actual utf-8 validation on read: the raw bytes survive the round-trip
+    # unchanged. This is a temporary workaround until proper binary I/O lands.
+    text = f.read()
+    f.close()
+    data = text.encode("utf-8")
+
+    print(filename + ": " + magic.describe(data) + "  [" + magic.mime(data) + "]")
+    return 0

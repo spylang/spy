@@ -1,25 +1,30 @@
+import importlib.util
 import itertools
+import sys
 from ctypes import c_float as float32
 from types import FunctionType
 from typing import Any, Callable, Iterable, Optional, Sequence, Union, overload
 
 import fixedint
-import py.path
+import py
 
 from spy import ROOT, ast, libspy
-from spy.analyze.symtable import Color, ImportRef, maybe_blue
+from spy.analyze.symtable import Color, ImportRef, SymTable, maybe_blue
 from spy.ast import Color, FuncKind
+from spy.build.build_info import BuildInfoFunc
 from spy.doppler import ErrorMode, redshift
 from spy.errors import WIP, SPyError
 from spy.fqn import FQN, QUALIFIERS
 from spy.libspy import LLSPyInstance
+from spy.linearize import linearize
 from spy.location import Loc
 from spy.util import func_equals
-from spy.vm.b import B
+from spy.vm.b import OP, B
 from spy.vm.bluecache import BlueCache
 from spy.vm.builtin import make_builtin_func
+from spy.vm.bytes import W_Bytes
 from spy.vm.debugger import spdb
-from spy.vm.exc import W_Exception, W_TypeError
+from spy.vm.exc import W_TypeError
 from spy.vm.function import (
     CLOSURE,
     LocalVar,
@@ -36,7 +41,7 @@ from spy.vm.modules._testing_helpers import _TESTING_HELPERS
 from spy.vm.modules.builtins import BUILTINS
 from spy.vm.modules.jsffi import JSFFI
 from spy.vm.modules.math import MATH
-from spy.vm.modules.operator import OPERATOR
+from spy.vm.modules.operator import OPERATOR, convop
 from spy.vm.modules.posix import POSIX
 from spy.vm.modules.rawbuffer import RAW_BUFFER
 from spy.vm.modules.time import TIME
@@ -50,9 +55,12 @@ from spy.vm.primitive import (
     W_F64,
     W_I8,
     W_I32,
+    W_I64,
     W_U8,
     W_U32,
+    W_U64,
     W_Bool,
+    W_Complex128,
     W_Dynamic,
     W_NoneType,
     W_NotImplementedType,
@@ -75,14 +83,18 @@ W_Member._w.define(W_Member)
 W_FuncType._w.define(W_FuncType)
 W_I32._w.define(W_I32)
 W_U32._w.define(W_U32)
+W_I64._w.define(W_I64)
+W_U64._w.define(W_U64)
 W_I8._w.define(W_I8)
 W_U8._w.define(W_U8)
 W_F64._w.define(W_F64)
 W_F32._w.define(W_F32)
+W_Complex128._w.define(W_Complex128)
 W_Bool._w.define(W_Bool)
 W_NoneType._w.define(W_NoneType)
 W_NotImplementedType._w.define(W_NotImplementedType)
 W_Str._w.define(W_Str)
+W_Bytes._w.define(W_Bytes)
 # note: W_Dynamic doesn't exist: the equivalent of W_Dynamic._w is
 # w_DynamicType. See "The <dynamic> type" comment in primitive.py
 w_DynamicType.define(W_Object)
@@ -103,6 +115,9 @@ class SPyVM:
     globals_w: dict[FQN, W_Object]
     irtags: dict[FQN, IRTag]
     modules_w: dict[str, W_Module]
+    # Maps a real FQN to a display FQN used only for human-readable rendering.
+    # The display FQN is NOT registered in globals_w and must not be used for lookup.
+    fqn_human_aliases: dict[FQN, FQN]
     path: list[str]
     bluecache: BlueCache
     emit_warning: Callable[[SPyError], None]
@@ -110,17 +125,37 @@ class SPyVM:
     ast_color_map: Optional[dict[ast.Node, Color]]
     # If True, cache errors are collected and reported; if False, they're raised
     robust_import_caching: bool
+    # build_info callables from out-of-tree builtin modules, keyed by modname.
+    # Consumed by the C backend: call build_info(target, build_type) per module.
+    build_info_funcs: dict[str, BuildInfoFunc]
 
-    def __init__(self, ll: Optional[LLSPyInstance] = None) -> None:
+    def __init__(
+        self,
+        ll: Optional[LLSPyInstance] = None,
+        *,
+        extra_vm_modules: list[str] = [],
+    ) -> None:
+        self.build_info_funcs = {}
         if ll is None:
-            assert libspy.LLMOD is not None
-            self.ll = LLSPyInstance(libspy.LLMOD)
+            # Import extra module packages first so we can collect their
+            # wasm_archive paths before constructing ll.
+            extra_regs = [
+                self._import_extra_vm_module(mod_path) for mod_path in extra_vm_modules
+            ]
+            extra_archives = []
+            for build_info_fn in self.build_info_funcs.values():
+                for archive in build_info_fn("wasi", "debug").archives:
+                    extra_archives.append(py.path.local(archive))
+            llmod = libspy.get_LLMOD(extra_archives)
+            self.ll = LLSPyInstance(llmod)
         else:
+            extra_regs = []
             self.ll = ll
 
         self.globals_w = {}
         self.irtags = {}
         self.modules_w = {}
+        self.fqn_human_aliases = {}
         self.path = [str(STDLIB)]
         self.bluecache = BlueCache(self)
         self.emit_warning = lambda err: None
@@ -137,7 +172,10 @@ class SPyVM:
         self.make_module(TIME)
         self.make_module(SPY)
         self.make_module(_TESTING_HELPERS)
+        for reg in extra_regs:
+            self.make_module(reg)
         self.call_INITs()
+        self._seed_human_aliases()
 
     @classmethod
     async def async_new(cls) -> "SPyVM":
@@ -162,25 +200,6 @@ class SPyVM:
         w_mod = self.modules_w[modname]
         return w_mod
 
-    def find_file_on_path(
-        self, modname: str, allow_py_files: bool = False
-    ) -> Optional[py.path.local]:
-        # XXX for now we assume that we find the module as a single file in
-        # the only vm.path entry. Eventually we will need a proper import
-        # mechanism and support for packages
-        assert self.path, "vm.path not set"
-        for d in self.path:
-            # XXX write test for this
-            f = py.path.local(d).join(f"{modname}.spy")
-            if f.exists():
-                return f
-            if allow_py_files:
-                py_f = f.new(ext=".py")
-                if py_f.exists():
-                    return py_f
-
-        return None
-
     def redshift(self, error_mode: ErrorMode) -> None:
         """
         Perform a redshift on all W_ASTFunc.
@@ -188,7 +207,7 @@ class SPyVM:
 
         def should_redshift(w_func: W_ASTFunc) -> bool:
             # we don't want to redshift @blue functions
-            return w_func.color != "blue" and not w_func.redshifted
+            return w_func.color != "blue" and w_func.lowering_stage == "source"
 
         def get_funcs() -> Iterable[tuple[FQN, W_ASTFunc]]:
             for fqn, w_func in self.globals_w.items():
@@ -208,10 +227,18 @@ class SPyVM:
     ) -> None:
         for fqn, w_func in funcs:
             assert w_func.color != "blue"
-            assert not w_func.redshifted
+            assert w_func.lowering_stage == "source"
             w_newfunc = redshift(self, w_func, error_mode)
-            assert w_newfunc.redshifted
+            assert w_newfunc.lowering_stage == "redshift"
             self.globals_w[fqn] = w_newfunc
+
+    def linearize_all(self) -> None:
+        """
+        Apply the linearize pass to all redshifted W_ASTFuncs.
+        """
+        for fqn, w_obj in list(self.globals_w.items()):
+            if isinstance(w_obj, W_ASTFunc) and w_obj.lowering_stage == "redshift":
+                self.globals_w[fqn] = linearize(self, w_obj)
 
     def register_module(self, w_mod: W_Module) -> None:
         assert w_mod.name not in self.modules_w
@@ -230,6 +257,34 @@ class SPyVM:
                 name = fqn.symbol_name
                 w_mod.setattr(name, w_obj)
 
+    def _import_extra_vm_module(self, mod_path: str) -> ModuleRegistry:
+        """
+        Import an out-of-tree builtin module package and return its registry.
+
+        The convention is that the package exposes a MODULE attribute which is
+        an instance of ModuleRegistry, and optionally a build_info callable
+        (target, build_type) -> BuildInfo. If build_info is present it is
+        stored in self.build_info_funcs keyed by the module name.
+        """
+        # import the extra module even if it's not in sys.path
+        p = py.path.local(mod_path)
+        pkg_name = p.basename
+        spec = importlib.util.spec_from_file_location(
+            pkg_name,
+            str(p.join("__init__.py")),
+            submodule_search_locations=[str(p)],
+        )
+        assert spec is not None and spec.loader is not None
+        pkg = importlib.util.module_from_spec(spec)
+        sys.modules[pkg_name] = pkg
+        spec.loader.exec_module(pkg)  # type: ignore[union-attr]
+        reg = pkg.MODULE
+        assert isinstance(reg, ModuleRegistry)
+        build_info_fn = getattr(pkg, "build_info", None)
+        if build_info_fn is not None:
+            self.build_info_funcs[reg.fqn.modname] = build_info_fn
+        return reg
+
     def call_INITs(self) -> None:
         for modname in self.modules_w:
             init_fqn = FQN(modname).join("__INIT__")
@@ -237,6 +292,15 @@ class SPyVM:
             if w_init is not None:
                 assert isinstance(w_init, W_Func)
                 self.fast_call(w_init, [])
+
+    def _seed_human_aliases(self) -> None:
+        for sym in SymTable.from_builtins()._symbols.values():
+            if sym.impref is None or sym.impref.attr is None:
+                continue
+            real_fqn = FQN([sym.impref.modname, sym.impref.attr])
+            display_fqn = FQN(sym.name)
+            if real_fqn != display_fqn:
+                self.fqn_human_aliases[real_fqn] = display_fqn
 
     def get_unique_FQN(self, fqn: FQN) -> FQN:
         """
@@ -366,7 +430,7 @@ class SPyVM:
         cannot call it directly, but you need to use vm.call.
 
         Registering a function with a FQN which is already in use is an
-        error. Howver, it is explicitly allowed to register the SAME function
+        error. However, it is explicitly allowed to register the SAME function
         with the SAME FQN multiple times. This is needed to allow this
         pattern:
 
@@ -433,7 +497,7 @@ class SPyVM:
             # already have
             w_func = self.lookup_global(w_val.fqn)
             assert isinstance(w_func, W_ASTFunc)
-            assert w_func.redshifted
+            assert w_func.lowering_stage != "source"
             return w_val.fqn
         elif isinstance(w_val, W_BuiltinFunc):
             # ideally, I'd like ALL builtin funcs to be created with
@@ -443,7 +507,7 @@ class SPyVM:
             # However, this is not easily achievable at the moment, because we
             # create all module-level builtin functions AND all the
             # @builtin_method with make_builtin_func, bypassing the
-            # @vm.register_builtin_func pass. This happens becuse we don't
+            # @vm.register_builtin_func pass. This happens because we don't
             # have a vm available at that point, so it would require some
             # serious refactoring.
             fqn = w_val.fqn
@@ -454,19 +518,9 @@ class SPyVM:
             # we might need to change this when we introduce custom types
             fqn = w_val.fqn
             assert w_val.fqn not in self.globals_w
-        elif isinstance(w_val, W_Exception):
-            # this is a bit of a temporary hack: it's needed to support this:
-            #     raise Exception("...")
-
-            # the argument to "raise" must be blue for now (see also
-            # W_Exception.w_NEW). Eventually, we will have proper support
-            # for prebuilt constants, but for now we special case W_Exception.
-            w_T = self.dynamic_type(w_val)
-            fqn = w_T.fqn.join("prebuilt")
-            fqn = self.get_unique_FQN(fqn)
         else:
             w_T = self.dynamic_type(w_val)
-            T = w_T.fqn.human_name
+            T = w_T.fqn.human_name(self)
             msg = f"This prebuilt constant cannot be redshifted (yet): {w_val}"
             raise WIP(msg)
             assert False, "implement me"
@@ -521,10 +575,47 @@ class SPyVM:
         """
         if not self.isinstance(w_obj, w_type):
             w_t1 = self.dynamic_type(w_obj)
-            exp = w_type.fqn.human_name
-            got = w_t1.fqn.human_name
+            exp = w_type.fqn.human_name(self)
+            got = w_t1.fqn.human_name(self)
             msg = f"Invalid cast. Expected `{exp}`, got `{got}`"
             raise SPyError("W_TypeError", msg)
+
+    def typecheck_main(self, w_main: W_ASTFunc) -> tuple[W_Type, bool]:
+        """
+        Validate the signature of main() and return (w_restype, has_argv).
+        """
+        funcdef = w_main.funcdef
+        functype = w_main.w_functype
+        params = functype.params
+        args = funcdef.args
+
+        # check parameters
+        has_argv = False
+        if len(params) == 1:
+            has_argv = self.is_list_of_str_type(params[0].w_T)
+
+        if len(params) > 1 or (len(params) == 1 and not has_argv):
+            msg = "parameters must be `main(argv: list[str])`"
+            if len(args) > 1:
+                loc = Loc.combine(args[0].loc, args[-1].loc)
+            else:
+                loc = args[0].loc
+            err = SPyError("W_TypeError", "`main` has the wrong signature")
+            err.add("error", msg, loc)
+            raise err
+
+        # check return type
+        w_restype = functype.w_restype
+        if w_restype not in (TYPES.w_NoneType, B.w_i32):
+            err = SPyError("W_TypeError", "`main` has the wrong signature")
+            err.add(
+                "error",
+                "the only valid return types are `None`, `int` and `i32`",
+                funcdef.return_type.loc,
+            )
+            raise err
+
+        return (w_restype, has_argv)
 
     def is_type(self, w_obj: W_Object) -> bool:
         return self.isinstance(w_obj, B.w_type)
@@ -564,13 +655,25 @@ class SPyVM:
     def wrap(self, value: fixedint.UInt32) -> W_U32: ...  # type: ignore[overload-cannot-match]
 
     @overload
+    def wrap(self, value: fixedint.Int64) -> W_I64: ...  # type: ignore[overload-cannot-match]
+
+    @overload
+    def wrap(self, value: fixedint.UInt64) -> W_U64: ...  # type: ignore[overload-cannot-match]
+
+    @overload
     def wrap(self, value: float) -> W_F64: ...
 
     @overload
     def wrap(self, value: float32) -> W_F32: ...
 
     @overload
+    def wrap(self, value: complex) -> W_Complex128: ...
+
+    @overload
     def wrap(self, value: str) -> W_Str: ...
+
+    @overload
+    def wrap(self, value: bytes) -> W_Bytes: ...
 
     @overload
     def wrap(self, value: Any) -> W_Object: ...
@@ -579,7 +682,7 @@ class SPyVM:
 
     def wrap(self, value: Any) -> W_Object:
         """
-        Useful for tests: magic funtion which wraps the given interp-level
+        Useful for tests: magic function which wraps the given interp-level
         object into the most appropriate app-level W_* object.
         """
         T = type(value)
@@ -591,6 +694,10 @@ class SPyVM:
             return W_I32(value)
         elif T is fixedint.UInt32:
             return W_U32(value)
+        elif T is fixedint.Int64:
+            return W_I64(value)
+        elif T is fixedint.UInt64:
+            return W_U64(value)
         elif T is fixedint.Int8:
             return W_I8(value)
         elif T is fixedint.UInt8:
@@ -599,6 +706,8 @@ class SPyVM:
             return W_F64(value)
         elif T is float32:
             return W_F32(value)
+        elif T is complex:
+            return W_Complex128(value)
         elif T is bool:
             if value:
                 return B.w_True
@@ -606,8 +715,12 @@ class SPyVM:
                 return B.w_False
         elif T is str:
             return W_Str(self, value)
+        elif T is bytes:
+            return W_Bytes(self, value)
         elif T is Loc:
             return W_Loc(value)
+        elif T is slice:
+            return self.wrap_slice(value)
         elif T is UnwrappedStruct:
             return value.spy_wrap(self)
         elif isinstance(value, FunctionType):
@@ -619,9 +732,38 @@ class SPyVM:
             f"Cannot wrap interp-level objects " + f"of type {value.__class__.__name__}"
         )
 
+    def wrap_list(self, w_itemT: W_Type, items: list) -> W_Object:
+        """
+        Wrap the given interp-level list into an app-level list with the desired
+        item type
+        """
+        # create the list type
+        vm = self
+        vm.import_("_list")
+        w_list = vm.lookup_global(FQN("_list::list"))
+        w_list_T = vm.getitem_w(w_list, w_itemT)
+        assert isinstance(w_list_T, W_Type)
+        fqn_push = w_list_T.fqn.join("_push")
+        w_push = vm.lookup_global(fqn_push)
+        # create an empty list
+        w_res = vm.call_w(w_list_T, [], color="red")
+        # push items
+        for item in items:
+            vm.call_w(w_push, [w_res, vm.wrap(item)], color="red")
+        return w_res
+
+    def wrap_slice(self, s: slice) -> W_Object:
+        vm = self
+        self.import_("_slice")
+        w_T = self.lookup_global(FQN("_slice::Slice"))
+        w_start = vm.wrap(s.start)
+        w_stop = vm.wrap(s.stop)
+        w_step = vm.wrap(s.step)
+        return vm.call_w(w_T, [w_start, w_stop, w_step])
+
     def unwrap(self, w_value: W_Object) -> Any:
         """
-        Useful for tests: magic funtion which wraps the given app-level w_
+        Useful for tests: magic function which wraps the given app-level w_
         object into the most appropriate interp-level object. Opposite of
         wrap().
         """
@@ -635,6 +777,16 @@ class SPyVM:
 
     def unwrap_u32(self, w_value: W_Object) -> Any:
         if not isinstance(w_value, W_U32):
+            raise Exception("Type mismatch")
+        return w_value.value
+
+    def unwrap_i64(self, w_value: W_Object) -> Any:
+        if not isinstance(w_value, W_I64):
+            raise Exception("Type mismatch")
+        return w_value.value
+
+    def unwrap_u64(self, w_value: W_Object) -> Any:
+        if not isinstance(w_value, W_U64):
             raise Exception("Type mismatch")
         return w_value.value
 
@@ -658,6 +810,11 @@ class SPyVM:
             raise Exception("Type mismatch")
         return w_value.value.value
 
+    def unwrap_complex128(self, w_value: W_Object) -> Any:
+        if not isinstance(w_value, W_Complex128):
+            raise Exception("Type mismatch")
+        return w_value.value
+
     def unwrap_str(self, w_value: W_Object) -> str:
         if not isinstance(w_value, W_Str):
             raise Exception("Type mismatch")
@@ -667,6 +824,25 @@ class SPyVM:
         if not isinstance(w_value, W_Bool):
             raise Exception("Type mismatch")
         return w_value.value
+
+    @staticmethod
+    def is_list_type(w_T: W_Type) -> bool:
+        w_origin = w_T.w_origin
+        return isinstance(w_origin, W_Func) and w_origin.fqn == FQN("_list::list")
+
+    @staticmethod
+    def is_dict_type(w_T: W_Type) -> bool:
+        w_origin = w_T.w_origin
+        return isinstance(w_origin, W_Func) and w_origin.fqn == FQN("_dict::dict")
+
+    @staticmethod
+    def is_tuple_type(w_T: W_Type) -> bool:
+        w_origin = w_T.w_origin
+        return isinstance(w_origin, W_Func) and w_origin.fqn == FQN("_tuple::tuple")
+
+    @staticmethod
+    def is_list_of_str_type(w_T: W_Type) -> bool:
+        return w_T.fqn == FQN("_list::list[str]::_ListImpl")
 
     def fast_call(self, w_func: W_Func, args_w: Sequence[W_Object]) -> W_Object:
         """
@@ -685,6 +861,18 @@ class SPyVM:
                 return w_result
             w_result = self._raw_call(w_func, args_w)
             self.bluecache.record(w_func, args_w, w_result)
+            if (
+                w_func.w_functype.kind == "generic"
+                and isinstance(w_result, (W_Type, W_Func))
+                and w_result.w_origin is None
+            ):
+                expected_ns = w_func.compute_inner_ns(args_w)
+                if w_result.fqn.namespace == expected_ns:
+                    w_result.w_origin = w_func
+                    if w_result.fqn != expected_ns:
+                        # record an "human alias". If we got "list[i32]::_ListImpl", we
+                        # save it as "list[i32]".
+                        self.fqn_human_aliases[w_result.fqn] = expected_ns
             return w_result
         else:
             # for red functions, we just call them
@@ -752,7 +940,13 @@ class SPyVM:
         assert w_functype.is_argcount_ok(len(args_w))
         for param, w_arg in zip(w_functype.all_params(), args_w):
             assert self.isinstance(w_arg, param.w_T)
-        return w_func.raw_call(self, args_w)
+        w_res = w_func.raw_call(self, args_w)
+        assert self.isinstance(w_res, w_functype.w_restype), (
+            f"{w_func.fqn}: expected return type "
+            f"`{w_functype.w_restype.fqn}`, got "
+            f"`{self.dynamic_type(w_res).fqn}`"
+        )
+        return w_res
 
     def eval_opimpl(
         self,
@@ -782,6 +976,27 @@ class SPyVM:
             w_res = w_opimpl._execute(self, args_w)
 
         return W_MetaArg(self, color, w_functype.w_restype, w_res, loc)
+
+    def is_convertible_to(
+        self: "SPyVM",
+        wam_expT: W_MetaArg,
+        wam: W_MetaArg,
+    ) -> bool:
+        """
+        Tests whether given MetaArg is convertible to the desired type.
+
+        There is probably a more efficient way to do this - we essentially resolve a whole
+        opimpl, then throw it away, only to resolve the converter again later if necessary
+        """
+        try:
+            convop.CONVERT_maybe(self, wam_expT, wam)
+        except SPyError as exc:
+            if exc.match(W_TypeError):
+                return False
+            else:
+                raise exc
+
+        return True
 
     # ======= operators ========
     #

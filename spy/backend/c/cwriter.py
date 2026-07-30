@@ -1,16 +1,19 @@
+import math
 from types import NoneType
 from typing import TYPE_CHECKING
 
 from spy import ast
 from spy.backend.c import c_ast as C
 from spy.backend.c.context import C_Ident, Context
+from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.textbuilder import TextBuilder
 from spy.util import magic_dispatch, shortrepr
-from spy.vm.b import TYPES
+from spy.vm.b import TYPES, B
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.irtag import IRTag
+from spy.vm.modules.posix import W__FILE
 from spy.vm.modules.unsafe.ptr import W_Ptr
 
 if TYPE_CHECKING:
@@ -32,8 +35,10 @@ class CFuncWriter:
         self.cmodw = cmodw
         self.tbc = cmodw.tbc
         self.fqn = fqn
-        self.w_func = w_func
         self.last_emitted_linenos = (-1, -1)  # see emit_lineno_maybe
+
+        assert w_func.lowering_stage == "linearize"
+        self.w_func = w_func
 
     def ppc(self) -> None:
         """
@@ -85,7 +90,11 @@ class CFuncWriter:
                 and varname not in param_names
             ):
                 c_varname = C_Ident(varname)
-                self.tbc.wl(f"{c_type} {c_varname};")
+                if w_T is TYPES.w_NoneType:
+                    # we emit a "void myname;" fake declaration for readability
+                    self.tbc.wl(f"/* {c_type} {c_varname}; */")
+                else:
+                    self.tbc.wl(f"{c_type} {c_varname};")
 
     # ==============
 
@@ -130,6 +139,15 @@ class CFuncWriter:
         #     automatically converted by the C compiler anyway
         return magic_dispatch(self, "fmt_expr", expr)
 
+    def fmt_expr_BlockExpr(self, expr: ast.BlockExpr) -> C.Expr:
+        msg = (
+            "The C backend doesn't support ast.BlockExpr.\n"
+            + "This probably means that there is a bug in the compilation pipeline\n"
+            + "and that `linearize` was not called."
+        )
+        raise SPyError.simple("W_ValueError", msg, "", expr.loc)
+        # raise Exception(msg)
+
     # ===== statements =====
 
     def emit_stmt_Pass(self, stmt: ast.Pass) -> None:
@@ -154,16 +172,19 @@ class CFuncWriter:
         if vardef.value:
             target = vardef.name.value
             v = self.fmt_expr(vardef.value)
-            self.tbc.wl(f"{target} = {v};")
-
-    def emit_stmt_Assign(self, assign: ast.Assign) -> None:
-        assert False, "ast.Assign nodes should not survive redshifting"
+            if vardef.value.w_T is TYPES.w_NoneType:
+                self.tbc.wl(f"/* {target} = */ {v};")
+            else:
+                self.tbc.wl(f"{target} = {v};")
 
     def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
         target = assign.target.value
         v = self.fmt_expr(assign.value)
         c_varname = C_Ident(target)
-        self.tbc.wl(f"{c_varname} = {v};")
+        if assign.value.w_T is TYPES.w_NoneType:
+            self.tbc.wl(f"/* {c_varname} = */ {v};")
+        else:
+            self.tbc.wl(f"{c_varname} = {v};")
 
     def emit_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
         v = self.fmt_expr(assign.value)
@@ -171,11 +192,16 @@ class CFuncWriter:
         c_varname = C_Ident(target)
         self.tbc.wl(f"{c_varname} = {v};")
 
-    def emit_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
-        if isinstance(unpack.value, ast.Tuple):
+    def emit_stmt_Assign(self, assign: ast.Assign) -> None:
+        unpack = assign.target
+        assert isinstance(unpack, ast.UnpackTarget), (
+            "simple ast.Assign nodes should not survive redshifting"
+        )
+        if isinstance(assign.value, ast.Tuple):
             # Blue tuple literal: directly assign each item to its target
-            for target, item in zip(unpack.targets, unpack.value.items):
-                c_target = C_Ident(target.value)
+            for target, item in zip(unpack.targets, assign.value.items):
+                assert isinstance(target, ast.SingleTarget)
+                c_target = C_Ident(target.name.value)
                 v = self.fmt_expr(item)
                 self.tbc.wl(f"{c_target} = {v};")
         else:
@@ -186,14 +212,15 @@ class CFuncWriter:
             #     a = tmp._item0;
             #     b = tmp._item1;
             # }
-            assert unpack.value.w_T is not None
-            c_tuple_type = self.ctx.w2c(unpack.value.w_T)
-            v = self.fmt_expr(unpack.value)
+            assert assign.value.w_T is not None
+            c_tuple_type = self.ctx.w2c(assign.value.w_T)
+            v = self.fmt_expr(assign.value)
             self.tbc.wl("{")
             with self.tbc.indent():
                 self.tbc.wl(f"{c_tuple_type} tmp = {v};")
                 for i, target in enumerate(unpack.targets):
-                    c_target = C_Ident(target.value)
+                    assert isinstance(target, ast.SingleTarget)
+                    c_target = C_Ident(target.name.value)
                     self.tbc.wl(f"{c_target} = tmp._item{i};")
             self.tbc.wl("}")
 
@@ -235,7 +262,7 @@ class CFuncWriter:
                 # TODO: assuming msg is always a string. extend the logic to work with other types
                 msg = self.fmt_expr(assert_node.msg)
                 self.tbc.wl(
-                    f'spy_panic("AssertionError", ({msg})->utf8, '
+                    f'spy_panic("AssertionError", spy_StrObject_CHARS({msg}), '
                     f'"{assert_node.loc.filename}", {assert_node.loc.line_start});'
                 )
             else:
@@ -248,31 +275,77 @@ class CFuncWriter:
 
     # ===== expressions =====
 
-    def fmt_expr_Constant(self, const: ast.Constant) -> C.Expr:
-        # unsupported literals are rejected directly by the parser, see
-        # Parser.from_py_expr_Constant
-        T = type(const.value)
-        assert T in (int, float, bool, str, NoneType)
-        if T is NoneType:
+    def fmt_expr_Const(self, const: ast.Const) -> C.Expr:
+        vm = self.ctx.vm
+        w_T = const.w_T
+        w_val = const.w_val
+        if w_T is B.w_bool:
+            return C.Literal(str(vm.unwrap_bool(w_val)).lower())
+        elif w_T in (B.w_i32, B.w_u32, B.w_i8, B.w_u8):
+            intval = int(vm.unwrap(w_val))
+            return C.Literal(str(intval))
+        elif w_T in (B.w_i64, B.w_u64):
+            intval = int(vm.unwrap(w_val))
+            # use LL/ULL suffix to ensure 64-bit literals compile correctly
+            suffix = "LL" if w_T is B.w_i64 else "ULL"
+            return C.Literal(f"{intval}{suffix}")
+        elif w_T is B.w_f64:
+            return C.Literal(str(vm.unwrap_f64(w_val)))
+        elif w_T is B.w_f32:
+            value = vm.unwrap_f32(w_val)
+            # Python's "inf" and "nan" spellings are not C literals. Use the
+            # C99 macros so folded non-finite values remain valid float constants.
+            if math.isnan(value):
+                return C.Literal("NAN")
+            if math.isinf(value):
+                sign = "-" if value < 0 else ""
+                return C.Literal(f"{sign}INFINITY")
+            # the 'f' suffix makes it a float literal, avoiding double->float
+            # narrowing warnings
+            return C.Literal(f"{value}f")
+        elif w_T is B.w_complex128:
+            val = vm.unwrap_complex128(w_val)
+            return C.Literal(
+                "(spy_Complex128) {" + str(val.real) + ", " + str(val.imag) + "}"
+            )
+        elif w_T is TYPES.w_NoneType:
+            assert w_val is B.w_None
             return C.Void()
-        elif T is int:
-            return C.Literal(str(const.value))
-        elif T is float:
-            return C.Literal(str(const.value))
-        elif T is bool:
-            return C.Literal(str(const.value).lower())
         else:
-            raise NotImplementedError("WIP")
+            raise NotImplementedError(f"WIP: {w_T}")
 
-    def fmt_expr_StrConst(self, const: ast.StrConst) -> C.Expr:
+    def fmt_expr_Literal(self, const: ast.Literal) -> C.Expr:
+        assert False, "ast.Literal should not appear in C backend (use ast.Const)"
+
+    def fmt_expr_BytesLiteral(self, const: ast.BytesLiteral) -> C.Expr:
+        # Similar to fmt_expr_StrLiteral: emit a static spy_BytesObject global
+        # and return a pointer to it.
+        #
+        #     static spy_BytesObject SPY_g_bytes0 = SPY_BYTES_LITERAL(3, "abc");
+        #     ...
+        #     &SPY_g_bytes0 /* b'abc' */
+        b = const.value
+        v = self.cmodw.new_global_var("bytes")
+        n = len(b)
+        lit = C.Literal.from_bytes(b)
+        init = f"SPY_BYTES_LITERAL({n}, {lit})"
+        self.cmodw.tbc_globals.wl(f"static spy_BytesObject {v} = {init};")
+        comment = shortrepr(repr(b), 15)
+        v = f"{v} /* {comment} */"
+        return C.UnaryOp("&", C.Literal(v))
+
+    def fmt_expr_StrLiteral(self, const: ast.StrLiteral) -> C.Expr:
         # SPy string literals must be initialized as C globals. We want to
         # generate the following:
         #
         #     // global declarations
-        #     static spy_Str SPY_g_str0 = {5, 0, "hello"};
+        #     static spy_StrObject SPY_g_str0 = SPY_STR_LITERAL(5, "hello");
         #     ...
         #     // literal expr
         #     &SPY_g_str0 /* "hello" */
+        #
+        # SPY_STR_LITERAL hides the difference between debug and release
+        # layouts of spy_gc_ptr_u8 (see str.h).
         #
         # Note that in the literal expr we also put a comment showing what is
         # the content of the literal: hopefully this will make the code more
@@ -284,8 +357,8 @@ class CFuncWriter:
         v = self.cmodw.new_global_var("str")  # SPY_g_str0
         n = len(utf8)
         lit = C.Literal.from_bytes(utf8)
-        init = "{%d, 0, %s}" % (n, lit)
-        self.cmodw.tbc_globals.wl(f"static spy_Str {v} = {init};")
+        init = f"SPY_STR_LITERAL({n}, {lit})"
+        self.cmodw.tbc_globals.wl(f"static spy_StrObject {v} = {init};")
         #
         # shortstr is what we show in the comment, with a length limit
         comment = shortrepr(utf8.decode("utf-8"), 15)
@@ -301,15 +374,28 @@ class CFuncWriter:
             return C.Literal(const.fqn.c_name)
         elif isinstance(w_obj, W_Func):
             return C.Literal(const.fqn.c_name)
+        elif isinstance(w_obj, W__FILE):
+            assert w_obj.h == 0, "only NULL _FILE can be a constant"
+            return C.Literal("NULL")
         else:
-            assert False
+            w_T = self.ctx.vm.dynamic_type(w_obj)
+            t = w_T.fqn.human_name(self.ctx.vm)
+            raise SPyError.simple(
+                "W_WIP",
+                f"Prebuilt constant of type `{t}` are not supported by the C backend",
+                f"This is `{t}`",
+                const.loc,
+            )
 
     def fmt_expr_Name(self, name: ast.Name) -> C.Expr:
         assert False, "ast.Name nodes should not survive redshifting"
 
     def fmt_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> C.Expr:
         varname = C_Ident(name.sym.name)
-        return C.Literal(f"{varname}")
+        if name.w_T is TYPES.w_NoneType:
+            return C.Literal(f"/* {varname} */")
+        else:
+            return C.Literal(f"{varname}")
 
     def fmt_expr_NameOuterCell(self, name: ast.NameOuterCell) -> C.Expr:
         return C.Literal(name.fqn.c_name)
@@ -317,7 +403,7 @@ class CFuncWriter:
     def fmt_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> C.Expr:
         # at the moment of writing, closed-over variables are always blue, so
         # they should not survive redshifting
-        assert False, "unexepcted NameOuterDirect"
+        assert False, "unexpected NameOuterDirect"
 
     def fmt_expr_AssignExpr(self, assignexpr: ast.AssignExpr) -> C.Expr:
         return self._fmt_assignexpr(assignexpr.target.value, assignexpr.value)
@@ -409,6 +495,36 @@ class CFuncWriter:
         FQN("operator::u32_gt"): ">",
         FQN("operator::u32_ge"): ">=",
         #
+        FQN("operator::i64_add"): "+",
+        FQN("operator::i64_sub"): "-",
+        FQN("operator::i64_mul"): "*",
+        FQN("operator::i64_lshift"): "<<",
+        FQN("operator::i64_rshift"): ">>",
+        FQN("operator::i64_and"): "&",
+        FQN("operator::i64_or"): "|",
+        FQN("operator::i64_xor"): "^",
+        FQN("operator::i64_eq"): "==",
+        FQN("operator::i64_ne"): "!=",
+        FQN("operator::i64_lt"): "<",
+        FQN("operator::i64_le"): "<=",
+        FQN("operator::i64_gt"): ">",
+        FQN("operator::i64_ge"): ">=",
+        #
+        FQN("operator::u64_add"): "+",
+        FQN("operator::u64_sub"): "-",
+        FQN("operator::u64_mul"): "*",
+        FQN("operator::u64_lshift"): "<<",
+        FQN("operator::u64_rshift"): ">>",
+        FQN("operator::u64_and"): "&",
+        FQN("operator::u64_or"): "|",
+        FQN("operator::u64_xor"): "^",
+        FQN("operator::u64_eq"): "==",
+        FQN("operator::u64_ne"): "!=",
+        FQN("operator::u64_lt"): "<",
+        FQN("operator::u64_le"): "<=",
+        FQN("operator::u64_gt"): ">",
+        FQN("operator::u64_ge"): ">=",
+        #
         FQN("operator::f64_add"): "+",
         FQN("operator::f64_sub"): "-",
         FQN("operator::f64_mul"): "*",
@@ -434,6 +550,7 @@ class CFuncWriter:
     FQN2UnaryOp = {
         FQN("operator::i8_neg"): "-",
         FQN("operator::i32_neg"): "-",
+        FQN("operator::i64_neg"): "-",
         FQN("operator::f64_neg"): "-",
     }
 
@@ -485,9 +602,16 @@ class CFuncWriter:
             # So, we just remove the last arguments. Note that this much match
             # with the signature of the load/store functions generated by
             # unsafe.h:SPY_PTR_FUNCTIONS.
-            assert isinstance(call.args[-1], ast.LocConst)
+            assert (
+                isinstance(call.args[-1], ast.Const)
+                and call.args[-1].w_T is TYPES.w_Loc
+            )
             call.args.pop()  # remove it
             return self.fmt_generic_call(fqn, call)
+
+        elif irtag.tag == "unsafe.memop":
+            # ptr_copy, ptr_move, etc.
+            return self.fmt_memop(fqn, call, irtag)
 
         else:
             return self.fmt_generic_call(fqn, call)
@@ -512,7 +636,7 @@ class CFuncWriter:
         return C.Dot(c_struct, name)
 
     def fmt_ptr_getfield(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
-        assert isinstance(call.args[1], ast.StrConst)
+        assert isinstance(call.args[1], ast.StrLiteral)
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value
         offset = call.args[2]  # ignored
@@ -524,10 +648,25 @@ class CFuncWriter:
             return c_field
 
     def fmt_ptr_setfield(self, fqn: FQN, call: ast.Call) -> C.Expr:
-        assert isinstance(call.args[1], ast.StrConst)
+        assert isinstance(call.args[1], ast.StrLiteral)
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value
         offset = call.args[2]  # ignored
         c_lval = C.PtrField(c_ptr, attr)
         c_rval = self.fmt_expr(call.args[3])
         return C.BinOp("=", c_lval, c_rval)
+
+    def fmt_memop(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
+        cfunc = irtag.data["cfunc"]
+        assert cfunc in (
+            "spy_ptr_copy",
+            "spy_ptr_copy_slice",
+            "spy_ptr_move",
+            "spy_ptr_move_slice",
+            "spy_ptr_cmp",
+            "spy_ptr_cmp_slice",
+            "spy_ptr_setbytes",
+            "spy_ptr_setbytes_slice",
+        )
+        c_args = [self.fmt_expr(arg) for arg in call.args]
+        return C.Call(cfunc, c_args)

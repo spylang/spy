@@ -26,9 +26,9 @@ class TestInterop:
         assert w_mod.name == "foo"
         w_add = w_mod.getattr("add")
         assert isinstance(w_add, W_ASTFunc)
-        w_add_rs = w_add.w_redshifted_into
+        w_add_rs = w_add.w_replaced_by
         assert repr(w_add) == "<spy function 'foo::add' (invalid)>"
-        assert repr(w_add_rs) == "<spy function 'foo::add' (redshifted)>"
+        assert repr(w_add_rs) == "<spy function 'foo::add' (redshift)>"
 
     def test_main(self):
         # here we just check that main() doesn't crash

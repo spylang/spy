@@ -140,6 +140,23 @@ class TestTextBuilder:
         """)
         assert s == expected
 
+    def test_write_with_newlines(self):
+        b = TextBuilder()
+        b.wl("begin")
+        with b.indent():
+            b.write("AAA\nBBB\nCCC")
+            b.writeline()
+        b.wl("end")
+        s = b.build()
+        expected = textwrap.dedent("""\
+        begin
+            AAA
+            BBB
+            CCC
+        end
+        """)
+        assert s == expected
+
     def test_writeblock(self):
         b = TextBuilder()
         b.wl("hello")

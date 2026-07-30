@@ -13,11 +13,28 @@ def float_type(request):
 
 class TestFloat(CompilerTest):
     def test_literal(self):
+        src = """
+        def a() -> f64:
+            return 1.5  # implicitly f64
+
+        def b() -> f64:
+            return f64(2.5)
+
+        def c() -> f32:
+            return f32(3.5)
+        """
+        mod = self.compile(src)
+        assert mod.a() == 1.5
+        assert mod.b() == 2.5
+        assert mod.c() == 3.5
+
+    def test_f32_inf_const(self):
         mod = self.compile("""
-        def foo() -> f64:
-            return 12.3
+        def positive_inf() -> f32:
+            largest = f32(3.4028234663852886e38)
+            return largest + largest
         """)
-        assert mod.foo() == 12.3
+        assert mod.positive_inf() == float("inf")
 
     def test_BinOp(self, float_type):
         mod = self.compile(f"""
@@ -105,7 +122,7 @@ class TestFloat(CompilerTest):
         assert mod.cmp_gte(5.1, 5.1) is True
         assert mod.cmp_gte(6.2, 5.1) is True
 
-    def test_implicit_conversion(self, float_type):
+    def test_mixed_types(self, float_type):
         mod = self.compile(f"""
         T = {float_type}
         def add(x: T, y: i32) -> T: return x + y
@@ -118,7 +135,7 @@ class TestFloat(CompilerTest):
         assert mod.mul(1.5, 2) == 3.0
         assert mod.div(10, 0.5) == 20.0
 
-    def test_implicit_float_to_all_ints_conversion(self):
+    def test_float_to_all_ints_conversion(self):
         mod = self.compile("""
         def add_i8(x: f64, y: i8) -> f64: return x + y
         def add_u8(x: f64, y: u8) -> f64: return x + y
@@ -130,14 +147,90 @@ class TestFloat(CompilerTest):
         assert mod.add_u32(1.5, 2) == 3.5
         assert mod.add_f32(1.5, 2.0) == 3.5
 
+    def test_pow(self, float_type):
+        mod = self.compile(f"""
+        T = {float_type}
+        def pow(x: T, y: T) -> T:
+            return x ** y
+        """)
+        assert mod.pow(2.0, 3.0) == 8.0
+        assert mod.pow(3.0, 2.0) == 9.0
+        assert mod.pow(5.0, 0.0) == 1.0
+        assert math.isclose(mod.pow(2.0, 0.5), 1.4142135623730951, rel_tol=1e-6)
+        assert math.isclose(mod.pow(4.0, 0.5), 2.0, rel_tol=1e-6)
+        assert math.isclose(mod.pow(2.0, -1.0), 0.5, rel_tol=1e-6)
+
+    def test_pow_negative_base(self, float_type):
+        mod = self.compile(f"""
+        T = {float_type}
+        def pow(x: T, y: T) -> T:
+            return x ** y
+        """)
+        assert math.isclose(mod.pow(-2.0, 3.0), -8.0, rel_tol=1e-6)
+        assert math.isclose(mod.pow(-2.0, 2.0), 4.0, rel_tol=1e-6)
+        assert math.isclose(mod.pow(-1.0, 4.0), 1.0, rel_tol=1e-6)
+        assert math.isclose(mod.pow(-2.0, -1.0), -0.5, rel_tol=1e-6)
+        assert math.isclose(mod.pow(-2.0, -2.0), 0.25, rel_tol=1e-6)
+
+    def test_pow_negative_base_fractional_exp_raises(self, float_type):
+        mod = self.compile(f"""
+        T = {float_type}
+        def pow(x: T, y: T) -> T:
+            return x ** y
+        """)
+        with SPyError.raises("W_ValueError", match="math domain error"):
+            mod.pow(-5.0, 0.5)
+        with SPyError.raises("W_ValueError", match="math domain error"):
+            mod.pow(-2.0, 1.5)
+
+    def test_pow_zero_negative_exp_raises(self, float_type):
+        mod = self.compile(f"""
+        T = {float_type}
+        def pow(x: T, y: T) -> T:
+            return x ** y
+        """)
+        with SPyError.raises(
+            "W_ZeroDivisionError", match="0.0 cannot be raised to a negative power"
+        ):
+            mod.pow(0.0, -1.0)
+        with SPyError.raises(
+            "W_ZeroDivisionError", match="0.0 cannot be raised to a negative power"
+        ):
+            mod.pow(0.0, -2.0)
+
+    def test_pow_base_between_zero_and_one(self, float_type):
+        mod = self.compile(f"""
+        T = {float_type}
+        def pow(x: T, y: T) -> T:
+            return x ** y
+        """)
+        assert math.isclose(mod.pow(0.5, 2.0), 0.25, rel_tol=1e-6)
+        assert math.isclose(mod.pow(0.5, -1.0), 2.0, rel_tol=1e-6)
+        assert math.isclose(mod.pow(0.1, 2.0), 0.01, rel_tol=1e-5)
+        assert math.isclose(mod.pow(0.5, 0.5), 0.7071067811865476, rel_tol=1e-6)
+
     def test_explicit_conversion(self):
         mod = self.compile("""
         def i32_to_f64(x: i32) -> f64: return f64(x)
         def f32_to_f64(x: f32) -> f64: return f64(x)
         def f64_to_i32(x: f64) -> i32: return i32(x)
         def f32_to_i32(x: f32) -> i32: return i32(x)
+        def i32_to_f32(x: i32) -> f32: return f32(x)
+        def f64_to_f32(x: f64) -> f32: return f32(x)
         """)
         assert mod.i32_to_f64(42) == 42.0
         assert mod.f32_to_f64(42.0) == 42.0
         assert mod.f64_to_i32(42.0) == 42
         assert mod.f32_to_i32(42.0) == 42
+        assert mod.i32_to_f32(42) == 42.0
+        assert mod.f64_to_f32(42.5) == 42.5
+
+    def test_prebuilt_const(self):
+        src = """
+        def foo() -> f64:
+            x: f32 = 1.25
+            y: f64 = 2.5
+            return x + y
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 3.75

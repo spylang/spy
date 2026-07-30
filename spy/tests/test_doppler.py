@@ -1,9 +1,15 @@
 import textwrap
+from typing import Optional
 
 import pytest
 
+from spy import ast
+from spy.analyze.symtable import Color
 from spy.backend.spy import FQN_FORMAT, SPyBackend
+from spy.errors import SPyError
+from spy.fqn import FQN
 from spy.util import print_diff
+from spy.vm.function import W_ASTFunc
 from spy.vm.vm import SPyVM
 
 
@@ -16,16 +22,33 @@ class TestDoppler:
         self.vm = SPyVM()
         self.vm.path.append(str(self.tmpdir))
 
-    def redshift(self, src: str) -> None:
+    def import_src(self, src: str) -> None:
         f = self.tmpdir.join("test.spy")
         src = textwrap.dedent(src)
         f.write(src)
         self.vm.import_("test")
-        self.vm.redshift(error_mode="eager")
 
-    def assert_dump(self, expected: str, *, fqn_format: FQN_FORMAT = "short") -> None:
+    def redshift(self, src: str, *, error_mode="eager") -> None:
+        self.import_src(src)
+        self.vm.redshift(error_mode=error_mode)
+
+    def assert_dump(
+        self,
+        expected: str,
+        *,
+        fqn_format: FQN_FORMAT = "short",
+        funcname: Optional[str] = None,
+    ) -> None:
         b = SPyBackend(self.vm, fqn_format=fqn_format)
-        got = b.dump_mod("test").strip()
+        if funcname is not None:
+            fqn = FQN(f"test::{funcname}")
+            w_func = self.vm.globals_w[fqn]
+            assert isinstance(w_func, W_ASTFunc)
+            b.modname = "test"
+            b.dump_w_func(fqn, w_func)
+            got = b.out.build().strip()
+        else:
+            got = b.dump_mod("test").strip()
         expected = textwrap.dedent(expected).strip()
         if got != expected:
             print_diff(expected, got, "expected", "got")
@@ -148,10 +171,8 @@ class TestDoppler:
             return x + 1
 
         def foo() -> i32:
-            x: i32
-            x = 0
-            y: i32
-            y = `test::inc`(x := 1)
+            x: i32 = 0
+            y: i32 = `test::inc`(x := 1)
             return x + y
         """)
 
@@ -172,12 +193,11 @@ class TestDoppler:
             pass
 
         def main() -> None:
-            x: i32
-            x = 0
+            x: i32 = 0
             `test::foo`(x := 1)
             `test::foo`(2)
-            print_i32(x)
-            print_i32(2)
+            `_print::println[i32]`(x)
+            `_print::println[str]`('2')
         """)
 
     def test_call_blue_closure(self):
@@ -219,7 +239,7 @@ class TestDoppler:
             `test::make_foo::foo`()
 
         def `test::make_foo::fn`() -> None:
-            print_str('fn')
+            `_print::println[str]`('fn')
 
         def `test::make_foo::foo`() -> None:
             `test::make_foo::fn`()
@@ -262,42 +282,20 @@ class TestDoppler:
         self.assert_dump("""
         def foo() -> dynamic:
             return \
-`_list::list[i32]::_ListImpl::_push`(\
-`_list::list[i32]::_ListImpl::_push`(\
-`_list::list[i32]::_ListImpl::__new__`(), 1), 12)
+`list[i32]::_push`(\
+`list[i32]::_push`(\
+`list[i32]::new`(), 1), 12)
         """)
 
-    def test_type_conversion(self):
+    def test_pure_blue_call_folded(self):
         src = """
-        def foo(x: f64) -> None:
-            pass
-
-        def convert_in_call() -> None:
-            foo(42)
-
-        def convert_in_locals(x: i32) -> bool:
-            flag: bool = x
-            return x
-
-        def convert_in_conditions(x: i32) -> None:
-            if x:
-                pass
+        def foo() -> f64:
+            return 1 + 2.5
         """
         self.redshift(src)
         self.assert_dump("""
-        def foo(x: f64) -> None:
-            pass
-
-        def convert_in_call() -> None:
-            `test::foo`(`operator::i32_to_f64`(42))
-
-        def convert_in_locals(x: i32) -> bool:
-            flag: bool = `operator::i32_to_bool`(x)
-            return `operator::i32_to_bool`(x)
-
-        def convert_in_conditions(x: i32) -> None:
-            if `operator::i32_to_bool`(x):
-                pass
+        def foo() -> f64:
+            return 3.5
         """)
 
     def test_blue_namespace(self):
@@ -314,16 +312,14 @@ class TestDoppler:
         """)
         self.assert_dump("""
         def foo() -> None:
-            x: i32
-            x = `test::add[i32]::impl`(1, 2)
-            y: str
-            y = `test::add[str]::impl`('a', 'b')
+            x: i32 = `test::add[i32]::impl`(1, 2)
+            y: str = `test::add[str]::impl`('a', 'b')
 
         def `test::add[i32]::impl`(x: i32, y: i32) -> i32:
             return x + y
 
         def `test::add[str]::impl`(x: str, y: str) -> str:
-            return `operator::str_add`(x, y)
+            return `_str::methods::__add__`(x, y)
         """)
 
     def test_store_outer_var(self):
@@ -359,21 +355,39 @@ class TestDoppler:
             raise ValueError # /.../test.spy:4
         """)
 
-    def test_ast_color_map_populated(self, monkeypatch):
-        # Verify that when vm.ast_color_map is not None, redshift populates it
-        monkeypatch.setattr(self.vm, "ast_color_map", {})
+    def test_ast_color_map_populated(self):
+        self.vm.ast_color_map = {}
         src = """
         def foo(i: i32) -> i32:
-            return i + 2
+            return i + 2 * 3
         """
+        self.import_src(src)
+        w_foo_orig = self.vm.lookup_global(FQN("test::foo"))
         self.redshift(src)
+        w_foo_rs = self.vm.lookup_global(FQN("test::foo"))
 
-        # src contains 4 nodes, 3 red and 1 blue
-        assert self.vm
-        assert self.vm.ast_color_map
-        assert len(self.vm.ast_color_map) == 4
-        assert len([c for c in self.vm.ast_color_map.values() if c == "blue"]) == 1
-        assert len([c for c in self.vm.ast_color_map.values() if c == "red"]) == 3
+        def get_color(root: ast.Node, NodeType: type, src: Optional[str]) -> Color:
+            assert self.vm.ast_color_map is not None
+            node = root.find(NodeType, src)
+            return self.vm.ast_color_map[node]
+
+        foo_orig = w_foo_orig.funcdef  # type: ignore
+        foo_rs = w_foo_rs.funcdef  # type: ignore
+
+        # check the colors of the original function
+        assert get_color(foo_orig, ast.Literal, "2") == "blue"
+        assert get_color(foo_orig, ast.BinOp, "2 * 3") == "blue"
+        assert get_color(foo_orig, ast.Name, "i") == "red"
+        assert get_color(foo_orig, ast.BinOp, "i + 2 * 3") == "red"
+
+        # check the colors of the redshifted function
+        #
+        # this is the node "6". Keep in mind that get_src() always points to the
+        # original src "2 * 3"
+        assert get_color(foo_rs, ast.Const, None) == "blue"
+        #
+        # this is the "+", but it has been shifted into a call to i32_add
+        assert get_color(foo_rs, ast.Call, "i + 2 * 3") == "red"
 
     def test_dumper_uses_ast_color_map_for_bg(self, monkeypatch):
         # Verify that Dumper._dump_node passes correct bg argument based on ast_color_map
@@ -398,3 +412,184 @@ class TestDoppler:
 
         dumper._dump_node(blue_node, "test", [], text_color="turquoise")
         mock_write.assert_any_call("test", color=None, bg="blue")
+
+    def test_force_inline_not_dumped(self):
+        self.redshift("""
+        from __spy__ import force_inline
+
+        @force_inline
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        def foo() -> i32:
+            return inc(10)
+        """)
+        expected = """
+        def foo() -> i32:
+            return __block__(x$0: i32 = 10; x$0 + 1)
+        """
+        self.assert_dump(expected)
+
+    def test_force_inline_replaces_call(self):
+        self.redshift("""
+        from __spy__ import force_inline
+
+        @force_inline
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        def foo() -> i32:
+            return inc(10)
+        """)
+        expected = """
+        def foo() -> i32:
+            return __block__(x$0: i32 = 10; x$0 + 1)
+        """
+        self.assert_dump(expected, funcname="foo")
+
+    def test_force_inline_multiple_sites_unique_names(self):
+        self.redshift("""
+        from __spy__ import force_inline
+
+        @force_inline
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        def foo(a: i32, b: i32) -> i32:
+            return inc(a) + inc(b)
+        """)
+        expected = """
+        def foo(a: i32, b: i32) -> i32:
+            return __block__(x$0: i32 = a; x$0 + 1) + __block__(x$1: i32 = b; x$1 + 1)
+        """
+        self.assert_dump(expected, funcname="foo")
+
+    def test_force_inline_in_metafunc(self):
+        # see also test_force_inline.py:test_metafunc
+        self.redshift("""
+        from __spy__ import force_inline
+        from operator import OpSpec
+
+        @blue.metafunc
+        def double(m_x):
+            @force_inline
+            def impl(x: i32) -> i32:
+                return x + x
+            return OpSpec(impl)
+
+        def foo() -> i32:
+            return double(21)
+        """)
+        expected = """
+        def foo() -> i32:
+            return __block__(x$0: i32 = 21; x$0 + x$0)
+        """
+        self.assert_dump(expected, funcname="foo")
+
+    def test_nested_force_inline(self):
+        self.redshift("""
+        from __spy__ import force_inline
+
+        @force_inline
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        @force_inline
+        def add2(x: i32) -> i32:
+            return inc(inc(x))
+
+        def foo() -> i32:
+            return add2(10)
+        """)
+        expected = """
+        def foo() -> i32:
+            return __block__(x$0: i32 = 10; __block__(x$1$0: i32 = __block__(x$0$0: i32 = x$0; x$0$0 + 1); x$1$0 + 1))
+        """
+        self.assert_dump(expected, funcname="foo")
+
+    def test_pure_builtin_method(self):
+        self.redshift("""
+        def foo() -> str:
+            return str(True)
+        """)
+        self.assert_dump(
+            """
+        def foo() -> str:
+            return 'True'
+        """,
+            funcname="foo",
+        )
+
+    def test_residual_type_conversion(self):
+        src = """
+        def bar(x: f64) -> None:
+            pass
+
+        def foo(x: i32) -> f64:
+            bar(x)           # func arg conv
+            flag: bool = x   # local var conv
+            if x:            # 'if conditional' conv
+                pass
+            return x         # return value conv
+        """
+        self.redshift(src)
+        self.assert_dump("""
+        def bar(x: f64) -> None:
+            pass
+
+        def foo(x: i32) -> f64:
+            `test::bar`(`operator::i32_to_f64`(x))
+            flag: bool = `operator::i32_to_bool`(x)
+            if `operator::i32_to_bool`(x):
+                pass
+            return `operator::i32_to_f64`(x)
+       """)
+
+    def test_eager_type_conversion(self):
+        src = """
+        def bar(x: f64) -> None:
+            pass
+
+        def foo() -> f64:
+            x = 42
+            bar(x)               # func arg conv
+            var flag: bool = x   # local var conv
+            if x:                # 'if conditional' conv
+                pass
+            return x             # return value conv
+        """
+        self.redshift(src)
+        self.assert_dump("""
+        def bar(x: f64) -> None:
+            pass
+
+        def foo() -> f64:
+            `test::bar`(42.0)
+            flag: bool = True
+            if True:
+                pass
+            return 42.0
+        """)
+
+    def test_eager_conversion_becomes_static_error(self):
+        src = """
+        def foo() -> str:
+            x: object = 1
+            return x
+        """
+        with SPyError.raises(
+            "W_TypeError", match="Invalid cast. Expected `str`, got `i32`"
+        ):
+            self.redshift(src)
+
+    def test_eager_conversion_become_lazy_error(self):
+        src = """
+        def foo() -> str:
+            x: object = 1
+            return x
+        """
+        self.redshift(src, error_mode="lazy")
+        self.assert_dump("""
+        def foo() -> str:
+            raise TypeError('Invalid cast. Expected `str`, got `i32`') # /.../test.spy:4
+        """)

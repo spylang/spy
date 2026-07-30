@@ -1,0 +1,128 @@
+from posix import (
+    _FILE, _FILE_NULL, _fopen, _fread, _freadall, _freadline,
+    _fwrite, _ftell, _fseek, _fflush, _fileno, _isatty, _fclose, SEEK_SET,
+)
+from unsafe import gc_ptr, gc_alloc
+
+
+@struct
+class _FileData:
+    fp: _FILE
+    filename: str
+    mode: str
+
+
+@struct
+class file:
+    __ll__: gc_ptr[_FileData]
+
+    def __new__(filename: str, mode: str = "r") -> file:
+        data = gc_alloc[_FileData](1)
+        data.fp = _fopen(filename, mode)
+        data.filename = filename
+        data.mode = mode
+        return file.__make__(data)
+
+    def close(self) -> None:
+        _fclose(self.__ll__.fp)
+        self.__ll__.fp = _FILE_NULL
+
+    def read(self, n: int = -1) -> str:
+        fp = self.__ll__.fp
+        if fp == _FILE_NULL:
+            raise ValueError("I/O operation on closed file")
+        if n < 0:
+            return _freadall(fp)
+        else:
+            return _fread(fp, n)
+
+    def write(self, data: str) -> None:
+        fp = self.__ll__.fp
+        if fp == _FILE_NULL:
+            raise ValueError("I/O operation on closed file")
+        _fwrite(fp, data)
+
+    def writelines(self, lines: list[str]) -> None:
+        fp = self.__ll__.fp
+        if fp == _FILE_NULL:
+            raise ValueError("I/O operation on closed file")
+        for line in lines:
+            _fwrite(fp, line)
+
+    def readline(self) -> str:
+        fp = self.__ll__.fp
+        if fp == _FILE_NULL:
+            raise ValueError("I/O operation on closed file")
+        return _freadline(fp)
+
+    def tell(self) -> i32:
+        fp = self.__ll__.fp
+        if fp == _FILE_NULL:
+            raise ValueError("I/O operation on closed file")
+        return _ftell(fp)
+
+    def seek(self, offset: i32, whence: i32 = SEEK_SET) -> None:
+        fp = self.__ll__.fp
+        if fp == _FILE_NULL:
+            raise ValueError("I/O operation on closed file")
+        _fseek(fp, offset, whence)
+
+    def fileno(self) -> i32:
+        fp = self.__ll__.fp
+        if fp == _FILE_NULL:
+            raise ValueError("I/O operation on closed file")
+        return _fileno(fp)
+
+    def isatty(self) -> bool:
+        fp = self.__ll__.fp
+        if fp == _FILE_NULL:
+            raise ValueError("I/O operation on closed file")
+        return _isatty(_fileno(fp))
+
+    def flush(self) -> None:
+        fp = self.__ll__.fp
+        if fp == _FILE_NULL:
+            raise ValueError("I/O operation on closed file")
+        _fflush(fp)
+
+    def __fastiter__(self) -> file_iterator:
+        fp = self.__ll__.fp
+        return file_iterator(fp, _freadline(fp))
+
+    def __repr__(self) -> str:
+        # XXX:
+        #   1. rewrite this better as soon as we have f-strings
+        #   2. use repr(str) as soon as we have it
+        data = self.__ll__
+        if data.fp == _FILE_NULL:
+            status = "closed"
+        else:
+            status = "open"
+        return (
+            "<spy "
+            + status
+            + " file '"
+            + data.filename
+            + "', mode '"
+            + data.mode
+            + "'>"
+        )
+
+
+@struct
+class file_iterator:
+    fp: _FILE
+    line: str
+
+    def __next__(self) -> file_iterator:
+        return file_iterator(self.fp, _freadline(self.fp))
+
+    def __item__(self) -> str:
+        return self.line
+
+    def __continue_iteration__(self) -> bool:
+        return self.line != ""
+
+
+def open(filename: str, mode: str = "r") -> file:
+    return file(filename, mode)

@@ -31,7 +31,7 @@ class TestBlueMod:
     def import_(self, src: str) -> Any:
         self.write_file("test.spy", src)
         w_mod = self.vm.import_("test")
-        return InterpModuleWrapper(self.vm, w_mod)
+        return InterpModuleWrapper(self.vm, w_mod, "interp")
 
     def test_simple(self):
         mod = self.import_("""

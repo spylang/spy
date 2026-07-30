@@ -51,11 +51,12 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-# the folloing imports register all the various objects on OP
+# the following imports register all the various objects on OP
 # isort: off
 from . import opimpl_int  # noqa: F401 -- side effects
 from . import opimpl_f64  # noqa: F401 -- side effects
 from . import opimpl_f32  # noqa: F401 -- side effects
+from . import opimpl_complex128  # noqa: F401 -- side effects
 from . import opimpl_str  # noqa: F401 -- side effects
 from . import opimpl_object  # noqa: F401 -- side effects
 from . import opimpl_dynamic  # noqa: F401 -- side effects
@@ -76,6 +77,7 @@ _from_token: dict[str, W_Func] = {
     "/": OP.w_DIV,
     "//": OP.w_FLOORDIV,
     "%": OP.w_MOD,
+    "**": OP.w_POW,
     "<<": OP.w_LSHIFT,
     ">>": OP.w_RSHIFT,
     "&": OP.w_AND,
@@ -88,8 +90,11 @@ _from_token: dict[str, W_Func] = {
     ">": OP.w_GT,
     ">=": OP.w_GE,
     "[]": OP.w_GETITEM,
+    "is": OP.w_IS,
+    "is not": OP.w_ISNOT,
     "<universal_eq>": OP.w_UNIVERSAL_EQ,
     "<universal_ne>": OP.w_UNIVERSAL_NE,
+    "in": OP.w_IN,
 }
 
 _unary_from_token: dict[str, W_Func] = {"-": OP.w_NEG, "not": OP.w_NOT}

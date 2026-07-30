@@ -1,0 +1,87 @@
+"""
+This is one of the most advanced examples of SPy so far.
+It implements the basics of a generic array type using the low-level primitives
+introduced in the previous examples.
+
+Things to notice:
+  - `Array1d[DTYPE]` is a generic struct — see generic_types.spy for an introduction
+    to generic types.
+  - `Array1d` is a value type (passed by copy), but it holds a `gc_ptr` to `ArrayData`
+    which lives on the heap — so copying an `Array1d` is cheap (just a pointer copy).
+  - This is the current SPy idiom for objects that behave like references: wrap the
+    mutable heap-allocated data in a struct that holds a pointer to it.
+  - `__new__` and `__make__` are the low-level constructor protocol for structs
+    (see point.spy and smallpoint.spy).
+  - `ptr_setbytes` and `ptr_copy` are used for efficient bulk memory operations.
+"""
+
+from unsafe import gc_alloc, gc_ptr, ptr_setbytes, ptr_copy
+
+# Remember that these generic types are just @blue.generic type factories
+# parametrized with DTYPE.
+# Note that the name of the concrete type is always "Self".
+
+
+@struct
+class ArrayData[DTYPE]:
+    length: i32
+    capacity: i32
+    items: gc_ptr[DTYPE]
+
+
+@struct
+class Array1d[DTYPE]:
+    # this struct is a thin zero-cost wrapper around the "__ll__" pointer. The actual data is heap-allocated.
+    __ll__: gc_ptr[ArrayData[DTYPE]]
+
+    # note: here, Self corresponds to the concrete type Array1d[DTYPE].
+
+    def __new__(length: i32) -> Self:
+        # a pointer towards the array data
+        ll = gc_alloc[ArrayData[DTYPE]](1)
+        ll.length = length
+        ll.capacity = length
+        ll.items = gc_alloc[DTYPE](length)
+        ptr_setbytes(ll.items, 0, length)
+        return Self.__make__(ll)
+
+    def append(self, value: DTYPE) -> None:
+        ll = self.__ll__
+        if ll.length >= ll.capacity:
+            # resize needed - double the capacity
+            new_capacity = ll.capacity * 2
+            if new_capacity == 0:
+                new_capacity = 1
+            new_items = gc_alloc[DTYPE](new_capacity)
+            # copy existing items
+            ptr_copy(new_items, ll.items, ll.length)
+            ll.items = new_items
+            ll.capacity = new_capacity
+
+        ll.items[ll.length] = value
+        ll.length = ll.length + 1
+
+    def __getitem__(self, i: i32) -> DTYPE:
+        ll = self.__ll__
+        if i >= ll.length:
+            raise IndexError
+        return ll.items[i]
+
+    def __setitem__(self, i: i32, v: DTYPE) -> None:
+        ll = self.__ll__
+        if i >= ll.length:
+            raise IndexError
+        ll.items[i] = v
+
+
+def main() -> None:
+    a_floats = Array1d[f64](10)
+    a_ints = Array1d[i32](4)
+    a_ints[0] = 1
+    a_ints[1] = 2
+    a_ints[2] = 3
+    a_ints[3] = 4
+    a_ints.append(5)
+    a_ints.append(6)
+    for i in range(6):
+        print(a_ints[i])

@@ -127,20 +127,22 @@ class TestDict(CompilerTest):
         src = """
         from _dict import dict
 
-        def test() -> int:
+        def test() -> tuple[int, int]:
             d = dict[i32, i32]()
             d[10] = -1
             d[20] = -1
             d[30] = -1
             it = d.__fastiter__()
+            count = 0
             total = 0
             while it.__continue_iteration__():
-                total = total + it.__item__()
+                count += 1
+                total += it.__item__()
                 it = it.__next__()
-            return total
+            return count, total
         """
         mod = self.compile(src)
-        assert mod.test() == 60
+        assert mod.test() == (3, 60)
 
     def test_for_loop(self):
         src = """
@@ -319,3 +321,21 @@ class TestDict(CompilerTest):
         x = mod.foo()
         assert x[0] == 1
         assert x[1] == 1000
+
+    def test_iter_after_delete(self):
+        src = """
+        def test() -> i32:
+            visited = 0
+            for i in range(1, 4):
+                d = {1: 1, 2: 2, 3: 3}  # literals!
+                d.__delitem__(i)
+                for k in d:
+                    visited += 1
+            d = {1: 1}
+            d.__delitem__(1)
+            for k3 in d:
+                visited += 1
+            return visited
+        """
+        mod = self.compile(src)
+        assert mod.test() == 2 * 3

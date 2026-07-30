@@ -63,6 +63,23 @@ class W_StructType(W_Type):
             vm.add_global(w_eq.fqn, w_eq)
             vm.add_global(w_ne.fqn, w_ne)
 
+        self._backfill_ptr_fields(vm)
+
+    def _backfill_ptr_fields(self, vm: "SPyVM") -> None:
+        """
+        If ptr[T] or ref[T] were created BEFORE we were fully defined, then they
+        lack the W_PtrField members. Add them now.
+        """
+        from spy.vm.modules.unsafe.ptr import W_MemLocType
+
+        for kind in ("raw_ptr", "gc_ptr", "raw_ref", "gc_ref"):
+            fqn = FQN("unsafe").join(kind, [self.fqn])
+            w_ptrtype = vm.lookup_global_maybe(fqn)
+            if w_ptrtype is not None:
+                assert isinstance(w_ptrtype, W_MemLocType)
+                assert not w_ptrtype.is_ready
+                w_ptrtype._populate_fields()
+
     def lazy_define_from_classbody(self, body: ClassBody) -> None:
         """
         Partially define the struct type.
@@ -166,12 +183,12 @@ class W_StructType(W_Type):
 
         def cmp_field(w_field: W_StructField) -> ast.Expr:
             loc = w_field.loc
-            a = ast.GetAttr(loc, ast.Name(loc, "a"), ast.StrConst(loc, w_field.name))
-            b = ast.GetAttr(loc, ast.Name(loc, "b"), ast.StrConst(loc, w_field.name))
+            a = ast.GetAttr(loc, ast.Name(loc, "a"), ast.StrLiteral(loc, w_field.name))
+            b = ast.GetAttr(loc, ast.Name(loc, "b"), ast.StrLiteral(loc, w_field.name))
             return ast.CmpOp(Loc.here(), "==", a, b)
 
         if not fields_w:
-            result: ast.Expr = ast.Constant(func_loc, True)
+            result: ast.Expr = ast.Literal(func_loc, True)
         else:
             result = cmp_field(fields_w[0])
             for w_field in fields_w[1:]:
@@ -195,6 +212,7 @@ class W_StructType(W_Type):
                 ast.FuncArg(func_loc, "b", self_type, "simple"),
             ],
             return_type=ast.FQNConst(func_loc, B.w_bool.fqn),
+            defaults=[],
             docstring=None,
             body=[stmt],
             decorators=[],
@@ -214,7 +232,9 @@ class W_StructType(W_Type):
         params = [FuncParam(self, "simple"), FuncParam(self, "simple")]
         w_functype = W_FuncType.new(params, w_restype=B.w_bool)
         fqn = self.fqn.join(name)
-        return W_ASTFunc(w_functype, fqn, funcdef, closure=())
+        return W_ASTFunc(
+            w_functype, fqn, funcdef, closure=(), defaults_w=[], lowering_stage="source"
+        )
 
     def repr_hints(self) -> list[str]:
         return super().repr_hints() + ["struct"]
@@ -256,7 +276,7 @@ class W_Struct(W_Object):
     implementation in the interpreter. We might want to change the rules in
     the future.
 
-    The interp-level represenation of structs on heap and stack is
+    The interp-level representation of structs on heap and stack is
     very different:
 
       - heap: gc_alloc() allocs a bunch of bytes and the fields are
@@ -296,7 +316,7 @@ class W_Struct(W_Object):
     def spy_key(self, vm: "SPyVM") -> Any:
         if not self.w_structtype.spy_key_is_valid:
             # see the comment in W_StructType.define_from_classbody
-            T = self.w_structtype.fqn.human_name
+            T = self.w_structtype.fqn.human_name(vm)
             raise WIP(
                 f"type {T} cannot be cached because it defines __eq__ or __ne__",
             )
@@ -304,16 +324,13 @@ class W_Struct(W_Object):
         return ("struct", self.w_structtype.spy_key(vm)) + tuple(values_key)
 
     def spy_unwrap(self, vm: "SPyVM") -> Any:
-        fqn = self.w_structtype.fqn
-
-        # hack hack hack, as we don't have a better way to check whether w_T is a 'list'
-        is_list = str(fqn).startswith("_list::list[")
-        if is_list:
+        if vm.is_list_type(self.w_structtype):
             return unwrap_list(vm, self)
 
-        is_dict = str(fqn).startswith("_dict::dict[")
-        if is_dict:
+        if vm.is_dict_type(self.w_structtype):
             return unwrap_dict(vm, self)
+
+        fqn = self.w_structtype.fqn
 
         fields = {key: w_obj.spy_unwrap(vm) for key, w_obj in self.values_w.items()}
         return UnwrappedStruct(fqn, fields)
@@ -338,7 +355,7 @@ class W_StructField(W_Object):
 
     def __repr__(self) -> str:
         n = self.name
-        t = self.w_T.fqn.human_name
+        t = self.w_T.fqn.debug_human_name
         return f"<spy struct field {n}: `{t}` (+{self.offset})>"
 
     @builtin_method("__get__", color="blue", kind="metafunc")
@@ -432,22 +449,13 @@ def unwrap_dict(vm: "SPyVM", w_dict: W_Object) -> dict[Any, Any]:
     w_it = vm.call_w(w_fastiter, [w_dict], color="red")
     w_it_T = vm.dynamic_type(w_it)
     w_continue_iteration = vm.lookup_global(w_it_T.fqn.join("__continue_iteration__"))
-    is_continue = vm.call_w(w_continue_iteration, [w_it], color="red")
+    w_item_method = vm.lookup_global(w_it_T.fqn.join("__item__"))
     w_next = vm.lookup_global(w_it_T.fqn.join("__next__"))
-    w_it = vm.call_w(w_next, [w_it], color="red")
 
-    while vm.unwrap_bool(is_continue):
-        w_it_T = vm.dynamic_type(w_it)
-        w_item_method = vm.lookup_global(w_it_T.fqn.join("__item__"))
+    while vm.unwrap_bool(vm.call_w(w_continue_iteration, [w_it], color="red")):
         w_key = vm.call_w(w_item_method, [w_it], color="red")
         w_val = vm.getitem_w(w_dict, w_key, color="red")
-        result[vm.unwrap(w_key)] = vm.unwrap(w_val)  # append key,value
-
-        w_next = vm.lookup_global(w_it_T.fqn.join("__next__"))
+        result[vm.unwrap(w_key)] = vm.unwrap(w_val)
         w_it = vm.call_w(w_next, [w_it], color="red")
-        w_continue_iteration = vm.lookup_global(
-            w_it_T.fqn.join("__continue_iteration__")
-        )
-        is_continue = vm.call_w(w_continue_iteration, [w_it], color="red")
 
     return result

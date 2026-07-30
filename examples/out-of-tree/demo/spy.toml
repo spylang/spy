@@ -1,0 +1,14 @@
+# SPy project manifest. Must sit next to the entry-point .spy file.
+#
+# `extra-vm-modules` is a list of paths (relative to this file) pointing to
+# out-of-tree builtin VM modules to load before running the program. It is
+# equivalent to passing `--extra-vm-module <path>` on the command line, e.g.:
+#
+#     spy --extra-vm-module ../qrcodegen-spy main.spy
+#
+# CLI flags are additive on top of this file. To ignore spy.toml entirely,
+# pass `--no-spy-toml`.
+extra-vm-modules = [
+    "../spyvm_qrcodegen",
+    "../spyvm_libmagic",
+]

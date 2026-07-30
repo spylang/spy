@@ -1,7 +1,7 @@
+import ast as py_ast
 import textwrap
 
-from spy.ast_dump import dump
-from spy.magic_py_parse import magic_py_parse, preprocess
+from spy.magic_py_parse import magic_py_parse, preprocess, undo_preprocess
 from spy.parser import Parser
 from spy.tests.support import expect_errors
 
@@ -10,7 +10,7 @@ def test_preprocess_plain():
     src1 = textwrap.dedent("""
     x: i32 = 100
     """)
-    src2, varkind_locs = preprocess(src1)
+    src2 = preprocess(src1)
     assert src1 == src2
 
 
@@ -19,14 +19,12 @@ def test_preprocess_var():
     var x: i32 = 100
     var    y     : i32 = 200
     """)
-    src2, varkind_locs = preprocess(src1)
+    src2 = preprocess(src1)
     expected = textwrap.dedent("""
-    x    : i32 = 100
-    y            : i32 = 200
+    var·x: i32 = 100
+    var····y     : i32 = 200
     """)
     assert src2 == expected
-    assert len(varkind_locs) == 2
-    assert list(varkind_locs.values()) == ["var", "var"]
 
 
 def test_preprocess_const():
@@ -34,14 +32,38 @@ def test_preprocess_const():
     const x: i32 = 100
     const    y     : i32 = 200
     """)
-    src2, varkind_locs = preprocess(src1)
+    src2 = preprocess(src1)
     expected = textwrap.dedent("""
-    x      : i32 = 100
-    y              : i32 = 200
+    const·x: i32 = 100
+    const····y     : i32 = 200
     """)
     assert src2 == expected
-    assert len(varkind_locs) == 2
-    assert list(varkind_locs.values()) == ["const", "const"]
+
+
+def test_undo_preprocess_var_and_const():
+    src = textwrap.dedent(
+        """
+        def main():
+            var·x: i32 = 1
+            const····y: i32 = 2
+        """
+    )
+
+    got = undo_preprocess(src)
+    expected = textwrap.dedent(
+        """
+        def main():
+            var x: i32 = 1
+            const y: i32 = 2
+        """
+    )
+    assert got == expected
+
+
+def test_undo_preprocess_non_spy_names_unchanged():
+    src = "value = var_name + const_value\n"
+    got = undo_preprocess(src)
+    assert got == src
 
 
 def test_magic_py_parse():
@@ -52,33 +74,12 @@ def test_magic_py_parse():
 
     """)
     py_mod = magic_py_parse(src)
-    dumped = dump(py_mod, use_colors=False)
-    expected = textwrap.dedent("""
-    py:Module(
-        body=[
-            py:AnnAssign(
-                target=py:Name(id='x', ctx=py:Store(), spy_varkind='var'),
-                annotation=py:Name(id='i32', ctx=py:Load(), spy_varkind=None),
-                value=py:Constant(value=100, kind=None),
-                simple=1,
-            ),
-            py:AnnAssign(
-                target=py:Name(id='y', ctx=py:Store(), spy_varkind='const'),
-                annotation=py:Name(id='i32', ctx=py:Load(), spy_varkind=None),
-                value=py:Constant(value=200, kind=None),
-                simple=1,
-            ),
-            py:AnnAssign(
-                target=py:Name(id='z', ctx=py:Store(), spy_varkind=None),
-                annotation=py:Name(id='i32', ctx=py:Load(), spy_varkind=None),
-                value=py:Constant(value=300, kind=None),
-                simple=1,
-            ),
-        ],
-        type_ignores=[],
-    )
-    """)
-    assert dumped.strip() == expected.strip()
+    targets = [
+        stmt.target.id
+        for stmt in py_mod.body
+        if isinstance(stmt, py_ast.AnnAssign) and isinstance(stmt.target, py_ast.Name)
+    ]
+    assert targets == ["var·x", "const·y", "z"]
 
 
 def test_magic_py_parse_error(tmpdir):

@@ -98,3 +98,33 @@ class TestRange(CompilerTest):
         assert mod.fmt2(5, 5) == ""
         assert mod.fmt3(0, 0, 1) == ""
         assert mod.fmt3(10, 10, -1) == ""
+
+    def test_contains(self):
+        src = """
+        from _range import range
+
+        def range1_contains(x: int, n: int) -> bool:
+            return x in range(n)
+
+        def range3_contains(x: int, start: int, stop: int, step: int) -> bool:
+            return x in range(start, stop, step)
+        """
+        mod = self.compile(src)
+
+        assert mod.range1_contains(0, 3) == True
+        assert mod.range1_contains(2, 3) == True
+        assert mod.range1_contains(3, 3) == False
+        assert mod.range1_contains(-1, 3) == False
+
+        assert mod.range3_contains(4, 0, 10, 2) == True
+        assert mod.range3_contains(3, 0, 10, 2) == False
+
+        assert mod.range3_contains(1, 1, 10, 3) == True
+        assert mod.range3_contains(4, 1, 10, 3) == True
+        assert mod.range3_contains(2, 1, 10, 3) == False
+
+        assert mod.range3_contains(10, 10, 0, -1) == True
+        assert mod.range3_contains(5, 10, 0, -1) == True
+        assert mod.range3_contains(0, 10, 0, -1) == False
+        assert mod.range3_contains(8, 10, 0, -2) == True
+        assert mod.range3_contains(7, 10, 0, -2) == False

@@ -1,10 +1,14 @@
+from dataclasses import dataclass
 from typing import Any, Optional
 
+import py.path
+
 import spy
+from spy.build.wasm_bundle import get_or_build_bundle
 from spy.errors import SPyError
 from spy.llwasm import HostModule, LLWasmInstance, LLWasmModule, WasmTrap
 from spy.location import Loc
-from spy.platform import IS_BROWSER, IS_NODE, IS_PYODIDE
+from spy.platform import IS_BROWSER, IS_DOCS_BUILD, IS_NODE, IS_PYODIDE
 
 SRC = spy.ROOT.join("libspy", "src")
 INCLUDE = spy.ROOT.join("libspy", "include")
@@ -15,7 +19,7 @@ DEPS = spy.ROOT.join("libspy", "deps")
 if IS_NODE:
     LIBSPY_WASM = BUILD.join("emscripten", "debug", "libspy.mjs")
     LLMOD = None
-elif IS_BROWSER:
+elif IS_BROWSER or IS_DOCS_BUILD:
     LIBSPY_WASM = None  # type: ignore    # needs to be set by the embedder
     LLMOD = None
 else:
@@ -28,6 +32,36 @@ else:
 # is it correct to always use debug/libspy.wasm? For tests it's surely fine
 # since we always compile them with SPY_DEBUG, but we need to double check
 # what to do when we do e.g. spy build --release fine sine
+
+
+def get_LLMOD(
+    extra_archives: list[py.path.local] = [],
+    *,
+    force_rebuild: bool = False,
+) -> LLWasmModule:
+    """
+    Return a LLWasmModule for libspy, optionally bundled with extra .a archives.
+
+    When extra_archives is empty, returns the prebuilt LLMOD (no build step).
+    When extra_archives is non-empty, links libspy.a + each extra archive into
+    a single bundle (cached by content hash) and returns a LLWasmModule for it.
+    """
+    if not extra_archives:
+        assert LLMOD is not None
+        return LLMOD
+
+    for archive in extra_archives:
+        if not archive.check(file=True):
+            raise SPyError(
+                "W_ImportError",
+                f"cannot find the archive '{archive}'.\n"
+                f"Did you forget to build the spyvm extension module?",
+            )
+
+    libspy_a = BUILD.join("wasi", "debug", "libspy.a")
+    all_archives = [libspy_a] + list(extra_archives)
+    bundle_path = get_or_build_bundle(all_archives, force_rebuild=force_rebuild)
+    return LLWasmModule(str(bundle_path))
 
 
 async def async_get_LLMOD() -> LLWasmModule:
@@ -49,7 +83,7 @@ class LibSPyHost(HostModule):
         self.panic_filename = None
         self.panic_lineno = 0
 
-    def _read_str(self, ptr: int) -> str:
+    def _read_cstr(self, ptr: int) -> str:
         # ptr is const char*
         ba = self.ll.mem.read_cstr(ptr)
         return ba.decode("utf-8")
@@ -57,12 +91,12 @@ class LibSPyHost(HostModule):
     # ========== WASM imports ==========
 
     def env_spy_debug_log(self, ptr: int) -> None:
-        s = self._read_str(ptr)
+        s = self._read_cstr(ptr)
         self.log.append(s)
         print("[log]", s)
 
     def env_spy_debug_log_i32(self, ptr: int, n: int) -> None:
-        s = self._read_str(ptr)
+        s = self._read_cstr(ptr)
         msg = f"{s} {n}"
         self.log.append(msg)
         print("[log]", msg)
@@ -74,10 +108,28 @@ class LibSPyHost(HostModule):
         assert ptr_etype != 0
         assert ptr_msg != 0
         assert ptr_fname != 0
-        self.panic_etype = self._read_str(ptr_etype)
-        self.panic_message = self._read_str(ptr_msg)
-        self.panic_filename = self._read_str(ptr_fname)
+        self.panic_etype = self._read_cstr(ptr_etype)
+        self.panic_message = self._read_cstr(ptr_msg)
+        self.panic_filename = self._read_cstr(ptr_fname)
         self.panic_lineno = lineno
+
+
+@dataclass
+class StrLayout:
+    # See also the struct _spy_StrObject_layout in str.h
+    size: int
+    length_offset: int
+    hash_offset: int
+    utf8_offset: int
+
+
+@dataclass
+class BytesLayout:
+    # See also the struct _spy_BytesObject_layout in bytes.h
+    size: int
+    length_offset: int
+    hash_offset: int
+    data_offset: int
 
 
 class LLSPyInstance(LLWasmInstance):
@@ -96,6 +148,34 @@ class LLSPyInstance(LLWasmInstance):
         self.libspy = LibSPyHost()
         hostmods = [self.libspy] + hostmods
         super().__init__(llmod, hostmods, instance=instance)
+        layout = self.call("_spy_StrObject_layout")
+        self.str_layout = StrLayout(*layout)
+        blayout = self.call("_spy_BytesObject_layout")
+        self.bytes_layout = BytesLayout(*blayout)
+
+    def read_bytes(self, ptr: int) -> tuple[int, int, bytes]:
+        """
+        Read a spy_BytesObject at ptr from linear memory.
+        Returns (length, hash, data_bytes).
+        """
+        layout = self.bytes_layout
+        length = self.mem.read_i32(ptr + layout.length_offset)
+        hash_ = self.mem.read_i32(ptr + layout.hash_offset)
+        data_ptr = self.mem.read_i32(ptr + layout.data_offset)
+        data = bytes(self.mem.read(data_ptr, length))
+        return length, hash_, data
+
+    def read_str(self, ptr: int) -> tuple[int, int, bytes]:
+        """
+        Read a spy_StrObject at ptr from linear memory.
+        Returns (length, hash, utf8_bytes).
+        """
+        layout = self.str_layout
+        length = self.mem.read_i32(ptr + layout.length_offset)
+        hash_ = self.mem.read_i32(ptr + layout.hash_offset)
+        utf8_ptr = self.mem.read_i32(ptr + layout.utf8_offset)
+        utf8 = bytes(self.mem.read(utf8_ptr, length))
+        return length, hash_, utf8
 
     def call(self, name: str, *args: Any) -> Any:
         try:

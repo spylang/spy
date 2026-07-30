@@ -103,6 +103,30 @@ class TestScopeAnalyzer:
             "i32": MatchSymbol("i32", "const", "explicit", level=1),
         }
 
+    def test_capture_global(self):
+        scopes = self.analyze("""
+        var a: i32 = 0
+        def foo() -> None:
+            a = 1
+            b = 2
+        def bar() -> None:
+            a, b = 3, 4
+        """)
+        foo_def = self.mod.get_funcdef("foo")
+        foo_scope = scopes.by_funcdef(foo_def)
+        assert foo_scope._symbols == {
+            "a": MatchSymbol("a", "var", "explicit", storage="cell", level=1),
+            "b": MatchSymbol("b", "const", "auto"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+        }
+        bar_def = self.mod.get_funcdef("bar")
+        bar_scope = scopes.by_funcdef(bar_def)
+        assert bar_scope._symbols == {
+            "a": MatchSymbol("a", "var", "explicit", storage="cell", level=1),
+            "b": MatchSymbol("b", "const", "auto"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+        }
+
     def test_funcargs_and_locals(self):
         scopes = self.analyze("""
         def foo(a: i32) -> i32:
@@ -464,6 +488,33 @@ class TestScopeAnalyzer:
             "i32": MatchSymbol("i32", "const", "explicit", level=2),
         }
 
+    def test_generic_class(self):
+        scopes = self.analyze("""
+        @struct
+        class Foo[T]:
+            x: T
+
+            def foo(self) -> T:
+                return self.x
+        """)
+        gclassdef = self.mod.get_generic_classdef("Foo")
+        scope = scopes.by_generic_classdef(gclassdef)
+        assert scope.name == "test::Foo"
+        assert scope.color == "blue"
+        assert scope._symbols == {
+            "T": MatchSymbol("T", "const", "blue-param"),
+            "Self": MatchSymbol("Self", "const", "classdef"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+        }
+
+        inner_scope = scopes.by_classdef(gclassdef.inner)
+        assert inner_scope.name == "test::Foo::Self"
+        assert inner_scope._symbols == {
+            "x": MatchSymbol("x", "var", "class-field"),
+            "foo": MatchSymbol("foo", "const", "funcdef"),
+            "T": MatchSymbol("T", "const", "blue-param", level=1),
+        }
+
     def test_vararg(self):
         scopes = self.analyze("""
         def foo(a: i32, *args: str) -> None:
@@ -528,6 +579,32 @@ class TestScopeAnalyzer:
             "inner": MatchSymbol("inner", "const", "funcdef"),
             "@return": MatchSymbol("@return", "var", "auto"),
             "deco": MatchSymbol("deco", "const", "funcdef", level=1),
+        }
+
+    def test_generic_args(self):
+        scopes = self.analyze("""
+        def foo[T](x: T):
+            v: T = 1
+        """)
+
+        gfuncdef = self.mod.get_generic_funcdef("foo")
+        scope = scopes.by_generic_funcdef(gfuncdef)
+        assert scope.name == "test::foo"
+        assert scope.color == "blue"
+        assert scope._symbols == {
+            "T": MatchSymbol("T", "const", "blue-param"),
+            "__impl": MatchSymbol("__impl", "const", "funcdef"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+        }
+
+        inner_scope = scopes.by_funcdef(gfuncdef.inner)
+        assert inner_scope.name == "test::foo::__impl"
+        assert inner_scope.color == "red"
+        assert inner_scope._symbols == {
+            "x": MatchSymbol("x", "var", "red-param"),
+            "v": MatchSymbol("v", "const", "auto"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+            "T": MatchSymbol("T", "const", "blue-param", level=1),
         }
 
     def test_symbol_not_found(self):
@@ -653,6 +730,23 @@ class TestScopeAnalyzer:
             "a": MatchSymbol("a", "const", "blue-param"),
             "args": MatchSymbol("args", "const", "blue-param"),
             "@return": MatchSymbol("@return", "var", "auto"),
+        }
+
+    def test_default_args(self):
+        scopes = self.analyze("""
+        MYCONST = 42
+
+        def outer() -> None:
+            def foo(b: i32 = MYCONST) -> None:
+                pass
+        """)
+        outer_def = self.mod.get_funcdef("outer")
+        outer_scope = scopes.by_funcdef(outer_def)
+        assert outer_scope._symbols == {
+            "foo": MatchSymbol("foo", "const", "funcdef"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+            "i32": MatchSymbol("i32", "const", "explicit", level=2),
+            "MYCONST": MatchSymbol("MYCONST", "const", "global-const", level=1),
         }
 
     def test_list_literal(self):

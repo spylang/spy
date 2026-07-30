@@ -16,7 +16,7 @@ class W_Property(W_Object):
         self.w_func = w_func
 
     def __repr__(self) -> str:
-        return f"<spy property, func=`{self.w_func.fqn.human_name}`>"
+        return f"<spy property, func=`{self.w_func.fqn.debug_human_name}`>"
 
     @builtin_method("__new__", color="blue")
     @staticmethod

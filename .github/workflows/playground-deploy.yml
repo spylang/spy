@@ -23,42 +23,44 @@ jobs:
     env:
       SPY_WERROR: true
 
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v2
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.1.0
         with:
-          python-version: "3.13"
+          enable-cache: true
 
-      - name: Install ziglang
-        run: python -m pip install ziglang==0.13.0
+      - name: Install venv
+        run: |
+          # we need to have spy installed BEFORE the "build libspy" pass because the Makefile calls `python -m spy.build.flags`
+          uv sync --no-dev --locked
 
       - name: Setup Emscripten
         uses: mymindstorm/setup-emsdk@v14
 
       - name: Build libspy
-        run: make -C spy/libspy TARGET=emscripten
+        run: uv run make -C spy/libspy TARGET=emscripten BUILD_TYPE=debug
 
       - name: Build Python wheel
         run: |
-          python -m pip install --upgrade pip build
-          python -m build --wheel
+          uv run python -m build --wheel
 
       - name: Update main.py with wheel filename
         run: |
-          VERSION=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          VERSION=$(uv run python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
           WHEEL_NAME="spylang-${VERSION}-py3-none-any.whl"
           sed -i "s|spylang-.*-py3-none-any\.whl|${WHEEL_NAME}|g" playground/main.py
 
       - name: Copy built files to playground
         run: |
-          cp spy/libspy/build/emscripten/release/libspy.mjs playground/
-          cp spy/libspy/build/emscripten/release/libspy.wasm playground/
+          cp spy/libspy/build/emscripten/debug/libspy.mjs playground/
+          cp spy/libspy/build/emscripten/debug/libspy.wasm playground/
           cp dist/spylang-*.whl playground/
           cp -r assets playground/
+          mkdir playground/examples
+          cp -r examples/[1-9]_* playground/examples
 
       - name: Remove build files from playground
         run: rm -f playground/Makefile

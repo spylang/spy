@@ -5,12 +5,14 @@
 import ast as py_ast
 import dataclasses
 import typing
+from abc import abstractmethod
 from dataclasses import dataclass, field
 from typing import (
     TYPE_CHECKING,
     Any,
     Iterator,
     Optional,
+    Sequence,
     Type,
     dataclass_transform,
     no_type_check,
@@ -22,7 +24,7 @@ from spy.location import Loc
 from spy.util import extend
 
 if TYPE_CHECKING:
-    from spy.vm.object import W_Type
+    from spy.vm.object import W_Object, W_Type
     from spy.vm.vm import SPyVM
 
 ClassKind = typing.Literal["class", "struct"]
@@ -121,6 +123,12 @@ class Node:
         for node in self.get_children():
             yield from node.walk(cls)
 
+    def walk_postorder(self, cls: Optional[type] = None) -> Iterator["Node"]:
+        for node in self.get_children():
+            yield from node.walk_postorder(cls)
+        if cls is None or isinstance(self, cls):
+            yield self
+
     def get_children(self) -> Iterator["Node"]:
         for f in self.__dataclass_fields__.values():
             value = getattr(self, f.name)
@@ -131,6 +139,18 @@ class Node:
                     if isinstance(item, Node):
                         yield item
 
+    def find(self, cls: type, src: Optional[str] = None) -> "Node":
+        """
+        Recursively walk the node to find the matching children.
+
+        The matching node much be of type `cls`, and point to the given `src` (if
+        specified).
+        """
+        for children in self.walk(cls):
+            if src is None or children.loc.get_src() == src:
+                return children
+        raise KeyError(f"Cannot find node {cls} with src `{src}`")
+
     def shortrepr(self) -> Optional[str]:
         """
         Return a short string to append to the class name, use by
@@ -139,6 +159,19 @@ class Node:
         Return None to use just the class name.
         """
         return None
+
+    def assert_fully_typed(self, extra_msg: str = "") -> None:
+        """
+        Check that all Expr descendants (including self, if it is an Expr)
+        have a non-None w_T. Raise an Exception otherwise.
+        """
+        for node in self.walk(Expr):
+            assert isinstance(node, Expr)
+            if node.w_T is None:
+                msg = f"Node `{node.__class__.__name__}` is untyped"
+                if extra_msg:
+                    msg = f"{msg}: {extra_msg}"
+                raise Exception(msg)
 
     def visit(self, prefix: str, visitor: Any, *args: Any) -> None:
         """
@@ -150,7 +183,7 @@ class Node:
           - if it exists, it is called. It is responsibility of the method to
             visit its children, if wanted
 
-          - if it doesn't exist, we recurively visit its children
+          - if it doesn't exist, we recursively visit its children
         """
         cls = self.__class__.__name__
         methname = f"{prefix}_{cls}"
@@ -178,12 +211,30 @@ class Module(Node):
                 return decl.funcdef
         raise KeyError(name)
 
+    def get_generic_funcdef(self, name: str) -> "GenericFuncDef":
+        """
+        Search for the GenericFuncDef with the given name.
+        """
+        for decl in self.decls:
+            if isinstance(decl, GlobalGenericFuncDef) and decl.funcdef.name == name:
+                return decl.funcdef
+        raise KeyError(name)
+
     def get_classdef(self, name: str) -> "ClassDef":
         """
         Search for the ClassDef with the given name.
         """
         for decl in self.decls:
             if isinstance(decl, GlobalClassDef) and decl.classdef.name == name:
+                return decl.classdef
+        raise KeyError(name)
+
+    def get_generic_classdef(self, name: str) -> "GenericClassDef":
+        """
+        Search for the GenericClassDef with the given name.
+        """
+        for decl in self.decls:
+            if isinstance(decl, GlobalGenericClassDef) and decl.classdef.name == name:
                 return decl.classdef
         raise KeyError(name)
 
@@ -198,6 +249,11 @@ class GlobalFuncDef(Decl):
 
 
 @astnode
+class GlobalGenericFuncDef(Decl):
+    funcdef: "GenericFuncDef"
+
+
+@astnode
 class GlobalVarDef(Decl):
     vardef: "VarDef"
 
@@ -205,6 +261,11 @@ class GlobalVarDef(Decl):
 @astnode
 class GlobalClassDef(Decl):
     classdef: "ClassDef"
+
+
+@astnode
+class GlobalGenericClassDef(Decl):
+    classdef: "GenericClassDef"
 
 
 @astnode
@@ -247,7 +308,7 @@ class Expr(Node):
      0    :=
     """
 
-    # precedence must be overriden by subclasses. The weird type comment is
+    # precedence must be overridden by subclasses. The weird type comment is
     # needed to make mypy happy
     precedence = "<Expr.precedence not set>"  # type: int # type: ignore
 
@@ -270,21 +331,21 @@ class Auto(Expr):
 
 
 @astnode
-class Constant(Expr):
+class Literal(Expr):
     precedence = 100  # the highest
     value: object
 
     def __post_init__(self) -> None:
-        assert type(self.value) is not str, "use StrConst instead"
+        assert type(self.value) is not str, "use StrLiteral instead"
 
     def shortrepr(self) -> Optional[str]:
         return str(self.value)
 
 
 @astnode
-class StrConst(Expr):
+class StrLiteral(Expr):
     """
-    Like Constant, but for strings.
+    Like Literal, but for strings.
 
     The reason we have a specialized node is that we want to use it for fields
     than MUST be strings, like GetAttr.attr or Assign.target.
@@ -296,18 +357,24 @@ class StrConst(Expr):
     def shortrepr(self) -> Optional[str]:
         return repr(self.value)
 
+    def as_typed_node(self) -> "StrLiteral":
+        from spy.vm.b import B
+
+        assert self.w_T is None
+        return self.replace(w_T=B.w_str)
+
 
 @astnode
-class LocConst(Expr):
+class BytesLiteral(Expr):
     """
-    Like Constant, but for W_Locs.
-
-    The reason for this is that we treat W_Locs as value types and we don't
-    want to give them an FQN just for redshifting.
+    Like Literal, but for bytes objects (b"..." literals).
     """
 
     precedence = 100  # the highest
-    value: Loc
+    value: bytes
+
+    def shortrepr(self) -> Optional[str]:
+        return repr(self.value)
 
 
 @astnode
@@ -360,7 +427,7 @@ class Slice(Expr):
 class CallMethod(Expr):
     precedence = 17  # higher than GetAttr
     target: Expr
-    method: StrConst
+    method: StrLiteral
     args: list[Expr]
 
 
@@ -368,7 +435,7 @@ class CallMethod(Expr):
 class GetAttr(Expr):
     precedence = 16
     value: Expr
-    attr: StrConst
+    attr: StrLiteral
 
 
 @astnode
@@ -392,6 +459,21 @@ class BinOp(Expr):
         "@":  12,
         "**": 14,
     }
+    _associativity = {
+        "|":  "L",
+        "^":  "L",
+        "&":  "L",
+        "<<": "L",
+        ">>": "L",
+        "+":  "L",
+        "-":  "L",
+        "*":  "L",
+        "/":  "L",
+        "//": "L",
+        "%":  "L",
+        "@":  "L",
+        "**": "R",
+    }
     # fmt: on
 
     @property
@@ -401,6 +483,14 @@ class BinOp(Expr):
     # this is just to make mypy happy
     @precedence.setter
     def precedence(self, newval: int) -> None:
+        raise TypeError("readonly attribute")
+
+    @property
+    def associativity(self) -> str:
+        return self._associativity[self.op]
+
+    @associativity.setter
+    def associativity(self, newval: str) -> None:
         raise TypeError("readonly attribute")
 
     def shortrepr(self) -> Optional[str]:
@@ -485,7 +575,7 @@ class UnaryOp(Expr):
 @astnode
 class AssignExpr(Expr):
     precedence = 0
-    target: StrConst
+    target: StrLiteral
     value: Expr
 
 
@@ -514,6 +604,7 @@ class FuncDef(Stmt):
     name: str
     args: list[FuncArg]
     return_type: "Expr"
+    defaults: list[Expr]
     docstring: Optional[str]
     body: list["Stmt"]
     decorators: list["Expr"]
@@ -532,6 +623,27 @@ class FuncDef(Stmt):
 
 
 @astnode
+class GenericFuncDef(Stmt):
+    """
+    If you have this:
+
+        def add[T](x: T, y: T) -> T:
+            return x + y
+
+    Then GenericFuncDef represents the "outer" function. Its argument list contains "T".
+    The "inner" funcdef is "def __impl(x: T, y: T) -> T: ..."
+    """
+
+    name: str
+    args: list[FuncArg]
+    inner: FuncDef
+    symtable: Any = field(repr=False, default=None)
+
+    def shortrepr(self) -> Optional[str]:
+        return self.name
+
+
+@astnode
 class ClassDef(Stmt):
     body_loc: Loc
     name: str
@@ -542,6 +654,28 @@ class ClassDef(Stmt):
 
     def shortrepr(self) -> Optional[str]:
         return f"{self.kind} {self.name}"
+
+
+@astnode
+class GenericClassDef(Stmt):
+    """
+    If you have this:
+
+        @struct
+        class Point[T]:
+            x: T
+            y: T
+
+    Then GenericClassDef represents the "outer" function. Its argument list contains "T".
+    """
+
+    name: str
+    args: list[FuncArg]
+    inner: ClassDef
+    symtable: Any = field(repr=False, default=None)
+
+    def shortrepr(self) -> Optional[str]:
+        return self.name
 
 
 @astnode
@@ -557,7 +691,7 @@ class Return(Stmt):
 @astnode
 class VarDef(Stmt):
     kind: Optional[VarKind]
-    name: StrConst
+    name: StrLiteral
     type: Expr
     value: Optional[Expr]
 
@@ -572,21 +706,38 @@ class StmtExpr(Stmt):
 
 
 @astnode
-class Assign(Stmt):
-    target: StrConst
-    value: Expr
+class AssignTarget(Node):
+    @abstractmethod
+    def flatten(self) -> Iterator[StrLiteral]: ...
 
 
 @astnode
-class UnpackAssign(Stmt):
-    targets: list[StrConst]
+class SingleTarget(AssignTarget):
+    name: StrLiteral
+
+    def flatten(self) -> Iterator[StrLiteral]:
+        yield self.name
+
+
+@astnode
+class UnpackTarget(AssignTarget):
+    targets: Sequence[AssignTarget]
+
+    def flatten(self) -> Iterator[StrLiteral]:
+        for target in self.targets:
+            yield from target.flatten()
+
+
+@astnode
+class Assign(Stmt):
+    target: AssignTarget
     value: Expr
 
 
 @astnode
 class AugAssign(Stmt):
     op: str
-    target: StrConst
+    target: StrLiteral
     value: Expr
 
     def shortrepr(self) -> Optional[str]:
@@ -596,7 +747,7 @@ class AugAssign(Stmt):
 @astnode
 class SetAttr(Stmt):
     target: Expr
-    attr: StrConst
+    attr: StrLiteral
     value: Expr
 
 
@@ -655,7 +806,7 @@ class While(Stmt):
 @astnode
 class For(Stmt):
     seq: int  # unique id within a funcdef
-    target: StrConst
+    target: StrLiteral
     iter: Expr
     body: list[Stmt]
 
@@ -687,6 +838,25 @@ class Continue(Stmt):
 # only by the ASTFrame and/or Doppler. In other words, they are not part of
 # the proper AST-which-represent-the-syntax-of-the-language, but they are part
 # of the AST-which-we-use-as-IR
+
+
+@astnode
+class Const(Expr):
+    """
+    Hold a primitive wrapped constant.
+
+    It's similar to ast.Literal, but the former is created only by the parser and
+    carries a .value which is an arbitrary Python object, while Const carries a SPy
+    *wrapped* object.
+
+    ast.Const is produced during redshift and always has w_T set.
+    """
+
+    precedence = 100  # the highest
+    w_val: "W_Object"
+
+    def shortrepr(self) -> Optional[str]:
+        return repr(self.w_val)
 
 
 @astnode
@@ -729,13 +899,13 @@ class NameOuterCell(Expr):
 
 @astnode
 class AssignLocal(Stmt):
-    target: StrConst
+    target: StrLiteral
     value: Expr
 
 
 @astnode
 class AssignCell(Stmt):
-    target: StrConst
+    target: StrLiteral
     target_fqn: FQN
     value: Expr
 
@@ -743,13 +913,34 @@ class AssignCell(Stmt):
 @astnode
 class AssignExprLocal(Expr):
     precedence = 0
-    target: StrConst
+    target: StrLiteral
     value: Expr
 
 
 @astnode
 class AssignExprCell(Expr):
     precedence = 0
-    target: StrConst
+    target: StrLiteral
     target_fqn: FQN
+    value: Expr
+
+
+@astnode
+class BlockExpr(Expr):
+    """
+    A block of stmts which evaluates to a single Expr.
+
+    This Node is mostly produced by ASTFrame and Doppler as an internal IR node.
+
+    For testing purposes, you can use the special __block__ function:
+
+    myvar = __block__('''
+            x = 1
+            x += 3
+            x
+            ''')
+    """
+
+    precedence = 100
+    body: list[Stmt]
     value: Expr

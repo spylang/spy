@@ -33,7 +33,12 @@ from spy.analyze.symtable import Color, Symbol
 from spy.errors import SPyError
 from spy.location import Loc
 from spy.vm.b import OPERATOR, B
-from spy.vm.builtin import builtin_class_attr, builtin_method, builtin_property
+from spy.vm.builtin import (
+    builtin_class_attr,
+    builtin_method,
+    builtin_property,
+    builtin_staticmethod,
+)
 from spy.vm.function import W_Func, W_FuncType
 from spy.vm.member import Member
 from spy.vm.object import W_Object, W_Type
@@ -76,7 +81,7 @@ class W_MetaArg(W_Object):
       - sym: the symbol associated with this objects (if any)
 
     In interpreter mode, MetaArgs represent concrete values, so they carry an
-    actualy object + its static type.
+    actually object + its static type.
 
     During redshifting, red MetaArgs are abstract: they carry around only the
     static types.
@@ -121,6 +126,10 @@ class W_MetaArg(W_Object):
         self._w_val = w_val
         self.loc = loc
         self.sym = sym
+        # XXX: this sanity check fails in some tests. Uncomment it and fix the tests!
+        if w_val is not None:
+            # sanity check
+            assert vm.isinstance(w_val, w_static_T)
         if DEBUG_METAARG:
             self.debug_id = W_MetaArg.debug_counter
             W_MetaArg.debug_counter += 1
@@ -151,9 +160,10 @@ class W_MetaArg(W_Object):
         # Check that w_color is a string
         w_T = vm.dynamic_type(w_color)
         if w_T is not B.w_str:
+            got = w_T.fqn.human_name(vm)
             raise SPyError(
                 "W_TypeError",
-                f"MetaArg color must be a string, got {w_T.fqn.human_name}",
+                f"MetaArg color must be a string, got {got}",
             )
 
         color: Color = vm.unwrap_str(w_color)  # type: ignore
@@ -194,7 +204,7 @@ class W_MetaArg(W_Object):
             extra = f" = {self.w_val}"
         else:
             extra = ""
-        t = self.w_static_T.fqn.human_name
+        t = self.w_static_T.fqn.debug_human_name
         if DEBUG_METAARG:
             extra += f" id={self.debug_id}"
         return f"<W_MetaArg {self.color} {t}{extra}>"
@@ -372,6 +382,11 @@ class W_OpSpec(W_Object):
         return self._w_func.w_functype
 
     # ======== app-level interface ========
+
+    @builtin_staticmethod("const")
+    @staticmethod
+    def w_const(vm: "SPyVM", w_obj: W_Object) -> "W_OpSpec":
+        return W_OpSpec.const(w_obj)
 
     @builtin_method("__new__", color="blue", kind="metafunc")
     @staticmethod

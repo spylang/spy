@@ -1,3 +1,4 @@
+from spy.errors import SPyError
 from spy.tests.support import CompilerTest, expect_errors, only_interp
 
 
@@ -6,12 +7,12 @@ class TestImporting(CompilerTest):
 
     def test_import(self):
         mod = self.compile("""
-        from builtins import abs as my_abs
+        from math import cos as my_cos
 
-        def foo(x: i32) -> i32:
-            return my_abs(x)
+        def foo(x: f64) -> f64:
+            return my_cos(x)
         """)
-        assert mod.foo(-20) == 20
+        assert mod.foo(0.0) == 1.0
 
     def test_import_errors_1(self):
         ctx = expect_errors(
@@ -46,6 +47,37 @@ class TestImporting(CompilerTest):
             self.compile("""
             from mymodule import x
             """)
+
+    def test_py_shadows_spy(self):
+        # a .py in an earlier vm.path dir shadows a .spy in a later one, so
+        # the import fails even though a .spy exists
+        otherdir = self.tmpdir.join("otherdir").ensure(dir=True)
+        self.vm.path.insert(0, str(otherdir))
+        otherdir.join("mymodule.py").write("x = 42")
+        self.write_file("mymodule.spy", "x: i32 = 100")
+        ctx = expect_errors(
+            "cannot import `mymodule.x`",
+            (
+                "file `mymodule.py` exists, but py files cannot be imported",
+                "from mymodule import x",
+            ),
+        )
+        with ctx:
+            self.compile("""
+            from mymodule import x
+            """)
+
+    @only_interp
+    def test_import_missing_root_module(self):
+        with SPyError.raises("W_ImportError", match="module `xxx` does not exist"):
+            self.vm.import_("xxx")
+
+    @only_interp
+    def test_import_py_root_module(self):
+        self.write_file("mymodule.py", "x = 42")
+        msg = "file `mymodule.py` exists, but py files cannot be imported"
+        with SPyError.raises("W_ImportError", match=msg):
+            self.vm.import_("mymodule")
 
     def test_function_in_other_module(self):
         src = """
@@ -146,6 +178,7 @@ class TestImporting(CompilerTest):
         assert mods == ["a1", "a2", "aaa", "b1", "b2", "bbb", "main"]
 
     def test_circular_type_refs(self):
+        # See CBackend.split_fqns()
         src = """
         @blue.generic
         def Vec2(T):
@@ -168,6 +201,30 @@ class TestImporting(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == (1, 1)
+
+    def test_structdefs_toposort(self):
+        # this is technically not about importing, but it's related to
+        # test_circular_type_refs, so we keep it next to it. Ensure that we emit structs
+        # in topological order.  See CBackend.split_fqns()
+        src = """
+        @blue.generic
+        def Vec2(T):
+            @struct
+            class Inner:
+                a: T
+                b: T
+            return Inner
+
+        @struct
+        class Outer:
+            v: Vec2[i32]
+
+        def foo() -> i32:
+            o = Outer.__make__(Vec2[i32].__make__(1, 2))
+            return o.v.a + o.v.b
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 3
 
     def test_multi_step_import(self):
         self.write_file("a.spy", "X = 42")

@@ -3,11 +3,17 @@
 # ================================================================
 
 import ast as py_ast
+import re
+import textwrap
+from ctypes import c_float as float32
 from types import NoneType
 from typing import NoReturn, Optional
 
+import fixedint
+from fixedint.base import FixedInt
+
 import spy.ast
-from spy.analyze.symtable import ImportRef
+from spy.analyze.symtable import ImportRef, VarKind
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.location import Loc
@@ -17,6 +23,25 @@ from spy.util import magic_dispatch
 
 def is_py_Name(py_expr: py_ast.expr, expected: str) -> bool:
     return isinstance(py_expr, py_ast.Name) and py_expr.id == expected
+
+
+# match things like:
+#   var·x
+#   var····x
+#   const·x
+#   etc.
+_VAR_NAME_RE = re.compile(r"^(var|const)·+(.+)$")
+
+
+def parse_var_name(id: str) -> tuple[Optional[VarKind], str]:
+    """
+    Split a possibly-merged var name like 'var·x' or 'const···y' into
+    (varkind, real_name). Returns (None, id) for plain names.
+    """
+    m = _VAR_NAME_RE.match(id)
+    if m is None:
+        return None, id
+    return m.group(1), m.group(2)  # type: ignore[return-value]
 
 
 def parse_special_decorator(py_expr: py_ast.expr) -> Optional[str]:
@@ -118,7 +143,11 @@ class Parser:
         return None, body
 
     def from_py_Module(self, py_mod: py_ast.Module) -> spy.ast.Module:
-        loc = Loc(self.filename, 1, 1, 0, -1)
+        # create a Loc which encompasses the whole module. Lines are 1-based, columns
+        # are 0-based.
+        lines = self.src.splitlines()
+        endcol = len(lines[-1])
+        loc = Loc(self.filename, 1, len(lines) + 1, 0, endcol)
 
         # Extract module docstring
         docstring, py_body = self.get_docstring_maybe(py_mod.body)
@@ -130,11 +159,19 @@ class Parser:
         for py_stmt in py_body:
             if isinstance(py_stmt, py_ast.FunctionDef):
                 funcdef = self.from_py_stmt_FunctionDef(py_stmt)
-                globfunc = spy.ast.GlobalFuncDef(funcdef.loc, funcdef)
+                globfunc: spy.ast.GlobalGenericFuncDef | spy.ast.GlobalFuncDef
+                if isinstance(funcdef, spy.ast.GenericFuncDef):
+                    globfunc = spy.ast.GlobalGenericFuncDef(funcdef.loc, funcdef)
+                else:
+                    globfunc = spy.ast.GlobalFuncDef(funcdef.loc, funcdef)
                 mod.decls.append(globfunc)
             elif isinstance(py_stmt, py_ast.ClassDef):
                 classdef = self.from_py_stmt_ClassDef(py_stmt)
-                globclass = spy.ast.GlobalClassDef(classdef.loc, classdef)
+                globclass: spy.ast.GlobalGenericClassDef | spy.ast.GlobalClassDef
+                if isinstance(classdef, spy.ast.GenericClassDef):
+                    globclass = spy.ast.GlobalGenericClassDef(classdef.loc, classdef)
+                else:
+                    globclass = spy.ast.GlobalClassDef(classdef.loc, classdef)
                 mod.decls.append(globclass)
             elif isinstance(py_stmt, py_ast.AnnAssign):
                 vardef = self.from_py_AnnAssign(py_stmt)
@@ -151,6 +188,13 @@ class Parser:
             elif isinstance(py_stmt, py_ast.Import):
                 importdecls = self.from_py_Import(py_stmt)
                 mod.decls += importdecls
+            elif (
+                isinstance(py_stmt, py_ast.Expr)
+                and isinstance(py_stmt.value, py_ast.Constant)
+                and isinstance(py_stmt.value.value, str)
+            ):
+                # this is an isolated module-level str
+                pass
             else:
                 msg = (
                     "only function and variable definitions are allowed at global scope"
@@ -160,7 +204,7 @@ class Parser:
 
     def from_py_stmt_FunctionDef(
         self, py_funcdef: py_ast.FunctionDef
-    ) -> spy.ast.FuncDef:
+    ) -> spy.ast.FuncDef | spy.ast.GenericFuncDef:
         color: spy.ast.Color = "red"
         func_kind: spy.ast.FuncKind = "plain"
         decorators: list[spy.ast.Expr] = []
@@ -179,10 +223,64 @@ class Parser:
             else:
                 # other decorators are stored as general decorators
                 decorators.append(self.from_py_expr(deco))
-        #
-        loc = py_funcdef.loc
-        name = py_funcdef.name
-        args = self.from_py_arguments(color, py_funcdef.args)
+
+        # generic arguments: def func[T]()
+        if py_funcdef.type_params:
+            if decorators:
+                self.error(
+                    "cannot use type parameters with decorators",
+                    "remove the decorators or the type parameters",
+                    py_funcdef.loc,
+                )
+            generic_args = self._parse_type_params(py_funcdef)
+            inner_funcdef = self._parse_py_funcdef(
+                py_funcdef, color="red", func_kind="plain", decorators=[]
+            )
+            inner_funcdef.name = "__impl"
+            return spy.ast.GenericFuncDef(
+                loc=py_funcdef.loc,
+                name=py_funcdef.name,
+                args=generic_args,
+                inner=inner_funcdef,
+            )
+
+        return self._parse_py_funcdef(py_funcdef, color, func_kind, decorators)
+
+    def _parse_type_params(
+        self, py_def: py_ast.FunctionDef | py_ast.ClassDef
+    ) -> list[spy.ast.FuncArg]:
+        generic_args = []
+        for tp in py_def.type_params:
+            if not isinstance(tp, py_ast.TypeVar):
+                self.error(
+                    "only plain TypeVar type parameters are supported",
+                    "ParamSpec and TypeVarTuple are not supported yet",
+                    tp.loc,
+                )
+            if tp.bound is not None:
+                self.error(
+                    "bounded TypeVars are not supported yet",
+                    "remove the bound",
+                    tp.loc,
+                )
+            generic_args.append(
+                spy.ast.FuncArg(
+                    loc=tp.loc,
+                    name=tp.name,
+                    type=spy.ast.Auto(tp.loc),
+                    kind="simple",
+                )
+            )
+        return generic_args
+
+    def _parse_py_funcdef(
+        self,
+        py_funcdef: py_ast.FunctionDef,
+        color: spy.ast.Color,
+        func_kind: spy.ast.FuncKind,
+        decorators: list[spy.ast.Expr],
+    ) -> spy.ast.FuncDef:
+        args, defaults = self.from_py_arguments(color, py_funcdef.args)
         #
         py_returns = py_funcdef.returns
         if py_returns:
@@ -220,6 +318,7 @@ class Parser:
             name=py_funcdef.name,
             args=args,
             return_type=return_type,
+            defaults=defaults,
             body=body,
             docstring=docstring,
             decorators=decorators,
@@ -227,7 +326,7 @@ class Parser:
 
     def from_py_arguments(
         self, color: spy.ast.Color, py_args: py_ast.arguments
-    ) -> list[spy.ast.FuncArg]:
+    ) -> tuple[list[spy.ast.FuncArg], list[spy.ast.Expr]]:
         args = [self.from_py_arg(color, py_arg, "simple") for py_arg in py_args.args]
         if py_args.vararg:
             args.append(
@@ -239,12 +338,7 @@ class Parser:
                 "this is not supported",
                 py_args.kwarg.loc,
             )
-        if py_args.defaults:
-            self.error(
-                "default arguments are not supported yet",
-                "this is not supported",
-                py_args.defaults[0].loc,
-            )
+        defaults = [self.from_py_expr(d) for d in py_args.defaults]
         if py_args.posonlyargs:
             self.error(
                 "positional-only arguments are not supported yet",
@@ -258,7 +352,7 @@ class Parser:
                 py_args.kwonlyargs[0].loc,
             )
         assert not py_args.kw_defaults
-        return args
+        return args, defaults
 
     def from_py_arg(
         self, color: spy.ast.Color, py_arg: py_ast.arg, kind: spy.ast.FuncParamKind
@@ -274,7 +368,9 @@ class Parser:
             kind=kind,
         )
 
-    def from_py_stmt_ClassDef(self, py_classdef: py_ast.ClassDef) -> spy.ast.ClassDef:
+    def from_py_stmt_ClassDef(
+        self, py_classdef: py_ast.ClassDef
+    ) -> spy.ast.ClassDef | spy.ast.GenericClassDef:
         if py_classdef.bases:
             self.error(
                 "base classes not supported yet",
@@ -289,6 +385,21 @@ class Parser:
                 py_classdef.keywords[0].loc,
             )
 
+        # generic arguments: class Cls[T]()
+        if py_classdef.type_params:
+            generic_args = self._parse_type_params(py_classdef)
+            inner_classdef = self._parse_py_classdef(py_classdef)
+            inner_classdef.name = "Self"
+            return spy.ast.GenericClassDef(
+                loc=py_classdef.loc,
+                name=py_classdef.name,
+                args=generic_args,
+                inner=inner_classdef,
+            )
+
+        return self._parse_py_classdef(py_classdef)
+
+    def _parse_py_classdef(self, py_classdef: py_ast.ClassDef) -> spy.ast.ClassDef:
         # decorators are not supported yet, but @struct and @typelif are
         # special-cased
         struct_loc: Optional[Loc] = None
@@ -389,23 +500,28 @@ class Parser:
         # during parsing: this simplifies quite a bit the rest
         value: spy.ast.Expr
         if py_node.value is None:
-            value = spy.ast.Constant(py_node.loc, None)
+            value = spy.ast.Literal(py_node.loc, None)
         else:
             value = self.from_py_expr(py_node.value)
         return spy.ast.Return(py_node.loc, value)
 
     def from_py_global_Assign(self, py_node: py_ast.Assign) -> spy.ast.VarDef:
-        assign = self.from_py_stmt_Assign(py_node)
-        assert isinstance(assign, spy.ast.Assign)
+        stmt = self.from_py_stmt_Assign(py_node)
+        # `var x = ...` and `const x = ...` are already lowered to VarDef
+        # by from_py_stmt_Assign; only bare `x = ...` returns Assign.
+        if isinstance(stmt, spy.ast.VarDef):
+            return stmt
+        assert isinstance(stmt, spy.ast.Assign)
         assert len(py_node.targets) == 1
         assert isinstance(py_node.targets[0], py_ast.Name)
-        varkind = py_node.targets[0].spy_varkind
+        assert isinstance(stmt.target, spy.ast.SingleTarget)
+        varkind, _ = parse_var_name(py_node.targets[0].id)
         vardef = spy.ast.VarDef(
             loc=py_node.loc,
             kind=varkind,
-            name=assign.target,
+            name=stmt.target.name,
             type=spy.ast.Auto(loc=py_node.loc),
-            value=assign.value,
+            value=stmt.value,
         )
         return vardef
 
@@ -420,7 +536,7 @@ class Parser:
         # non-name target
         assert isinstance(py_node.target, py_ast.Name), "WTF?"
 
-        varkind = py_node.target.spy_varkind
+        varkind, real_name = parse_var_name(py_node.target.id)
         value = None
         if py_node.value is not None:
             value = self.from_py_expr(py_node.value)
@@ -428,7 +544,7 @@ class Parser:
         vardef = spy.ast.VarDef(
             loc=py_node.loc,
             kind=varkind,
-            name=spy.ast.StrConst(py_node.target.loc, py_node.target.id),
+            name=spy.ast.StrLiteral(py_node.target.loc, real_name),
             type=self.from_py_expr(py_node.annotation),
             value=value,
         )
@@ -443,12 +559,13 @@ class Parser:
             self.unsupported(py_node, "assign to multiple targets")
         py_target = py_node.targets[0]
         if isinstance(py_target, py_ast.Name):
-            if py_target.spy_varkind is not None:
+            varkind, real_name = parse_var_name(py_target.id)
+            if varkind is not None:
                 # "var x = 0" is a VarDef, not an Assign
                 return spy.ast.VarDef(
                     loc=py_node.loc,
-                    kind=py_target.spy_varkind,
-                    name=spy.ast.StrConst(py_target.loc, py_target.id),
+                    kind=varkind,
+                    name=spy.ast.StrLiteral(py_target.loc, real_name),
                     type=spy.ast.Auto(loc=py_node.loc),
                     value=self.from_py_expr(py_node.value),
                 )
@@ -456,14 +573,16 @@ class Parser:
                 # "x = 0" is an Assign
                 return spy.ast.Assign(
                     loc=py_node.loc,
-                    target=spy.ast.StrConst(py_target.loc, py_target.id),
+                    target=spy.ast.SingleTarget(
+                        py_target.loc, spy.ast.StrLiteral(py_target.loc, real_name)
+                    ),
                     value=self.from_py_expr(py_node.value),
                 )
         elif isinstance(py_target, py_ast.Attribute):
             return spy.ast.SetAttr(
                 loc=py_node.loc,
                 target=self.from_py_expr(py_target.value),
-                attr=spy.ast.StrConst(py_target.loc, py_target.attr),
+                attr=spy.ast.StrLiteral(py_target.loc, py_target.attr),
                 value=self.from_py_expr(py_node.value),
             )
         elif isinstance(py_target, py_ast.Subscript):
@@ -484,9 +603,16 @@ class Parser:
             targets = []
             for item in py_target.elts:
                 assert isinstance(item, py_ast.Name)
-                targets.append(spy.ast.StrConst(item.loc, item.id))
-            return spy.ast.UnpackAssign(
-                loc=py_node.loc, targets=targets, value=self.from_py_expr(py_node.value)
+                targets.append(
+                    spy.ast.SingleTarget(
+                        item.loc, spy.ast.StrLiteral(item.loc, item.id)
+                    )
+                )
+            newtarget = spy.ast.UnpackTarget(loc=py_target.loc, targets=targets)
+            return spy.ast.Assign(
+                loc=py_node.loc,
+                target=newtarget,
+                value=self.from_py_expr(py_node.value),
             )
         else:
             self.unsupported(py_target, "assign to complex expressions")
@@ -501,7 +627,7 @@ class Parser:
             return spy.ast.AugAssign(
                 loc=py_node.loc,
                 op=op,
-                target=spy.ast.StrConst(py_target.loc, py_target.id),
+                target=spy.ast.StrLiteral(py_target.loc, py_target.id),
                 value=self.from_py_expr(py_node.value),
             )
         elif isinstance(py_target, py_ast.Attribute):
@@ -553,7 +679,7 @@ class Parser:
     def from_py_stmt_For(self, py_node: py_ast.For) -> spy.ast.For:
         if py_node.orelse:
             # ideally, we would like to point to the 'else:' line, but we
-            # cannot easiy get it from the ast. Too bad, let's point at the
+            # cannot easily get it from the ast. Too bad, let's point at the
             # 'for'.
             msg = "not implemented yet: `else` clause in `for` loops"
             forloc = py_node.loc.replace(
@@ -570,7 +696,7 @@ class Parser:
         return spy.ast.For(
             loc=py_node.loc,
             seq=seq,
-            target=spy.ast.StrConst(py_node.target.loc, py_node.target.id),
+            target=spy.ast.StrLiteral(py_node.target.loc, py_node.target.id),
             iter=self.from_py_expr(py_node.iter),
             body=self.from_py_body(py_node.body),
         )
@@ -613,10 +739,12 @@ class Parser:
         assert py_node.kind is None  # I don't know what is 'kind' here
         T = type(py_node.value)
         if T is str:
-            return spy.ast.StrConst(py_node.loc, py_node.value)
-        elif T in (int, float, bool, NoneType):
-            return spy.ast.Constant(py_node.loc, py_node.value)
-        elif T in (bytes, float, complex, Ellipsis):
+            return spy.ast.StrLiteral(py_node.loc, py_node.value)
+        elif T in (int, float, complex, bool, NoneType):
+            return spy.ast.Literal(py_node.loc, py_node.value)
+        elif T is bytes:
+            return spy.ast.BytesLiteral(py_node.loc, py_node.value)
+        elif T is type(Ellipsis):
             self.error(
                 f"unsupported literal: {py_node.value!r}",
                 f"this is not supported yet",
@@ -636,7 +764,7 @@ class Parser:
 
     def from_py_expr_Attribute(self, py_node: py_ast.Attribute) -> spy.ast.GetAttr:
         value = self.from_py_expr(py_node.value)
-        attr = spy.ast.StrConst(py_node.loc, py_node.attr)
+        attr = spy.ast.StrLiteral(py_node.loc, py_node.attr)
         return spy.ast.GetAttr(py_node.loc, value, attr)
 
     def from_py_expr_List(self, py_node: py_ast.List) -> spy.ast.List:
@@ -660,7 +788,7 @@ class Parser:
         return spy.ast.Dict(py_node.loc, keyValuePairItems)
 
     def from_py_expr_NamedExpr(self, py_node: py_ast.NamedExpr) -> spy.ast.AssignExpr:
-        target = spy.ast.StrConst(py_node.target.loc, py_node.target.id)
+        target = spy.ast.StrLiteral(py_node.target.loc, py_node.target.id)
         value = self.from_py_expr(py_node.value)
         return spy.ast.AssignExpr(py_node.loc, target, value)
 
@@ -740,20 +868,107 @@ class Parser:
         # special-case -NUM
         if (
             opname == "USub"
-            and isinstance(value, spy.ast.Constant)
+            and isinstance(value, spy.ast.Literal)
             and isinstance(value.value, (int, float))
         ):
             c_loc = value.loc
             op_loc = py_node.loc
             new_loc = Loc.combine(op_loc, c_loc)
-            return spy.ast.Constant(new_loc, -value.value)
+            return spy.ast.Literal(new_loc, -value.value)
         return spy.ast.UnaryOp(py_node.loc, op, value)
+
+    ITYPES: dict[str, type[FixedInt]] = {
+        "i8": fixedint.Int8,
+        "u8": fixedint.UInt8,
+        "i32": fixedint.Int32,
+        "u32": fixedint.UInt32,
+        "i64": fixedint.Int64,
+        "u64": fixedint.UInt64,
+    }
+
+    def _parse_int_literal_prefix(
+        self, prefix: str, py_arg: py_ast.expr
+    ) -> Optional[spy.ast.Literal]:
+        """
+        Parse the argument of an explicitly-prefixed int literal, e.g. the `42`
+        in `i32(42)`. Return None if the argument is not an integer literal (so
+        that e.g. `i32(x)` falls through to the normal conversion path).
+        """
+        # the argument can be a bare int, or a negated one (`-1` parses as
+        # USub(Constant(1)))
+        sign = 1
+        if isinstance(py_arg, py_ast.UnaryOp) and isinstance(py_arg.op, py_ast.USub):
+            sign = -1
+            py_arg = py_arg.operand
+        if not (isinstance(py_arg, py_ast.Constant) and type(py_arg.value) is int):
+            return None
+
+        cls = self.ITYPES[prefix]
+        lo, hi = cls.minval, cls.maxval
+        val = sign * py_arg.value
+        if val < lo or val > hi:
+            self.error(
+                f"{prefix} literal {val} is out of range [{lo}, {hi}]",
+                "integer literal out of range",
+                py_arg.loc,
+            )
+        return spy.ast.Literal(py_arg.loc, cls(val))
+
+    FTYPES = ("f64", "f32")
+
+    def _parse_float_literal_prefix(
+        self, prefix: str, py_arg: py_ast.expr
+    ) -> Optional[spy.ast.Literal]:
+        """
+        Parse the argument of an explicitly-prefixed float literal, e.g. the
+        `2.5` in `f64(2.5)`. Return None if the argument is not a numeric
+        literal (so that e.g. `f64(x)` falls through to the normal conversion
+        path).
+        """
+        # the argument can be a bare number, or a negated one (`-1.5` parses as
+        # USub(Constant(1.5)))
+        sign = 1
+        if isinstance(py_arg, py_ast.UnaryOp) and isinstance(py_arg.op, py_ast.USub):
+            sign = -1
+            py_arg = py_arg.operand
+        if not (
+            isinstance(py_arg, py_ast.Constant) and type(py_arg.value) in (int, float)
+        ):
+            return None
+
+        val = float(sign * py_arg.value)
+        if prefix == "f32":
+            return spy.ast.Literal(py_arg.loc, float32(val))
+        return spy.ast.Literal(py_arg.loc, val)
 
     def from_py_expr_Call(
         self, py_node: py_ast.Call
-    ) -> spy.ast.Call | spy.ast.CallMethod:
+    ) -> spy.ast.Call | spy.ast.CallMethod | spy.ast.BlockExpr | spy.ast.Literal:
+        if isinstance(py_node.func, py_ast.Name) and py_node.func.id == "__block__":
+            return self._parse_block_expr(py_node)
         if py_node.keywords:
             self.unsupported(py_node.keywords[0], "keyword arguments")
+
+        # explicitly-prefixed integer literal, e.g. i32(42) or i64(-1)
+        if (
+            isinstance(py_node.func, py_ast.Name)
+            and py_node.func.id in self.ITYPES
+            and len(py_node.args) == 1
+        ):
+            lit = self._parse_int_literal_prefix(py_node.func.id, py_node.args[0])
+            if lit is not None:
+                return lit
+
+        # explicitly-prefixed float literal, e.g. f64(2.5) or f32(-3.5)
+        if (
+            isinstance(py_node.func, py_ast.Name)
+            and py_node.func.id in self.FTYPES
+            and len(py_node.args) == 1
+        ):
+            lit = self._parse_float_literal_prefix(py_node.func.id, py_node.args[0])
+            if lit is not None:
+                return lit
+
         func = self.from_py_expr(py_node.func)
         args = [self.from_py_expr(py_arg) for py_arg in py_node.args]
         if isinstance(func, spy.ast.GetAttr):
@@ -763,11 +978,43 @@ class Parser:
         else:
             return spy.ast.Call(loc=py_node.loc, func=func, args=args)
 
+    def _parse_block_expr(self, py_node: py_ast.Call) -> spy.ast.BlockExpr:
+        if (
+            len(py_node.args) != 1
+            or not isinstance(py_node.args[0], py_ast.Constant)
+            or not isinstance(py_node.args[0].value, str)
+        ):
+            self.error(
+                "__block__ requires a single string literal argument",
+                "expected a triple-quoted string",
+                py_node.loc,
+            )
+        src = textwrap.dedent(py_node.args[0].value).strip()
+        inner_mod = magic_py_parse(src, filename=self.filename)
+        inner_mod.compute_all_locs(self.filename)
+        if not inner_mod.body:
+            self.error(
+                "__block__ body is empty",
+                "expected at least one expression",
+                py_node.loc,
+            )
+        py_body = inner_mod.body
+        last = py_body[-1]
+        if not isinstance(last, py_ast.Expr):
+            self.error(
+                "__block__ last statement must be an expression (the result)",
+                "this should be an expression",
+                last.loc,
+            )
+        body = self.from_py_body(py_body[:-1])
+        value = self.from_py_expr(last.value)
+        return spy.ast.BlockExpr(loc=py_node.loc, body=body, value=value)
+
     def from_py_expr_Slice(self, py_node: py_ast.Slice) -> spy.ast.Slice:
         def from_py_expr_or_none(py_node: py_ast.expr, attr: str) -> spy.ast.Expr:
             if getattr(py_node, attr) is not None:
                 return self.from_py_expr(getattr(py_node, attr))
-            return spy.ast.Constant(py_node.loc, None)
+            return spy.ast.Literal(py_node.loc, None)
 
         r = spy.ast.Slice(
             py_node.loc,

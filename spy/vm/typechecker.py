@@ -4,7 +4,7 @@ from spy.analyze.symtable import Color
 from spy.errors import SPyError
 from spy.location import Loc
 from spy.vm.exc import W_TypeError
-from spy.vm.function import FuncParam, W_Func, W_FuncType
+from spy.vm.function import FuncParam, W_ASTFunc, W_Func, W_FuncType
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.vm.object import W_Type
 from spy.vm.opimpl import ArgSpec, W_OpImpl
@@ -52,7 +52,7 @@ def typecheck_opspec(
     report the type of the first operand, else of all operands.
     """
     if w_opspec.is_null():
-        _opspec_null_error(in_args_wam, dispatch, errmsg)
+        _opspec_null_error(vm, in_args_wam, dispatch, errmsg)
 
     if w_opspec.is_const():
         assert w_opspec._w_const is not None
@@ -85,9 +85,18 @@ def typecheck_opspec(
     # check that the number of arguments match
     got_nargs = len(out_args_wam)
     exp_nargs = len(w_out_functype.params)
+    n_defaults = 0
+    w_func = w_opspec._w_func
+    if isinstance(w_func, W_ASTFunc):
+        n_defaults = len(w_func.defaults_w)
     if not w_out_functype.is_argcount_ok(got_nargs):
         _call_error_wrong_argcount(
-            got_nargs, exp_nargs, out_args_wam, def_loc=def_loc, call_loc=call_loc
+            got_nargs,
+            exp_nargs,
+            out_args_wam,
+            n_defaults=n_defaults,
+            def_loc=def_loc,
+            call_loc=call_loc,
         )
 
     # build the argspec for the W_OpImpl
@@ -112,7 +121,7 @@ def typecheck_opspec(
             arg = ArgSpec.Const(wam_out_arg.w_blueval, wam_out_arg.loc)
         else:
             # THIS IS PROBABLY A BUG, or at least a design issue. W_MetaArg compares by
-            # value and thus they are not supposed to have an identiy. However, by
+            # value and thus they are not supposed to have an identity. However, by
             # calling .index we are relying on the interp-level identity of W_MetaArg
             # objects, which is conceptually wrong. We should probably make W_MetaArg
             # reference types, but this likely introduces other problems.
@@ -157,7 +166,7 @@ def get_w_conv_opimpl(
 
 
 def _opspec_null_error(
-    in_args_wam: list[W_MetaArg], dispatch: DispatchKind, errmsg: str
+    vm: "SPyVM", in_args_wam: list[W_MetaArg], dispatch: DispatchKind, errmsg: str
 ) -> NoReturn:
     """
     We couldn't find an OpSpec for this OPERATOR.
@@ -166,17 +175,17 @@ def _opspec_null_error(
      - single dispatch means that the target (argument 0) doesn't
        support this operation, so we report its type and its definition
 
-     - multi dispatch means that all the types are equally imporant in
+     - multi dispatch means that all the types are equally important in
        determining whether an operation is supported, so we report all
        of them
     """
-    typenames = [wam.w_static_T.fqn.human_name for wam in in_args_wam]
+    typenames = [wam.w_static_T.fqn.human_name(vm) for wam in in_args_wam]
     errmsg = errmsg.format(*typenames)
     err = SPyError("W_TypeError", errmsg)
 
     if dispatch == "single":
         wam_target = in_args_wam[0]
-        t = wam_target.w_static_T.fqn.human_name
+        t = wam_target.w_static_T.fqn.human_name(vm)
         if wam_target.loc:
             err.add("error", f"this is `{t}`", wam_target.loc)
         if wam_target.sym:
@@ -185,18 +194,18 @@ def _opspec_null_error(
 
     elif dispatch == "multi":
         for wam_arg in in_args_wam:
-            t = wam_arg.w_static_T.fqn.human_name
+            t = wam_arg.w_static_T.fqn.human_name(vm)
             err.add("error", f"this is `{t}`", wam_arg.loc)
 
     elif dispatch == "convert":
         assert len(in_args_wam) == 3
         wam_expT, wam_gotT, wam_x = in_args_wam
         if wam_expT.color == "blue" and isinstance(wam_expT.w_blueval, W_Type):
-            exp = wam_expT.w_blueval.fqn.human_name
+            exp = wam_expT.w_blueval.fqn.human_name(vm)
         else:
             # XXX: I'm not even sure that this can happen, we don't have a test for it
             exp = "<unknown>"
-        got = wam_x.w_static_T.fqn.human_name
+        got = wam_x.w_static_T.fqn.human_name(vm)
         err.add("error", f"expected `{exp}`, got `{got}`", loc=wam_x.loc)
 
     else:
@@ -210,11 +219,16 @@ def _call_error_wrong_argcount(
     exp: int,
     args_wam: list[W_MetaArg],
     *,
+    n_defaults: int = 0,
     def_loc: Optional[Loc],
     call_loc: Optional[Loc],
 ) -> NoReturn:
     assert got != exp
-    takes = maybe_plural(exp, f"takes {exp} argument")
+    min_args = exp - n_defaults
+    if n_defaults > 0 and min_args != exp:
+        takes = f"takes from {min_args} to {exp} arguments"
+    else:
+        takes = maybe_plural(exp, f"takes {exp} argument")
     supplied = maybe_plural(
         got, f"1 argument was supplied", f"{got} arguments were supplied"
     )
@@ -222,8 +236,8 @@ def _call_error_wrong_argcount(
     #
     # if we know the call_loc, we can add more detailed errors
     if call_loc:
-        if got < exp:
-            diff = exp - got
+        if got < min_args:
+            diff = min_args - got
             arguments = maybe_plural(diff, "argument")
             err.add("error", f"{diff} {arguments} missing", call_loc)
         else:

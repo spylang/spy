@@ -1,1 +1,5 @@
-from posix import get_terminal_size
+from posix import (
+    get_terminal_size, TerminalSize,
+    SEEK_SET, SEEK_CUR, SEEK_END,
+    _isatty as isatty,
+)

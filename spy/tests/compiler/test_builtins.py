@@ -1,6 +1,12 @@
 import pytest
 
-from spy.tests.support import CompilerTest, expect_errors, no_C, only_interp
+from spy.tests.support import (
+    CompilerTest,
+    expect_errors,
+    no_C,
+    only_interp,
+    skip_backends,
+)
 from spy.vm.builtin import builtin_method
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_I32, W_Dynamic
@@ -97,25 +103,66 @@ class TestBuiltins(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    def test_hash(self):
+    def test_ord(self):
         src = """
-        def test_hash_i8(x: i8) -> int:
-            return hash(x)
-        def test_hash_i32(x: i32) -> int:
-            return hash(x)
-        def test_hash_u8(x: u8) -> int:
-            return hash(x)
-        def test_hash_bool(x: bool) -> int:
-            return hash(x)
+        def ord_str(s: str) -> i32:
+            return ord(s)
+
+        def ord_bytes(b: bytes) -> u8:
+            return ord(b)
         """
         mod = self.compile(src)
-        for x in (0, 100):
-            for test in (mod.test_hash_i8, mod.test_hash_i32, mod.test_hash_u8):
-                assert test(x) == hash(x)
-        for test in (mod.test_hash_i8, mod.test_hash_i32):
-            assert test(-1) == hash(2)
-        for x in (True, False):
-            assert mod.test_hash_bool(x) == hash(x)
+        assert mod.ord_str("A") == 65
+        # str doesn't have full unicode support yet, so non-ASCII chars don't work
+        # assert mod.ord_str("€") == 0x20AC
+        # assert mod.ord_str("\U0001F600") == 0x1F600
+        #
+        assert mod.ord_bytes(b"A") == 65
+        assert mod.ord_bytes(b"\xff") == 255
+
+    def test_ord_TypeError(self):
+        src = """
+        def foo() -> None:
+            return ord(42)
+        """
+        errors = expect_errors(
+            "ord: expected `str` or `bytes`, found `i32`",
+            ("this is `i32`", "42"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    def test_hash(self):
+        src = """
+        def test_hash_i8(x: i8) -> int:     return hash(x)
+        def test_hash_i32(x: i32) -> int:   return hash(x)
+        def test_hash_i64(x: i64) -> i32:   return hash(x)
+
+        def test_hash_u8(x: u8) -> int:     return hash(x)
+        def test_hash_u32(x: u32) -> int:   return hash(x)
+        def test_hash_u64(x: u64) -> i32:   return hash(x)
+
+        def test_hash_bool(x: bool) -> int: return hash(x)
+        """
+        mod = self.compile(src)
+        assert mod.test_hash_i8(0) == hash(0)
+        assert mod.test_hash_i8(100) == hash(100)
+        assert mod.test_hash_i8(-1) == hash(2)
+        assert mod.test_hash_i32(0) == hash(0)
+        assert mod.test_hash_i32(100) == hash(100)
+        assert mod.test_hash_i32(-1) == hash(2)
+        assert mod.test_hash_i64(0) == hash(0)
+        assert mod.test_hash_i64(100) == hash(100)
+        assert mod.test_hash_i64(-1) == hash(2)
+
+        assert mod.test_hash_u8(0) == hash(0)
+        assert mod.test_hash_u8(100) == hash(100)
+        assert mod.test_hash_u32(0) == hash(0)
+        assert mod.test_hash_u32(100) == hash(100)
+        assert mod.test_hash_u64(0) == hash(0)
+        assert mod.test_hash_u64(100) == hash(100)
+
+        assert mod.test_hash_bool(True) == hash(True)
+        assert mod.test_hash_bool(False) == hash(False)
 
     @no_C
     def test_builtin_func_dedup(self):
@@ -262,6 +309,107 @@ class TestBuiltins(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
+    def test_setattr_getattr(self):
+        src = """
+        from unsafe import gc_alloc
+
+        @struct
+        class Point:
+            x: i32
+
+        def foo() -> i32:
+            ptr = gc_alloc[Point](1)
+            setattr(ptr[0], "x", 2)
+
+            p = Point(42)
+            return getattr(p, "x")
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 42
+
+    def test_hasattr(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo() -> bool:
+            p = Point(1, 2)
+            return hasattr(p, 'x')
+
+        def bar() -> bool:
+            p = Point(1, 2)
+            return hasattr(p, 'z')
+        """
+        mod = self.compile(src)
+        assert mod.foo() == True
+        assert mod.bar() == False
+
+    def test_hasattr_red(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo() -> bool:
+            var attr = "x"  # this is red
+            p = Point(1, 2)
+            return hasattr(p, attr)
+        """
+        errors = expect_errors(
+            "expected blue argument",
+            ("this is red", "attr"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    @skip_backends("C", reason="dynamic not supported in C backend")
+    def test_hasattr_dynamic(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo() -> bool:
+            p: dynamic = Point(1, 2)
+            return hasattr(p, 'x')
+
+        def bar() -> bool:
+            p: dynamic = Point(1, 2)
+            return hasattr(p, 'z')
+        """
+        mod = self.compile(src)
+        assert mod.foo() == True
+        assert mod.bar() == False
+
+    def test_hasattr_custom_getattribute(self):
+        mod = self.compile("""
+        from operator import OpSpec
+
+        @struct
+        class MyClass:
+
+            @blue.metafunc
+            def __getattribute__(m_self, m_name):
+                if m_name.blueval == 'x':
+                    def impl(obj: MyClass, name: str) -> i32:
+                        return 42
+                    return OpSpec(impl)
+                return OpSpec.NULL
+
+        def foo() -> bool:
+            obj = MyClass()
+            return hasattr(obj, 'x')
+
+        def bar() -> bool:
+            obj = MyClass()
+            return hasattr(obj, 'z')
+        """)
+        assert mod.foo() == True
+        assert mod.bar() == False
+
     @only_interp
     def test_dir(self):
         src = """
@@ -284,3 +432,81 @@ class TestBuiltins(CompilerTest):
         dm = mod.dir_math()
         assert "acos" in dm
         assert "pi" in dm
+
+    def test_print_red(self, capfd):
+        mod = self.compile("""
+        from __spy__ import as_red
+
+        def foo() -> None:
+            print(as_red("hello world"))
+            print(as_red(42))
+            print(as_red(12.3))
+            print(as_red(True))
+            print(as_red(None))
+        """)
+        mod.foo()
+        if self.backend == "C":
+            mod.ll.call("spy_flush")
+        out, err = capfd.readouterr()
+        assert out == "\n".join(
+            [
+                "hello world",
+                "42",
+                "12.3",
+                "True",
+                "None",
+                "",
+            ]
+        )
+
+    def test_print_multi_args(self, capfd):
+        mod = self.compile("""
+        def foo() -> None:
+            print()
+            print("hello", "world")
+            print(1, 2, 3)
+            print("x =", 42)
+            print("a", 1, 2.5, True)
+            print("mix", i32, None)
+        """)
+        mod.foo()
+        if self.backend == "C":
+            mod.ll.call("spy_flush")
+        out, err = capfd.readouterr()
+        assert out == "\n".join(
+            [
+                "",
+                "hello world",
+                "1 2 3",
+                "x = 42",
+                "a 1 2.5 True",
+                "mix <spy type 'i32'> None",
+                "",
+            ]
+        )
+
+    def test_print_blue(self, capfd):
+        mod = self.compile("""
+        def foo() -> None:
+            print("hello world")
+            print(42)
+            print(12.3)
+            print(True)
+            print(None)
+            print(i32)
+        """)
+        mod.foo()
+        if self.backend == "C":
+            mod.ll.call("spy_flush")
+        out, err = capfd.readouterr()
+        assert out == "\n".join(
+            [
+                "hello world",
+                "42",
+                "12.3",
+                "True",
+                "None",
+                "<spy type 'i32'>",
+                "",
+            ]
+        )

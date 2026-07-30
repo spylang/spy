@@ -124,6 +124,10 @@ class SPdb(cmd.Cmd):
 
     do_q = do_quit
 
+    def do_EOF(self, arg: str) -> bool:
+        print("", file=self.stdout)
+        return True
+
     def do_continue(self, arg: str) -> bool:
         return True
 

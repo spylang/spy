@@ -1,3 +1,4 @@
+import os
 import pdb as stdlib_pdb  # to distinguish from the "--pdb" option  # to distinguish from the "--pdb" option
 import sys
 import time
@@ -11,14 +12,17 @@ from typing import (
     Protocol,
 )
 
+from spy.cli._tb import tb_hide_magic_frames_maybe
 from spy.cli.commands.shared_args import Base_Args
+from spy.cli.spy_toml import SpyToml
 from spy.doppler import ErrorMode
 from spy.errors import SPyError
 from spy.textbuilder import Color
 from spy.vm.b import B
 from spy.vm.debugger.spdb import SPdb
-from spy.vm.function import W_ASTFunc, W_FuncType
+from spy.vm.function import W_ASTFunc
 from spy.vm.module import W_Module
+from spy.vm.object import W_Object
 from spy.vm.vm import SPyVM
 
 GLOBAL_VM: Optional[SPyVM] = None
@@ -26,13 +30,15 @@ GLOBAL_VM: Optional[SPyVM] = None
 
 async def _pyodide_main(user_func: Callable, args: "Base_Args") -> None:
     """
-    For some reasons, it seems that pyodide doesn't print exceptions
-    uncaught exceptions which escapes an asyncio task. This is a small wrapper
-    to ensure that we display a proper traceback in that case
+    For some reasons, it seems that pyodide doesn't print uncaught exceptions
+    which escapes an asyncio task. This is a small wrapper to ensure that we
+    display a proper traceback in that case.
     """
     try:
         await _run_command(user_func, args)
-    except BaseException:
+    except BaseException as exc:
+        if isinstance(exc, SystemExit):
+            return
         traceback.print_exc()
 
 
@@ -63,47 +69,65 @@ async def _run_command(user_func: Callable, args: "Base_Args") -> None:
             spdb.post_mortem()
         elif args.pdb:
             # post-mortem interp-level debugger
-            info = sys.exc_info()
-            stdlib_pdb.post_mortem(info[2])
+            tb = tb_hide_magic_frames_maybe()
+            stdlib_pdb.post_mortem(tb)
         sys.exit(1)
     except Exception as e:
         if not args.pdb:
             raise
         traceback.print_exc()
-        info = sys.exc_info()
-        stdlib_pdb.post_mortem(info[2])
+        tb = tb_hide_magic_frames_maybe()
+        stdlib_pdb.post_mortem(tb)
         sys.exit(1)
 
 
 def execute_spy_main(
-    vm: SPyVM, w_mod: W_Module, redshift: bool = False, _timeit: bool = False
+    vm: SPyVM,
+    w_mod: W_Module,
+    argv: list[str],
+    redshift: bool = False,
+    _timeit: bool = False,
 ) -> None:
-    w_main_functype = W_FuncType.parse("def() -> None")
     w_main = w_mod.getattr_maybe("main")
     if w_main is None:
         print("Cannot find function main()")
         return
 
-    vm.typecheck(w_main, w_main_functype)
     assert isinstance(w_main, W_ASTFunc)
+    w_restype, has_args = vm.typecheck_main(w_main)
+    has_exit_code = w_restype == B.w_i32
 
-    # find the redshifted version, if necessary
+    # find the most lowered version, if necessary
     if redshift:
         assert not w_main.is_valid
-        assert w_main.w_redshifted_into is not None
-        w_main = w_main.w_redshifted_into
-        assert w_main.redshifted
+        w_main = w_main.get_most_lowered_version()
+        assert w_main.lowering_stage != "source"
     else:
-        assert not w_main.redshifted
+        assert w_main.lowering_stage == "source"
 
-    with timer() if _timeit else nullcontext():
-        w_res = vm.fast_call(w_main, [])
-    assert w_res is B.w_None
+    # build argument list for the call
+    args_w: list[W_Object] = []
+    if has_args:
+        w_argv = vm.wrap_list(B.w_str, argv)
+        args_w = [w_argv]
+
+    # call main()
+    ctx = timer() if _timeit else nullcontext()
+    with ctx:
+        w_res = vm.fast_call(w_main, args_w)
+
+    if has_exit_code:
+        sys.exit(vm.unwrap_i32(w_res))
+    else:
+        assert w_res is B.w_None
+        sys.exit(0)
 
 
 class Init_Args(Protocol):
     error_mode: ErrorMode
     filename: Path
+    extra_vm_modules: Optional[list[str]]
+    no_spy_toml: bool
 
 
 async def init_vm(args: Init_Args) -> SPyVM:
@@ -116,7 +140,19 @@ async def init_vm(args: Init_Args) -> SPyVM:
         sys.exit(1)
 
     srcdir = args.filename.parent
-    vm = await SPyVM.async_new()
+
+    if args.no_spy_toml:
+        spy_toml = SpyToml(srcdir / "spy.toml")
+    else:
+        spy_toml = SpyToml.find_and_read(srcdir)
+    extra_vm_modules = spy_toml.merge(args.extra_vm_modules)
+
+    if extra_vm_modules:
+        # Bundling requires a native zig toolchain; use the synchronous path.
+        vm = SPyVM(extra_vm_modules=extra_vm_modules)
+    else:
+        # No extra modules: use async_new() to support Pyodide/Node.
+        vm = await SPyVM.async_new()
 
     GLOBAL_VM = vm
 

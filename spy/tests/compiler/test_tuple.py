@@ -63,6 +63,14 @@ class TestTuple(CompilerTest):
         x = mod.foo()
         assert x == 3
 
+    def test_literal_red_args(self):
+        mod = self.compile("""
+        def foo(a: i32, b: i32) -> tuple[i32, i32]:
+            return a, b
+        """)
+        tup = mod.foo(3, 4)
+        assert tup == (3, 4)
+
     def test_unpacking_wrong_number(self):
         src = """
         def make_tuple() -> tuple[int, int]:

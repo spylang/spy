@@ -1,3 +1,4 @@
+from graphlib import TopologicalSorter
 from typing import Optional
 
 import py.path
@@ -5,9 +6,11 @@ import py.path
 from spy.backend.c.cffiwriter import CFFIWriter
 from spy.backend.c.cmodwriter import CModule, CModuleWriter
 from spy.backend.c.cstructwriter import CStructDefs, CStructWriter
+from spy.build.build_info import BuildInfo
 from spy.build.cffi import cffi_build
 from spy.build.config import BuildConfig
 from spy.build.ninja import NinjaWriter
+from spy.fqn import FQN
 from spy.highlight import highlight_src
 from spy.vm.cell import W_Cell
 from spy.vm.function import W_ASTFunc
@@ -114,19 +117,9 @@ class CBackend:
             )
             self.c_modules[modname] = c_mod
 
-        # for now we create a global with all types CStructDefs. Eventually we
-        # want to split them into multiple independent ones
-        #
-        # NOTE: currently structdefs work because of a very specific property.
-        # The point is that when we have nested structs, C requires that
-        # structs are defined be in topological order: i.e. the "inner" func
-        # first, the "outer" func next.
-        #
-        # As long as we have a single "spy_structdefs.h" file, we are
-        # guaranteed to have the structs in the right order: this happens
-        # because similarly to C you must define structs before being able to
-        # use them as fields for another struct, which means that the various
-        # W_Struct objects are put in vm.globals_w in the right order.
+        # We need to emit .h files with the struct defs.  For now we create a single
+        # "structdefs.h" file with ALL the structs, topologically sorted to ensure that
+        # is struct B has a field (by value) of type struct A, we emit A before B.
         #
         # See test_importing::test_circular_type_ref for an example of that.
         #
@@ -138,13 +131,11 @@ class CBackend:
         #   3. ensure that structs in each SCC is in topological order
         #   4. emit one .h for each SCC (or maybe group multiple SCC by
         #      modname, but keep in mind that in case of circular deps it will
-        #      be impossible to guarantee the correspondance fqn.modname <=>
+        #      be impossible to guarantee the correspondence fqn.modname <=>
         #      modname.h)
-        self.c_structdefs["globals"] = CStructDefs(
-            hfile=bdir.join("src", "spy_structdefs.h"), content=[]
-        )
+        structdefs: list[tuple[FQN, W_Type]] = []
 
-        # Put each FQN into the corresponding CModule or CStructDefs
+        # Put each FQN into the corresponding CModule or structdefs
         for fqn, w_obj in self.vm.globals_w.items():
             # ignore W_Modules
             if fqn.is_module():
@@ -159,14 +150,21 @@ class CBackend:
                 continue
 
             if isinstance(w_obj, W_Type):
-                self.c_structdefs["globals"].content.append((fqn, w_obj))
+                structdefs.append((fqn, w_obj))
             else:
                 self.c_modules[modname].content.append((fqn, w_obj))
+
+        structdefs = self.topo_sort_structdefs(structdefs)
+        self.c_structdefs["globals"] = CStructDefs(
+            hfile=bdir.join("src", "spy_structdefs.h"),
+            content=structdefs,
+        )
 
     def cwrite(self) -> None:
         """
         Convert all non-builtins modules into .c files
         """
+        self.vm.linearize_all()
         self.split_fqns()
 
         # Emit structdefs.h
@@ -189,18 +187,43 @@ class CBackend:
                 print(f"---- {c_mod.cfile} ----")
                 print(highlight_src("C", c_mod.cfile.read()))  # type: ignore
 
+    def get_merged_build_info(self) -> BuildInfo:
+        """
+        Call each module's build_info(target, build_type) and merge results
+        into a single BuildInfo for the current config.
+        """
+        target = self.config.target
+        build_type = self.config.build_type
+        merged = BuildInfo()
+        for build_info_fn in self.vm.build_info_funcs.values():
+            info = build_info_fn(target, build_type)
+            merged.include_dirs.extend(info.include_dirs)
+            merged.archives.extend(info.archives)
+            merged.cflags.extend(info.cflags)
+            merged.ldflags.extend(info.ldflags)
+        return merged
+
     def write_build_script(self) -> None:
         assert self.cfiles != [], "call .cwrite() first"
         wasm_exports = []
         if self.config.target == "wasi" and self.config.kind == "lib":
             wasm_exports = self.get_wasm_exports()
 
+        extra = self.get_merged_build_info()
         if self.config.kind == "py-cffi":
             assert wasm_exports == []
             self.build_script = self.cffi.write(self.cfiles)
         else:
             self.ninja = NinjaWriter(self.config, self.build_dir)
-            self.ninja.write(self.outname, self.cfiles, wasm_exports=wasm_exports)
+            self.ninja.write(
+                self.outname,
+                self.cfiles,
+                wasm_exports=wasm_exports,
+                extra_include_dirs=extra.include_dirs,
+                extra_archives=extra.archives,
+                extra_cflags=extra.cflags,
+                extra_ldflags=extra.ldflags,
+            )
             self.build_script = self.build_dir.join("build.ninja")
 
     def build(self) -> py.path.local:
@@ -224,7 +247,53 @@ class CBackend:
                 if (
                     isinstance(w_obj, W_ASTFunc)
                     and w_obj.color == "red"
+                    and not w_obj.is_force_inline
                     or isinstance(w_obj, W_Cell)
                 )
             ]
+
+        # common wasm exports
+        libspy_exports = ["spy_str_alloc"]
+        wasm_exports.extend(libspy_exports)
+
         return wasm_exports
+
+    def get_type_deps(self, fqn: FQN) -> list[FQN]:
+        """
+        Return the FQNs of the types which `fqn` depends on, i.e. which need
+        to be fully defined before `fqn` itself can be defined in C.
+
+        A struct depends on the struct types of its by-value fields. Pointer
+        and ref fields are NOT dependencies: a forward declaration of the
+        pointee is enough, which is what makes mutually recursive types via
+        pointers work.
+        """
+        w_type = self.vm.lookup_global(fqn)
+        if isinstance(w_type, W_MemLocType):
+            # A ptr/ref type emits `typedef struct PTR { T *p; ...} PTR;` into
+            # the forward-decl section: it needs T's own typedef to appear
+            # first.
+            return [w_type.w_itemT.fqn]
+        if not isinstance(w_type, W_StructType) or not w_type.is_defined():
+            return []
+        deps: list[FQN] = []
+        seen: set[FQN] = set()
+        for field in w_type.iterfields_w():
+            w_fieldT = field.w_T
+            if not isinstance(w_fieldT, W_StructType):
+                continue
+            dep_fqn = w_fieldT.fqn
+            if dep_fqn != fqn and dep_fqn not in seen:
+                seen.add(dep_fqn)
+                deps.append(dep_fqn)
+        return deps
+
+    def topo_sort_structdefs(
+        self, content: list[tuple[FQN, W_Type]]
+    ) -> list[tuple[FQN, W_Type]]:
+        all_types: dict[FQN, W_Type] = dict(content)
+        ts: TopologicalSorter[FQN] = TopologicalSorter()
+        for fqn in all_types:
+            deps = [d for d in self.get_type_deps(fqn) if d in all_types]
+            ts.add(fqn, *deps)
+        return [(fqn, all_types[fqn]) for fqn in ts.static_order()]

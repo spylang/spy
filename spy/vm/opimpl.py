@@ -33,7 +33,7 @@ class Const(ArgSpec):
 @dataclass
 class Convert(ArgSpec):
     # Convert the arg by calling the given opimpl.
-    # Note that with this we are effectively builting a tree of opimpls.
+    # Note that with this we are effectively building a tree of opimpls.
     w_conv_opimpl: "W_OpImpl"
     expT: ArgSpec
     gotT: ArgSpec
@@ -131,7 +131,7 @@ class W_OpImpl(W_Object):
             return f"<OpImpl const {self.w_const}>"
         else:
             assert self.is_func_call()
-            sig = self.w_functype.fqn.human_name
+            sig = self.w_functype.fqn.debug_human_name
             fqn = self.w_func.fqn
             return f"<OpImpl `{sig}` for `{fqn}`>"
 
@@ -200,8 +200,10 @@ class W_OpImpl(W_Object):
 
     def func_signature(self) -> str:
         w_ft = self.w_functype
-        params = [f"v{i}: {p.w_T.fqn.human_name}" for i, p in enumerate(w_ft.params)]
+        params = [
+            f"v{i}: {p.w_T.fqn.debug_human_name}" for i, p in enumerate(w_ft.params)
+        ]
         str_params = ", ".join(params)
-        resname = w_ft.w_restype.fqn.human_name
+        resname = w_ft.w_restype.fqn.debug_human_name
         s = f"def({str_params}) -> {resname}"
         return s

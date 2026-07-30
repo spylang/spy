@@ -159,6 +159,7 @@ class ModuleRegistry:
         color: Color = "red",
         kind: FuncKind = "plain",
         hidden: bool = False,
+        is_pure: bool = False,
     ) -> Any:
         """
         Register a builtin function on the module. We support three
@@ -200,6 +201,7 @@ class ModuleRegistry:
                 qualifiers=qualifiers,
                 color=color,
                 kind=kind,
+                is_pure=is_pure,
             )
             setattr(self, f"w_{w_func.fqn.symbol_name}", w_func)
             if not hidden:

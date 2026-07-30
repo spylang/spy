@@ -1,3 +1,4 @@
+import math
 from typing import TYPE_CHECKING, Any
 
 from spy.errors import SPyError
@@ -62,6 +63,19 @@ def w_f64_mod(vm: "SPyVM", w_a: W_F64, w_b: W_F64) -> W_F64:
     if w_b.value == 0:
         raise SPyError("W_ZeroDivisionError", "float modulo by zero")
     return _f64_op(vm, w_a, w_b, lambda a, b: a % b)
+
+
+@OP.builtin_func
+def w_f64_pow(vm: "SPyVM", w_a: W_F64, w_b: W_F64) -> W_F64:
+    a = w_a.value
+    b = w_b.value
+    if a == 0.0 and b < 0.0:
+        raise SPyError(
+            "W_ZeroDivisionError", "0.0 cannot be raised to a negative power"
+        )
+    if a < 0.0 and math.isfinite(b) and b % 1.0 != 0.0:
+        raise SPyError("W_ValueError", "math domain error")
+    return _f64_op(vm, w_a, w_b, lambda a, b: a**b)
 
 
 @OP.builtin_func

@@ -219,6 +219,33 @@ class TestStructOnStack(CompilerTest):
         with SPyError.raises("W_TypeError", match=msg):
             mod.wrong_meth(10.0)
 
+    def test_default_args_method(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+            def move(self, dx: i32 = 0, dy: i32 = 0) -> Point:
+                return Point(self.x + dx, self.y + dy)
+
+        def move00(x: i32, y: i32) -> Point:
+            p = Point(x, y)
+            return p.move()
+
+        def movex0(x: i32, y: i32) -> Point:
+            p = Point(x, y)
+            return p.move(1)
+
+        def movexy(x: i32, y: i32) -> Point:
+            p = Point(x, y)
+            return p.move(1, 1)
+        """
+        mod = self.compile(src)
+        assert mod.move00(3, 7) == (3, 7)
+        assert mod.movex0(3, 7) == (4, 7)
+        assert mod.movexy(3, 7) == (4, 8)
+
     def test_default_eq(self):
         src = """
         @struct

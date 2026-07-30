@@ -8,10 +8,6 @@
 
 **Community calls**: Monthly on the first Wednesday of the month at 17:30 CET (Europe time). [Google calendar](https://calendar.app.google/5qMsCibGVH8kAkcs7) and [Discord Event](https://discord.com/events/1378402660914429992/1433058515311919245)
 
-
-
-
-
 ## What is SPy?
 
 TL;DR: SPy is a variant of Python specifically designed to be
@@ -28,7 +24,9 @@ It consists of:
 The documentation is very scarce at the moment, but the best source to
 understand the ideas behind SPy are:
 
-  - blog post [Inside SPy, part 1: Motivations and Goals](https://antocuni.eu/2025/10/29/inside-spy-part-1-motivations-and-goals/)
+  - blog post [Inside SPy, part 1: Motivations and Goals](https://antocuni.eu/2025/10/29/inside-spy-part-1-motivations-and-goals/).
+
+  - blog post [Inside SPy, part 2: Language semantics](https://antocuni.eu/2026/03/25/inside-spy-part-2-language-semantics/).
 
   - PyCon Italy 2025 talk: [slides](https://antocuni.eu/talk/2025/05/spy-pycon-italy/) and [recording](https://youtu.be/W-8tgZDgYmw).
 
@@ -37,10 +35,10 @@ understand the ideas behind SPy are:
 
 Additional info can be found on:
 
-  - Antonio Cuni's [blog](http://antocuni.eu/tags/#tag:spy)
+  - Antonio Cuni's [blog](http://antocuni.eu/tags/#tag:spy).
   - [A peek into a possible future of Python in the browser](https://lukasz.langa.pl/f37aa97a-9ea3-4aeb-b6a0-9daeea5a7505/) by Łukasz Langa.
-
-The [roadmap](./ROADMAP.md).
+  - The [roadmap](./ROADMAP.md).
+  - The [documentation](https://spylang.github.io/docs) (draft).
 
 ## Try it in your browser
 
@@ -51,37 +49,97 @@ Explore SPy without installing it by exploring the [playground](https://spylang.
 At the moment, the only supported installation method for SPy is by doing an
 "editable install" of the Git repo checkout.
 
-The most up-to-date version of the requirements and the installation steps is the [GitHub action workflow](https://github.com/spylang/spy/blob/main/.github/workflows/tests.yml).
+Three methods are available: **pip**, **uv**, or **Pixi**. SPy requires two
+kinds of dependencies: Python dependencies (managed by pip/uv/Pixi) and a
+native library, [bdw-gc](https://www.hboehm.info/gc/) (the
+Boehm-Demers-Weiser garbage collector). With pip, both Python 3.12 and
+bdw-gc must be installed beforehand by other means. With uv, Python is
+managed automatically but bdw-gc still needs to be installed separately.
+With Pixi, all dependencies — including bdw-gc — are handled
+automatically, with no system packages required.
 
-Prerequisites:
+The most up-to-date version of the requirements and the installation steps is
+the [GitHub Actions workflow](https://github.com/spylang/spy/blob/main/.github/workflows/tests.yml).
 
-  - Python 3.12
+All the following commands must be run from the root directory of the SPy
+repo, and without a virtual environment activated beforehand.
 
-Installation:
+### uv
 
-  1. Install the `spy` package in editable mode:
-      ```
-      $ cd /path/to/spy/
-      $ pip install -e .[dev]
-      ```
+**Prerequisite:** bdw-gc (`libgc-dev` on Debian/Ubuntu).
 
-  2. Build the `libspy` runtime library:
-     ```
-     $ make -C spy/libspy
-     ```
+```sh
+uv sync
+. .venv/bin/activate
+make -C spy/libspy
+```
+
+### pip
+
+**Prerequisites:** Python 3.12, pip >= 25.1 (to support PEP 735 Dependency Groups), and bdw-gc (`libgc-dev` on Debian/Ubuntu).
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -e . --group dev
+# build the `libspy` runtime library
+make -C spy/libspy
+```
+
+### Pixi
+
+No prerequisites — [Pixi](https://pixi.sh) manages all dependencies,
+including bdw-gc.
+
+```sh
+pixi run make-libspy
+pixi shell
+```
+
+From outside the repo, you can also activate the environment with:
+
+```sh
+pixi shell -m ~/dev/spy
+```
+
+Other useful commands (with tab auto-completion):
+
+```sh
+pixi run ruff-format
+pixi run ruff-format-check
+pixi run ruff-check
+pixi run doc-serve
+pixi run test-xdist
+```
+
+### Optional build dependencies
+
+The `spy build` command compiles the C code produced by the SPy pipeline into a native
+or WebAssembly binary. Depending on the target:
+
+- **Native** (`--target native`): requires a system C compiler (e.g. `gcc` or `clang`),
+typically available via your system package manager (`build-essential` on Debian/Ubuntu).
+
+- **Emscripten** (`--target emscripten`): requires the
+[Emscripten SDK](https://github.com/emscripten-core/emsdk).
+Install and activate the `latest` toolchain so that `emcc` is on your `PATH` — see the
+[emsdk instructions](https://github.com/emscripten-core/emsdk#downloads--how-do-i-get-the-latest-emscripten-build).
+In CI, this is handled by the `mymindstorm/setup-emsdk` GitHub Action.
+
+- **WASI** (`--target wasi`): uses [Zig](https://ziglang.org/) as the compiler, which is
+a hard SPy dependency and is installed automatically alongside SPy — no extra setup required.
+
+These are only needed if you intend to produce compiled binaries; the interpreter and
+redshift modes work without them.
+
+### Testing
 
 Run the test suite:
 
+```sh
+pytest
+pytest -n auto -v -x
 ```
-$ pytest
-```
-
-All the tests in `spy/tests/compiler/` are executed in three modes:
-
-  - `interp`: run the SPy code via the interpreter
-  - `doppler`: perform redshift, then run the redshifted code via the
-    interpreter
-  - `C`: generate C code, compile to WASM, then run it using `wasmtime`
 
 ## Basic usage examples
 
@@ -158,6 +216,7 @@ graph TD
     SYMAST["SPy AST + symtable"]
     SPyVM["SPyVM"]
     REDSHIFTED["Redshifted AST"]
+    LINEARIZED["Linearized AST"]
     OUT["Output"]
     C["C Source (.c)"]
     EXE_NAT["Native exe"]
@@ -167,7 +226,9 @@ graph TD
     %% Core pipeline
     SRC -- pyparse --> PYAST -- parse --> AST -- ScopeAnalyzer --> SYMAST
     SYMAST -- import --> SPyVM -- execute --> OUT
-    SPyVM -- redshift --> REDSHIFTED -- cwrite --> C
+    SPyVM -- redshift --> REDSHIFTED -- execute --> OUT
+    REDSHIFTED -- linearize --> LINEARIZED
+    LINEARIZED -- cwrite --> C
     C -- ninja --> EXE_NAT -- execute --> OUT
     C -- ninja --> EXE_WASI -- execute --> OUT
     C -- ninja --> EXE_EM -- execute --> OUT

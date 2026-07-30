@@ -7,7 +7,8 @@ import pytest
 
 from spy.backend.c.cbackend import CBackend
 from spy.backend.interp import InterpModuleWrapper
-from spy.build.config import BuildConfig, BuildTarget
+from spy.build.build_info import BuildTarget
+from spy.build.config import BuildConfig
 from spy.build.ninja import NinjaWriter
 from spy.doppler import ErrorMode
 from spy.errors import SPyError
@@ -98,8 +99,20 @@ def only_py_cffi(func):
     return parametrize_compiler_backend(["py-cffi"], func)
 
 
+def only_native(func):
+    return parametrize_compiler_backend(["native"], func)
+
+
 def no_C(func):
     return parametrize_compiler_backend(["interp", "doppler"], func)
+
+
+def with_additional_backends(backends: list[str]) -> Any:
+    def decorator(func: Any) -> Any:
+        all_backends = ALL_BACKENDS + tuple(backends)
+        return parametrize_compiler_backend(all_backends, func)
+
+    return decorator
 
 
 @pytest.mark.usefixtures("init")
@@ -123,6 +136,14 @@ class CompilerTest:
         self.backend = compiler_backend
         self.vm = SPyVM()
         self.vm.path.append(str(self.tmpdir))
+
+        # pytest keeps CompilerTest instances alive for the whole session, meaning that
+        # tmpdir and vm are collected only at the end of the process. This causes many
+        # problems, including a fd leak because each SPyVM opens a fd (to map '/' to '/'
+        # in wasmtime).  The following make sure to release them early.
+        yield
+        self.tmpdir = None
+        self.vm = None  # type: ignore
 
     def write_file(self, filename: str, src: str) -> Any:
         """
@@ -167,11 +188,14 @@ class CompilerTest:
                      InterpModuleWrapper object.
         - `C`: compiles the module to C and then builds it to a WASM and wraps the
                result in a WasmModuleWrapper object.
-        unless while using @only_emscripten decorator, in which case the following
-        backend is used:
+
+        In test_linearize.py we add a new backend:
+        - `linearize`: like `doppler`, but also run the linearize step (which is
+          normally only done by the C backend)
+
+        If you use the @only_emscripten decorator, the following backend is used:
         - `emscripten`: compiles the module to C and then builds it to a JS
                         executable, wrapping the result in an ExeWrapper object.
-
         """
         self.write_file(f"{modname}.spy", src)
         self.w_mod = self.vm.import_(modname)
@@ -182,7 +206,7 @@ class CompilerTest:
             pytest.fail("Cannot call self.compile() on @no_backend tests")
 
         if self.backend == "interp":
-            interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
+            interp_mod = InterpModuleWrapper(self.vm, self.w_mod, self.backend)
             return interp_mod
 
         # all backends apart 'interp' require redshifting
@@ -191,7 +215,12 @@ class CompilerTest:
             self.dump_module(modname)
 
         if self.backend == "doppler":
-            interp_mod = InterpModuleWrapper(self.vm, self.w_mod)
+            interp_mod = InterpModuleWrapper(self.vm, self.w_mod, self.backend)
+            return interp_mod
+
+        if self.backend == "linearize":
+            self.vm.linearize_all()
+            interp_mod = InterpModuleWrapper(self.vm, self.w_mod, self.backend)
             return interp_mod
 
         if self.backend == "C":
@@ -202,6 +231,14 @@ class CompilerTest:
                 opt_level=self.OPT_LEVEL,
             )
             WrapperClass = WasmModuleWrapper
+        elif self.backend == "native":
+            config = BuildConfig(
+                target="native",
+                kind="exe",
+                build_type="debug",
+                opt_level=self.OPT_LEVEL,
+            )
+            WrapperClass = ExeWrapper
         elif self.backend == "emscripten":
             config = BuildConfig(
                 target="emscripten",
