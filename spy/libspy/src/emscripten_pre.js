@@ -99,7 +99,6 @@ function makeProxyDeviceStreamOps(otherFS) {
       stream.seekable = otherStream.seekable;
     },
     close(stream) {
-      // flush any pending line data but don't close targetFD
       translateErrnoError(() => {
         const otherStream = otherFS.getStreamChecked(stream.nfd);
         otherFS.close(otherStream);
