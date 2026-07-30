@@ -95,11 +95,13 @@ class CompilerConfig:
         elif config.target == "emscripten":
             self.ext = ".mjs"
             post_js = spy.libspy.SRC.join("emscripten_extern_post.js")
+            pre_js = spy.libspy.SRC.join("emscripten_pre.js")
             self.ldflags += [
                 "-sWASM_BIGINT",
                 "-sERROR_ON_UNDEFINED_SYMBOLS=0",
-                "-sEXPORTED_RUNTIME_METHODS=HEAP8,FS",  # for exporting function in wasm, and running on CI
+                "-sEXPORTED_RUNTIME_METHODS=HEAP8,FS,ERRNO_CODES",  # for exporting function in wasm, and running on CI
                 "-lnodefs.js",
+                f"--pre-js={pre_js}",
                 f"--extern-post-js={post_js}",
             ]
 

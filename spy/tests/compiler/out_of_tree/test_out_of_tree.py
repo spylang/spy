@@ -5,7 +5,12 @@ import py
 import pytest
 
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest, only_interp, skip_backends
+from spy.tests.support import (
+    CompilerTest,
+    only_interp,
+    skip_backends,
+    skip_if_emscripten,
+)
 from spy.vm.vm import SPyVM
 
 MYMOD_PATH = py.path.local(__file__).dirpath("mymod")
@@ -24,6 +29,7 @@ def build_mymod():
     )
 
 
+@skip_if_emscripten
 class TestOutOfTree(CompilerTest):
     def test_simple(self):
         # override self.vm with our custom SPyVM

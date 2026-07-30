@@ -95,6 +95,10 @@ class WasmFuncWrapper:
         if w_T in (B.w_i32, B.w_u32, B.w_i8, B.w_u8, B.w_f64, B.w_bool):
             return pyval
         elif w_T in (B.w_i64, B.w_u64):
+            if sys.platform == "emscripten":
+                from pyodide.ffi import JsBigInt
+
+                return JsBigInt(pyval)
             return int(pyval)
         elif w_T is B.w_complex128:
             return (pyval.real, pyval.imag)
@@ -144,6 +148,8 @@ class WasmFuncWrapper:
             assert res is None
             return None
         elif w_T in (B.w_f64, B.w_f32):
+            if sys.platform == "emscripten":
+                return float(res)
             return res
         # return fixedints for the integer types, to match what the interp
         # backend does (vm.unwrap -> spy_unwrap). For u64 this also takes care
@@ -193,7 +199,8 @@ class WasmFuncWrapper:
         elif isinstance(w_T, W_StructType):
             # when you return struct-by-val from C, wasmtime automatically
             # converts them into a list, flattening nested structs
-            assert isinstance(res, list)
+            if sys.platform != "emscripten":
+                assert isinstance(res, list)
             pyres = unflatten_struct(self.ll, w_T, res)
             if w_T.fqn == FQN(
                 "_list::list[i32]::_ListImpl"

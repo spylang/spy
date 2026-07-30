@@ -79,8 +79,6 @@ def pytest_addoption(parser):
         default=False,
         help="Remove all .spyc cache files from stdlib before running tests",
     )
-    if sys.platform == "emscripten":
-        parser.addoption("--dist-dir")
 
 
 @pytest.fixture(autouse=True)

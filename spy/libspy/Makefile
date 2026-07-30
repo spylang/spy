@@ -42,7 +42,8 @@ else ifeq ($(TARGET), emscripten)
 	LDFLAGS := \
 		-sWASM_BIGINT \
 		-sEXPORTED_RUNTIME_METHODS=HEAP8,FS \
-		-lnodefs.js
+		-lnodefs.js \
+		--pre-js=src/emscripten_pre.js
 
 	SRCS := \
 		$(SRCS) \
@@ -97,7 +98,7 @@ build/wasi/$(BUILD_TYPE)/libspy.wasm: build/$(TARGET)/$(BUILD_TYPE)/libspy.a
         -o $@
 
 # emscripten-specific rules
-build/emscripten/$(BUILD_TYPE)/libspy.mjs: build/$(TARGET)/$(BUILD_TYPE)/libspy.a
+build/emscripten/$(BUILD_TYPE)/libspy.mjs: build/$(TARGET)/$(BUILD_TYPE)/libspy.a src/emscripten_pre.js
 	$(CC) \
 		$(LDFLAGS) \
         -Wl,--whole-archive \

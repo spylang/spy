@@ -87,6 +87,9 @@ class LLWasmInstance(LLWasmInstanceBase):
 
         if instance is None:
             self.instance = run_sync(self.link_and_instantiate(llmod, hostmods))
+            from pyodide_js import FS
+
+            self.instance.connectStdStreams(FS)
         else:
             self.instance = instance
 
@@ -121,22 +124,8 @@ class LLWasmInstance(LLWasmInstanceBase):
                         setattr(env, name, x)
                         break
 
-        async def instantiate_wasm(imports: Any, success_callback: Any) -> None:
-            """
-            Module.instantiateWasm hook: given the import object and a callback,
-            we are responsible for creating the WASM instance and passing it to
-            success_callback.
-
-            This is the only way to customize the imports, but it means that we
-            have need to load the .wasm ourselves.
-            """
-            adjust_imports(imports)
-            binary = await get_wasm_binary(find_wasm_binary(llmod.url))
-            res = await WebAssembly.instantiate(binary, imports)
-            success_callback(res.instance)
-
         # TODO: This won't work in the browser. Ideally we would glue the whole vm
-        # file system to the ambient one.   
+        # file system to the ambient one.
         @create_once_callable
         def mount_root_dirs(module: Any) -> None:
             root_dirs = {str(x) for x in Path("/").glob("*") if x.is_dir()}
@@ -147,7 +136,7 @@ class LLWasmInstance(LLWasmInstanceBase):
                 FS.mount(FS.filesystems.NODEFS, Object.new(root=path), path)
 
         return llmod.instance_factory(
-            instantiateWasm=instantiate_wasm, preRun=[mount_root_dirs]
+            adjustImports=adjust_imports, preRun=[mount_root_dirs]
         )
 
     @classmethod

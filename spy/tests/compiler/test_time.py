@@ -27,5 +27,12 @@ class TestTime(CompilerTest):
             return end - start
         """)
         elapsed = mod.foo()
-        # Should have slept for at least 0.05 seconds
-        assert elapsed >= 0.01
+        # Should have slept for at least 0.01 seconds
+        if sys.platform == "emscripten":
+            # Someone seems to truncate this to an f32 and then extend it back
+            # to an f64. It doesn't seem to be in our WebAssembly module, so I
+            # think it might be a Node problem. Anyways after this round trip it
+            # can come back as 0.0099999997.
+            assert elapsed >= 0.009
+        else:
+            assert elapsed >= 0.01
