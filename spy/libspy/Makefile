@@ -113,7 +113,7 @@ $(BUILD_DIR):
 build/$(TARGET)/$(BUILD_TYPE)/libspy.a: $(OBJS)
 	$(AR) rcs $@ $(OBJS)
 
-$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: %.c include/*.h include/spy/*.h | $(BUILD_DIR)
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 

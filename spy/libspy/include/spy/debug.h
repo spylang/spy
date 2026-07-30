@@ -46,7 +46,7 @@ static int inline spy_panic(
     const char *fname,
     int32_t lineno
 ) {
-    if (spy_debug_have_imports()) {
+    if (spy_debug_have_imports() == 0) {
         spy_debug_log(etype);
         spy_debug_log(message);
         spy_debug_set_panic_message(etype, message, fname, lineno);
