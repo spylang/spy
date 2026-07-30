@@ -21,8 +21,8 @@ dependencies = [
 [dependency-groups]
 dev = [
     "pdbpp>=0.11.7",
-    "pytest==8.3.4",
-    "pytest-xdist==3.8.0",
+    "pytest",
+    "pytest-xdist==3.8.0; sys_platform != 'emscripten'",
     "ruff~=0.14.0; sys_platform != 'emscripten'",
     "mypy==1.15.0; sys_platform != 'emscripten'", # mypy works on Emscripten but it's a waste of CI time
     "types-pexpect==4.9.0.20250516; sys_platform != 'emscripten'",
