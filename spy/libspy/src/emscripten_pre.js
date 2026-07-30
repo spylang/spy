@@ -41,6 +41,7 @@ function getProxyFSRoots(otherFS) {
  * /dev/shm cannot be removed.
  */
 function connectStdStreams(otherFS) {
+  debugger;
   const major = FS.createDevice.major++;
   const proxy_device = FS.makedev(major, 0);
 
@@ -55,7 +56,7 @@ function connectStdStreams(otherFS) {
 function getProxyDevices(otherFS) {
   const filteredDevices = new Set([".", "..", "shm"]);
   return otherFS
-    .readdir("/")
+    .readdir("/dev")
     .filter((dev) => !filteredDevices.has(dev))
     .map((dev) => "/dev/" + dev);
 }
