@@ -168,6 +168,7 @@ jobs:
         # skipped. The `pyodide` command comes from pyodide-build, see
         # pyodide/README.md
         run: |
+          source .venv/bin/activate
           pyodide venv .venv-pyodide
           .venv-pyodide/bin/pip install . --group dev
 
