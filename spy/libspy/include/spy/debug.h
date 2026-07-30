@@ -17,8 +17,11 @@ TODO: ideally, we want TWO different WASI modes:
 #  define IMP(name) name
 #endif
 
-void IMP(spy_debug_log)(const char *s);
-void IMP(spy_debug_log_i32)(const char *s, int32_t n);
+int IMP(spy_debug_log_import)(const char *s);
+int IMP(spy_debug_log_i32_import)(const char *s, int32_t n);
+
+void spy_debug_log(const char *s);
+void spy_debug_log_i32(const char *s, int32_t n);
 
 NORETURN void spy_panic_helper(
     const char *etype,

@@ -20,33 +20,34 @@ IMPORT_STUB(
 
 IMPORT_STUB(int, spy_debug_log_import, (const char *s))
 
-IMPORT_STUB(int, spy_debug_log_i32_import, (const char *s))
+IMPORT_STUB(int, spy_debug_log_i32_import, (const char *s, int32_t n))
 
 #endif
 
 #if defined(SPY_TARGET_WASI)
-int spy_debug_have_imports(void) {
+int
+spy_debug_have_imports(void) {
     return 0;
 }
 #endif
 
 void
 spy_debug_log(const char *s) {
-#  ifdef SPY_TARGET_EMSCRIPTEN
+#if defined(SPY_TARGET_WASI) || defined(SPY_TARGET_EMSCRIPTEN)
     if (spy_debug_log_import(s) == 0) {
         return;
     }
-#  endif
+#endif
     printf("%s\n", s);
 }
 
 void
 spy_debug_log_i32(const char *s, int32_t n) {
-#  ifdef SPY_TARGET_EMSCRIPTEN
-    if (spy_debug_log_i32_import(s) == 0) {
+#if defined(SPY_TARGET_WASI) || defined(SPY_TARGET_EMSCRIPTEN)
+    if (spy_debug_log_i32_import(s, n) == 0) {
         return;
     }
-#  endif
+#endif
     printf("%s %d\n", s, n);
 }
 

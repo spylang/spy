@@ -92,19 +92,21 @@ class LibSPyHost(HostModule):
 
     # ========== WASM imports ==========
 
-    def env_spy_debug_have_imports(self) -> None:
-        pass
+    def env_spy_debug_have_imports(self) -> int:
+        return 0
 
-    def env_spy_debug_log_import(self, ptr: int) -> None:
+    def env_spy_debug_log_import(self, ptr: int) -> int:
         s = self._read_cstr(ptr)
         self.log.append(s)
         print("[log]", s)
+        return 0
 
-    def env_spy_debug_log_i32_import(self, ptr: int, n: int) -> None:
+    def env_spy_debug_log_i32_import(self, ptr: int, n: int) -> int:
         s = self._read_cstr(ptr)
         msg = f"{s} {n}"
         self.log.append(msg)
         print("[log]", msg)
+        return 0
 
     def env_spy_debug_set_panic_message(
         self, ptr_etype: int, ptr_msg: int, ptr_fname: int, lineno: int
