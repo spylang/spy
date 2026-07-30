@@ -182,7 +182,7 @@ jobs:
 
       - name: Run tests
         run: |
-          uv run pytest --junit-xml=pyodide-test-results.xml
+          UV_PROJECT_ENVIRONMENT=.venv-pyodide uv run pytest --junit-xml=pyodide-test-results.xml
 
       # - name: Run mypy
       #   run: |
