@@ -1,3 +1,4 @@
+import sys
 import time
 
 from spy.tests.support import CompilerTest
