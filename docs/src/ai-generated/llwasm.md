@@ -210,12 +210,11 @@ module (e.g. `libspy.mjs`) which embeds/loads the WASM and exports a
     underscore (`instance._spy_str_alloc`), and the linear memory is the
     `HEAP8` typed array.
 
-Host modules work differently too: we can't build the import object
-ourselves, so we pass an `adjustWasmImports` callback to the factory.
-Emscripten generates stub functions for undefined symbols (we link with
-`-sERROR_ON_UNDEFINED_SYMBOLS=0`); the callback walks the `env` imports and
-replaces each stub with the corresponding `env_*` method found on the host
-modules.
+Host modules work differently too: we can't build the import object ourselves,
+so we pass an `adjustWasmImports` callback to the factory. Use
+IMPORT_STUB_TRAPPING or IMPORT_STUB_FALLBACK to declare that a function is
+defined as an import. The callback walks the `env` imports and replaces each
+stub with the corresponding `env_*` method found on the host modules.
 
 ### Sync vs async instantiation
 

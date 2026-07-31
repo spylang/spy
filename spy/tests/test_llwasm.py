@@ -10,8 +10,8 @@ from spy import ROOT
 from spy.build.build_info import BuildType
 from spy.build.flags import get_ar, get_cflags
 from spy.build.wasm_bundle import get_or_build_bundle, link_bundle
-from spy.libspy import LLSPyInstance
-from spy.llwasm import HostModule, LLWasmInstance, LLWasmModule
+from spy.libspy import LibSPyHost, LLSPyInstance
+from spy.llwasm import HostModule, LLWasmInstance, LLWasmModule, WasmTrap
 from spy.tests.support import CTest
 from spy.util import robust_run
 
@@ -263,9 +263,9 @@ class TestLLWasm(CTest):
         #include <stdint.h>
         #include "spy.h"
 
-        int32_t WASM_IMPORT(add)(int32_t x, int32_t y);
-        int32_t WASM_IMPORT(square)(int32_t x);
-        void WASM_IMPORT(record)(int32_t x);
+        IMPORT_STUB_TRAPPING(int32_t, add, (int32_t x, int32_t y));
+        IMPORT_STUB_TRAPPING(int32_t, square, (int32_t x));
+        IMPORT_STUB_TRAPPING(void, record, (int32_t x));
 
         int32_t compute(void) {
             record(100);
@@ -298,3 +298,29 @@ class TestLLWasm(CTest):
         ll = LLWasmInstance(llmod, [math, recorder])
         assert ll.call("compute") == 900
         assert recorder.log == [100, 200]
+
+    @pytest.mark.skipif(sys.platform != "emscripten", reason="Emscripten only")
+    def test_import_stub_trapping_traps(self):
+        src = r"""
+        #include <stdint.h>
+        #include "spy.h"
+
+        IMPORT_STUB_TRAPPING(void, missing_import, (void));
+
+        int32_t compute(void) {
+            missing_import();
+            return 0;
+        }
+        """
+        test_wasm = self.c_compile(src, exports=["compute"])
+
+        libspy = LibSPyHost()
+
+        llmod = LLWasmModule(str(test_wasm))
+        ll = LLWasmInstance(llmod, [libspy])
+        with pytest.raises(WasmTrap):
+            ll.call("compute")
+        assert libspy.log == [
+            "Called undefined import stub 'missing_import()'",
+            "Unfortunately we're not sure where you called it...",
+        ]

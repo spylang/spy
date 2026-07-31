@@ -5,22 +5,17 @@
 
 #if defined(SPY_TARGET_EMSCRIPTEN)
 
-#  include "emscripten.h"
+IMPORT_STUB_FALLBACK(int, spy_debug_have_imports, (void))
 
-#  define IMPORT_STUB(ret, name, rest...)                                              \
-      EM_JS(ret, name, rest, { return -1; } name.stub = true)
-
-IMPORT_STUB(int, spy_debug_have_imports, (void))
-
-IMPORT_STUB(
+IMPORT_STUB_FALLBACK(
     void,
     spy_debug_set_panic_message,
     (const char *etype, const char *message, const char *fname, int32_t lineno)
 )
 
-IMPORT_STUB(int, spy_debug_log_import, (const char *s))
+IMPORT_STUB_FALLBACK(int, spy_debug_log_import, (const char *s))
 
-IMPORT_STUB(int, spy_debug_log_i32_import, (const char *s, int32_t n))
+IMPORT_STUB_FALLBACK(int, spy_debug_log_i32_import, (const char *s, int32_t n))
 
 #endif
 
@@ -124,3 +119,26 @@ spy_panic_helper(
 
     abort();
 }
+
+#if defined(SPY_TARGET_EMSCRIPTEN)
+#  include "emscripten.h"
+#  include "stdio.h"
+
+EM_JS(void, _spy_panic_import_stub_js, (char* jsname), { withStackSave(() = > { __spy_panic_import_stub(stringToUTF8OnStack(jsname)); });
+})
+
+EMSCRIPTEN_KEEPALIVE void
+_spy_panic_import_stub(char *name) {
+    char *msg;
+    asprintf(&msg, "Called undefined import stub '%s()'", name);
+    spy_debug_log(msg);
+    free(msg);
+    spy_debug_log("Unfortunately we're not sure where you called it...");
+    if (spy_debug_have_imports() == 0) {
+        __builtin_trap();
+    } else {
+        abort();
+    }
+}
+
+#endif

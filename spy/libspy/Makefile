@@ -41,7 +41,7 @@ else ifeq ($(TARGET), wasi)
 else ifeq ($(TARGET), emscripten)
 	LDFLAGS := \
 		-sWASM_BIGINT \
-		-sEXPORTED_RUNTIME_METHODS=HEAP8,FS,ERRNO_CODES,addOnPostCtor \
+		-sEXPORTED_RUNTIME_METHODS=HEAP8,FS,ERRNO_CODES,addOnPostCtor,withStackSave,stringToUTF8OnStack \
 		-lnodefs.js \
 		-lproxyfs.js \
 		--pre-js=src/emscripten_pre.js

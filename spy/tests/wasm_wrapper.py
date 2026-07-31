@@ -5,7 +5,6 @@ from typing import Any
 import fixedint
 import py.path
 
-# import wasmtime
 from spy.fqn import FQN
 from spy.libspy import LLSPyInstance
 from spy.llwasm import LLWasmType

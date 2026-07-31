@@ -7,6 +7,12 @@
 #  define _POSIX_C_SOURCE 200809L
 #endif
 
+// Defining _GNU_SOURCE enables asprintf
+// Must be defined before any system headers are included
+#ifdef __EMSCRIPTEN__
+#  define _GNU_SOURCE
+#endif
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -24,6 +30,19 @@
 #  define WASM_EXPORT(name) __attribute__((export_name(#name))) name
 #  define WASM_IMPORT(name)                                                            \
       __attribute__((import_module("env"), import_name(#name))) name
+#endif
+
+#if defined(SPY_TARGET_EMSCRIPTEN)
+#  include "emscripten.h"
+#  define IMPORT_STUB_FALLBACK(ret, name, rest...)                                     \
+      EM_JS(ret, name, rest, { return -1; } name.stub = true)
+
+#  define IMPORT_STUB_TRAPPING(ret, name, rest...)                                     \
+      EM_JS(ret, name, rest, { _spy_panic_import_stub_js(#name); } name.stub = true)
+
+#else
+#  define IMPORT_STUB_FALLBACK(ret, name, rest...) ret WASM_IMPORT(name) rest
+#  define IMPORT_STUB_TRAPPING(ret, name, rest...) ret WASM_IMPORT(name) rest
 #endif
 
 #if defined(SPY_RELEASE) + defined(SPY_DEBUG) != 1
