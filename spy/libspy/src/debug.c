@@ -124,8 +124,13 @@ spy_panic_helper(
 #  include "emscripten.h"
 #  include "stdio.h"
 
-EM_JS(void, _spy_panic_import_stub_js, (char* jsname), { withStackSave(() = > { __spy_panic_import_stub(stringToUTF8OnStack(jsname)); });
+// clang-format off
+EM_JS(void, _spy_panic_import_stub_js, (char* jsname), {
+    withStackSave(() => {
+        __spy_panic_import_stub(stringToUTF8OnStack(jsname));
+    });
 })
+// clang-format on
 
 EMSCRIPTEN_KEEPALIVE void
 _spy_panic_import_stub(char *name) {
