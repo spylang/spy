@@ -110,7 +110,7 @@ class LLWasmInstance(LLWasmInstanceBase):
         linking all needed imports
         """
         from js import Object, WebAssembly  # type: ignore
-        from pyodide_js import FS
+        from pyodide_js import FS # type: ignore
 
         def adjust_imports(imports: Any) -> None:
             env = imports.env

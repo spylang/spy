@@ -16,6 +16,7 @@ BUILD = spy.ROOT.join("libspy", "build")
 DEPS = spy.ROOT.join("libspy", "deps")
 
 
+LLMOD: LLWasmModule | None
 if IS_NODE:
     LIBSPY_WASM = BUILD.join("emscripten", "debug", "libspy.mjs")
     from pyodide.ffi import run_sync
