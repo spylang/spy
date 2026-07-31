@@ -232,7 +232,9 @@ class CompilerTest:
             return interp_mod
 
         if self.backend == "C":
-            target: Literal['wasi', 'emscripten'] = "emscripten" if sys.platform == "emscripten" else "wasi"
+            target: Literal["wasi", "emscripten"] = (
+                "emscripten" if sys.platform == "emscripten" else "wasi"
+            )
             config = BuildConfig(
                 target=target,
                 kind="lib",
