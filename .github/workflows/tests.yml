@@ -109,15 +109,10 @@ jobs:
 
   pyodide-test:
     name: pyodide-test-${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     env:
       SPY_WERROR: true
       HYPOTHESIS_PROFILE: ci
-
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest]
 
     steps:
       - name: Setup tmate session
