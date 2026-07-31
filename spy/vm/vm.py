@@ -514,10 +514,9 @@ class SPyVM:
             assert w_val.fqn not in self.globals_w
 
         elif isinstance(w_val, W_Type):
-            # for now types are only builtin so they must have an unique fqn,
-            # we might need to change this when we introduce custom types
             fqn = w_val.fqn
-            assert w_val.fqn not in self.globals_w
+            if fqn in self.globals_w:
+                return fqn
         else:
             w_T = self.dynamic_type(w_val)
             T = w_T.fqn.human_name(self)

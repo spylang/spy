@@ -35,6 +35,31 @@ def w_STATIC_TYPE(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
 
 
 @BUILTINS.builtin_func(color="blue", kind="metafunc")
+def w_functype(vm: "SPyVM", wam_func: W_MetaArg) -> W_OpSpec:
+    """
+    Decorator that gives a name to a function type.
+
+    Used like:
+        @functype
+        def CB(x: i32, y: i32) -> i32:
+            pass
+
+    CB then holds the W_FuncType for `def(i32, i32) -> i32`, which is
+    identical (by identity) to the functype of any matching red function.
+    """
+    w_T = wam_func.w_static_T
+    if not isinstance(w_T, W_FuncType):
+        t = w_T.fqn.human_name(vm)
+        raise SPyError.simple(
+            "W_TypeError",
+            f"functype expects a function, got `{t}`",
+            f"this is `{t}`",
+            wam_func.loc,
+        )
+    return W_OpSpec.const(w_T)
+
+
+@BUILTINS.builtin_func(color="blue", kind="metafunc")
 def w_print(vm: "SPyVM", *args_wam: W_MetaArg) -> W_OpSpec:
     vm.import_("_print")
     w_print1 = vm.lookup_global(FQN("_print::print1"))

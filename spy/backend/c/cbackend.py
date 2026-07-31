@@ -13,7 +13,7 @@ from spy.build.ninja import NinjaWriter
 from spy.fqn import FQN
 from spy.highlight import highlight_src
 from spy.vm.cell import W_Cell
-from spy.vm.function import W_ASTFunc
+from spy.vm.function import W_ASTFunc, W_FuncType
 from spy.vm.modules.unsafe.ptr import W_MemLocType
 from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import W_I32
@@ -145,7 +145,7 @@ class CBackend:
             modname = fqn.modname
             w_mod = self.vm.modules_w[modname]
             if w_mod.filepath is None and not isinstance(
-                w_obj, (W_MemLocType, W_StructType)
+                w_obj, (W_MemLocType, W_StructType, W_FuncType)
             ):
                 continue
 
@@ -274,19 +274,31 @@ class CBackend:
             # the forward-decl section: it needs T's own typedef to appear
             # first.
             return [w_type.w_itemT.fqn]
+        if isinstance(w_type, W_FuncType):
+            # A function-pointer typedef references its return and param types
+            # by name, so any by-value struct types must be defined first.
+            deps: list[FQN] = []
+            seen: set[FQN] = set()
+            for w_dep in [w_type.w_restype] + [p.w_T for p in w_type.params]:
+                if isinstance(w_dep, W_StructType):
+                    d = w_dep.fqn
+                    if d != fqn and d not in seen:
+                        seen.add(d)
+                        deps.append(d)
+            return deps
         if not isinstance(w_type, W_StructType) or not w_type.is_defined():
             return []
-        deps: list[FQN] = []
-        seen: set[FQN] = set()
+        struct_deps: list[FQN] = []
+        struct_seen: set[FQN] = set()
         for field in w_type.iterfields_w():
             w_fieldT = field.w_T
             if not isinstance(w_fieldT, W_StructType):
                 continue
             dep_fqn = w_fieldT.fqn
-            if dep_fqn != fqn and dep_fqn not in seen:
-                seen.add(dep_fqn)
-                deps.append(dep_fqn)
-        return deps
+            if dep_fqn != fqn and dep_fqn not in struct_seen:
+                struct_seen.add(dep_fqn)
+                struct_deps.append(dep_fqn)
+        return struct_deps
 
     def topo_sort_structdefs(
         self, content: list[tuple[FQN, W_Type]]
