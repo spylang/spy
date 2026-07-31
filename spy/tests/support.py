@@ -62,8 +62,7 @@ def skip_backends(*backends_to_skip: Backend, reason=""):
     """
     for b in backends_to_skip:
         if b not in ALL_BACKENDS:
-            pass
-            # pytest.fail(f"Invalid backend passed to @skip_backends: {b}")
+            pytest.fail(f"Invalid backend passed to @skip_backends: {b}")
 
     new_backends = []
     for backend in ALL_BACKENDS:
