@@ -1,9 +1,8 @@
-debugger;
 Module.instantiateWasm = (imports, successCallback) => {
   (async () => {
     Module.adjustImports?.(imports);
     wasmBinaryFile ??= findWasmBinary();
-    const {instance} = await instantiateArrayBuffer(wasmBinaryFile, imports);
+    const { instance } = await instantiateArrayBuffer(wasmBinaryFile, imports);
     successCallback(instance);
   })();
   return {};
