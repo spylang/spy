@@ -2,15 +2,15 @@ debugger;
 Module.instantiateWasm = (imports, successCallback) => {
   (async () => {
     Module.adjustImports?.(imports);
-    const binary = await getBinaryPromise(wasmBinaryFile);
-    const res = await WebAssembly.instantiate(binary, imports);
-    successCallback(res.instance, res.module);
+    wasmBinaryFile ??= findWasmBinary();
+    const {instance} = await instantiateArrayBuffer(wasmBinaryFile, imports);
+    successCallback(instance);
   })();
   return {};
 };
 
 Module.connectFileSystems = (otherFS) => {
-  addOnInit(() => {
+  addOnPostCtor(() => {
     mountProxyFSRoots(otherFS);
     connectStdStreams(otherFS);
   });
@@ -69,8 +69,8 @@ function translateErrnoError(cb) {
   try {
     return cb();
   } catch (e) {
-    if (!e.code) throw e;
-    throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+    if (!e.errno) throw e;
+    throw new FS.ErrnoError(ERRNO_CODES[e.errno]);
   }
 }
 

@@ -99,7 +99,7 @@ class CompilerConfig:
             self.ldflags += [
                 "-sWASM_BIGINT",
                 "-sERROR_ON_UNDEFINED_SYMBOLS=0",
-                "-sEXPORTED_RUNTIME_METHODS=HEAP8,FS,ERRNO_CODES",  # for exporting function in wasm, and running on CI
+                "-sEXPORTED_RUNTIME_METHODS=HEAP8,FS,ERRNO_CODES,addOnPostCtor",  # for exporting function in wasm, and running on CI
                 "-lnodefs.js",
                 "-lproxyfs.js",
                 f"--pre-js={pre_js}",
