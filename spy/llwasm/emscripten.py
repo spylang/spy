@@ -26,32 +26,6 @@ loadModule = run_js("""
 """)
 
 
-def find_wasm_binary(mod_url: str) -> str:
-    """
-    Compute the URL of the .wasm, given the URL of the .mjs.
-
-    This replicates Emscripten's findWasmBinary().
-    """
-    assert mod_url.endswith(".mjs"), f"unexpected module URL: {mod_url}"
-    return mod_url[: -len(".mjs")] + ".wasm"
-
-
-async def get_wasm_binary(url: str) -> Any:
-    """
-    Return the bytes of the wasm binary as a JS buffer.
-
-    This replicates Emscripten's getWasmBinary().
-    """
-    if "://" in url and not url.startswith("file://"):
-        from js import fetch  # type: ignore
-
-        res = await fetch(url)
-        return await res.arrayBuffer()
-    else:
-        f = py.path.local(url.removeprefix("file://"))
-        return to_js(f.read_binary())
-
-
 class LLWasmModule(LLWasmModuleBase):
     def __init__(
         self, url: str, *, instance_factory: Optional[Callable] = None
