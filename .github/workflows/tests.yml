@@ -180,7 +180,7 @@ jobs:
 
       - name: Run tests
         run: |
-          .venv-pyodide/bin/pytest --junit-xml=pyodide-test-results.xml
+          .venv-pyodide/bin/python -m pytest --junit-xml=pyodide-test-results.xml
 
       # - name: Run mypy
       #   run: |
