@@ -352,9 +352,9 @@ class TestLLWasm(CTest):
         #include <stdint.h>
         #include "spy.h"
 
-        int32_t WASM_IMPORT(add)(int32_t x, int32_t y);
-        int32_t WASM_IMPORT(square)(int32_t x);
-        void WASM_IMPORT(record)(int32_t x);
+        IMPORT_STUB_TRAPPING(int32_t, add, (int32_t x, int32_t y));
+        IMPORT_STUB_TRAPPING(int32_t, square, (int32_t x));
+        IMPORT_STUB_TRAPPING(void, record, (int32_t x));
 
         int32_t compute(void) {
             record(100);
