@@ -348,9 +348,6 @@ class TestLLWasm(CTest):
         assert length == 5
 
     def test_HostModule(self):
-        if self.llwasm_backend == "pyodide":
-            pytest.skip("fixme")
-
         src = r"""
         #include <stdint.h>
         #include "spy.h"
