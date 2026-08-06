@@ -7,6 +7,12 @@
 #  define _POSIX_C_SOURCE 200809L
 #endif
 
+// Defining _GNU_SOURCE enables asprintf
+// Must be defined before any system headers are included
+#ifdef __EMSCRIPTEN__
+#  define _GNU_SOURCE
+#endif
+
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>

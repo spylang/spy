@@ -393,3 +393,33 @@ class TestLLWasm(CTest):
             assert recorder.log == [100, 200]
 
         fn(self.selenium, test_wasm)
+
+    def test_import_stub_trapping_traps(self):
+        if self.llwasm_backend != "pyodide":
+            pytest.skip("Pyodide only")
+
+        src = r"""
+        #include <stdint.h>
+        #include "spy.h"
+
+        IMPORT_STUB_TRAPPING(void, missing_import, (void));
+
+        int32_t compute(void) {
+            missing_import();
+            return 0;
+        }
+        """
+        test_wasm = self.c_compile(src, exports=["compute"])
+
+        @self.run_in_pyodide_maybe
+        def fn(selenium, test_wasm):
+            libspy = LibSPyHost()
+
+            llmod = LLWasmModule(str(test_wasm))
+            ll = LLWasmInstance(llmod, [libspy])
+            with pytest.raises(WasmTrap):
+                ll.call("compute")
+            assert libspy.log == [
+                "Called undefined import stub 'missing_import()'",
+                "Unfortunately we're not sure where you called it...",
+            ]
