@@ -36,6 +36,21 @@
 #endif
 
 #if defined(SPY_TARGET_EMSCRIPTEN)
+// Add import stubs to avoid errors/warnings due to undefined symbols:
+//
+// If we use WASM_IMPORT to import a symbol and it's not a JS symbol defined in
+// a library visible to Emscripten, the Emscripten linker will error out. It is
+// possible to prevent this with `-sERROR_ON_UNDEFINED_SYMBOLS=0` but this also
+// disables useful linker checks that help detect bugs. Also, there will still
+// be a warning.
+//
+// In order to avoid these issues, use EM_JS to define a stub import. This makes
+// the linker happy because it sees the symbol as defined. We mark it as a stub
+// so that llwasm's adjustImports callback will write over it with a method
+// defined in a host module. If it's ever called at runtime, we panic.
+//
+// TODO: Maybe drop the panic in release mode?
+
 #  include "emscripten.h"
 
 #  define IMPORT_STUB_TRAPPING(ret, name, rest...)                                     \
