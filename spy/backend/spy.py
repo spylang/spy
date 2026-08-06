@@ -77,8 +77,8 @@ class SPyBackend:
             ):
                 aliases.append((attr, w_obj))
         for attr, w_obj in aliases:
-            fqn_str = w_obj.fqn.human_name(self.vm)
-            self.out.wl(f"{attr} = `{fqn_str}`")
+            fqn_str = self.fmt_fqn(w_obj.fqn)
+            self.out.wl(f"{attr} = {fqn_str}")
         if aliases:
             self.out.wl()
 
@@ -145,7 +145,7 @@ class SPyBackend:
         if isinstance(w_obj, W_Type) and issubclass(w_obj.pyclass, W_InterpList):
             # this is a ugly special case for now, we need to find a better
             # solution
-            return w_obj.fqn.human_name(self.vm)
+            return self.fmt_fqn(w_obj.fqn)
         #
         # this assumes that w_obj has a valid FQN
         fqn = self.vm.reverse_lookup_global(w_obj)
@@ -157,6 +157,13 @@ class SPyBackend:
             name = str(fqn)
         elif self.fqn_format == "short":
             name = fqn.human_name(self.vm)  # don't show builtins::
+            # Strip the current module prefix wherever it appears as a genuine
+            # namespace start: at the beginning of the string, or immediately
+            # after ` or [ (the only delimiters that introduce a fresh FQN in
+            # the rendered output).
+            if self.modname:
+                escaped = re.escape(self.modname)
+                name = re.sub(rf"(^|[`\[]){escaped}::", r"\1", name)
         else:
             assert False
         #
