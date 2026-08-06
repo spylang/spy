@@ -197,6 +197,40 @@ class TestCallOp(CompilerTest):
         x = mod.foo(5, 7)
         assert x == 12
 
+    def test_dunder_call_keyword_args_unsupported(self):
+        # ========== EXT module for this test ==========
+        EXT = ModuleRegistry("ext")
+
+        @EXT.builtin_type("Adder")
+        class W_Adder(W_Object):
+            def __init__(self, x: int) -> None:
+                self.x = x
+
+            @builtin_method("__new__")
+            @staticmethod
+            def w_new(vm: "SPyVM", w_x: W_I32) -> "W_Adder":
+                return W_Adder(vm.unwrap_i32(w_x))
+
+            @builtin_method("__call__")
+            @staticmethod
+            def w_call(vm: "SPyVM", w_obj: "W_Adder", w_y: W_I32) -> W_I32:
+                y = vm.unwrap_i32(w_y)
+                return vm.wrap(w_obj.x + y)
+
+        # ========== /EXT module for this test =========
+        self.vm.make_module(EXT)
+        src = """
+        from ext import Adder
+
+        def foo() -> i32:
+            obj = Adder(5)
+            return obj(y=7)
+        """
+        errors = expect_errors(
+            "keyword arguments not supported for this function",
+        )
+        self.compile_raises(src, "foo", errors)
+
     def test_call_method(self):
         # ========== EXT module for this test ==========
         EXT = ModuleRegistry("ext")

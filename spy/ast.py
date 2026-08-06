@@ -413,6 +413,7 @@ class Call(Expr):
     precedence = 16
     func: Expr
     args: list[Expr]
+    kwargs: list[tuple["StrLiteral", Expr]] = field(default_factory=list)
 
 
 @astnode
@@ -429,6 +430,7 @@ class CallMethod(Expr):
     target: Expr
     method: StrLiteral
     args: list[Expr]
+    kwargs: list[tuple["StrLiteral", Expr]] = field(default_factory=list)
 
 
 @astnode

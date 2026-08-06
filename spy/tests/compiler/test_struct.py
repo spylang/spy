@@ -246,6 +246,23 @@ class TestStructOnStack(CompilerTest):
         assert mod.movex0(3, 7) == (4, 7)
         assert mod.movexy(3, 7) == (4, 8)
 
+    def test_method_keyword_args(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+            def move(self, dx: i32, dy: i32) -> Point:
+                return Point(self.x + dx, self.y + dy)
+
+        def foo(x: i32, y: i32, dx: i32, dy: i32) -> Point:
+            p = Point(x, y)
+            return p.move(dy=dy, dx=dx)
+        """
+        mod = self.compile(src)
+        assert mod.foo(3, 7, 1, 2) == (4, 9)
+
     def test_default_eq(self):
         src = """
         @struct
