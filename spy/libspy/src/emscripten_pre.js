@@ -3,8 +3,8 @@
 // imports.
 //
 // instantiateWasm is the only hook that Emscripten exposes after the imports
-// object is created but before wasm instantiation. My attempts to add an
-// adjustWasmImports hook upstream have not succeeded:
+// object is created but before wasm instantiation. A previous attempt to add an
+// adjustWasmImports hook upstream has not succeeded:
 // https://github.com/emscripten-core/emscripten/pull/23794
 
 
