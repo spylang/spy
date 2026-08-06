@@ -123,8 +123,10 @@ spy_operator$f32_ge(float x, float y) {
 float
 spy_operator$f32_pow(float x, float y) {
     if (x == 0.0f && y < 0.0f) {
-        spy_panic("ZeroDivisionError", "0.0 cannot be raised to a negative power",
-                  __FILE__, __LINE__);
+        spy_panic(
+            "ZeroDivisionError", "0.0 cannot be raised to a negative power", __FILE__,
+            __LINE__
+        );
     }
     // Use __builtin_isfinite instead of isfinite: workaround for
     // https://github.com/emscripten-core/emscripten/issues/27418
