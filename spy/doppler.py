@@ -292,6 +292,17 @@ class DopplerFrame(ASTFrame):
         assign = self._desugar_AugAssign(node)
         return self.shift_stmt_Assign(assign)
 
+    def shift_stmt_AugSetAttr(self, node: ast.AugSetAttr) -> list[ast.Stmt]:
+        return self.shift_body(self._desugar_AugSetAttr(node))
+
+    def shift_stmt_AugSetItem(self, node: ast.AugSetItem) -> list[ast.Stmt]:
+        return self.shift_body(self._desugar_AugSetItem(node))
+
+    def shift_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> list[ast.Stmt]:
+        self.exec_stmt_UnpackAssign(unpack)
+        newvalue = self.shifted_expr[unpack.value]
+        return [unpack.replace(value=newvalue)]
+
     def shift_stmt_SetAttr(self, node: ast.SetAttr) -> list[ast.Stmt]:
         self.exec_stmt(node)
         w_opimpl = self.opimpl[node]
