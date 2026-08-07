@@ -1,3 +1,5 @@
+import pytest
+
 from spy.libspy import LLSPyInstance, SPyError
 from spy.llwasm import LLWasmModule
 from spy.tests.support import CTest
@@ -78,3 +80,27 @@ class TestLibSPy(CTest):
         loc = excinfo.value.w_exc.annotations[0].loc
         assert loc.filename == "myfile"
         assert loc.line_start == 42
+
+
+@pytest.mark.usefixtures("set_target_native")
+class TestLibSPyNative(CTest):
+    @pytest.fixture
+    def set_target_native(self):
+        self.target = "native"
+        self.kind = "exe"
+
+    def test_call_wasm_import_compile_error(self):
+        src = r"""
+        #include <spy.h>
+
+        WASM_IMPORT(void, some_import, (void));
+
+        void func(void) {
+            some_import();
+        }
+        """
+
+        with pytest.raises(
+            Exception, match="some_import can only be used in wasm targets"
+        ):
+            self.c_compile(src)

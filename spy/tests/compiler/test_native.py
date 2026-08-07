@@ -1,6 +1,6 @@
 import pytest
 
-from spy.tests.support import CompilerTest, only_native
+from spy.tests.support import CompilerTest, CTest, only_native
 
 
 @only_native

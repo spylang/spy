@@ -31,41 +31,38 @@
 #  error "You must define either SPY_GC_NONE or SPY_GC_BDWGC"
 #endif
 
-
 #if defined(SPY_TARGET_NATIVE)
-#  define WASM_EXPORT(name) name
-#  define WASM_IMPORT(name) name
-#else
-#  define WASM_EXPORT(name) __attribute__((export_name(#name))) name
-#  define WASM_IMPORT(name)                                                            \
-      __attribute__((import_module("env"), import_name(#name))) name
-#endif
 
-#if defined(SPY_TARGET_EMSCRIPTEN)
-// Add import stubs to avoid errors/warnings due to undefined symbols:
-//
-// If we use WASM_IMPORT to import a symbol and it's not a JS symbol defined in
-// a library visible to Emscripten, the Emscripten linker will error out. It is
-// possible to prevent this with `-sERROR_ON_UNDEFINED_SYMBOLS=0` but this also
-// disables useful linker checks that help detect bugs. Also, there will still
-// be a warning.
-//
-// In order to avoid these issues, use EM_JS to define a stub import. This makes
-// the linker happy because it sees the symbol as defined. We mark it as a stub
-// so that llwasm's adjustImports callback will write over it with a method
-// defined in a host module. If it's ever called at runtime, we panic.
-//
-// TODO: Maybe drop the panic in release mode?
+// On native WASM_EXPORT does nothing
+#  define WASM_EXPORT(name) name
+
+// On native make calling a WASM_IMPORT an error
+#  if defined(_MSC_VER)
+#    define WASM_IMPORT(ret, name, rest...)
+#  else
+#    define WASM_IMPORT(ret, name, rest...)                                            \
+        __attribute__((error(#name " can only be used in wasm targets"))) ret name rest
+#  endif
+
+#elif defined(SPY_TARGET_WASI)
+
+#  define WASM_EXPORT(name) __attribute__((export_name(#name))) name
+#  define WASM_IMPORT(ret, name, rest...)                                              \
+      __attribute__((import_module("env"), import_name(#name))) ret name rest
+
+#elif defined(SPY_TARGET_EMSCRIPTEN)
 
 #  include "emscripten.h"
 
-#  define IMPORT_STUB_TRAPPING(ret, name, rest...)                                     \
+#  define WASM_EXPORT(name) __attribute__((export_name(#name))) name
+
+// TODO: Maybe in release mode we should leave out _spy_panic_import_stub_js?
+#  define WASM_IMPORT(ret, name, rest...)                                              \
       EM_JS(ret, name, rest, { _spy_panic_import_stub_js(#name); } name.stub = true)
 
 #else
-#  define IMPORT_STUB_TRAPPING(ret, name, rest...) ret WASM_IMPORT(name) rest
+#  error "Should be unreachable."
 #endif
-
 
 #if defined(__GNUC__) || defined(__clang__)
 #  define NORETURN __attribute__((noreturn))
