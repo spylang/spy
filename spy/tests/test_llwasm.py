@@ -413,6 +413,9 @@ class TestLLWasm(CTest):
 
         @self.run_in_pyodide_maybe
         def fn(selenium, test_wasm):
+            from spy.libspy import LibSPyHost, WasmTrap
+            from spy.llwasm import LLWasmInstance, LLWasmModule
+
             libspy = LibSPyHost()
 
             llmod = LLWasmModule(str(test_wasm))
