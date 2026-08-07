@@ -34,7 +34,15 @@
 
 #if defined(SPY_TARGET_NATIVE)
 #  define WASM_EXPORT(name) name
-#  define WASM_IMPORT(name) name
+
+// On native targets make calling a WASM_IMPORT an error
+#  if defined(_MSC_VER)
+#    define WASM_IMPORT(name) name
+#  else
+#    define WASM_IMPORT(name)                                                          \
+        __attribute__((error(#name " can only be used in wasm targets"))) name
+#  endif
+
 #else
 #  define WASM_EXPORT(name) __attribute__((export_name(#name))) name
 #  define WASM_IMPORT(name)                                                            \
@@ -55,15 +63,14 @@
 // so that llwasm's adjustImports callback will write over it with a method
 // defined in a host module. If it's ever called at runtime, we panic.
 //
-// TODO: Maybe drop the panic in release mode?
 
 #  include "emscripten.h"
 
-#  define IMPORT_STUB_TRAPPING(ret, name, rest...)                                     \
+#  define EMSCRIPTEN_IMPORT(ret, name, rest...)                                     \
       EM_JS(ret, name, rest, { _spy_panic_import_stub_js(#name); } name.stub = true)
 
 #else
-#  define IMPORT_STUB_TRAPPING(ret, name, rest...) ret WASM_IMPORT(name) rest
+#  define EMSCRIPTEN_IMPORT(ret, name, rest...) ret WASM_IMPORT(name) rest
 #endif
 
 

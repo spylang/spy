@@ -352,9 +352,9 @@ class TestLLWasm(CTest):
         #include <stdint.h>
         #include "spy.h"
 
-        IMPORT_STUB_TRAPPING(int32_t, add, (int32_t x, int32_t y));
-        IMPORT_STUB_TRAPPING(int32_t, square, (int32_t x));
-        IMPORT_STUB_TRAPPING(void, record, (int32_t x));
+        EMSCRIPTEN_IMPORT(int32_t, add, (int32_t x, int32_t y));
+        EMSCRIPTEN_IMPORT(int32_t, square, (int32_t x));
+        EMSCRIPTEN_IMPORT(void, record, (int32_t x));
 
         int32_t compute(void) {
             record(100);
@@ -402,7 +402,7 @@ class TestLLWasm(CTest):
         #include <stdint.h>
         #include "spy.h"
 
-        IMPORT_STUB_TRAPPING(void, missing_import, (void));
+        EMSCRIPTEN_IMPORT(void, missing_import, (void));
 
         int32_t compute(void) {
             missing_import();
