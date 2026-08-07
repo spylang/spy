@@ -85,3 +85,27 @@ spy_panic(const char *etype, const char *message, const char *fname, int32_t lin
 }
 
 #endif /* !defined(SPY_TARGET_WASI) */
+
+#if defined(SPY_TARGET_EMSCRIPTEN)
+#  include "emscripten.h"
+#  include "stdio.h"
+
+// clang-format off
+EM_JS(void, _spy_panic_import_stub_js, (__externref_t jsname), {
+    withStackSave(() => {
+        __spy_panic_import_stub(stringToUTF8OnStack(jsname));
+    });
+})
+// clang-format on
+
+EMSCRIPTEN_KEEPALIVE void
+_spy_panic_import_stub(char *name) {
+    char *msg;
+    asprintf(&msg, "Called undefined import stub '%s()'", name);
+    spy_debug_log(msg);
+    free(msg);
+    spy_debug_log("Unfortunately we're not sure where you called it...");
+    abort();
+}
+
+#endif /* defined(SPY_TARGET_EMSCRIPTEN) */
