@@ -8,7 +8,7 @@ import pytest
 from spy.backend.c.cbackend import CBackend
 from spy.backend.interp import InterpModuleWrapper
 from spy.build.build_info import BuildTarget
-from spy.build.config import BuildConfig
+from spy.build.config import BuildConfig, OutputKind
 from spy.build.ninja import NinjaWriter
 from spy.doppler import ErrorMode
 from spy.errors import SPyError
@@ -363,12 +363,14 @@ def expect_errors(main: str, *anns_to_match: MatchAnnotation) -> Any:
 class CTest:
     tmpdir: Any
     target: BuildTarget
+    kind: OutputKind
 
     @pytest.fixture
     def init(self, tmpdir):
         self.tmpdir = tmpdir
         # NOTE: target is overwritten by TestLLWasm.init_llwasm
         self.target = "wasi"
+        self.kind = "lib"
         self.build_dir = self.tmpdir.join("build").ensure(dir=True)
 
     def write(self, src: str) -> py.path.local:
@@ -378,7 +380,7 @@ class CTest:
         return test_c
 
     def c_compile(self, src: str, *, exports: list[str] = []) -> py.path.local:
-        config = BuildConfig(target=self.target, kind="lib", build_type="debug")
+        config = BuildConfig(target=self.target, kind=self.kind, build_type="debug")
         test_c = self.write(src)
         ninja = NinjaWriter(config, self.build_dir)
         ninja.write("test", [test_c], wasm_exports=exports)
