@@ -352,9 +352,9 @@ class TestLLWasm(CTest):
         #include <stdint.h>
         #include "spy.h"
 
-        WASM_IMPORT(int32_t, add, (int32_t x, int32_t y));
-        WASM_IMPORT(int32_t, square, (int32_t x));
-        WASM_IMPORT(void, record, (int32_t x));
+        IMPORT_STUB_TRAPPING(int32_t, add, (int32_t x, int32_t y));
+        IMPORT_STUB_TRAPPING(int32_t, square, (int32_t x));
+        IMPORT_STUB_TRAPPING(void, record, (int32_t x));
 
         int32_t compute(void) {
             record(100);
@@ -394,7 +394,7 @@ class TestLLWasm(CTest):
 
         fn(self.selenium, test_wasm)
 
-    def test_missing_wasm_import_traps(self):
+    def test_import_stub_trapping_traps(self):
         if self.llwasm_backend != "pyodide":
             pytest.skip("Pyodide only")
 
@@ -402,7 +402,7 @@ class TestLLWasm(CTest):
         #include <stdint.h>
         #include "spy.h"
 
-        WASM_IMPORT(void, missing_import, (void));
+        IMPORT_STUB_TRAPPING(void, missing_import, (void));
 
         int32_t compute(void) {
             missing_import();
