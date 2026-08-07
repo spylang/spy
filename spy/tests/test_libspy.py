@@ -93,7 +93,7 @@ class TestLibSPyNative(CTest):
         src = r"""
         #include <spy.h>
 
-        WASM_IMPORT(void, some_import, (void));
+        void WASM_IMPORT(some_import)(void);
 
         void func(void) {
             some_import();
