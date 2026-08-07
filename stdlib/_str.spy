@@ -656,13 +656,13 @@ def _split_whitespace(self:str) -> list[str]:
         result.append(StrObject.to_str(llnew))
 
     return result
-        
+
 
 @struct
 class unicode_codepoints:
     """Iterates over the unicode codepoints in a string."""
     str: gc_ptr[StrObject]
-  
+
     def __fastiter__(self) -> unicode_codepoints_iterator:
         return unicode_codepoints_iterator(self.str, 0)
 
@@ -670,10 +670,10 @@ class unicode_codepoints:
 class unicode_codepoints_iterator:
     str_ptr: gc_ptr[StrObject]
     i: int
-   
+
     def __next__(self) -> unicode_codepoints_iterator:
         return unicode_codepoints_iterator(self.str_ptr, self.i + self.__item_len())
-    
+
     def __item__(self) -> i32:
         current_byte = self.str_ptr.utf8[self.i]
         codepoint: i32 = current_byte & __first_byte_mask(current_byte)
@@ -681,9 +681,9 @@ class unicode_codepoints_iterator:
         for j in range(self.__item_len() - 1):
             current_byte = self.str_ptr.utf8[self.i + j + 1] & u8(0b0011_1111)
             codepoint = i32(current_byte) | (codepoint << 6)
-        
+
         return codepoint
-    
+
     # the opposite of StopIteration :)
     def __continue_iteration__(self) -> bool:
         return self.i < self.str_ptr.length

@@ -7,12 +7,12 @@
 
 void
 spy_debug_log(const char *s) {
-    printf("%s\n", s);
+    fprintf(stderr, "%s\n", s);
 }
 
 void
 spy_debug_log_i32(const char *s, int32_t n) {
-    printf("%s %d\n", s, n);
+    fprintf(stderr, "%s %d\n", s, n);
 }
 
 /* Helper function to read a specific line from a file */

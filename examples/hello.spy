@@ -1,0 +1,9 @@
+"""
+Things to notice:
+  - Every SPy program defines `main()` as its entry point.
+    SPy libraries do not need a `main()` function.
+"""
+
+
+def main() -> None:
+    print("Hello world!")

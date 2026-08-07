@@ -61,6 +61,14 @@ spy = "spy.cli:pyproject_entry_point"
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
+[tool.uv]
+# Instruct uv to never use the system Python installations.
+# This is to avoid errors during CFFI tests (i.e. when building
+# a native extension) when the system Python doesn't contain the
+# Python C headers (e.g. `python3-dev` package not installed).
+# See: https://github.com/spylang/spy/issues/621
+python-preference = "only-managed"
+
 [tool.setuptools]
 include-package-data = true
 
