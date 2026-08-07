@@ -31,7 +31,6 @@
 #  error "You must define either SPY_GC_NONE or SPY_GC_BDWGC"
 #endif
 
-
 #if defined(SPY_TARGET_NATIVE)
 #  define WASM_EXPORT(name) name
 
@@ -66,13 +65,12 @@
 
 #  include "emscripten.h"
 
-#  define EMSCRIPTEN_IMPORT(ret, name, rest...)                                     \
+#  define EMSCRIPTEN_IMPORT(ret, name, rest...)                                        \
       EM_JS(ret, name, rest, { _spy_panic_import_stub_js(#name); } name.stub = true)
 
 #else
 #  define EMSCRIPTEN_IMPORT(ret, name, rest...) ret WASM_IMPORT(name) rest
 #endif
-
 
 #if defined(__GNUC__) || defined(__clang__)
 #  define NORETURN __attribute__((noreturn))
