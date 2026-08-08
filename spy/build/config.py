@@ -5,10 +5,10 @@ from dataclasses import dataclass
 from typing import Literal, Optional
 
 import spy.libspy
-from spy.build.build_info import BuildTarget, BuildType
+from spy.build.build_info import BuildTarget, BuildType, OutputKind
 from spy.build.flags import get_cc, get_cflags, get_ldflags, get_libdir
+from spy.errors import WIP
 
-OutputKind = Literal["exe", "lib", "py-cffi"]
 GCOption = Literal["none", "bdwgc"]
 
 
@@ -21,6 +21,12 @@ class BuildConfig:
     warning_as_error: bool = False
     gc: GCOption = "none"
     static: bool = False
+
+    def __post_init__(self) -> None:
+        if self.kind == "testlib" and self.target not in ("wasi", "emscripten"):
+            raise WIP(
+                "--output-kind=testlib works only for wasi and emscripten targets"
+            )
 
 
 # ======= CFLAGS and LDFLAGS logic =======
@@ -61,8 +67,8 @@ class CompilerConfig:
         self.ldflags += get_ldflags(flags_target, config.build_type)
 
         libdir = get_libdir(flags_target, config.build_type)
-        if config.target == "wasi" and config.kind == "lib":
-            # WASM libs are mostly used by tests: in this case we want to make sure to
+        if config.target == "wasi" and config.kind == "testlib":
+            # WASM testlibs are used by tests: in this case we want to make sure to
             # include the whole libspy.a, so that helper functions such as spy_str_alloc
             # are always available.
             #
@@ -89,7 +95,7 @@ class CompilerConfig:
 
         elif config.target == "wasi":
             self.ext = ".wasm"
-            if config.kind == "lib":
+            if config.kind == "testlib":
                 self.ldflags += ["-mexec-model=reactor"]
 
         elif config.target == "emscripten":

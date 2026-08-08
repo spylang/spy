@@ -7,6 +7,7 @@ Usage:
     python -m spy.build.flags --ldflags --target=wasi --build-type=release
     python -m spy.build.flags --libdir --target=wasi --build-type=debug
     python -m spy.build.flags --cc --target=wasi
+    python -m spy.build.flags --cflags --target=wasi --output-kind=testlib
 """
 
 import argparse
@@ -15,12 +16,12 @@ from os import getenv
 from typing import Optional
 
 import spy
+from spy.build.build_info import BuildType
 
 _LIBSPY = spy.ROOT.join("libspy")
 _INCLUDE = _LIBSPY.join("include")
 _BUILD = _LIBSPY.join("build")
 
-BuildType = str  # "release" | "debug"
 
 # Base CFLAGS shared by all targets (mirrors spy/libspy/Makefile)
 _BASE_CFLAGS: list[str] = [
