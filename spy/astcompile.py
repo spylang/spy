@@ -71,8 +71,13 @@ class ASTCompiler:
         assert isinstance(new_vardef, ast.VarDef)
         return decl.replace(vardef=new_vardef)
 
-    ## def compile_decl_GlobalClassDef(self, decl: ast.GlobalClassDef) -> ast.Decl:
-    ##     return decl
+    def compile_decl_GlobalClassDef(self, decl: ast.GlobalClassDef) -> ast.Decl:
+        classdef = decl.classdef
+        self.push_symtable(classdef.symtable)
+        new_body = [self.compile_stmt(s) for s in classdef.body]
+        self.pop_symtable()
+        new_classdef = classdef.replace(body=new_body)
+        return decl.replace(classdef=new_classdef)
 
     ## def compile_decl_GlobalGenericClassDef(
     ##     self, decl: ast.GlobalGenericClassDef

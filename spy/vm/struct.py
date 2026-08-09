@@ -204,6 +204,7 @@ class W_StructType(W_Type):
         self_type = ast.FQNConst(func_loc, self.fqn)
         funcdef = ast.FuncDef(
             loc=func_loc,
+            stage="parsed",
             color="red",
             kind="plain",
             name=name,
@@ -221,6 +222,7 @@ class W_StructType(W_Type):
         # create a fake module so that we can run ScopeAnalyzer
         module = ast.Module(
             loc=func_loc,
+            stage="parsed",
             filename="<generated>",
             docstring=None,
             decls=[ast.GlobalFuncDef(func_loc, funcdef)],
