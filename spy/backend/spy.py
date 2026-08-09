@@ -453,6 +453,9 @@ class SPyBackend:
     def fmt_expr_NameError(self, name: ast.NameError) -> str:
         return name.id
 
+    def fmt_expr_NameImportRef(self, name: ast.NameImportRef) -> str:
+        return name.sym.name
+
     def fmt_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> str:
         return name.sym.name
 

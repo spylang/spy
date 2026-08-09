@@ -114,6 +114,11 @@ class ASTCompiler:
     def compile_stmt_Pass(self, stmt: ast.Pass) -> ast.Stmt:
         return stmt
 
+    def compile_stmt_VarDef(self, stmt: ast.VarDef) -> ast.Stmt:
+        new_type = self.compile_expr(stmt.type)
+        new_value = self.compile_expr(stmt.value) if stmt.value is not None else None
+        return stmt.replace(type=new_type, value=new_value)
+
     # ===== Expr handlers =====
 
     def compile_expr_Auto(self, auto: ast.Auto) -> ast.Expr:
