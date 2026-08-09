@@ -174,6 +174,9 @@ class ASTCompiler:
             stmt.loc, stmt.target.name, stmt.value, expr=False
         )
 
+    def compile_stmt_FuncDef(self, stmt: ast.FuncDef) -> ast.Stmt:
+        return self.compile_funcdef(stmt)
+
     def compile_stmt_AugAssign(self, stmt: ast.AugAssign) -> ast.Stmt:
         # desugar "x += 1" into "x = x + 1" and compile the result
         desugared = ast.Assign(
