@@ -373,7 +373,7 @@ class W_Func(W_Object):
 
 # =========== W_ASTFunc and compilation passes ========
 #
-# Each W_ASTFunc is created by a certain pass and has corresponding lowering_state. The
+# Each W_ASTFunc is created by a certain pass and has corresponding lostate. The
 # various passes create new versions of the function. Once a function has been lowered
 # it becomes "invalid", and we set the `w_replaced_by` field.
 
@@ -388,7 +388,7 @@ class W_ASTFunc(W_Func):
 
     # if the function has been lowered, this contains the NEW function, and the current
     # one becomes invalid
-    lowering_state: LoweringState
+    lostate: LoweringState
     w_replaced_by: Optional["W_ASTFunc"]
 
     # set by the @force_inline decorator
@@ -402,7 +402,7 @@ class W_ASTFunc(W_Func):
         closure: CLOSURE,
         defaults_w: list[W_Object],
         *,
-        lowering_state: LoweringState,
+        lostate: LoweringState,
         locals_types_w: Optional[dict[str, W_Type]] = None,
         is_force_inline: bool = False,
     ) -> None:
@@ -413,13 +413,13 @@ class W_ASTFunc(W_Func):
         self.closure = closure
         self.defaults_w = defaults_w
         self.locals_types_w = locals_types_w
-        self.lowering_state = lowering_state
+        self.lostate = lostate
         self.w_replaced_by = None
         self.is_force_inline = is_force_inline
         self.w_origin = None
 
         # sanity check
-        if lowering_state in ("parsed", "astcompiled", "redshifting"):
+        if lostate in ("parsed", "astcompiled", "redshifting"):
             assert self.locals_types_w is None
         else:
             assert self.locals_types_w is not None
@@ -446,7 +446,7 @@ class W_ASTFunc(W_Func):
         extras = []
         if self.color == "blue":
             extras.append("blue")
-        state = self.lowering_state
+        state = self.lostate
         if state not in ("parsed", "redshifting"):
             extras.append(state)
         if not self.is_valid:
