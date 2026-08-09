@@ -459,6 +459,9 @@ class SPyBackend:
     def fmt_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> str:
         return name.sym.name
 
+    def fmt_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> str:
+        return name.sym.name
+
     def fmt_expr_NameOuterCell(self, name: ast.NameOuterCell) -> str:
         return self.fmt_fqn(name.fqn)
 

@@ -198,6 +198,12 @@ class ASTCompiler:
     def compile_expr_Literal(self, expr: ast.Literal) -> ast.Expr:
         return expr
 
+    def compile_expr_Call(self, expr: ast.Call) -> ast.Expr:
+        return expr.replace(
+            func=self.compile_expr(expr.func),
+            args=[self.compile_expr(arg) for arg in expr.args],
+        )
+
     def compile_expr_AssignExpr(self, expr: ast.AssignExpr) -> ast.Expr:
         return self._compile_assign_common(expr.loc, expr.target, expr.value, expr=True)
 
@@ -229,8 +235,8 @@ class ASTCompiler:
             return ast.NameImportRef(name.loc, sym)
         elif sym.storage == "direct" and sym.is_local:
             return ast.NameLocalDirect(name.loc, sym)
-        ## elif sym.storage == "direct":
-        ##     return ast.NameOuterDirect(name.loc, sym)
+        elif sym.storage == "direct":
+            return ast.NameOuterDirect(name.loc, sym)
         ## elif sym.storage == "cell" and sym.is_local:
         ##     return ast.NameLocalCell(name.loc, sym)
         ## elif sym.storage == "cell":
