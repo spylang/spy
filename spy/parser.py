@@ -153,7 +153,11 @@ class Parser:
         docstring, py_body = self.get_docstring_maybe(py_mod.body)
 
         mod = spy.ast.Module(
-            loc=loc, filename=self.filename, decls=[], docstring=docstring
+            loc=loc,
+            lostate="parsed",
+            filename=self.filename,
+            decls=[],
+            docstring=docstring,
         )
 
         for py_stmt in py_body:
@@ -313,6 +317,7 @@ class Parser:
 
         return spy.ast.FuncDef(
             loc=py_funcdef.loc,
+            lostate="parsed",
             color=color,
             kind=func_kind,
             name=py_funcdef.name,

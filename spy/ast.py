@@ -282,6 +282,7 @@ class Node:
 
 @astnode
 class Module(Node):
+    lostate: LoweringState
     filename: str
     docstring: Optional[str]
     decls: list["Decl"]
@@ -684,6 +685,7 @@ class FuncArg(Node):
 
 @astnode
 class FuncDef(Stmt):
+    lostate: LoweringState
     color: Color
     kind: FuncKind
     name: str

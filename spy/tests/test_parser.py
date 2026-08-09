@@ -47,11 +47,13 @@ class TestParser:
         mod = self.parse(src)
         expected = """
         Module(
+            lostate='parsed',
             filename='{tmpdir}/test.spy',
             docstring=None,
             decls=[
                 GlobalFuncDef(
                     funcdef=FuncDef(
+                        lostate='parsed',
                         color='red',
                         kind='plain',
                         name='foo',
@@ -78,11 +80,13 @@ class TestParser:
         """)
         expected = """
         Module(
+            lostate='parsed',
             filename='{tmpdir}/test.spy',
             docstring=None,
             decls=[
                 GlobalFuncDef(
                     funcdef=FuncDef(
+                        lostate='parsed',
                         color='red',
                         kind='plain',
                         name='foo',
@@ -120,6 +124,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            lostate='parsed',
             color='red',
             kind='plain',
             name='foo',
@@ -190,6 +195,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            lostate='parsed',
             color='red',
             kind='plain',
             name='foo',
@@ -218,6 +224,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            lostate='parsed',
             color='red',
             kind='plain',
             name='foo',
@@ -256,6 +263,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            lostate='parsed',
             color='blue',
             kind='plain',
             name='foo',
@@ -284,6 +292,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            lostate='parsed',
             color='red',
             kind='plain',
             name='foo',
@@ -310,6 +319,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            lostate='parsed',
             color='red',
             kind='plain',
             name='foo',
@@ -336,6 +346,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            lostate='parsed',
             color='blue',
             kind='plain',
             name='foo',
@@ -362,6 +373,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            lostate='parsed',
             color='blue',
             kind='generic',
             name='foo',
@@ -396,6 +408,7 @@ class TestParser:
                 ),
             ],
             inner=FuncDef(
+                lostate='parsed',
                 color='red',
                 kind='plain',
                 name='__impl',
@@ -468,6 +481,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            lostate='parsed',
             color='blue',
             kind='metafunc',
             name='foo',
@@ -649,6 +663,7 @@ class TestParser:
         """)
         expected = f"""
         Module(
+            lostate='parsed',
             filename='{self.tmpdir}/test.spy',
             docstring=None,
             decls=[
@@ -696,6 +711,7 @@ class TestParser:
         """)
         expected = f"""
         Module(
+            lostate='parsed',
             filename='{self.tmpdir}/test.spy',
             docstring=None,
             decls=[
@@ -883,6 +899,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            lostate='parsed',
             color='red',
             kind='plain',
             name='foo',
@@ -922,6 +939,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            lostate='parsed',
             color='red',
             kind='plain',
             name='foo',
@@ -967,6 +985,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            lostate='parsed',
             color='red',
             kind='plain',
             name='foo',
@@ -1404,6 +1423,7 @@ class TestParser:
         #
         expected = """
         Module(
+            lostate='parsed',
             filename='{tmpdir}/test.spy',
             docstring=None,
             decls=[
@@ -1423,6 +1443,7 @@ class TestParser:
         #
         expected = """
         Module(
+            lostate='parsed',
             filename='{tmpdir}/test.spy',
             docstring=None,
             decls=[
@@ -1443,6 +1464,7 @@ class TestParser:
 
         expected = """
         Module(
+            lostate='parsed',
             filename='{tmpdir}/test.spy',
             docstring='hello',
             decls=[
@@ -1548,11 +1570,13 @@ class TestParser:
         """)
         expected = """
         Module(
+            lostate='parsed',
             filename='{tmpdir}/test.spy',
             docstring=None,
             decls=[
                 GlobalFuncDef(
                     funcdef=FuncDef(
+                        lostate='parsed',
                         color='blue',
                         kind='plain',
                         name='foo',
@@ -1562,6 +1586,7 @@ class TestParser:
                         docstring=None,
                         body=[
                             FuncDef(
+                                lostate='parsed',
                                 color='red',
                                 kind='plain',
                                 name='bar',
@@ -1760,6 +1785,7 @@ class TestParser:
                     value=None,
                 ),
                 FuncDef(
+                    lostate='parsed',
                     color='red',
                     kind='plain',
                     name='foo',
@@ -1786,6 +1812,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            lostate='parsed',
             color='red',
             kind='plain',
             name='foo',
