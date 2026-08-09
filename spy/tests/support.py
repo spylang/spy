@@ -226,7 +226,7 @@ class CompilerTest:
         if self.backend == "C":
             config = BuildConfig(
                 target="wasi",
-                kind="lib",
+                kind="testlib",
                 build_type="debug",
                 opt_level=self.OPT_LEVEL,
             )
@@ -370,7 +370,7 @@ class CTest:
         self.tmpdir = tmpdir
         # NOTE: target is overwritten by TestLLWasm.init_llwasm
         self.target = "wasi"
-        self.kind = "lib"
+        self.kind = "testlib"
         self.build_dir = self.tmpdir.join("build").ensure(dir=True)
 
     def write(self, src: str) -> py.path.local:
