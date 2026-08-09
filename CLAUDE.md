@@ -120,5 +120,22 @@ spy -O 1 -g your_file.spy         # With optimization and debug symbols
   one `Test*` class per `test_*.py` file.
 
 
+## When to write unit tests
+
+A unit test is worth writing only if the complexity of the thing being tested is
+high enough to justify it.
+
+A test that just mirrors a declaration or configuration is a **change-detector**,
+not a safety net. If updating the code always means updating the test in lockstep,
+the test adds no value — it only adds maintenance burden. Tests should verify
+*behavior that emerges from the interaction of multiple pieces*, not re-state what
+a single declaration says.
+
+If the logic is trivial AND it is exercised downstream by other tests (e.g.
+integration/compiler tests), it is fine to rely on those instead of writing
+dedicated unit tests. For example: if you put the wrong `@astnode("...")` spec on a
+node class, the compiler tests will catch it. A unit test that just asserts
+`SomeNode._valid_states == frozenset({"parsed"})` adds nothing.
+
 ## GH PR Guidelines
 - When creating a PR, describe what you did, but don't include the "test plan" section.
