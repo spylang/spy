@@ -179,6 +179,12 @@ class ASTCompiler:
             stmt.loc, stmt.target.name, stmt.value, expr=False
         )
 
+    def compile_stmt_ClassDef(self, stmt: ast.ClassDef) -> ast.Stmt:
+        self.push_symtable(stmt.symtable)
+        new_body = [self.compile_stmt(s) for s in stmt.body]
+        self.pop_symtable()
+        return stmt.replace(body=new_body)
+
     def compile_stmt_FuncDef(self, stmt: ast.FuncDef) -> ast.Stmt:
         return self.compile_funcdef(stmt)
 
