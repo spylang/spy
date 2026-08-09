@@ -220,6 +220,18 @@ class ASTCompiler:
     def compile_expr_Literal(self, expr: ast.Literal) -> ast.Expr:
         return expr
 
+    def compile_expr_GetItem(self, expr: ast.GetItem) -> ast.Expr:
+        return expr.replace(
+            value=self.compile_expr(expr.value),
+            args=[self.compile_expr(a) for a in expr.args],
+        )
+
+    def compile_expr_GetAttr(self, expr: ast.GetAttr) -> ast.Expr:
+        return expr.replace(value=self.compile_expr(expr.value))
+
+    def compile_expr_UnaryOp(self, expr: ast.UnaryOp) -> ast.Expr:
+        return expr.replace(value=self.compile_expr(expr.value))
+
     def compile_expr_And(self, expr: ast.And) -> ast.Expr:
         return expr.replace(
             left=self.compile_expr(expr.left),
