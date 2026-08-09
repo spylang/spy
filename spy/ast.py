@@ -950,13 +950,36 @@ class NameOuterCell(Expr):
 @astnode(">= astcompiled")
 class NameError(Expr):
     """
-    Needed to enable lazy NameErrors.
+    Poison node needed to enable lazy NameErrors.
 
     Produced by astcompiler when ast.Name refers to unknown IDs.
     """
 
     precedence = 100
     id: str
+
+
+@astnode(">= astcompiled")
+class AssignConstError(Stmt):
+    """
+    Poison node for assignment to a const target.
+
+    Produced by astcompiler instead of raising eagerly.
+    """
+
+    sym: Symbol
+    target_loc: Loc
+
+
+@astnode(">= astcompiled")
+class AssignConstExprError(Expr):
+    """
+    Expr variant of AssignConstError, for the walrus (:=) path.
+    """
+
+    precedence = 0
+    sym: Symbol
+    target_loc: Loc
 
 
 @astnode(">= astcompiled")

@@ -1,7 +1,7 @@
 from contextlib import contextmanager
 from ctypes import c_float as float32
 from types import NoneType
-from typing import TYPE_CHECKING, Iterator, Optional, Sequence
+from typing import TYPE_CHECKING, Iterator, Never, Optional, Sequence
 
 from fixedint import Int8, Int32, Int64, UInt8, UInt32, UInt64
 
@@ -888,6 +888,26 @@ class AbstractFrame:
             "not found in this scope",
             name.loc,
         )
+
+    def exec_stmt_AssignConstError(self, node: ast.AssignConstError) -> None:
+        self._raise_assign_const_error(node.sym, node.target_loc)
+
+    def eval_expr_AssignConstExprError(
+        self, node: ast.AssignConstExprError
+    ) -> W_MetaArg:
+        self._raise_assign_const_error(node.sym, node.target_loc)
+
+    def _raise_assign_const_error(self, sym: Symbol, target_loc: Loc) -> Never:
+        err = SPyError("W_TypeError", "invalid assignment target")
+        err.add("error", f"{sym.name} is const", target_loc)
+        err.add("note", f"const declared here ({sym.varkind_origin})", sym.loc)
+        if sym.varkind_origin == "global-const":
+            msg = f"help: declare it as variable: `var {sym.name} ...`"
+            err.add("note", msg, sym.loc)
+        elif sym.varkind_origin == "blue-param":
+            msg = "blue function arguments are const by default"
+            err.add("note", msg, sym.loc)
+        raise err
 
     def eval_expr_NameImportRef(self, name: ast.NameImportRef) -> W_MetaArg:
         # this is correct as long as we import 'const', but if we import 'var', then it

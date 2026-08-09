@@ -123,23 +123,21 @@ class ASTCompiler:
 
     def _compile_assign_common(
         self, loc: ast.Loc, target: ast.StrLiteral, value: ast.Expr, expr: bool
-    ) -> ast.AssignLocal | ast.AssignExprLocal:
+    ) -> (
+        ast.AssignLocal
+        | ast.AssignExprLocal
+        | ast.AssignConstError
+        | ast.AssignConstExprError
+    ):
         value = self.compile_expr(value)
         sym = self.symtable.lookup(target.value)
 
-        ## if sym.varkind == "const" and sym.varkind_origin != "auto":
-        ##     err = SPyError("W_TypeError", "invalid assignment target")
-        ##     err.add("error", f"{sym.name} is const", target.loc)
-        ##     err.add("note", f"const declared here ({sym.varkind_origin})", sym.loc)
-
-        ##     if sym.varkind_origin == "global-const":
-        ##         msg = f"help: declare it as variable: `var {sym.name} ...`"
-        ##         err.add("note", msg, sym.loc)
-        ##     elif sym.varkind_origin == "blue-param":
-        ##         msg = "blue function arguments are const by default"
-        ##         err.add("note", msg, sym.loc)
-
-        ##     raise err
+        if sym.varkind == "const" and sym.varkind_origin != "auto":
+            # this is an error, let's insert the appropriate poison node
+            if expr:
+                return ast.AssignConstExprError(loc, sym, target.loc)
+            else:
+                return ast.AssignConstError(loc, sym, target.loc)
 
         if sym.storage == "direct":
             assert sym.is_local

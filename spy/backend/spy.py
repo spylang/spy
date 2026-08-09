@@ -289,6 +289,9 @@ class SPyBackend:
             v = self.fmt_expr(assign.value)
             self.wl(f"{targets} = {v}")
 
+    def emit_stmt_AssignConstError(self, node: ast.AssignConstError) -> None:
+        self.wl(f"{node.sym.name} = <AssignConstError>")
+
     def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
         varname = assign.target.value
         t = self.get_vartype_to_declare_maybe(varname)
@@ -535,6 +538,9 @@ class SPyBackend:
         return self._fmt_assignexpr(
             assignexpr.target.value, assignexpr.value, assignexpr.precedence
         )
+
+    def fmt_expr_AssignConstExprError(self, node: ast.AssignConstExprError) -> str:
+        return f"{node.sym.name} := <AssignConstExprError>"
 
     def fmt_expr_AssignExprLocal(self, assignexpr: ast.AssignExprLocal) -> str:
         return self._fmt_assignexpr(
