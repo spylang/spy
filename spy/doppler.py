@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from spy.vm.object import W_Type
     from spy.vm.vm import SPyVM
 
-ErrorMode = Literal["eager", "lazy", "warn"]
+type ErrorMode = Literal["eager", "lazy", "warn"]
 
 
 def redshift(vm: "SPyVM", w_func: W_ASTFunc, error_mode: ErrorMode) -> W_ASTFunc:

@@ -27,9 +27,9 @@ if TYPE_CHECKING:
     from spy.vm.object import W_Object, W_Type
     from spy.vm.vm import SPyVM
 
-ClassKind = typing.Literal["class", "struct"]
-FuncKind = typing.Literal["plain", "generic", "metafunc"]
-FuncParamKind = typing.Literal["simple", "var_positional"]
+type ClassKind = typing.Literal["class", "struct"]
+type FuncKind = typing.Literal["plain", "generic", "metafunc"]
+type FuncParamKind = typing.Literal["simple", "var_positional"]
 
 # ==== Typed vs untyped ASTs ====
 #

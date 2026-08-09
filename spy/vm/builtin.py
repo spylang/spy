@@ -20,6 +20,7 @@ from typing import (
 from spy.ast import Color, FuncKind
 from spy.errors import SPyError
 from spy.fqn import FQN, QUALIFIERS
+from spy.util import unwrap_type_alias
 from spy.vm.function import FuncParam, FuncParamKind, W_BuiltinFunc, W_FuncType
 from spy.vm.object import (
     W_Object,
@@ -31,7 +32,7 @@ from spy.vm.object import (
     builtin_staticmethod,
 )
 
-TYPES_DICT = dict[str, W_Type]
+type TYPES_DICT = dict[str, W_Type]
 
 
 def is_W_class(x: Any) -> bool:
@@ -39,6 +40,7 @@ def is_W_class(x: Any) -> bool:
 
 
 def get_spy_type_annotation(ann: Any) -> Optional[W_Type]:
+    ann = unwrap_type_alias(ann)
     if get_origin(ann) is Annotated:
         for x in ann.__metadata__:
             if isinstance(x, W_Type):
@@ -57,6 +59,7 @@ def to_spy_type(ann: Any, *, allow_None: bool = False) -> W_Type:
     """
     from spy.vm.b import TYPES, B
 
+    ann = unwrap_type_alias(ann)
     if allow_None and ann is None:
         return TYPES.w_NoneType
     elif is_W_class(ann):

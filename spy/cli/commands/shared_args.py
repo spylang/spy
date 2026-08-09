@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated, Optional, get_args
 
 import click
 from typer import Argument, BadParameter, Option
@@ -28,7 +28,7 @@ class Base_Args:
             "-E",
             "--error-mode",
             help="Handling strategy for static errors",
-            click_type=click.Choice(ErrorMode.__args__),
+            click_type=click.Choice(get_args(ErrorMode.__value__)),
         ),
     ] = "eager"
 

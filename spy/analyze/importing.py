@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from spy.vm.module import W_Module
     from spy.vm.vm import SPyVM
 
-MODULE = Union[ast.Module, "W_Module", None]
+type MODULE = Union[ast.Module, "W_Module", None]
 
 # Cache version: increment this when ast.Module or SymTable structure changes
 SPYC_VERSION = 7

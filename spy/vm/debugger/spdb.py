@@ -28,7 +28,7 @@ from spy.vm.w import W_Object
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-FILE = Optional[IO[str]]
+type FILE = Optional[IO[str]]
 
 
 @BUILTINS.builtin_func

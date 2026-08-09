@@ -65,6 +65,7 @@ from spy.ast import Color
 from spy.errors import WIP, SPyError
 from spy.fqn import FQN
 from spy.location import Loc
+from spy.util import unwrap_type_alias
 from spy.vm.b import B
 
 if TYPE_CHECKING:
@@ -510,6 +511,7 @@ class W_Type(W_Object):
 
         # initialize W_Member
         for field, t in self._pyclass.__annotations__.items():
+            t = unwrap_type_alias(t)
             if member := Member.from_annotation(t):
                 # if we have this declaration:
                 #    w_x: Annotated[W_I32, Member('x')]

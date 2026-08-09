@@ -4,7 +4,7 @@ from typing import Any, Literal, Self
 
 import py.path
 
-LLWasmType = Literal[None, "void *", "int32_t", "int16_t"]
+type LLWasmType = Literal[None, "void *", "int32_t", "int16_t"]
 
 
 class HostModule:

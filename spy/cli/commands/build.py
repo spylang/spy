@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import (
     Annotated,
     Optional,
+    get_args,
 )
 
 import click
@@ -77,7 +78,7 @@ class _build_mixin:
             "-t",
             "--target",
             help="Compilation target",
-            click_type=click.Choice(BuildTarget.__args__),
+            click_type=click.Choice(get_args(BuildTarget.__value__)),
         ),
     ] = "native"
 
@@ -87,7 +88,7 @@ class _build_mixin:
             "-k",
             "--output-kind",
             help="Output kind",
-            click_type=click.Choice(OutputKind.__args__),
+            click_type=click.Choice(get_args(OutputKind.__value__)),
         ),
     ] = "exe"
 
@@ -97,7 +98,7 @@ class _build_mixin:
             "--gc",
             help="GC implementation: auto, none, bdwgc (default: auto, "
             "i.e. bdwgc for native, none for wasm targets)",
-            click_type=click.Choice(["auto", *GCOption.__args__]),
+            click_type=click.Choice(["auto", *get_args(GCOption.__value__)]),
         ),
     ] = "auto"
 

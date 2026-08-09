@@ -568,4 +568,4 @@ B.add("NotImplemented", W_NotImplementedType.__new__(W_NotImplementedType))
 
 w_DynamicType = W_Type.declare(FQN("builtins::dynamic"))
 B.add("dynamic", w_DynamicType)
-W_Dynamic = Annotated[W_Object, B.w_dynamic]
+type W_Dynamic = Annotated[W_Object, B.w_dynamic]

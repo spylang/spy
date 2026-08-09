@@ -31,10 +31,10 @@ from spy.textbuilder import ColorFormatter
 #   - if a variable is assigned multiple times, it's a "var"
 #   - if a variable is assigned inside a loop, it's a "var"
 
-Color = Literal["red", "blue"]
-VarStorage = Literal["direct", "cell", "NameError"]
-VarKind = Literal["var", "const"]
-VarKindOrigin = Literal[
+type Color = Literal["red", "blue"]
+type VarStorage = Literal["direct", "cell", "NameError"]
+type VarKind = Literal["var", "const"]
+type VarKindOrigin = Literal[
     "auto",          # "x = 0" inside a function
     "global-const",  # "x = 0" at module level
     "explicit",      # "var x = 0" or "const x = 0"
@@ -47,7 +47,7 @@ VarKindOrigin = Literal[
 
 # each ScopeKind corresponds to a different Frame for evaluation: ModFrame, ClassFrame,
 # ASTFrame
-ScopeKind = Literal["module", "class", "function"]
+type ScopeKind = Literal["module", "class", "function"]
 
 
 def maybe_blue(*colors: Color) -> Color:

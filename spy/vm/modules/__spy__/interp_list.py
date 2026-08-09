@@ -300,8 +300,10 @@ w_metaarg_interp_list_type = _make_interp_list_type(OP.w_MetaArg)
 PREBUILT_INTERP_LIST_TYPES[B.w_str] = w_str_interp_list_type
 PREBUILT_INTERP_LIST_TYPES[OP.w_MetaArg] = w_metaarg_interp_list_type
 
-W_StrInterpList = Annotated[W_InterpList[W_Str], w_str_interp_list_type]
-W_MetaArgInterpList = Annotated[W_InterpList[W_MetaArg], w_metaarg_interp_list_type]
+type W_StrInterpList = Annotated[W_InterpList[W_Str], w_str_interp_list_type]
+type W_MetaArgInterpList = Annotated[
+    W_InterpList[W_MetaArg], w_metaarg_interp_list_type
+]
 
 
 def make_str_interp_list(items_w: list[W_Str]) -> W_StrInterpList:

@@ -9,7 +9,7 @@ from spy.build.build_info import BuildTarget, BuildType, OutputKind
 from spy.build.flags import get_cc, get_cflags, get_ldflags, get_libdir
 from spy.errors import WIP
 
-GCOption = Literal["none", "bdwgc"]
+type GCOption = Literal["none", "bdwgc"]
 
 
 @dataclass
