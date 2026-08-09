@@ -207,7 +207,7 @@ class SPyVM:
 
         def should_redshift(w_func: W_ASTFunc) -> bool:
             # we don't want to redshift @blue functions
-            return w_func.color != "blue" and w_func.lostate == "astcompiled"
+            return w_func.color != "blue" and w_func.stage == "astcompiled"
 
         def get_funcs() -> Iterable[tuple[FQN, W_ASTFunc]]:
             for fqn, w_func in self.globals_w.items():
@@ -227,9 +227,9 @@ class SPyVM:
     ) -> None:
         for fqn, w_func in funcs:
             assert w_func.color != "blue"
-            assert w_func.lostate == "astcompiled"
+            assert w_func.stage == "astcompiled"
             w_newfunc = redshift(self, w_func, error_mode)
-            assert w_newfunc.lostate == "redshifted"
+            assert w_newfunc.stage == "redshifted"
             self.globals_w[fqn] = w_newfunc
 
     def linearize_all(self) -> None:
@@ -237,7 +237,7 @@ class SPyVM:
         Apply the linearize pass to all redshifted W_ASTFuncs.
         """
         for fqn, w_obj in list(self.globals_w.items()):
-            if isinstance(w_obj, W_ASTFunc) and w_obj.lostate == "redshifted":
+            if isinstance(w_obj, W_ASTFunc) and w_obj.stage == "redshifted":
                 self.globals_w[fqn] = linearize(self, w_obj)
 
     def register_module(self, w_mod: W_Module) -> None:
@@ -497,7 +497,7 @@ class SPyVM:
             # already have
             w_func = self.lookup_global(w_val.fqn)
             assert isinstance(w_func, W_ASTFunc)
-            assert w_func.lostate != "parsed"
+            assert w_func.stage != "parsed"
             return w_val.fqn
         elif isinstance(w_val, W_BuiltinFunc):
             # ideally, I'd like ALL builtin funcs to be created with

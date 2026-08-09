@@ -1,7 +1,7 @@
 import pytest
 
 from spy import ast
-from spy.ast import _parse_state_spec, astnode
+from spy.ast import _parse_stage_spec, astnode
 from spy.location import Loc
 
 
@@ -15,24 +15,24 @@ class FakeIRStmt(ast.Stmt):
     pass
 
 
-def test_parse_state_spec():
-    assert _parse_state_spec("parsed") == frozenset({"parsed"})
-    assert _parse_state_spec("<= astcompiled") == frozenset({"parsed", "astcompiled"})
-    assert _parse_state_spec("< redshifted") == frozenset(
+def test_parse_stage_spec():
+    assert _parse_stage_spec("parsed") == frozenset({"parsed"})
+    assert _parse_stage_spec("<= astcompiled") == frozenset({"parsed", "astcompiled"})
+    assert _parse_stage_spec("< redshifted") == frozenset(
         {"parsed", "astcompiled", "redshifting"}
     )
-    assert _parse_state_spec(">= redshifted") == frozenset({"redshifted", "linearized"})
-    assert _parse_state_spec("> astcompiled") == frozenset(
+    assert _parse_stage_spec(">= redshifted") == frozenset({"redshifted", "linearized"})
+    assert _parse_stage_spec("> astcompiled") == frozenset(
         {"redshifting", "redshifted", "linearized"}
     )
 
     with pytest.raises(ValueError):
-        _parse_state_spec("bogus")
+        _parse_stage_spec("bogus")
 
 
-def test_astnode_with_spec_sets_valid_states():
-    assert FakeStmt._valid_states == frozenset({"parsed"})  # type: ignore[attr-defined]
-    assert FakeIRStmt._valid_states == frozenset(  # type: ignore[attr-defined]
+def test_astnode_with_spec_sets_valid_stages():
+    assert FakeStmt._valid_stages == frozenset({"parsed"})  # type: ignore[attr-defined]
+    assert FakeIRStmt._valid_stages == frozenset(  # type: ignore[attr-defined]
         {"astcompiled", "redshifting", "redshifted", "linearized"}
     )
 

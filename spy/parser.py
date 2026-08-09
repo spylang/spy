@@ -95,7 +95,7 @@ class Parser:
         assert isinstance(py_mod, py_ast.Module)
         py_mod.compute_all_locs(self.filename)
         parsed_mod = self.from_py_Module(py_mod)
-        assert parsed_mod.lostate == "parsed"
+        assert parsed_mod.stage == "parsed"
         parsed_mod.assert_valid_at("parsed")
         return parsed_mod
 
@@ -157,7 +157,7 @@ class Parser:
 
         mod = spy.ast.Module(
             loc=loc,
-            lostate="parsed",
+            stage="parsed",
             filename=self.filename,
             decls=[],
             docstring=docstring,
@@ -320,7 +320,7 @@ class Parser:
 
         return spy.ast.FuncDef(
             loc=py_funcdef.loc,
-            lostate="parsed",
+            stage="parsed",
             color=color,
             kind=func_kind,
             name=py_funcdef.name,

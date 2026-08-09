@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 #
 # The compilation pipeline consists of a series of passes, and the AST serves as the
 # shared IR for all of them. Intermediate passes transform an AST into "the next one"
-# and set the corresponding LoweringState.
+# and set the corresponding LoweringStage.
 #
 # The pipeline is as follows, showing ARTIFACTS and --passes-->
 #
@@ -58,7 +58,7 @@ if TYPE_CHECKING:
 # The parser produces UNTYPED ASTs. The redshift pass produces TYPED ASTS.
 # ================================
 
-LoweringState = typing.Literal[
+LoweringStage = typing.Literal[
     "parsed", "astcompiled", "redshifting", "redshifted", "linearized"
 ]
 
@@ -110,18 +110,18 @@ class AST:
 del AST
 
 
-def _parse_state_spec(spec: str) -> frozenset[LoweringState]:
+def _parse_stage_spec(spec: str) -> frozenset[LoweringStage]:
     """
     Parse a state spec string like "parsed", "<= redshifted", ">= astcompiled".
     """
-    ALL_STATES = typing.get_args(LoweringState)
+    ALL_STATES = typing.get_args(LoweringStage)
     m = re.fullmatch(r"(==|<=|>=|<|>)?\s*(\w+)", spec.strip())
     if not m:
         raise ValueError(f"Invalid state spec: {spec!r}")
     op = m.group(1) or "=="
-    state: LoweringState = m.group(2)  # type: ignore
+    state: LoweringStage = m.group(2)  # type: ignore
     if state not in ALL_STATES:
-        raise ValueError(f"Invalid LoweringState: {state!r}")
+        raise ValueError(f"Invalid LoweringStage: {state!r}")
 
     i = ALL_STATES.index(state)
     if op == "==":
@@ -139,31 +139,31 @@ def _parse_state_spec(spec: str) -> frozenset[LoweringState]:
 
 
 @dataclass_transform(field_specifiers=(dataclasses.field,), eq_default=False)
-def astnode(cls_or_state_spec: Any) -> Any:
+def astnode(cls_or_stage_spec: Any) -> Any:
     """
     Decorator to create dataclasses for AST nodes.
 
     We want all nodes to compare by *identity* and be hashable, because e.g. we
     put them in dictionaries inside the typechecker.
 
-    An optional state spec restricts which LoweringStates the node is valid in:
+    An optional stage spec restricts which LoweringStages the node is valid in:
         @astnode("parsed")          -- only at 'parsed'
-        @astnode("<= redshifted")   -- at any state up to and including 'redshifted'
+        @astnode("<= redshifted")   -- at any stage up to and including 'redshifted'
         @astnode(">= astcompiled")  -- at 'astcompiled' or later
     """
-    if isinstance(cls_or_state_spec, str):
-        spec = cls_or_state_spec
-        valid_states = _parse_state_spec(spec)
+    if isinstance(cls_or_stage_spec, str):
+        spec = cls_or_stage_spec
+        valid_stages = _parse_stage_spec(spec)
 
         def decorator(cls: Any) -> Any:
             cls2 = dataclass(eq=False)(cls)
-            cls2._valid_states = valid_states
+            cls2._valid_stages = valid_stages
             return cls2
 
         return decorator
 
     else:
-        cls = cls_or_state_spec
+        cls = cls_or_stage_spec
         return dataclass(eq=False)(cls)
 
 
@@ -245,15 +245,15 @@ class Node:
                     msg = f"{msg}: {extra_msg}"
                 raise Exception(msg)
 
-    def assert_valid_at(self, state: LoweringState) -> None:
+    def assert_valid_at(self, state: LoweringStage) -> None:
         """
         Check that self and all its descendants are valid at the given
-        LoweringState, i.e. that every descendant annotated with @astnode(spec)
+        LoweringStage, i.e. that every descendant annotated with @astnode(spec)
         claims `state` among the ones it supports.
         """
         assert state != "redshifting", "redshifting is a transient state"
         for node in self.walk():
-            valid_states = getattr(type(node), "_valid_states", None)
+            valid_states = getattr(type(node), "_valid_stages", None)
             if valid_states is not None and state not in valid_states:
                 cls = node.__class__.__name__
                 raise Exception(f"Node `ast.{cls}` is not valid at state '{state}'")
@@ -282,7 +282,7 @@ class Node:
 
 @astnode
 class Module(Node):
-    lostate: LoweringState
+    stage: LoweringStage
     filename: str
     docstring: Optional[str]
     decls: list["Decl"]
@@ -685,7 +685,7 @@ class FuncArg(Node):
 
 @astnode
 class FuncDef(Stmt):
-    lostate: LoweringState
+    stage: LoweringStage
     color: Color
     kind: FuncKind
     name: str

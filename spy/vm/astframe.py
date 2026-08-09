@@ -228,7 +228,7 @@ class AbstractFrame:
                 # sanity check. After redshifting, all type conversions should be
                 # explicit. If w_typeconv is not None here, it means that Doppler failed
                 # to insert the appropriate conversion
-                assert self.w_func.lostate == "astcompiled"
+                assert self.w_func.stage == "astcompiled"
 
             # apply the conversion
             assert varname is not None
@@ -352,7 +352,7 @@ class AbstractFrame:
             funcdef,
             closure,
             defaults_w=defaults_w,
-            lostate="astcompiled",
+            stage="astcompiled",
         )
         self.vm.add_global(fqn, w_func)
 
@@ -1381,7 +1381,7 @@ class ASTFrame(AbstractFrame):
         w_func = w_func.get_most_lowered_version()
         assert isinstance(w_func, W_ASTFunc)
         assert w_func.funcdef.symtable.kind == "function"
-        assert w_func.funcdef.lostate in ("astcompiled", "redshifted")
+        assert w_func.funcdef.stage in ("astcompiled", "redshifted")
         ns = w_func.compute_inner_ns(args_w or [])
         super().__init__(
             vm, ns, w_func.funcdef.loc, w_func.funcdef.symtable, w_func.closure
@@ -1391,8 +1391,8 @@ class ASTFrame(AbstractFrame):
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
-        if self.w_func.lostate != "astcompiled":
-            extra = f" ({self.w_func.lostate})"
+        if self.w_func.stage != "astcompiled":
+            extra = f" ({self.w_func.stage})"
         elif self.w_func.color == "blue":
             extra = " (blue)"
         else:

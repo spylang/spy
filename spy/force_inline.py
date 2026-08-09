@@ -198,9 +198,9 @@ def inline_call(
 ) -> InlineResult:
     """
     Build a BlockExpr that inlines the callee at the call site.
-    w_callee must already be at lostate == "redshifted".
+    w_callee must already be at stage == "redshifted".
     """
-    assert w_callee.lostate == "redshifted"
+    assert w_callee.stage == "redshifted"
     suffix = f"${inline_counter}"
 
     assert w_callee.locals_types_w is not None

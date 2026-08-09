@@ -22,9 +22,9 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 42
         if self.backend == "interp":
-            assert mod.foo.w_func.lostate == "astcompiled"
+            assert mod.foo.w_func.stage == "astcompiled"
         elif self.backend == "doppler":
-            assert mod.foo.w_func.lostate == "redshifted"
+            assert mod.foo.w_func.stage == "redshifted"
 
     def test_return_None(self):
         mod = self.compile("""

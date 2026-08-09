@@ -101,9 +101,9 @@ def execute_spy_main(
     if redshift:
         assert not w_main.is_valid
         w_main = w_main.get_most_lowered_version()
-        assert w_main.lostate != "parsed"
+        assert w_main.stage != "parsed"
     else:
-        assert w_main.lostate == "parsed"
+        assert w_main.stage == "parsed"
 
     # build argument list for the call
     args_w: list[W_Object] = []

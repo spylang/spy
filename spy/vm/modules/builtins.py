@@ -128,7 +128,7 @@ def w_print(vm: "SPyVM", *args_wam: W_MetaArg) -> W_OpSpec:
         funcdef,
         closure=(),
         defaults_w=[],
-        lostate="parsed",
+        stage="parsed",
         is_force_inline=True,
     )
     vm.add_global(fqn, w_func)
