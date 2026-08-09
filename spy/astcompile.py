@@ -195,6 +195,12 @@ class ASTCompiler:
             right=self.compile_expr(expr.right),
         )
 
+    def compile_expr_CmpOp(self, expr: ast.CmpOp) -> ast.Expr:
+        return expr.replace(
+            left=self.compile_expr(expr.left),
+            right=self.compile_expr(expr.right),
+        )
+
     def compile_expr_Literal(self, expr: ast.Literal) -> ast.Expr:
         return expr
 
