@@ -1377,10 +1377,11 @@ class ASTFrame(AbstractFrame):
     def __init__(
         self, vm: "SPyVM", w_func: W_ASTFunc, args_w: Optional[Sequence[W_Object]]
     ) -> None:
-        assert w_func.funcdef.symtable.kind == "function"
         # if w_func was lowered, automatically use the most lowered version
         w_func = w_func.get_most_lowered_version()
         assert isinstance(w_func, W_ASTFunc)
+        assert w_func.funcdef.symtable.kind == "function"
+        assert w_func.funcdef.lostate in ("astcompiled", "redshifted")
         ns = w_func.compute_inner_ns(args_w or [])
         super().__init__(
             vm, ns, w_func.funcdef.loc, w_func.funcdef.symtable, w_func.closure
@@ -1390,7 +1391,7 @@ class ASTFrame(AbstractFrame):
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
-        if self.w_func.lostate not in ("parsed", "astcompiled"):
+        if self.w_func.lostate != "astcompiled":
             extra = f" ({self.w_func.lostate})"
         elif self.w_func.color == "blue":
             extra = " (blue)"

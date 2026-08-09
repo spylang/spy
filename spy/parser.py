@@ -94,7 +94,10 @@ class Parser:
         py_mod = magic_py_parse(self.src, self.filename)
         assert isinstance(py_mod, py_ast.Module)
         py_mod.compute_all_locs(self.filename)
-        return self.from_py_Module(py_mod)
+        parsed_mod = self.from_py_Module(py_mod)
+        assert parsed_mod.lostate == "parsed"
+        parsed_mod.assert_valid_at("parsed")
+        return parsed_mod
 
     def parse_single_stmt(self) -> spy.ast.Stmt:
         """
