@@ -79,8 +79,8 @@ class ASTCompiler:
     ## ) -> ast.Decl:
     ##     return decl
 
-    ## def compile_decl_Import(self, decl: ast.Import) -> ast.Decl:
-    ##     return decl
+    def compile_decl_Import(self, decl: ast.Import) -> ast.Decl:
+        return decl
 
     # ===== FuncDef =====
 
@@ -177,6 +177,19 @@ class ASTCompiler:
     def compile_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> ast.Stmt:
         return stmt.replace(value=self.compile_expr(stmt.value))
 
+    def compile_stmt_While(self, stmt: ast.While) -> ast.Stmt:
+        return stmt.replace(
+            test=self.compile_expr(stmt.test),
+            body=[self.compile_stmt(s) for s in stmt.body],
+        )
+
+    def compile_stmt_Assert(self, stmt: ast.Assert) -> ast.Stmt:
+        new_msg = self.compile_expr(stmt.msg) if stmt.msg is not None else None
+        return stmt.replace(
+            test=self.compile_expr(stmt.test),
+            msg=new_msg,
+        )
+
     def compile_stmt_If(self, stmt: ast.If) -> ast.Stmt:
         return stmt.replace(
             test=self.compile_expr(stmt.test),
@@ -206,6 +219,18 @@ class ASTCompiler:
 
     def compile_expr_Literal(self, expr: ast.Literal) -> ast.Expr:
         return expr
+
+    def compile_expr_And(self, expr: ast.And) -> ast.Expr:
+        return expr.replace(
+            left=self.compile_expr(expr.left),
+            right=self.compile_expr(expr.right),
+        )
+
+    def compile_expr_Or(self, expr: ast.Or) -> ast.Expr:
+        return expr.replace(
+            left=self.compile_expr(expr.left),
+            right=self.compile_expr(expr.right),
+        )
 
     def compile_expr_Call(self, expr: ast.Call) -> ast.Expr:
         return expr.replace(
