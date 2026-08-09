@@ -174,6 +174,20 @@ class ASTCompiler:
             stmt.loc, stmt.target.name, stmt.value, expr=False
         )
 
+    def compile_stmt_AugAssign(self, stmt: ast.AugAssign) -> ast.Stmt:
+        # desugar "x += 1" into "x = x + 1" and compile the result
+        desugared = ast.Assign(
+            loc=stmt.loc,
+            target=ast.SingleTarget(stmt.loc, stmt.target),
+            value=ast.BinOp(
+                loc=stmt.loc,
+                op=stmt.op,
+                left=ast.Name(loc=stmt.target.loc, id=stmt.target.value),
+                right=stmt.value,
+            ),
+        )
+        return self.compile_stmt(desugared)
+
     def compile_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> ast.Stmt:
         return stmt.replace(value=self.compile_expr(stmt.value))
 
