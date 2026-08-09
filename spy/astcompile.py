@@ -174,6 +174,9 @@ class ASTCompiler:
             stmt.loc, stmt.target.name, stmt.value, expr=False
         )
 
+    def compile_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> ast.Stmt:
+        return stmt.replace(value=self.compile_expr(stmt.value))
+
     def compile_stmt_If(self, stmt: ast.If) -> ast.Stmt:
         return stmt.replace(
             test=self.compile_expr(stmt.test),
