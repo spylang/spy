@@ -191,6 +191,12 @@ class ASTCompiler:
         )
         return self.compile_stmt(desugared)
 
+    def compile_stmt_SetAttr(self, stmt: ast.SetAttr) -> ast.Stmt:
+        return stmt.replace(
+            target=self.compile_expr(stmt.target),
+            value=self.compile_expr(stmt.value),
+        )
+
     def compile_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> ast.Stmt:
         return stmt.replace(value=self.compile_expr(stmt.value))
 
