@@ -944,7 +944,7 @@ class NameOuterDirect(Expr):
 class NameOuterCell(Expr):
     precedence = 100  # the highest
     sym: Symbol
-    fqn: FQN
+    fqn: Optional[FQN]
 
 
 @astnode(">= astcompiled")
@@ -968,7 +968,8 @@ class AssignLocal(Stmt):
 @astnode(">= astcompiled")
 class AssignCell(Stmt):
     target: StrLiteral
-    target_fqn: FQN
+    target_fqn: Optional[FQN]
+    sym: Symbol
     value: Expr
 
 
@@ -983,7 +984,8 @@ class AssignExprLocal(Expr):
 class AssignExprCell(Expr):
     precedence = 0
     target: StrLiteral
-    target_fqn: FQN
+    target_fqn: Optional[FQN]
+    sym: Symbol
     value: Expr
 
 

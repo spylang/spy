@@ -560,14 +560,25 @@ class AbstractFrame:
         return wam
 
     def exec_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
-        self._execute_AssignCell(assign.target, assign.target_fqn, assign.value)
+        self._execute_AssignCell(
+            assign.target, assign.target_fqn, assign.sym, assign.value
+        )
 
     def _execute_AssignCell(
-        self, target: ast.StrLiteral, target_fqn: FQN, value: ast.Expr
+        self,
+        target: ast.StrLiteral,
+        target_fqn: Optional[FQN],
+        sym: Symbol,
+        value: ast.Expr,
     ) -> W_MetaArg:
         wam = self.eval_expr(value)
         if not self.redshifting:
-            w_cell = self.vm.lookup_global(target_fqn)
+            if target_fqn is not None:
+                assert False, "implement me!"
+                # w_cell = self.vm.lookup_global(target_fqn)
+            else:
+                outervars = self.closure[-sym.level]
+                w_cell = outervars[sym.name].w_val
             assert isinstance(w_cell, W_Cell)
             w_cell.set(wam.w_val)
         return wam
@@ -930,7 +941,12 @@ class AbstractFrame:
     def eval_expr_NameOuterCell(self, name: ast.NameOuterCell) -> W_MetaArg:
         sym = name.sym
         assert not sym.is_local
-        w_cell = self.vm.lookup_global(name.fqn)
+        if name.fqn is not None:
+            assert False, "implement me!"
+            # w_cell = self.vm.lookup_global(name.fqn)
+        else:
+            outervars = self.closure[-sym.level]
+            w_cell = outervars[sym.name].w_val
         assert isinstance(w_cell, W_Cell)
         w_val = w_cell.get()
         w_T = self.vm.dynamic_type(w_val)
@@ -943,24 +959,8 @@ class AbstractFrame:
         return self.eval_expr(block.value)
 
     def eval_expr_AssignExpr(self, assignexpr: ast.AssignExpr) -> W_MetaArg:
-        specialized = self.specialized_assignexprs.get(assignexpr)
-        if specialized is None:
-            specialized = self._specialize_AssignExpr(assignexpr)
-            self.specialized_assignexprs[assignexpr] = specialized
-        if isinstance(specialized, ast.AssignExprLocal):
-            return self._set_assignexpr_color(
-                specialized.target,
-                self._execute_AssignLocal(specialized.target, specialized.value),
-            )
-        elif isinstance(specialized, ast.AssignExprCell):
-            return self._set_assignexpr_color(
-                specialized.target,
-                self._execute_AssignCell(
-                    specialized.target, specialized.target_fqn, specialized.value
-                ),
-            )
-        else:
-            assert False
+        # KILL ME
+        assert False, "this should not happen"
 
     def eval_expr_AssignExprLocal(self, assignexpr: ast.AssignExprLocal) -> W_MetaArg:
         return self._set_assignexpr_color(
@@ -972,7 +972,10 @@ class AbstractFrame:
         return self._set_assignexpr_color(
             assignexpr.target,
             self._execute_AssignCell(
-                assignexpr.target, assignexpr.target_fqn, assignexpr.value
+                assignexpr.target,
+                assignexpr.target_fqn,
+                assignexpr.sym,
+                assignexpr.value,
             ),
         )
 

@@ -299,7 +299,11 @@ class SPyBackend:
             self.wl(f"{varname} = {v}")
 
     def emit_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
-        varname = self.fmt_fqn(assign.target_fqn)
+        varname = (
+            self.fmt_fqn(assign.target_fqn)
+            if assign.target_fqn is not None
+            else assign.sym.name
+        )
         v = self.fmt_expr(assign.value)
         self.wl(f"{varname} = {v}")
 
@@ -463,7 +467,9 @@ class SPyBackend:
         return name.sym.name
 
     def fmt_expr_NameOuterCell(self, name: ast.NameOuterCell) -> str:
-        return self.fmt_fqn(name.fqn)
+        if name.fqn is not None:
+            return self.fmt_fqn(name.fqn)
+        return name.sym.name
 
     def fmt_expr_BinOp(self, binop: ast.BinOp) -> str:
         l = self.fmt_expr(binop.left)
@@ -536,7 +542,11 @@ class SPyBackend:
         )
 
     def fmt_expr_AssignExprCell(self, assignexpr: ast.AssignExprCell) -> str:
-        target = self.fmt_fqn(assignexpr.target_fqn)
+        target = (
+            self.fmt_fqn(assignexpr.target_fqn)
+            if assignexpr.target_fqn is not None
+            else assignexpr.sym.name
+        )
         return self._fmt_assignexpr(target, assignexpr.value, assignexpr.precedence)
 
     def _fmt_assignexpr(

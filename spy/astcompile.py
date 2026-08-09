@@ -66,8 +66,10 @@ class ASTCompiler:
     ## ) -> ast.Decl:
     ##     return decl
 
-    ## def compile_decl_GlobalVarDef(self, decl: ast.GlobalVarDef) -> ast.Decl:
-    ##     return decl
+    def compile_decl_GlobalVarDef(self, decl: ast.GlobalVarDef) -> ast.Decl:
+        new_vardef = self.compile_stmt_VarDef(decl.vardef)
+        assert isinstance(new_vardef, ast.VarDef)
+        return decl.replace(vardef=new_vardef)
 
     ## def compile_decl_GlobalClassDef(self, decl: ast.GlobalClassDef) -> ast.Decl:
     ##     return decl
@@ -146,24 +148,24 @@ class ASTCompiler:
             else:
                 return ast.AssignLocal(loc, target, value)
 
-        ## elif sym.storage == "cell":
-        ##     outervars = self.closure[-sym.level]
-        ##     w_cell = outervars[sym.name].w_val
-        ##     assert isinstance(w_cell, W_Cell)
-        ##     if expr:
-        ##         return ast.AssignExprCell(
-        ##             loc=loc,
-        ##             target=target,
-        ##             target_fqn=w_cell.fqn,
-        ##             value=value,
-        ##         )
-        ##     else:
-        ##         return ast.AssignCell(
-        ##             loc=loc,
-        ##             target=target,
-        ##             target_fqn=w_cell.fqn,
-        ##             value=value,
-        ##         )
+        elif sym.storage == "cell":
+            assert not sym.is_local
+            if expr:
+                return ast.AssignExprCell(
+                    loc=loc,
+                    target=target,
+                    target_fqn=None,
+                    sym=sym,
+                    value=value,
+                )
+            else:
+                return ast.AssignCell(
+                    loc=loc,
+                    target=target,
+                    target_fqn=None,
+                    sym=sym,
+                    value=value,
+                )
 
         else:
             assert False, f"unexpected storage: {sym.storage!r}"
@@ -239,8 +241,8 @@ class ASTCompiler:
             return ast.NameOuterDirect(name.loc, sym)
         ## elif sym.storage == "cell" and sym.is_local:
         ##     return ast.NameLocalCell(name.loc, sym)
-        ## elif sym.storage == "cell":
-        ##     return ast.NameOuterCell(name.loc, sym, fqn=None)
+        elif sym.storage == "cell" and not sym.is_local:
+            return ast.NameOuterCell(name.loc, sym, fqn=None)
         elif sym.storage == "NameError":
             return ast.NameError(name.loc, name.id)
         else:
