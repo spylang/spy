@@ -63,7 +63,6 @@ class AbstractFrame:
     symtable: SymTable
     locals: dict[str, LocalVar]
     special_calls: dict[ast.Call, str]
-    desugared_fors: dict[ast.For, tuple[ast.Assign, ast.While]]
 
     def __init__(
         self, vm: "SPyVM", ns: FQN, loc: Loc, symtable: SymTable, closure: CLOSURE
@@ -75,14 +74,12 @@ class AbstractFrame:
         self.symtable = symtable
         self.closure = closure
         self.locals = {}
+        self.special_calls = {}
 
         # when we interact with a frame from a SPdb prompt we have slightly different
         # rules, because e.g. we might try to evaluate an ast.Name which is not in the
         # symtable
         self.is_interactive = False
-
-        self.special_calls = {}
-        self.desugared_fors = {}
 
     # overridden by DopplerFrame
     @property
@@ -709,84 +706,6 @@ class AbstractFrame:
                 break
             except Continue:
                 continue
-
-    def exec_stmt_For(self, for_node: ast.For) -> None:
-        # see the comment in __init__ about desugared_fors
-        if for_node in self.desugared_fors:
-            init_iter, while_loop = self.desugared_fors[for_node]
-        else:
-            init_iter, while_loop = self._desugar_For(for_node)
-            self.desugared_fors[for_node] = (init_iter, while_loop)
-        self.exec_stmt(init_iter)
-        self.exec_stmt(while_loop)
-
-    def _desugar_For(self, for_node: ast.For) -> tuple[ast.Assign, ast.While]:
-        # Desugar the for loop into an equivalent while loop
-        # Transform:
-        #     for i in X:
-        #         body
-        # Into:
-        #     it = X.__fastiter__()
-        #     while it.__continue_iteration__():
-        #         i = it.__item__()
-        #         it = it.__next__()
-        #         body
-        #
-        # (instead of 'it' we use the special variable '_$iterN')
-        #
-        # Note that "body" is placed AFTER the call to it.__next__(). This
-        # way, 'continue' works out of the box.
-        iter_name = f"_$iter{for_node.seq}"
-        iter_sym = self.symtable.lookup(iter_name)
-        iter_target = ast.SingleTarget(
-            for_node.loc, ast.StrLiteral(for_node.loc, iter_name)
-        )
-
-        # it = X.__fastiter__()
-        init_iter = ast.Assign(
-            loc=for_node.loc,
-            target=iter_target,
-            value=ast.CallMethod(
-                loc=for_node.loc,
-                target=for_node.iter,
-                method=ast.StrLiteral(for_node.loc, "__fastiter__"),
-                args=[],
-            ),
-        )
-        # i = it.__item__()
-        assign_item = ast.Assign(
-            loc=for_node.loc,
-            target=ast.SingleTarget(for_node.loc, for_node.target),
-            value=ast.CallMethod(
-                loc=for_node.loc,
-                target=ast.NameLocalDirect(for_node.loc, iter_sym),
-                method=ast.StrLiteral(for_node.loc, "__item__"),
-                args=[],
-            ),
-        )
-        # it = it.__next__()
-        advance_iter = ast.Assign(
-            loc=for_node.loc,
-            target=iter_target,
-            value=ast.CallMethod(
-                loc=for_node.loc,
-                target=ast.NameLocalDirect(for_node.loc, iter_sym),
-                method=ast.StrLiteral(for_node.loc, "__next__"),
-                args=[],
-            ),
-        )
-        # while it.__continue_iteration__(): ...
-        while_loop = ast.While(
-            loc=for_node.loc,
-            test=ast.CallMethod(
-                loc=for_node.loc,
-                target=ast.NameLocalDirect(for_node.loc, iter_sym),
-                method=ast.StrLiteral(for_node.loc, "__continue_iteration__"),
-                args=[],
-            ),
-            body=[assign_item, advance_iter] + for_node.body,
-        )
-        return init_iter, while_loop
 
     def exec_stmt_Raise(self, raise_node: ast.Raise) -> None:
         wam_exc = self.eval_expr(raise_node.exc)
