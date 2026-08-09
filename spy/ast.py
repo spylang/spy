@@ -4,6 +4,7 @@
 
 import ast as py_ast
 import dataclasses
+import re
 import typing
 from abc import abstractmethod
 from dataclasses import dataclass, field
@@ -13,7 +14,6 @@ from typing import (
     Iterator,
     Optional,
     Sequence,
-    Type,
     dataclass_transform,
     no_type_check,
 )
@@ -110,12 +110,61 @@ class AST:
 del AST
 
 
+def _parse_state_spec(spec: str) -> frozenset[LoweringState]:
+    """
+    Parse a state spec string like "parsed", "<= redshifted", ">= astcompiled".
+    """
+    ALL_STATES = typing.get_args(LoweringState)
+    m = re.fullmatch(r"(==|<=|>=|<|>)?\s*(\w+)", spec.strip())
+    if not m:
+        raise ValueError(f"Invalid state spec: {spec!r}")
+    op = m.group(1) or "=="
+    state: LoweringState = m.group(2)  # type: ignore
+    if state not in ALL_STATES:
+        raise ValueError(f"Invalid LoweringState: {state!r}")
+
+    i = ALL_STATES.index(state)
+    if op == "==":
+        return frozenset([state])
+    elif op == "<":
+        return frozenset(ALL_STATES[:i])
+    elif op == "<=":
+        return frozenset(ALL_STATES[: i + 1])
+    elif op == ">":
+        return frozenset(ALL_STATES[i + 1 :])
+    elif op == ">=":
+        return frozenset(ALL_STATES[i:])
+    else:
+        assert False
+
+
 @dataclass_transform(field_specifiers=(dataclasses.field,), eq_default=False)
-def astnode[T](klass: Type[T]) -> Type[T]:
-    """Decorator to create dataclasses for AST nodes.
+def astnode(cls_or_state_spec: Any) -> Any:
+    """
+    Decorator to create dataclasses for AST nodes.
+
     We want all nodes to compare by *identity* and be hashable, because e.g. we
-    put them in dictionaries inside the typechecker."""
-    return dataclass(eq=False)(klass)
+    put them in dictionaries inside the typechecker.
+
+    An optional state spec restricts which LoweringStates the node is valid in:
+        @astnode("parsed")          -- only at 'parsed'
+        @astnode("<= redshifted")   -- at any state up to and including 'redshifted'
+        @astnode(">= astcompiled")  -- at 'astcompiled' or later
+    """
+    if isinstance(cls_or_state_spec, str):
+        spec = cls_or_state_spec
+        valid_states = _parse_state_spec(spec)
+
+        def decorator(cls: Any) -> Any:
+            cls2 = dataclass(eq=False)(cls)
+            cls2._valid_states = valid_states
+            return cls2
+
+        return decorator
+
+    else:
+        cls = cls_or_state_spec
+        return dataclass(eq=False)(cls)
 
 
 @astnode
