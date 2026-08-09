@@ -49,8 +49,14 @@ class ASTCompiler:
     def compile_decl(self, decl: ast.Decl) -> ast.Decl:
         return magic_dispatch(self, "compile_decl", decl)
 
-    def compile_stmt(self, stmt: ast.Stmt) -> ast.Stmt:
+    def compile_stmt(self, stmt: ast.Stmt) -> list[ast.Stmt]:
         return magic_dispatch(self, "compile_stmt", stmt)
+
+    def compile_stmts(self, stmts: list[ast.Stmt]) -> list[ast.Stmt]:
+        result = []
+        for stmt in stmts:
+            result.extend(self.compile_stmt(stmt))
+        return result
 
     def compile_expr(self, expr: ast.Expr) -> ast.Expr:
         return magic_dispatch(self, "compile_expr", expr)
@@ -68,13 +74,14 @@ class ASTCompiler:
 
     def compile_decl_GlobalVarDef(self, decl: ast.GlobalVarDef) -> ast.Decl:
         new_vardef = self.compile_stmt_VarDef(decl.vardef)
-        assert isinstance(new_vardef, ast.VarDef)
-        return decl.replace(vardef=new_vardef)
+        assert isinstance(new_vardef, list) and len(new_vardef) == 1
+        assert isinstance(new_vardef[0], ast.VarDef)
+        return decl.replace(vardef=new_vardef[0])
 
     def compile_decl_GlobalClassDef(self, decl: ast.GlobalClassDef) -> ast.Decl:
         classdef = decl.classdef
         self.push_symtable(classdef.symtable)
-        new_body = [self.compile_stmt(s) for s in classdef.body]
+        new_body = self.compile_stmts(classdef.body)
         self.pop_symtable()
         new_classdef = classdef.replace(body=new_body)
         return decl.replace(classdef=new_classdef)
@@ -101,7 +108,7 @@ class ASTCompiler:
 
         # the statements of the function are evaluated in the inner scope
         self.push_symtable(funcdef.symtable)
-        new_body = [self.compile_stmt(stmt) for stmt in funcdef.body]
+        new_body = self.compile_stmts(funcdef.body)
         self.pop_symtable()
         return funcdef.replace(
             stage="astcompiled",
@@ -112,17 +119,19 @@ class ASTCompiler:
         )
 
     # ===== Stmt handlers =====
+    # Each handler returns list[ast.Stmt]. Usually it's a list of one,
+    # but For desugaring returns two stmts.
 
-    def compile_stmt_Return(self, ret: ast.Return) -> ast.Stmt:
-        return ret.replace(value=self.compile_expr(ret.value))
+    def compile_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
+        return [ret.replace(value=self.compile_expr(ret.value))]
 
-    def compile_stmt_Pass(self, stmt: ast.Pass) -> ast.Stmt:
-        return stmt
+    def compile_stmt_Pass(self, stmt: ast.Pass) -> list[ast.Stmt]:
+        return [stmt]
 
-    def compile_stmt_VarDef(self, stmt: ast.VarDef) -> ast.Stmt:
+    def compile_stmt_VarDef(self, stmt: ast.VarDef) -> list[ast.Stmt]:
         new_type = self.compile_expr(stmt.type)
         new_value = self.compile_expr(stmt.value) if stmt.value is not None else None
-        return stmt.replace(type=new_type, value=new_value)
+        return [stmt.replace(type=new_type, value=new_value)]
 
     def _compile_assign_common(
         self, loc: ast.Loc, target: ast.StrLiteral, value: ast.Expr, expr: bool
@@ -171,22 +180,83 @@ class ASTCompiler:
         else:
             assert False, f"unexpected storage: {sym.storage!r}"
 
-    def compile_stmt_Assign(self, stmt: ast.Assign) -> ast.Stmt:
+    def compile_stmt_Assign(self, stmt: ast.Assign) -> list[ast.Stmt]:
         assert isinstance(stmt.target, ast.SingleTarget)
-        return self._compile_assign_common(
-            stmt.loc, stmt.target.name, stmt.value, expr=False
-        )
+        return [
+            self._compile_assign_common(
+                stmt.loc, stmt.target.name, stmt.value, expr=False
+            )
+        ]
 
-    def compile_stmt_ClassDef(self, stmt: ast.ClassDef) -> ast.Stmt:
+    def compile_stmt_ClassDef(self, stmt: ast.ClassDef) -> list[ast.Stmt]:
         self.push_symtable(stmt.symtable)
-        new_body = [self.compile_stmt(s) for s in stmt.body]
+        new_body = self.compile_stmts(stmt.body)
         self.pop_symtable()
-        return stmt.replace(body=new_body)
+        return [stmt.replace(body=new_body)]
 
-    def compile_stmt_FuncDef(self, stmt: ast.FuncDef) -> ast.Stmt:
-        return self.compile_funcdef(stmt)
+    def compile_stmt_FuncDef(self, stmt: ast.FuncDef) -> list[ast.Stmt]:
+        return [self.compile_funcdef(stmt)]
 
-    def compile_stmt_AugAssign(self, stmt: ast.AugAssign) -> ast.Stmt:
+    def compile_stmt_For(self, stmt: ast.For) -> list[ast.Stmt]:
+        # desugar:
+        #   for i in X:
+        #       body
+        # into:
+        #   it = X.__fastiter__()
+        #   while it.__continue_iteration__():
+        #       i = it.__item__()
+        #       it = it.__next__()
+        #       body
+        loc = stmt.loc
+        iter_name = f"_$iter{stmt.seq}"
+        iter_target = ast.SingleTarget(loc, ast.StrLiteral(loc, iter_name))
+        iter_name_node = ast.Name(loc=loc, id=iter_name)
+
+        init_iter = ast.Assign(
+            loc=loc,
+            target=iter_target,
+            value=ast.CallMethod(
+                loc=loc,
+                target=stmt.iter,
+                method=ast.StrLiteral(loc, "__fastiter__"),
+                args=[],
+            ),
+        )
+        assign_item = ast.Assign(
+            loc=loc,
+            target=ast.SingleTarget(loc, stmt.target),
+            value=ast.CallMethod(
+                loc=loc,
+                target=iter_name_node,
+                method=ast.StrLiteral(loc, "__item__"),
+                args=[],
+            ),
+        )
+        advance_iter = ast.Assign(
+            loc=loc,
+            target=iter_target,
+            value=ast.CallMethod(
+                loc=loc,
+                target=iter_name_node,
+                method=ast.StrLiteral(loc, "__next__"),
+                args=[],
+            ),
+        )
+        while_loop = ast.While(
+            loc=loc,
+            test=ast.CallMethod(
+                loc=loc,
+                target=iter_name_node,
+                method=ast.StrLiteral(loc, "__continue_iteration__"),
+                args=[],
+            ),
+            body=[assign_item, advance_iter] + stmt.body,
+        )
+        compiled_init = self.compile_stmt(init_iter)
+        compiled_while = self.compile_stmt(while_loop)
+        return compiled_init + compiled_while
+
+    def compile_stmt_AugAssign(self, stmt: ast.AugAssign) -> list[ast.Stmt]:
         # desugar "x += 1" into "x = x + 1" and compile the result
         desugared = ast.Assign(
             loc=stmt.loc,
@@ -200,34 +270,42 @@ class ASTCompiler:
         )
         return self.compile_stmt(desugared)
 
-    def compile_stmt_SetAttr(self, stmt: ast.SetAttr) -> ast.Stmt:
-        return stmt.replace(
-            target=self.compile_expr(stmt.target),
-            value=self.compile_expr(stmt.value),
-        )
+    def compile_stmt_SetAttr(self, stmt: ast.SetAttr) -> list[ast.Stmt]:
+        return [
+            stmt.replace(
+                target=self.compile_expr(stmt.target),
+                value=self.compile_expr(stmt.value),
+            )
+        ]
 
-    def compile_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> ast.Stmt:
-        return stmt.replace(value=self.compile_expr(stmt.value))
+    def compile_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> list[ast.Stmt]:
+        return [stmt.replace(value=self.compile_expr(stmt.value))]
 
-    def compile_stmt_While(self, stmt: ast.While) -> ast.Stmt:
-        return stmt.replace(
-            test=self.compile_expr(stmt.test),
-            body=[self.compile_stmt(s) for s in stmt.body],
-        )
+    def compile_stmt_While(self, stmt: ast.While) -> list[ast.Stmt]:
+        return [
+            stmt.replace(
+                test=self.compile_expr(stmt.test),
+                body=self.compile_stmts(stmt.body),
+            )
+        ]
 
-    def compile_stmt_Assert(self, stmt: ast.Assert) -> ast.Stmt:
+    def compile_stmt_Assert(self, stmt: ast.Assert) -> list[ast.Stmt]:
         new_msg = self.compile_expr(stmt.msg) if stmt.msg is not None else None
-        return stmt.replace(
-            test=self.compile_expr(stmt.test),
-            msg=new_msg,
-        )
+        return [
+            stmt.replace(
+                test=self.compile_expr(stmt.test),
+                msg=new_msg,
+            )
+        ]
 
-    def compile_stmt_If(self, stmt: ast.If) -> ast.Stmt:
-        return stmt.replace(
-            test=self.compile_expr(stmt.test),
-            then_body=[self.compile_stmt(s) for s in stmt.then_body],
-            else_body=[self.compile_stmt(s) for s in stmt.else_body],
-        )
+    def compile_stmt_If(self, stmt: ast.If) -> list[ast.Stmt]:
+        return [
+            stmt.replace(
+                test=self.compile_expr(stmt.test),
+                then_body=self.compile_stmts(stmt.then_body),
+                else_body=self.compile_stmts(stmt.else_body),
+            )
+        ]
 
     # ===== Expr handlers =====
 

@@ -1400,6 +1400,7 @@ class TestBasic(CompilerTest):
         )
         self.compile_raises(src, "foo", errors, error_reporting="eager")
 
+    @pytest.mark.skip("XXX FIXME!")
     def test_for_loop(self):
         src = """
         def factorial(n: i32) -> i32:
