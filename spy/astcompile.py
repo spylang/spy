@@ -128,6 +128,12 @@ class ASTCompiler:
     def compile_stmt_Pass(self, stmt: ast.Pass) -> list[ast.Stmt]:
         return [stmt]
 
+    def compile_stmt_Break(self, stmt: ast.Break) -> list[ast.Stmt]:
+        return [stmt]
+
+    def compile_stmt_Continue(self, stmt: ast.Continue) -> list[ast.Stmt]:
+        return [stmt]
+
     def compile_stmt_VarDef(self, stmt: ast.VarDef) -> list[ast.Stmt]:
         new_type = self.compile_expr(stmt.type)
         new_value = self.compile_expr(stmt.value) if stmt.value is not None else None
