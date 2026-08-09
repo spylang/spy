@@ -90,11 +90,8 @@ class ASTCompiler:
     # ===== FuncDef =====
 
     def compile_funcdef(self, funcdef: ast.FuncDef) -> ast.FuncDef:
-        # TODO: decorators are evaluated in the outer scope
-        ## for decorator in funcdef.decorators:
-        ##     pass
-        #
-        # arg types, return type and defaults are evaluated in the outer scope
+        # decorators, arg types, return type and defaults are evaluated in the outer scope
+        new_decorators = [self.compile_expr(d) for d in funcdef.decorators]
         new_return_type = self.compile_expr(funcdef.return_type)
         new_args = [
             arg.replace(type=self.compile_expr(arg.type)) for arg in funcdef.args
@@ -108,6 +105,7 @@ class ASTCompiler:
         self.pop_symtable()
         return funcdef.replace(
             stage="astcompiled",
+            decorators=new_decorators,
             return_type=new_return_type,
             args=new_args,
             body=new_body,
