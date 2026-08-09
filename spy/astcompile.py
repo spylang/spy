@@ -119,6 +119,68 @@ class ASTCompiler:
         new_value = self.compile_expr(stmt.value) if stmt.value is not None else None
         return stmt.replace(type=new_type, value=new_value)
 
+    def _compile_assign_common(
+        self, loc: ast.Loc, target: ast.StrLiteral, value: ast.Expr, expr: bool
+    ) -> ast.AssignLocal | ast.AssignExprLocal:
+        value = self.compile_expr(value)
+        sym = self.symtable.lookup(target.value)
+
+        ## if sym.varkind == "const" and sym.varkind_origin != "auto":
+        ##     err = SPyError("W_TypeError", "invalid assignment target")
+        ##     err.add("error", f"{sym.name} is const", target.loc)
+        ##     err.add("note", f"const declared here ({sym.varkind_origin})", sym.loc)
+
+        ##     if sym.varkind_origin == "global-const":
+        ##         msg = f"help: declare it as variable: `var {sym.name} ...`"
+        ##         err.add("note", msg, sym.loc)
+        ##     elif sym.varkind_origin == "blue-param":
+        ##         msg = "blue function arguments are const by default"
+        ##         err.add("note", msg, sym.loc)
+
+        ##     raise err
+
+        if sym.storage == "direct":
+            assert sym.is_local
+            if expr:
+                return ast.AssignExprLocal(loc, target, value)
+            else:
+                return ast.AssignLocal(loc, target, value)
+
+        ## elif sym.storage == "cell":
+        ##     outervars = self.closure[-sym.level]
+        ##     w_cell = outervars[sym.name].w_val
+        ##     assert isinstance(w_cell, W_Cell)
+        ##     if expr:
+        ##         return ast.AssignExprCell(
+        ##             loc=loc,
+        ##             target=target,
+        ##             target_fqn=w_cell.fqn,
+        ##             value=value,
+        ##         )
+        ##     else:
+        ##         return ast.AssignCell(
+        ##             loc=loc,
+        ##             target=target,
+        ##             target_fqn=w_cell.fqn,
+        ##             value=value,
+        ##         )
+
+        else:
+            assert False, f"unexpected storage: {sym.storage!r}"
+
+    def compile_stmt_Assign(self, stmt: ast.Assign) -> ast.Stmt:
+        assert isinstance(stmt.target, ast.SingleTarget)
+        return self._compile_assign_common(
+            stmt.loc, stmt.target.name, stmt.value, expr=False
+        )
+
+    def compile_stmt_If(self, stmt: ast.If) -> ast.Stmt:
+        return stmt.replace(
+            test=self.compile_expr(stmt.test),
+            then_body=[self.compile_stmt(s) for s in stmt.then_body],
+            else_body=[self.compile_stmt(s) for s in stmt.else_body],
+        )
+
     # ===== Expr handlers =====
 
     def compile_expr_Auto(self, auto: ast.Auto) -> ast.Expr:
@@ -135,6 +197,9 @@ class ASTCompiler:
 
     def compile_expr_Literal(self, expr: ast.Literal) -> ast.Expr:
         return expr
+
+    def compile_expr_AssignExpr(self, expr: ast.AssignExpr) -> ast.Expr:
+        return self._compile_assign_common(expr.loc, expr.target, expr.value, expr=True)
 
     def compile_expr_Name(self, name: ast.Name) -> ast.Expr:
         varname = name.id

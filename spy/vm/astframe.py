@@ -63,9 +63,6 @@ class AbstractFrame:
     symtable: SymTable
     locals: dict[str, LocalVar]
     special_calls: dict[ast.Call, str]
-    specialized_names: dict[ast.Name, ast.Expr]
-    specialized_assigns: dict[ast.Assign, ast.Stmt]
-    specialized_assignexprs: dict[ast.AssignExpr, ast.Expr]
     desugared_fors: dict[ast.For, tuple[ast.Assign, ast.While]]
 
     def __init__(
@@ -84,20 +81,7 @@ class AbstractFrame:
         # symtable
         self.is_interactive = False
 
-        # ast.Name and ast.Assign are special, because depending on the
-        # content of the symtable it has different meanings (e.g. local, outer
-        # direct, outer cell, ...), so we need some logic to distinguish
-        # between the cases.
-        #
-        # The first time eval_expr_Name and exec_stmt_Assign are called, they
-        # understand which kind of name it is and create specialized ast.Name*
-        # or ast.Assign* nodes, which are then used from now on.  This is also
-        # useful for Doppler, since shifting simply means to return the
-        # specialized version.
         self.special_calls = {}
-        self.specialized_names = {}
-        self.specialized_assigns = {}
-        self.specialized_assignexprs = {}
         self.desugared_fors = {}
 
     # overridden by DopplerFrame
@@ -552,81 +536,8 @@ class AbstractFrame:
             self.store_local(varname, wam.w_val)
 
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
-        if isinstance(assign.target, ast.SingleTarget):
-            # see the comment in __init__ about specialized_assigns
-            specialized = self.specialized_assigns.get(assign)
-            if specialized is None:
-                specialized = self._specialize_Assign(assign)
-                self.specialized_assigns[assign] = specialized
-            self.exec_stmt(specialized)
-        else:
-            self.exec_stmt_Assign_unpack(assign)
-
-    def _specialize_assign_common(
-        self, loc: Loc, target: ast.StrLiteral, value: ast.Expr, expr: bool
-    ) -> ast.AssignLocal | ast.AssignCell | ast.AssignExprLocal | ast.AssignExprCell:
-        varname = target.value
-        sym = self.symtable.lookup(varname)
-
-        if sym.varkind == "const" and sym.varkind_origin != "auto":
-            err = SPyError("W_TypeError", "invalid assignment target")
-            err.add("error", f"{sym.name} is const", target.loc)
-            err.add("note", f"const declared here ({sym.varkind_origin})", sym.loc)
-
-            if sym.varkind_origin == "global-const":
-                msg = f"help: declare it as variable: `var {sym.name} ...`"
-                err.add("note", msg, sym.loc)
-            elif sym.varkind_origin == "blue-param":
-                msg = "blue function arguments are const by default"
-                err.add("note", msg, sym.loc)
-
-            raise err
-        elif sym.storage == "direct":
-            assert sym.is_local
-            if expr:
-                return ast.AssignExprLocal(loc, target, value)
-            else:
-                return ast.AssignLocal(loc, target, value)
-
-        elif sym.storage == "cell":
-            outervars = self.closure[-sym.level]
-            w_cell = outervars[sym.name].w_val
-            assert isinstance(w_cell, W_Cell)
-            if expr:
-                return ast.AssignExprCell(
-                    loc=loc,
-                    target=target,
-                    target_fqn=w_cell.fqn,
-                    value=value,
-                )
-            else:
-                return ast.AssignCell(
-                    loc=loc,
-                    target=target,
-                    target_fqn=w_cell.fqn,
-                    value=value,
-                )
-
-        else:
-            assert False
-
-    def _specialize_Assign(self, assign: ast.Assign) -> ast.Stmt:
-        assert isinstance(assign.target, ast.SingleTarget)
-        res = self._specialize_assign_common(
-            loc=assign.loc, target=assign.target.name, value=assign.value, expr=False
-        )
-        assert isinstance(res, (ast.AssignLocal, ast.AssignCell))
-        return res
-
-    def _specialize_AssignExpr(self, assignexpr: ast.AssignExpr) -> ast.Expr:
-        res = self._specialize_assign_common(
-            loc=assignexpr.loc,
-            target=assignexpr.target,
-            value=assignexpr.value,
-            expr=True,
-        )
-        assert isinstance(res, (ast.AssignExprLocal, ast.AssignExprCell))
-        return res
+        # KILL ME
+        assert False, "this should not happen"
 
     def exec_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
         self._execute_AssignLocal(assign.target, assign.value)
