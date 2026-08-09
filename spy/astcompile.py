@@ -278,6 +278,12 @@ class ASTCompiler:
             right=self.compile_expr(expr.right),
         )
 
+    def compile_expr_CallMethod(self, expr: ast.CallMethod) -> ast.Expr:
+        return expr.replace(
+            target=self.compile_expr(expr.target),
+            args=[self.compile_expr(a) for a in expr.args],
+        )
+
     def compile_expr_Call(self, expr: ast.Call) -> ast.Expr:
         return expr.replace(
             func=self.compile_expr(expr.func),
