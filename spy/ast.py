@@ -948,6 +948,18 @@ class NameOuterCell(Expr):
 
 
 @astnode(">= astcompiled")
+class NameError(Expr):
+    """
+    Needed to enable lazy NameErrors.
+
+    Produced by astcompiler when ast.Name refers to unknown IDs.
+    """
+
+    precedence = 100
+    id: str
+
+
+@astnode(">= astcompiled")
 class AssignLocal(Stmt):
     target: StrLiteral
     value: Expr

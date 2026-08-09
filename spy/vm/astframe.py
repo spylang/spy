@@ -13,7 +13,7 @@ from spy.location import Loc
 from spy.util import magic_dispatch
 from spy.vm.b import B
 from spy.vm.cell import W_Cell
-from spy.vm.exc import W_TypeError
+from spy.vm.exc import W_NameError, W_TypeError
 from spy.vm.function import CLOSURE, FuncParam, LocalVar, W_ASTFunc, W_Func, W_FuncType
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
@@ -958,6 +958,14 @@ class AbstractFrame:
     def eval_expr_Name(self, name: ast.Name) -> W_MetaArg:
         # KILL ME
         assert False, "this should not happen"
+
+    def eval_expr_NameError(self, name: ast.NameError) -> W_MetaArg:
+        raise SPyError.simple(
+            "W_NameError",
+            f"name `{name.id}` is not defined",
+            "not found in this scope",
+            name.loc,
+        )
 
     def eval_expr_NameImportRef(self, name: ast.NameImportRef) -> W_MetaArg:
         # this is correct as long as we import 'const', but if we import 'var', then it

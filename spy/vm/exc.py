@@ -297,7 +297,7 @@ class W_ScopeError(W_Exception):
 
 
 @BUILTINS.builtin_type("NameError")
-class W_NameError(W_Exception):
+class W_NameError(W_StaticError):
     pass
 
 
