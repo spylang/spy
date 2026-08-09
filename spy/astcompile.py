@@ -239,8 +239,8 @@ class ASTCompiler:
             return ast.NameLocalDirect(name.loc, sym)
         elif sym.storage == "direct":
             return ast.NameOuterDirect(name.loc, sym)
-        ## elif sym.storage == "cell" and sym.is_local:
-        ##     return ast.NameLocalCell(name.loc, sym)
+        elif sym.storage == "cell" and sym.is_local:
+            return ast.NameLocalCell(name.loc, sym)
         elif sym.storage == "cell" and not sym.is_local:
             return ast.NameOuterCell(name.loc, sym, fqn=None)
         elif sym.storage == "NameError":
