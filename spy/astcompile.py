@@ -55,15 +55,6 @@ class ASTCompiler:
     def compile_expr(self, expr: ast.Expr) -> ast.Expr:
         return magic_dispatch(self, "compile_expr", expr)
 
-    def compile_decl_NotImplemented(self, decl: ast.Decl) -> ast.Decl:
-        return decl
-
-    def compile_stmt_NotImplemented(self, stmt: ast.Stmt) -> ast.Stmt:
-        return stmt
-
-    def compile_expr_NotImplemented(self, expr: ast.Expr) -> ast.Expr:
-        return expr
-
     # ===== Decl handlers =====
 
     def compile_decl_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> ast.Decl:
@@ -96,10 +87,11 @@ class ASTCompiler:
         ## for decorator in funcdef.decorators:
         ##     pass
         #
-        # TODO: the TYPES of the arguments and defaults are evaluated in the outer scope
+        # arg types, return type and defaults are evaluated in the outer scope
         new_return_type = self.compile_expr(funcdef.return_type)
-        ## for arg in funcdef.args:
-        ##     pass
+        new_args = [
+            arg.replace(type=self.compile_expr(arg.type)) for arg in funcdef.args
+        ]
         ## for default in funcdef.defaults:
         ##     pass
 
@@ -110,6 +102,7 @@ class ASTCompiler:
         return funcdef.replace(
             stage="astcompiled",
             return_type=new_return_type,
+            args=new_args,
             body=new_body,
         )
 
@@ -122,6 +115,12 @@ class ASTCompiler:
         return stmt
 
     # ===== Expr handlers =====
+
+    def compile_expr_BinOp(self, expr: ast.BinOp) -> ast.Expr:
+        return expr.replace(
+            left=self.compile_expr(expr.left),
+            right=self.compile_expr(expr.right),
+        )
 
     def compile_expr_Literal(self, expr: ast.Literal) -> ast.Expr:
         return expr
@@ -152,19 +151,15 @@ class ASTCompiler:
 
         if sym.impref is not None:
             return ast.NameImportRef(name.loc, sym)
-        ## elif sym.storage == "direct" and sym.is_local:
-        ##     assert False, "TODO"
-        ##     # return ast.NameLocalDirect(name.loc, sym)
+        elif sym.storage == "direct" and sym.is_local:
+            return ast.NameLocalDirect(name.loc, sym)
         ## elif sym.storage == "direct":
         ##     return ast.NameOuterDirect(name.loc, sym)
         ## elif sym.storage == "cell" and sym.is_local:
         ##     return ast.NameLocalCell(name.loc, sym)
         ## elif sym.storage == "cell":
-        ##     outervars = self.closure[-sym.level]
-        ##     w_cell = outervars[sym.name].w_val
-        ##     assert isinstance(w_cell, W_Cell)
-        ##     return ast.NameOuterCell(name.loc, sym, w_cell.fqn)
+        ##     return ast.NameOuterCell(name.loc, sym, fqn=None)
         elif sym.storage == "NameError":
             return ast.NameError(name.loc, name.id)
         else:
-            return name  # TODO: handle remaining cases
+            assert False, f"unexpected storage: {sym.storage!r}"
