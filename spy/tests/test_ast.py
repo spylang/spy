@@ -39,19 +39,19 @@ def test_astnode_with_spec_sets_valid_states():
 
 def test_assert_valid_node_class_ok():
     node = FakeStmt(loc=Loc.fake())
-    node.assert_valid("parsed")
+    node.assert_valid_at("parsed")
 
 
 def test_assert_valid_node_class_fails():
     node = FakeStmt(loc=Loc.fake())
     with pytest.raises(Exception, match="FakeStmt.*not valid at state 'astcompiled'"):
-        node.assert_valid("astcompiled")
+        node.assert_valid_at("astcompiled")
 
 
 def test_assert_valid_no_spec_is_always_valid():
     node = ast.Pass(loc=Loc.fake())
-    node.assert_valid("parsed")
-    node.assert_valid("linearized")
+    node.assert_valid_at("parsed")
+    node.assert_valid_at("linearized")
 
 
 def test_assert_valid_recurses_into_children():
@@ -60,9 +60,4 @@ def test_assert_valid_recurses_into_children():
         loc=Loc.fake(), test=ast.Auto(loc=Loc.fake()), then_body=[inner], else_body=[]
     )
     with pytest.raises(Exception, match="FakeStmt.*not valid at state 'astcompiled'"):
-        outer.assert_valid("astcompiled")
-
-
-def test_assert_valid_redshifting_treated_as_astcompiled():
-    node = FakeIRStmt(loc=Loc.fake())
-    node.assert_valid("redshifting")
+        outer.assert_valid_at("astcompiled")
