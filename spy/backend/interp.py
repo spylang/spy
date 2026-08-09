@@ -51,7 +51,7 @@ class InterpModuleWrapper:
             if not w_func.is_valid:
                 assert w_func.w_replaced_by is not None
                 w_func = w_func.get_most_lowered_version()
-                assert w_func.lowering_stage != "source"
+                assert w_func.lowering_state != "parsed"
                 assert self.vm.lookup_global(w_func.fqn) is w_func
             return InterpFuncWrapper(self.vm, w_func)
         elif isinstance(w_obj, W_Func):

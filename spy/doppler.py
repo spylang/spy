@@ -138,8 +138,8 @@ class DopplerFrame(ASTFrame):
         return True
 
     def redshift(self) -> W_ASTFunc:
-        assert self.w_func.lowering_stage == "source", "cannot redshift twice"
-        self.w_func.lowering_stage = "redshift_in_progress"
+        assert self.w_func.lowering_state == "parsed", "cannot redshift twice"
+        self.w_func.lowering_state = "redshifting"
         self.declare_arguments()
         funcdef = self.w_func.funcdef
         new_body = []
@@ -168,7 +168,7 @@ class DopplerFrame(ASTFrame):
             w_functype=w_newfunctype,
             funcdef=new_funcdef,
             defaults_w=self.w_func.defaults_w,
-            lowering_stage="redshift",
+            lowering_state="redshifted",
             locals_types_w=locals_types_w,
             is_force_inline=self.w_func.is_force_inline,
         )
@@ -496,8 +496,8 @@ class DopplerFrame(ASTFrame):
         from spy.force_inline import inline_call
 
         w_callee = w_func.get_most_lowered_version()
-        stage = w_callee.lowering_stage
-        if stage == "redshift_in_progress":
+        lowering_state = w_callee.lowering_state
+        if lowering_state == "redshifting":
             callee = w_callee.fqn.human_name(self.vm)
             err = SPyError(
                 "W_TypeError",
@@ -505,10 +505,10 @@ class DopplerFrame(ASTFrame):
             )
             err.add("error", "recursive inline call", op.loc)
             raise err
-        if stage == "source":
+        if lowering_state == "parsed":
             self.vm._redshift_some([(w_callee.fqn, w_callee)], self.error_mode)
             w_callee = w_callee.get_most_lowered_version()
-        assert w_callee.lowering_stage == "redshift"
+        assert w_callee.lowering_state == "redshifted"
 
         n = self._inline_counter
         self._inline_counter += 1

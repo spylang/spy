@@ -3,6 +3,7 @@ from typing import no_type_check
 import pytest
 
 from spy import ast
+from spy.ast import LoweringState
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.vm.b import B
@@ -10,7 +11,6 @@ from spy.vm.function import (
     Color,
     FuncKind,
     FuncParam,
-    LoweringStage,
     W_ASTFunc,
     W_BuiltinFunc,
 )
@@ -38,12 +38,12 @@ def make_FuncType(
 def make_w_func(
     fqn_s: str,
     *,
-    lowering_stage: LoweringStage = "source",
+    lowering_state: LoweringState = "parsed",
 ) -> W_ASTFunc:
     loc = Loc.fake()
     w_functype = make_FuncType(B.w_i32, w_restype=B.w_i32)
     locals_types_w: dict[str, W_Type] | None = None
-    if lowering_stage != "source":
+    if lowering_state != "parsed":
         locals_types_w = {}
     fqn = FQN(fqn_s)
     funcdef = ast.FuncDef(
@@ -68,7 +68,7 @@ def make_w_func(
         funcdef=funcdef,
         closure=(),
         defaults_w=[],
-        lowering_stage=lowering_stage,
+        lowering_state=lowering_state,
         locals_types_w=locals_types_w,
     )
 
@@ -128,7 +128,7 @@ class TestFunction:
     def test_W_ASTFunc_replace_with(self):
         w_f1 = make_w_func("test::foo")
         assert w_f1.is_valid
-        w_f2 = make_w_func("test::foo", lowering_stage="redshift")
+        w_f2 = make_w_func("test::foo", lowering_state="redshifted")
         w_f1.replace_with(w_f2)
         assert not w_f1.is_valid
         assert w_f1.w_replaced_by is w_f2
@@ -161,11 +161,11 @@ class TestFunction:
         w_f1 = make_w_func("test::foo")
         assert repr(w_f1) == "<spy function 'test::foo'>"
         #
-        w_f2 = make_w_func("test::foo", lowering_stage="redshift")
+        w_f2 = make_w_func("test::foo", lowering_state="redshifted")
         w_f1.replace_with(w_f2)
         assert repr(w_f1) == "<spy function 'test::foo' (invalid)>"
-        assert repr(w_f2) == "<spy function 'test::foo' (redshift)>"
+        assert repr(w_f2) == "<spy function 'test::foo' (redshifted)>"
         #
-        w_f3 = make_w_func("test::foo", lowering_stage="linearize")
+        w_f3 = make_w_func("test::foo", lowering_state="linearized")
         w_f2.replace_with(w_f3)
-        assert repr(w_f2) == "<spy function 'test::foo' (redshift, invalid)>"
+        assert repr(w_f2) == "<spy function 'test::foo' (redshifted, invalid)>"

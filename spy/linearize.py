@@ -82,7 +82,7 @@ def linearize(vm: "SPyVM", w_func: W_ASTFunc) -> W_ASTFunc:
     """
     Run the linearize pass on the given already-redshifted function.
     """
-    assert w_func.lowering_stage == "redshift", "linearize must run after redshift"
+    assert w_func.lowering_state == "redshifted", "linearize must run after redshift"
     lin = Linearizer(vm, w_func)
     return lin.linearize()
 
@@ -122,7 +122,7 @@ class Linearizer:
             w_functype=self.w_func.w_functype,
             funcdef=new_funcdef,
             defaults_w=self.w_func.defaults_w,
-            lowering_stage="linearize",
+            lowering_state="linearized",
             locals_types_w=new_locals_types_w,
             is_force_inline=self.w_func.is_force_inline,
         )

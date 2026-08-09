@@ -27,21 +27,44 @@ if TYPE_CHECKING:
     from spy.vm.object import W_Object, W_Type
     from spy.vm.vm import SPyVM
 
+# ==== Compilation pipeline and invariants ====
+#
+# The compilation pipeline consists of a series of passes, and the AST serves as the
+# shared IR for all of them. Intermediate passes transform an AST into "the next one"
+# and set the corresponding LoweringState.
+#
+# The pipeline is as follows, showing ARTIFACTS and --passes-->
+#
+# SOURCE CODE
+#   --parse-->  PARSED AST
+#   --ScopeAnalyzer--> PARSED AST+Symtable
+#   --astcompile--> ASTCOMPILED AST
+#   --doppler--> REDSHIFTED AST
+#   --linearize--> LINEARIZED AST
+#   --CBackend--> C CODE
+#
+# "redshifting" is a temporary transient state which is set during redshifting but it's
+# not supposed to be visible outside of it.
+#
+# --- Typed vs untyped ASTs ---
+#
+# Moreover, The Expr class has an optional field w_T which indicates the type of the
+# expression:
+#
+#   - AST trees are said UNTYPED when all their Exprs have w_T == None.
+#   - AST trees are said TYPED when all their Exprs have w_T != None.
+#   - It is a logical error to have AST trees which mix typed and untyped nodes.
+#
+# The parser produces UNTYPED ASTs. The redshift pass produces TYPED ASTS.
+# ================================
+
+LoweringState = typing.Literal[
+    "parsed", "astcompiled", "redshifting", "redshifted", "linearized"
+]
+
 ClassKind = typing.Literal["class", "struct"]
 FuncKind = typing.Literal["plain", "generic", "metafunc"]
 FuncParamKind = typing.Literal["simple", "var_positional"]
-
-# ==== Typed vs untyped ASTs ====
-#
-# The Expr class has an optional field w_T which indicates the type of the expression.
-#
-# AST trees are said UNTYPED when all their Exprs have w_T == None.
-# AST trees are said TYPED when all their Exprs have w_T != None.
-#
-# It is a logical error to have AST trees which mix typed and untyped nodes.
-#
-# The parser produces UNTYPED ASTs. DopplerFrame produces TYPED ASTs.
-# ================================
 
 
 @extend(py_ast.AST)
@@ -89,7 +112,7 @@ del AST
 
 @dataclass_transform(field_specifiers=(dataclasses.field,), eq_default=False)
 def astnode[T](klass: Type[T]) -> Type[T]:
-    """Decorator to create dataclasses for AST nodes
+    """Decorator to create dataclasses for AST nodes.
     We want all nodes to compare by *identity* and be hashable, because e.g. we
     put them in dictionaries inside the typechecker."""
     return dataclass(eq=False)(klass)
@@ -172,6 +195,19 @@ class Node:
                 if extra_msg:
                     msg = f"{msg}: {extra_msg}"
                 raise Exception(msg)
+
+    def assert_valid(self, state: LoweringState) -> None:
+        """
+        Check that self and all its descendants are valid at the given
+        LoweringState, i.e. that every descendant annotated with @astnode(spec)
+        claims `state` among the ones it supports.
+        """
+        check_state = "astcompiled" if state == "redshifting" else state
+        for node in self.walk():
+            valid = getattr(type(node), "_valid_states", None)
+            if valid is not None and check_state not in valid:
+                cls = node.__class__.__name__
+                raise Exception(f"Node `{cls}` is not valid at state '{state}'")
 
     def visit(self, prefix: str, visitor: Any, *args: Any) -> None:
         """

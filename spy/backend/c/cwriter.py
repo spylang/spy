@@ -37,7 +37,7 @@ class CFuncWriter:
         self.fqn = fqn
         self.last_emitted_linenos = (-1, -1)  # see emit_lineno_maybe
 
-        assert w_func.lowering_stage == "linearize"
+        assert w_func.lowering_state == "linearized"
         self.w_func = w_func
 
     def ppc(self) -> None:

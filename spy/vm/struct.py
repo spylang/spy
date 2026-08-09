@@ -233,7 +233,7 @@ class W_StructType(W_Type):
         w_functype = W_FuncType.new(params, w_restype=B.w_bool)
         fqn = self.fqn.join(name)
         return W_ASTFunc(
-            w_functype, fqn, funcdef, closure=(), defaults_w=[], lowering_stage="source"
+            w_functype, fqn, funcdef, closure=(), defaults_w=[], lowering_state="parsed"
         )
 
     def repr_hints(self) -> list[str]:
