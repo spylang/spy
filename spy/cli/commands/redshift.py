@@ -78,7 +78,7 @@ async def redshift(args: Redshift_Args) -> None:
     importer = ImportAnalyzer(vm, modname, use_spyc=not args.no_spyc)
     for extra_modname in extra_modnames:
         importer.queue.append(extra_modname)
-    importer.parse_all()
+    importer.astcompile_all()
     importer.import_all()
 
     vm.ast_color_map = {}

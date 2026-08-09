@@ -22,7 +22,7 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 42
         if self.backend == "interp":
-            assert mod.foo.w_func.lowering_state == "parsed"
+            assert mod.foo.w_func.lowering_state == "astcompiled"
         elif self.backend == "doppler":
             assert mod.foo.w_func.lowering_state == "redshifted"
 

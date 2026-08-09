@@ -419,7 +419,7 @@ class W_ASTFunc(W_Func):
         self.w_origin = None
 
         # sanity check
-        if lowering_state in ("parsed", "redshifting"):
+        if lowering_state in ("parsed", "astcompiled", "redshifting"):
             assert self.locals_types_w is None
         else:
             assert self.locals_types_w is not None

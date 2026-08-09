@@ -138,7 +138,7 @@ class DopplerFrame(ASTFrame):
         return True
 
     def redshift(self) -> W_ASTFunc:
-        assert self.w_func.lowering_state == "parsed", "cannot redshift twice"
+        assert self.w_func.lowering_state == "astcompiled", "cannot redshift twice"
         self.w_func.lowering_state = "redshifting"
         self.declare_arguments()
         funcdef = self.w_func.funcdef
@@ -505,7 +505,7 @@ class DopplerFrame(ASTFrame):
             )
             err.add("error", "recursive inline call", op.loc)
             raise err
-        if lowering_state == "parsed":
+        if lowering_state == "astcompiled":
             self.vm._redshift_some([(w_callee.fqn, w_callee)], self.error_mode)
             w_callee = w_callee.get_most_lowered_version()
         assert w_callee.lowering_state == "redshifted"

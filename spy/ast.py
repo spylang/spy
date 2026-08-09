@@ -256,7 +256,7 @@ class Node:
             valid_states = getattr(type(node), "_valid_states", None)
             if valid_states is not None and state not in valid_states:
                 cls = node.__class__.__name__
-                raise Exception(f"Node `{cls}` is not valid at state '{state}'")
+                raise Exception(f"Node `ast.{cls}` is not valid at state '{state}'")
 
     def visit(self, prefix: str, visitor: Any, *args: Any) -> None:
         """

@@ -228,7 +228,7 @@ class AbstractFrame:
                 # sanity check. After redshifting, all type conversions should be
                 # explicit. If w_typeconv is not None here, it means that Doppler failed
                 # to insert the appropriate conversion
-                assert self.w_func.lowering_state == "parsed"
+                assert self.w_func.lowering_state == "astcompiled"
 
             # apply the conversion
             assert varname is not None
@@ -352,7 +352,7 @@ class AbstractFrame:
             funcdef,
             closure,
             defaults_w=defaults_w,
-            lowering_state="parsed",
+            lowering_state="astcompiled",
         )
         self.vm.add_global(fqn, w_func)
 
@@ -956,57 +956,8 @@ class AbstractFrame:
         return W_MetaArg.from_w_obj(self.vm, w_value)
 
     def eval_expr_Name(self, name: ast.Name) -> W_MetaArg:
-        # see the comment in __init__ about specialized_names
-        specialized = self.specialized_names.get(name)
-        if specialized is None:
-            specialized = self._specialize_Name(name)
-            self.specialized_names[name] = specialized
-        return self.eval_expr(specialized)
-
-    def _specialize_Name(self, name: ast.Name) -> ast.Expr:
-        varname = name.id
-        sym = self.symtable.lookup_maybe(varname)
-        if not self.is_interactive:
-            assert sym is not None
-
-        if sym is None:
-            # sym can be None ONLY in interactive frames (in which case we do a dynamic
-            # lookup), else it means that there is a bug in symtable.
-            assert self.is_interactive, "sym not found"
-            # create a fake symbol to be used below
-            sym = Symbol(
-                varname,
-                "var",
-                "auto",
-                "NameError",
-                loc=name.loc,
-                type_loc=name.loc,
-                level=-1,
-            )
-
-        if sym.impref is not None:
-            return ast.NameImportRef(name.loc, sym)
-        elif sym.storage == "direct" and sym.is_local:
-            return ast.NameLocalDirect(name.loc, sym)
-        elif sym.storage == "direct":
-            return ast.NameOuterDirect(name.loc, sym)
-        elif sym.storage == "cell" and sym.is_local:
-            return ast.NameLocalCell(name.loc, sym)
-        elif sym.storage == "cell":
-            outervars = self.closure[-sym.level]
-            w_cell = outervars[sym.name].w_val
-            assert isinstance(w_cell, W_Cell)
-            return ast.NameOuterCell(name.loc, sym, w_cell.fqn)
-        elif sym.storage == "NameError":
-            msg = f"name `{name.id}` is not defined"
-            raise SPyError.simple(
-                "W_NameError",
-                msg,
-                "not found in this scope",
-                name.loc,
-            )
-        else:
-            assert False
+        # KILL ME
+        assert False, "this should not happen"
 
     def eval_expr_NameImportRef(self, name: ast.NameImportRef) -> W_MetaArg:
         # this is correct as long as we import 'const', but if we import 'var', then it
@@ -1439,7 +1390,7 @@ class ASTFrame(AbstractFrame):
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
-        if self.w_func.lowering_state != "parsed":
+        if self.w_func.lowering_state not in ("parsed", "astcompiled"):
             extra = f" ({self.w_func.lowering_state})"
         elif self.w_func.color == "blue":
             extra = " (blue)"

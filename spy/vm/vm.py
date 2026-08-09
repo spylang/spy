@@ -194,7 +194,7 @@ class SPyVM:
             return self.modules_w[modname]
 
         importer = ImportAnalyzer(self, modname)
-        importer.parse_all()
+        importer.astcompile_all()
         # importer.pp()
         importer.import_all()
         w_mod = self.modules_w[modname]
@@ -207,7 +207,7 @@ class SPyVM:
 
         def should_redshift(w_func: W_ASTFunc) -> bool:
             # we don't want to redshift @blue functions
-            return w_func.color != "blue" and w_func.lowering_state == "parsed"
+            return w_func.color != "blue" and w_func.lowering_state == "astcompiled"
 
         def get_funcs() -> Iterable[tuple[FQN, W_ASTFunc]]:
             for fqn, w_func in self.globals_w.items():
@@ -227,7 +227,7 @@ class SPyVM:
     ) -> None:
         for fqn, w_func in funcs:
             assert w_func.color != "blue"
-            assert w_func.lowering_state == "parsed"
+            assert w_func.lowering_state == "astcompiled"
             w_newfunc = redshift(self, w_func, error_mode)
             assert w_newfunc.lowering_state == "redshifted"
             self.globals_w[fqn] = w_newfunc

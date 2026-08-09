@@ -8,6 +8,7 @@ import py.path
 
 from spy import ast
 from spy.analyze.scope import ScopeAnalyzer
+from spy.astcompile import astcompile
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.parser import Parser
@@ -22,7 +23,7 @@ if TYPE_CHECKING:
 MODULE = Union[ast.Module, "W_Module", None]
 
 # Cache version: increment this when ast.Module or SymTable structure changes
-SPYC_VERSION = 7
+SPYC_VERSION = 8
 
 
 @dataclass
@@ -219,7 +220,7 @@ class ImportAnalyzer:
             if not self.vm.robust_import_caching:
                 raise
 
-    def parse_all(self) -> None:
+    def astcompile_all(self) -> None:
         while self.queue:
             modname = self.queue.popleft()
 
@@ -239,7 +240,7 @@ class ImportAnalyzer:
                 if modname not in self.deps:
                     self.deps[modname] = OrderedSet()
 
-                mod = self.parse_one(modname, spyfile)
+                mod = self.astcompile_one(modname, spyfile)
                 self.mods[modname] = mod
 
                 # record implicit imports
@@ -256,9 +257,9 @@ class ImportAnalyzer:
                 # we couldn't find .spy for this modname
                 self.mods[modname] = None
 
-    def parse_one(self, modname: str, spyfile: py.path.local) -> ast.Module:
+    def astcompile_one(self, modname: str, spyfile: py.path.local) -> ast.Module:
         """
-        Parse a module AND run ScopeAnalyzer on it.
+        Parse a module, run ScopeAnalyzer, run astcompile.
         """
         # try to load from cache first
         mod = None
@@ -270,14 +271,18 @@ class ImportAnalyzer:
                     return mod
 
         # no cache found, parse it
-        parser = Parser.from_filename(str(spyfile))
-        mod = parser.parse()
-        scopes = self.analyze_one(modname, mod)
-        mod.symtable = scopes.by_module()
+        parsed_mod = self.parse_one(spyfile)
+        scopes = self.analyze_one(modname, parsed_mod)
+        parsed_mod.symtable = scopes.by_module()
+        compiled_mod = astcompile(parsed_mod)
 
         if self.use_spyc:
-            self._save_spyc(mod, spyc)
-        return mod
+            self._save_spyc(compiled_mod, spyc)
+        return compiled_mod
+
+    def parse_one(self, spyfile: py.path.local) -> ast.Module:
+        parser = Parser.from_filename(str(spyfile))
+        return parser.parse()
 
     def analyze_one(self, modname: str, mod: ast.Module) -> ScopeAnalyzer:
         scopes = ScopeAnalyzer(modname, mod)
@@ -316,7 +321,7 @@ class ImportAnalyzer:
     def import_all(self) -> None:
         from spy.vm.module import W_Module
 
-        assert self.mods, "call .parse_all() first"
+        assert self.mods, "call .astcompile_all() first"
         import_list = self.get_import_list()
         for modname in import_list:
             mod = self.mods[modname]
@@ -435,7 +440,7 @@ class ImportAnalyzer:
             ├── b1
             └── b2
         """
-        assert self.mods, "call .parse_all() first"
+        assert self.mods, "call .astcompile_all() first"
 
         # Constants for tree formatting
         # fmt: off

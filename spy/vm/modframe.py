@@ -31,6 +31,7 @@ class ModFrame(AbstractFrame):
         ns: FQN,
         mod: ast.Module,
     ) -> None:
+        mod.assert_valid_at("astcompiled")
         assert mod.symtable is not None
         assert mod.symtable.kind == "module"
         super().__init__(vm, ns, mod.loc, mod.symtable, closure=())
