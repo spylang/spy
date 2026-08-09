@@ -116,6 +116,12 @@ class ASTCompiler:
 
     # ===== Expr handlers =====
 
+    def compile_expr_Auto(self, auto: ast.Auto) -> ast.Expr:
+        return auto
+
+    def compile_expr_StrLiteral(self, lit: ast.StrLiteral) -> ast.Expr:
+        return lit
+
     def compile_expr_BinOp(self, expr: ast.BinOp) -> ast.Expr:
         return expr.replace(
             left=self.compile_expr(expr.left),
