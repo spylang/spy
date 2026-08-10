@@ -7,12 +7,14 @@ from typer import Option
 
 from spy.analyze.importing import ImportAnalyzer
 from spy.backend.html import HTMLBackend, SpyastJs
+from spy.backend.spy import SPyBackend
 from spy.cli._format import dump_spy_mod, dump_spy_mod_ast
 from spy.cli._runners import init_vm
 from spy.cli.commands.shared_args import (
     Base_Args,
     Filename_Required_Args,
 )
+from spy.highlight import highlight_src
 
 
 @dataclass
@@ -53,8 +55,12 @@ async def astcompile(args: ASTCompile_Args) -> None:
     if args.format == "ast":
         mod.pp()
     elif args.format == "spy":
-        raise NotImplementedError("FIXME")
-        dump_spy_mod(vm, modname, full_fqn=False)
+        b = SPyBackend(vm)
+        b.modname = modname
+        for decl in mod.decls:
+            b.emit_decl(decl)
+            b.out.wl()
+        print(highlight_src("spy", b.out.build().rstrip()))
     elif args.format == "html":
         raise NotImplementedError("FIXME")
         b = HTMLBackend(args.spyast_js)

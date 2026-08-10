@@ -218,7 +218,8 @@ class SPyBackend:
         symtable = self.scope_stack[-1]
         sym = symtable.lookup(varname)
         if (
-            self.w_func.stage not in ("parsed", "astcompiled")
+            self.w_func is not None
+            and self.w_func.stage not in ("parsed", "astcompiled")
             and sym.level == 0
             and varname not in self.vars_declared
         ):

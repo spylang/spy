@@ -121,6 +121,24 @@ class TestMain:
         _, stdout = self.run("parse", self.main_spy)
         assert stdout.startswith("Module(")
 
+    def test_astcompile(self):
+        _, stdout = self.run("astcompile", self.main_spy)
+        assert stdout.startswith("Module(")
+        assert "stage='astcompiled'" in stdout
+
+    def test_astcompile_spy_output(self):
+        src = """
+        def main() -> None:
+            for i in range(3):
+                print(i)
+        """
+        f = self.write("test.spy", src)
+        _, stdout = self.run("astcompile", "--format", "spy", f)
+        # `for` should be desugared to `while` in the astcompiled tree
+        assert "for " not in stdout
+        assert "while " in stdout
+        assert stdout.startswith("def main() -> None:")
+
     def test_execute(self):
         argsets = [["execute"], []]  # No subcommand is equivalent to execute command
         for argset in argsets:
