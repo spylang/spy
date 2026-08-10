@@ -213,9 +213,9 @@ class Linearizer:
         return [vardef.replace(value=new_value)]
 
     def rewrite_stmt_AssignLocal(self, assign: ast.AssignLocal) -> list[ast.Stmt]:
-        to_spill = self.mark_to_spill([assign.value])
-        new_value = self.rewrite_expr(assign.value, to_spill)
-        return [assign.replace(value=new_value)]
+        to_spill = self.mark_to_spill([assign.expr.value])
+        new_value = self.rewrite_expr(assign.expr.value, to_spill)
+        return [assign.replace(expr=assign.expr.replace(value=new_value))]
 
     def rewrite_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
         to_spill = self.mark_to_spill([assign.value])
@@ -223,9 +223,9 @@ class Linearizer:
         return [assign.replace(value=new_value)]
 
     def rewrite_stmt_AssignCell(self, assign: ast.AssignCell) -> list[ast.Stmt]:
-        to_spill = self.mark_to_spill([assign.value])
-        new_value = self.rewrite_expr(assign.value, to_spill)
-        return [assign.replace(value=new_value)]
+        to_spill = self.mark_to_spill([assign.expr.value])
+        new_value = self.rewrite_expr(assign.expr.value, to_spill)
+        return [assign.replace(expr=assign.expr.replace(value=new_value))]
 
     def rewrite_stmt_Pass(self, stmt: ast.Pass) -> list[ast.Stmt]:
         return [stmt]
