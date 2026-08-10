@@ -291,9 +291,26 @@ class DopplerFrame(ASTFrame):
             return [assign.replace(target=newtarget, value=newvalue)]
 
     def shift_stmt_AssignCell(self, assign: ast.AssignCell) -> list[ast.Stmt]:
-        # specialized stmts such as AssignLocal and AssignCell are present
-        # ONLY inside redshifted ASTs, so we should never see them here
-        assert False, "not supposed to happen"
+        self.exec_stmt(assign)
+        newtarget = assign.target.as_typed_node()
+        newvalue = self.shifted_expr[assign.value]
+
+        # AssignCell is a bit special: at redshift time we KNOW the FQN of the cell, so
+        # we want to record it in the node. This is a small code duplication with
+        # ASTFrame, but too bad.  See also shift_expr_NameOuterCell.
+        assert assign.target_fqn is None, "already redshifted?"
+        sym = assign.sym
+        outervars = self.closure[-sym.level]
+        w_cell = outervars[sym.name].w_val
+        newtarget_fqn = w_cell.fqn
+
+        return [
+            assign.replace(
+                target=newtarget,
+                target_fqn=newtarget_fqn,
+                value=newvalue,
+            )
+        ]
 
     def shift_stmt_AugAssign(self, node: ast.AugAssign) -> list[ast.Stmt]:
         assign = self._desugar_AugAssign(node)
@@ -584,7 +601,13 @@ class DopplerFrame(ASTFrame):
     def shift_expr_NameOuterCell(
         self, name: ast.NameOuterCell, wam: W_MetaArg
     ) -> ast.Expr:
-        return name.replace(w_T=wam.w_static_T)
+        # NameOuterCell is a bit special: at redshift time we KNOW the FQN of the cell,
+        # so we want to record it in the node. This is a small code duplication with
+        # ASTFrame, but too bad.  See also shift_stmt_AssignCell.
+        sym = name.sym
+        outervars = self.closure[-sym.level]
+        w_cell = outervars[sym.name].w_val
+        return name.replace(w_T=wam.w_static_T, fqn=w_cell.fqn)
 
     def shift_expr_BinOp(self, binop: ast.BinOp, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[binop]

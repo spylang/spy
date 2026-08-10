@@ -620,8 +620,7 @@ class AbstractFrame:
         wam = self.eval_expr(value)
         if not self.redshifting:
             if target_fqn is not None:
-                assert False, "implement me!"
-                # w_cell = self.vm.lookup_global(target_fqn)
+                w_cell = self.vm.lookup_global(target_fqn)
             else:
                 outervars = self.closure[-sym.level]
                 w_cell = outervars[sym.name].w_val
@@ -930,8 +929,7 @@ class AbstractFrame:
         sym = name.sym
         assert not sym.is_local
         if name.fqn is not None:
-            assert False, "implement me!"
-            # w_cell = self.vm.lookup_global(name.fqn)
+            w_cell = self.vm.lookup_global(name.fqn)
         else:
             outervars = self.closure[-sym.level]
             w_cell = outervars[sym.name].w_val
