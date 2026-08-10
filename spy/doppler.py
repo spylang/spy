@@ -154,7 +154,11 @@ class DopplerFrame(ASTFrame):
         new_symtable = funcdef.symtable.copy()
         for sym in self._new_symbols:
             new_symtable.add(sym)
-        new_funcdef = funcdef.replace(body=new_body, symtable=new_symtable)
+        new_funcdef = funcdef.replace(
+            stage="redshifted",
+            body=new_body,
+            symtable=new_symtable,
+        )
         #
         new_fqn = self.w_func.fqn
         # all the non-local lookups are redshifted into constants, so the

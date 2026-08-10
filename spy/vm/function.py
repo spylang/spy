@@ -413,13 +413,17 @@ class W_ASTFunc(W_Func):
         self.closure = closure
         self.defaults_w = defaults_w
         self.locals_types_w = locals_types_w
-        self.stage = stage
         self.w_replaced_by = None
         self.is_force_inline = is_force_inline
         self.w_origin = None
 
+        # stage is almost always the same as funcdef.stage. The only time it's different
+        # is when we temporarily set it to "redshiting".
+        assert stage == funcdef.stage
+        self.stage = stage
+
         # sanity check
-        if stage in ("parsed", "astcompiled", "redshifting"):
+        if self.stage in ("parsed", "astcompiled", "redshifting"):
             assert self.locals_types_w is None
         else:
             assert self.locals_types_w is not None
