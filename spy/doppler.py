@@ -298,6 +298,12 @@ class DopplerFrame(ASTFrame):
         new_expr = self.shifted_expr[assign.expr]
         return [assign.replace(expr=new_expr)]
 
+    def shift_stmt_AssignUnpack(self, unpack: ast.AssignUnpack) -> list[ast.Stmt]:
+        self.exec_stmt(unpack)
+        newtargets = [target.as_typed_node() for target in unpack.targets]
+        newvalue = self.shifted_expr[unpack.value]
+        return [unpack.replace(targets=newtargets, value=newvalue)]
+
     def shift_stmt_AssignConstError(self, node: ast.AssignConstError) -> list[ast.Stmt]:
         self.exec_stmt(node)
         assert False, "unreachable"

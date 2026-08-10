@@ -600,66 +600,6 @@ class AbstractFrame:
             )
             self.eval_expr_AssignExprLocal(assign_expr)
 
-    def exec_stmt_Assign_unpack(self, assign: ast.Assign) -> None:
-        assert isinstance(assign.target, ast.UnpackTarget)
-        wam_tup = self.eval_expr(assign.value)
-        w_T = wam_tup.w_static_T
-
-        is_interp_tuple = w_T is SPY.w_interp_tuple
-        is_stdlib_tuple = self.vm.is_tuple_type(w_T)
-        if not (is_interp_tuple or is_stdlib_tuple):
-            t = wam_tup.w_static_T.fqn.human_name(self.vm)
-            err = SPyError(
-                "W_TypeError",
-                f"`{t}` does not support unpacking",
-            )
-            err.add("error", f"this is `{t}`", assign.value.loc)
-            raise err
-
-        # check that the tuple has the right length
-        if is_interp_tuple:
-            # XXX: probably we should put the number of items on the type
-            w_tup = wam_tup.w_val
-            assert isinstance(w_tup, W_InterpTuple)
-            got = len(w_tup.items_w)
-        else:
-            assert isinstance(w_T, W_StructType)
-            got = len(list(w_T.iterfields_w()))
-
-        targets = assign.target.targets
-        exp = len(targets)
-        if exp != got:
-            # we cannot use ValueError because we want an exception type which
-            # inherits from StaticError.
-            targets_loc = Loc.combine(
-                start=targets[0].loc,
-                end=targets[-1].loc,
-            )
-            err = SPyError(
-                "W_TypeError",
-                f"Wrong number of values to unpack",
-            )
-            exp_values = maybe_plural(exp, "value")
-            got_values = maybe_plural(got, "value")
-            err.add("error", f"expected {exp} {exp_values}", targets_loc)
-            err.add("error", f"got {got} {got_values}", assign.value.loc)
-            raise err
-
-        for i, target in enumerate(targets):
-            # fabricate an expr to get an individual item of the tuple
-            expr = ast.GetItem(
-                loc=assign.value.loc,
-                value=assign.value,
-                args=[ast.Literal(loc=assign.value.loc, value=i)],
-            )
-            # fabricate an ast.Assign
-            # XXX: ideally we should cache the specialization instead of
-            # rebuilding it at every exec
-            assign_item = self._specialize_Assign(
-                ast.Assign(loc=assign.loc, target=target, value=expr)
-            )
-            self.exec_stmt(assign_item)
-
     def exec_stmt_AugAssign(self, node: ast.AugAssign) -> None:
         # XXX: eventually we want to support things like __IADD__ etc, but for
         # now we just delegate to _ADD__.
