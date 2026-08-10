@@ -213,7 +213,7 @@ class TestMain:
         def factorial(n: i32) -> i32:
             [R]res = [/COLOR][B]1[/COLOR]
             for i in [B]range[/COLOR][R](n)[/COLOR]:
-                res *= ([R]i+[/COLOR][B]1[/COLOR])
+                [R]res *= (i+[/COLOR][B]1[/COLOR][R])[/COLOR]
             return [R]res[/COLOR]
 
         def main() -> None:

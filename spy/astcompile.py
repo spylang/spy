@@ -12,6 +12,7 @@ import spy.ast as ast
 from spy.analyze.symtable import SymTable
 from spy.ast import LoweringStage
 from spy.errors import WIP, SPyError
+from spy.location import Loc
 from spy.util import magic_dispatch
 
 
@@ -235,46 +236,49 @@ class ASTCompiler:
         #       it = it.__next__()
         #       body
         loc = stmt.loc
+        # use non-colorize locs for synthetic nodes, to avoid painting over user nodes
+        iter_loc = stmt.iter.loc.replace(colorize=False)
+        target_loc = stmt.target.loc.replace(colorize=False)
         iter_name = f"_$iter{stmt.seq}"
-        iter_target = ast.SingleTarget(loc, ast.StrLiteral(loc, iter_name))
-        iter_name_node = ast.Name(loc=loc, id=iter_name)
+        iter_target = ast.SingleTarget(iter_loc, ast.StrLiteral(iter_loc, iter_name))
+        iter_name_node = ast.Name(loc=iter_loc, id=iter_name)
 
         init_iter = ast.Assign(
-            loc=loc,
+            loc=iter_loc,
             target=iter_target,
             value=ast.CallMethod(
-                loc=loc,
+                loc=iter_loc,
                 target=stmt.iter,
-                method=ast.StrLiteral(loc, "__fastiter__"),
+                method=ast.StrLiteral(iter_loc, "__fastiter__"),
                 args=[],
             ),
         )
         assign_item = ast.Assign(
-            loc=loc,
-            target=ast.SingleTarget(loc, stmt.target),
+            loc=target_loc,
+            target=ast.SingleTarget(target_loc, stmt.target),
             value=ast.CallMethod(
-                loc=loc,
+                loc=target_loc,
                 target=iter_name_node,
-                method=ast.StrLiteral(loc, "__item__"),
+                method=ast.StrLiteral(target_loc, "__item__"),
                 args=[],
             ),
         )
         advance_iter = ast.Assign(
-            loc=loc,
+            loc=iter_loc,
             target=iter_target,
             value=ast.CallMethod(
-                loc=loc,
+                loc=iter_loc,
                 target=iter_name_node,
-                method=ast.StrLiteral(loc, "__next__"),
+                method=ast.StrLiteral(iter_loc, "__next__"),
                 args=[],
             ),
         )
         while_loop = ast.While(
             loc=loc,
             test=ast.CallMethod(
-                loc=loc,
+                loc=iter_loc,
                 target=iter_name_node,
-                method=ast.StrLiteral(loc, "__continue_iteration__"),
+                method=ast.StrLiteral(iter_loc, "__continue_iteration__"),
                 args=[],
             ),
             body=[assign_item, advance_iter] + stmt.body,
@@ -284,14 +288,17 @@ class ASTCompiler:
         return compiled_init + compiled_while
 
     def compile_stmt_AugAssign(self, stmt: ast.AugAssign) -> list[ast.Stmt]:
-        # desugar "x += 1" into "x = x + 1" and compile the result
+        # desugar "x += 1" into "x = x + 1" and compile the result.
+        # use non-colorize locs for synthetic nodes, to avoid painting over user nodes
+        binop_loc = stmt.loc.replace(colorize=False)
+        target_loc = stmt.target.loc.replace(colorize=False)
         desugared = ast.Assign(
             loc=stmt.loc,
-            target=ast.SingleTarget(stmt.loc, stmt.target),
+            target=ast.SingleTarget(target_loc, stmt.target),
             value=ast.BinOp(
-                loc=stmt.loc,
+                loc=binop_loc,
                 op=stmt.op,
-                left=ast.Name(loc=stmt.target.loc, id=stmt.target.value),
+                left=ast.Name(loc=target_loc, id=stmt.target.value),
                 right=stmt.value,
             ),
         )
