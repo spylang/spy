@@ -48,6 +48,7 @@ def make_w_func(
     fqn = FQN(fqn_s)
     funcdef = ast.FuncDef(
         loc=loc,
+        stage=stage,
         color="red",
         kind="plain",
         name=fqn.symbol_name,
