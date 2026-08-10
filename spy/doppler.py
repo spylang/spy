@@ -273,44 +273,26 @@ class DopplerFrame(ASTFrame):
 
     def shift_stmt_AssignLocal(self, assign: ast.AssignLocal) -> list[ast.Stmt]:
         self.exec_stmt(assign)
-        varname = assign.target.value
+        expr = assign.expr
+        varname = expr.target.value
         lv = self.locals[varname]
         self.record_node_color(assign, lv.color)
         if lv.color == "blue":
             # blue local: redshift away the assign, but preserve any side effects from
             # BlockExpr bodies
-            shifted_value = self.shifted_expr[assign.value]
+            shifted_value = self.shifted_expr[expr.value]
             if isinstance(shifted_value, ast.BlockExpr):
                 return shifted_value.body
             else:
                 return []
         else:
-            # red local
-            newtarget = assign.target.as_typed_node()
-            newvalue = self.shifted_expr[assign.value]
-            return [assign.replace(target=newtarget, value=newvalue)]
+            new_expr = self.shifted_expr[expr]
+            return [assign.replace(expr=new_expr)]
 
     def shift_stmt_AssignCell(self, assign: ast.AssignCell) -> list[ast.Stmt]:
         self.exec_stmt(assign)
-        newtarget = assign.target.as_typed_node()
-        newvalue = self.shifted_expr[assign.value]
-
-        # AssignCell is a bit special: at redshift time we KNOW the FQN of the cell, so
-        # we want to record it in the node. This is a small code duplication with
-        # ASTFrame, but too bad.  See also shift_expr_NameOuterCell.
-        assert assign.target_fqn is None, "already redshifted?"
-        sym = assign.sym
-        outervars = self.closure[-sym.level]
-        w_cell = outervars[sym.name].w_val
-        newtarget_fqn = w_cell.fqn
-
-        return [
-            assign.replace(
-                target=newtarget,
-                target_fqn=newtarget_fqn,
-                value=newvalue,
-            )
-        ]
+        new_expr = self.shifted_expr[assign.expr]
+        return [assign.replace(expr=new_expr)]
 
     def shift_stmt_AssignConstError(self, node: ast.AssignConstError) -> list[ast.Stmt]:
         self.exec_stmt(node)
@@ -765,6 +747,34 @@ class DopplerFrame(ASTFrame):
         new_body = self.shifted_block_bodies.pop(block)
         new_value = self.shifted_expr[block.value]
         return block.replace(body=new_body, value=new_value, w_T=wam.w_static_T)
+
+    def shift_expr_AssignExprLocal(
+        self, assignexpr: ast.AssignExprLocal, wam: W_MetaArg
+    ) -> ast.Expr:
+        new_target = assignexpr.target.as_typed_node()
+        new_value = self.shifted_expr[assignexpr.value]
+        return assignexpr.replace(
+            target=new_target,
+            value=new_value,
+            w_T=wam.w_static_T,
+        )
+
+    def shift_expr_AssignExprCell(
+        self, assignexpr: ast.AssignExprCell, wam: W_MetaArg
+    ) -> ast.Expr:
+        new_target = assignexpr.target.as_typed_node()
+        new_value = self.shifted_expr[assignexpr.value]
+        # at redshift time we KNOW the FQN of the cell
+        assert assignexpr.target_fqn is None, "already redshifted?"
+        sym = assignexpr.sym
+        outervars = self.closure[-sym.level]
+        w_cell = outervars[sym.name].w_val
+        return assignexpr.replace(
+            target=new_target,
+            target_fqn=w_cell.fqn,
+            value=new_value,
+            w_T=wam.w_static_T,
+        )
 
     def shift_expr_AssignExpr(
         self, assignexpr: ast.AssignExpr, wam: W_MetaArg

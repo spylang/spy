@@ -539,13 +539,13 @@ class AbstractFrame:
         assert False, "this should not happen"
 
     def exec_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
-        self.eval_expr_AssignExprLocal(assign.expr)
+        self.eval_expr(assign.expr)
 
     def exec_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
-        self.eval_expr_AssignExprCell(assign.expr)
+        self.eval_expr(assign.expr)
 
     def exec_stmt_AssignConstError(self, assign: ast.AssignConstError) -> None:
-        self.eval_expr_AssignExprConstError(assign.expr)
+        self.eval_expr(assign.expr)
 
     def exec_stmt_AssignUnpack(self, assign: ast.AssignUnpack) -> None:
         wam_tup = self.eval_expr(assign.value)
