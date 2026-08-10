@@ -402,6 +402,10 @@ class Expr(Node):
     w_T: Optional["W_Type"] = field(default=None, kw_only=True)
 
 
+# === Name family ====
+# Name is a generic name lookup, which is astcompiled into more specific variants
+
+
 @astnode("parsed")
 class Name(Expr):
     precedence = 100  # the highest
@@ -409,6 +413,52 @@ class Name(Expr):
 
     def shortrepr(self) -> Optional[str]:
         return self.id
+
+
+@astnode(">= astcompiled")
+class NameLocalDirect(Expr):
+    precedence = 100  # the highest
+    sym: Symbol
+
+
+@astnode(">= astcompiled")
+class NameLocalCell(Expr):
+    precedence = 100  # the highest
+    sym: Symbol
+
+
+@astnode(">= astcompiled")
+class NameOuterDirect(Expr):
+    precedence = 100  # the highest
+    sym: Symbol
+
+
+@astnode(">= astcompiled")
+class NameOuterCell(Expr):
+    precedence = 100  # the highest
+    sym: Symbol
+    fqn: Optional[FQN]
+
+
+@astnode(">= astcompiled")
+class NameImportRef(Expr):
+    precedence = 100  # the highest
+    sym: Symbol
+
+
+@astnode(">= astcompiled")
+class NameError(Expr):
+    """
+    Poison node needed to enable lazy NameErrors.
+
+    Produced by astcompiler when ast.Name refers to unknown IDs.
+    """
+
+    precedence = 100
+    id: str
+
+
+# === /Name family ===
 
 
 @astnode
@@ -914,49 +964,6 @@ class Const(Expr):
 class FQNConst(Expr):
     precedence = 100  # the highest
     fqn: FQN
-
-
-@astnode(">= astcompiled")
-class NameImportRef(Expr):
-    precedence = 100  # the highest
-    sym: Symbol
-
-
-@astnode(">= astcompiled")
-class NameLocalDirect(Expr):
-    precedence = 100  # the highest
-    sym: Symbol
-
-
-@astnode(">= astcompiled")
-class NameLocalCell(Expr):
-    precedence = 100  # the highest
-    sym: Symbol
-
-
-@astnode(">= astcompiled")
-class NameOuterDirect(Expr):
-    precedence = 100  # the highest
-    sym: Symbol
-
-
-@astnode(">= astcompiled")
-class NameOuterCell(Expr):
-    precedence = 100  # the highest
-    sym: Symbol
-    fqn: Optional[FQN]
-
-
-@astnode(">= astcompiled")
-class NameError(Expr):
-    """
-    Poison node needed to enable lazy NameErrors.
-
-    Produced by astcompiler when ast.Name refers to unknown IDs.
-    """
-
-    precedence = 100
-    id: str
 
 
 @astnode(">= astcompiled")
