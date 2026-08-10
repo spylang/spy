@@ -178,17 +178,17 @@ class CFuncWriter:
                 self.tbc.wl(f"{target} = {v};")
 
     def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
-        target = assign.target.value
-        v = self.fmt_expr(assign.value)
+        target = assign.expr.target.value
+        v = self.fmt_expr(assign.expr.value)
         c_varname = C_Ident(target)
-        if assign.value.w_T is TYPES.w_NoneType:
+        if assign.expr.value.w_T is TYPES.w_NoneType:
             self.tbc.wl(f"/* {c_varname} = */ {v};")
         else:
             self.tbc.wl(f"{c_varname} = {v};")
 
     def emit_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
-        v = self.fmt_expr(assign.value)
-        target = assign.target_fqn.c_name
+        v = self.fmt_expr(assign.expr.value)
+        target = assign.expr.target_fqn.c_name
         c_varname = C_Ident(target)
         self.tbc.wl(f"{c_varname} = {v};")
 
