@@ -251,30 +251,6 @@ class DopplerFrame(ASTFrame):
             newvalue = self.shifted_expr[vardef.value]
         return [vardef.replace(name=newname, type=newtype, value=newvalue)]
 
-    def shift_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
-        assert False, "KILL ME"
-
-        ## self.exec_stmt_Assign(assign)
-        ## if isinstance(assign.target, ast.SingleTarget):
-        ##     varname = assign.target.name.value
-        ##     sym = self.symtable.lookup(varname)
-        ##     if sym.is_local and self.locals[varname].color == "blue":
-        ##     else:
-        ##         specialized = self.specialized_assigns[assign]
-        ##         newname = assign.target.name.as_typed_node()
-        ##         newvalue = self.shifted_expr[assign.value]
-        ##         return [specialized.replace(target=newname, value=newvalue)]
-        ## else:
-        ##     unpack = assign.target
-        ##     assert isinstance(unpack, ast.UnpackTarget)
-        ##     newtargets = []
-        ##     for target in unpack.targets:
-        ##         assert isinstance(target, ast.SingleTarget)
-        ##         newtargets.append(target.replace(name=target.name.as_typed_node()))
-        ##     unpack = unpack.replace(targets=newtargets)
-        ##     newvalue = self.shifted_expr[assign.value]
-        ##     return [assign.replace(target=unpack, value=newvalue)]
-
     def shift_stmt_AssignLocal(self, assign: ast.AssignLocal) -> list[ast.Stmt]:
         self.exec_stmt(assign)
         expr = assign.expr

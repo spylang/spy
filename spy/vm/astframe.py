@@ -534,10 +534,6 @@ class AbstractFrame:
         if not self.redshifting or lv.color == "blue":
             self.store_local(varname, wam.w_val)
 
-    def exec_stmt_Assign(self, assign: ast.Assign) -> None:
-        # KILL ME
-        assert False, "this should not happen"
-
     def exec_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
         self.eval_expr(assign.expr)
 
@@ -756,10 +752,6 @@ class AbstractFrame:
         assert w_value is not None
         return W_MetaArg.from_w_obj(self.vm, w_value)
 
-    def eval_expr_Name(self, name: ast.Name) -> W_MetaArg:
-        # KILL ME
-        assert False, "this should not happen"
-
     def eval_expr_NameError(self, name: ast.NameError) -> W_MetaArg:
         raise SPyError.simple(
             "W_NameError",
@@ -855,10 +847,6 @@ class AbstractFrame:
         for stmt in block.body:
             self.exec_stmt(stmt)
         return self.eval_expr(block.value)
-
-    def eval_expr_AssignExpr(self, assignexpr: ast.AssignExpr) -> W_MetaArg:
-        # KILL ME
-        assert False, "this should not happen"
 
     def eval_expr_AssignExprLocal(self, assign: ast.AssignExprLocal) -> W_MetaArg:
         target = assign.target
