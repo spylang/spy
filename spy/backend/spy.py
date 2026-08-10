@@ -290,19 +290,12 @@ class SPyBackend:
             self.wl(f"{targets} = {v}")
 
     def emit_stmt_AssignConstError(self, node: ast.AssignConstError) -> None:
-        # FIXME!
-        self.wl("FIXME AssignConstError")
-        return
-        self.wl(f"{node.sym.name} = <AssignConstError>")
+        self.wl(f"{node.expr.sym.name} = <AssignConstError>")
 
     def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
-        # FIXME!
-        self.wl("FIXME AssignLocal")
-        return
-
-        varname = assign.target.value
+        varname = assign.expr.target.value
         t = self.get_vartype_to_declare_maybe(varname)
-        v = self.fmt_expr(assign.value)
+        v = self.fmt_expr(assign.expr.value)
         if t is not None:
             self.wl(f"{varname}: {t} = {v}")
         else:
@@ -314,16 +307,12 @@ class SPyBackend:
         self.wl(f"{targets} = {v}")
 
     def emit_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
-        # FIXME!
-        self.wl("FIXME AssignCell")
-        return
-
         varname = (
-            self.fmt_fqn(assign.target_fqn)
-            if assign.target_fqn is not None
-            else assign.sym.name
+            self.fmt_fqn(assign.expr.target_fqn)
+            if assign.expr.target_fqn is not None
+            else assign.expr.sym.name
         )
-        v = self.fmt_expr(assign.value)
+        v = self.fmt_expr(assign.expr.value)
         self.wl(f"{varname} = {v}")
 
     def emit_stmt_AugAssign(self, node: ast.AugAssign) -> None:

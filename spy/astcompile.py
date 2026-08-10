@@ -372,6 +372,13 @@ class ASTCompiler:
     def compile_expr_Literal(self, expr: ast.Literal) -> ast.Expr:
         return expr
 
+    def compile_expr_Slice(self, expr: ast.Slice) -> ast.Expr:
+        return expr.replace(
+            start=self.compile_expr(expr.start),
+            stop=self.compile_expr(expr.stop),
+            step=self.compile_expr(expr.step),
+        )
+
     def compile_expr_GetItem(self, expr: ast.GetItem) -> ast.Expr:
         return expr.replace(
             value=self.compile_expr(expr.value),
