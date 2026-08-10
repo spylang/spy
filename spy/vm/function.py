@@ -39,7 +39,7 @@ class LocalVar:
     w_val: Optional[W_Object] = None
 
 
-CLOSURE = tuple[dict[str, LocalVar], ...]
+type CLOSURE = tuple[dict[str, LocalVar], ...]
 # ========= /Closures =========
 
 
@@ -83,7 +83,7 @@ class FuncParam:
 # happily creates prebuilt W_BuiltinFunc and W_Type which are shared among
 # different VMs.
 #
-_KEY = tuple[FQN, tuple[FuncParam, ...], W_Type]
+type _KEY = tuple[FQN, tuple[FuncParam, ...], W_Type]
 _CACHE: dict[_KEY, "W_FuncType"] = {}
 
 
@@ -378,7 +378,7 @@ class W_Func(W_Object):
 # versions of the function. Once a function has been lowered it becomes "invalid", and
 # we set the `w_replaced_by` field.
 
-LoweringStage = Literal["source", "redshift_in_progress", "redshift", "linearize"]
+type LoweringStage = Literal["source", "redshift_in_progress", "redshift", "linearize"]
 
 
 class W_ASTFunc(W_Func):

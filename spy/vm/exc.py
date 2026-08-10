@@ -4,7 +4,7 @@
 import traceback
 from dataclasses import dataclass
 from types import FrameType, TracebackType
-from typing import TYPE_CHECKING, Annotated, Iterable, Literal, Optional
+from typing import TYPE_CHECKING, Annotated, Iterable, Literal, Optional, get_args
 
 from spy.errfmt import Annotation, ErrorFormatter, Level
 from spy.fqn import FQN
@@ -20,7 +20,7 @@ if TYPE_CHECKING:
     from spy.vm.astframe import AbstractFrame
     from spy.vm.vm import SPyVM
 
-FrameKind = Literal["astframe", "modframe", "classframe", "dopplerframe"]
+type FrameKind = Literal["astframe", "modframe", "classframe", "dopplerframe"]
 
 
 class FrameInfo:
@@ -31,7 +31,7 @@ class FrameInfo:
     @property
     def kind(self) -> FrameKind:
         k = self.spyframe.__class__.__name__.lower()
-        assert k in FrameKind.__args__  # type: ignore
+        assert k in get_args(FrameKind.__value__)
         return k  # type: ignore
 
     @property

@@ -26,7 +26,7 @@ POSIX.struct_type(
     builtin=True,
 )
 
-W_TerminalSize = Annotated[W_Struct, POSIX.w_TerminalSize]
+type W_TerminalSize = Annotated[W_Struct, POSIX.w_TerminalSize]
 
 
 @POSIX.builtin_func

@@ -50,6 +50,16 @@ class AnythingClass:
 ANYTHING: typing.Any = AnythingClass()
 
 
+def unwrap_type_alias(ann: Any) -> Any:
+    """
+    Resolve type aliases declared like `type X = ...` into the annotation they
+    point to.
+    """
+    while isinstance(ann, typing.TypeAliasType):
+        ann = ann.__value__
+    return ann
+
+
 @typing.no_type_check
 def magic_dispatch(self, prefix, obj, *args, **kwargs):
     """

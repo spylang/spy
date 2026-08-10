@@ -68,8 +68,8 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Optional, Sequence, Union
 
-PARTS = Sequence[Union[str, "NSPart"]]
-QUALIFIERS = Optional[Sequence[Union[str, "FQN"]]]
+type PARTS = Sequence[Union[str, "NSPart"]]
+type QUALIFIERS = Optional[Sequence[Union[str, "FQN"]]]
 
 
 def get_parts(x: PARTS) -> tuple["NSPart", ...]:

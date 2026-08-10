@@ -22,7 +22,7 @@ from spy.vm.modules.types import W_Loc as W_Loc
 from spy.vm.object import W_Object, W_Type
 from spy.vm.vm import SPyVM
 
-FQN_FORMAT = Literal["full", "short"]
+type FQN_FORMAT = Literal["full", "short"]
 
 # Regex pattern for valid identifiers (alphanumeric + underscore)
 VALID_IDENTIFIER = re.compile(r"^[a-zA-Z0-9_]+$")

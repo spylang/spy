@@ -8,7 +8,7 @@ from spy.textbuilder import ColorFormatter, TextBuilder
 if TYPE_CHECKING:
     from spy.vm.exc import FrameInfo, W_Exception, W_Traceback
 
-Level = Literal["error", "note", "panic"]
+type Level = Literal["error", "note", "panic"]
 
 
 @dataclass

@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 #     binary operators)
 #
 #   - 'convert' for operator.CONVERT
-DispatchKind = Literal["single", "multi", "convert"]
+type DispatchKind = Literal["single", "multi", "convert"]
 
 
 def maybe_plural(n: int, singular: str, plural: Optional[str] = None) -> str:

@@ -1,9 +1,9 @@
 from dataclasses import dataclass, field
 from typing import Callable, Literal
 
-BuildTarget = Literal["native", "wasi", "emscripten"]
-BuildType = Literal["release", "debug"]
-OutputKind = Literal["exe", "testlib", "py-cffi"]
+type BuildTarget = Literal["native", "wasi", "emscripten"]
+type BuildType = Literal["release", "debug"]
+type OutputKind = Literal["exe", "testlib", "py-cffi"]
 
 
 @dataclass
@@ -17,4 +17,4 @@ class BuildInfo:
     ldflags: list[str] = field(default_factory=list)
 
 
-BuildInfoFunc = Callable[[BuildTarget, BuildType], BuildInfo]
+type BuildInfoFunc = Callable[[BuildTarget, BuildType], BuildInfo]

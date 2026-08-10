@@ -12,7 +12,7 @@ from spy.backend.spy import SPyBackend
 from spy.util import build_char_color_map, encode_color_map
 from spy.vm.vm import SPyVM
 
-SpyastJs = Literal["cdn", "inline"]
+type SpyastJs = Literal["cdn", "inline"]
 
 FIELDS_TO_IGNORE = frozenset(
     {

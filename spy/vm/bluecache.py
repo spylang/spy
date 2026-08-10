@@ -11,9 +11,9 @@ if TYPE_CHECKING:
 
 DEBUG = False
 
-ARGS_W = Sequence[W_Object]
-ARGS_KEY = tuple[W_Object, ...]
-KEY = tuple[W_Func, ARGS_KEY]
+type ARGS_W = Sequence[W_Object]
+type ARGS_KEY = tuple[W_Object, ...]
+type KEY = tuple[W_Func, ARGS_KEY]
 
 
 class BlueCache:

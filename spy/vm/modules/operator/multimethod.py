@@ -27,7 +27,7 @@ from spy.vm.opspec import W_MetaArg, W_OpSpec
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-KeyType = tuple[str, Optional[W_Type], Optional[W_Type]]
+type KeyType = tuple[str, Optional[W_Type], Optional[W_Type]]
 
 
 def parse_type(s: Optional[str]) -> Optional[W_Type]:

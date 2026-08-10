@@ -12,7 +12,7 @@ from . import OP
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-OpKind = Literal["get", "set"]
+type OpKind = Literal["get", "set"]
 
 
 def unwrap_name_maybe(vm: "SPyVM", wam_name: W_MetaArg) -> str:

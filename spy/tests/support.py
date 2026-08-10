@@ -1,6 +1,6 @@
 import textwrap
 from contextlib import contextmanager
-from typing import Any, Literal, Optional, no_type_check
+from typing import Any, Literal, Optional, get_args, no_type_check
 
 import py.path
 import pytest
@@ -17,8 +17,8 @@ from spy.tests.exe_wrapper import ExeWrapper
 from spy.tests.wasm_wrapper import WasmModuleWrapper
 from spy.vm.vm import SPyVM
 
-Backend = Literal["interp", "doppler", "C"]
-ALL_BACKENDS = Backend.__args__  # type: ignore
+type Backend = Literal["interp", "doppler", "C"]
+ALL_BACKENDS = get_args(Backend.__value__)
 
 
 def params_with_marks(params):
@@ -306,7 +306,7 @@ class CompilerTest:
                 fn()
 
 
-MatchAnnotation = tuple[str, str]
+type MatchAnnotation = tuple[str, str]
 
 
 @contextmanager
