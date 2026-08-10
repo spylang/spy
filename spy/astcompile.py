@@ -139,8 +139,7 @@ class ASTCompiler:
         new_args = [
             arg.replace(type=self.compile_expr(arg.type)) for arg in funcdef.args
         ]
-        ## for default in funcdef.defaults:
-        ##     pass
+        new_defaults = [self.compile_expr(d) for d in funcdef.defaults]
 
         # the statements of the function are evaluated in the inner scope
         self.push_symtable(funcdef.symtable)
@@ -151,6 +150,7 @@ class ASTCompiler:
             decorators=new_decorators,
             return_type=new_return_type,
             args=new_args,
+            defaults=new_defaults,
             body=new_body,
         )
 

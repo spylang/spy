@@ -1551,6 +1551,19 @@ class TestBasic(CompilerTest):
         assert mod.foo(5) == 6
         assert mod.bar(5, 6) == 11
 
+    def test_default_args_name(self):
+        src = """
+        DEFAULT: int = 42
+
+        def add(x: int, y: int = DEFAULT) -> int:
+            return x + y
+
+        def foo(x: int) -> int:
+            return add(x)
+        """
+        mod = self.compile(src)
+        assert mod.foo(5) == 47
+
     def test_default_args_too_few(self):
         src = """
         def add(x: int, y: int = 1) -> int:
