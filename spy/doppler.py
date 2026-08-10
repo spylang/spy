@@ -312,6 +312,10 @@ class DopplerFrame(ASTFrame):
             )
         ]
 
+    def shift_stmt_AssignConstError(self, node: ast.AssignConstError) -> list[ast.Stmt]:
+        self.exec_stmt(node)
+        assert False, "unreachable"
+
     def shift_stmt_AugAssign(self, node: ast.AugAssign) -> list[ast.Stmt]:
         assign = self._desugar_AugAssign(node)
         return self.shift_stmt_Assign(assign)
