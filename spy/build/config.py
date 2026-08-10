@@ -6,7 +6,7 @@ from typing import Literal, Optional
 
 import spy.libspy
 from spy.build.build_info import BuildTarget, BuildType, OutputKind
-from spy.build.flags import get_cc, get_cflags, get_ldflags, get_libdir
+from spy.build.flags import get_cc, get_cflags, get_ldflags, get_libdir, get_libname
 from spy.errors import WIP
 
 GCOption = Literal["none", "bdwgc"]
@@ -59,7 +59,7 @@ class CompilerConfig:
 
         self.CC = get_cc(flags_target)
         self.cflags += get_cflags(
-            flags_target, config.build_type, config.warning_as_error
+            flags_target, config.build_type, config.kind, config.warning_as_error
         )
         self.cflags += EXTRA_CFLAGS
 
@@ -67,16 +67,19 @@ class CompilerConfig:
         self.ldflags += get_ldflags(flags_target, config.build_type)
 
         libdir = get_libdir(flags_target, config.build_type)
+        libname = get_libname(config.kind)
         if config.target == "wasi" and config.kind == "testlib":
             # WASM testlibs are used by tests: in this case we want to make sure to
-            # include the whole libspy.a, so that helper functions such as spy_str_alloc
-            # are always available.
+            # include the whole libspytest.a, so that helper functions such as
+            # spy_str_alloc are always available.
             #
             # If you don't pass --whole-archive, the linker will silently discard all
             # the .o files which are not used (so e.g. if you never call any str_*
             # function, str.o is discarded and spy_str_alloc is not present at all).
             libspy_a = str(
-                spy.libspy.BUILD.join(flags_target, config.build_type, "libspy.a")
+                spy.libspy.BUILD.join(
+                    flags_target, config.build_type, f"lib{libname}.a"
+                )
             )
             self.ldflags += [
                 "-Wl,--whole-archive",
@@ -86,7 +89,7 @@ class CompilerConfig:
         else:
             self.ldflags += [
                 "-L", libdir,
-                "-lspy",
+                f"-l{libname}",
             ]  # fmt: skip
 
         # target specific flags

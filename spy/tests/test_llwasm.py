@@ -217,7 +217,7 @@ class TestLLWasm(CTest):
         a_file = self.tmpdir.join(f"{name}.a")
         c_file.write(src)
 
-        cflags = get_cflags(self.target, build_type)
+        cflags = get_cflags(self.target, build_type, self.kind)
         cc = ["python", "-m", "ziglang", "cc"]
         robust_run(
             [

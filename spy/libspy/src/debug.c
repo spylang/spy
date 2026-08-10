@@ -3,7 +3,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#if !defined(SPY_TARGET_WASI)
+#if defined(SPY_DEBUG_FROM_HOST)
+
+EMSCRIPTEN_IMPORT(void, spy_debug_log, (const char *s));
+EMSCRIPTEN_IMPORT(void, spy_debug_log_i32, (const char *s, int32_t n));
+EMSCRIPTEN_IMPORT(
+    void,
+    spy_debug_set_panic_message,
+    (const char *etype, const char *message, const char *fname, int32_t lineno)
+);
+
+#else // defined(SPY_DEBUG_FROM_HOST)
 
 void
 spy_debug_log(const char *s) {
@@ -84,7 +94,7 @@ spy_panic(const char *etype, const char *message, const char *fname, int32_t lin
     abort();
 }
 
-#endif /* !defined(SPY_TARGET_WASI) */
+#endif /* !defined(SPY_DEBUG_FROM_HOST) */
 
 #if defined(SPY_TARGET_EMSCRIPTEN)
 #  include "emscripten.h"

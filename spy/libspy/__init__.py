@@ -17,7 +17,7 @@ DEPS = spy.ROOT.join("libspy", "deps")
 
 
 if IS_NODE:
-    LIBSPY_WASM = BUILD.join("emscripten", "debug", "libspy.mjs")
+    LIBSPY_WASM = BUILD.join("emscripten", "debug", "libspytest.mjs")
     LLMOD = None
 elif IS_BROWSER or IS_DOCS_BUILD:
     LIBSPY_WASM = None  # type: ignore    # needs to be set by the embedder
@@ -43,8 +43,9 @@ def get_LLMOD(
     Return a LLWasmModule for libspy, optionally bundled with extra .a archives.
 
     When extra_archives is empty, returns the prebuilt LLMOD (no build step).
-    When extra_archives is non-empty, links libspy.a + each extra archive into
-    a single bundle (cached by content hash) and returns a LLWasmModule for it.
+    When extra_archives is non-empty, links libspytest.a + each extra archive
+    into a single bundle (cached by content hash) and returns a LLWasmModule
+    for it.
     """
     if not extra_archives:
         assert LLMOD is not None
@@ -58,7 +59,9 @@ def get_LLMOD(
                 f"Did you forget to build the spyvm extension module?",
             )
 
-    libspy_a = BUILD.join("wasi", "debug", "libspy.a")
+    # the bundle is loaded by the VM, which provides the debug helpers as WASM
+    # imports: this is why we use libspytest.a and not libspy.a
+    libspy_a = BUILD.join("wasi", "debug", "libspytest.a")
     all_archives = [libspy_a] + list(extra_archives)
     bundle_path = get_or_build_bundle(all_archives, force_rebuild=force_rebuild)
     return LLWasmModule(str(bundle_path))

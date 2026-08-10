@@ -31,6 +31,13 @@
 #  error "You must define either SPY_GC_NONE or SPY_GC_BDWGC"
 #endif
 
+// the SPY_OUTPUT_KIND_* macros mirror the OutputKind literals defined in
+// spy/build/build_info.py
+#if (defined(SPY_OUTPUT_KIND_EXE) + defined(SPY_OUTPUT_KIND_TESTLIB) +                 \
+     defined(SPY_OUTPUT_KIND_PY_CFFI)) != 1
+#  error "You must define one and exactly one of the SPY_OUTPUT_KIND_* macros"
+#endif
+
 #if defined(SPY_TARGET_NATIVE)
 #  define WASM_EXPORT(name) name
 
@@ -61,7 +68,6 @@
 // the linker happy because it sees the symbol as defined. We mark it as a stub
 // so that llwasm's adjustImports callback will write over it with a method
 // defined in a host module. If it's ever called at runtime, we panic.
-//
 
 #  include "emscripten.h"
 

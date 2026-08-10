@@ -257,7 +257,10 @@ ways:
     statically linked to any spy executable
 
   - `make -C spy/libspy` creates a `libspy.a` for each supported target, which
-    currently are `native`, `emscripten` and `wasi`
+    currently are `native`, `emscripten` and `wasi`. For `emscripten` and `wasi`
+    it also creates a `libspytest.a`, which is the flavor used by testlibs.
+    `libspytest.a` expects the WebAssembly host to provide debug helpers as WASM
+    imports whereas `libspy.a` implements them in `debug.c`.
 
   - `spy/libspy/__init__.py` contains some support code to be able to load the
     WASM version of libspy in the interpreter.
