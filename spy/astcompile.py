@@ -368,6 +368,9 @@ class ASTCompiler:
     def compile_expr_Auto(self, auto: ast.Auto) -> ast.Expr:
         return auto
 
+    def compile_expr_FQNConst(self, expr: ast.FQNConst) -> ast.Expr:
+        return expr
+
     def compile_expr_StrLiteral(self, lit: ast.StrLiteral) -> ast.Expr:
         return lit
 
