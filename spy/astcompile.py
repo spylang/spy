@@ -55,7 +55,6 @@ class ASTCompiler:
         in_classdef = self.symtable.kind == "class"
         allowed = (
             ast.VarDef,
-            ast.Assign,
             ast.AssignLocal,
             ast.If,
             ast.Pass,
@@ -185,7 +184,7 @@ class ASTCompiler:
         ast.AssignLocal
         | ast.AssignExprLocal
         | ast.AssignConstError
-        | ast.AssignConstExprError
+        | ast.AssignExprConstError
     ):
         value = self.compile_expr(value)
         sym = self.symtable.lookup(target.value)
@@ -193,16 +192,17 @@ class ASTCompiler:
         if sym.varkind == "const" and sym.varkind_origin != "auto":
             # this is an error, let's insert the appropriate poison node
             if expr:
-                return ast.AssignConstExprError(loc, sym, target.loc)
+                return ast.AssignExprConstError(loc, sym, target.loc)
             else:
                 return ast.AssignConstError(loc, sym, target.loc)
 
         if sym.storage == "direct":
             assert sym.is_local
+            e = ast.AssignExprLocal(loc, target, value)
             if expr:
-                return ast.AssignExprLocal(loc, target, value)
+                return e
             else:
-                return ast.AssignLocal(loc, target, value)
+                return ast.AssignLocal(loc, e)
 
         elif sym.storage == "cell":
             assert not sym.is_local

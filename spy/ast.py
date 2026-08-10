@@ -708,11 +708,43 @@ class UnaryOp(Expr):
         return self.op
 
 
+# ==== AssignExpr family ====
+
+
 @astnode("parsed")
 class AssignExpr(Expr):
     precedence = 0
     target: StrLiteral
     value: Expr
+
+
+@astnode(">= astcompiled")
+class AssignExprLocal(Expr):
+    precedence = 0
+    target: StrLiteral
+    value: Expr
+
+
+@astnode(">= astcompiled")
+class AssignExprCell(Expr):
+    precedence = 0
+    target: StrLiteral
+    target_fqn: Optional[FQN]
+    sym: Symbol
+    value: Expr
+
+
+@astnode(">= astcompiled")
+class AssignExprConstError(Expr):
+    """
+    Poison node for assignment to a const target.
+
+    Produced by astcompiler instead of raising eagerly.
+    """
+
+    precedence = 0
+    sym: Symbol
+    target_loc: Loc
 
 
 # ====== Stmt hierarchy ======
@@ -842,6 +874,9 @@ class StmtExpr(Stmt):
     value: Expr
 
 
+# ==== Assign family ====
+
+
 @astnode
 class AssignTarget(Node):
     @abstractmethod
@@ -879,6 +914,30 @@ class AugAssign(Stmt):
 
     def shortrepr(self) -> Optional[str]:
         return self.op
+
+
+@astnode(">= astcompiled")
+class AssignConstError(Stmt):
+    expr: AssignExprConstError
+
+
+@astnode(">= astcompiled")
+class AssignLocal(Stmt):
+    expr: AssignExprLocal
+
+
+@astnode(">= astcompiled")
+class AssignCell(Stmt):
+    expr: AssignExprCell
+
+
+@astnode(">= astcompiled")
+class AssignUnpack(Stmt):
+    targets: Sequence[StrLiteral]
+    value: Expr
+
+
+# ==== /Assign family ====
 
 
 @astnode
@@ -964,65 +1023,6 @@ class Const(Expr):
 class FQNConst(Expr):
     precedence = 100  # the highest
     fqn: FQN
-
-
-@astnode(">= astcompiled")
-class AssignConstError(Stmt):
-    """
-    Poison node for assignment to a const target.
-
-    Produced by astcompiler instead of raising eagerly.
-    """
-
-    sym: Symbol
-    target_loc: Loc
-
-
-@astnode(">= astcompiled")
-class AssignConstExprError(Expr):
-    """
-    Expr variant of AssignConstError, for the walrus (:=) path.
-    """
-
-    precedence = 0
-    sym: Symbol
-    target_loc: Loc
-
-
-@astnode(">= astcompiled")
-class AssignUnpack(Stmt):
-    targets: Sequence[StrLiteral]
-    value: Expr
-
-
-@astnode(">= astcompiled")
-class AssignLocal(Stmt):
-    target: StrLiteral
-    value: Expr
-
-
-@astnode(">= astcompiled")
-class AssignCell(Stmt):
-    target: StrLiteral
-    target_fqn: Optional[FQN]
-    sym: Symbol
-    value: Expr
-
-
-@astnode(">= astcompiled")
-class AssignExprLocal(Expr):
-    precedence = 0
-    target: StrLiteral
-    value: Expr
-
-
-@astnode(">= astcompiled")
-class AssignExprCell(Expr):
-    precedence = 0
-    target: StrLiteral
-    target_fqn: Optional[FQN]
-    sym: Symbol
-    value: Expr
 
 
 @astnode("<= redshifted")

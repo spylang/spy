@@ -66,7 +66,6 @@ class ClassFrame(AbstractFrame):
         # ASTCompiler.compile_stmt. The following list must agree with it.
         allowed = (
             ast.VarDef,
-            ast.Assign,
             ast.AssignLocal,
             ast.If,
             ast.Pass,

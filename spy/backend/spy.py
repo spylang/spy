@@ -544,8 +544,8 @@ class SPyBackend:
             assignexpr.target.value, assignexpr.value, assignexpr.precedence
         )
 
-    def fmt_expr_AssignConstExprError(self, node: ast.AssignConstExprError) -> str:
-        return f"{node.sym.name} := <AssignConstExprError>"
+    def fmt_expr_AssignExprConstError(self, node: ast.AssignExprConstError) -> str:
+        return f"{node.sym.name} := <AssignExprConstError>"
 
     def fmt_expr_AssignExprLocal(self, assignexpr: ast.AssignExprLocal) -> str:
         return self._fmt_assignexpr(

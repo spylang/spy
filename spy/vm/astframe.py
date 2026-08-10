@@ -586,24 +586,7 @@ class AbstractFrame:
             self._execute_AssignLocal(target, expr)
 
     def exec_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
-        self._execute_AssignLocal(assign.target, assign.value)
-
-    def _execute_AssignLocal(
-        self, target: ast.StrLiteral, value: ast.Expr
-    ) -> W_MetaArg:
-        varname = target.value
-        lv = self.locals.get(varname)
-        if lv is None:
-            # first assignment, implicit declaration
-            wam = self.eval_expr(value)
-            self.declare_local(varname, wam.color, wam.w_static_T, target.loc)
-            lv = self.locals[varname]
-        else:
-            wam = self.eval_expr(value, varname=varname)
-
-        if not self.redshifting or lv.color == "blue":
-            self.store_local(varname, wam.w_val)
-        return wam
+        self.eval_expr_AssignExprLocal(assign.expr)
 
     def exec_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
         self._execute_AssignCell(
@@ -856,11 +839,11 @@ class AbstractFrame:
             name.loc,
         )
 
-    def exec_stmt_AssignConstError(self, node: ast.AssignConstError) -> None:
+    def exec_stmt_AssignExprConstError(self, node: ast.AssignConstError) -> None:
         self._raise_assign_const_error(node.sym, node.target_loc)
 
-    def eval_expr_AssignConstExprError(
-        self, node: ast.AssignConstExprError
+    def eval_expr_AssignExprConstError(
+        self, node: ast.AssignExprConstError
     ) -> W_MetaArg:
         self._raise_assign_const_error(node.sym, node.target_loc)
 
@@ -949,10 +932,24 @@ class AbstractFrame:
         assert False, "this should not happen"
 
     def eval_expr_AssignExprLocal(self, assignexpr: ast.AssignExprLocal) -> W_MetaArg:
-        return self._set_assignexpr_color(
-            assignexpr.target,
-            self._execute_AssignLocal(assignexpr.target, assignexpr.value),
-        )
+        target = assignexpr.target
+        value = assignexpr.value
+        varname = target.value
+
+        lv = self.locals.get(varname)
+        if lv is None:
+            # first assignment, implicit declaration
+            wam = self.eval_expr(value)
+            self.declare_local(varname, wam.color, wam.w_static_T, target.loc)
+            lv = self.locals[varname]
+        else:
+            wam = self.eval_expr(value, varname=varname)
+
+        if not self.redshifting or lv.color == "blue":
+            self.store_local(varname, wam.w_val)
+
+        # XXX kill _set_assignexpr_color
+        return self._set_assignexpr_color(target, wam)
 
     def eval_expr_AssignExprCell(self, assignexpr: ast.AssignExprCell) -> W_MetaArg:
         return self._set_assignexpr_color(
