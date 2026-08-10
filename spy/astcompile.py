@@ -72,6 +72,11 @@ class ASTCompiler:
     ## ) -> ast.Decl:
     ##     return decl
 
+    def compile_decl_GlobalGenericClassDef(
+        self, decl: ast.GlobalGenericClassDef
+    ) -> ast.Decl:
+        return decl
+
     def compile_decl_GlobalVarDef(self, decl: ast.GlobalVarDef) -> ast.Decl:
         new_vardef = self.compile_stmt_VarDef(decl.vardef)
         assert isinstance(new_vardef, list) and len(new_vardef) == 1
@@ -85,11 +90,6 @@ class ASTCompiler:
         self.pop_symtable()
         new_classdef = classdef.replace(body=new_body)
         return decl.replace(classdef=new_classdef)
-
-    ## def compile_decl_GlobalGenericClassDef(
-    ##     self, decl: ast.GlobalGenericClassDef
-    ## ) -> ast.Decl:
-    ##     return decl
 
     def compile_decl_Import(self, decl: ast.Import) -> ast.Decl:
         return decl

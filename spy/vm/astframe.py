@@ -472,6 +472,7 @@ class AbstractFrame:
 
         outer_funcdef = ast.FuncDef(
             loc=loc,
+            stage="astcompiled",
             color="blue",
             kind="generic",
             name=gclassdef.name,

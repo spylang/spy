@@ -709,7 +709,7 @@ class FuncDef(Stmt):
         return Loc.combine(self.loc, self.return_type.loc)
 
 
-@astnode("parsed")
+@astnode("<= astcompiled")
 class GenericFuncDef(Stmt):
     """
     If you have this:
@@ -743,7 +743,7 @@ class ClassDef(Stmt):
         return f"{self.kind} {self.name}"
 
 
-@astnode("parsed")
+@astnode("<= astcompiled")
 class GenericClassDef(Stmt):
     """
     If you have this:
