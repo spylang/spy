@@ -248,40 +248,47 @@ class DopplerFrame(ASTFrame):
         return [vardef.replace(name=newname, type=newtype, value=newvalue)]
 
     def shift_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
-        self.exec_stmt_Assign(assign)
-        if isinstance(assign.target, ast.SingleTarget):
-            varname = assign.target.name.value
-            sym = self.symtable.lookup(varname)
-            if sym.is_local and self.locals[varname].color == "blue":
-                self.record_node_color(assign, "blue")
-                # redshift away assignments to blue locals, but preserve
-                # any side effects from BlockExpr bodies
-                shifted_value = self.shifted_expr[assign.value]
-                if isinstance(shifted_value, ast.BlockExpr):
-                    return shifted_value.body
-                return []
-            else:
-                if sym.is_local:
-                    self.record_node_color(assign, self.locals[varname].color)
-                specialized = self.specialized_assigns[assign]
-                newname = assign.target.name.as_typed_node()
-                newvalue = self.shifted_expr[assign.value]
-                return [specialized.replace(target=newname, value=newvalue)]
-        else:
-            unpack = assign.target
-            assert isinstance(unpack, ast.UnpackTarget)
-            newtargets = []
-            for target in unpack.targets:
-                assert isinstance(target, ast.SingleTarget)
-                newtargets.append(target.replace(name=target.name.as_typed_node()))
-            unpack = unpack.replace(targets=newtargets)
-            newvalue = self.shifted_expr[assign.value]
-            return [assign.replace(target=unpack, value=newvalue)]
+        assert False, "KILL ME"
+
+        ## self.exec_stmt_Assign(assign)
+        ## if isinstance(assign.target, ast.SingleTarget):
+        ##     varname = assign.target.name.value
+        ##     sym = self.symtable.lookup(varname)
+        ##     if sym.is_local and self.locals[varname].color == "blue":
+        ##     else:
+        ##         specialized = self.specialized_assigns[assign]
+        ##         newname = assign.target.name.as_typed_node()
+        ##         newvalue = self.shifted_expr[assign.value]
+        ##         return [specialized.replace(target=newname, value=newvalue)]
+        ## else:
+        ##     unpack = assign.target
+        ##     assert isinstance(unpack, ast.UnpackTarget)
+        ##     newtargets = []
+        ##     for target in unpack.targets:
+        ##         assert isinstance(target, ast.SingleTarget)
+        ##         newtargets.append(target.replace(name=target.name.as_typed_node()))
+        ##     unpack = unpack.replace(targets=newtargets)
+        ##     newvalue = self.shifted_expr[assign.value]
+        ##     return [assign.replace(target=unpack, value=newvalue)]
 
     def shift_stmt_AssignLocal(self, assign: ast.AssignLocal) -> list[ast.Stmt]:
-        # specialized stmts such as AssignLocal and AssignCell are present
-        # ONLY inside redshifted ASTs, so we should never see them here
-        assert False, "not supposed to happen"
+        self.exec_stmt(assign)
+        varname = assign.target.value
+        lv = self.locals[varname]
+        self.record_node_color(assign, lv.color)
+        if lv.color == "blue":
+            # blue local: redshift away the assign, but preserve any side effects from
+            # BlockExpr bodies
+            shifted_value = self.shifted_expr[assign.value]
+            if isinstance(shifted_value, ast.BlockExpr):
+                return shifted_value.body
+            else:
+                return []
+        else:
+            # red local
+            newtarget = assign.target.as_typed_node()
+            newvalue = self.shifted_expr[assign.value]
+            return [assign.replace(target=newtarget, value=newvalue)]
 
     def shift_stmt_AssignCell(self, assign: ast.AssignCell) -> list[ast.Stmt]:
         # specialized stmts such as AssignLocal and AssignCell are present
