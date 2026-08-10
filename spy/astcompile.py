@@ -8,6 +8,8 @@ ast.NameLocalDirect, ast.NameOuterDirect, etc.
 Moreover, do other easy desugaring like converting `for` loops into `while` loops, etc.
 """
 
+from typing import Optional
+
 import spy.ast as ast
 from spy.analyze.symtable import SymTable
 from spy.ast import LoweringStage
@@ -24,9 +26,20 @@ def astcompile(parsed_mod: ast.Module) -> ast.Module:
     return compiled_mod
 
 
+def astcompile_interactive(expr: ast.Expr, symtable: SymTable) -> ast.Expr:
+    """
+    Compile a single expression against the given symtable, in interactive
+    mode. This is meant to be used by SPdb.
+    """
+    compiler = ASTCompiler(None, interactive=True)
+    compiler.push_symtable(symtable)
+    return compiler.compile_expr(expr)
+
+
 class ASTCompiler:
-    def __init__(self, mod: ast.Module) -> None:
+    def __init__(self, mod: Optional[ast.Module], *, interactive: bool = False) -> None:
         self.mod = mod
+        self.interactive = interactive
         self.symtable_stack: list[SymTable] = []
 
     def push_symtable(self, symtable: SymTable) -> None:
@@ -40,6 +53,7 @@ class ASTCompiler:
         return self.symtable_stack[-1]
 
     def compile_mod(self) -> ast.Module:
+        assert self.mod is not None
         self.push_symtable(self.mod.symtable)
         new_decls = [self.compile_decl(decl) for decl in self.mod.decls]
         self.pop_symtable()
@@ -472,26 +486,12 @@ class ASTCompiler:
     def compile_expr_Name(self, name: ast.Name) -> ast.Expr:
         varname = name.id
         sym = self.symtable.lookup_maybe(varname)
-        assert sym is not None
-
-        # XXX: what about SPdb?
-        ## if not self.is_interactive:
-        ##     assert sym is not None
-
-        ## if sym is None:
-        ##     # sym can be None ONLY in interactive frames (in which case we do a dynamic
-        ##     # lookup), else it means that there is a bug in symtable.
-        ##     assert self.is_interactive, "sym not found"
-        ##     # create a fake symbol to be used below
-        ##     sym = Symbol(
-        ##         varname,
-        ##         "var",
-        ##         "auto",
-        ##         "NameError",
-        ##         loc=name.loc,
-        ##         type_loc=name.loc,
-        ##         level=-1,
-        ##     )
+        if sym is None:
+            # sym can be None ONLY in interactive mode (i.e. an expression typed at
+            # the SPdb prompt, compiled against the symtable of a live frame), else
+            # it means that there is a bug in symtable.
+            assert self.interactive, "sym not found"
+            return ast.NameError(name.loc, name.id)
 
         if sym.impref is not None:
             return ast.NameImportRef(name.loc, sym)

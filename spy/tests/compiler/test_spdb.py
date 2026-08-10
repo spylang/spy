@@ -109,7 +109,6 @@ class FakeTerminal:
         return self.buf.getvalue()
 
 
-@pytest.mark.skip("FIXME")
 @only_interp
 @pytest.mark.usefixtures("initspdb")
 class TestSPdb(CompilerTest):

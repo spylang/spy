@@ -1,7 +1,6 @@
-from contextlib import contextmanager
 from ctypes import c_float as float32
 from types import NoneType
-from typing import TYPE_CHECKING, Iterator, Never, Optional, Sequence
+from typing import TYPE_CHECKING, Never, Optional, Sequence
 
 from fixedint import Int8, Int32, Int64, UInt8, UInt32, UInt64
 
@@ -76,22 +75,10 @@ class AbstractFrame:
         self.locals = {}
         self.special_calls = {}
 
-        # when we interact with a frame from a SPdb prompt we have slightly different
-        # rules, because e.g. we might try to evaluate an ast.Name which is not in the
-        # symtable
-        self.is_interactive = False
-
     # overridden by DopplerFrame
     @property
     def redshifting(self) -> bool:
         return False
-
-    @contextmanager
-    def interactive(self) -> Iterator[None]:
-        old = self.is_interactive
-        self.is_interactive = True
-        yield
-        self.is_interactive = False
 
     def get_locals_types_w(self) -> dict[str, W_Type]:
         return {
