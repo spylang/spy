@@ -101,7 +101,7 @@ def execute_spy_main(
     if redshift:
         assert not w_main.is_valid
         w_main = w_main.get_most_lowered_version()
-        assert w_main.stage == "redshifted"
+        assert w_main.stage in ("redshifted", "linearized")
     else:
         assert w_main.stage == "astcompiled"
 
