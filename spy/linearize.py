@@ -232,6 +232,11 @@ class Linearizer:
         new_value = self.rewrite_expr(assign.expr.value, to_spill)
         return [assign.replace(expr=assign.expr.replace(value=new_value))]
 
+    def rewrite_stmt_AssignUnpack(self, unpack: ast.AssignUnpack) -> list[ast.Stmt]:
+        to_spill = self.mark_to_spill([unpack.value])
+        new_value = self.rewrite_expr(unpack.value, to_spill)
+        return [unpack.replace(value=new_value)]
+
     def rewrite_stmt_Pass(self, stmt: ast.Pass) -> list[ast.Stmt]:
         return [stmt]
 

@@ -192,16 +192,11 @@ class CFuncWriter:
         c_varname = C_Ident(target)
         self.tbc.wl(f"{c_varname} = {v};")
 
-    def emit_stmt_Assign(self, assign: ast.Assign) -> None:
-        unpack = assign.target
-        assert isinstance(unpack, ast.UnpackTarget), (
-            "simple ast.Assign nodes should not survive redshifting"
-        )
+    def emit_stmt_AssignUnpack(self, assign: ast.AssignUnpack) -> None:
         if isinstance(assign.value, ast.Tuple):
             # Blue tuple literal: directly assign each item to its target
-            for target, item in zip(unpack.targets, assign.value.items):
-                assert isinstance(target, ast.SingleTarget)
-                c_target = C_Ident(target.name.value)
+            for target, item in zip(assign.targets, assign.value.items):
+                c_target = C_Ident(target.value)
                 v = self.fmt_expr(item)
                 self.tbc.wl(f"{c_target} = {v};")
         else:
@@ -218,9 +213,8 @@ class CFuncWriter:
             self.tbc.wl("{")
             with self.tbc.indent():
                 self.tbc.wl(f"{c_tuple_type} tmp = {v};")
-                for i, target in enumerate(unpack.targets):
-                    assert isinstance(target, ast.SingleTarget)
-                    c_target = C_Ident(target.name.value)
+                for i, target in enumerate(assign.targets):
+                    c_target = C_Ident(target.value)
                     self.tbc.wl(f"{c_target} = tmp._item{i};")
             self.tbc.wl("}")
 
