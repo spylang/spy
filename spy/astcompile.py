@@ -81,12 +81,18 @@ class ASTCompiler:
     def compile_decl_GlobalGenericClassDef(
         self, decl: ast.GlobalGenericClassDef
     ) -> ast.Decl:
+        # GenericClassDef is basically _function_ which returns a class. So when
+        # evaluating the body we need to push:
+        #     gclassdef.symtable which contains e.g. 'T'
+        #     inner.symtable which contains the body of the class
         gclassdef = decl.classdef
+        inner = gclassdef.inner
         self.push_symtable(gclassdef.symtable)
-        new_inner = gclassdef.inner
-        new_body = self.compile_stmts(new_inner.body)
-        new_inner = new_inner.replace(body=new_body)
+        self.push_symtable(inner.symtable)
+        new_body = self.compile_stmts(inner.body)
         self.pop_symtable()
+        self.pop_symtable()
+        new_inner = inner.replace(body=new_body)
         new_gclassdef = gclassdef.replace(inner=new_inner)
         return decl.replace(classdef=new_gclassdef)
 
