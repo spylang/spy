@@ -33,19 +33,23 @@ if TYPE_CHECKING:
 # shared IR for all of them. Intermediate passes transform an AST into "the next one"
 # and set the corresponding LoweringStage.
 #
-# The pipeline is as follows, showing ARTIFACTS and --passes-->
-#
-# SOURCE CODE
-#   --parse-->  PARSED AST
-#   --ScopeAnalyzer--> PARSED AST+Symtable
-#   --astcompile--> ASTCOMPILED AST
-#   --doppler--> REDSHIFTED AST
-#   --linearize--> LINEARIZED AST
-#   --CBackend--> C CODE
-#
-# "redshifting" is a temporary transient state which is set during redshifting but it's
-# not supposed to be visible outside of it.
-#
+# The pipeline is as follows, showing artifacts and --passes-->
+
+LoweringStage = typing.Literal[
+    # source code
+    # -- parse -->
+    "parsed",  # Module AST
+    # -- astcompile -->
+    "astcompiled",  # Module AST
+    # -- doppler -->
+    "redshifting",  # temporary transient state
+    "redshifted",  # FuncDef AST
+    # -- linearize -->
+    "linearized",  # FuncDef AST
+    # -- C Backend -->
+    # C code
+]
+
 # --- Typed vs untyped ASTs ---
 #
 # Moreover, The Expr class has an optional field w_T which indicates the type of the
@@ -58,9 +62,6 @@ if TYPE_CHECKING:
 # The parser produces UNTYPED ASTs. The redshift pass produces TYPED ASTS.
 # ================================
 
-LoweringStage = typing.Literal[
-    "parsed", "astcompiled", "redshifting", "redshifted", "linearized"
-]
 
 ClassKind = typing.Literal["class", "struct"]
 FuncKind = typing.Literal["plain", "generic", "metafunc"]
