@@ -199,6 +199,8 @@ class ASTCompiler:
             #   - synthesize the equivalent `x := E` AssignExpr
             #   - compile the AssignExpr
             #   - wrap the result into the appropriate Stmt
+            expr: ast.Expr
+            assign: ast.Stmt
             expr = ast.AssignExpr(stmt.loc, stmt.target.name, stmt.value)
             expr = self.compile_expr(expr)
             if isinstance(expr, ast.AssignExprLocal):

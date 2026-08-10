@@ -747,9 +747,6 @@ class AbstractFrame:
             name.loc,
         )
 
-    def exec_stmt_AssignExprConstError(self, node: ast.AssignConstError) -> None:
-        self._raise_assign_const_error(node.sym, node.target_loc)
-
     def eval_expr_AssignExprConstError(
         self, node: ast.AssignExprConstError
     ) -> W_MetaArg:
@@ -819,6 +816,7 @@ class AbstractFrame:
     def eval_expr_NameOuterCell(self, name: ast.NameOuterCell) -> W_MetaArg:
         sym = name.sym
         assert not sym.is_local
+        w_cell: Optional[W_Object]
         if name.fqn is not None:
             w_cell = self.vm.lookup_global(name.fqn)
         else:
@@ -863,6 +861,7 @@ class AbstractFrame:
 
         wam = self.eval_expr(value)
         if not self.redshifting:
+            w_cell: Optional[W_Object]
             if target_fqn is not None:
                 w_cell = self.vm.lookup_global(target_fqn)
             else:

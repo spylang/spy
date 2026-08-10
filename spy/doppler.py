@@ -10,6 +10,7 @@ from spy.location import Loc
 from spy.util import magic_dispatch
 from spy.vm.astframe import ASTFrame
 from spy.vm.b import B
+from spy.vm.cell import W_Cell
 from spy.vm.exc import W_Exception, W_StaticError
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.__spy__ import SPY
@@ -284,10 +285,6 @@ class DopplerFrame(ASTFrame):
         self.exec_stmt(node)
         assert False, "unreachable"
 
-    def shift_stmt_AugAssign(self, node: ast.AugAssign) -> list[ast.Stmt]:
-        assign = self._desugar_AugAssign(node)
-        return self.shift_stmt_Assign(assign)
-
     def shift_stmt_SetAttr(self, node: ast.SetAttr) -> list[ast.Stmt]:
         self.exec_stmt(node)
         w_opimpl = self.opimpl[node]
@@ -326,10 +323,6 @@ class DopplerFrame(ASTFrame):
         newtest = self.eval_and_shift(while_node.test, varname="@while")
         newbody = self.shift_body(while_node.body)
         return [while_node.replace(test=newtest, body=newbody)]
-
-    def shift_stmt_For(self, for_node: ast.For) -> list[ast.Stmt]:
-        init_iter, while_loop = self._desugar_For(for_node)
-        return self.shift_stmt(init_iter) + self.shift_stmt(while_loop)
 
     def shift_stmt_Raise(self, raise_node: ast.Raise) -> list[ast.Stmt]:
         self.exec_stmt(raise_node)
@@ -576,6 +569,7 @@ class DopplerFrame(ASTFrame):
         sym = name.sym
         outervars = self.closure[-sym.level]
         w_cell = outervars[sym.name].w_val
+        assert isinstance(w_cell, W_Cell)
         return name.replace(w_T=wam.w_static_T, fqn=w_cell.fqn)
 
     def shift_expr_BinOp(self, binop: ast.BinOp, wam: W_MetaArg) -> ast.Expr:
@@ -752,6 +746,7 @@ class DopplerFrame(ASTFrame):
         sym = assignexpr.sym
         outervars = self.closure[-sym.level]
         w_cell = outervars[sym.name].w_val
+        assert isinstance(w_cell, W_Cell)
         return assignexpr.replace(
             target=new_target,
             target_fqn=w_cell.fqn,

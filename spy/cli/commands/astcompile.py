@@ -62,8 +62,8 @@ async def astcompile(args: ASTCompile_Args) -> None:
             b.out.wl()
         print(highlight_src("spy", b.out.build().rstrip()))
     elif args.format == "html":
-        b = HTMLBackend(args.spyast_js)
-        html = b.generate([(modname, mod)])
+        hb = HTMLBackend(args.spyast_js)
+        html = hb.generate([(modname, mod)])
         build_dir = Path(args.filename.parent) / "build"
         build_dir.mkdir(exist_ok=True, parents=True)
         out = build_dir / f"{modname}_astcompile.html"

@@ -188,6 +188,7 @@ class CFuncWriter:
 
     def emit_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
         v = self.fmt_expr(assign.expr.value)
+        assert assign.expr.target_fqn is not None, "fqn is set during redshift"
         target = assign.expr.target_fqn.c_name
         c_varname = C_Ident(target)
         self.tbc.wl(f"{c_varname} = {v};")
@@ -392,6 +393,7 @@ class CFuncWriter:
             return C.Literal(f"{varname}")
 
     def fmt_expr_NameOuterCell(self, name: ast.NameOuterCell) -> C.Expr:
+        assert name.fqn is not None, "fqn is set during redshift"
         return C.Literal(name.fqn.c_name)
 
     def fmt_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> C.Expr:
@@ -406,6 +408,7 @@ class CFuncWriter:
         return self._fmt_assignexpr(assignexpr.target.value, assignexpr.value)
 
     def fmt_expr_AssignExprCell(self, assignexpr: ast.AssignExprCell) -> C.Expr:
+        assert assignexpr.target_fqn is not None, "fqn is set during redshift"
         return self._fmt_assignexpr(assignexpr.target_fqn.c_name, assignexpr.value)
 
     def _fmt_assignexpr(self, target: str, value_expr: ast.Expr) -> C.Expr:

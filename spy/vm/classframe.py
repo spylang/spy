@@ -72,7 +72,7 @@ class ClassFrame(AbstractFrame):
             ast.FuncDef,
         )
         T = type(stmt)
-        assert T in allowed, f"unsupported node in ClassDef: {T.__name}"
+        assert T in allowed, f"unsupported node in ClassDef: {T.__name__}"
         return super().exec_stmt(stmt)
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
