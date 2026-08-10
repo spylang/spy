@@ -71,9 +71,9 @@ class ASTCompiler:
             )
         return magic_dispatch(self, "compile_stmt", stmt)
 
-    def compile_stmts(self, stmts: list[ast.Stmt]) -> list[ast.Stmt]:
+    def compile_body(self, body: list[ast.Stmt]) -> list[ast.Stmt]:
         result = []
-        for stmt in stmts:
+        for stmt in body:
             result.extend(self.compile_stmt(stmt))
         return result
 
@@ -107,7 +107,7 @@ class ASTCompiler:
         inner = gclassdef.inner
         self.push_symtable(gclassdef.symtable)
         self.push_symtable(inner.symtable)
-        new_body = self.compile_stmts(inner.body)
+        new_body = self.compile_body(inner.body)
         self.pop_symtable()
         self.pop_symtable()
         new_inner = inner.replace(body=new_body)
@@ -123,7 +123,7 @@ class ASTCompiler:
     def compile_decl_GlobalClassDef(self, decl: ast.GlobalClassDef) -> ast.Decl:
         classdef = decl.classdef
         self.push_symtable(classdef.symtable)
-        new_body = self.compile_stmts(classdef.body)
+        new_body = self.compile_body(classdef.body)
         self.pop_symtable()
         new_classdef = classdef.replace(body=new_body)
         return decl.replace(classdef=new_classdef)
@@ -145,7 +145,7 @@ class ASTCompiler:
 
         # the statements of the function are evaluated in the inner scope
         self.push_symtable(funcdef.symtable)
-        new_body = self.compile_stmts(funcdef.body)
+        new_body = self.compile_body(funcdef.body)
         self.pop_symtable()
         return funcdef.replace(
             stage="astcompiled",
@@ -255,7 +255,7 @@ class ASTCompiler:
 
     def compile_stmt_ClassDef(self, stmt: ast.ClassDef) -> list[ast.Stmt]:
         self.push_symtable(stmt.symtable)
-        new_body = self.compile_stmts(stmt.body)
+        new_body = self.compile_body(stmt.body)
         self.pop_symtable()
         return [stmt.replace(body=new_body)]
 
@@ -359,7 +359,7 @@ class ASTCompiler:
         return [
             stmt.replace(
                 test=self.compile_expr(stmt.test),
-                body=self.compile_stmts(stmt.body),
+                body=self.compile_body(stmt.body),
             )
         ]
 
@@ -376,8 +376,8 @@ class ASTCompiler:
         return [
             stmt.replace(
                 test=self.compile_expr(stmt.test),
-                then_body=self.compile_stmts(stmt.then_body),
-                else_body=self.compile_stmts(stmt.else_body),
+                then_body=self.compile_body(stmt.then_body),
+                else_body=self.compile_body(stmt.else_body),
             )
         ]
 
@@ -463,7 +463,7 @@ class ASTCompiler:
 
     def compile_expr_BlockExpr(self, expr: ast.BlockExpr) -> ast.Expr:
         return expr.replace(
-            body=self.compile_stmts(expr.body),
+            body=self.compile_body(expr.body),
             value=self.compile_expr(expr.value),
         )
 
