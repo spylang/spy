@@ -125,6 +125,9 @@ class ASTCompiler:
     def compile_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
         return [ret.replace(value=self.compile_expr(ret.value))]
 
+    def compile_stmt_Raise(self, stmt: ast.Raise) -> list[ast.Stmt]:
+        return [stmt.replace(exc=self.compile_expr(stmt.exc))]
+
     def compile_stmt_Pass(self, stmt: ast.Pass) -> list[ast.Stmt]:
         return [stmt]
 
