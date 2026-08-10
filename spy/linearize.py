@@ -110,7 +110,9 @@ class Linearizer:
         funcdef = self.w_func.funcdef
         new_body = self.rewrite_body(funcdef.body)
         new_symtable = self._copy_symtable(funcdef.symtable)
-        new_funcdef = funcdef.replace(body=new_body, symtable=new_symtable)
+        new_funcdef = funcdef.replace(
+            stage="linearized", body=new_body, symtable=new_symtable
+        )
 
         assert self.w_func.locals_types_w is not None
         new_locals_types_w = dict(self.w_func.locals_types_w)
