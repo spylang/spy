@@ -279,6 +279,15 @@ class ASTCompiler:
         )
         return self.compile_stmt(desugared)
 
+    def compile_stmt_SetItem(self, stmt: ast.SetItem) -> list[ast.Stmt]:
+        return [
+            stmt.replace(
+                target=self.compile_expr(stmt.target),
+                args=[self.compile_expr(a) for a in stmt.args],
+                value=self.compile_expr(stmt.value),
+            )
+        ]
+
     def compile_stmt_SetAttr(self, stmt: ast.SetAttr) -> list[ast.Stmt]:
         return [
             stmt.replace(
