@@ -587,12 +587,17 @@ class AbstractFrame:
             raise err
 
         for i, target in enumerate(assign.targets):
-            expr = ast.GetItem(
+            getitem = ast.GetItem(
                 loc=assign.value.loc,
                 value=assign.value,
                 args=[ast.Literal(loc=assign.value.loc, value=i)],
             )
-            self._execute_AssignLocal(target, expr)
+            assign_expr = ast.AssignExprLocal(
+                loc=target.loc,
+                target=target,
+                value=getitem,
+            )
+            self.eval_expr_AssignExprLocal(assign_expr)
 
     def exec_stmt_Assign_unpack(self, assign: ast.Assign) -> None:
         assert isinstance(assign.target, ast.UnpackTarget)
