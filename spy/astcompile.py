@@ -443,6 +443,12 @@ class ASTCompiler:
         ]
         return expr.replace(items=new_items)
 
+    def compile_expr_BlockExpr(self, expr: ast.BlockExpr) -> ast.Expr:
+        return expr.replace(
+            body=self.compile_stmts(expr.body),
+            value=self.compile_expr(expr.value),
+        )
+
     def compile_expr_AssignExpr(self, expr: ast.AssignExpr) -> ast.Expr:
         return self._compile_assign_common(expr.loc, expr.target, expr.value, expr=True)
 
