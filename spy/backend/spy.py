@@ -290,6 +290,9 @@ class SPyBackend:
             self.wl(f"{targets} = {v}")
 
     def emit_stmt_AssignConstError(self, node: ast.AssignConstError) -> None:
+        # FIXME!
+        self.wl("FIXME AssignConstError")
+        return
         self.wl(f"{node.sym.name} = <AssignConstError>")
 
     def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:

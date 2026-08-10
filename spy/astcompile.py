@@ -191,10 +191,11 @@ class ASTCompiler:
 
         if sym.varkind == "const" and sym.varkind_origin != "auto":
             # this is an error, let's insert the appropriate poison node
+            e = ast.AssignExprConstError(loc, sym, target.loc)
             if expr:
-                return ast.AssignExprConstError(loc, sym, target.loc)
+                return e
             else:
-                return ast.AssignConstError(loc, sym, target.loc)
+                return ast.AssignConstError(loc, e)
 
         if sym.storage == "direct":
             assert sym.is_local
