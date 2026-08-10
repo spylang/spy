@@ -62,6 +62,8 @@ class ClassFrame(AbstractFrame):
         return body
 
     def exec_stmt(self, stmt: ast.Stmt) -> None:
+        # this is just an additional sanity check, as they are already rejected by
+        # ASTCompiler.compile_stmt. The following list must agree with it.
         allowed = (
             ast.VarDef,
             ast.Assign,
@@ -70,12 +72,9 @@ class ClassFrame(AbstractFrame):
             ast.Pass,
             ast.FuncDef,
         )
-        if type(stmt) in allowed:
-            return super().exec_stmt(stmt)
-
-        STMT = type(stmt).__name__
-        msg = f"`{STMT}` not supported inside a classdef"
-        raise SPyError.simple("W_TypeError", msg, "this is not supported", stmt.loc)
+        T = type(stmt)
+        assert T in allowed, f"unsupported node in ClassDef: {T.__name}"
+        return super().exec_stmt(stmt)
 
     def exec_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         if vardef.value is not None:

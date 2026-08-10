@@ -11,7 +11,7 @@ Moreover, do other easy desugaring like converting `for` loops into `while` loop
 import spy.ast as ast
 from spy.analyze.symtable import SymTable
 from spy.ast import LoweringStage
-from spy.errors import WIP
+from spy.errors import WIP, SPyError
 from spy.util import magic_dispatch
 
 
@@ -51,6 +51,24 @@ class ASTCompiler:
         return magic_dispatch(self, "compile_decl", decl)
 
     def compile_stmt(self, stmt: ast.Stmt) -> list[ast.Stmt]:
+        # if we are in a ClassDef, only a few stmts are actually allowed
+        in_classdef = self.symtable.kind == "class"
+        allowed = (
+            ast.VarDef,
+            ast.Assign,
+            ast.AssignLocal,
+            ast.If,
+            ast.Pass,
+            ast.FuncDef,
+        )
+        if in_classdef and type(stmt) not in allowed:
+            STMT = type(stmt).__name__
+            raise SPyError.simple(
+                "W_SyntaxError",
+                f"`{STMT}` not supported inside a classdef",
+                "this is not supported",
+                stmt.loc,
+            )
         return magic_dispatch(self, "compile_stmt", stmt)
 
     def compile_stmts(self, stmts: list[ast.Stmt]) -> list[ast.Stmt]:
