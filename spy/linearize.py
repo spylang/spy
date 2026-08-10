@@ -170,8 +170,13 @@ class Linearizer:
         self.hoisted.append(
             ast.AssignLocal(
                 loc=loc,
-                target=ast.StrLiteral(loc, name),
-                value=expr,
+                expr=ast.AssignExprLocal(
+                    loc=loc,
+                    target=ast.StrLiteral(loc, name),
+                    sym=sym,
+                    value=expr,
+                    w_T=expr.w_T,
+                ),
             )
         )
         return ast.NameLocalDirect(loc=loc, sym=sym, w_T=expr.w_T)
@@ -410,14 +415,24 @@ class Linearizer:
         assert op.w_T is not None
         name, sym = self.fresh_tmp(op.w_T, loc)
         target = ast.StrLiteral(loc, name)
-        assign_rhs = ast.AssignLocal(loc=loc, target=target, value=new_right)
+        assign_rhs = ast.AssignLocal(
+            loc=loc,
+            expr=ast.AssignExprLocal(
+                loc=loc, target=target, sym=sym, value=new_right, w_T=op.w_T
+            ),
+        )
 
         # new_left is used as both the if-test and the value for the
         # short-circuit branch; spill it if needed so it is only evaluated once.
         # Names are safe to reuse without spilling (reading a name is not a call).
         if not isinstance(new_left, self.NAME_EXPRS):
             new_left = self.spill(new_left)
-        assign_left = ast.AssignLocal(loc=loc, target=target, value=new_left)
+        assign_left = ast.AssignLocal(
+            loc=loc,
+            expr=ast.AssignExprLocal(
+                loc=loc, target=target, sym=sym, value=new_left, w_T=op.w_T
+            ),
+        )
 
         if kind == "and":
             then_body: list[ast.Stmt] = rhs_hoisted + [assign_rhs]
