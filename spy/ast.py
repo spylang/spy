@@ -722,6 +722,7 @@ class AssignExpr(Expr):
 class AssignExprLocal(Expr):
     precedence = 0
     target: StrLiteral
+    sym: Symbol
     value: Expr
 
 

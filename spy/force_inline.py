@@ -165,7 +165,11 @@ class AlphaRenamer:
 
     def rename_expr_AssignExprLocal(self, expr: ast.AssignExprLocal) -> ast.Expr:
         new_target = expr.target.replace(value=f"{expr.target.value}{self.suffix}")
-        return expr.replace(target=new_target, value=self.rename_expr(expr.value))
+        return expr.replace(
+            target=new_target,
+            sym=self.rename_sym(expr.sym),
+            value=self.rename_expr(expr.value),
+        )
 
     def rename_expr_BlockExpr(self, expr: ast.BlockExpr) -> ast.Expr:
         return expr.replace(
@@ -209,11 +213,13 @@ def inline_call(
 
     functype = w_callee.w_functype
     funcdef_args = w_callee.funcdef.args
+    callee_symtable = w_callee.funcdef.symtable
     param_assigns: list[ast.Stmt] = []
     for i, (func_param, funcdef_arg) in enumerate(zip(functype.params, funcdef_args)):
         param_name = funcdef_arg.name
         new_name = f"{param_name}{suffix}"
         new_locals_types_w[new_name] = func_param.w_T
+        param_sym = callee_symtable.lookup(param_name).replace(name=new_name)
 
         param_assigns.append(
             ast.AssignLocal(
@@ -221,6 +227,7 @@ def inline_call(
                 expr=ast.AssignExprLocal(
                     loc=op.loc,
                     target=ast.StrLiteral(op.loc, new_name).as_typed_node(),
+                    sym=param_sym,
                     value=real_args[i],
                     w_T=func_param.w_T,
                 ),

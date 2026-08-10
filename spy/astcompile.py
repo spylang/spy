@@ -447,7 +447,7 @@ class ASTCompiler:
 
         if sym.storage == "direct":
             assert sym.is_local
-            return ast.AssignExprLocal(expr.loc, target, value)
+            return ast.AssignExprLocal(expr.loc, target, sym, value)
 
         elif sym.storage == "cell":
             assert not sym.is_local

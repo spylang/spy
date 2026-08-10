@@ -595,6 +595,7 @@ class AbstractFrame:
             assign_expr = ast.AssignExprLocal(
                 loc=target.loc,
                 target=target,
+                sym=self.symtable.lookup(target.value),
                 value=getitem,
             )
             self.eval_expr_AssignExprLocal(assign_expr)
@@ -936,11 +937,11 @@ class AbstractFrame:
         if not self.redshifting or lv.color == "blue":
             self.store_local(varname, wam.w_val)
 
-        # XXX kill _set_assignexpr_color
-        return self._set_assignexpr_color(target, wam)
+        if assign.sym.varkind == "var":
+            return wam.as_red(self.vm)
+        return wam
 
     def eval_expr_AssignExprCell(self, assign: ast.AssignExprCell) -> W_MetaArg:
-        target = assign.target
         target_fqn = assign.target_fqn
         value = assign.value
         sym = assign.sym
@@ -955,13 +956,6 @@ class AbstractFrame:
             assert isinstance(w_cell, W_Cell)
             w_cell.set(wam.w_val)
 
-        # XXX kill _set_assignexpr_color
-        return self._set_assignexpr_color(target, wam)
-
-    def _set_assignexpr_color(
-        self, target: ast.StrLiteral, wam: W_MetaArg
-    ) -> W_MetaArg:
-        sym = self.symtable.lookup(target.value)
         if sym.varkind == "var":
             return wam.as_red(self.vm)
         return wam
