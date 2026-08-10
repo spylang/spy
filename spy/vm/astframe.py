@@ -589,27 +589,7 @@ class AbstractFrame:
         self.eval_expr_AssignExprLocal(assign.expr)
 
     def exec_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
-        self._execute_AssignCell(
-            assign.target, assign.target_fqn, assign.sym, assign.value
-        )
-
-    def _execute_AssignCell(
-        self,
-        target: ast.StrLiteral,
-        target_fqn: Optional[FQN],
-        sym: Symbol,
-        value: ast.Expr,
-    ) -> W_MetaArg:
-        wam = self.eval_expr(value)
-        if not self.redshifting:
-            if target_fqn is not None:
-                w_cell = self.vm.lookup_global(target_fqn)
-            else:
-                outervars = self.closure[-sym.level]
-                w_cell = outervars[sym.name].w_val
-            assert isinstance(w_cell, W_Cell)
-            w_cell.set(wam.w_val)
-        return wam
+        self.eval_expr_AssignExprCell(assign.expr)
 
     def exec_stmt_Assign_unpack(self, assign: ast.Assign) -> None:
         assert isinstance(assign.target, ast.UnpackTarget)
@@ -931,9 +911,9 @@ class AbstractFrame:
         # KILL ME
         assert False, "this should not happen"
 
-    def eval_expr_AssignExprLocal(self, assignexpr: ast.AssignExprLocal) -> W_MetaArg:
-        target = assignexpr.target
-        value = assignexpr.value
+    def eval_expr_AssignExprLocal(self, assign: ast.AssignExprLocal) -> W_MetaArg:
+        target = assign.target
+        value = assign.value
         varname = target.value
 
         lv = self.locals.get(varname)
@@ -951,16 +931,24 @@ class AbstractFrame:
         # XXX kill _set_assignexpr_color
         return self._set_assignexpr_color(target, wam)
 
-    def eval_expr_AssignExprCell(self, assignexpr: ast.AssignExprCell) -> W_MetaArg:
-        return self._set_assignexpr_color(
-            assignexpr.target,
-            self._execute_AssignCell(
-                assignexpr.target,
-                assignexpr.target_fqn,
-                assignexpr.sym,
-                assignexpr.value,
-            ),
-        )
+    def eval_expr_AssignExprCell(self, assign: ast.AssignExprCell) -> W_MetaArg:
+        target = assign.target
+        target_fqn = assign.target_fqn
+        value = assign.value
+        sym = assign.sym
+
+        wam = self.eval_expr(value)
+        if not self.redshifting:
+            if target_fqn is not None:
+                w_cell = self.vm.lookup_global(target_fqn)
+            else:
+                outervars = self.closure[-sym.level]
+                w_cell = outervars[sym.name].w_val
+            assert isinstance(w_cell, W_Cell)
+            w_cell.set(wam.w_val)
+
+        # XXX kill _set_assignexpr_color
+        return self._set_assignexpr_color(target, wam)
 
     def _set_assignexpr_color(
         self, target: ast.StrLiteral, wam: W_MetaArg

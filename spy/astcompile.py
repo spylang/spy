@@ -206,22 +206,17 @@ class ASTCompiler:
 
         elif sym.storage == "cell":
             assert not sym.is_local
+            e = ast.AssignExprCell(
+                loc=loc,
+                target=target,
+                target_fqn=None,
+                sym=sym,
+                value=value,
+            )
             if expr:
-                return ast.AssignExprCell(
-                    loc=loc,
-                    target=target,
-                    target_fqn=None,
-                    sym=sym,
-                    value=value,
-                )
+                return e
             else:
-                return ast.AssignCell(
-                    loc=loc,
-                    target=target,
-                    target_fqn=None,
-                    sym=sym,
-                    value=value,
-                )
+                return ast.AssignCell(loc, e)
 
         else:
             assert False, f"unexpected storage: {sym.storage!r}"

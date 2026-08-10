@@ -293,6 +293,10 @@ class SPyBackend:
         self.wl(f"{node.sym.name} = <AssignConstError>")
 
     def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
+        # FIXME!
+        self.wl("FIXME AssignLocal")
+        return
+
         varname = assign.target.value
         t = self.get_vartype_to_declare_maybe(varname)
         v = self.fmt_expr(assign.value)
@@ -307,6 +311,10 @@ class SPyBackend:
         self.wl(f"{targets} = {v}")
 
     def emit_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
+        # FIXME!
+        self.wl("FIXME AssignCell")
+        return
+
         varname = (
             self.fmt_fqn(assign.target_fqn)
             if assign.target_fqn is not None
