@@ -750,9 +750,8 @@ class AbstractFrame:
     def eval_expr_AssignExprConstError(
         self, node: ast.AssignExprConstError
     ) -> W_MetaArg:
-        self._raise_assign_const_error(node.sym, node.target_loc)
-
-    def _raise_assign_const_error(self, sym: Symbol, target_loc: Loc) -> Never:
+        sym = node.sym
+        target_loc = node.target_loc
         err = SPyError("W_TypeError", "invalid assignment target")
         err.add("error", f"{sym.name} is const", target_loc)
         err.add("note", f"const declared here ({sym.varkind_origin})", sym.loc)
