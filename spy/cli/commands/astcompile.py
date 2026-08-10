@@ -62,7 +62,6 @@ async def astcompile(args: ASTCompile_Args) -> None:
             b.out.wl()
         print(highlight_src("spy", b.out.build().rstrip()))
     elif args.format == "html":
-        raise NotImplementedError("FIXME")
         b = HTMLBackend(args.spyast_js)
         html = b.generate([(modname, mod)])
         build_dir = Path(args.filename.parent) / "build"

@@ -126,6 +126,12 @@ class TestMain:
         assert stdout.startswith("Module(")
         assert "stage='astcompiled'" in stdout
 
+    def test_astcompile_html(self):
+        _, stdout = self.run("astcompile", "--format", "html", self.main_spy)
+        out = self.tmpdir.join("build", "main_astcompile.html")
+        assert out.exists()
+        assert f"Written {out}" in stdout
+
     def test_astcompile_spy_output(self):
         src = """
         def main() -> None:
