@@ -55,7 +55,7 @@ class ASTCompiler:
         in_classdef = self.symtable.kind == "class"
         allowed = (
             ast.VarDef,
-            ast.AssignLocal,
+            ast.Assign,
             ast.If,
             ast.Pass,
             ast.FuncDef,
