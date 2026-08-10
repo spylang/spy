@@ -94,7 +94,10 @@ class Parser:
         py_mod = magic_py_parse(self.src, self.filename)
         assert isinstance(py_mod, py_ast.Module)
         py_mod.compute_all_locs(self.filename)
-        return self.from_py_Module(py_mod)
+        parsed_mod = self.from_py_Module(py_mod)
+        assert parsed_mod.stage == "parsed"
+        parsed_mod.assert_valid_at("parsed")
+        return parsed_mod
 
     def parse_single_stmt(self) -> spy.ast.Stmt:
         """
@@ -153,7 +156,11 @@ class Parser:
         docstring, py_body = self.get_docstring_maybe(py_mod.body)
 
         mod = spy.ast.Module(
-            loc=loc, filename=self.filename, decls=[], docstring=docstring
+            loc=loc,
+            stage="parsed",
+            filename=self.filename,
+            decls=[],
+            docstring=docstring,
         )
 
         for py_stmt in py_body:
@@ -313,6 +320,7 @@ class Parser:
 
         return spy.ast.FuncDef(
             loc=py_funcdef.loc,
+            stage="parsed",
             color=color,
             kind=func_kind,
             name=py_funcdef.name,

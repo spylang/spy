@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 
 from spy import ast
 from spy.analyze.scope import ScopeAnalyzer
+from spy.astcompile import astcompile
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.location import Loc
@@ -104,6 +105,7 @@ def w_print(vm: "SPyVM", *args_wam: W_MetaArg) -> W_OpSpec:
     fqn = vm.get_unique_FQN(fqn)
     funcdef = ast.FuncDef(
         loc=loc,
+        stage="astcompiled",
         color="red",
         kind="plain",
         name="print",
@@ -116,11 +118,14 @@ def w_print(vm: "SPyVM", *args_wam: W_MetaArg) -> W_OpSpec:
     )
     module = ast.Module(
         loc=loc,
+        stage="parsed",
         filename="<generated>",
         docstring=None,
         decls=[ast.GlobalFuncDef(loc, funcdef)],
     )
     ScopeAnalyzer("_print", module).analyze()
+    module = astcompile(module)
+    funcdef = module.get_funcdef("print")
     w_functype = W_FuncType.new(params, w_restype=TYPES.w_NoneType)
     w_func = W_ASTFunc(
         w_functype,
@@ -128,7 +133,7 @@ def w_print(vm: "SPyVM", *args_wam: W_MetaArg) -> W_OpSpec:
         funcdef,
         closure=(),
         defaults_w=[],
-        lowering_stage="source",
+        stage="astcompiled",
         is_force_inline=True,
     )
     vm.add_global(fqn, w_func)

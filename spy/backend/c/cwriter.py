@@ -37,7 +37,7 @@ class CFuncWriter:
         self.fqn = fqn
         self.last_emitted_linenos = (-1, -1)  # see emit_lineno_maybe
 
-        assert w_func.lowering_stage == "linearize"
+        assert w_func.stage == "linearized"
         self.w_func = w_func
 
     def ppc(self) -> None:
@@ -178,30 +178,26 @@ class CFuncWriter:
                 self.tbc.wl(f"{target} = {v};")
 
     def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
-        target = assign.target.value
-        v = self.fmt_expr(assign.value)
+        target = assign.expr.target.value
+        v = self.fmt_expr(assign.expr.value)
         c_varname = C_Ident(target)
-        if assign.value.w_T is TYPES.w_NoneType:
+        if assign.expr.value.w_T is TYPES.w_NoneType:
             self.tbc.wl(f"/* {c_varname} = */ {v};")
         else:
             self.tbc.wl(f"{c_varname} = {v};")
 
     def emit_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
-        v = self.fmt_expr(assign.value)
-        target = assign.target_fqn.c_name
+        v = self.fmt_expr(assign.expr.value)
+        assert assign.expr.target_fqn is not None, "fqn is set during redshift"
+        target = assign.expr.target_fqn.c_name
         c_varname = C_Ident(target)
         self.tbc.wl(f"{c_varname} = {v};")
 
-    def emit_stmt_Assign(self, assign: ast.Assign) -> None:
-        unpack = assign.target
-        assert isinstance(unpack, ast.UnpackTarget), (
-            "simple ast.Assign nodes should not survive redshifting"
-        )
+    def emit_stmt_AssignUnpack(self, assign: ast.AssignUnpack) -> None:
         if isinstance(assign.value, ast.Tuple):
             # Blue tuple literal: directly assign each item to its target
-            for target, item in zip(unpack.targets, assign.value.items):
-                assert isinstance(target, ast.SingleTarget)
-                c_target = C_Ident(target.name.value)
+            for target, item in zip(assign.targets, assign.value.items):
+                c_target = C_Ident(target.value)
                 v = self.fmt_expr(item)
                 self.tbc.wl(f"{c_target} = {v};")
         else:
@@ -218,9 +214,8 @@ class CFuncWriter:
             self.tbc.wl("{")
             with self.tbc.indent():
                 self.tbc.wl(f"{c_tuple_type} tmp = {v};")
-                for i, target in enumerate(unpack.targets):
-                    assert isinstance(target, ast.SingleTarget)
-                    c_target = C_Ident(target.name.value)
+                for i, target in enumerate(assign.targets):
+                    c_target = C_Ident(target.value)
                     self.tbc.wl(f"{c_target} = tmp._item{i};")
             self.tbc.wl("}")
 
@@ -398,6 +393,7 @@ class CFuncWriter:
             return C.Literal(f"{varname}")
 
     def fmt_expr_NameOuterCell(self, name: ast.NameOuterCell) -> C.Expr:
+        assert name.fqn is not None, "fqn is set during redshift"
         return C.Literal(name.fqn.c_name)
 
     def fmt_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> C.Expr:
@@ -412,6 +408,7 @@ class CFuncWriter:
         return self._fmt_assignexpr(assignexpr.target.value, assignexpr.value)
 
     def fmt_expr_AssignExprCell(self, assignexpr: ast.AssignExprCell) -> C.Expr:
+        assert assignexpr.target_fqn is not None, "fqn is set during redshift"
         return self._fmt_assignexpr(assignexpr.target_fqn.c_name, assignexpr.value)
 
     def _fmt_assignexpr(self, target: str, value_expr: ast.Expr) -> C.Expr:

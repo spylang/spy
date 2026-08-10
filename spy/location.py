@@ -21,6 +21,7 @@ class Loc:
     line_end: int
     col_start: int
     col_end: int
+    colorize: bool = True  # use this loc for 'spy colorize'
 
     @classmethod
     def here(cls, level: int = -1) -> "Loc":

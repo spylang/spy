@@ -2,6 +2,7 @@ from typing import TYPE_CHECKING, Annotated, Any, Iterable, Optional
 
 from spy import ast
 from spy.analyze.scope import ScopeAnalyzer
+from spy.astcompile import astcompile
 from spy.errors import WIP, SPyError
 from spy.fqn import FQN
 from spy.location import Loc
@@ -204,6 +205,7 @@ class W_StructType(W_Type):
         self_type = ast.FQNConst(func_loc, self.fqn)
         funcdef = ast.FuncDef(
             loc=func_loc,
+            stage="parsed",
             color="red",
             kind="plain",
             name=name,
@@ -221,19 +223,22 @@ class W_StructType(W_Type):
         # create a fake module so that we can run ScopeAnalyzer
         module = ast.Module(
             loc=func_loc,
+            stage="parsed",
             filename="<generated>",
             docstring=None,
             decls=[ast.GlobalFuncDef(func_loc, funcdef)],
         )
         analyzer = ScopeAnalyzer(self.fqn.modname, module)
         analyzer.analyze()
+        module = astcompile(module)
+        funcdef = module.get_funcdef(name)
 
         # create the actual W_ASTFunc object
         params = [FuncParam(self, "simple"), FuncParam(self, "simple")]
         w_functype = W_FuncType.new(params, w_restype=B.w_bool)
         fqn = self.fqn.join(name)
         return W_ASTFunc(
-            w_functype, fqn, funcdef, closure=(), defaults_w=[], lowering_stage="source"
+            w_functype, fqn, funcdef, closure=(), defaults_w=[], stage="astcompiled"
         )
 
     def repr_hints(self) -> list[str]:

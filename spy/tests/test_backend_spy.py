@@ -396,10 +396,16 @@ class TestSPyBackend(CompilerTest):
     def test_aug_assign(self):
         src = """
         def foo() -> None:
+            x = 0
             x += 1
         """
+        expected = """
+        def foo() -> None:
+            x = 0
+            x = x + 1
+        """
         self.compile(src)
-        self.assert_dump(src)
+        self.assert_dump(expected)
 
     def test_ptr(self):
         src = """

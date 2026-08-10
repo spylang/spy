@@ -286,6 +286,11 @@ class W_ParseError(W_Exception):
     pass
 
 
+@BUILTINS.builtin_type("SyntaxError")
+class W_SyntaxError(W_Exception):
+    pass
+
+
 @BUILTINS.builtin_type("ImportError")
 class W_ImportError(W_Exception):
     pass
@@ -297,7 +302,7 @@ class W_ScopeError(W_Exception):
 
 
 @BUILTINS.builtin_type("NameError")
-class W_NameError(W_Exception):
+class W_NameError(W_StaticError):
     pass
 
 

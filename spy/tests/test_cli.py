@@ -121,6 +121,30 @@ class TestMain:
         _, stdout = self.run("parse", self.main_spy)
         assert stdout.startswith("Module(")
 
+    def test_astcompile(self):
+        _, stdout = self.run("astcompile", self.main_spy)
+        assert stdout.startswith("Module(")
+        assert "stage='astcompiled'" in stdout
+
+    def test_astcompile_html(self):
+        _, stdout = self.run("astcompile", "--format", "html", self.main_spy)
+        out = self.tmpdir.join("build", "main_astcompile.html")
+        assert out.exists()
+        assert f"Written {out}" in stdout
+
+    def test_astcompile_spy_output(self):
+        src = """
+        def main() -> None:
+            for i in range(3):
+                print(i)
+        """
+        f = self.write("test.spy", src)
+        _, stdout = self.run("astcompile", "--format", "spy", f)
+        # `for` should be desugared to `while` in the astcompiled tree
+        assert "for " not in stdout
+        assert "while " in stdout
+        assert stdout.startswith("def main() -> None:")
+
     def test_execute(self):
         argsets = [["execute"], []]  # No subcommand is equivalent to execute command
         for argset in argsets:
@@ -213,7 +237,7 @@ class TestMain:
         def factorial(n: i32) -> i32:
             [R]res = [/COLOR][B]1[/COLOR]
             for i in [B]range[/COLOR][R](n)[/COLOR]:
-                res *= ([R]i+[/COLOR][B]1[/COLOR])
+                [R]res *= (i+[/COLOR][B]1[/COLOR][R])[/COLOR]
             return [R]res[/COLOR]
 
         def main() -> None:

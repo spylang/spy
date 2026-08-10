@@ -4,6 +4,7 @@
 
 import ast as py_ast
 import dataclasses
+import re
 import typing
 from abc import abstractmethod
 from dataclasses import dataclass, field
@@ -13,7 +14,6 @@ from typing import (
     Iterator,
     Optional,
     Sequence,
-    Type,
     dataclass_transform,
     no_type_check,
 )
@@ -27,21 +27,45 @@ if TYPE_CHECKING:
     from spy.vm.object import W_Object, W_Type
     from spy.vm.vm import SPyVM
 
+# ==== Compilation pipeline and invariants ====
+#
+# The compilation pipeline consists of a series of passes, and the AST serves as the
+# shared IR for all of them. Intermediate passes transform an AST into "the next one"
+# and set the corresponding LoweringStage.
+#
+# The pipeline is as follows, showing artifacts and --passes-->
+
+LoweringStage = typing.Literal[
+    # source code
+    # -- parse -->
+    "parsed",  # Module AST
+    # -- astcompile -->
+    "astcompiled",  # Module AST
+    # -- doppler -->
+    "redshifting",  # temporary transient state
+    "redshifted",  # FuncDef AST
+    # -- linearize -->
+    "linearized",  # FuncDef AST
+    # -- C Backend -->
+    # C code
+]
+
+# --- Typed vs untyped ASTs ---
+#
+# Moreover, The Expr class has an optional field w_T which indicates the type of the
+# expression:
+#
+#   - AST trees are said UNTYPED when all their Exprs have w_T == None.
+#   - AST trees are said TYPED when all their Exprs have w_T != None.
+#   - It is a logical error to have AST trees which mix typed and untyped nodes.
+#
+# The parser produces UNTYPED ASTs. The redshift pass produces TYPED ASTS.
+# ================================
+
+
 ClassKind = typing.Literal["class", "struct"]
 FuncKind = typing.Literal["plain", "generic", "metafunc"]
 FuncParamKind = typing.Literal["simple", "var_positional"]
-
-# ==== Typed vs untyped ASTs ====
-#
-# The Expr class has an optional field w_T which indicates the type of the expression.
-#
-# AST trees are said UNTYPED when all their Exprs have w_T == None.
-# AST trees are said TYPED when all their Exprs have w_T != None.
-#
-# It is a logical error to have AST trees which mix typed and untyped nodes.
-#
-# The parser produces UNTYPED ASTs. DopplerFrame produces TYPED ASTs.
-# ================================
 
 
 @extend(py_ast.AST)
@@ -87,12 +111,61 @@ class AST:
 del AST
 
 
+def _parse_stage_spec(spec: str) -> frozenset[LoweringStage]:
+    """
+    Parse a state spec string like "parsed", "<= redshifted", ">= astcompiled".
+    """
+    ALL_STATES = typing.get_args(LoweringStage)
+    m = re.fullmatch(r"(==|<=|>=|<|>)?\s*(\w+)", spec.strip())
+    if not m:
+        raise ValueError(f"Invalid state spec: {spec!r}")
+    op = m.group(1) or "=="
+    state: LoweringStage = m.group(2)  # type: ignore
+    if state not in ALL_STATES:
+        raise ValueError(f"Invalid LoweringStage: {state!r}")
+
+    i = ALL_STATES.index(state)
+    if op == "==":
+        return frozenset([state])
+    elif op == "<":
+        return frozenset(ALL_STATES[:i])
+    elif op == "<=":
+        return frozenset(ALL_STATES[: i + 1])
+    elif op == ">":
+        return frozenset(ALL_STATES[i + 1 :])
+    elif op == ">=":
+        return frozenset(ALL_STATES[i:])
+    else:
+        assert False
+
+
 @dataclass_transform(field_specifiers=(dataclasses.field,), eq_default=False)
-def astnode[T](klass: Type[T]) -> Type[T]:
-    """Decorator to create dataclasses for AST nodes
+def astnode(cls_or_stage_spec: Any) -> Any:
+    """
+    Decorator to create dataclasses for AST nodes.
+
     We want all nodes to compare by *identity* and be hashable, because e.g. we
-    put them in dictionaries inside the typechecker."""
-    return dataclass(eq=False)(klass)
+    put them in dictionaries inside the typechecker.
+
+    An optional stage spec restricts which LoweringStages the node is valid in:
+        @astnode("parsed")          -- only at 'parsed'
+        @astnode("<= redshifted")   -- at any stage up to and including 'redshifted'
+        @astnode(">= astcompiled")  -- at 'astcompiled' or later
+    """
+    if isinstance(cls_or_stage_spec, str):
+        spec = cls_or_stage_spec
+        valid_stages = _parse_stage_spec(spec)
+
+        def decorator(cls: Any) -> Any:
+            cls2 = dataclass(eq=False)(cls)
+            cls2._valid_stages = valid_stages
+            return cls2
+
+        return decorator
+
+    else:
+        cls = cls_or_stage_spec
+        return dataclass(eq=False)(cls)
 
 
 @astnode
@@ -173,6 +246,19 @@ class Node:
                     msg = f"{msg}: {extra_msg}"
                 raise Exception(msg)
 
+    def assert_valid_at(self, state: LoweringStage) -> None:
+        """
+        Check that self and all its descendants are valid at the given
+        LoweringStage, i.e. that every descendant annotated with @astnode(spec)
+        claims `state` among the ones it supports.
+        """
+        assert state != "redshifting", "redshifting is a transient state"
+        for node in self.walk():
+            valid_states = getattr(type(node), "_valid_stages", None)
+            if valid_states is not None and state not in valid_states:
+                cls = node.__class__.__name__
+                raise Exception(f"Node `ast.{cls}` is not valid at state '{state}'")
+
     def visit(self, prefix: str, visitor: Any, *args: Any) -> None:
         """
         Generic visitor algorithm.
@@ -197,6 +283,7 @@ class Node:
 
 @astnode
 class Module(Node):
+    stage: LoweringStage
     filename: str
     docstring: Optional[str]
     decls: list["Decl"]
@@ -316,13 +403,63 @@ class Expr(Node):
     w_T: Optional["W_Type"] = field(default=None, kw_only=True)
 
 
-@astnode
+# === Name family ====
+# Name is a generic name lookup, which is astcompiled into more specific variants
+
+
+@astnode("parsed")
 class Name(Expr):
     precedence = 100  # the highest
     id: str
 
     def shortrepr(self) -> Optional[str]:
         return self.id
+
+
+@astnode(">= astcompiled")
+class NameLocalDirect(Expr):
+    precedence = 100  # the highest
+    sym: Symbol
+
+
+@astnode(">= astcompiled")
+class NameLocalCell(Expr):
+    precedence = 100  # the highest
+    sym: Symbol
+
+
+@astnode(">= astcompiled")
+class NameOuterDirect(Expr):
+    precedence = 100  # the highest
+    sym: Symbol
+
+
+@astnode(">= astcompiled")
+class NameOuterCell(Expr):
+    precedence = 100  # the highest
+    sym: Symbol
+    fqn: Optional[FQN]
+
+
+@astnode(">= astcompiled")
+class NameImportRef(Expr):
+    precedence = 100  # the highest
+    sym: Symbol
+
+
+@astnode(">= astcompiled")
+class NameError(Expr):
+    """
+    Poison node needed to enable lazy NameErrors.
+
+    Produced by astcompiler when ast.Name refers to unknown IDs.
+    """
+
+    precedence = 100
+    id: str
+
+
+# === /Name family ===
 
 
 @astnode
@@ -438,7 +575,7 @@ class GetAttr(Expr):
     attr: StrLiteral
 
 
-@astnode
+@astnode("<= astcompiled")
 class BinOp(Expr):
     op: str
     left: Expr
@@ -499,7 +636,7 @@ class BinOp(Expr):
 
 # eventually this should allow chained comparisons, but for now we support
 # only binary ones
-@astnode
+@astnode("<= astcompiled")
 class CmpOp(Expr):
     op: str
     left: Expr
@@ -546,7 +683,7 @@ class Or(Expr):
     right: Expr
 
 
-@astnode
+@astnode("<= astcompiled")
 class UnaryOp(Expr):
     op: str
     value: Expr
@@ -572,11 +709,44 @@ class UnaryOp(Expr):
         return self.op
 
 
-@astnode
+# ==== AssignExpr family ====
+
+
+@astnode("parsed")
 class AssignExpr(Expr):
     precedence = 0
     target: StrLiteral
     value: Expr
+
+
+@astnode(">= astcompiled")
+class AssignExprLocal(Expr):
+    precedence = 0
+    target: StrLiteral
+    sym: Symbol
+    value: Expr
+
+
+@astnode(">= astcompiled")
+class AssignExprCell(Expr):
+    precedence = 0
+    target: StrLiteral
+    target_fqn: Optional[FQN]
+    sym: Symbol
+    value: Expr
+
+
+@astnode(">= astcompiled")
+class AssignExprConstError(Expr):
+    """
+    Poison node for assignment to a const target.
+
+    Produced by astcompiler instead of raising eagerly.
+    """
+
+    precedence = 0
+    sym: Symbol
+    target_loc: Loc
 
 
 # ====== Stmt hierarchy ======
@@ -599,6 +769,7 @@ class FuncArg(Node):
 
 @astnode
 class FuncDef(Stmt):
+    stage: LoweringStage
     color: Color
     kind: FuncKind
     name: str
@@ -622,7 +793,7 @@ class FuncDef(Stmt):
         return Loc.combine(self.loc, self.return_type.loc)
 
 
-@astnode
+@astnode("<= astcompiled")
 class GenericFuncDef(Stmt):
     """
     If you have this:
@@ -656,7 +827,7 @@ class ClassDef(Stmt):
         return f"{self.kind} {self.name}"
 
 
-@astnode
+@astnode("<= astcompiled")
 class GenericClassDef(Stmt):
     """
     If you have this:
@@ -705,6 +876,9 @@ class StmtExpr(Stmt):
     value: Expr
 
 
+# ==== Assign family ====
+
+
 @astnode
 class AssignTarget(Node):
     @abstractmethod
@@ -728,13 +902,13 @@ class UnpackTarget(AssignTarget):
             yield from target.flatten()
 
 
-@astnode
+@astnode("parsed")
 class Assign(Stmt):
     target: AssignTarget
     value: Expr
 
 
-@astnode
+@astnode("parsed")
 class AugAssign(Stmt):
     op: str
     target: StrLiteral
@@ -742,6 +916,30 @@ class AugAssign(Stmt):
 
     def shortrepr(self) -> Optional[str]:
         return self.op
+
+
+@astnode(">= astcompiled")
+class AssignConstError(Stmt):
+    expr: AssignExprConstError
+
+
+@astnode(">= astcompiled")
+class AssignLocal(Stmt):
+    expr: AssignExprLocal
+
+
+@astnode(">= astcompiled")
+class AssignCell(Stmt):
+    expr: AssignExprCell
+
+
+@astnode(">= astcompiled")
+class AssignUnpack(Stmt):
+    targets: Sequence[StrLiteral]
+    value: Expr
+
+
+# ==== /Assign family ====
 
 
 @astnode
@@ -775,7 +973,7 @@ class While(Stmt):
     body: list[Stmt]
 
 
-@astnode
+@astnode("parsed")
 class For(Stmt):
     seq: int  # unique id within a funcdef
     target: StrLiteral
@@ -804,15 +1002,7 @@ class Continue(Stmt):
     pass
 
 
-# ====== IR-specific nodes ======
-#
-# The following nodes are special: they are never generated by the parser, but
-# only by the ASTFrame and/or Doppler. In other words, they are not part of
-# the proper AST-which-represent-the-syntax-of-the-language, but they are part
-# of the AST-which-we-use-as-IR
-
-
-@astnode
+@astnode(">= astcompiled")
 class Const(Expr):
     """
     Hold a primitive wrapped constant.
@@ -831,73 +1021,13 @@ class Const(Expr):
         return repr(self.w_val)
 
 
-@astnode
+@astnode(">= astcompiled")
 class FQNConst(Expr):
     precedence = 100  # the highest
     fqn: FQN
 
 
-# specialized Name nodes
-@astnode
-class NameImportRef(Expr):
-    precedence = 100  # the highest
-    sym: Symbol
-
-
-@astnode
-class NameLocalDirect(Expr):
-    precedence = 100  # the highest
-    sym: Symbol
-
-
-@astnode
-class NameLocalCell(Expr):
-    precedence = 100  # the highest
-    sym: Symbol
-
-
-@astnode
-class NameOuterDirect(Expr):
-    precedence = 100  # the highest
-    sym: Symbol
-
-
-@astnode
-class NameOuterCell(Expr):
-    precedence = 100  # the highest
-    sym: Symbol
-    fqn: FQN
-
-
-@astnode
-class AssignLocal(Stmt):
-    target: StrLiteral
-    value: Expr
-
-
-@astnode
-class AssignCell(Stmt):
-    target: StrLiteral
-    target_fqn: FQN
-    value: Expr
-
-
-@astnode
-class AssignExprLocal(Expr):
-    precedence = 0
-    target: StrLiteral
-    value: Expr
-
-
-@astnode
-class AssignExprCell(Expr):
-    precedence = 0
-    target: StrLiteral
-    target_fqn: FQN
-    value: Expr
-
-
-@astnode
+@astnode("<= redshifted")
 class BlockExpr(Expr):
     """
     A block of stmts which evaluates to a single Expr.

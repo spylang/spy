@@ -89,12 +89,13 @@ class AlphaRenamer:
         return stmt.replace(name=new_name_node, value=new_value)
 
     def rename_stmt_AssignLocal(self, stmt: ast.AssignLocal) -> ast.Stmt:
-        new_target = stmt.target.replace(value=f"{stmt.target.value}{self.suffix}")
-        return stmt.replace(target=new_target, value=self.rename_expr(stmt.value))
+        return stmt.replace(expr=self.rename_expr(stmt.expr))
 
     def rename_stmt_AssignCell(self, stmt: ast.AssignCell) -> ast.Stmt:
-        new_target = stmt.target.replace(value=f"{stmt.target.value}{self.suffix}")
-        return stmt.replace(target=new_target, value=self.rename_expr(stmt.value))
+        return stmt.replace(expr=self.rename_expr(stmt.expr))
+
+    def rename_expr_AssignExprCell(self, expr: ast.AssignExprCell) -> ast.Expr:
+        return expr.replace(value=self.rename_expr(expr.value))
 
     def rename_stmt_If(self, stmt: ast.If) -> ast.Stmt:
         return stmt.replace(
@@ -164,7 +165,11 @@ class AlphaRenamer:
 
     def rename_expr_AssignExprLocal(self, expr: ast.AssignExprLocal) -> ast.Expr:
         new_target = expr.target.replace(value=f"{expr.target.value}{self.suffix}")
-        return expr.replace(target=new_target, value=self.rename_expr(expr.value))
+        return expr.replace(
+            target=new_target,
+            sym=self.rename_sym(expr.sym),
+            value=self.rename_expr(expr.value),
+        )
 
     def rename_expr_BlockExpr(self, expr: ast.BlockExpr) -> ast.Expr:
         return expr.replace(
@@ -198,9 +203,9 @@ def inline_call(
 ) -> InlineResult:
     """
     Build a BlockExpr that inlines the callee at the call site.
-    w_callee must already be at lowering_stage == "redshift".
+    w_callee must already be at stage == "redshifted".
     """
-    assert w_callee.lowering_stage == "redshift"
+    assert w_callee.stage == "redshifted"
     suffix = f"${inline_counter}"
 
     assert w_callee.locals_types_w is not None
@@ -208,17 +213,24 @@ def inline_call(
 
     functype = w_callee.w_functype
     funcdef_args = w_callee.funcdef.args
+    callee_symtable = w_callee.funcdef.symtable
     param_assigns: list[ast.Stmt] = []
     for i, (func_param, funcdef_arg) in enumerate(zip(functype.params, funcdef_args)):
         param_name = funcdef_arg.name
         new_name = f"{param_name}{suffix}"
         new_locals_types_w[new_name] = func_param.w_T
+        param_sym = callee_symtable.lookup(param_name).replace(name=new_name)
 
         param_assigns.append(
             ast.AssignLocal(
                 loc=op.loc,
-                target=ast.StrLiteral(op.loc, new_name).as_typed_node(),
-                value=real_args[i],
+                expr=ast.AssignExprLocal(
+                    loc=op.loc,
+                    target=ast.StrLiteral(op.loc, new_name).as_typed_node(),
+                    sym=param_sym,
+                    value=real_args[i],
+                    w_T=func_param.w_T,
+                ),
             )
         )
 

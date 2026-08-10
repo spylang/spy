@@ -8,6 +8,7 @@ import sys
 from typing import IO, TYPE_CHECKING, Annotated, Any, Literal, Optional
 
 from spy import ast
+from spy.astcompile import astcompile_interactive
 from spy.doppler import DopplerFrame
 from spy.errfmt import ErrorFormatter
 from spy.errors import SPyError
@@ -229,10 +230,12 @@ class SPdb(cmd.Cmd):
                 )
 
             f = self.get_curframe()
-            with f.spyframe.interactive():
-                f.spyframe.is_interactive = True  # ???
-                wam = f.spyframe.eval_expr(stmt.value)
-                print_wam(self.vm, wam, file=self.stdout, use_colors=self.use_colors)
+            # the parser produces a "parsed"-stage expression, but the frame can
+            # only evaluate astcompiled nodes: run the astcompile pass on the
+            # fly, against the symtable of the live frame
+            expr = astcompile_interactive(stmt.value, f.spyframe.symtable)
+            wam = f.spyframe.eval_expr(expr)
+            print_wam(self.vm, wam, file=self.stdout, use_colors=self.use_colors)
 
         except SPyError as e:
             etype = e.etype[2:]

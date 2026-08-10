@@ -1,6 +1,7 @@
 import sys
 from typing import Any
 
+from spy.cli.commands.astcompile import astcompile
 from spy.cli.commands.build import build
 from spy.cli.commands.cleanup import cleanup
 from spy.cli.commands.colorize import colorize
@@ -31,6 +32,7 @@ app.spy_command(execute, name="execute", default=True, strict_argv=True)
 app.spy_command(build, name="build", strict_argv=True)
 app.spy_command(redshift, name="redshift | rs", strict_argv=True)
 app.spy_command(colorize, name="colorize")
+app.spy_command(astcompile, name="astcompile")
 app.spy_command(parse, name="parse")
 app.spy_command(pyparse, name="pyparse")
 app.spy_command(imports, name="imports")
