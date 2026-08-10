@@ -1216,7 +1216,7 @@ class ASTFrame(AbstractFrame):
         w_func = w_func.get_most_lowered_version()
         assert isinstance(w_func, W_ASTFunc)
         assert w_func.funcdef.symtable.kind == "function"
-        assert w_func.funcdef.stage in ("astcompiled", "redshifted")
+        assert w_func.funcdef.stage in ("astcompiled", "redshifted", "linearized")
         ns = w_func.compute_inner_ns(args_w or [])
         super().__init__(
             vm, ns, w_func.funcdef.loc, w_func.funcdef.symtable, w_func.closure
