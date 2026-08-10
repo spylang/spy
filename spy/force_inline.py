@@ -89,12 +89,13 @@ class AlphaRenamer:
         return stmt.replace(name=new_name_node, value=new_value)
 
     def rename_stmt_AssignLocal(self, stmt: ast.AssignLocal) -> ast.Stmt:
-        new_target = stmt.target.replace(value=f"{stmt.target.value}{self.suffix}")
-        return stmt.replace(target=new_target, value=self.rename_expr(stmt.value))
+        return stmt.replace(expr=self.rename_expr(stmt.expr))
 
     def rename_stmt_AssignCell(self, stmt: ast.AssignCell) -> ast.Stmt:
-        new_target = stmt.target.replace(value=f"{stmt.target.value}{self.suffix}")
-        return stmt.replace(target=new_target, value=self.rename_expr(stmt.value))
+        return stmt.replace(expr=self.rename_expr(stmt.expr))
+
+    def rename_expr_AssignExprCell(self, expr: ast.AssignExprCell) -> ast.Expr:
+        return expr.replace(value=self.rename_expr(expr.value))
 
     def rename_stmt_If(self, stmt: ast.If) -> ast.Stmt:
         return stmt.replace(
@@ -217,8 +218,12 @@ def inline_call(
         param_assigns.append(
             ast.AssignLocal(
                 loc=op.loc,
-                target=ast.StrLiteral(op.loc, new_name).as_typed_node(),
-                value=real_args[i],
+                expr=ast.AssignExprLocal(
+                    loc=op.loc,
+                    target=ast.StrLiteral(op.loc, new_name).as_typed_node(),
+                    value=real_args[i],
+                    w_T=func_param.w_T,
+                ),
             )
         )
 
