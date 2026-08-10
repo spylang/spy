@@ -132,9 +132,11 @@ class TestHTMLBackend:
         """)
         expected = """
         <Module> (stmt, default)
+            stage: <'parsed'> (leaf, emerald)
             filename: <'{tmpdir}/test.spy'> (leaf, emerald)
             decls[0]: <GlobalFuncDef> (stmt, default)
                 funcdef: <FuncDef: red foo> (stmt, default)
+                    stage: <'parsed'> (leaf, emerald)
                     color: <'red'> (leaf, emerald)
                     kind: <'plain'> (leaf, emerald)
                     name: <'foo'> (leaf, emerald)
@@ -152,6 +154,7 @@ class TestHTMLBackend:
         funcdef = self.get_node(d, "FuncDef: red foo")
         expected = """
         <FuncDef: red foo> (stmt, default)
+            stage: <'parsed'> (leaf, emerald)
             color: <'red'> (leaf, emerald)
             kind: <'plain'> (leaf, emerald)
             name: <'foo'> (leaf, emerald)
@@ -182,6 +185,7 @@ class TestHTMLBackend:
         <FuncDef: red foo> (stmt, default)
             | def foo(x: i32) -> i32:
             |     return x + 1
+            stage: <'parsed'> (leaf, emerald)
             color: <'red'> (leaf, emerald)
             kind: <'plain'> (leaf, emerald)
             name: <'foo'> (leaf, emerald)
@@ -263,8 +267,8 @@ class TestHTMLBackend:
         <Return> (stmt, default)
             value: <BinOp: +> (expr, red)
                 op: <'+'> (leaf, emerald)
-                left: <Name: x> (expr, red)
-                    id: <'x'> (leaf, emerald)
+                left: <NameLocalDirect> (expr, red)
+                    sym: <x> (leaf, emerald)
                 right: <Literal: 1> (expr, blue)
                     value: <1> (leaf, emerald)
         """
@@ -285,19 +289,19 @@ class TestHTMLBackend:
     def test_nested_multiline_src_is_dedented(self):
         d = self.colorize("""
         def foo(x: i32) -> i32:
-            for i in range(x):
+            while x > 0:
                 pass
             return x + 1
         """)
-        # For is nested at col_start > 0 and is multi-line:
+        # While is nested at col_start > 0 and is multi-line:
         # its src must be dedented and src_colors must align with it
-        for_node = self.get_node(d, "For")
-        src = for_node["src"]
-        src_colors = for_node.get("src_colors", "")
-        assert src == "for i in range(x):\n    pass"
-        assert src_colors == "_9 B5 R3 _10"
+        while_node = self.get_node(d, "While")
+        src = while_node["src"]
+        src_colors = while_node.get("src_colors", "")
+        assert src == "while x > 0:\n    pass"
+        assert src_colors == "_6 R4 B1 _10"
         fmt = self.format_src(src, src_colors)
-        assert fmt == "for i in [B]range[/B][R](x)[/R]:\n    pass"
+        assert fmt == "while [R]x > [/R][B]0[/B]:\n    pass"
 
     def test_colorize_src_colors_no_overflow(self):
         d = self.colorize("""
