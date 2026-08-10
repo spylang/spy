@@ -557,9 +557,6 @@ class DopplerFrame(ASTFrame):
         w_val = self.vm.wrap(const.value)
         return ast.Const(const.loc, w_val, w_T=wam.w_static_T)
 
-    def shift_expr_Name(self, name: ast.Name, wam: W_MetaArg) -> ast.Expr:
-        return self.specialized_names[name].replace(w_T=wam.w_static_T)
-
     def shift_expr_NameLocalDirect(
         self, name: ast.NameLocalDirect, wam: W_MetaArg
     ) -> ast.Expr:
@@ -758,18 +755,6 @@ class DopplerFrame(ASTFrame):
         return assignexpr.replace(
             target=new_target,
             target_fqn=w_cell.fqn,
-            value=new_value,
-            w_T=wam.w_static_T,
-        )
-
-    def shift_expr_AssignExpr(
-        self, assignexpr: ast.AssignExpr, wam: W_MetaArg
-    ) -> ast.Expr:
-        specialized = self.specialized_assignexprs[assignexpr]
-        new_target = assignexpr.target.as_typed_node()
-        new_value = self.shifted_expr[assignexpr.value]
-        return specialized.replace(
-            target=new_target,
             value=new_value,
             w_T=wam.w_static_T,
         )
