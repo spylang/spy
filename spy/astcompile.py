@@ -178,57 +178,23 @@ class ASTCompiler:
         new_value = self.compile_expr(stmt.value) if stmt.value is not None else None
         return [stmt.replace(type=new_type, value=new_value)]
 
-    def _compile_assign_common(
-        self, loc: ast.Loc, target: ast.StrLiteral, value: ast.Expr, expr: bool
-    ) -> (
-        ast.AssignLocal
-        | ast.AssignExprLocal
-        | ast.AssignConstError
-        | ast.AssignExprConstError
-    ):
-        value = self.compile_expr(value)
-        sym = self.symtable.lookup(target.value)
-
-        if sym.varkind == "const" and sym.varkind_origin != "auto":
-            # this is an error, let's insert the appropriate poison node
-            e = ast.AssignExprConstError(loc, sym, target.loc)
-            if expr:
-                return e
-            else:
-                return ast.AssignConstError(loc, e)
-
-        if sym.storage == "direct":
-            assert sym.is_local
-            e = ast.AssignExprLocal(loc, target, value)
-            if expr:
-                return e
-            else:
-                return ast.AssignLocal(loc, e)
-
-        elif sym.storage == "cell":
-            assert not sym.is_local
-            e = ast.AssignExprCell(
-                loc=loc,
-                target=target,
-                target_fqn=None,
-                sym=sym,
-                value=value,
-            )
-            if expr:
-                return e
-            else:
-                return ast.AssignCell(loc, e)
-
-        else:
-            assert False, f"unexpected storage: {sym.storage!r}"
-
     def compile_stmt_Assign(self, stmt: ast.Assign) -> list[ast.Stmt]:
         if isinstance(stmt.target, ast.SingleTarget):
-            return [
-                self._compile_assign_common(
-                    stmt.loc, stmt.target.name, stmt.value, expr=False
-                )
-            ]
+            # this is a simple `x = E`:
+            #   - synthesize the equivalent `x := E` AssignExpr
+            #   - compile the AssignExpr
+            #   - wrap the result into the appropriate Stmt
+            expr = ast.AssignExpr(stmt.loc, stmt.target.name, stmt.value)
+            expr = self.compile_expr(expr)
+            if isinstance(expr, ast.AssignExprLocal):
+                assign = ast.AssignLocal(stmt.loc, expr)
+            elif isinstance(expr, ast.AssignExprCell):
+                assign = ast.AssignCell(stmt.loc, expr)
+            elif isinstance(expr, ast.AssignExprConstError):
+                assign = ast.AssignConstError(stmt.loc, expr)
+            else:
+                assert False, "unknown AssignExpr node"
+            return [assign]
 
         elif isinstance(stmt.target, ast.UnpackTarget):
             # TODO: support nested unpack targets (e.g. (a, (b, c)) = ...)
@@ -464,7 +430,30 @@ class ASTCompiler:
         )
 
     def compile_expr_AssignExpr(self, expr: ast.AssignExpr) -> ast.Expr:
-        return self._compile_assign_common(expr.loc, expr.target, expr.value, expr=True)
+        target = expr.target
+        sym = self.symtable.lookup(target.value)
+        value = self.compile_expr(expr.value)
+
+        if sym.varkind == "const" and sym.varkind_origin != "auto":
+            # this is an error, let's insert the appropriate poison node
+            return ast.AssignExprConstError(expr.loc, sym, target.loc)
+
+        if sym.storage == "direct":
+            assert sym.is_local
+            return ast.AssignExprLocal(expr.loc, target, value)
+
+        elif sym.storage == "cell":
+            assert not sym.is_local
+            return ast.AssignExprCell(
+                loc=expr.loc,
+                target=target,
+                target_fqn=None,
+                sym=sym,
+                value=value,
+            )
+
+        else:
+            assert False, f"unexpected storage: {sym.storage!r}"
 
     def compile_expr_Name(self, name: ast.Name) -> ast.Expr:
         varname = name.id
