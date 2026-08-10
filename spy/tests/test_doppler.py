@@ -377,7 +377,7 @@ class TestDoppler:
         # check the colors of the original function
         assert get_color(foo_orig, ast.Literal, "2") == "blue"
         assert get_color(foo_orig, ast.BinOp, "2 * 3") == "blue"
-        assert get_color(foo_orig, ast.Name, "i") == "red"
+        assert get_color(foo_orig, ast.NameLocalDirect, "i") == "red"
         assert get_color(foo_orig, ast.BinOp, "i + 2 * 3") == "red"
 
         # check the colors of the redshifted function
