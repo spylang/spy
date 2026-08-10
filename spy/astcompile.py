@@ -11,6 +11,7 @@ Moreover, do other easy desugaring like converting `for` loops into `while` loop
 import spy.ast as ast
 from spy.analyze.symtable import SymTable
 from spy.ast import LoweringStage
+from spy.errors import WIP
 from spy.util import magic_dispatch
 
 
@@ -67,15 +68,27 @@ class ASTCompiler:
         new_funcdef = self.compile_funcdef(decl.funcdef)
         return decl.replace(funcdef=new_funcdef)
 
-    ## def compile_decl_GlobalGenericFuncDef(
-    ##     self, decl: ast.GlobalGenericFuncDef
-    ## ) -> ast.Decl:
-    ##     return decl
+    def compile_decl_GlobalGenericFuncDef(
+        self, decl: ast.GlobalGenericFuncDef
+    ) -> ast.Decl:
+        gfuncdef = decl.funcdef
+        self.push_symtable(gfuncdef.symtable)
+        new_inner = self.compile_funcdef(gfuncdef.inner)
+        self.pop_symtable()
+        new_gfuncdef = gfuncdef.replace(inner=new_inner)
+        return decl.replace(funcdef=new_gfuncdef)
 
     def compile_decl_GlobalGenericClassDef(
         self, decl: ast.GlobalGenericClassDef
     ) -> ast.Decl:
-        return decl
+        gclassdef = decl.classdef
+        self.push_symtable(gclassdef.symtable)
+        new_inner = gclassdef.inner
+        new_body = self.compile_stmts(new_inner.body)
+        new_inner = new_inner.replace(body=new_body)
+        self.pop_symtable()
+        new_gclassdef = gclassdef.replace(inner=new_inner)
+        return decl.replace(classdef=new_gclassdef)
 
     def compile_decl_GlobalVarDef(self, decl: ast.GlobalVarDef) -> ast.Decl:
         new_vardef = self.compile_stmt_VarDef(decl.vardef)
@@ -190,12 +203,31 @@ class ASTCompiler:
             assert False, f"unexpected storage: {sym.storage!r}"
 
     def compile_stmt_Assign(self, stmt: ast.Assign) -> list[ast.Stmt]:
-        assert isinstance(stmt.target, ast.SingleTarget)
-        return [
-            self._compile_assign_common(
-                stmt.loc, stmt.target.name, stmt.value, expr=False
-            )
-        ]
+        if isinstance(stmt.target, ast.SingleTarget):
+            return [
+                self._compile_assign_common(
+                    stmt.loc, stmt.target.name, stmt.value, expr=False
+                )
+            ]
+
+        elif isinstance(stmt.target, ast.UnpackTarget):
+            # TODO: support nested unpack targets (e.g. (a, (b, c)) = ...)
+            targets = []
+            for t in stmt.target.targets:
+                if isinstance(t, ast.SingleTarget):
+                    targets.append(t.name)
+                else:
+                    raise WIP("nested unpack targets are not supported yet")
+            return [
+                ast.AssignUnpack(
+                    loc=stmt.loc,
+                    targets=targets,
+                    value=self.compile_expr(stmt.value),
+                )
+            ]
+
+        else:
+            assert False
 
     def compile_stmt_ClassDef(self, stmt: ast.ClassDef) -> list[ast.Stmt]:
         self.push_symtable(stmt.symtable)
@@ -333,6 +365,9 @@ class ASTCompiler:
     def compile_expr_StrLiteral(self, lit: ast.StrLiteral) -> ast.Expr:
         return lit
 
+    def compile_expr_BytesLiteral(self, lit: ast.BytesLiteral) -> ast.Expr:
+        return lit
+
     def compile_expr_BinOp(self, expr: ast.BinOp) -> ast.Expr:
         return expr.replace(
             left=self.compile_expr(expr.left),
@@ -383,6 +418,21 @@ class ASTCompiler:
             func=self.compile_expr(expr.func),
             args=[self.compile_expr(arg) for arg in expr.args],
         )
+
+    def compile_expr_List(self, expr: ast.List) -> ast.Expr:
+        return expr.replace(items=[self.compile_expr(item) for item in expr.items])
+
+    def compile_expr_Tuple(self, expr: ast.Tuple) -> ast.Expr:
+        return expr.replace(items=[self.compile_expr(item) for item in expr.items])
+
+    def compile_expr_Dict(self, expr: ast.Dict) -> ast.Expr:
+        new_items = [
+            item.replace(
+                key=self.compile_expr(item.key), value=self.compile_expr(item.value)
+            )
+            for item in expr.items
+        ]
+        return expr.replace(items=new_items)
 
     def compile_expr_AssignExpr(self, expr: ast.AssignExpr) -> ast.Expr:
         return self._compile_assign_common(expr.loc, expr.target, expr.value, expr=True)

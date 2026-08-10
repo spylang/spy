@@ -384,6 +384,7 @@ class AbstractFrame:
 
         outer_funcdef = ast.FuncDef(
             loc=loc,
+            stage="astcompiled",
             color="blue",
             kind="generic",
             name=gfuncdef.name,
@@ -536,6 +537,53 @@ class AbstractFrame:
     def exec_stmt_Assign(self, assign: ast.Assign) -> None:
         # KILL ME
         assert False, "this should not happen"
+
+    def exec_stmt_AssignUnpack(self, assign: ast.AssignUnpack) -> None:
+        wam_tup = self.eval_expr(assign.value)
+        w_T = wam_tup.w_static_T
+
+        is_interp_tuple = w_T is SPY.w_interp_tuple
+        is_stdlib_tuple = self.vm.is_tuple_type(w_T)
+        if not (is_interp_tuple or is_stdlib_tuple):
+            t = wam_tup.w_static_T.fqn.human_name(self.vm)
+            err = SPyError(
+                "W_TypeError",
+                f"`{t}` does not support unpacking",
+            )
+            err.add("error", f"this is `{t}`", assign.value.loc)
+            raise err
+
+        if is_interp_tuple:
+            w_tup = wam_tup.w_val
+            assert isinstance(w_tup, W_InterpTuple)
+            got = len(w_tup.items_w)
+        else:
+            assert isinstance(w_T, W_StructType)
+            got = len(list(w_T.iterfields_w()))
+
+        exp = len(assign.targets)
+        if exp != got:
+            targets_loc = Loc.combine(
+                start=assign.targets[0].loc,
+                end=assign.targets[-1].loc,
+            )
+            err = SPyError(
+                "W_TypeError",
+                f"Wrong number of values to unpack",
+            )
+            exp_values = maybe_plural(exp, "value")
+            got_values = maybe_plural(got, "value")
+            err.add("error", f"expected {exp} {exp_values}", targets_loc)
+            err.add("error", f"got {got} {got_values}", assign.value.loc)
+            raise err
+
+        for i, target in enumerate(assign.targets):
+            expr = ast.GetItem(
+                loc=assign.value.loc,
+                value=assign.value,
+                args=[ast.Literal(loc=assign.value.loc, value=i)],
+            )
+            self._execute_AssignLocal(target, expr)
 
     def exec_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
         self._execute_AssignLocal(assign.target, assign.value)

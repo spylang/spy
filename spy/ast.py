@@ -983,6 +983,12 @@ class AssignConstExprError(Expr):
 
 
 @astnode(">= astcompiled")
+class AssignUnpack(Stmt):
+    targets: Sequence[StrLiteral]
+    value: Expr
+
+
+@astnode(">= astcompiled")
 class AssignLocal(Stmt):
     target: StrLiteral
     value: Expr

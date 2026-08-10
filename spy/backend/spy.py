@@ -301,6 +301,11 @@ class SPyBackend:
         else:
             self.wl(f"{varname} = {v}")
 
+    def emit_stmt_AssignUnpack(self, assign: ast.AssignUnpack) -> None:
+        targets = ", ".join(t.value for t in assign.targets)
+        v = self.fmt_expr(assign.value)
+        self.wl(f"{targets} = {v}")
+
     def emit_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
         varname = (
             self.fmt_fqn(assign.target_fqn)
