@@ -1400,7 +1400,6 @@ class TestBasic(CompilerTest):
         )
         self.compile_raises(src, "foo", errors, error_reporting="eager")
 
-    @pytest.mark.skip("XXX FIXME!")
     def test_for_loop(self):
         src = """
         def factorial(n: i32) -> i32:
@@ -1440,7 +1439,6 @@ class TestBasic(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == 5  # counts odd numbers from 1 to 9
 
-    @pytest.mark.skip("XXX FIXME!")
     def test_break_in_for(self):
         src = """
         def foo() -> i32:
@@ -1454,7 +1452,6 @@ class TestBasic(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == 0 + 1 + 2 + 3 + 4
 
-    @pytest.mark.skip("XXX FIXME!")
     def test_continue_in_for(self):
         src = """
         def foo() -> i32:
@@ -1468,7 +1465,6 @@ class TestBasic(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == 1 + 3 + 5 + 7 + 9
 
-    @pytest.mark.skip("XXX FIXME!")
     def test_nested_loops_with_break(self):
         src = """
         def foo() -> i32:
