@@ -43,7 +43,7 @@ class TestASTCompile:
     def compile_interactive(self, src: str) -> ast.Expr:
         """
         Parse a single expression and astcompile it in interactive mode against the
-        symtable of `test::foo`. This is meant to be similar to what SPdb does whene
+        symtable of `test::foo`. This is meant to be similar to what SPdb does when
         evaluating interactive exprs.
         """
         fqn = FQN("test::foo")
