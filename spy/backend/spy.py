@@ -220,6 +220,20 @@ class SPyBackend:
     def emit_decl_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> None:
         self.emit_stmt(decl.funcdef)
 
+    def emit_decl_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
+        vardef = decl.vardef
+        name = vardef.name.value
+        has_type = not isinstance(vardef.type, ast.Auto)
+        t = self.fmt_expr(vardef.type) if has_type else ""
+        if vardef.value is not None:
+            v = self.fmt_expr(vardef.value)
+            if has_type:
+                self.wl(f"var {name}: {t} = {v}")
+            else:
+                self.wl(f"var {name} = {v}")
+        else:
+            self.wl(f"var {name}: {t}")
+
     # statements
 
     def get_vartype_to_declare_maybe(self, varname: str) -> Optional[str]:

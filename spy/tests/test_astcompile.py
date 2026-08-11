@@ -3,6 +3,7 @@ from typing import Optional
 
 import pytest
 
+from spy.analyze.importing import ImportAnalyzer
 from spy.backend.spy import AST_FORMAT, FQN_FORMAT, SPyBackend
 from spy.fqn import FQN
 from spy.util import print_diff
@@ -27,6 +28,14 @@ class TestASTCompile:
         f.write(src)
         self.vm.import_("test")
 
+    def write_src(self, src: str) -> None:
+        """
+        Write source code to test.spy without importing.
+        """
+        f = self.tmpdir.join("test.spy")
+        src = textwrap.dedent(src)
+        f.write(src)
+
     def assert_dump(
         self,
         expected: str,
@@ -49,6 +58,29 @@ class TestASTCompile:
         if got != expected:
             print_diff(expected, got, "expected", "got")
             pytest.fail("assert_dump failed")
+
+    def assert_dump_decls(
+        self,
+        expected: str,
+        *,
+        ast_format: AST_FORMAT = "short",
+    ) -> None:
+        """
+        Dump all declarations using emit_decl, like the CLI does.
+        """
+        importer = ImportAnalyzer(self.vm, "test", use_spyc=False)
+        importer.astcompile_all()
+        mod = importer.getmod("test")
+        b = SPyBackend(self.vm, ast_format=ast_format)
+        b.modname = "test"
+        for decl in mod.decls:
+            b.emit_decl(decl)
+            b.out.wl()
+        got = b.out.build().strip()
+        expected = textwrap.dedent(expected).strip()
+        if got != expected:
+            print_diff(expected, got, "expected", "got")
+            pytest.fail("assert_dump_decls failed")
 
     def test_name_lowered_to_nameerror(self):
         self.compile_src("""
@@ -131,3 +163,17 @@ class TestASTCompile:
             return LocalDirect(inner)
         """
         self.assert_dump(expected, ast_format="full", funcname="outer")
+
+    def test_global_vardef(self):
+        self.write_src("""
+        var x: i32 = 42
+        def foo() -> i32:
+            return x
+        """)
+        expected = """
+        var x: i32 = 42
+
+        def foo() -> i32:
+            return x
+        """
+        self.assert_dump_decls(expected)
