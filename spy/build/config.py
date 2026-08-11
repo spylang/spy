@@ -4,9 +4,11 @@ import sys
 from dataclasses import dataclass
 from typing import Literal, Optional
 
+import py.path
+
 import spy.libspy
 from spy.build.build_info import BuildTarget, BuildType, OutputKind
-from spy.build.flags import get_cc, get_cflags, get_ldflags, get_libdir, get_libname
+from spy.build.flags import get_cc, get_cflags, get_ldflags, get_libdir
 from spy.errors import WIP
 
 GCOption = Literal["none", "bdwgc"]
@@ -66,21 +68,16 @@ class CompilerConfig:
         self.ldflags += LDFLAGS
         self.ldflags += get_ldflags(flags_target, config.build_type)
 
-        libdir = get_libdir(flags_target, config.build_type)
-        libname = get_libname(config.kind)
+        libdir = get_libdir(flags_target, config.build_type, config.kind)
         if config.target == "wasi" and config.kind == "testlib":
             # WASM testlibs are used by tests: in this case we want to make sure to
-            # include the whole libspytest.a, so that helper functions such as
-            # spy_str_alloc are always available.
+            # include the whole libspy.a, so that helper functions such as spy_str_alloc
+            # are always available.
             #
             # If you don't pass --whole-archive, the linker will silently discard all
             # the .o files which are not used (so e.g. if you never call any str_*
             # function, str.o is discarded and spy_str_alloc is not present at all).
-            libspy_a = str(
-                spy.libspy.BUILD.join(
-                    flags_target, config.build_type, f"lib{libname}.a"
-                )
-            )
+            libspy_a = str(py.path.local(libdir).join("libspy.a"))
             self.ldflags += [
                 "-Wl,--whole-archive",
                 libspy_a,
@@ -89,7 +86,7 @@ class CompilerConfig:
         else:
             self.ldflags += [
                 "-L", libdir,
-                f"-l{libname}",
+                "-lspy",
             ]  # fmt: skip
 
         # target specific flags

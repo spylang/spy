@@ -148,26 +148,32 @@ def get_cflags(
     )
 
 
-def get_libname(output_kind: OutputKind) -> str:
-    """
-    Name of the libspy flavor to link against, libspy or libspytest
-    """
-    _check_output_kind(output_kind)
-    if output_kind == "testlib":
-        return "spytest"
-    return "spy"
-
-
 def get_ldflags(target: str, build_type: BuildType) -> list[str]:
     _check_target(target)
     _check_build_type(build_type)
     return _TARGET_LDFLAGS[target] + _BUILD_TYPE_LDFLAGS[build_type]
 
 
-def get_libdir(target: str, build_type: BuildType) -> str:
-    _check_target(target)
+def get_build_dirname(build_type: BuildType, output_kind: OutputKind = "exe") -> str:
+    """
+    Name of the libspy build dir for the given flavor, e.g. 'debug' or
+    'debug-testlib'.
+
+    testlibs need their own libspy.a, which expects the host to provide the
+    debug helpers instead of implementing them in debug.c.
+    """
     _check_build_type(build_type)
-    return str(_BUILD.join(target, build_type))
+    _check_output_kind(output_kind)
+    if output_kind == "testlib":
+        return f"{build_type}-testlib"
+    return build_type
+
+
+def get_libdir(
+    target: str, build_type: BuildType, output_kind: OutputKind = "exe"
+) -> str:
+    _check_target(target)
+    return str(_BUILD.join(target, get_build_dirname(build_type, output_kind)))
 
 
 def get_cc(target: str) -> str:
@@ -256,7 +262,7 @@ def main(argv: Optional[list[str]] = None) -> None:
         if not args.target:
             print("error: --libdir requires --target", file=sys.stderr)
             sys.exit(1)
-        parts.append(f"-L{get_libdir(args.target, args.build_type)}")
+        parts.append(f"-L{get_libdir(args.target, args.build_type, args.output_kind)}")
 
     if args.cc:
         if not args.target:

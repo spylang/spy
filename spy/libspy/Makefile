@@ -14,16 +14,27 @@ SRCS = src/str.c src/bytes.c src/builtins.c src/debug.c src/unsafe.c src/operato
 
 # Add BUILD_TYPE with a default value
 BUILD_TYPE ?= release
+OUTPUT_KIND ?= exe
 
-# Modify BUILD_DIR to include build type
-BUILD_DIR := build/$(TARGET)/$(BUILD_TYPE)
+ifeq ($(filter $(BUILD_TYPE),debug release),)
+  $(error Invalid BUILD_TYPE: '$(BUILD_TYPE)'. Valid: debug, release)
+endif
+
+ifeq ($(filter $(OUTPUT_KIND),exe testlib),)
+  $(error Invalid OUTPUT_KIND: '$(OUTPUT_KIND)'. Valid: exe, testlib)
+endif
+
+ifeq ($(OUTPUT_KIND), testlib)
+  BUILD_DIR := build/$(TARGET)/$(BUILD_TYPE)-testlib
+else
+  BUILD_DIR := build/$(TARGET)/$(BUILD_TYPE)
+endif
 
 # don't bother invoking spy.build.flags if we don't have a TARGET
 ifneq ($(TARGET),)
 	CC             := $(shell python -m spy.build.flags --cc     --target=$(TARGET))
 	AR             := $(shell python -m spy.build.flags --ar     --target=$(TARGET))
-	CFLAGS         := $(shell python -m spy.build.flags --cflags --target=$(TARGET) --build-type=$(BUILD_TYPE) --output-kind=exe)
-	CFLAGS_TESTLIB := $(shell python -m spy.build.flags --cflags --target=$(TARGET) --build-type=$(BUILD_TYPE) --output-kind=testlib)
+	CFLAGS         := $(shell python -m spy.build.flags --cflags --target=$(TARGET) --build-type=$(BUILD_TYPE) --output-kind=$(OUTPUT_KIND))
 endif
 
 # ------- no target specified -------
@@ -36,7 +47,11 @@ else ifeq ($(TARGET), wasi)
 		--no-entry \
 		--import-memory
 
-	.DEFAULT_GOAL := wasi_all
+	ifeq ($(OUTPUT_KIND), testlib)
+		.DEFAULT_GOAL := wasi_all_testlib
+	else
+		.DEFAULT_GOAL := wasi_all
+	endif
 
 # -------- emscripten target --------
 else ifeq ($(TARGET), emscripten)
@@ -74,48 +89,45 @@ else
 	.DEFAULT_GOAL := usage
 endif
 
-OBJS         := $(patsubst %.c,$(BUILD_DIR)/exe/%.o,$(SRCS))
-TESTLIB_OBJS := $(patsubst %.c,$(BUILD_DIR)/testlib/%.o,$(SRCS))
+OBJS         := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SRCS))
 
 # Build all targets in release/debug mode
 all:
-	make TARGET=wasi BUILD_TYPE=release
-	make TARGET=wasi BUILD_TYPE=debug
-	make TARGET=native BUILD_TYPE=release
-	make TARGET=native BUILD_TYPE=debug
-	make TARGET=native-static BUILD_TYPE=release
-	make TARGET=native-static BUILD_TYPE=debug
-	make TARGET=emscripten BUILD_TYPE=release
-	make TARGET=emscripten BUILD_TYPE=debug
+	make TARGET=native        BUILD_TYPE=release OUTPUT_KIND=exe
+	make TARGET=native        BUILD_TYPE=debug   OUTPUT_KIND=exe
+	make TARGET=native-static BUILD_TYPE=release OUTPUT_KIND=exe
+	make TARGET=native-static BUILD_TYPE=debug   OUTPUT_KIND=exe
+
+	make TARGET=wasi          BUILD_TYPE=release OUTPUT_KIND=exe
+	make TARGET=wasi          BUILD_TYPE=debug   OUTPUT_KIND=exe
+	make TARGET=wasi          BUILD_TYPE=debug   OUTPUT_KIND=testlib
+
+	make TARGET=emscripten    BUILD_TYPE=release OUTPUT_KIND=exe
+	make TARGET=emscripten    BUILD_TYPE=debug   OUTPUT_KIND=exe
+	make TARGET=emscripten    BUILD_TYPE=debug   OUTPUT_KIND=testlib
 
 # wasi-specific rules
-wasi_all: build/wasi/$(BUILD_TYPE)/libspy.a build/wasi/$(BUILD_TYPE)/libspy.wasm
+wasi_all_testlib: $(BUILD_DIR)/libspy.wasm
+wasi_all: $(BUILD_DIR)/libspy.a
 
-# link libspytest.a because libspy.wasm is loaded by the SPy VM, which provides
-# the debug helpers as WASM imports
-build/wasi/$(BUILD_TYPE)/libspy.wasm: build/$(TARGET)/$(BUILD_TYPE)/libspytest.a
+# libspy.wasm is loaded by the SPy VM, which provides the debug helpers as WASM
+# imports: this is why we build it out of the testlib flavor
+$(BUILD_DIR)/libspy.wasm: $(BUILD_DIR)/libspy.a
 	$(CC) \
         --target=wasm32-wasi-musl \
         -mexec-model=reactor \
         -Wl,--whole-archive \
-        build/$(TARGET)/$(BUILD_TYPE)/libspytest.a \
+        $(BUILD_DIR)/libspy.a \
         -o $@
 
 # emscripten-specific rules
-emscripten_all: build/emscripten/$(BUILD_TYPE)/libspy.mjs build/emscripten/$(BUILD_TYPE)/libspytest.mjs
+emscripten_all: $(BUILD_DIR)/libspy.mjs
 
-build/emscripten/$(BUILD_TYPE)/libspy.mjs: build/$(TARGET)/$(BUILD_TYPE)/libspy.a
+$(BUILD_DIR)/libspy.mjs: $(BUILD_DIR)/libspy.a
 	$(CC) \
 		$(LDFLAGS) \
         -Wl,--whole-archive \
-		build/$(TARGET)/$(BUILD_TYPE)/libspy.a \
-		-o $@
-
-build/emscripten/$(BUILD_TYPE)/libspytest.mjs: build/$(TARGET)/$(BUILD_TYPE)/libspytest.a
-	$(CC) \
-		$(LDFLAGS) \
-        -Wl,--whole-archive \
-		build/$(TARGET)/$(BUILD_TYPE)/libspytest.a \
+		$(BUILD_DIR)/libspy.a \
 		-o $@
 
 
@@ -127,24 +139,18 @@ native_all: $(BUILD_DIR)/libspy.a
 
 native_static_all: $(BUILD_DIR)/libspy.a
 
-build/$(TARGET)/$(BUILD_TYPE)/libspy.a: $(OBJS)
+$(BUILD_DIR)/libspy.a: $(OBJS)
 	$(AR) rcs $@ $(OBJS)
 
-build/$(TARGET)/$(BUILD_TYPE)/libspytest.a: $(TESTLIB_OBJS)
-	$(AR) rcs $@ $(TESTLIB_OBJS)
-
-$(BUILD_DIR)/exe/%.o: %.c | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -MMD -MF $@.d -c $< -o $@
 
-$(BUILD_DIR)/testlib/%.o: %.c | $(BUILD_DIR)
-	mkdir -p $(dir $@)
-	$(CC) $(CFLAGS_TESTLIB) -MMD -MF $@.d -c $< -o $@
 
 # without this, editing a header does not trigger a recompilation, and we can
 # end up with .a files whose objects were compiled with different versions of
 # debug.h
--include $(OBJS:.o=.o.d) $(TESTLIB_OBJS:.o=.o.d)
+-include $(OBJS:.o=.o.d)
 
 skip_native_static:
 	@echo "Skipping native-static build - not supported on macOS"
