@@ -754,6 +754,7 @@ class AbstractFrame:
         #
         # We want to lookup a name which is NOT found in the symtable. We basically need
         # to do at runtime usually is done at ScopeAnalyzer time:
+        w_val: Optional[W_Object]
         for level in range(1, len(self.closure) + 1):
             outervars = self.closure[-level]
             lv = outervars.get(name.id)
