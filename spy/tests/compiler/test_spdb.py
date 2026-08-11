@@ -293,6 +293,29 @@ class TestSPdb(CompilerTest):
         mod = self.compile(src)
         mod.foo(42, session)
 
+    def test_InteractiveName(self):
+        src = """
+        from _test import spdb_interact
+
+        X = 10
+
+        def foo(x: int, session: str) -> None:
+            spdb_interact(session)
+        """
+        session = f"""
+        --- entering applevel debugger ---
+           [0] test::foo at {self.filename}:5
+            |     spdb_interact(session)
+            |     |____________________|
+        (spdb) X
+        static type:  <spy type 'i32'>
+        dynamic type: <spy type 'i32'>
+        10
+        (spdb) continue
+        """
+        mod = self.compile(src)
+        mod.foo(42, session)
+
     def test_ParseError(self):
         src = """
         from _test import spdb_interact
