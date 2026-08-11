@@ -16,7 +16,7 @@ from os import getenv
 from typing import Optional
 
 import spy
-from spy.build.build_info import BuildType
+from spy.build.build_info import BuildType, OutputKind
 
 _LIBSPY = spy.ROOT.join("libspy")
 _INCLUDE = _LIBSPY.join("include")
@@ -71,6 +71,12 @@ _TARGET_LDFLAGS: dict[str, list[str]] = {
     ],
 }
 
+_OUTPUT_KIND_CFLAGS: dict[str, list[str]] = {
+    "exe": ["-DSPY_OUTPUT_KIND_EXE"],
+    "testlib": ["-DSPY_OUTPUT_KIND_TESTLIB"],
+    "py-cffi": ["-DSPY_OUTPUT_KIND_PY_CFFI"],
+}
+
 _WARNING_CFLAGS: list[str] = ["-Werror=implicit-function-declaration"]
 _WARNING_AS_ERROR_CFLAGS: list[str] = ["-Werror", "-Wno-unreachable-code"]
 
@@ -111,11 +117,22 @@ def _check_build_type(build_type: str) -> None:
         )
 
 
+def _check_output_kind(output_kind: str) -> None:
+    if output_kind not in _OUTPUT_KIND_CFLAGS:
+        raise ValueError(
+            f"Unknown output_kind: {output_kind!r}. Valid: {list(_OUTPUT_KIND_CFLAGS)}"
+        )
+
+
 def get_cflags(
-    target: str, build_type: BuildType, warning_as_error: bool = False
+    target: str,
+    build_type: BuildType,
+    output_kind: OutputKind = "exe",
+    warning_as_error: bool = False,
 ) -> list[str]:
     _check_target(target)
     _check_build_type(build_type)
+    _check_output_kind(output_kind)
     if warning_as_error or getenv("SPY_WERROR") in ("true", "1"):
         warning_flags = _WARNING_AS_ERROR_CFLAGS
     else:
@@ -125,6 +142,7 @@ def get_cflags(
         _BASE_CFLAGS
         + _TARGET_CFLAGS[target]
         + _BUILD_TYPE_CFLAGS[build_type]
+        + _OUTPUT_KIND_CFLAGS[output_kind]
         + warning_flags
         + include
     )
@@ -136,10 +154,26 @@ def get_ldflags(target: str, build_type: BuildType) -> list[str]:
     return _TARGET_LDFLAGS[target] + _BUILD_TYPE_LDFLAGS[build_type]
 
 
-def get_libdir(target: str, build_type: BuildType) -> str:
-    _check_target(target)
+def get_build_dirname(build_type: BuildType, output_kind: OutputKind = "exe") -> str:
+    """
+    Name of the libspy build dir for the given flavor, e.g. 'debug' or
+    'debug-testlib'.
+
+    testlibs need their own libspy.a, which expects the host to provide the
+    debug helpers instead of implementing them in debug.c.
+    """
     _check_build_type(build_type)
-    return str(_BUILD.join(target, build_type))
+    _check_output_kind(output_kind)
+    if output_kind == "testlib":
+        return f"{build_type}-testlib"
+    return build_type
+
+
+def get_libdir(
+    target: str, build_type: BuildType, output_kind: OutputKind = "exe"
+) -> str:
+    _check_target(target)
+    return str(_BUILD.join(target, get_build_dirname(build_type, output_kind)))
 
 
 def get_cc(target: str) -> str:
@@ -166,6 +200,12 @@ def main(argv: Optional[list[str]] = None) -> None:
         choices=list(_BUILD_TYPE_CFLAGS),
         default="debug",
         help="Build type (default: debug)",
+    )
+    parser.add_argument(
+        "--output-kind",
+        choices=list(_OUTPUT_KIND_CFLAGS),
+        default="exe",
+        help="Output kind (default: exe)",
     )
     parser.add_argument(
         "--warning-as-error",
@@ -205,7 +245,12 @@ def main(argv: Optional[list[str]] = None) -> None:
         if not args.target:
             print("error: --cflags requires --target", file=sys.stderr)
             sys.exit(1)
-        parts += get_cflags(args.target, args.build_type, args.warning_as_error)
+        parts += get_cflags(
+            args.target,
+            args.build_type,
+            args.output_kind,
+            args.warning_as_error,
+        )
 
     if args.ldflags:
         if not args.target:
@@ -217,7 +262,7 @@ def main(argv: Optional[list[str]] = None) -> None:
         if not args.target:
             print("error: --libdir requires --target", file=sys.stderr)
             sys.exit(1)
-        parts.append(f"-L{get_libdir(args.target, args.build_type)}")
+        parts.append(f"-L{get_libdir(args.target, args.build_type, args.output_kind)}")
 
     if args.cc:
         if not args.target:

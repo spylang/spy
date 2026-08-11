@@ -4,6 +4,7 @@ from typing import Any, Optional
 import py.path
 
 import spy
+from spy.build.flags import get_libdir
 from spy.build.wasm_bundle import get_or_build_bundle
 from spy.errors import SPyError
 from spy.llwasm import HostModule, LLWasmInstance, LLWasmModule, WasmTrap
@@ -15,9 +16,14 @@ INCLUDE = spy.ROOT.join("libspy", "include")
 BUILD = spy.ROOT.join("libspy", "build")
 DEPS = spy.ROOT.join("libspy", "deps")
 
+# the VM provides the debug helpers as WASM imports, so it always wants the
+# testlib flavor of libspy (e.g. build/wasi/debug-testlib)
+WASI_TESTLIB = py.path.local(get_libdir("wasi", "debug", "testlib"))
+EMSCRIPTEN_TESTLIB = py.path.local(get_libdir("emscripten", "debug", "testlib"))
+
 
 if IS_NODE:
-    LIBSPY_WASM = BUILD.join("emscripten", "debug", "libspy.mjs")
+    LIBSPY_WASM = EMSCRIPTEN_TESTLIB.join("libspy.mjs")
     LLMOD = None
 elif IS_BROWSER or IS_DOCS_BUILD:
     LIBSPY_WASM = None  # type: ignore    # needs to be set by the embedder
@@ -25,7 +31,7 @@ elif IS_BROWSER or IS_DOCS_BUILD:
 else:
     assert not IS_PYODIDE
     # "normal" python, we can preload LLMOD
-    LIBSPY_WASM = BUILD.join("wasi", "debug", "libspy.wasm")
+    LIBSPY_WASM = WASI_TESTLIB.join("libspy.wasm")
     LLMOD = LLWasmModule(LIBSPY_WASM)  # type: ignore
 
 # XXX ^^^^
@@ -58,7 +64,7 @@ def get_LLMOD(
                 f"Did you forget to build the spyvm extension module?",
             )
 
-    libspy_a = BUILD.join("wasi", "debug", "libspy.a")
+    libspy_a = WASI_TESTLIB.join("libspy.a")
     all_archives = [libspy_a] + list(extra_archives)
     bundle_path = get_or_build_bundle(all_archives, force_rebuild=force_rebuild)
     return LLWasmModule(str(bundle_path))
