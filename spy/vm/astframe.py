@@ -747,6 +747,47 @@ class AbstractFrame:
             name.loc,
         )
 
+    def eval_expr_NameInteractive(self, name: ast.NameInteractive) -> W_MetaArg:
+        # NameInteractive is generated only during interactive sessions, like SPdb.  See
+        # e.g. test_astcompile::test_NameInteractive and
+        # test_spdb::test_NameInteractive.
+        #
+        # We want to lookup a name which is NOT found in the symtable. We basically need
+        # to do at runtime usually is done at ScopeAnalyzer time:
+        w_val: Optional[W_Object]
+        for level in range(1, len(self.closure) + 1):
+            outervars = self.closure[-level]
+            lv = outervars.get(name.id)
+            if lv is None:
+                continue
+            if isinstance(lv.w_val, W_Cell):
+                w_val = lv.w_val.get()
+            else:
+                w_val = lv.w_val
+            assert w_val is not None
+            return W_MetaArg(self.vm, lv.color, lv.w_T, w_val, name.loc)
+
+        # name not found. Let's try the builtins
+        sym = SymTable.from_builtins().lookup_maybe(name.id)
+        if sym is not None:
+            assert sym.impref is not None
+            w_val = self.vm.lookup_ImportRef(sym.impref)
+            if w_val is None:
+                # this is likely a builtin which triggers an implicit import. Do the
+                # import and redo the lookup
+                self.vm.import_(sym.impref.modname)
+                w_val = self.vm.lookup_ImportRef(sym.impref)
+                assert w_val is not None
+            w_T = self.vm.dynamic_type(w_val)
+            return W_MetaArg(self.vm, "blue", w_T, w_val, name.loc)
+
+        raise SPyError.simple(
+            "W_NameError",
+            f"name `{name.id}` is not defined",
+            "not found in this scope",
+            name.loc,
+        )
+
     def eval_expr_AssignExprConstError(
         self, node: ast.AssignExprConstError
     ) -> W_MetaArg:

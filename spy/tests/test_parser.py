@@ -11,6 +11,15 @@ from spy.util import print_diff
 from spy.vm.b import B
 
 
+def assert_node_dump(node: ast.Node, expected: str):
+    dumped = dump(node, use_colors=False, fields_to_ignore=("symtable",))
+    dumped = dumped.strip()
+    expected = textwrap.dedent(expected).strip()
+    if dumped != expected:
+        print_diff(expected, dumped, "expected", "got")
+        pytest.fail("assert_dump failed")
+
+
 @pytest.mark.usefixtures("init")
 class TestParser:
     @pytest.fixture
@@ -30,14 +39,9 @@ class TestParser:
             self.parse(src)
 
     def assert_dump(self, node: ast.Node, expected: str):
-        dumped = dump(node, use_colors=False, fields_to_ignore=("symtable",))
-        dumped = dumped.strip()
-        expected = textwrap.dedent(expected).strip()
         if "{tmpdir}" in expected:
             expected = expected.format(tmpdir=self.tmpdir)
-        if dumped != expected:
-            print_diff(expected, dumped, "expected", "got")
-            pytest.fail("assert_dump failed")
+        assert_node_dump(node, expected)
 
     def test_Module(self):
         src = """

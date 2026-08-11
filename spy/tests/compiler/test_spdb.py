@@ -253,16 +253,13 @@ class TestSPdb(CompilerTest):
             |     spdb_interact(session)
             |     |____________________|
         (spdb) print x
-        static type:  <spy type 'i32'>
-        dynamic type: <spy type 'i32'>
+        type: i32
         41
         (spdb) y
-        static type:  <spy type 'i32'>
-        dynamic type: <spy type 'i32'>
+        type: i32
         42
         (spdb) y * 2
-        static type:  <spy type 'i32'>
-        dynamic type: <spy type 'i32'>
+        type: i32
         84
         (spdb) continue
         """
@@ -283,11 +280,41 @@ class TestSPdb(CompilerTest):
             |     spdb_interact(session)
             |     |____________________|
         (spdb) x
-        static type:  <spy type 'i32'>
-        dynamic type: <spy type 'i32'>
+        type: i32
         42
         (spdb) y
         *** NameError: name `y` is not defined
+        (spdb) continue
+        """
+        mod = self.compile(src)
+        mod.foo(42, session)
+
+    def test_NameInteractive(self):
+        src = """
+        from _test import spdb_interact
+
+        X = 10
+        var Y = 20
+
+        def foo(x: int, session: str) -> None:
+            spdb_interact(session)
+        """
+        session = f"""
+        --- entering applevel debugger ---
+           [0] test::foo at {self.filename}:8
+            |     spdb_interact(session)
+            |     |____________________|
+        (spdb) X    # outer direct
+        type: i32
+        10
+        (spdb) Y    # outer cell
+        type: i32
+        20
+        (spdb) Z    # not found
+        *** NameError: name `Z` is not defined
+        (spdb) str  # builtin
+        type: type
+        <spy type 'str'>
         (spdb) continue
         """
         mod = self.compile(src)
@@ -330,8 +357,7 @@ class TestSPdb(CompilerTest):
            3         x = 1
            4  ->     raise ValueError("hello")
         (spdb) x
-        static type:  <spy type 'i32'>
-        dynamic type: <spy type 'i32'>
+        type: i32
         1
         (spdb) continue
         """
