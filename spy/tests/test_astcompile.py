@@ -55,10 +55,11 @@ class TestASTCompile:
         def foo() -> i32:
             return undefined_name
         """)
-        self.assert_dump("""
+        expected = """
         def foo() -> i32:
             return NameError(undefined_name)
-        """)
+        """
+        self.assert_dump(expected)
 
     def test_for(self):
         self.compile_src("""
@@ -66,14 +67,15 @@ class TestASTCompile:
             for i in lst:
                 print(i)
         """)
-        self.assert_dump("""
+        expected = """
         def foo(lst: dynamic) -> None:
             _$iter0 = lst.__fastiter__()
             while _$iter0.__continue_iteration__():
                 i = _$iter0.__item__()
                 _$iter0 = _$iter0.__next__()
                 print(i)
-        """)
+        """
+        self.assert_dump(expected)
 
     def test_local_direct(self):
         self.compile_src("""
@@ -81,21 +83,23 @@ class TestASTCompile:
             y = x
             return y
         """)
-        self.assert_dump("""
+        expected = """
         def foo(x: i32) -> i32:
             AssignLocal(y := LocalDirect(x))
             return LocalDirect(y)
-        """, ast_format="full")
+        """
+        self.assert_dump(expected, ast_format="full")
 
     def test_import_ref(self):
         self.compile_src("""
         def foo() -> None:
             print('hello')
         """)
-        self.assert_dump("""
+        expected = """
         def foo() -> None:
             ImportRef(print)('hello')
-        """, ast_format="full")
+        """
+        self.assert_dump(expected, ast_format="full")
 
     def test_outer_cell(self):
         self.compile_src("""
@@ -104,11 +108,12 @@ class TestASTCompile:
             x = 1
             return x
         """)
-        self.assert_dump("""
+        expected = """
         def foo() -> i32:
             AssignCell(x := 1)
             return OuterCell(x)
-        """, ast_format="full", funcname="foo")
+        """
+        self.assert_dump(expected, ast_format="full", funcname="foo")
 
     def test_outer_direct(self):
         self.compile_src("""
@@ -118,10 +123,11 @@ class TestASTCompile:
                 return x
             return inner
         """)
-        self.assert_dump("""
+        expected = """
         def outer() -> dynamic:
             AssignLocal(x := 1)
             def inner() -> ImportRef(i32):
                 return OuterDirect(x)
             return LocalDirect(inner)
-        """, ast_format="full", funcname="outer")
+        """
+        self.assert_dump(expected, ast_format="full", funcname="outer")
