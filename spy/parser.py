@@ -78,11 +78,13 @@ class Parser:
     src: str
     filename: str
     for_loop_seq: int  # counter for for loops within the current function
+    augassign_seq: int  # counter for complex augassigns within the current function
 
     def __init__(self, src: str, filename: str) -> None:
         self.src = src
         self.filename = filename
         self.for_loop_seq = 0
+        self.augassign_seq = 0
 
     @classmethod
     def from_filename(cls, filename: str) -> "Parser":
@@ -314,9 +316,11 @@ class Parser:
         # by doing this "saved_seq" dance, we ensure that nested functions "continue"
         # the numbering from the their parent, but sibling functions reset the
         # numbering. See test_scope::test_for_loop_nested_funcs
-        saved_seq = self.for_loop_seq
+        saved_for_loop_seq = self.for_loop_seq
+        saved_augassign_seq = self.augassign_seq
         body = self.from_py_body(py_body)
-        self.for_loop_seq = saved_seq
+        self.for_loop_seq = saved_for_loop_seq
+        self.augassign_seq = saved_augassign_seq
 
         return spy.ast.FuncDef(
             loc=py_funcdef.loc,
@@ -640,15 +644,20 @@ class Parser:
             )
         elif isinstance(py_target, py_ast.Attribute):
             # Attribute access: a.b += 1
+            seq = self.augassign_seq
+            self.augassign_seq += 1
             return spy.ast.AugSetAttr(
                 loc=py_node.loc,
+                seq=seq,
                 op=op,
                 target=self.from_py_expr(py_target.value),
-                attr=spy.ast.StrConst(py_target.loc, py_target.attr),
+                attr=spy.ast.StrLiteral(py_target.loc, py_target.attr),
                 value=self.from_py_expr(py_node.value),
             )
         elif isinstance(py_target, py_ast.Subscript):
             # Subscript access: arr[i] += 1
+            seq = self.augassign_seq
+            self.augassign_seq += 1
             target = self.from_py_expr(py_target.value)
             index = self.from_py_expr(py_target.slice)
 
@@ -659,6 +668,7 @@ class Parser:
 
             return spy.ast.AugSetItem(
                 loc=py_node.loc,
+                seq=seq,
                 op=op,
                 target=target,
                 args=args,

@@ -949,16 +949,13 @@ class SetAttr(Stmt):
     value: Expr
 
 
-@astnode
+@astnode("parsed")
 class AugSetAttr(Stmt):
+    seq: int  # unique id within a funcdef
     target: Expr
-    attr: StrConst
+    attr: StrLiteral
     op: str
     value: Expr
-
-    def target_name(self) -> str:
-        suffix = f"{self.loc.line_start}_{self.loc.col_start}_{self.loc.line_end}_{self.loc.col_end}"
-        return f"_$augattr_obj_{suffix}"
 
 
 @astnode
@@ -968,20 +965,13 @@ class SetItem(Stmt):
     value: Expr
 
 
-@astnode
+@astnode("parsed")
 class AugSetItem(Stmt):
+    seq: int  # unique id within a funcdef
     target: Expr
     args: list[Expr]
     op: str
     value: Expr
-
-    def target_name(self) -> str:
-        suffix = f"{self.loc.line_start}_{self.loc.col_start}_{self.loc.line_end}_{self.loc.col_end}"
-        return f"_$augitem_obj_{suffix}"
-
-    def arg_name(self, index: int) -> str:
-        suffix = f"{self.loc.line_start}_{self.loc.col_start}_{self.loc.line_end}_{self.loc.col_end}"
-        return f"_$augitem_arg{index}_{suffix}"
 
 
 @astnode

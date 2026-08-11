@@ -880,10 +880,11 @@ class TestParser:
         stmt = mod.get_funcdef("foo").body[1]
         expected = f"""
         AugSetAttr(
+            seq=0,
             target=Name(id='a'),
-            attr=StrConst(value='b'),
+            attr=StrLiteral(value='b'),
             op='{op}',
-            value=Constant(value=42),
+            value=Literal(value=42),
         )
         """
         self.assert_dump(stmt, expected)
@@ -898,12 +899,13 @@ class TestParser:
         stmt = mod.get_funcdef("foo").body[1]
         expected = f"""
         AugSetItem(
+            seq=0,
             target=Name(id='arr'),
             args=[
-                Constant(value=1),
+                Literal(value=1),
             ],
             op='{op}',
-            value=Constant(value=42),
+            value=Literal(value=42),
         )
         """
         self.assert_dump(stmt, expected)
@@ -920,16 +922,33 @@ class TestParser:
         stmt = mod.get_funcdef("foo").body[3]
         expected = f"""
         AugSetItem(
+            seq=0,
             target=Name(id='matrix'),
             args=[
                 Name(id='i'),
                 Name(id='j'),
             ],
             op='{op}',
-            value=Constant(value=1),
+            value=Literal(value=1),
         )
         """
         self.assert_dump(stmt, expected)
+
+    def test_complex_AugAssign_unique_seq(self):
+        mod = self.parse("""
+        def foo() -> None:
+            obj().x += 1
+            items()[index()] += 2
+            obj().y += 3
+        """)
+        body = mod.get_funcdef("foo").body
+        assert all(isinstance(stmt, (ast.AugSetAttr, ast.AugSetItem)) for stmt in body)
+        seqs = [
+            stmt.seq
+            for stmt in body
+            if isinstance(stmt, ast.AugSetAttr | ast.AugSetItem)
+        ]
+        assert seqs == [0, 1, 2]
 
     @pytest.mark.parametrize("op", "+ - ~ not".split())
     def test_UnaryOp(self, op):

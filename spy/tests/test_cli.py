@@ -145,6 +145,18 @@ class TestMain:
         assert "while " in stdout
         assert stdout.startswith("def main() -> None:")
 
+    def test_astcompile_spy_output_augsetitem(self):
+        src = """
+        def main() -> None:
+            items = make_items()
+            items[index()] += value()
+        """
+        f = self.write("test.spy", src)
+        _, stdout = self.run("astcompile", "--format", "spy", f)
+        assert "+=" not in stdout
+        assert "_$aug_target0" in stdout
+        assert "_$aug_arg0_0" in stdout
+
     def test_execute(self):
         argsets = [["execute"], []]  # No subcommand is equivalent to execute command
         for argset in argsets:

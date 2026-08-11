@@ -390,25 +390,20 @@ class ScopeAnalyzer:
         self.define_name(name, "var", "auto", value.loc, value.loc)
 
     def declare_AugSetAttr(self, augsetattr: ast.AugSetAttr) -> None:
-        target_name = augsetattr.target_name()
+        target_name = f"_$aug_target{augsetattr.seq}"
         self._declare_hidden_local(target_name, augsetattr.target)
         self.declare(augsetattr.target)
         self.declare(augsetattr.value)
 
     def declare_AugSetItem(self, augsetitem: ast.AugSetItem) -> None:
-        target_name = augsetitem.target_name()
+        target_name = f"_$aug_target{augsetitem.seq}"
         self._declare_hidden_local(target_name, augsetitem.target)
         self.declare(augsetitem.target)
         for i, arg in enumerate(augsetitem.args):
-            arg_name = augsetitem.arg_name(i)
+            arg_name = f"_$aug_arg{augsetitem.seq}_{i}"
             self._declare_hidden_local(arg_name, arg)
             self.declare(arg)
         self.declare(augsetitem.value)
-
-    def declare_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
-        for target in unpack.targets:
-            self._declare_target_maybe(target, unpack.value)
-        self.declare(unpack.value)
 
     def declare_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
         self._declare_target_maybe(assignexpr.target, assignexpr.value)
