@@ -760,19 +760,17 @@ class AbstractFrame:
             if lv is None:
                 continue
             if isinstance(lv.w_val, W_Cell):
-                assert False, "implement me"
-                # w_val = lv.w_val.get()
+                w_val = lv.w_val.get()
             else:
                 w_val = lv.w_val
             assert w_val is not None
             return W_MetaArg(self.vm, lv.color, lv.w_T, w_val, name.loc)
-        assert False, "implement me"
-        ## raise SPyError.simple(
-        ##     "W_NameError",
-        ##     f"name `{name.id}` is not defined",
-        ##     "not found in this scope",
-        ##     name.loc,
-        ## )
+        raise SPyError.simple(
+            "W_NameError",
+            f"name `{name.id}` is not defined",
+            "not found in this scope",
+            name.loc,
+        )
 
     def eval_expr_AssignExprConstError(
         self, node: ast.AssignExprConstError

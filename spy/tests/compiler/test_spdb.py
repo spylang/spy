@@ -298,19 +298,26 @@ class TestSPdb(CompilerTest):
         from _test import spdb_interact
 
         X = 10
+        var Y = 20
 
         def foo(x: int, session: str) -> None:
             spdb_interact(session)
         """
         session = f"""
         --- entering applevel debugger ---
-           [0] test::foo at {self.filename}:7
+           [0] test::foo at {self.filename}:8
             |     spdb_interact(session)
             |     |____________________|
         (spdb) X
         static type:  <spy type 'i32'>
         dynamic type: <spy type 'i32'>
         10
+        (spdb) Y
+        static type:  <spy type 'i32'>
+        dynamic type: <spy type 'i32'>
+        20
+        (spdb) Z
+        *** NameError: name `Z` is not defined
         (spdb) continue
         """
         mod = self.compile(src)
