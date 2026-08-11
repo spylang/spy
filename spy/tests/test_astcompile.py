@@ -57,7 +57,7 @@ class TestASTCompile:
         """)
         self.assert_dump("""
         def foo() -> i32:
-            return raise NameError('undefined_name')
+            return NameError(undefined_name)
         """)
 
     def test_for(self):

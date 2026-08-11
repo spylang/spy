@@ -477,7 +477,7 @@ class SPyBackend:
         return name.id
 
     def fmt_expr_NameError(self, name: ast.NameError) -> str:
-        return f"raise NameError({name.id!r})"
+        return f"NameError({name.id})"
 
     def fmt_expr_NameImportRef(self, name: ast.NameImportRef) -> str:
         if self.ast_format == "full":
