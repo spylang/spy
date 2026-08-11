@@ -53,12 +53,18 @@ def print_wam(
     if file is None:
         file = sys.stdout
     w_T = vm.dynamic_type(wam_arg.w_val)
+    w_static_T = wam_arg.w_static_T
     wam_s = vm.repr_wam(wam_arg, loc=Loc.here())
     s = vm.unwrap_str(wam_s.w_val)
     #
     color = ColorFormatter(use_colors=use_colors)
-    print(color.set("green", "static type: "), wam_arg.w_static_T, file=file)
-    print(color.set("green", "dynamic type:"), w_T, file=file)
+    T = w_T.fqn.human_name(vm)
+    static_T = w_static_T.fqn.human_name(vm)
+    if w_T is w_static_T:
+        print(color.set("green", "type:"), T, file=file)
+    else:
+        print(color.set("green", "static type: "), static_T, file=file)
+        print(color.set("green", "dynamic type:"), T, file=file)
     print(s, file=file)
 
 

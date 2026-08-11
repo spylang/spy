@@ -253,16 +253,13 @@ class TestSPdb(CompilerTest):
             |     spdb_interact(session)
             |     |____________________|
         (spdb) print x
-        static type:  <spy type 'i32'>
-        dynamic type: <spy type 'i32'>
+        type: i32
         41
         (spdb) y
-        static type:  <spy type 'i32'>
-        dynamic type: <spy type 'i32'>
+        type: i32
         42
         (spdb) y * 2
-        static type:  <spy type 'i32'>
-        dynamic type: <spy type 'i32'>
+        type: i32
         84
         (spdb) continue
         """
@@ -283,8 +280,7 @@ class TestSPdb(CompilerTest):
             |     spdb_interact(session)
             |     |____________________|
         (spdb) x
-        static type:  <spy type 'i32'>
-        dynamic type: <spy type 'i32'>
+        type: i32
         42
         (spdb) y
         *** NameError: name `y` is not defined
@@ -309,18 +305,15 @@ class TestSPdb(CompilerTest):
             |     spdb_interact(session)
             |     |____________________|
         (spdb) X    # outer direct
-        static type:  <spy type 'i32'>
-        dynamic type: <spy type 'i32'>
+        type: i32
         10
         (spdb) Y    # outer cell
-        static type:  <spy type 'i32'>
-        dynamic type: <spy type 'i32'>
+        type: i32
         20
         (spdb) Z    # not found
         *** NameError: name `Z` is not defined
         (spdb) str  # builtin
-        static type:  <spy type 'type'>
-        dynamic type: <spy type 'type'>
+        type: type
         <spy type 'str'>
         (spdb) continue
         """
@@ -364,8 +357,7 @@ class TestSPdb(CompilerTest):
            3         x = 1
            4  ->     raise ValueError("hello")
         (spdb) x
-        static type:  <spy type 'i32'>
-        dynamic type: <spy type 'i32'>
+        type: i32
         1
         (spdb) continue
         """
