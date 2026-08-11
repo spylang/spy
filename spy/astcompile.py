@@ -570,7 +570,7 @@ class ASTCompiler:
             # the SPdb prompt, compiled against the symtable of a live frame), else
             # it means that there is a bug in symtable.
             assert self.interactive, "sym not found"
-            return ast.NameError(name.loc, name.id)
+            return ast.NameInteractive(name.loc, name.id)
 
         if sym.impref is not None:
             return ast.NameImportRef(name.loc, sym)

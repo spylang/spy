@@ -293,7 +293,7 @@ class TestSPdb(CompilerTest):
         mod = self.compile(src)
         mod.foo(42, session)
 
-    def test_InteractiveName(self):
+    def test_NameInteractive(self):
         src = """
         from _test import spdb_interact
 

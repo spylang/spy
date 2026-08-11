@@ -3,9 +3,13 @@ from typing import Optional
 
 import pytest
 
+import spy.ast as ast
 from spy.analyze.importing import ImportAnalyzer
+from spy.astcompile import astcompile_interactive
 from spy.backend.spy import AST_FORMAT, FQN_FORMAT, SPyBackend
 from spy.fqn import FQN
+from spy.parser import Parser
+from spy.tests.test_parser import assert_node_dump
 from spy.util import print_diff
 from spy.vm.function import W_ASTFunc
 from spy.vm.vm import SPyVM
@@ -35,6 +39,20 @@ class TestASTCompile:
         f = self.tmpdir.join("test.spy")
         src = textwrap.dedent(src)
         f.write(src)
+
+    def compile_interactive(self, src: str) -> ast.Expr:
+        """
+        Parse a single expression and astcompile it in interactive mode against the
+        symtable of `test::foo`. This is meant to be similar to what SPdb does whene
+        evaluating interactive exprs.
+        """
+        fqn = FQN("test::foo")
+        w_foo = self.vm.globals_w[fqn]
+        assert isinstance(w_foo, W_ASTFunc)
+        parser = Parser(src, "<test>")
+        stmt = parser.parse_single_stmt()
+        assert isinstance(stmt, ast.StmtExpr)
+        return astcompile_interactive(stmt.value, w_foo.funcdef.symtable)
 
     def assert_dump(
         self,
@@ -215,3 +233,24 @@ class TestASTCompile:
             _$aug_target0.x = _$aug_target0.x + val
         """
         self.assert_dump(expected)
+
+    def test_NameInteractive(self):
+        self.compile_src("""
+        X = 10
+
+        def foo() -> None:
+            Y = 20
+        """)
+        expr_X = self.compile_interactive("X")
+        expected = """
+        NameInteractive(id='X')
+        """
+        assert_node_dump(expr_X, expected)
+
+        expr_Y = self.compile_interactive("Y")
+        expected = """
+        NameLocalDirect(
+            sym=Symbol('Y', 'const', 'direct'),
+        )
+        """
+        assert_node_dump(expr_Y, expected)
