@@ -765,6 +765,21 @@ class AbstractFrame:
                 w_val = lv.w_val
             assert w_val is not None
             return W_MetaArg(self.vm, lv.color, lv.w_T, w_val, name.loc)
+
+        # name not found. Let's try the builtins
+        sym = SymTable.from_builtins().lookup_maybe(name.id)
+        if sym is not None:
+            assert sym.impref is not None
+            w_val = self.vm.lookup_ImportRef(sym.impref)
+            if w_val is None:
+                # this is likely a builtin which triggers an implicit import. Do the
+                # import and redo the lookup
+                self.vm.import_(sym.impref.modname)
+                w_val = self.vm.lookup_ImportRef(sym.impref)
+                assert w_val is not None
+            w_T = self.vm.dynamic_type(w_val)
+            return W_MetaArg(self.vm, "blue", w_T, w_val, name.loc)
+
         raise SPyError.simple(
             "W_NameError",
             f"name `{name.id}` is not defined",

@@ -308,16 +308,20 @@ class TestSPdb(CompilerTest):
            [0] test::foo at {self.filename}:8
             |     spdb_interact(session)
             |     |____________________|
-        (spdb) X
+        (spdb) X    # outer direct
         static type:  <spy type 'i32'>
         dynamic type: <spy type 'i32'>
         10
-        (spdb) Y
+        (spdb) Y    # outer cell
         static type:  <spy type 'i32'>
         dynamic type: <spy type 'i32'>
         20
-        (spdb) Z
+        (spdb) Z    # not found
         *** NameError: name `Z` is not defined
+        (spdb) str  # builtin
+        static type:  <spy type 'type'>
+        dynamic type: <spy type 'type'>
+        <spy type 'str'>
         (spdb) continue
         """
         mod = self.compile(src)
