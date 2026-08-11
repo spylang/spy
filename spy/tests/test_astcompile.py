@@ -91,7 +91,7 @@ class TestASTCompile:
         def foo() -> i32:
             return NameError(undefined_name)
         """
-        self.assert_dump(expected)
+        self.assert_dump(expected, ast_format="full")
 
     def test_for(self):
         self.compile_src("""
