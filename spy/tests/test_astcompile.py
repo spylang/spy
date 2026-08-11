@@ -177,3 +177,41 @@ class TestASTCompile:
             return x
         """
         self.assert_dump_decls(expected)
+
+    def test_augassign(self):
+        self.compile_src("""
+        def foo(x: i32) -> i32:
+            x += 1
+            return x
+        """)
+        expected = """
+        def foo(x: i32) -> i32:
+            x = x + 1
+            return x
+        """
+        self.assert_dump(expected)
+
+    def test_augsetitem(self):
+        self.compile_src("""
+        def foo(items: dynamic, idx: i32, val: i32) -> None:
+            items[idx] += val
+        """)
+        expected = """
+        def foo(items: dynamic, idx: i32, val: i32) -> None:
+            _$aug_target0 = items
+            _$aug_arg0_0 = idx
+            _$aug_target0[_$aug_arg0_0] = _$aug_target0[_$aug_arg0_0] + val
+        """
+        self.assert_dump(expected)
+
+    def test_augsetattr(self):
+        self.compile_src("""
+        def foo(obj: dynamic, val: i32) -> None:
+            obj.x += val
+        """)
+        expected = """
+        def foo(obj: dynamic, val: i32) -> None:
+            _$aug_target0 = obj
+            _$aug_target0.x = _$aug_target0.x + val
+        """
+        self.assert_dump(expected)

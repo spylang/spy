@@ -320,6 +320,83 @@ class ASTCompiler:
         )
         return self.compile_stmt(desugared)
 
+    def compile_stmt_AugSetAttr(self, stmt: ast.AugSetAttr) -> list[ast.Stmt]:
+        target_loc = stmt.target.loc.replace(colorize=False)
+        value_loc = stmt.loc.replace(colorize=False)
+        target_name = f"_$aug_target{stmt.seq}"
+        target = ast.SingleTarget(
+            target_loc,
+            ast.StrLiteral(target_loc, target_name),
+        )
+        desugared: list[ast.Stmt] = [
+            ast.Assign(loc=target_loc, target=target, value=stmt.target),
+            ast.SetAttr(
+                loc=stmt.loc,
+                target=ast.Name(loc=target_loc, id=target_name),
+                attr=stmt.attr,
+                value=ast.BinOp(
+                    loc=value_loc,
+                    op=stmt.op,
+                    left=ast.GetAttr(
+                        loc=target_loc,
+                        value=ast.Name(loc=target_loc, id=target_name),
+                        attr=stmt.attr,
+                    ),
+                    right=stmt.value,
+                ),
+            ),
+        ]
+        return self.compile_body(desugared)
+
+    def compile_stmt_AugSetItem(self, stmt: ast.AugSetItem) -> list[ast.Stmt]:
+        target_loc = stmt.target.loc.replace(colorize=False)
+        value_loc = stmt.loc.replace(colorize=False)
+        target_name = f"_$aug_target{stmt.seq}"
+        target = ast.SingleTarget(
+            target_loc,
+            ast.StrLiteral(target_loc, target_name),
+        )
+        desugared: list[ast.Stmt] = [
+            ast.Assign(loc=target_loc, target=target, value=stmt.target)
+        ]
+        arg_names = []
+        for i, arg in enumerate(stmt.args):
+            arg_loc = arg.loc.replace(colorize=False)
+            arg_name = f"_$aug_arg{stmt.seq}_{i}"
+            arg_names.append((arg_name, arg_loc))
+            desugared.append(
+                ast.Assign(
+                    loc=arg_loc,
+                    target=ast.SingleTarget(
+                        arg_loc,
+                        ast.StrLiteral(arg_loc, arg_name),
+                    ),
+                    value=arg,
+                )
+            )
+
+        def make_args() -> list[ast.Expr]:
+            return [ast.Name(loc=loc, id=name) for name, loc in arg_names]
+
+        desugared.append(
+            ast.SetItem(
+                loc=stmt.loc,
+                target=ast.Name(loc=target_loc, id=target_name),
+                args=make_args(),
+                value=ast.BinOp(
+                    loc=value_loc,
+                    op=stmt.op,
+                    left=ast.GetItem(
+                        loc=target_loc,
+                        value=ast.Name(loc=target_loc, id=target_name),
+                        args=make_args(),
+                    ),
+                    right=stmt.value,
+                ),
+            )
+        )
+        return self.compile_body(desugared)
+
     def compile_stmt_SetItem(self, stmt: ast.SetItem) -> list[ast.Stmt]:
         return [
             stmt.replace(

@@ -949,10 +949,28 @@ class SetAttr(Stmt):
     value: Expr
 
 
+@astnode("parsed")
+class AugSetAttr(Stmt):
+    seq: int  # unique id within a funcdef
+    target: Expr
+    attr: StrLiteral
+    op: str
+    value: Expr
+
+
 @astnode
 class SetItem(Stmt):
     target: Expr
     args: list[Expr]
+    value: Expr
+
+
+@astnode("parsed")
+class AugSetItem(Stmt):
+    seq: int  # unique id within a funcdef
+    target: Expr
+    args: list[Expr]
+    op: str
     value: Expr
 
 

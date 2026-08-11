@@ -870,6 +870,86 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
+    @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
+    def test_AugSetAttr(self, op):
+        mod = self.parse(f"""
+        def foo() -> None:
+            a = obj()
+            a.b {op}= 42
+        """)
+        stmt = mod.get_funcdef("foo").body[1]
+        expected = f"""
+        AugSetAttr(
+            seq=0,
+            target=Name(id='a'),
+            attr=StrLiteral(value='b'),
+            op='{op}',
+            value=Literal(value=42),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
+    def test_AugSetItem(self, op):
+        mod = self.parse(f"""
+        def foo() -> None:
+            arr = [1, 2, 3]
+            arr[1] {op}= 42
+        """)
+        stmt = mod.get_funcdef("foo").body[1]
+        expected = f"""
+        AugSetItem(
+            seq=0,
+            target=Name(id='arr'),
+            args=[
+                Literal(value=1),
+            ],
+            op='{op}',
+            value=Literal(value=42),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
+    def test_AugSetItem_multiple_indices(self, op):
+        mod = self.parse(f"""
+        def foo() -> None:
+            matrix = [[1, 2], [3, 4]]
+            i = 0
+            j = 1
+            matrix[i, j] {op}= 1
+        """)
+        stmt = mod.get_funcdef("foo").body[3]
+        expected = f"""
+        AugSetItem(
+            seq=0,
+            target=Name(id='matrix'),
+            args=[
+                Name(id='i'),
+                Name(id='j'),
+            ],
+            op='{op}',
+            value=Literal(value=1),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    def test_complex_AugAssign_unique_seq(self):
+        mod = self.parse("""
+        def foo() -> None:
+            obj().x += 1
+            items()[index()] += 2
+            obj().y += 3
+        """)
+        body = mod.get_funcdef("foo").body
+        assert all(isinstance(stmt, (ast.AugSetAttr, ast.AugSetItem)) for stmt in body)
+        seqs = [
+            stmt.seq
+            for stmt in body
+            if isinstance(stmt, ast.AugSetAttr | ast.AugSetItem)
+        ]
+        assert seqs == [0, 1, 2]
+
     @pytest.mark.parametrize("op", "+ - ~ not".split())
     def test_UnaryOp(self, op):
         mod = self.parse(f"""
