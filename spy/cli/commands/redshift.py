@@ -24,6 +24,11 @@ class _redshift_mixin:
         Option("--full-fqn", help="Show full FQNs in redshifted modules"),
     ] = False
 
+    full_ast: Annotated[
+        bool,
+        Option("--full-ast", help="Show full AST node types (e.g., LocalDirect, OuterCell)"),
+    ] = False
+
     linearize_: Annotated[
         bool,
         Option("--linearize", help="Apply linearize pass before dumping"),
@@ -99,7 +104,7 @@ async def redshift(args: Redshift_Args) -> None:
             if show_filename and args.format in ("spy", "ast"):
                 print(f"# {filename}")
             if args.format == "spy":
-                dump_spy_mod(vm, mod_name, args.full_fqn)
+                dump_spy_mod(vm, mod_name, args.full_fqn, args.full_ast)
             elif args.format == "ast":
                 dump_spy_mod_ast(vm, mod_name)
             elif args.format == "html":
