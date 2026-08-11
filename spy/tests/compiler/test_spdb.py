@@ -304,7 +304,7 @@ class TestSPdb(CompilerTest):
         """
         session = f"""
         --- entering applevel debugger ---
-           [0] test::foo at {self.filename}:5
+           [0] test::foo at {self.filename}:7
             |     spdb_interact(session)
             |     |____________________|
         (spdb) X
