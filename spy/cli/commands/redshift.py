@@ -26,7 +26,9 @@ class _redshift_mixin:
 
     full_ast: Annotated[
         bool,
-        Option("--full-ast", help="Show full AST node types (e.g., LocalDirect, OuterCell)"),
+        Option(
+            "--full-ast", help="Show full AST node types (e.g., LocalDirect, OuterCell)"
+        ),
     ] = False
 
     linearize_: Annotated[
