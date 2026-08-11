@@ -7,7 +7,7 @@ from typer import Option
 
 from spy.analyze.importing import ImportAnalyzer
 from spy.backend.html import HTMLBackend, SpyastJs
-from spy.backend.spy import SPyBackend
+from spy.backend.spy import AST_FORMAT, SPyBackend
 from spy.cli._format import dump_spy_mod, dump_spy_mod_ast
 from spy.cli._runners import init_vm
 from spy.cli.commands.shared_args import (
@@ -28,6 +28,13 @@ class _astcompile_mixin:
             click_type=click.Choice(["ast", "spy", "html"]),
         ),
     ] = "ast"
+
+    full_ast: Annotated[
+        bool,
+        Option(
+            "--full-ast", help="Show full AST node types (e.g., LocalDirect, OuterCell)"
+        ),
+    ] = False
 
     spyast_js: Annotated[
         SpyastJs,
@@ -55,7 +62,8 @@ async def astcompile(args: ASTCompile_Args) -> None:
     if args.format == "ast":
         mod.pp()
     elif args.format == "spy":
-        b = SPyBackend(vm)
+        ast_format: AST_FORMAT = "full" if args.full_ast else "short"
+        b = SPyBackend(vm, ast_format=ast_format)
         b.modname = modname
         for decl in mod.decls:
             b.emit_decl(decl)

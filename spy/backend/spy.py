@@ -23,6 +23,7 @@ from spy.vm.object import W_Object, W_Type
 from spy.vm.vm import SPyVM
 
 FQN_FORMAT = Literal["full", "short"]
+AST_FORMAT = Literal["full", "short"]
 
 # Regex pattern for valid identifiers (alphanumeric + underscore)
 VALID_IDENTIFIER = re.compile(r"^[a-zA-Z0-9_]+$")
@@ -35,9 +36,16 @@ class SPyBackend:
     Mostly used for testing.
     """
 
-    def __init__(self, vm: SPyVM, *, fqn_format: FQN_FORMAT = "short") -> None:
+    def __init__(
+        self,
+        vm: SPyVM,
+        *,
+        fqn_format: FQN_FORMAT = "short",
+        ast_format: AST_FORMAT = "short",
+    ) -> None:
         self.vm = vm
         self.fqn_format = fqn_format
+        self.ast_format = ast_format
         self.out = TextBuilder(use_colors=False)
         self.w = self.out.w
         self.wl = self.out.wl
@@ -212,6 +220,20 @@ class SPyBackend:
     def emit_decl_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> None:
         self.emit_stmt(decl.funcdef)
 
+    def emit_decl_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
+        vardef = decl.vardef
+        name = vardef.name.value
+        has_type = not isinstance(vardef.type, ast.Auto)
+        t = self.fmt_expr(vardef.type) if has_type else ""
+        if vardef.value is not None:
+            v = self.fmt_expr(vardef.value)
+            if has_type:
+                self.wl(f"var {name}: {t} = {v}")
+            else:
+                self.wl(f"var {name} = {v}")
+        else:
+            self.wl(f"var {name}: {t}")
+
     # statements
 
     def get_vartype_to_declare_maybe(self, varname: str) -> Optional[str]:
@@ -297,7 +319,9 @@ class SPyBackend:
         varname = assign.expr.target.value
         t = self.get_vartype_to_declare_maybe(varname)
         v = self.fmt_expr(assign.expr.value)
-        if t is not None:
+        if self.ast_format == "full":
+            self.wl(f"AssignLocal({varname} := {v})")
+        elif t is not None:
             self.wl(f"{varname}: {t} = {v}")
         else:
             self.wl(f"{varname} = {v}")
@@ -314,7 +338,10 @@ class SPyBackend:
             else assign.expr.sym.name
         )
         v = self.fmt_expr(assign.expr.value)
-        self.wl(f"{varname} = {v}")
+        if self.ast_format == "full":
+            self.wl(f"AssignCell({varname} := {v})")
+        else:
+            self.wl(f"{varname} = {v}")
 
     def emit_stmt_AugAssign(self, node: ast.AugAssign) -> None:
         varname = node.target.value
@@ -464,21 +491,38 @@ class SPyBackend:
         return name.id
 
     def fmt_expr_NameError(self, name: ast.NameError) -> str:
+        if self.ast_format == "full":
+            return f"NameError({name.id})"
         return name.id
 
     def fmt_expr_NameImportRef(self, name: ast.NameImportRef) -> str:
+        if self.ast_format == "full":
+            return f"ImportRef({name.sym.name})"
         return name.sym.name
 
     def fmt_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> str:
+        if self.ast_format == "full":
+            return f"LocalDirect({name.sym.name})"
+        return name.sym.name
+
+    def fmt_expr_NameLocalCell(self, name: ast.NameLocalCell) -> str:
+        if self.ast_format == "full":
+            return f"LocalCell({name.sym.name})"
         return name.sym.name
 
     def fmt_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> str:
+        if self.ast_format == "full":
+            return f"OuterDirect({name.sym.name})"
         return name.sym.name
 
     def fmt_expr_NameOuterCell(self, name: ast.NameOuterCell) -> str:
         if name.fqn is not None:
-            return self.fmt_fqn(name.fqn)
-        return name.sym.name
+            varname = self.fmt_fqn(name.fqn)
+        else:
+            varname = name.sym.name
+        if self.ast_format == "full":
+            return f"OuterCell({varname})"
+        return varname
 
     def fmt_expr_BinOp(self, binop: ast.BinOp) -> str:
         l = self.fmt_expr(binop.left)

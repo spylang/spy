@@ -3,16 +3,19 @@ from pathlib import Path
 import spy.ast
 from spy.analyze.symtable import Color
 from spy.backend.html import HTMLBackend, SpyastJs
-from spy.backend.spy import FQN_FORMAT, SPyBackend
+from spy.backend.spy import AST_FORMAT, FQN_FORMAT, SPyBackend
 from spy.highlight import highlight_src
 from spy.util import build_char_color_map
 from spy.vm.function import W_ASTFunc
 from spy.vm.vm import SPyVM
 
 
-def dump_spy_mod(vm: SPyVM, modname: str, full_fqn: bool) -> None:
+def dump_spy_mod(
+    vm: SPyVM, modname: str, full_fqn: bool, full_ast: bool = False
+) -> None:
     fqn_format: FQN_FORMAT = "full" if full_fqn else "short"
-    b = SPyBackend(vm, fqn_format=fqn_format)
+    ast_format: AST_FORMAT = "full" if full_ast else "short"
+    b = SPyBackend(vm, fqn_format=fqn_format, ast_format=ast_format)
     spy_code = b.dump_mod(modname).rstrip()
     print(highlight_src("spy", spy_code))
 
