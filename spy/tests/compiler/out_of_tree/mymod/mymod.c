@@ -10,3 +10,7 @@ spy_StrObject *spy_mymod$get_name(void) {
     memcpy(spy_StrObject_UTF8(s), NAME, n);
     return s;
 }
+
+int32_t spy_mymod$run_callback(int32_t (*cb)(int32_t), int32_t x) {
+    return cb(x);
+}
