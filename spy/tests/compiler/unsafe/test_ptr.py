@@ -718,3 +718,60 @@ class TestUnsafePtr(CompilerTest):
         assert mod.get_length("hello") == 5
         assert mod.get_byte("hello", 0) == ord("h")
         assert mod.get_byte("hello", 4) == ord("o")
+
+    def test_ptr_index_all_dtypes(self):
+        mod = self.compile(
+            """
+            from unsafe import gc_alloc, gc_ptr
+
+            def rt_i8(v: i32) -> i8:
+                p: gc_ptr[i8] = gc_alloc[i8](4)
+                p[0] = i8(v)
+                return p[0]
+
+            def rt_u8(v: i32) -> u8:
+                p: gc_ptr[u8] = gc_alloc[u8](4)
+                p[0] = u8(v)
+                return p[0]
+
+            def rt_i32(v: i32) -> i32:
+                p: gc_ptr[i32] = gc_alloc[i32](4)
+                p[0] = v
+                return p[0]
+
+            def rt_u32(v: u32) -> u32:
+                p: gc_ptr[u32] = gc_alloc[u32](4)
+                p[0] = v
+                return p[0]
+
+            def rt_i64(v: i32) -> i64:
+                p: gc_ptr[i64] = gc_alloc[i64](4)
+                p[0] = i64(v)
+                return p[0]
+
+            def rt_u64(v: i32) -> u64:
+                p: gc_ptr[u64] = gc_alloc[u64](4)
+                p[0] = u64(i64(v))
+                return p[0]
+
+            def rt_f32(v: i32) -> f32:
+                p: gc_ptr[f32] = gc_alloc[f32](4)
+                p[0] = f32(v)
+                return p[0]
+
+            def rt_f64(v: f64) -> f64:
+                p: gc_ptr[f64] = gc_alloc[f64](4)
+                p[0] = v
+                return p[0]
+            """
+        )
+        # controls: dtypes already supported by generic_mem_read/write
+        assert mod.rt_i32(42) == 42
+        assert mod.rt_u8(200) == 200
+        assert mod.rt_f64(1.5) == 1.5
+        # the gap: WIP on interp/doppler, pass on the C backends
+        assert mod.rt_i8(-5) == -5
+        assert mod.rt_u32(42) == 42
+        assert mod.rt_i64(42) == 42
+        assert mod.rt_u64(42) == 42
+        assert mod.rt_f32(7) == 7.0
