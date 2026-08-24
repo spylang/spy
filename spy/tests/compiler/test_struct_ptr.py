@@ -6,11 +6,6 @@ class TestStructByPtr(CompilerTest):
     Read/write struct fields through `gc_ptr[Struct]` for every primitive
     dtype, plus a whole-struct-by-value read.
 
-    On the interpreter, `p.v` lowers to ptr.getfield/ptr.setfield, which call
-    generic_mem_read/generic_mem_write for by-value primitive fields. The same
-    dtype gap as test_ptr_mem.TestPtrMemDtypes applies: i8, u32, i64, u64, f32
-    WIP on interp/doppler and pass on the C backends.
-
     See https://github.com/spylang/spy/issues/653 (PR0).
     """
 
@@ -83,21 +78,15 @@ class TestStructByPtr(CompilerTest):
                 p.v = v
                 return p.v
 
-            # whole-struct-by-value read: p[0] returns a ref[B_f32] (byref for
-            # struct items); assigning it to a B_f32 value derefs through
-            # generic_mem_read(B_f32), which recurses field-by-field and hits
-            # the same f32 gap.
             def f_struct_byval_f32(v: i32) -> f32:
                 p: gc_ptr[BoxF32] = gc_alloc[BoxF32](1)
                 p.v = f32(v)
                 x: BoxF32 = p[0]
                 return x.v
             """)
-        # controls
         assert mod.f_i32(42) == 42
         assert mod.f_u8(200) == 200
         assert mod.f_f64(1.5) == 1.5
-        # the gap
         assert mod.f_i8(-5) == -5
         assert mod.f_u32(42) == 42
         assert mod.f_i64(42) == 42

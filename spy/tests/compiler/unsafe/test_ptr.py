@@ -765,11 +765,9 @@ class TestUnsafePtr(CompilerTest):
                 return p[0]
             """
         )
-        # controls: dtypes already supported by generic_mem_read/write
         assert mod.rt_i32(42) == 42
         assert mod.rt_u8(200) == 200
         assert mod.rt_f64(1.5) == 1.5
-        # the gap: WIP on interp/doppler, pass on the C backends
         assert mod.rt_i8(-5) == -5
         assert mod.rt_u32(42) == 42
         assert mod.rt_i64(42) == 42

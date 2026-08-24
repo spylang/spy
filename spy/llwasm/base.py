@@ -113,14 +113,6 @@ class LLWasmMemoryBase:
     def write(self, addr: int, b: bytes) -> None:
         raise NotImplementedError
 
-    def read_i32(self, addr: int) -> int:
-        rawbytes = self.read(addr, 4)
-        return struct.unpack("i", rawbytes)[0]
-
-    def read_i16(self, addr: int) -> int:
-        rawbytes = self.read(addr, 2)
-        return struct.unpack("h", rawbytes)[0]
-
     def read_i8(self, addr: int) -> int:
         rawbytes = self.read(addr, 1)
         return struct.unpack("b", rawbytes)[0]
@@ -128,6 +120,34 @@ class LLWasmMemoryBase:
     def read_u8(self, addr: int) -> int:
         rawbytes = self.read(addr, 1)
         return rawbytes[0]
+
+    def read_i16(self, addr: int) -> int:
+        rawbytes = self.read(addr, 2)
+        return struct.unpack("h", rawbytes)[0]
+
+    def read_u16(self, addr: int) -> int:
+        rawbytes = self.read(addr, 2)
+        return struct.unpack("H", rawbytes)[0]
+
+    def read_i32(self, addr: int) -> int:
+        rawbytes = self.read(addr, 4)
+        return struct.unpack("i", rawbytes)[0]
+
+    def read_u32(self, addr: int) -> int:
+        rawbytes = self.read(addr, 4)
+        return struct.unpack("I", rawbytes)[0]
+
+    def read_f32(self, addr: int) -> float:
+        rawbytes = self.read(addr, 4)
+        return struct.unpack("f", rawbytes)[0]
+
+    def read_i64(self, addr: int) -> int:
+        rawbytes = self.read(addr, 8)
+        return struct.unpack("q", rawbytes)[0]
+
+    def read_u64(self, addr: int) -> int:
+        rawbytes = self.read(addr, 8)
+        return struct.unpack("Q", rawbytes)[0]
 
     def read_f64(self, addr: int) -> int:
         rawbytes = self.read(addr, 8)
@@ -154,17 +174,32 @@ class LLWasmMemoryBase:
             n += 1
         return self.read(addr, n)
 
-    def write_i32(self, addr: int, v: int) -> None:
-        self.write(addr, struct.pack("i", v))
-
-    def write_i16(self, addr: int, v: int) -> None:
-        self.write(addr, struct.pack("h", v))
-
     def write_i8(self, addr: int, v: int) -> None:
         self.write(addr, struct.pack("b", v))
 
     def write_u8(self, addr: int, v: int) -> None:
         self.write(addr, struct.pack("B", v))
+
+    def write_i16(self, addr: int, v: int) -> None:
+        self.write(addr, struct.pack("h", v))
+
+    def write_u16(self, addr: int, v: int) -> None:
+        self.write(addr, struct.pack("H", v))
+
+    def write_i32(self, addr: int, v: int) -> None:
+        self.write(addr, struct.pack("i", v))
+
+    def write_u32(self, addr: int, v: int) -> None:
+        self.write(addr, struct.pack("I", v))
+
+    def write_f32(self, addr: int, v: float) -> None:
+        self.write(addr, struct.pack("f", v))
+
+    def write_i64(self, addr: int, v: int) -> None:
+        self.write(addr, struct.pack("q", v))
+
+    def write_u64(self, addr: int, v: int) -> None:
+        self.write(addr, struct.pack("Q", v))
 
     def write_f64(self, addr: int, v: float) -> None:
         self.write(addr, struct.pack("d", v))
