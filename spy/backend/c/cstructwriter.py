@@ -7,6 +7,7 @@ from spy.backend.c.cffiwriter import CFFIWriter
 from spy.backend.c.context import C_Type, Context
 from spy.fqn import FQN
 from spy.textbuilder import TextBuilder
+from spy.vm.modules.simd import W_SimdType
 from spy.vm.modules.unsafe.ptr import W_PtrType, W_RefType
 from spy.vm.object import W_Type
 from spy.vm.struct import W_StructType
@@ -98,6 +99,8 @@ class CStructWriter:
             assert fqn == w_type.fqn  # sanity check
             if isinstance(w_type, W_StructType):
                 self.emit_StructType(fqn, w_type)
+            elif isinstance(w_type, W_SimdType):
+                self.emit_SimdType(fqn, w_type)
             elif isinstance(w_type, W_PtrType):
                 self.emit_PtrType(fqn, w_type)
             elif isinstance(w_type, W_RefType):
@@ -154,6 +157,19 @@ class CStructWriter:
                 tb.wl(f"{c_fieldtype} {w_field.name};")
         tb.wl("};")
         tb.wl("")
+
+    def emit_SimdType(self, fqn: FQN, w_simdtype: W_SimdType) -> None:
+        from spy.vm.modules.unsafe.misc import sizeof
+
+        c_simdtype = C_Type(w_simdtype.fqn.c_name)
+        c_basetype = self.ctx.w2c(w_simdtype.w_dtype)
+        nbytes = sizeof(w_simdtype.w_dtype) * w_simdtype.size
+        human = w_simdtype.fqn.human_name(self.ctx.vm)
+        # GCC/Clang vector extension: a fixed-size vector
+        self.tbh_fwdecl.wl(
+            f"typedef {c_basetype} {c_simdtype} "
+            f"__attribute__((vector_size({nbytes}))); /* {human} */"
+        )
 
     def emit_PtrType(self, fqn: FQN, w_ptrtype: W_PtrType) -> None:
         c_ptrtype = C_Type(w_ptrtype.fqn.c_name)

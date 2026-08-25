@@ -14,6 +14,7 @@ from spy.fqn import FQN
 from spy.highlight import highlight_src
 from spy.vm.cell import W_Cell
 from spy.vm.function import W_ASTFunc
+from spy.vm.modules.simd import W_SimdType
 from spy.vm.modules.unsafe.ptr import W_MemLocType
 from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import W_I32
@@ -145,7 +146,7 @@ class CBackend:
             modname = fqn.modname
             w_mod = self.vm.modules_w[modname]
             if w_mod.filepath is None and not isinstance(
-                w_obj, (W_MemLocType, W_StructType)
+                w_obj, (W_MemLocType, W_StructType, W_SimdType)
             ):
                 continue
 
