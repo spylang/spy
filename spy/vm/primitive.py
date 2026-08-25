@@ -123,6 +123,8 @@ class W_U32(W_Object):
         wam_arg = args_wam[0]
         if wam_arg.w_static_T == B.w_str:
             return W_OpSpec(OP.w_str_to_u32, [wam_arg])
+        elif wam_arg.w_static_T == B.w_i32:
+            return W_OpSpec(OP.w_i32_to_u32, [wam_arg])
         return W_OpSpec.NULL
 
     def __repr__(self) -> str:
