@@ -165,10 +165,14 @@ class CStructWriter:
         c_basetype = self.ctx.w2c(w_simdtype.w_dtype)
         nbytes = sizeof(w_simdtype.w_dtype) * w_simdtype.size
         human = w_simdtype.fqn.human_name(self.ctx.vm)
-        # GCC/Clang vector extension: a fixed-size vector
+        # aligned(1): the vector type must tolerate the alignment returned by
+        # the GC allocator (16-byte on wasm32), which is less than the
+        # vector_size natural alignment (e.g. 32 for SIMD[i64,4]). Without
+        # this, p[i] = v (SPY_PTR_FUNCTIONS $store / $getitem_byval) traps on
+        # the misaligned vector store.
         self.tbh_fwdecl.wl(
             f"typedef {c_basetype} {c_simdtype} "
-            f"__attribute__((vector_size({nbytes}))); /* {human} */"
+            f"__attribute__((vector_size({nbytes}), aligned(1))); /* {human} */"
         )
 
     def emit_PtrType(self, fqn: FQN, w_ptrtype: W_PtrType) -> None:
