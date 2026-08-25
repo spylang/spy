@@ -348,3 +348,18 @@ class Index(Expr):
         if self.expr.precedence() < self.precedence():
             e = f"({e})"
         return f"{e}[{self.index}]"
+
+
+@dataclass
+class Paren(Expr):
+    """
+    An explicitly parenthesized expression. ``Cast`` does not parenthesize its operand.
+    """
+
+    expr: Expr
+
+    def precedence(self) -> int:
+        return 100
+
+    def __str__(self) -> str:
+        return f"({self.expr})"

@@ -585,6 +585,12 @@ class CFuncWriter:
         elif irtag.tag == "simd.getitem":
             return self.fmt_simd_getitem(fqn, call)
 
+        elif irtag.tag in ("simd.binop", "simd.cmp"):
+            return self.fmt_simd_binop(fqn, call, irtag)
+
+        elif irtag.tag == "simd.select":
+            return self.fmt_simd_select(fqn, call)
+
         elif irtag.tag == "ptr.getfield":
             return self.fmt_ptr_getfield(fqn, call, irtag)
 
@@ -663,6 +669,39 @@ class CFuncWriter:
         c_v = self.fmt_expr(call.args[0])
         c_i = self.fmt_expr(call.args[1])
         return C.Index(c_v, c_i)
+
+    def fmt_simd_binop(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
+        assert len(call.args) == 2
+        l, r = [self.fmt_expr(arg) for arg in call.args]
+        return C.BinOp(irtag.data["op"], l, r)
+
+    def fmt_simd_select(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        # call.args = [mask, "select" (blue str, ignored), a, b]
+        assert len(call.args) == 4
+        from spy.vm.modules.simd import W_SimdType
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_ft = w_func.w_functype
+        w_mask_t = w_ft.params[0].w_T
+        w_op_t = w_ft.w_restype
+        assert isinstance(w_mask_t, W_SimdType)
+        assert isinstance(w_op_t, W_SimdType)
+        c_mask = self.ctx.w2c(w_mask_t)
+        c_op = self.ctx.w2c(w_op_t)
+        c_m = self.fmt_expr(call.args[0])
+        c_a = self.fmt_expr(call.args[2])
+        c_b = self.fmt_expr(call.args[3])
+        # (T)((mask & (M)a) | (~mask & (M)b))
+        # The vector ternary `?:` is C++-only, so we use the same-size
+        # bit-trick blend, valid for every dtype via reinterpret casts (M and
+        # T share the same total byte size, validated in _is_valid_mask).
+        blend = C.BinOp(
+            "|",
+            C.BinOp("&", c_m, C.Cast(c_mask, c_a)),
+            C.BinOp("&", C.UnaryOp("~", c_m), C.Cast(c_mask, c_b)),
+        )
+        return C.Cast(c_op, C.Paren(blend))
 
     def fmt_ptr_getfield(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         assert isinstance(call.args[1], ast.StrLiteral)
