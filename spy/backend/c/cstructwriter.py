@@ -165,17 +165,15 @@ class CStructWriter:
         c_basetype = self.ctx.w2c(w_simdtype.w_dtype)
         nbytes = sizeof(w_simdtype.w_dtype) * w_simdtype.size
         human = w_simdtype.fqn.human_name(self.ctx.vm)
-        # aligned(1): the vector type must tolerate the alignment returned by
-        # the GC allocator (16-byte on wasm32), which is less than the
-        # vector_size natural alignment (e.g. 32 for SIMD[i64,4]). Without
-        # this, p[i] = v (SPY_PTR_FUNCTIONS $store / $getitem_byval) traps on
-        # the misaligned vector store.
+        # GCC/Clang vector extension: a fixed-size vector
         self.tbh_fwdecl.wl(
             f"typedef {c_basetype} {c_simdtype} "
-            f"__attribute__((vector_size({nbytes}), aligned(1))); /* {human} */"
+            f"__attribute__((vector_size({nbytes}))); /* {human} */"
         )
 
     def emit_PtrType(self, fqn: FQN, w_ptrtype: W_PtrType) -> None:
+        from spy.vm.modules.simd import W_SimdType
+
         c_ptrtype = C_Type(w_ptrtype.fqn.c_name)
         w_itemT = w_ptrtype.w_itemT
         c_itemT = self.ctx.w2c(w_itemT)
@@ -203,8 +201,33 @@ class CStructWriter:
         self.tbh_fwdecl.wl()
 
         memkind = w_ptrtype.memkind
+        # SIMD vectors carry natural alignment == their byte size (e.g. 32 for
+        # SIMD[i64,4]), but the GC/raw allocator returns 16-byte-aligned memory
+        # on wasm32, so a by-value store/load through ptr[SIMD[...]] traps on
+        # misalignment for vectors > 16 B. Keep the vector type naturally
+        # aligned (vector registers, fast) and instead over-align the
+        # *allocation*: route $alloc through an over-aligning wrapper by giving
+        # SPY_PTR_FUNCTIONS a synthetic memkind.
+        if isinstance(w_itemT, W_SimdType):
+            macro_memkind = f"{memkind}_simd"
+            guard = f"SPY_{memkind.upper()}_SIMD_ALLOC_DEFINED"
+            # 64 = max vector byte size (size 8 x 8-byte dtype); over-aligning
+            # to 64 satisfies the natural alignment of every SIMD type.
+            self.tbh_ptrs_def.wb(f"""
+            #ifndef {guard}
+            #define {guard}
+            static inline void *spy_{macro_memkind}_alloc(size_t n) {{
+                char *raw = (char *)spy_{memkind}_alloc(n + 64);
+                uintptr_t a = ((uintptr_t)raw + 63) & ~(uintptr_t)63;
+                return (void *)a;
+            }}
+            #endif
+            """)
+        else:
+            macro_memkind = memkind
+
         self.tbh_ptrs_def.wb(f"""
-        SPY_PTR_FUNCTIONS({memkind}, {c_ptrtype}, {c_itemT});
+        SPY_PTR_FUNCTIONS({macro_memkind}, {c_ptrtype}, {c_itemT});
         #define {c_ptrtype}$NULL (({c_ptrtype}){{0}})
         """)
         self.tbh_ptrs_def.wl()
