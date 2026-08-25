@@ -212,7 +212,7 @@ def _get_or_make_simd_make(
         w_functype = W_FuncType.new(params, w_simdtype)
         irtag = IRTag("simd.make")
 
-        def w_make_impl(vm: "SPyVM", *args_w: W_Object) -> W_Simd:
+        def w_make_impl(vm: "SPyVM", *args_w: W_Object) -> W_Simd:  # type: ignore[misc]
             assert len(args_w) == size
             return W_Simd(w_simdtype, list(args_w))
 
