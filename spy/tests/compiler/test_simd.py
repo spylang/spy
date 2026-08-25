@@ -372,3 +372,299 @@ class TestSIMD(CompilerTest):
             """
         )
         assert mod.entry() == 4.0  # w[2] (3.0) + first_lane(v) (1.0)
+
+    # === elementwise arithmetic: simd.binop ===
+
+    def test_binop_add_sub_mul_i32(self):
+        mod = self.compile(
+            """
+            from _simd import SIMD
+
+            def add0(a: i32, b: i32) -> i32:
+                v = SIMD[i32, 4](a, a, a, a)
+                w = SIMD[i32, 4](b, b, b, b)
+                return (v + w)[0]
+
+            def sub0(a: i32, b: i32) -> i32:
+                v = SIMD[i32, 4](a, a, a, a)
+                w = SIMD[i32, 4](b, b, b, b)
+                return (v - w)[0]
+
+            def mul0(a: i32, b: i32) -> i32:
+                v = SIMD[i32, 4](a, a, a, a)
+                w = SIMD[i32, 4](b, b, b, b)
+                return (v * w)[0]
+            """
+        )
+        assert mod.add0(3, 4) == 7
+        assert mod.sub0(10, 4) == 6
+        assert mod.mul0(3, 4) == 12
+
+    def test_binop_wraparound(self):
+        # SIMD integer arithmetic follows C wraparound
+        mod = self.compile(
+            """
+            from _simd import SIMD
+
+            def add_u8(a: i32) -> u8:
+                v = SIMD[u8, 4](u8(a))
+                return (v + v)[0]
+
+            def mul_i8(a: i32) -> i8:
+                v = SIMD[i8, 4](i8(a))
+                w = SIMD[i8, 4](3)
+                return (v * w)[0]
+            """
+        )
+        assert mod.add_u8(200) == 144  # 400 mod 256
+        assert mod.mul_i8(100) == 44  # 300 mod 256 = 44, as signed i8
+
+    def test_binop_add_all_dtypes(self):
+        mod = self.compile(
+            """
+            from _simd import SIMD
+
+            def f_i8(a: i32) -> i8:
+                v = SIMD[i8, 4](i8(a))
+                return (v + v)[0]
+
+            def f_u8(a: i32) -> u8:
+                v = SIMD[u8, 4](u8(a))
+                return (v + v)[0]
+
+            def f_i32(a: i32) -> i32:
+                v = SIMD[i32, 4](a)
+                return (v + v)[0]
+
+            def f_u32(a: i32) -> u32:
+                v = SIMD[u32, 4](u32(a))
+                return (v + v)[0]
+
+            def f_i64(a: i32) -> i64:
+                v = SIMD[i64, 4](i64(a))
+                return (v + v)[0]
+
+            def f_u64(a: i32) -> u64:
+                v = SIMD[u64, 4](u64(i64(a)))
+                return (v + v)[0]
+
+            def f_f32(a: f64) -> f32:
+                v = SIMD[f32, 4](f32(a))
+                return (v + v)[0]
+
+            def f_f64(a: f64) -> f64:
+                v = SIMD[f64, 4](a)
+                return (v + v)[0]
+            """
+        )
+        assert mod.f_i8(5) == 10
+        assert mod.f_u8(100) == 200
+        assert mod.f_i32(42) == 84
+        assert mod.f_u32(42) == 84
+        assert mod.f_i64(42) == 84
+        assert mod.f_u64(42) == 84
+        assert mod.f_f32(1.5) == 3.0
+        assert mod.f_f64(2.25) == 4.5
+
+    def test_binop_float_div(self):
+        mod = self.compile(
+            """
+            from _simd import SIMD
+
+            def div_f32(a: f32, b: f32) -> f32:
+                v = SIMD[f32, 4](a, a, a, a)
+                w = SIMD[f32, 4](b, b, b, b)
+                return (v / w)[0]
+
+            def div_f64(a: f64, b: f64) -> f64:
+                v = SIMD[f64, 4](a, a, a, a)
+                w = SIMD[f64, 4](b, b, b, b)
+                return (v / w)[0]
+            """
+        )
+        assert mod.div_f32(1.0, 4.0) == 0.25
+        assert mod.div_f64(1.0, 8.0) == 0.125
+
+    def test_binop_int_div_error(self):
+        # integer `/` is deferred in v1 -> NULL -> standard type error.
+        src = """
+        from _simd import SIMD
+
+        def bad() -> None:
+            v = SIMD[i32, 4](1, 2, 3, 4)
+            w = SIMD[i32, 4](2, 2, 2, 2)
+            x = v / w
+        """
+        errors = expect_errors("cannot do `SIMD[i32, 4]` / `SIMD[i32, 4]`")
+        self.compile_raises(src, "bad", errors)
+
+    def test_binop_per_lane(self):
+        mod = self.compile(
+            """
+            from _simd import SIMD
+
+            def add0() -> i32:
+                v = SIMD[i32, 4](1, 2, 3, 4)
+                w = SIMD[i32, 4](10, 20, 30, 40)
+                r = v + w
+                s: i32 = 0
+                for i in range(4):
+                    s = s + r[i]
+                return s
+            """
+        )
+        assert mod.add0() == 110  # 11 + 22 + 33 + 44
+
+    # === elementwise comparison: simd.cmp ===
+
+    def test_cmp_i32(self):
+        mod = self.compile(
+            """
+            from _simd import SIMD
+
+            def lt(a: i32, b: i32) -> i32:
+                v = SIMD[i32, 4](a, a, a, a)
+                w = SIMD[i32, 4](b, b, b, b)
+                return (v < w)[0]
+
+            def eq(a: i32, b: i32) -> i32:
+                v = SIMD[i32, 4](a, a, a, a)
+                w = SIMD[i32, 4](b, b, b, b)
+                return (v == w)[0]
+
+            def ge(a: i32, b: i32) -> i32:
+                v = SIMD[i32, 4](a, a, a, a)
+                w = SIMD[i32, 4](b, b, b, b)
+                return (v >= w)[0]
+            """
+        )
+        # mask lanes are -1 (true, all-ones) / 0 (false), as signed i32.
+        assert mod.lt(3, 5) == -1
+        assert mod.lt(5, 3) == 0
+        assert mod.lt(3, 3) == 0
+        assert mod.eq(3, 3) == -1
+        assert mod.eq(3, 4) == 0
+        assert mod.ge(3, 3) == -1
+        assert mod.ge(2, 3) == 0
+
+    def test_cmp_mask_dtype_is_signed_int(self):
+        # f32 comparison yields a SIMD[i32, 4] mask; u8 yields SIMD[i8, 4].
+        mod = self.compile(
+            """
+            from _simd import SIMD
+
+            def cmp_f32(a: f32, b: f32) -> i32:
+                v = SIMD[f32, 4](a, a, a, a)
+                w = SIMD[f32, 4](b, b, b, b)
+                return (v < w)[0]
+
+            def cmp_u8(a: i32, b: i32) -> i8:
+                v = SIMD[u8, 4](u8(a))
+                w = SIMD[u8, 4](u8(b))
+                return (v < w)[0]
+            """
+        )
+        assert mod.cmp_f32(1.0, 2.0) == -1
+        assert mod.cmp_f32(2.0, 1.0) == 0
+        assert mod.cmp_u8(1, 2) == -1
+        assert mod.cmp_u8(2, 1) == 0
+
+    def test_cmp_per_lane(self):
+        mod = self.compile(
+            """
+            from _simd import SIMD
+
+            def f() -> i32:
+                v = SIMD[i32, 4](1, 5, 3, 7)
+                w = SIMD[i32, 4](2, 4, 3, 0)
+                m = v < w   # T, F, F, F
+                s: i32 = 0
+                for i in range(4):
+                    s = s + m[i]
+                return s
+            """
+        )
+        assert mod.f() == -1  # only lane 0 is true -> one -1
+
+    # === mask.select(a, b): simd.select ===
+
+    def test_select_cmp_mask(self):
+        mod = self.compile(
+            """
+            from _simd import SIMD
+
+            def sel(a: f32, b: f32) -> f32:
+                v = SIMD[f32, 4](a, a, a, a)
+                w = SIMD[f32, 4](b, b, b, b)
+                m = v < w
+                r = m.select(v, w)
+                return r[0]
+            """
+        )
+        # a < b => mask true => select picks the first arg (v = a)
+        assert mod.sel(1.0, 2.0) == 1.0
+        # a > b => mask false => picks the second arg (w = b)
+        assert mod.sel(3.0, 2.0) == 2.0
+        # a == b => mask false => picks b
+        assert mod.sel(2.0, 2.0) == 2.0
+
+    def test_select_per_lane(self):
+        mod = self.compile(
+            """
+            from _simd import SIMD
+
+            def sel(idx: i32) -> f32:
+                v = SIMD[f32, 4](10.0, 20.0, 30.0, 40.0)
+                w = SIMD[f32, 4](1.0, 2.0, 3.0, 4.0)
+                m = SIMD[i32, 4](-1, 0, -1, 0)
+                r = m.select(v, w)
+                return r[idx]
+            """
+        )
+        # canonical mask lanes (-1 picks v, 0 picks w): interp == C.
+        assert mod.sel(0) == 10.0
+        assert mod.sel(1) == 2.0
+        assert mod.sel(2) == 30.0
+        assert mod.sel(3) == 4.0
+
+    def test_select_max(self):
+        # classic blend idiom: per-lane max via (a > b).select(a, b).
+        mod = self.compile(
+            """
+            from _simd import SIMD
+
+            def vmax0(a: f32, b: f32) -> f32:
+                v = SIMD[f32, 4](a, a, a, a)
+                w = SIMD[f32, 4](b, b, b, b)
+                m = v > w
+                r = m.select(v, w)
+                return r[0]
+
+            def vmax_all() -> f32:
+                v = SIMD[f32, 4](10.0, 2.0, 30.0, 4.0)
+                w = SIMD[f32, 4](5.0, 8.0, 1.0, 9.0)
+                m = v > w
+                r = m.select(v, w)
+                s: f32 = 0.0
+                for i in range(4):
+                    s = s + r[i]
+                return s
+            """
+        )
+        assert mod.vmax0(1.0, 2.0) == 2.0
+        assert mod.vmax0(5.0, 2.0) == 5.0
+        assert mod.vmax_all() == 57.0  # 10 + 8 + 30 + 9
+
+    def test_select_wrong_mask_size_error(self):
+        # a mask whose size does not match the operand is not a valid select.
+        src = """
+        from _simd import SIMD
+
+        def bad() -> None:
+            v = SIMD[f32, 4](1.0)
+            w = SIMD[f32, 4](2.0)
+            m = SIMD[i32, 2](-1, 0)
+            r = m.select(v, w)
+        """
+        errors = expect_errors("method `SIMD[i32, 2]::select` does not exist")
+        self.compile_raises(src, "bad", errors)
