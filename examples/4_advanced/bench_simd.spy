@@ -1,0 +1,199 @@
+"""
+Benchmarks comparing scalar (non-SIMD) and SIMD implementations of a few
+simple elementwise / reduction kernels.
+
+Build & run with different SIMD widths, e.g.:
+
+```sh
+spy build -x --simd-width 128 bench_simd.spy
+spy build -x --simd-width 256 bench_simd.spy
+spy build -x --simd-width 512 bench_simd.spy
+```
+"""
+
+from time import time
+from simd import SIMD, simd_width_of, ptr_load_simd, ptr_store_simd
+from unsafe import gc_alloc, gc_ptr
+
+
+# ---------------------------------------------------------------------------
+# helpers
+# ---------------------------------------------------------------------------
+
+
+def fill(arr: gc_ptr[f32], n: i32, start: f32, step: f32) -> None:
+    v = start
+    for i in range(n):
+        arr[i] = v
+        v = v + step
+
+
+def approx_eq(a: f32, b: f32, tol: f32) -> bool:
+    d: f32 = a - b
+    if d < 0.0:
+        d = -d
+    return d < tol
+
+
+# ---------------------------------------------------------------------------
+# SAXPY:  out = a * x + y
+# ---------------------------------------------------------------------------
+
+
+def saxpy_scalar(
+    a: f32, x: gc_ptr[f32], y: gc_ptr[f32], out: gc_ptr[f32], n: i32
+) -> None:
+    for i in range(n):
+        out[i] = a * x[i] + y[i]
+
+
+def saxpy_simd(
+    a: f32, x: gc_ptr[f32], y: gc_ptr[f32], out: gc_ptr[f32], n: i32
+) -> None:
+    W = simd_width_of[f32]
+    va = SIMD[f32, W](a)
+    bound: i32 = n - (n % W)
+    for i in range(0, bound, W):
+        vx = ptr_load_simd[f32, W](x, i)
+        vy = ptr_load_simd[f32, W](y, i)
+        ptr_store_simd(out, i, va * vx + vy)
+    for j in range(bound, n):
+        out[j] = a * x[j] + y[j]
+
+
+# ---------------------------------------------------------------------------
+# Masked elementwise:  ReLU  (max(x, 0))
+# ---------------------------------------------------------------------------
+
+
+def relu_scalar(x: gc_ptr[f32], out: gc_ptr[f32], n: i32) -> None:
+    for i in range(n):
+        v = x[i]
+        if v > 0.0:
+            out[i] = v
+        else:
+            out[i] = 0.0
+
+
+def relu_simd(x: gc_ptr[f32], out: gc_ptr[f32], n: i32) -> None:
+    W = simd_width_of[f32]
+    zero = SIMD[f32, W](0.0)
+    bound: i32 = n - (n % W)
+    for i in range(0, bound, W):
+        vx = ptr_load_simd[f32, W](x, i)
+        mask = vx > zero
+        ptr_store_simd(out, i, mask.select(vx, zero))
+    for j in range(bound, n):
+        v = x[j]
+        if v > 0.0:
+            out[j] = v
+        else:
+            out[j] = 0.0
+
+
+# ---------------------------------------------------------------------------
+# Reduction:  dot product  (sum(x * y))
+# ---------------------------------------------------------------------------
+
+
+def dot_scalar(x: gc_ptr[f32], y: gc_ptr[f32], n: i32) -> f32:
+    total: f32 = 0.0
+    for i in range(n):
+        total = total + x[i] * y[i]
+    return total
+
+
+def dot_simd(x: gc_ptr[f32], y: gc_ptr[f32], n: i32) -> f32:
+    W = simd_width_of[f32]
+    acc = SIMD[f32, W](0.0)
+    bound = n - (n % W)
+    for i in range(0, bound, W):
+        vx = ptr_load_simd[f32, W](x, i)
+        vy = ptr_load_simd[f32, W](y, i)
+        acc = acc + vx * vy
+    # total: f32 = acc.reduce_add()
+    total: f32 = 0
+    for idx in range(W):
+        total += acc[idx]
+    for j in range(bound, n):
+        total = total + x[j] * y[j]
+    return total
+
+
+def main() -> None:
+    N: i32 = 1 << 20  # ~1M elements
+    REPEAT = 50
+
+    a: f32 = 2.0
+    x = gc_alloc[f32](N)
+    y = gc_alloc[f32](N)
+    out = gc_alloc[f32](N)
+
+    fill(x, N, 1.0, 0.0001)
+    fill(y, N, 0.5, -0.0001)
+
+    W = simd_width_of[f32]
+    print("N        =", N)
+    print("repeat   =", REPEAT)
+    print("simd W   =", W)
+    print()
+
+    # --- SAXPY ---
+    t0 = time()
+    for _ in range(REPEAT):
+        saxpy_scalar(a, x, y, out, N)
+    ts = time() - t0
+
+    t0 = time()
+    for _0 in range(REPEAT):
+        saxpy_simd(a, x, y, out, N)
+    tv = time() - t0
+
+    saxpy_scalar(a, x, y, out, N)
+    ref = out[N // 2]
+    saxpy_simd(a, x, y, out, N)
+    got = out[N // 2]
+    print(
+        "SAXPY   scalar=",
+        ts,
+        "s  simd=",
+        tv,
+        "s  speedup=",
+        ts / tv,
+        "x  ok=",
+        approx_eq(ref, got, 1e-4),
+    )
+
+    # --- ReLU ---
+    t0 = time()
+    for _1 in range(REPEAT):
+        relu_scalar(x, out, N)
+    ts = time() - t0
+
+    t0 = time()
+    for _2 in range(REPEAT):
+        relu_simd(x, out, N)
+    tv = time() - t0
+
+    relu_scalar(x, out, N)
+    ref = out[N // 2]
+    relu_simd(x, out, N)
+    got = out[N // 2]
+    ok = approx_eq(ref, got, 1e-4)
+    print("ReLU    scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
+
+    # --- Dot product ---
+    t0 = time()
+    for _3 in range(REPEAT):
+        dot_scalar(x, y, N)
+    ts = time() - t0
+
+    t0 = time()
+    for _4 in range(REPEAT):
+        dot_simd(x, y, N)
+    tv = time() - t0
+
+    ref = dot_scalar(x, y, N)
+    got = dot_simd(x, y, N)
+    ok = approx_eq(ref, got, 1e-2)
+    print("Dot     scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
