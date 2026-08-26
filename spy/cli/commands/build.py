@@ -109,15 +109,6 @@ class _build_mixin:
         ),
     ] = False
 
-    simd_width: Annotated[
-        Optional[int],
-        Option(
-            "--simd-width",
-            help="SIMD vector width in bits (128/256/512 for native, 128 for "
-            "wasm targets; default 128)",
-        ),
-    ] = None
-
 
 @dataclass
 class Build_Args(
@@ -129,11 +120,6 @@ async def build(args: Build_Args) -> None:
     """Generate c code, compile, and optionally execute"""
     modname = args.filename.stem
     vm = await init_vm(args)
-
-    try:
-        vm.simd_width = resolve_simd_width(args.target, args.simd_width)
-    except ValueError as exc:
-        raise click.UsageError(str(exc)) from None
 
     importer = ImportAnalyzer(vm, modname, use_spyc=not args.no_spyc)
     importer.astcompile_all()
