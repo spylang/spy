@@ -665,6 +665,25 @@ def _simd_cmp_meta(
 
 
 @SIMD.builtin_func(color="blue", kind="generic")
+def w_simd_width_of(vm: "SPyVM", w_dtype: W_Type) -> W_I32:
+    """
+    Return the configured SIMD vector width as a *lane count* for `dtype`.
+
+    `simd_width_of[T]` is a blue generic: subscripting it with a dtype
+    evaluates it at compile time and constant-folds, so it can size a generic
+    SIMD type.
+    """
+    if w_dtype not in SIMD_DTYPES:
+        t = w_dtype.fqn.human_name(vm)
+        raise SPyError(
+            "W_TypeError",
+            f"SIMD element type must be a numeric primitive, got `{t}`",
+        )
+    nbits = SIMD_DTYPE_BYTES[w_dtype] * 8
+    return W_I32(vm.simd_width // nbits)
+
+
+@SIMD.builtin_func(color="blue", kind="generic")
 def w_SIMD(vm: "SPyVM", w_dtype: W_Type, w_size: W_I32) -> W_Dynamic:
     """
     The `SIMD` *generic* type constructor.

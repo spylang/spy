@@ -7,7 +7,13 @@ from typing import Literal, Optional
 import py.path
 
 import spy.libspy
-from spy.build.build_info import BuildTarget, BuildType, OutputKind
+from spy.build.build_info import (
+    SIMD_ALLOWED_WIDTHS,
+    SIMD_DEFAULT_WIDTH,
+    BuildTarget,
+    BuildType,
+    OutputKind,
+)
 from spy.build.flags import get_cc, get_cflags, get_ldflags, get_libdir
 from spy.errors import WIP
 
@@ -23,12 +29,49 @@ class BuildConfig:
     warning_as_error: bool = False
     gc: GCOption = "none"
     static: bool = False
+    # SIMD vector width in bits, or None to use the per-target default.
+    # This is a *static*, build-time configuration: it is fixed before
+    # redshift, because redshift runs before the final C compiler.
+    # See `resolve_simd_width` / `simd_width_of`.
+    simd_width: Optional[int] = None
 
     def __post_init__(self) -> None:
         if self.kind == "testlib" and self.target not in ("wasi", "emscripten"):
             raise WIP(
                 "--output-kind=testlib works only for wasi and emscripten targets"
             )
+        self._simd_width = resolve_simd_width(self.target, self.simd_width)
+
+    @property
+    def effective_simd_width(self) -> int:
+        return self._simd_width
+
+
+def resolve_simd_width(target: BuildTarget, override: Optional[int]) -> int:
+    """
+    Return the effective SIMD vector width (in bits) for a build.
+
+    The width is a *static*, build-time configuration: it is fixed before
+    redshift, because redshift runs before the final C compiler / `-march=`
+    is pinned, so per-target autodetection is not possible at redshift time.
+    The default (128) is universally safe.
+
+    `--simd-width=256`/`512` opt into wider native vectors
+    (the user is responsible for matching `-march`).
+
+    `override` is the value of `--simd-width` (or `None`); it must be one
+    of `SIMD_ALLOWED_WIDTHS[target]`.
+    """
+    if override is None:
+        return SIMD_DEFAULT_WIDTH
+    allowed = SIMD_ALLOWED_WIDTHS[target]
+    if override not in allowed:
+        allowed_str = "/".join(str(w) for w in sorted(allowed))
+        raise ValueError(
+            f"--simd-width={override} is not valid for target {target!r}; "
+            f"allowed: {allowed_str}"
+        )
+    return override
 
 
 # ======= CFLAGS and LDFLAGS logic =======

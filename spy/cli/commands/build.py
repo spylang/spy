@@ -14,7 +14,7 @@ from typer import Option
 from spy.analyze.importing import ImportAnalyzer
 from spy.backend.c.cbackend import CBackend
 from spy.build.build_info import BuildTarget
-from spy.build.config import BuildConfig, GCOption, OutputKind
+from spy.build.config import BuildConfig, GCOption, OutputKind, resolve_simd_width
 from spy.cli._runners import init_vm, nullcontext, timer
 from spy.cli.commands.shared_args import (
     Base_Args,
@@ -109,6 +109,15 @@ class _build_mixin:
         ),
     ] = False
 
+    simd_width: Annotated[
+        Optional[int],
+        Option(
+            "--simd-width",
+            help="SIMD vector width in bits (128/256/512 for native, 128 for "
+            "wasm targets; default 128)",
+        ),
+    ] = None
+
 
 @dataclass
 class Build_Args(
@@ -120,6 +129,11 @@ async def build(args: Build_Args) -> None:
     """Generate c code, compile, and optionally execute"""
     modname = args.filename.stem
     vm = await init_vm(args)
+
+    try:
+        vm.simd_width = resolve_simd_width(args.target, args.simd_width)
+    except ValueError as exc:
+        raise click.UsageError(str(exc)) from None
 
     importer = ImportAnalyzer(vm, modname, use_spyc=not args.no_spyc)
     importer.astcompile_all()
@@ -155,6 +169,7 @@ async def build(args: Build_Args) -> None:
         warning_as_error=args.warning_as_error,
         gc=gc,
         static=args.static,
+        simd_width=args.simd_width,
     )
 
     cwd = py.path.local(".")

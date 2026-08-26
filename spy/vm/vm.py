@@ -11,7 +11,7 @@ import py
 from spy import ROOT, ast, libspy
 from spy.analyze.symtable import Color, ImportRef, SymTable, maybe_blue
 from spy.ast import Color, FuncKind
-from spy.build.build_info import BuildInfoFunc
+from spy.build.build_info import SIMD_DEFAULT_WIDTH, BuildInfoFunc
 from spy.doppler import ErrorMode, redshift
 from spy.errors import WIP, SPyError
 from spy.fqn import FQN, QUALIFIERS
@@ -129,6 +129,8 @@ class SPyVM:
     # build_info callables from out-of-tree builtin modules, keyed by modname.
     # Consumed by the C backend: call build_info(target, build_type) per module.
     build_info_funcs: dict[str, BuildInfoFunc]
+    # Configured SIMD vector width (bits), read by `simd_width_of`
+    simd_width: int
 
     def __init__(
         self,
@@ -137,6 +139,7 @@ class SPyVM:
         extra_vm_modules: list[str] = [],
     ) -> None:
         self.build_info_funcs = {}
+        self.simd_width = SIMD_DEFAULT_WIDTH
         if ll is None:
             # Import extra module packages first so we can collect their
             # wasm_archive paths before constructing ll.

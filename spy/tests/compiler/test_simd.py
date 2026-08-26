@@ -1,3 +1,7 @@
+import pytest
+
+from spy.build.build_info import SIMD_ALLOWED_WIDTHS, SIMD_DEFAULT_WIDTH
+from spy.build.config import resolve_simd_width
 from spy.errors import SPyError
 from spy.tests.support import CompilerTest, expect_errors, only_interp
 
@@ -867,3 +871,83 @@ class TestSIMD(CompilerTest):
             ("expected a SIMD value, got `f64`", "1.0"),
         )
         self.compile_raises(src, "bad", errors)
+
+    # === simd_width_of ===
+
+    def test_simd_width_of_default(self):
+        # Default with no --simd-width
+        mod = self.compile(
+            """
+            from _simd import simd_width_of
+
+            def w() -> i32:
+                return simd_width_of[f32]
+            """
+        )
+        assert mod.w() == 4
+
+    def test_simd_width_of_sizes_simd(self):
+        mod = self.compile(
+            """
+            from unsafe import gc_alloc
+            from _simd import SIMD, ptr_load_simd, ptr_store_simd, simd_width_of
+
+            def lanes() -> i32:
+                return simd_width_of[f32]
+
+            def lane(x: f32) -> f32:
+                W = simd_width_of[f32]
+                v = SIMD[f32, W](x)
+                return v[0]
+            """
+        )
+        assert mod.lanes() == 4
+        assert mod.lane(1.5) == 1.5
+
+    def test_simd_width_of_override(self):
+        # The build CLI sets vm.simd_width from --simd-width before redshift.
+        self.vm.simd_width = 256
+        mod = self.compile(
+            """
+            from _simd import simd_width_of
+
+            def w() -> i32:
+                return simd_width_of[f32]
+            """
+        )
+        assert mod.w() == 8
+
+    def test_simd_width_of_invalid_dtype(self):
+        src = """
+        from _simd import simd_width_of
+
+        def bad() -> i32:
+            return simd_width_of[bool]
+        """
+        errors = expect_errors(
+            "SIMD element type must be a numeric primitive, got `bool`"
+        )
+        self.compile_raises(src, "bad", errors)
+
+
+def test_simd_width_resolution():
+    # The default is the universally-safe width for every target.
+    for target in SIMD_ALLOWED_WIDTHS:
+        assert resolve_simd_width(target, None) == SIMD_DEFAULT_WIDTH
+    # native accepts 128/256/512.
+    assert resolve_simd_width("native", 128) == 128
+    assert resolve_simd_width("native", 256) == 256
+    assert resolve_simd_width("native", 512) == 512
+    # wasm targets are fixed at 128.
+    assert resolve_simd_width("wasi", 128) == 128
+    assert resolve_simd_width("emscripten", 128) == 128
+    # Non-power-of-two / out-of-range widths are rejected.
+    with pytest.raises(ValueError):
+        resolve_simd_width("native", 64)
+    with pytest.raises(ValueError):
+        resolve_simd_width("native", 300)
+    # 256/512 are not valid for wasm targets.
+    with pytest.raises(ValueError):
+        resolve_simd_width("wasi", 256)
+    with pytest.raises(ValueError):
+        resolve_simd_width("emscripten", 512)
