@@ -108,7 +108,6 @@ class CompilerConfig:
         )
         self.cflags += EXTRA_CFLAGS
 
-        self.ldflags += LDFLAGS
         self.ldflags += get_ldflags(flags_target, config.build_type)
 
         libdir = get_libdir(flags_target, config.build_type, config.kind)
@@ -131,6 +130,8 @@ class CompilerConfig:
                 "-L", libdir,
                 "-lspy",
             ]  # fmt: skip
+
+        self.ldflags += LDFLAGS
 
         # target specific flags
         if config.target == "native":
