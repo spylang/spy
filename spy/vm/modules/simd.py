@@ -464,7 +464,7 @@ def _get_or_make_simd_make(
 # ===== mask type + binop/cmp/select lowering builtins =====
 
 
-def _lane_py(w_lane: W_Object, w_dtype: W_Type) -> Any:
+def _lane_py(w_lane: Any, w_dtype: W_Type) -> Any:
     """
     Unwrap a SIMD lane W_Object to a plain Python value for interp arithmetic.
     """
@@ -485,7 +485,9 @@ def get_mask_simdtype(vm: "SPyVM", w_simdtype: W_SimdType) -> W_SimdType:
     """
     w_mask_dtype = SIMD_MASK_DTYPE[w_simdtype.w_dtype]
     size = int(w_simdtype.size)
-    return vm.fast_call(SIMD.w_SIMD, [w_mask_dtype, W_I32(size)])
+    w_mask_simdtype = vm.fast_call(SIMD.w_SIMD, [w_mask_dtype, W_I32(size)])
+    assert isinstance(w_mask_simdtype, W_SimdType)
+    return w_mask_simdtype
 
 
 def _is_valid_mask(w_mask_t: W_SimdType, w_op_t: W_SimdType) -> bool:
