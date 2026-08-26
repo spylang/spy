@@ -497,3 +497,74 @@ class TestMain:
         assert res.exit_code == 0
         output = decolorize(res.output)
         assert output.split() == [str(f), "aaa", "bbb", "ccc", "--timeit"]
+
+    def test_build_simd_width_default(self):
+        src = """
+        from _simd import SIMD, simd_width_of
+
+        def main() -> None:
+            W = simd_width_of[f32]
+            v = SIMD[f32, W](0.0)
+            print(v[0])
+        """
+        f = self.write("simd_width.spy", src)
+        self.run("build", "--no-compile", "--build-dir", self.tmpdir, f)
+        c = self.tmpdir.join("src", "simd_width.c").read()
+        # default 128 bits / 32-bit f32 = 4 lanes
+        assert "spy__simd$SIMD__builtins$f32_4" in c
+        assert "spy__simd$SIMD__builtins$f32_8" not in c
+
+    def test_build_simd_width_override(self):
+        src = """
+        from _simd import SIMD, simd_width_of
+
+        def main() -> None:
+            W = simd_width_of[f32]
+            v = SIMD[f32, W](0.0)
+            print(v[0])
+        """
+        f = self.write("simd_width.spy", src)
+
+        # first run: default width (seeds __pycache__/simd_width.spyc)
+        self.run("build", "--no-compile", "--build-dir", self.tmpdir, f)
+        c_default = self.tmpdir.join("src", "simd_width.c").read()
+
+        # second run: override, reusing the same .spyc
+        self.run(
+            "build",
+            "--no-compile",
+            "--simd-width",
+            "256",
+            "--build-dir",
+            self.tmpdir,
+            f,
+        )
+        c_256 = self.tmpdir.join("src", "simd_width.c").read()
+
+        assert "spy__simd$SIMD__builtins$f32_4" in c_default
+        assert "spy__simd$SIMD__builtins$f32_8" in c_256
+        assert c_default != c_256
+
+    def test_build_simd_width_invalid(self):
+        src = """
+        from _simd import simd_width_of
+        def main() -> None:
+            print(simd_width_of[f32])
+        """
+        f = self.write("bad_width.spy", src)
+        res = self.runner.invoke(
+            app,
+            [
+                "build",
+                "--no-compile",
+                "--simd-width",
+                "999",
+                "--build-dir",
+                str(self.tmpdir),
+                str(f),
+            ],
+        )
+        assert res.exit_code != 0
+        assert "simd_width 999" in decolorize(res.output) or "999" in decolorize(
+            res.output
+        )
