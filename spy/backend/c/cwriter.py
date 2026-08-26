@@ -1,10 +1,9 @@
 import math
-from types import NoneType
 from typing import TYPE_CHECKING
 
 from spy import ast
 from spy.backend.c import c_ast as C
-from spy.backend.c.context import C_Ident, Context
+from spy.backend.c.context import C_Ident, C_Type, Context
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.location import Loc
@@ -591,6 +590,12 @@ class CFuncWriter:
         elif irtag.tag == "simd.select":
             return self.fmt_simd_select(fqn, call)
 
+        elif irtag.tag == "simd.load":
+            return self.fmt_simd_load(fqn, call)
+
+        elif irtag.tag == "simd.store":
+            return self.fmt_simd_store(fqn, call)
+
         elif irtag.tag == "ptr.getfield":
             return self.fmt_ptr_getfield(fqn, call, irtag)
 
@@ -702,6 +707,36 @@ class CFuncWriter:
             C.BinOp("&", C.UnaryOp("~", c_m), C.Cast(c_mask, c_b)),
         )
         return C.Cast(c_op, C.Paren(blend))
+
+    def fmt_simd_load(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        # ((SIMD_u *)(ptr.p + i))[0]
+        from spy.vm.modules.simd import W_SimdType
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_simdtype = w_func.w_functype.w_restype
+        assert isinstance(w_simdtype, W_SimdType)
+        c_unaligned = C_Type(f"{w_simdtype.fqn.c_name}_u *")
+        c_ptr = self.fmt_expr(call.args[0])
+        c_i = self.fmt_expr(call.args[1])
+        addr = C.Paren(C.BinOp("+", C.Dot(c_ptr, "p"), c_i))
+        return C.Index(C.Cast(c_unaligned, addr), C.Literal("0"))
+
+    def fmt_simd_store(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        # ((SIMD_u *)(ptr.p + i))[0] = v
+        from spy.vm.modules.simd import W_SimdType
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_simdtype = w_func.w_functype.params[2].w_T
+        assert isinstance(w_simdtype, W_SimdType)
+        c_unaligned = C_Type(f"{w_simdtype.fqn.c_name}_u *")
+        c_ptr = self.fmt_expr(call.args[0])
+        c_i = self.fmt_expr(call.args[1])
+        c_v = self.fmt_expr(call.args[2])
+        addr = C.Paren(C.BinOp("+", C.Dot(c_ptr, "p"), c_i))
+        lval = C.Index(C.Cast(c_unaligned, addr), C.Literal("0"))
+        return C.BinOp("=", lval, c_v)
 
     def fmt_ptr_getfield(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         assert isinstance(call.args[1], ast.StrLiteral)
