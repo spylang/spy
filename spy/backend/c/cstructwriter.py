@@ -170,6 +170,13 @@ class CStructWriter:
             f"typedef {c_basetype} {c_simdtype} "
             f"__attribute__((vector_size({nbytes}))); /* {human} */"
         )
+        # Unaligned companion: used only when casting a raw pointer for load/store.
+        c_unaligned = C_Type(f"{w_simdtype.fqn.c_name}_u")
+        self.tbh_fwdecl.wl(
+            f"typedef {c_basetype} {c_unaligned} "
+            f"__attribute__((vector_size({nbytes}), aligned(1))); "
+            f"/* {human} unaligned */"
+        )
 
     def emit_PtrType(self, fqn: FQN, w_ptrtype: W_PtrType) -> None:
         from spy.vm.modules.simd import W_SimdType
