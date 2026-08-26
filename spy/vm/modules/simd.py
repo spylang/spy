@@ -734,3 +734,68 @@ def w_SIMD(vm: "SPyVM", w_dtype: W_Type, w_size: W_I32) -> W_Dynamic:
     w_simdtype.size = size
     vm.make_fqn_const(w_simdtype)
     return w_simdtype
+
+
+@SIMD.builtin_func(color="blue", kind="generic")
+def w_ptr_load_simd(vm: "SPyVM", w_dtype: W_Type, w_size: W_I32) -> W_Dynamic:
+    """
+    `ptr_load_simd[T, W](ptr, i)` loads a `SIMD[T, W]` vector of `W`
+    consecutive `T` lanes from ``ptr`` starting at scalar element index `i`.
+
+    `ptr` may be `gc_ptr[T]` or `raw_ptr[T]`.
+    """
+    from spy.vm.modules.unsafe.mem import generic_mem_read
+    from spy.vm.modules.unsafe.misc import sizeof
+    from spy.vm.modules.unsafe.ptr import W_Ptr
+
+    w_simdtype = vm.fast_call(SIMD.w_SIMD, [w_dtype, w_size])
+    assert isinstance(w_simdtype, W_SimdType)
+    w_dtype = w_simdtype.w_dtype
+
+    SIMD_T = Annotated[W_Simd, w_simdtype]
+    irtag = IRTag("simd.load")
+
+    @vm.register_builtin_func(w_simdtype.fqn, "ptr_load", irtag=irtag)
+    def w_ptr_load_simd_T(vm: "SPyVM", w_ptr: W_Ptr, w_i: W_I32) -> SIMD_T:
+        i = vm.unwrap_i32(w_i)
+        addr = w_ptr.addr + sizeof(w_dtype) * i
+        return generic_mem_read(vm, addr, w_simdtype)
+
+    return w_ptr_load_simd_T
+
+
+@SIMD.builtin_func(color="blue", kind="metafunc")
+def w_ptr_store_simd(
+    vm: "SPyVM", wam_ptr: W_MetaArg, wam_i: W_MetaArg, wam_v: W_MetaArg
+) -> W_OpSpec:
+    """
+    `ptr_store_simd(ptr, i, v)` stores the `SIMD[T, W]` vector `v` as `W`
+    consecutive `T` lanes into `ptr` starting at scalar element index `i`.
+
+    `T` and `W` are inferred from the static type of `v`.
+
+    `ptr` may be `gc_ptr[T]` or `raw_ptr[T]`.
+    """
+    from spy.vm.modules.unsafe.mem import generic_mem_write
+    from spy.vm.modules.unsafe.misc import sizeof
+    from spy.vm.modules.unsafe.ptr import W_Ptr
+
+    w_simdtype = wam_v.w_static_T
+    if not isinstance(w_simdtype, W_SimdType):
+        got = w_simdtype.fqn.human_name(vm)
+        err = SPyError("W_TypeError", "mismatched types")
+        err.add("error", f"expected a SIMD value, got `{got}`", loc=wam_v.loc)
+        raise err
+
+    w_dtype = w_simdtype.w_dtype
+
+    SIMD_T = Annotated[W_Simd, w_simdtype]
+    irtag = IRTag("simd.store")
+
+    @vm.register_builtin_func(w_simdtype.fqn, "ptr_store", irtag=irtag)
+    def w_ptr_store_simd_T(vm: "SPyVM", w_ptr: W_Ptr, w_i: W_I32, w_v: SIMD_T) -> None:
+        i = vm.unwrap_i32(w_i)
+        addr = w_ptr.addr + sizeof(w_dtype) * i
+        generic_mem_write(vm, addr, w_simdtype, w_v)
+
+    return W_OpSpec(w_ptr_store_simd_T, [wam_ptr, wam_i, wam_v])

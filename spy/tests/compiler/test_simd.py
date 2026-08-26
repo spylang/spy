@@ -886,5 +886,8 @@ class TestSIMD(CompilerTest):
             p = gc_alloc[f32](4)
             ptr_store_simd(p, 0, 1.0)
         """
-        errors = expect_errors("cannot call `_simd::ptr_store_simd`")
+        errors = expect_errors(
+            "mismatched types",
+            ("expected a SIMD value, got `f64`", "1.0"),
+        )
         self.compile_raises(src, "bad", errors)
