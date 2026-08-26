@@ -744,45 +744,19 @@ class TestSIMD(CompilerTest):
             from unsafe import gc_alloc
             from _simd import SIMD, ptr_load_simd, ptr_store_simd
 
-            def rt_i8(x: i32) -> i8:
-                p = gc_alloc[i8](4)
-                ptr_store_simd(p, 0, SIMD[i8, 4](i8(x), i8(x), i8(x), i8(x)))
-                return ptr_load_simd[i8, 4](p, 0)[0]
+            def rt[T](x: T) -> T:
+                p = gc_alloc[T](4)
+                ptr_store_simd(p, 0, SIMD[T, 4](x, x, x, x))
+                return ptr_load_simd[T, 4](p, 0)[0]
 
-            def rt_u8(x: i32) -> u8:
-                p = gc_alloc[u8](4)
-                ptr_store_simd(p, 0, SIMD[u8, 4](u8(x), u8(x), u8(x), u8(x)))
-                return ptr_load_simd[u8, 4](p, 0)[0]
-
-            def rt_i32(x: i32) -> i32:
-                p = gc_alloc[i32](4)
-                ptr_store_simd(p, 0, SIMD[i32, 4](x, x, x, x))
-                return ptr_load_simd[i32, 4](p, 0)[0]
-
-            def rt_u32(x: i32) -> u32:
-                p = gc_alloc[u32](4)
-                ptr_store_simd(p, 0, SIMD[u32, 4](u32(x), u32(x), u32(x), u32(x)))
-                return ptr_load_simd[u32, 4](p, 0)[0]
-
-            def rt_i64(x: i32) -> i64:
-                p = gc_alloc[i64](4)
-                ptr_store_simd(p, 0, SIMD[i64, 4](i64(x), i64(x), i64(x), i64(x)))
-                return ptr_load_simd[i64, 4](p, 0)[0]
-
-            def rt_u64(x: i32) -> u64:
-                p = gc_alloc[u64](4)
-                ptr_store_simd(p, 0, SIMD[u64, 4](u64(i64(x)), u64(i64(x)), u64(i64(x)), u64(i64(x))))
-                return ptr_load_simd[u64, 4](p, 0)[0]
-
-            def rt_f32(x: f64) -> f32:
-                p = gc_alloc[f32](4)
-                ptr_store_simd(p, 0, SIMD[f32, 4](f32(x), f32(x), f32(x), f32(x)))
-                return ptr_load_simd[f32, 4](p, 0)[0]
-
-            def rt_f64(x: f64) -> f64:
-                p = gc_alloc[f64](4)
-                ptr_store_simd(p, 0, SIMD[f64, 4](x, x, x, x))
-                return ptr_load_simd[f64, 4](p, 0)[0]
+            rt_i8 = rt[i8]
+            rt_u8 = rt[u8]
+            rt_i32 = rt[i32]
+            rt_u32 = rt[u32]
+            rt_i64 = rt[i64]
+            rt_u64 = rt[u64]
+            rt_f32 = rt[f32]
+            rt_f64 = rt[f64]
             """
         )
         assert mod.rt_i8(-5) == -5
@@ -800,6 +774,8 @@ class TestSIMD(CompilerTest):
             from unsafe import gc_alloc
             from _simd import SIMD, ptr_load_simd, ptr_store_simd
 
+            load_simd = ptr_load_simd[f32, 4]
+
             def saxpy(a: f32, n: i32) -> f32:
                 x = gc_alloc[f32](n)
                 y = gc_alloc[f32](n)
@@ -808,11 +784,11 @@ class TestSIMD(CompilerTest):
                     x[i] = 1.0
                     y[i] = 2.0
                 va = SIMD[f32, 4](a)
-                vx0 = ptr_load_simd[f32, 4](x, 0)
-                vy0 = ptr_load_simd[f32, 4](y, 0)
+                vx0 = load_simd(x, 0)
+                vy0 = load_simd(y, 0)
                 ptr_store_simd(out, 0, va * vx0 + vy0)
-                vx4 = ptr_load_simd[f32, 4](x, 4)
-                vy4 = ptr_load_simd[f32, 4](y, 4)
+                vx4 = load_simd(x, 4)
+                vy4 = load_simd(y, 4)
                 ptr_store_simd(out, 4, va * vx4 + vy4)
                 s: f32 = 0.0
                 for j in range(n):
