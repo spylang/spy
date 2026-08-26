@@ -668,3 +668,223 @@ class TestSIMD(CompilerTest):
         """
         errors = expect_errors("method `SIMD[i32, 2]::select` does not exist")
         self.compile_raises(src, "bad", errors)
+
+    # === pointer load/store of whole SIMD vectors ===
+
+    def test_ptr_load_store_roundtrip(self):
+        mod = self.compile(
+            """
+            from unsafe import gc_alloc, raw_alloc
+            from _simd import SIMD, ptr_load_simd, ptr_store_simd
+
+            def roundtrip_gc(a: f32, b: f32, c: f32, d: f32) -> f32:
+                p = gc_alloc[f32](8)
+                v = SIMD[f32, 4](a, b, c, d)
+                ptr_store_simd(p, 0, v)
+                w = ptr_load_simd[f32, 4](p, 0)
+                return w[2]
+
+            def roundtrip_raw(a: f32, b: f32, c: f32, d: f32) -> f32:
+                p = raw_alloc[f32](4)
+                ptr_store_simd(p, 0, SIMD[f32, 4](a, b, c, d))
+                v = ptr_load_simd[f32, 4](p, 0)
+                return v[3]
+            """
+        )
+        assert mod.roundtrip_gc(1.0, 2.0, 3.0, 4.0) == 3.0
+        assert mod.roundtrip_raw(1.0, 2.0, 3.0, 4.0) == 4.0
+
+    def test_ptr_load_store_strided_and_overwrite(self):
+        mod = self.compile(
+            """
+            from unsafe import gc_alloc
+            from _simd import SIMD, ptr_load_simd, ptr_store_simd
+
+            def strided() -> i32:
+                p = gc_alloc[i32](8)
+                ptr_store_simd(p, 0, SIMD[i32, 4](10, 20, 30, 40))
+                ptr_store_simd(p, 4, SIMD[i32, 4](50, 60, 70, 80))
+                v0 = ptr_load_simd[i32, 4](p, 0)
+                v4 = ptr_load_simd[i32, 4](p, 4)
+                return v0[1] + v4[0] + v4[3]
+
+            def overwrite() -> f32:
+                p = gc_alloc[f32](4)
+                ptr_store_simd(p, 0, SIMD[f32, 4](1.0, 2.0, 3.0, 4.0))
+                ptr_store_simd(p, 0, SIMD[f32, 4](5.0, 6.0, 7.0, 8.0))
+                v = ptr_load_simd[f32, 4](p, 0)
+                return v[1]
+            """
+        )
+        assert mod.strided() == 150  # 20 + 50 + 80
+        assert mod.overwrite() == 6.0
+
+    def test_ptr_load_store_red_index(self):
+        mod = self.compile(
+            """
+            from unsafe import gc_alloc
+            from _simd import SIMD, ptr_load_simd, ptr_store_simd
+
+            def store_at(idx: i32) -> f32:
+                p = gc_alloc[f32](8)
+                ptr_store_simd(p, idx, SIMD[f32, 4](1.0, 2.0, 3.0, 4.0))
+                v = ptr_load_simd[f32, 4](p, idx)
+                return v[2]
+            """
+        )
+        assert mod.store_at(0) == 3.0
+        assert mod.store_at(4) == 3.0
+
+    def test_ptr_load_store_all_dtypes(self):
+        # one vector of each v1 dtype survives a load/store round-trip.
+        # i64/u64 (32 B, natural align 32) exercise the unaligned lowering
+        # against a normally-aligned (16 B) gc_alloc buffer.
+        mod = self.compile(
+            """
+            from unsafe import gc_alloc
+            from _simd import SIMD, ptr_load_simd, ptr_store_simd
+
+            def rt_i8(x: i32) -> i8:
+                p = gc_alloc[i8](4)
+                ptr_store_simd(p, 0, SIMD[i8, 4](i8(x), i8(x), i8(x), i8(x)))
+                return ptr_load_simd[i8, 4](p, 0)[0]
+
+            def rt_u8(x: i32) -> u8:
+                p = gc_alloc[u8](4)
+                ptr_store_simd(p, 0, SIMD[u8, 4](u8(x), u8(x), u8(x), u8(x)))
+                return ptr_load_simd[u8, 4](p, 0)[0]
+
+            def rt_i32(x: i32) -> i32:
+                p = gc_alloc[i32](4)
+                ptr_store_simd(p, 0, SIMD[i32, 4](x, x, x, x))
+                return ptr_load_simd[i32, 4](p, 0)[0]
+
+            def rt_u32(x: i32) -> u32:
+                p = gc_alloc[u32](4)
+                ptr_store_simd(p, 0, SIMD[u32, 4](u32(x), u32(x), u32(x), u32(x)))
+                return ptr_load_simd[u32, 4](p, 0)[0]
+
+            def rt_i64(x: i32) -> i64:
+                p = gc_alloc[i64](4)
+                ptr_store_simd(p, 0, SIMD[i64, 4](i64(x), i64(x), i64(x), i64(x)))
+                return ptr_load_simd[i64, 4](p, 0)[0]
+
+            def rt_u64(x: i32) -> u64:
+                p = gc_alloc[u64](4)
+                ptr_store_simd(p, 0, SIMD[u64, 4](u64(i64(x)), u64(i64(x)), u64(i64(x)), u64(i64(x))))
+                return ptr_load_simd[u64, 4](p, 0)[0]
+
+            def rt_f32(x: f64) -> f32:
+                p = gc_alloc[f32](4)
+                ptr_store_simd(p, 0, SIMD[f32, 4](f32(x), f32(x), f32(x), f32(x)))
+                return ptr_load_simd[f32, 4](p, 0)[0]
+
+            def rt_f64(x: f64) -> f64:
+                p = gc_alloc[f64](4)
+                ptr_store_simd(p, 0, SIMD[f64, 4](x, x, x, x))
+                return ptr_load_simd[f64, 4](p, 0)[0]
+            """
+        )
+        assert mod.rt_i8(-5) == -5
+        assert mod.rt_u8(200) == 200
+        assert mod.rt_i32(42) == 42
+        assert mod.rt_u32(42) == 42
+        assert mod.rt_i64(42) == 42
+        assert mod.rt_u64(42) == 42
+        assert mod.rt_f32(1.5) == 1.5
+        assert mod.rt_f64(2.25) == 2.25
+
+    def test_saxpy_shape(self):
+        mod = self.compile(
+            """
+            from unsafe import gc_alloc
+            from _simd import SIMD, ptr_load_simd, ptr_store_simd
+
+            def saxpy(a: f32, n: i32) -> f32:
+                x = gc_alloc[f32](n)
+                y = gc_alloc[f32](n)
+                out = gc_alloc[f32](n)
+                for i in range(n):
+                    x[i] = 1.0
+                    y[i] = 2.0
+                va = SIMD[f32, 4](a)
+                vx0 = ptr_load_simd[f32, 4](x, 0)
+                vy0 = ptr_load_simd[f32, 4](y, 0)
+                ptr_store_simd(out, 0, va * vx0 + vy0)
+                vx4 = ptr_load_simd[f32, 4](x, 4)
+                vy4 = ptr_load_simd[f32, 4](y, 4)
+                ptr_store_simd(out, 4, va * vx4 + vy4)
+                s: f32 = 0.0
+                for j in range(n):
+                    s = s + out[j]
+                return s
+            """
+        )
+        # out[i] = a*1 + 2 = a+2; a=3.0 -> 5.0 per element, sum = 5*n
+        assert mod.saxpy(3.0, 8) == 40.0
+
+    def test_relu_shape(self):
+        # load -> compare -> select -> store.
+        mod = self.compile(
+            """
+            from unsafe import gc_alloc
+            from _simd import SIMD, ptr_load_simd, ptr_store_simd
+
+            def relu() -> f32:
+                x = gc_alloc[f32](4)
+                out = gc_alloc[f32](4)
+                x[0] = -1.0
+                x[1] = 2.0
+                x[2] = -3.0
+                x[3] = 4.0
+                zero = SIMD[f32, 4](0.0)
+                vx = ptr_load_simd[f32, 4](x, 0)
+                mask = vx > zero
+                r = mask.select(vx, zero)
+                ptr_store_simd(out, 0, r)
+                s: f32 = 0.0
+                for i in range(4):
+                    s = s + out[i]
+                return s
+            """
+        )
+        # relu(-1, 2, -3, 4) = (0, 2, 0, 4); sum = 6.0
+        assert mod.relu() == 6.0
+
+    def test_ptr_load_invalid_size(self):
+        src = """
+        from unsafe import gc_alloc
+        from _simd import ptr_load_simd
+
+        def bad() -> None:
+            p = gc_alloc[f32](4)
+            v = ptr_load_simd[f32, 3](p, 0)
+        """
+        errors = expect_errors("SIMD size must be a power of two, got 3")
+        self.compile_raises(src, "bad", errors)
+
+    def test_ptr_load_invalid_dtype(self):
+        src = """
+        from unsafe import gc_alloc
+        from _simd import ptr_load_simd
+
+        def bad() -> None:
+            p = gc_alloc[f32](4)
+            v = ptr_load_simd[bool, 4](p, 0)
+        """
+        errors = expect_errors(
+            "SIMD element type must be a numeric primitive, got `bool`"
+        )
+        self.compile_raises(src, "bad", errors)
+
+    def test_ptr_store_non_simd_value(self):
+        src = """
+        from unsafe import gc_alloc
+        from _simd import ptr_store_simd
+
+        def bad() -> None:
+            p = gc_alloc[f32](4)
+            ptr_store_simd(p, 0, 1.0)
+        """
+        errors = expect_errors("cannot call `_simd::ptr_store_simd`")
+        self.compile_raises(src, "bad", errors)
