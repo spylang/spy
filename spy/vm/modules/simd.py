@@ -751,7 +751,9 @@ def w_ptr_load_simd(vm: "SPyVM", w_dtype: W_Type, w_size: W_I32) -> W_Dynamic:
     def w_ptr_load_simd_T(vm: "SPyVM", w_ptr: W_Ptr, w_i: W_I32) -> SIMD_T:
         i = vm.unwrap_i32(w_i)
         addr = w_ptr.addr + sizeof(w_dtype) * i
-        return generic_mem_read(vm, addr, w_simdtype)
+        w_res = generic_mem_read(vm, addr, w_simdtype)
+        assert isinstance(w_res, W_Simd)
+        return w_res
 
     return w_ptr_load_simd_T
 
