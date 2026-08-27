@@ -906,7 +906,7 @@ class TestSIMD(CompilerTest):
 
     def test_simd_width_of_override(self):
         # The build CLI sets vm.simd_width from --simd-width before redshift.
-        self.vm.simd_width = 256
+        self.vm.simd_width = 32
         mod = self.compile(
             """
             from _simd import simd_width_of
@@ -934,20 +934,20 @@ def test_simd_width_resolution():
     # The default is the universally-safe width for every target.
     for target in SIMD_ALLOWED_WIDTHS:
         assert resolve_simd_width(target, None) == SIMD_DEFAULT_WIDTH
-    # native accepts 128/256/512.
-    assert resolve_simd_width("native", 128) == 128
-    assert resolve_simd_width("native", 256) == 256
-    assert resolve_simd_width("native", 512) == 512
-    # wasm targets are fixed at 128.
-    assert resolve_simd_width("wasi", 128) == 128
-    assert resolve_simd_width("emscripten", 128) == 128
+    # native accepts 16/32/64.
+    assert resolve_simd_width("native", 16) == 16
+    assert resolve_simd_width("native", 32) == 32
+    assert resolve_simd_width("native", 64) == 64
+    # wasm targets are fixed at 16.
+    assert resolve_simd_width("wasi", 16) == 16
+    assert resolve_simd_width("emscripten", 16) == 16
     # Non-power-of-two / out-of-range widths are rejected.
     with pytest.raises(ValueError):
-        resolve_simd_width("native", 64)
+        resolve_simd_width("native", 62)
     with pytest.raises(ValueError):
         resolve_simd_width("native", 300)
-    # 256/512 are not valid for wasm targets.
+    # 32/64 are not valid for wasm targets.
     with pytest.raises(ValueError):
-        resolve_simd_width("wasi", 256)
+        resolve_simd_width("wasi", 32)
     with pytest.raises(ValueError):
-        resolve_simd_width("emscripten", 512)
+        resolve_simd_width("emscripten", 64)

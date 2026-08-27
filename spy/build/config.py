@@ -63,9 +63,9 @@ def resolve_simd_width(target: BuildTarget, override: Optional[int]) -> int:
     The width is a *static*, build-time configuration: it is fixed before
     redshift, because redshift runs before the final C compiler / `-march=`
     is pinned, so per-target autodetection is not possible at redshift time.
-    The default (128) is universally safe.
+    The default (16) is universally safe.
 
-    `--simd-width=256`/`512` opt into wider native vectors
+    `--simd-width=32`/`64` opt into wider native vectors
     (the user is responsible for matching `-march`).
 
     `override` is the value of `--simd-width` (or `None`); it must be one

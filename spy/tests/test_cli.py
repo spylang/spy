@@ -534,16 +534,16 @@ class TestMain:
             "build",
             "--no-compile",
             "--simd-width",
-            "256",
+            "32",
             "--build-dir",
             self.tmpdir,
             f,
         )
-        c_256 = self.tmpdir.join("src", "simd_width.c").read()
+        c_32 = self.tmpdir.join("src", "simd_width.c").read()
 
         assert "spy__simd$SIMD__builtins$f32_4" in c_default
-        assert "spy__simd$SIMD__builtins$f32_8" in c_256
-        assert c_default != c_256
+        assert "spy__simd$SIMD__builtins$f32_8" in c_32
+        assert c_default != c_32
 
     def test_build_simd_width_invalid(self):
         src = """
