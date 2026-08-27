@@ -1,0 +1,49 @@
+"""
+Study perf. differences with and without --march=native
+
+
+```sh
+spy build -x --release study_march_native.spy
+spy build -x --release --march=native study_march_native.spy
+spy build --no-compile study_march_native.spy
+```
+"""
+
+from time import time
+from unsafe import gc_alloc, gc_ptr
+
+
+def fill[T](arr: gc_ptr[T], n: i32, start: T, step: T) -> None:
+    v = start
+    for i in range(n):
+        arr[i] = v
+        v = v + step
+
+
+def saxpy_scalar[T](a: T, x: gc_ptr[T], y: gc_ptr[T], out: gc_ptr[T], n: i32) -> None:
+    for i in range(n):
+        out[i] = a * x[i] + y[i]
+
+
+def main() -> None:
+    N: i32 = 1 << 20
+    REPEAT = 50
+
+    dtype = f32
+
+    a: dtype = 2.0
+    x = gc_alloc[dtype](N)
+    y = gc_alloc[dtype](N)
+    out = gc_alloc[dtype](N)
+
+    fill[dtype](x, N, 1.0, 0.0001)
+    fill[dtype](y, N, 0.5, -0.0001)
+
+    print("dtype    =", dtype)
+
+    t0 = time()
+    for _ in range(REPEAT):
+        saxpy_scalar[dtype](a, x, y, out, N)
+    ts = time() - t0
+
+    print("SAXPY   scalar=", ts, "s")
