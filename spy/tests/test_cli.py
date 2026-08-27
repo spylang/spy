@@ -510,7 +510,7 @@ class TestMain:
         f = self.write("simd_width.spy", src)
         self.run("build", "--no-compile", "--build-dir", self.tmpdir, f)
         c = self.tmpdir.join("src", "simd_width.c").read()
-        # default 128 bits / 32-bit f32 = 4 lanes
+        # default 16 bytes / 32-bit f32 = 4 lanes
         assert "spy__simd$SIMD__builtins$f32_4" in c
         assert "spy__simd$SIMD__builtins$f32_8" not in c
 

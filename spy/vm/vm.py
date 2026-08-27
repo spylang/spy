@@ -129,7 +129,7 @@ class SPyVM:
     # build_info callables from out-of-tree builtin modules, keyed by modname.
     # Consumed by the C backend: call build_info(target, build_type) per module.
     build_info_funcs: dict[str, BuildInfoFunc]
-    # Configured SIMD vector width (bits), read by `simd_width_of`
+    # Configured SIMD vector width (bytes), read by `simd_width_of`
     simd_width: int
 
     def __init__(

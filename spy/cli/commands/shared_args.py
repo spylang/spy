@@ -54,7 +54,7 @@ class Base_Args:
         Optional[int],
         Option(
             "--simd-width",
-            help="SIMD vector width in bits (default: 128; native: 128/256/512)",
+            help="SIMD vector width in bytes (default: 16; native: 16/32/64)",
         ),
     ] = None
 

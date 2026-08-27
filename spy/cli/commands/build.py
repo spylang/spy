@@ -14,7 +14,7 @@ from typer import Option
 from spy.analyze.importing import ImportAnalyzer
 from spy.backend.c.cbackend import CBackend
 from spy.build.build_info import BuildTarget
-from spy.build.config import BuildConfig, GCOption, OutputKind, resolve_simd_width
+from spy.build.config import BuildConfig, GCOption, OutputKind
 from spy.cli._runners import init_vm, nullcontext, timer
 from spy.cli.commands.shared_args import (
     Base_Args,

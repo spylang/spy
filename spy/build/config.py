@@ -49,7 +49,7 @@ class BuildConfig:
 
 def resolve_simd_width(target: BuildTarget, override: Optional[int]) -> int:
     """
-    Return the effective SIMD vector width (in bits) for a build.
+    Return the effective SIMD vector width (in bytes) for a build.
 
     The width is a *static*, build-time configuration: it is fixed before
     redshift, because redshift runs before the final C compiler / `-march=`

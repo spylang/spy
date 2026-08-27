@@ -679,8 +679,8 @@ def w_simd_width_of(vm: "SPyVM", w_dtype: W_Type) -> W_I32:
             "W_TypeError",
             f"SIMD element type must be a numeric primitive, got `{t}`",
         )
-    nbits = SIMD_DTYPE_BYTES[w_dtype] * 8
-    return W_I32(vm.simd_width // nbits)
+    nbytes = SIMD_DTYPE_BYTES[w_dtype]
+    return W_I32(vm.simd_width // nbytes)
 
 
 @SIMD.builtin_func(color="blue", kind="generic")
