@@ -5,6 +5,7 @@ class TestSIMD(CompilerTest):
     def test_imports(self):
         src = """
         from simd import SIMD, simd_width_of, ptr_load_simd, ptr_store_simd
+        from simd import reinterpret_as
 
         def width() -> i32:
             return simd_width_of[i32]

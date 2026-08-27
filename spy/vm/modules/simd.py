@@ -3,6 +3,7 @@ This module implements the low-level internal `_simd` VM module, exposing `SIMD`
 """
 
 import operator
+import struct
 from typing import TYPE_CHECKING, Annotated, Any
 
 from spy.errors import SPyError
@@ -85,6 +86,18 @@ _W_LANE_CTOR = {
     B.w_i64: W_I64,
     B.w_u64: W_U64,
     B.w_f64: W_F64,
+}
+
+
+FORMAT_CODES = {
+    B.w_i8: "<b",
+    B.w_u8: "<B",
+    B.w_i32: "<i",
+    B.w_u32: "<I",
+    B.w_f32: "<f",
+    B.w_i64: "<q",
+    B.w_u64: "<Q",
+    B.w_f64: "<d",
 }
 
 
@@ -637,6 +650,60 @@ def _get_or_make_simd_reduce(
     return w_func
 
 
+def _reinterpret_value(value: any, from_fmt: str, to_fmt: str) -> any:
+    """Reinterpret one value"""
+    raw_bytes = struct.pack(from_fmt, value)
+    return struct.unpack(to_fmt, raw_bytes)[0]
+
+
+def _get_or_make_simd_reinterpret(
+    vm: "SPyVM", w_src_t: W_SimdType, w_target_dtype: W_Type
+) -> "W_BuiltinFunc":  # type: ignore[name-defined]
+    """
+    Build and register the red `simd.reinterpret` lowering builtin.
+    """
+    from spy.vm.function import FuncParam, W_BuiltinFunc, W_FuncType
+
+    size = w_src_t.size
+    w_tgt_simdtype = vm.fast_call(SIMD.w_SIMD, [w_target_dtype, W_I32(size)])
+    assert isinstance(w_tgt_simdtype, W_SimdType)
+
+    fqn = w_src_t.fqn.join("__reinterpret_as__", qualifiers=[w_tgt_simdtype.fqn])
+    w_functype = W_FuncType.new(
+        [FuncParam(w_src_t, "simple")],
+        w_tgt_simdtype,
+    )
+    irtag = IRTag("simd.reinterpret")
+
+    w_existing = vm.lookup_global_maybe(fqn)
+    if w_existing is not None:
+        assert isinstance(w_existing, W_BuiltinFunc)
+        return w_existing
+
+    from_w_dtype = w_src_t.w_dtype
+    to_w_dtype = w_target_dtype
+
+    from_fmt = FORMAT_CODES[w_src_t.w_dtype]
+    to_fmt = FORMAT_CODES[w_target_dtype]
+
+    lane_ctor = _W_LANE_CTOR[to_w_dtype]
+
+    def w_impl(vm: "SPyVM", w_v: W_Simd) -> W_Simd:
+        return W_Simd(
+            w_tgt_simdtype,
+            [
+                lane_ctor(
+                    _reinterpret_value(_lane_py(w_lane, from_w_dtype), from_fmt, to_fmt)
+                )
+                for w_lane in w_v.lanes_w
+            ],
+        )
+
+    w_func = W_BuiltinFunc(w_functype, fqn, w_impl)
+    vm.add_global(fqn, w_func, irtag=irtag)
+    return w_func
+
+
 def _simd_binop_meta(
     vm: "SPyVM",
     wam_self: W_MetaArg,
@@ -858,3 +925,40 @@ def w_ptr_store_simd(
         generic_mem_write(vm, addr, w_simdtype, w_v)
 
     return W_OpSpec(w_ptr_store_simd_T, [wam_ptr, wam_i, wam_v])
+
+
+@SIMD.builtin_func(color="blue", kind="metafunc")
+def w_reinterpret_as(vm: "SPyVM", wam_v: W_MetaArg, wam_t: W_MetaArg) -> W_OpSpec:
+    """
+    `reinterpret_as(v, T)` reinterprets the bits of the `SIMD[src, W]` vector
+    `v` as a `SIMD[T, W]` vector, with no numeric conversion.
+
+    Valid only when the source and target lanes have the same byte-width (so
+    the two `vector_size` typedefs have the same total size and the C cast is a
+    bit-level reinterpret, not a conversion).
+    """
+    w_src_t = wam_v.w_static_T
+    if not isinstance(w_src_t, W_SimdType):
+        got = w_src_t.fqn.human_name(vm)
+        err = SPyError("W_TypeError", "mismatched types")
+        err.add("error", f"expected a SIMD value, got `{got}`", loc=wam_v.loc)
+        raise err
+
+    w_target_dtype = wam_t.blue_ensure(vm, B.w_type)
+    assert isinstance(w_target_dtype, W_Type)
+    if w_target_dtype not in SIMD_DTYPES:
+        t = w_target_dtype.fqn.human_name(vm)
+        raise SPyError(
+            "W_TypeError",
+            f"SIMD element type must be a numeric primitive, got `{t}`",
+        )
+
+    if SIMD_DTYPE_BYTES[w_src_t.w_dtype] != SIMD_DTYPE_BYTES[w_target_dtype]:
+        src = w_src_t.fqn.human_name(vm)
+        tgt = vm.fast_call(SIMD.w_SIMD, [w_target_dtype, W_I32(w_src_t.size)])
+        assert isinstance(tgt, W_SimdType)
+        msg = f"cannot reinterpret `{src}` as `{tgt.fqn.human_name(vm)}`: lane byte-width mismatch"
+        raise SPyError("W_TypeError", msg)
+
+    w_tgt_t = _get_or_make_simd_reinterpret(vm, w_src_t, w_target_dtype)
+    return W_OpSpec(w_tgt_t, [wam_v])

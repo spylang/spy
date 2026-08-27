@@ -752,6 +752,109 @@ class TestSIMD(CompilerTest):
         )
         assert mod.dot(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0) == 70.0
 
+    # === simd.reinterpret: reinterpret_as ===
+
+    def test_reinterpret_as_same_bytes(self):
+        # reinterpret bits between same-byte-width lanes: f32 <-> i32
+        mod = self.compile(
+            """
+            from _simd import SIMD, reinterpret_as
+
+            def f2i(v0: f32, v1: f32, v2: f32, v3: f32) -> i32:
+                v = SIMD[f32, 4](v0, v1, v2, v3)
+                w = reinterpret_as(v, i32)
+                return w[0]
+
+            def i2f(v0: i32, v1: i32, v2: i32, v3: i32) -> f32:
+                v = SIMD[i32, 4](v0, v1, v2, v3)
+                w = reinterpret_as(v, f32)
+                return w[0]
+            """
+        )
+        # 1.0 as f32 has bit pattern 0x3F800000 == 1065353216
+        assert mod.f2i(1.0, 2.0, 3.0, 4.0) == 1065353216
+        # 1065353216 as i32 reinterpreted to f32 is 1.0
+        assert mod.i2f(1065353216, 0, 0, 0) == 1.0
+
+    def test_reinterpret_as_identity(self):
+        # reinterpreting to the same dtype is a no-op (bits unchanged)
+        mod = self.compile(
+            """
+            from _simd import SIMD, reinterpret_as
+
+            def r(v0: i32, v1: i32, v2: i32, v3: i32) -> i32:
+                v = SIMD[i32, 4](v0, v1, v2, v3)
+                w = reinterpret_as(v, i32)
+                return w[1]
+            """
+        )
+        assert mod.r(10, 20, 30, 40) == 20
+
+    def test_reinterpret_as_i8_u8(self):
+        mod = self.compile(
+            """
+            from _simd import SIMD, reinterpret_as
+
+            def to_u8(v0: i8, v1: i8) -> u8:
+                v = SIMD[i8, 2](v0, v1)
+                w = reinterpret_as(v, u8)
+                return w[0]
+
+            def to_i8(v0: u8, v1: u8) -> i8:
+                v = SIMD[u8, 2](v0, v1)
+                w = reinterpret_as(v, i8)
+                return w[0]
+            """
+        )
+        # -1 as i8 is 0xFF, which as u8 is 255
+        assert mod.to_u8(-1, 0) == 255
+        # 255 as u8 is 0xFF, which as i8 is -1
+        assert mod.to_i8(255, 0) == -1
+
+    def test_reinterpret_as_width_mismatch_error(self):
+        src = """
+        from _simd import SIMD, reinterpret_as
+
+        def bad() -> None:
+            v = SIMD[f32, 4](1.0)
+            w = reinterpret_as(v, i64)
+        """
+        errors = expect_errors(
+            "cannot reinterpret `SIMD[f32, 4]` as `SIMD[i64, 4]`: lane byte-width mismatch"
+        )
+        self.compile_raises(src, "bad", errors)
+
+    def test_reinterpret_as_non_simd_error(self):
+        src = """
+        from _simd import reinterpret_as
+
+        def bad() -> None:
+            var x: f32 = 2.0
+            w = reinterpret_as(x, i32)
+        """
+        errors = expect_errors("mismatched types")
+        self.compile_raises(src, "bad", errors)
+
+    def test_reinterpret_as_ldexp_trick(self):
+        # the motivating use case: build 2^k by reinterpreting an int vector
+        # as a float vector (k + 127 in the exponent field, mantissa 0).
+        mod = self.compile(
+            """
+            from _simd import SIMD, reinterpret_as
+
+            def two_pow_k(k0: i32, k1: i32) -> f32:
+                # float32(2^k) bit pattern = (k + 127) << 23
+                e0 = (k0 + 127) << 23
+                e1 = (k1 + 127) << 23
+                vi = SIMD[i32, 2](e0, e1)
+                vf = reinterpret_as(vi, f32)
+                return vf[0]
+            """
+        )
+        assert mod.two_pow_k(0, 1) == 1.0  # 2^0
+        assert mod.two_pow_k(1, 0) == 2.0  # 2^1
+        assert mod.two_pow_k(2, 0) == 4.0  # 2^2
+
     # === pointer load/store of whole SIMD vectors ===
 
     def test_ptr_load_store_roundtrip(self):

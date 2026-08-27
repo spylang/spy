@@ -593,6 +593,9 @@ class CFuncWriter:
         elif irtag.tag == "simd.reduce":
             return self.fmt_simd_reduce(fqn, call, irtag)
 
+        elif irtag.tag == "simd.reinterpret":
+            return self.fmt_simd_reinterpret(fqn, call)
+
         elif irtag.tag == "simd.load":
             return self.fmt_simd_load(fqn, call)
 
@@ -732,6 +735,26 @@ class CFuncWriter:
         for term in terms[1:]:
             acc = C.BinOp(op, acc, term)
         return C.Cast(c_dtype, C.Paren(acc))
+
+    def fmt_simd_reinterpret(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        # call.args = [v]
+        assert len(call.args) == 1
+        from spy.vm.modules.simd import W_SimdType
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_ft = w_func.w_functype
+        w_src_t = w_ft.params[0].w_T
+        w_tgt_t = w_ft.w_restype
+        assert isinstance(w_src_t, W_SimdType)
+        assert isinstance(w_tgt_t, W_SimdType)
+        c_tgt = self.ctx.w2c(w_tgt_t)
+        c_v = self.fmt_expr(call.args[0])
+        # (T)v — a same-size bit reinterpret between two vector_size typedefs,
+        # not a numeric conversion.  Valid because the interp metafunc only
+        # builds this builtin when src and target lanes have the same
+        # byte-width (so the two typedefs have the same total size).
+        return C.Cast(c_tgt, c_v)
 
     def fmt_simd_load(self, fqn: FQN, call: ast.Call) -> C.Expr:
         # ((SIMD_u *)(ptr.p + i))[0]
