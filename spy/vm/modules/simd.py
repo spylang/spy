@@ -2,6 +2,7 @@
 This module implements the low-level internal `_simd` VM module, exposing `SIMD`.
 """
 
+import math
 import operator
 import struct
 from typing import TYPE_CHECKING, Annotated, Any
@@ -424,6 +425,15 @@ class W_Simd(W_Object):
             if isinstance(w_simdtype, W_SimdType):
                 w_red = _get_or_make_simd_reduce(vm, w_simdtype, op="+")
                 return W_OpSpec(w_red)
+        if meth in ("floor", "trunc", "round", "ceil") and len(args_wam) == 0:
+            w_simdtype = wam_self.w_static_T
+            if isinstance(w_simdtype, W_SimdType) and w_simdtype.w_dtype in (
+                B.w_f32,
+                B.w_f64,
+            ):
+                w_round = _get_or_make_simd_round(vm, w_simdtype, op=meth)
+                return W_OpSpec(w_round)
+
         return W_OpSpec.NULL
 
 
@@ -644,6 +654,57 @@ def _get_or_make_simd_reduce(
         for w_lane in w_v.lanes_w[1:]:
             acc = op_py(acc, _lane_py(w_lane, w_dtype))
         return lane_ctor(acc)
+
+    w_func = W_BuiltinFunc(w_functype, fqn, w_impl)
+    vm.add_global(fqn, w_func, irtag=irtag)
+    return w_func
+
+
+def _get_or_make_simd_round(
+    vm: "SPyVM", w_simdtype: W_SimdType, *, op: str
+) -> "W_BuiltinFunc":  # type: ignore[name-defined]
+    """
+    Build and register the red `simd.round` lowering builtin for a
+    per-lane rounding op (`floor`/`trunc`/`round`/`ceil`).
+    """
+    from spy.vm.function import FuncParam, W_BuiltinFunc, W_FuncType
+
+    w_dtype = w_simdtype.w_dtype
+    lane_ctor = _W_LANE_CTOR[w_dtype]
+
+    if w_dtype is not B.w_f32 and w_dtype is not B.w_f64:
+        raise SPyError(
+            "W_TypeError",
+            f"method `{op}` is not supported on integer SIMD vectors",
+        )
+
+    op_py = {
+        "floor": math.floor,
+        "trunc": math.trunc,
+        "ceil": math.ceil,
+        "round": round,  # Python 3 round is half-to-even
+    }[op]
+
+    fqn = w_simdtype.fqn.join(f"__{op}__")
+    w_functype = W_FuncType.new(
+        [FuncParam(w_simdtype, "simple"), FuncParam(B.w_str, "simple")],
+        w_simdtype,
+    )
+    irtag = IRTag("simd.round", op=op)
+
+    w_existing = vm.lookup_global_maybe(fqn)
+    if w_existing is not None:
+        assert isinstance(w_existing, W_BuiltinFunc)
+        return w_existing
+
+    def w_impl(vm: "SPyVM", w_v: W_Simd, w_meth: W_Object) -> W_Simd:
+        return W_Simd(
+            w_simdtype,
+            [
+                lane_ctor(float(op_py(_lane_py(w_lane, w_dtype))))
+                for w_lane in w_v.lanes_w
+            ],
+        )
 
     w_func = W_BuiltinFunc(w_functype, fqn, w_impl)
     vm.add_global(fqn, w_func, irtag=irtag)

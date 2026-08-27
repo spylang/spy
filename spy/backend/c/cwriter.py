@@ -596,6 +596,9 @@ class CFuncWriter:
         elif irtag.tag == "simd.reinterpret":
             return self.fmt_simd_reinterpret(fqn, call)
 
+        elif irtag.tag == "simd.round":
+            return self.fmt_simd_round(fqn, call, irtag)
+
         elif irtag.tag == "simd.load":
             return self.fmt_simd_load(fqn, call)
 
@@ -755,6 +758,44 @@ class CFuncWriter:
         # builds this builtin when src and target lanes have the same
         # byte-width (so the two typedefs have the same total size).
         return C.Cast(c_tgt, c_v)
+
+    def fmt_simd_round(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
+        # call.args = [v, "floor" (blue str, ignored)]
+        assert len(call.args) == 2
+        from spy.vm.modules.simd import W_SimdType
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_simdtype = w_func.w_functype.params[0].w_T
+        assert isinstance(w_simdtype, W_SimdType)
+        c_simdtype = self.ctx.w2c(w_simdtype)
+        size = w_simdtype.size
+
+        op = irtag.data["op"]
+        w_dtype = w_simdtype.w_dtype
+        # round is half-to-even (rint/rintf), NOT libc round/roundf
+        # (which is half-away-from-zero).  This matches Python 3 round() and
+        # the hardware roundps instruction.
+        c_fns = {
+            (B.w_f32, "floor"): "floorf",
+            (B.w_f32, "trunc"): "truncf",
+            (B.w_f32, "round"): "rintf",
+            (B.w_f32, "ceil"): "ceilf",
+            (B.w_f64, "floor"): "floor",
+            (B.w_f64, "trunc"): "trunc",
+            (B.w_f64, "round"): "rint",
+            (B.w_f64, "ceil"): "ceil",
+        }
+        c_fn = c_fns[(w_dtype, op)]
+
+        c_v = self.fmt_expr(call.args[0])
+        # (T){ fn(v[0]), fn(v[1]), ..., fn(v[W-1]) }
+        lanes = [
+            C.Call(C.Literal(c_fn), [C.Index(c_v, C.Literal(str(i)))])
+            for i in range(size)
+        ]
+        strargs = ", ".join(map(str, lanes))
+        return C.Cast(c_simdtype, C.Literal("{ %s }" % strargs))
 
     def fmt_simd_load(self, fqn: FQN, call: ast.Call) -> C.Expr:
         # ((SIMD_u *)(ptr.p + i))[0]
