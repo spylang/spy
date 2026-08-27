@@ -28,11 +28,9 @@ def fill[T](arr: gc_ptr[T], n: i32, start: T, step: T) -> None:
         v = v + step
 
 
-def approx_eq[T](a: T, b: T, tol: T) -> bool:
-    d = a - b
-    if d < 0.0:
-        d = -d
-    ok = d < tol
+def approx_eq[T](a: T, b: T, rel_tol: T) -> bool:
+    d = abs(a - b)
+    ok = d / abs(a) < rel_tol
     return ok
 
 
@@ -114,6 +112,34 @@ def dot_simd[T](x: gc_ptr[T], y: gc_ptr[T], n: i32) -> T:
         total += acc[idx]
     for j in range(bound, n):
         total = total + x[j] * y[j]
+    return total
+
+
+# -----------------------------------------
+# Reduction:  sum of squares  (sum(x * x)) 
+# -----------------------------------------
+
+
+def squares_scalar[T](x: gc_ptr[T], n: i32) -> T:
+    total: T = 0.0
+    for i in range(n):
+        total = total + x[i] * x[i]
+    return total
+
+
+def squares_simd[T](x: gc_ptr[T], n: i32) -> T:
+    W = simd_width_of[T]
+    acc = SIMD[T, W](0.0)
+    bound = n - (n % W)
+    for i in range(0, bound, W):
+        vx = ptr_load_simd[T, W](x, i)
+        acc = acc + vx * vx
+    # total: T = acc.reduce_add()
+    total: T = 0
+    for idx in range(W):
+        total += acc[idx]
+    for j in range(bound, n):
+        total = total + x[j] * x[j]
     return total
 
 
@@ -199,5 +225,21 @@ def main() -> None:
 
     ref = dot_scalar[dtype](x, y, N)
     got = dot_simd[dtype](x, y, N)
-    ok = approx_eq[dtype](ref, got, 1e-2)
+    ok = approx_eq[dtype](ref, got, 1e-4)
     print("Dot     scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
+
+    # --- Sum of squares ---
+    t0 = time()
+    for _5 in range(REPEAT):
+        sink[0] += squares_scalar[dtype](x, N)
+    ts = time() - t0
+
+    t0 = time()
+    for _6 in range(REPEAT):
+        sink[1] += squares_simd[dtype](x, N)
+    tv = time() - t0
+
+    ref = squares_scalar[dtype](x, N)
+    got = squares_simd[dtype](x, N)
+    ok = approx_eq[dtype](ref, got, 1e-4)
+    print("Squares scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
