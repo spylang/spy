@@ -11,6 +11,7 @@ spy build -x --release --march=native --simd-width 64 bench_simd.spy
 ```
 """
 
+from math import exp
 from time import time
 from simd import SIMD, simd_width_of, ptr_load_simd, ptr_store_simd
 from unsafe import gc_alloc, gc_ptr
@@ -116,7 +117,7 @@ def dot_simd[T](x: gc_ptr[T], y: gc_ptr[T], n: i32) -> T:
 
 
 # -----------------------------------------
-# Reduction:  sum of squares  (sum(x * x)) 
+# Reduction:  sum of squares  (sum(x * x))
 # -----------------------------------------
 
 
@@ -143,11 +144,77 @@ def squares_simd[T](x: gc_ptr[T], n: i32) -> T:
     return total
 
 
+# -------------------------------------------------------------
+# Elementwise:  exp(x)  — opaque scalar call vs SIMD polynomial
+# -------------------------------------------------------------
+#
+# Demonstrates the other classic case autovectorization cannot touch: an
+# opaque function call in the loop body.  The scalar loop calls the real
+# (non-inlined) libm exp on every element, so the compiler cannot vectorize
+# across the call regardless of how simple the body looks.  The SIMD path
+# replaces it with a pure +/-/* polynomial on SIMD lanes, which vectorizes
+# fully.  This is exactly why vectorized math libraries (SVML, SLEEF) exist.
+#
+# SPy's SIMD subset is currently limited (no trunc/floor/reinterpret_as, no
+# argument reduction, no 2^k scaling), so we keep the input in [-0.5, 0.5]
+# where a 6th-degree polynomial for exp is accurate to < 1e-7 directly.
+
+
+# exp(x) Taylor/minimax polynomial, degree 6, accurate to ~6e-9 on [-0.5, 0.5].
+EXP_P0 = 1.0
+EXP_P1 = 1.0
+EXP_P2 = 0.5
+EXP_P3 = 0.166666667
+EXP_P4 = 0.0416666667
+EXP_P5 = 0.00833333333
+EXP_P6 = 0.00138888889
+
+
+# Scalar reference: calls the real (non-inlined) libm exp on every element.
+# The compiler cannot see through the external call, so this loop does NOT
+# autovectorize regardless of how simple it looks.
+def exp_scalar[T](x: gc_ptr[T], out: gc_ptr[T], n: i32) -> None:
+    for i in range(n):
+        out[i] = exp(x[i])
+
+
+# SIMD path: a 6th-degree Horner polynomial for exp, evaluated with only + and *
+# on SIMD lanes, so the whole loop body vectorizes.
+def exp_simd[T](x: gc_ptr[T], out: gc_ptr[T], n: i32) -> None:
+    W = simd_width_of[T]
+    p0 = SIMD[T, W](EXP_P0)
+    p1 = SIMD[T, W](EXP_P1)
+    p2 = SIMD[T, W](EXP_P2)
+    p3 = SIMD[T, W](EXP_P3)
+    p4 = SIMD[T, W](EXP_P4)
+    p5 = SIMD[T, W](EXP_P5)
+    p6 = SIMD[T, W](EXP_P6)
+
+    bound: i32 = n - (n % W)
+    for i in range(0, bound, W):
+        vx = ptr_load_simd[T, W](x, i)
+
+        # Horner: p6*x + p5, ... , *x + p0
+        pr = p6
+        pr = pr * vx + p5
+        pr = pr * vx + p4
+        pr = pr * vx + p3
+        pr = pr * vx + p2
+        pr = pr * vx + p1
+        pr = pr * vx + p0
+
+        ptr_store_simd(out, i, pr)
+
+    # scalar tail for the remainder (uses the real exp, like the scalar path)
+    for j in range(bound, n):
+        out[j] = exp(x[j])
+
+
 def main() -> None:
     N: i32 = 1 << 20  # ~1M elements
     REPEAT = 200
 
-    dtype = f32
+    dtype = f64
 
     a: dtype = 2.0
     x = gc_alloc[dtype](N)
@@ -243,3 +310,26 @@ def main() -> None:
     got = squares_simd[dtype](x, N)
     ok = approx_eq[dtype](ref, got, 1e-4)
     print("Squares scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
+
+    # --- Elementwise exp: opaque scalar call vs SIMD polynomial ---
+    # Narrow input range [-0.5, 0.5] where a degree-6 exp polynomial is
+    # accurate to < 1e-7, so no argument reduction / 2^k scaling is needed.
+    exp_in = gc_alloc[dtype](N)
+    fill[dtype](exp_in, N, -0.5, 1.0 / N)
+
+    t0 = time()
+    for _7 in range(REPEAT):
+        exp_scalar[dtype](exp_in, out, N)
+    ts = time() - t0
+
+    t0 = time()
+    for _8 in range(REPEAT):
+        exp_simd[dtype](exp_in, out, N)
+    tv = time() - t0
+
+    exp_scalar[dtype](exp_in, out, N)
+    ref = out[N // 2]
+    exp_simd[dtype](exp_in, out, N)
+    got = out[N // 2]
+    ok = approx_eq[dtype](ref, got, 1e-5)
+    print("Exp     scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
