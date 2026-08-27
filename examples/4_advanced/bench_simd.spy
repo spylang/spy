@@ -4,16 +4,14 @@ simple elementwise / reduction kernels.
 
 Build & run with different SIMD widths, e.g.:
 
-```sh
-spy build -x --release --march=native --simd-width 16 bench_simd.spy  # default
-spy build -x --release --march=native --simd-width 32 bench_simd.spy
-spy build -x --release --march=native --simd-width 64 bench_simd.spy
-```
+  spy build -x --release --march=native --simd-width 16 bench_simd.spy  # default
+  spy build -x --release --march=native --simd-width 32 bench_simd.spy
+  spy build -x --release --march=native --simd-width 64 bench_simd.spy
 """
 from __spy__ import is_compiled
 from math import exp
 from time import time
-from simd import SIMD, simd_width_of, ptr_load_simd, ptr_store_simd
+from simd import SIMD, simd_width_of, ptr_load_simd, ptr_store_simd, cast_to, ldexp
 from unsafe import gc_alloc, gc_ptr
 
 
@@ -139,22 +137,29 @@ def squares_simd[T](x: gc_ptr[T], n: i32) -> T:
 
 
 # -------------------------------------------------------------
-# Elementwise:  exp(x)  — opaque scalar call vs SIMD polynomial
+# Elementwise:  exp(x) — opaque scalar call vs SIMD with
+# argument reduction + polynomial
 # -------------------------------------------------------------
 #
-# Demonstrates the other classic case autovectorization cannot touch: an
-# opaque function call in the loop body.  The scalar loop calls the real
-# (non-inlined) libm exp on every element, so the compiler cannot vectorize
-# across the call regardless of how simple the body looks.  The SIMD path
-# replaces it with a pure +/-/* polynomial on SIMD lanes, which vectorizes
-# fully.  This is exactly why vectorized math libraries (SVML, SLEEF) exist.
+# Full-range exp via argument reduction:
+#   k = trunc(x / ln2)        (integer exponent per lane, via cast_to)
+#   r = x - k * ln2           (remainder, |r| < ln2 ~ 0.693)
+#   exp(x) = 2^k * exp(r)     (2^k via ldexp bit trick, exp(r) via polynomial)
 #
-# SPy's SIMD subset is currently limited (no trunc/floor/reinterpret_as, no
-# argument reduction, no 2^k scaling), so we keep the input in [-0.5, 0.5]
-# where a 6th-degree polynomial for exp is accurate to < 1e-7 directly.
+# The scalar loop calls the real (non-inlined) libm exp on every
+# element.  The compiler cannot see through the external call, so
+# this loop does NOT autovectorize.  The SIMD path uses only +/-/*,
+# cast_to (inline type conversion, no function call), and ldexp
+# (bit-manipulation, no function call) — all of which lower to pure
+# vector ops under -O3 --march=native, so the whole loop body vectorizes.
+# This is exactly why vectorized math libraries (SVML, SLEEF) exist.
 
+# ln2 and 1/ln2 as f32 constants
+EXP_LN2 = 0.6931471805599453
+EXP_INV_LN2 = 1.4426950408889634
 
-# exp(x) Taylor/minimax polynomial, degree 6, accurate to ~6e-9 on [-0.5, 0.5].
+# exp(r) polynomial, degree 6, accurate to ~1e-7 on [-ln2, ln2].
+# truncation gives |r| < ln2 (not ln2/2), so we need degree 6.
 EXP_P0 = 1.0
 EXP_P1 = 1.0
 EXP_P2 = 0.5
@@ -172,10 +177,22 @@ def exp_scalar[T](x: gc_ptr[T], out: gc_ptr[T], n: i32) -> None:
         out[i] = exp(x[i])
 
 
-# SIMD path: a 6th-degree Horner polynomial for exp, evaluated with only + and *
-# on SIMD lanes, so the whole loop body vectorizes.
+@blue.generic
+def int_len_T(T):
+    if T == f32:
+        return i32
+    else:
+        return i64
+
+
+# SIMD path: argument reduction via cast_to (truncation, no function call)
+# + degree-6 Horner polynomial + ldexp scaling (bit trick, no function call).
+# Uses only +/-/*, cast_to, and ldexp — all inline vector ops.
 def exp_simd[T](x: gc_ptr[T], out: gc_ptr[T], n: i32) -> None:
     W = simd_width_of[T]
+
+    ln2 = SIMD[T, W](EXP_LN2)
+    inv_ln2 = SIMD[T, W](EXP_INV_LN2)
     p0 = SIMD[T, W](EXP_P0)
     p1 = SIMD[T, W](EXP_P1)
     p2 = SIMD[T, W](EXP_P2)
@@ -183,26 +200,35 @@ def exp_simd[T](x: gc_ptr[T], out: gc_ptr[T], n: i32) -> None:
     p4 = SIMD[T, W](EXP_P4)
     p5 = SIMD[T, W](EXP_P5)
     p6 = SIMD[T, W](EXP_P6)
+    one = SIMD[T, W](1.0)
 
     bound = n - (n % W)
     for i in range(0, bound, W):
         vx = ptr_load_simd[T, W](x, i)
 
-        # Horner: p6*x + p5, ... , *x + p0
-        pr = p6
-        pr = pr * vx + p5
-        pr = pr * vx + p4
-        pr = pr * vx + p3
-        pr = pr * vx + p2
-        pr = pr * vx + p1
-        pr = pr * vx + p0
+        # argument reduction via truncation (cast_to = inline, no floorf call):
+        # k = trunc(x / ln2), r = x - k*ln2, |r| < ln2
+        vk_f = vx * inv_ln2
+        vk_i = cast_to(vk_f, int_len_T[T])
+        vk_f = cast_to(vk_i, T)
+        vr = vx - vk_f * ln2
 
-        ptr_store_simd(out, i, pr)
+        # Horner: p6*r + p5, ..., *r + p0  ->  exp(r)
+        pr = p6
+        pr = pr * vr + p5
+        pr = pr * vr + p4
+        pr = pr * vr + p3
+        pr = pr * vr + p2
+        pr = pr * vr + p1
+        pr = pr * vr + p0
+
+        # exp(x) = 2^k * exp(r)
+        result = ldexp(pr, vk_i)
+        ptr_store_simd(out, i, result)
 
     # scalar tail for the remainder (uses the real exp, like the scalar path)
     for j in range(bound, n):
         out[j] = exp(x[j])
-
 
 
 
@@ -306,11 +332,10 @@ def bench_dtype[T](N: i32, repeat:i32) -> None:
     ok = approx_eq[dtype](ref, got, 1e-4)
     print("# Squares scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
 
-    # --- Elementwise exp: opaque scalar call vs SIMD polynomial ---
-    # Narrow input range [-0.5, 0.5] where a degree-6 exp polynomial is
-    # accurate to < 1e-7, so no argument reduction / 2^k scaling is needed.
+    # --- Elementwise exp: opaque scalar call vs SIMD with argument reduction ---
+    # Full-range input [-20, 20] — exercises argument reduction + 2^k scaling.
     exp_in = gc_alloc[dtype](N)
-    fill[dtype](exp_in, N, -0.5, 1.0 / N)
+    fill[dtype](exp_in, N, -20.0, 40.0 / N)
 
     t0 = time()
     for _7 in range(repeat):
@@ -328,7 +353,6 @@ def bench_dtype[T](N: i32, repeat:i32) -> None:
     got = out[N // 2]
     ok = approx_eq[dtype](ref, got, 1e-5)
     print("# Exp     scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
-
 
 
 def main() -> None:

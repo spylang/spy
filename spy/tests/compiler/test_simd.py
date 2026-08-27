@@ -889,6 +889,181 @@ class TestSIMD(CompilerTest):
         # floor(3.0 / ln2) = floor(4.328) = 4
         assert mod.k_floor(3.0, 0.0) == 4
 
+    # === simd.cast: cast_to (numeric lane-wise cast) ===
+
+    def test_cast_to_f32_i32(self):
+        mod = self.compile("""
+            from _simd import SIMD, cast_to
+
+            def f2i(v0: f32, v1: f32) -> i32:
+                v = SIMD[f32, 2](v0, v1)
+                w = cast_to(v, i32)
+                return w[0]
+
+            def i2f(v0: i32, v1: i32) -> f32:
+                v = SIMD[i32, 2](v0, v1)
+                w = cast_to(v, f32)
+                return w[0]
+        """)
+        # numeric (not bit) conversion: 1.0 -> 1, not 1065353216
+        assert mod.f2i(1.0, 2.0) == 1
+        assert mod.f2i(3.7, 0.0) == 3  # truncation towards zero
+        assert mod.f2i(-2.9, 0.0) == -2
+        assert mod.i2f(5, 0) == 5.0
+        assert mod.i2f(-3, 0) == -3.0
+
+    def test_cast_to_all_pairs(self):
+        mod = self.compile("""
+            from _simd import SIMD, cast_to
+
+            def f64_i64(v0: f64, v1: f64) -> i64:
+                v = SIMD[f64, 2](v0, v1)
+                w = cast_to(v, i64)
+                return w[0]
+
+            def i64_f64(v0: i64, v1: i64) -> f64:
+                v = SIMD[i64, 2](v0, v1)
+                w = cast_to(v, f64)
+                return w[0]
+
+            def i32_u32(v0: i32, v1: i32) -> u32:
+                v = SIMD[i32, 2](v0, v1)
+                w = cast_to(v, u32)
+                return w[0]
+        """)
+        assert mod.f64_i64(2.7, 0.0) == 2
+        assert mod.i64_f64(42, 0) == 42.0
+        # -1 as i32 is 0xFFFFFFFF, cast to u32 is 4294967295
+        assert mod.i32_u32(-1, 0) == 4294967295
+
+    def test_cast_to_vs_reinterpret(self):
+        # cast_to does numeric conversion, reinterpret_as does bit copy.
+        # 1.0f32: cast_to -> 1, reinterpret_as -> 1065353216 (0x3F800000)
+        mod = self.compile("""
+            from _simd import SIMD, cast_to, reinterpret_as
+
+            def f2i_cast(v0: f32) -> i32:
+                v = SIMD[f32, 1](v0)
+                return cast_to(v, i32)[0]
+
+            def f2i_reinterpret(v0: f32) -> i32:
+                v = SIMD[f32, 1](v0)
+                return reinterpret_as(v, i32)[0]
+        """)
+        assert mod.f2i_cast(1.0) == 1
+        assert mod.f2i_reinterpret(1.0) == 1065353216
+
+    def test_cast_to_width_mismatch_error(self):
+        src = """
+        from _simd import SIMD, cast_to
+
+        def bad() -> i64:
+            v = SIMD[f32, 1](1.0)
+            w = cast_to(v, i64)
+            return w[0]
+        """
+        errors = expect_errors(
+            "cannot cast `SIMD[f32, 1]` as `SIMD[i64, 1]`: lane byte-width mismatch"
+        )
+        self.compile_raises(src, "bad", errors)
+
+    # === simd.ldexp: scale float vector by 2^k ===
+
+    def test_ldexp_basic(self):
+        mod = self.compile("""
+            from _simd import SIMD, ldexp
+
+            def scale(v0: f32, v1: f32, k0: i32, k1: i32) -> f32:
+                v = SIMD[f32, 2](v0, v1)
+                k = SIMD[i32, 2](k0, k1)
+                w = ldexp(v, k)
+                return w[0]
+        """)
+        assert mod.scale(1.0, 1.0, 0, 0) == 1.0
+        assert mod.scale(1.0, 1.0, 1, 0) == 2.0
+        assert mod.scale(1.0, 1.0, 3, 0) == 8.0
+        assert mod.scale(1.5, 1.0, 2, 0) == 6.0
+        assert mod.scale(1.0, 1.0, -1, 0) == 0.5
+
+    def test_ldexp_f64(self):
+        mod = self.compile("""
+            from _simd import SIMD, ldexp
+
+            def scale(v0: f64, v1: f64, k0: i64, k1: i64) -> f64:
+                v = SIMD[f64, 2](v0, v1)
+                k = SIMD[i64, 2](k0, k1)
+                w = ldexp(v, k)
+                return w[0]
+        """)
+        assert mod.scale(1.0, 1.0, 10, 0) == 1024.0
+        assert mod.scale(1.0, 1.0, -2, 0) == 0.25
+
+    def test_ldexp_per_lane(self):
+        mod = self.compile("""
+            from _simd import SIMD, ldexp
+
+            def scale_all(v0: f32, v1: f32, k0: i32, k1: i32) -> tuple[f32, f32]:
+                v = SIMD[f32, 2](v0, v1)
+                k = SIMD[i32, 2](k0, k1)
+                w = ldexp(v, k)
+                return (w[0], w[1])
+        """)
+        t = _as_tuple(mod.scale_all(1.0, 1.0, 1, 3))
+        assert t == (2.0, 8.0)
+        t = _as_tuple(mod.scale_all(3.0, 5.0, 2, -1))
+        assert t == (12.0, 2.5)
+
+    def test_ldexp_int_v_error(self):
+        src = """
+        from _simd import SIMD, ldexp
+
+        def bad() -> i32:
+            v = SIMD[i32, 2](1, 2)
+            k = SIMD[i32, 2](3, 4)
+            w = ldexp(v, k)
+            return w[0]
+        """
+        errors = expect_errors("v has to be f32 or f64")
+        self.compile_raises(src, "bad", errors)
+
+    def test_ldexp_float_k_error(self):
+        src = """
+        from _simd import SIMD, ldexp
+
+        def bad() -> f32:
+            v = SIMD[f32, 2](1.0, 2.0)
+            k = SIMD[f32, 2](3.0, 4.0)
+            w = ldexp(v, k)
+            return w[0]
+        """
+        errors = expect_errors("k has to be integer")
+        self.compile_raises(src, "bad", errors)
+
+    def test_exp_argument_reduction(self):
+        # the full motivating use case:
+        # k = trunc(x / ln2), r = x - k*ln2, exp(x) = ldexp(exp(r), k)
+        # Uses cast_to (truncation, no function call) instead of floor
+        # to match the bench's zero-function-call approach.
+        mod = self.compile("""
+            from _simd import SIMD, ldexp, cast_to
+
+            def get_k_and_scale(x0: f32, x1: f32) -> tuple[i32, f32, f32]:
+                ln2: f32 = 0.6931471805599453
+                vx = SIMD[f32, 2](x0, x1)
+                vk_f = vx / SIMD[f32, 2](ln2)
+                vk_i = cast_to(vk_f, i32)
+                vk_f = cast_to(vk_i, f32)
+                one = SIMD[f32, 2](1.0)
+                two_pow_k = ldexp(one, vk_i)
+                return (vk_i[0], two_pow_k[0], two_pow_k[1])
+        """)
+        k0, pow0, pow1 = _as_tuple(mod.get_k_and_scale(1.0, 3.0))
+        # trunc(1.0/ln2) = trunc(1.4427) = 1, 2^1 = 2.0
+        assert k0 == 1
+        assert abs(pow0 - 2.0) < 1e-6
+        # trunc(3.0/ln2) = trunc(4.328) = 4, 2^4 = 16.0
+        assert abs(pow1 - 16.0) < 1e-6
+
     # === pointer load/store of whole SIMD vectors ===
 
     def test_ptr_load_store_roundtrip(self):

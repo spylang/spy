@@ -599,6 +599,12 @@ class CFuncWriter:
         elif irtag.tag == "simd.round":
             return self.fmt_simd_round(fqn, call, irtag)
 
+        elif irtag.tag == "simd.cast":
+            return self.fmt_simd_cast(fqn, call)
+
+        elif irtag.tag == "simd.ldexp":
+            return self.fmt_simd_ldexp(fqn, call)
+
         elif irtag.tag == "simd.load":
             return self.fmt_simd_load(fqn, call)
 
@@ -796,6 +802,74 @@ class CFuncWriter:
         ]
         strargs = ", ".join(map(str, lanes))
         return C.Cast(c_simdtype, C.Literal("{ %s }" % strargs))
+
+    def fmt_simd_cast(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        # call.args = [v]
+        assert len(call.args) == 1
+        from spy.vm.modules.simd import W_SimdType
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_ft = w_func.w_functype
+        w_src_t = w_ft.params[0].w_T
+        w_tgt_t = w_ft.w_restype
+        assert isinstance(w_src_t, W_SimdType)
+        assert isinstance(w_tgt_t, W_SimdType)
+        c_tgt = self.ctx.w2c(w_tgt_t)
+        c_tgt_lane = self.ctx.w2c(w_tgt_t.w_dtype)
+        c_v = self.fmt_expr(call.args[0])
+        size = w_tgt_t.size
+        # (T){(Tlane)v[0], (Tlane)v[1], ..., (Tlane)v[W-1]}
+        # numeric cast per lane, NOT bit reinterpret
+        lanes = [
+            C.Cast(c_tgt_lane, C.Index(c_v, C.Literal(str(i)))) for i in range(size)
+        ]
+        strargs = ", ".join(map(str, lanes))
+        return C.Cast(c_tgt, C.Literal("{ %s }" % strargs))
+
+    def fmt_simd_ldexp(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        # call.args = [v, k]  where v is float SIMD, k is int SIMD
+        assert len(call.args) == 2
+        from spy.vm.modules.simd import W_SimdType
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_ft = w_func.w_functype
+        w_v_t = w_ft.params[0].w_T
+        w_k_t = w_ft.params[1].w_T
+        assert isinstance(w_v_t, W_SimdType)
+        assert isinstance(w_k_t, W_SimdType)
+        c_fvec = self.ctx.w2c(w_v_t)
+        c_ivec = self.ctx.w2c(w_k_t)
+        size = w_v_t.size
+
+        # 2^k via the IEEE bit trick, using pure C vector arithmetic:
+        #   bits = (k + bias) << shift
+        #   2^k = (float_vec)bits      (bit reinterpret)
+        #   result = v * 2^k           (vector multiply)
+        # For f32: bias=127, shift=23;  for f64: bias=1023, shift=52
+        if w_v_t.w_dtype is B.w_f32:
+            bias, shift = 127, 23
+        else:
+            bias, shift = 1023, 52
+
+        c_v = self.fmt_expr(call.args[0])
+        c_k = self.fmt_expr(call.args[1])
+
+        # broadcast bias and shift as integer vector literals
+        bias_lit = C.Literal("{ %s }" % ", ".join([str(bias)] * size))
+        shift_lit = C.Literal("{ %s }" % ", ".join([str(shift)] * size))
+
+        # (iv)(k + bias_vec) << shift_vec
+        bits = C.BinOp(
+            "<<",
+            C.Paren(C.BinOp("+", c_k, C.Cast(c_ivec, bias_lit))),
+            C.Cast(c_ivec, shift_lit),
+        )
+        # (fv)bits  — reinterpret integer bits as float
+        two_pow_k = C.Cast(c_fvec, C.Paren(bits))
+        # v * 2^k
+        return C.Cast(c_fvec, C.Paren(C.BinOp("*", c_v, two_pow_k)))
 
     def fmt_simd_load(self, fqn: FQN, call: ast.Call) -> C.Expr:
         # ((SIMD_u *)(ptr.p + i))[0]

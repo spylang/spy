@@ -765,6 +765,102 @@ def _get_or_make_simd_reinterpret(
     return w_func
 
 
+def _cast_value(value: Any, to_w_dtype: W_Type) -> Any:
+    """Numeric (not bit) conversion of a plain Python value."""
+    if to_w_dtype in (B.w_f32, B.w_f64):
+        return float(value)
+    # integer target: truncate towards zero (C semantics)
+    return int(value)
+
+
+def _get_or_make_simd_cast(
+    vm: "SPyVM", w_src_t: W_SimdType, w_target_dtype: W_Type
+) -> "W_BuiltinFunc":  # type: ignore[name-defined]
+    """
+    Build and register the red `simd.cast` lowering builtin.
+    Same pattern as `_get_or_make_simd_reinterpret`, but the interp
+    impl does a *numeric* conversion (int(x) / float(x)), not a
+    bit reinterpret.
+    """
+    from spy.vm.function import FuncParam, W_BuiltinFunc, W_FuncType
+
+    size = w_src_t.size
+    w_tgt_simdtype = vm.fast_call(SIMD.w_SIMD, [w_target_dtype, W_I32(size)])
+    assert isinstance(w_tgt_simdtype, W_SimdType)
+
+    fqn = w_src_t.fqn.join("__cast_to__", qualifiers=[w_tgt_simdtype.fqn])
+    w_functype = W_FuncType.new(
+        [FuncParam(w_src_t, "simple")],
+        w_tgt_simdtype,
+    )
+    irtag = IRTag("simd.cast")
+
+    w_existing = vm.lookup_global_maybe(fqn)
+    if w_existing is not None:
+        assert isinstance(w_existing, W_BuiltinFunc)
+        return w_existing
+
+    from_w_dtype = w_src_t.w_dtype
+    to_w_dtype = w_target_dtype
+    lane_ctor = _W_LANE_CTOR[to_w_dtype]
+
+    def w_impl(vm: "SPyVM", w_v: W_Simd) -> W_Simd:
+        return W_Simd(
+            w_tgt_simdtype,
+            [
+                lane_ctor(_cast_value(_lane_py(w_lane, from_w_dtype), to_w_dtype))
+                for w_lane in w_v.lanes_w
+            ],
+        )
+
+    w_func = W_BuiltinFunc(w_functype, fqn, w_impl)
+    vm.add_global(fqn, w_func, irtag=irtag)
+    return w_func
+
+
+def _get_or_make_simd_ldexp(
+    vm: "SPyVM", w_v_t: W_SimdType, w_k_t: W_SimdType
+) -> "W_BuiltinFunc":  # type: ignore[name-defined]
+    """
+    Build and register the red `simd.ldexp` lowering builtin.
+    `ldexp(v, k)` = v * 2^k per lane, where v is float and k is int.
+    """
+    from spy.vm.function import FuncParam, W_BuiltinFunc, W_FuncType
+
+    fqn = w_v_t.fqn.join("__ldexp__", qualifiers=[w_k_t.fqn])
+    w_functype = W_FuncType.new(
+        [FuncParam(w_v_t, "simple"), FuncParam(w_k_t, "simple")],
+        w_v_t,
+    )
+    irtag = IRTag("simd.ldexp")
+
+    w_existing = vm.lookup_global_maybe(fqn)
+    if w_existing is not None:
+        assert isinstance(w_existing, W_BuiltinFunc)
+        return w_existing
+
+    w_dtype = w_v_t.w_dtype
+    lane_ctor = _W_LANE_CTOR[w_dtype]
+
+    def w_impl(vm: "SPyVM", w_v: W_Simd, w_k: W_Simd) -> W_Simd:
+        return W_Simd(
+            w_v_t,
+            [
+                lane_ctor(
+                    math.ldexp(
+                        _lane_py(w_vlane, w_dtype),
+                        int(_lane_py(w_klane, w_k_t.w_dtype)),
+                    )
+                )
+                for w_vlane, w_klane in zip(w_v.lanes_w, w_k.lanes_w)
+            ],
+        )
+
+    w_func = W_BuiltinFunc(w_functype, fqn, w_impl)
+    vm.add_global(fqn, w_func, irtag=irtag)
+    return w_func
+
+
 def _simd_binop_meta(
     vm: "SPyVM",
     wam_self: W_MetaArg,
@@ -1023,3 +1119,57 @@ def w_reinterpret_as(vm: "SPyVM", wam_v: W_MetaArg, wam_t: W_MetaArg) -> W_OpSpe
 
     w_tgt_t = _get_or_make_simd_reinterpret(vm, w_src_t, w_target_dtype)
     return W_OpSpec(w_tgt_t, [wam_v])
+
+
+@SIMD.builtin_func(color="blue", kind="metafunc")
+def w_cast_to(vm: "SPyVM", wam_v: W_MetaArg, wam_t: W_MetaArg) -> W_OpSpec:
+    """
+    `cast_to(v, T)` converts each lane of the `SIMD[src, W]` vector `v` to
+    the target dtype by *value* (truncation for float->int), NOT by bit
+    reinterpret.  Valid only when source and target lanes have the same
+    byte-width.
+    """
+    w_src_t = wam_v.w_static_T
+    if not isinstance(w_src_t, W_SimdType):
+        return W_OpSpec.NULL
+
+    w_target_dtype = wam_t.blue_ensure(vm, B.w_type)
+    assert isinstance(w_target_dtype, W_Type)
+    if w_target_dtype not in SIMD_DTYPES:
+        return W_OpSpec.NULL
+
+    if SIMD_DTYPE_BYTES[w_src_t.w_dtype] != SIMD_DTYPE_BYTES[w_target_dtype]:
+        src = w_src_t.fqn.human_name(vm)
+        tgt = vm.fast_call(SIMD.w_SIMD, [w_target_dtype, W_I32(w_src_t.size)])
+        assert isinstance(tgt, W_SimdType)
+        msg = (
+            f"cannot cast `{src}` as `{tgt.fqn.human_name(vm)}`: "
+            f"lane byte-width mismatch"
+        )
+        raise SPyError("W_TypeError", msg)
+
+    w_cast = _get_or_make_simd_cast(vm, w_src_t, w_target_dtype)
+    return W_OpSpec(w_cast, [wam_v])
+
+
+@SIMD.builtin_func(color="blue", kind="metafunc")
+def w_ldexp(vm: "SPyVM", wam_v: W_MetaArg, wam_k: W_MetaArg) -> W_OpSpec:
+    """
+    `ldexp(v, k)` computes `v * 2^k` per lane, where `v` is a float SIMD
+    vector and `k` is an integer SIMD vector of the same width.
+    """
+    w_v_t = wam_v.w_static_T
+    w_k_t = wam_k.w_static_T
+    if not isinstance(w_v_t, W_SimdType) or not isinstance(w_k_t, W_SimdType):
+        return W_OpSpec.NULL
+    if w_v_t.w_dtype not in (B.w_f32, B.w_f64):
+        msg = "v has to be f32 or f64"
+        raise SPyError("W_TypeError", msg)
+    if w_k_t.w_dtype not in SIMD_INT_DTYPES:
+        raise SPyError("W_TypeError", "k has to be integer")
+    if w_v_t.size != w_k_t.size:
+        return W_OpSpec.NULL
+    if SIMD_DTYPE_BYTES[w_v_t.w_dtype] != SIMD_DTYPE_BYTES[w_k_t.w_dtype]:
+        return W_OpSpec.NULL
+    w_ldexp = _get_or_make_simd_ldexp(vm, w_v_t, w_k_t)
+    return W_OpSpec(w_ldexp, [wam_v, wam_k])
