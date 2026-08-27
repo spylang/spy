@@ -111,15 +111,31 @@ class CompilerConfig:
         else:
             flags_target = config.target
 
+        if config.march is not None:
+            # Only asserted here as a last-resort check in case BuildConfig
+            # is constructed directly (e.g. from tests) rather than via the
+            # CLI, which already validates --march against --target.
+            assert config.target == "native", (
+                f"--march is only supported for --target native "
+                f"(including --static), got target={config.target!r}"
+            )
+
         self.CC = get_cc(flags_target)
         self.cflags += get_cflags(
-            flags_target, config.build_type, config.kind, config.warning_as_error
+            flags_target,
+            config.build_type,
+            config.kind,
+            config.warning_as_error,
+            config.march,
         )
         self.cflags += EXTRA_CFLAGS
 
         self.ldflags += get_ldflags(flags_target, config.build_type)
 
-        libdir = get_libdir(flags_target, config.build_type, config.kind)
+        libdir = get_libdir(flags_target, config.build_type, config.kind, config.march)
+        self._ensure_libspy_built(
+            flags_target, config.build_type, config.kind, config.march
+        )
         if config.target == "wasi" and config.kind == "testlib":
             # WASM testlibs are used by tests: in this case we want to make sure to
             # include the whole libspy.a, so that helper functions such as spy_str_alloc
@@ -168,17 +184,6 @@ class CompilerConfig:
         if config.opt_level is not None:
             self.cflags += [f"-O{config.opt_level}"]
 
-        if config.march is not None:
-            # Validated at the CLI level (build.py) to only be used with
-            # --target native / native-static; asserted here as a
-            # cheap last-resort check in case BuildConfig is constructed
-            # directly (e.g. from tests) rather than via the CLI.
-            assert config.target == "native", (
-                f"--march is only supported for --target native "
-                f"(including --static), got target={config.target!r}"
-            )
-            self.cflags += [f"-march={config.march}"]
-
         # GC flags
         if config.gc == "bdwgc":
             self.cflags = [f for f in self.cflags if f != "-DSPY_GC_NONE"]
@@ -201,6 +206,49 @@ class CompilerConfig:
                     if prefix:
                         self.cflags += ["-I", f"{prefix}/include"]
                         self.ldflags += ["-L", f"{prefix}/lib"]
+
+    @staticmethod
+    def _ensure_libspy_built(
+        target: str, build_type: BuildType, kind: OutputKind, march: Optional[str]
+    ) -> None:
+        """
+        libspy.a is normally built ahead of time (`pixi run make-libspy`)
+        and simply linked against. That's fine for the baseline (no
+        --march) case, which is left untouched here on purpose: don't
+        surprise people who expect `spy build` to just link, not compile
+        libspy on the fly.
+
+        But a non-default --march gets its own cache dir (see
+        get_build_dirname), which nobody could have pre-built by hand, and
+        silently falling back to the baseline libspy.a would reintroduce
+        exactly the ISA mismatch this is meant to fix. So: only when march
+        is explicitly requested, build that one variant on demand, mirroring
+        _build_bdwgc_static below.
+        """
+        if march is None:
+            return
+        libdir = py.path.local(get_libdir(target, build_type, kind, march))
+        libspy_a = libdir.join("libspy.a")
+        if libspy_a.check(file=True):
+            return
+        libspy_dir = str(spy.libspy.BUILD.dirpath())
+        subprocess.run(
+            [
+                "make",
+                "-C",
+                libspy_dir,
+                f"TARGET={target}",
+                f"BUILD_TYPE={build_type}",
+                f"OUTPUT_KIND={kind}",
+                f"MARCH={march}",
+            ],  # fmt: skip
+            check=True,
+        )
+        if not libspy_a.check(file=True):
+            raise WIP(
+                f"expected {libspy_a} to exist after building libspy with "
+                f"MARCH={march}, but it doesn't. Check the `make` output above."
+            )
 
     @staticmethod
     def _build_bdwgc_static() -> None:

@@ -6,10 +6,9 @@ from asyncio import Future
 from typing import Any, Callable, Optional
 
 import py.path
-from typing_extensions import Self
-
 from pyodide.code import run_js
 from pyodide.ffi import JsProxy, run_sync
+from typing_extensions import Self
 
 from .base import HostModule, LLWasmInstanceBase, LLWasmMemoryBase, LLWasmModuleBase
 

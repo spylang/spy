@@ -27,7 +27,7 @@ def saxpy_scalar[T](a: T, x: gc_ptr[T], y: gc_ptr[T], out: gc_ptr[T], n: i32) ->
 
 def main() -> None:
     N: i32 = 1 << 20
-    REPEAT = 50
+    REPEAT = 200
 
     dtype = f32
 

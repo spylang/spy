@@ -119,7 +119,7 @@ def dot_simd[T](x: gc_ptr[T], y: gc_ptr[T], n: i32) -> T:
 
 def main() -> None:
     N: i32 = 1 << 20  # ~1M elements
-    REPEAT = 50
+    REPEAT = 200
 
     dtype = f32
 
