@@ -5,9 +5,9 @@ simple elementwise / reduction kernels.
 Build & run with different SIMD widths, e.g.:
 
 ```sh
-spy build -x --release --simd-width 16 bench_simd.spy  # default
-spy build -x --release --simd-width 32 bench_simd.spy
-spy build -x --release --simd-width 64 bench_simd.spy
+spy build -x --release --march=native --simd-width 16 bench_simd.spy  # default
+spy build -x --release --march=native --simd-width 32 bench_simd.spy
+spy build -x --release --march=native --simd-width 64 bench_simd.spy
 ```
 """
 

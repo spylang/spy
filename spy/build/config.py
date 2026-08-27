@@ -29,11 +29,20 @@ class BuildConfig:
     warning_as_error: bool = False
     gc: GCOption = "none"
     static: bool = False
-    # SIMD vector width in bits, or None to use the per-target default.
+    # SIMD vector width in bytes, or None to use the per-target default.
     # This is a *static*, build-time configuration: it is fixed before
     # redshift, because redshift runs before the final C compiler.
     # See `resolve_simd_width` / `simd_width_of`.
     simd_width: Optional[int] = None
+    # Value passed as `-march=<march>` to the C compiler (e.g. "native",
+    # "x86-64-v3", "znver4"). None means "don't pass -march at all", i.e.
+    # the compiler's default baseline ISA for the target (e.g. plain SSE2
+    # on x86-64). Only meaningful for --target native[-static]: the C
+    # compiler is the one that decides how a `--simd-width` wider than one
+    # native register gets legalized, so --simd-width and --march need to
+    # be chosen together to get genuine wide-SIMD codegen instead of the
+    # compiler silently splitting/scalarizing.
+    march: Optional[str] = None
 
     def __post_init__(self) -> None:
         if self.kind == "testlib" and self.target not in ("wasi", "emscripten"):
@@ -158,6 +167,17 @@ class CompilerConfig:
 
         if config.opt_level is not None:
             self.cflags += [f"-O{config.opt_level}"]
+
+        if config.march is not None:
+            # Validated at the CLI level (build.py) to only be used with
+            # --target native / native-static; asserted here as a
+            # cheap last-resort check in case BuildConfig is constructed
+            # directly (e.g. from tests) rather than via the CLI.
+            assert config.target == "native", (
+                f"--march is only supported for --target native "
+                f"(including --static), got target={config.target!r}"
+            )
+            self.cflags += [f"-march={config.march}"]
 
         # GC flags
         if config.gc == "bdwgc":
