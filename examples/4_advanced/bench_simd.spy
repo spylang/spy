@@ -210,11 +210,13 @@ def exp_simd[T](x: gc_ptr[T], out: gc_ptr[T], n: i32) -> None:
         out[j] = exp(x[j])
 
 
-def main() -> None:
-    N: i32 = 1 << 20  # ~1M elements
-    REPEAT = 200
+N: i32 = 1 << 20  # ~1M elements
+REPEAT = 200
 
-    dtype = f64
+
+def bench_dtype[T]() -> None:
+
+    dtype = T
 
     a: dtype = 2.0
     x = gc_alloc[dtype](N)
@@ -225,11 +227,9 @@ def main() -> None:
     fill[dtype](y, N, 0.5, -0.0001)
 
     W = simd_width_of[dtype]
-    print("dtype    =", dtype)
-    print("N        =", N)
-    print("repeat   =", REPEAT)
+
+    print("\ndtype    =", dtype)
     print("simd W   =", W)
-    print("N // W   =", N // W)
     print()
 
     # --- SAXPY ---
@@ -247,8 +247,9 @@ def main() -> None:
     ref = out[N // 2]
     saxpy_simd[dtype](a, x, y, out, N)
     got = out[N // 2]
+    print("Autovectorized scalar; no win, expected")
     print(
-        "SAXPY   scalar=",
+        "  SAXPY   scalar=",
         ts,
         "s  simd=",
         tv,
@@ -274,7 +275,9 @@ def main() -> None:
     relu_simd[dtype](x, out, N)
     got = out[N // 2]
     ok = approx_eq[dtype](ref, got, 1e-4)
-    print("ReLU    scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
+    print("  ReLU    scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
+
+    print("The C compiler cannot auto-vectorize (no reordering or an external math function)")
 
     # --- Dot product ---
     # to avoid dead-code elimination
@@ -293,7 +296,7 @@ def main() -> None:
     ref = dot_scalar[dtype](x, y, N)
     got = dot_simd[dtype](x, y, N)
     ok = approx_eq[dtype](ref, got, 1e-4)
-    print("Dot     scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
+    print("  Dot     scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
 
     # --- Sum of squares ---
     t0 = time()
@@ -309,7 +312,7 @@ def main() -> None:
     ref = squares_scalar[dtype](x, N)
     got = squares_simd[dtype](x, N)
     ok = approx_eq[dtype](ref, got, 1e-4)
-    print("Squares scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
+    print("  Squares scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
 
     # --- Elementwise exp: opaque scalar call vs SIMD polynomial ---
     # Narrow input range [-0.5, 0.5] where a degree-6 exp polynomial is
@@ -332,4 +335,13 @@ def main() -> None:
     exp_simd[dtype](exp_in, out, N)
     got = out[N // 2]
     ok = approx_eq[dtype](ref, got, 1e-5)
-    print("Exp     scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
+    print("  Exp     scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
+
+
+
+def main() -> None:
+
+    print("N        =", N)
+    print("repeat   =", REPEAT)
+    bench_dtype[f32]()
+    bench_dtype[f64]()
