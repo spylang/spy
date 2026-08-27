@@ -406,6 +406,11 @@ class W_Simd(W_Object):
             ):
                 w_sel = _get_or_make_simd_select(vm, w_mask_t, w_op_t)
                 return W_OpSpec(w_sel)
+        if meth == "reduce_add" and len(args_wam) == 0:
+            w_simdtype = wam_self.w_static_T
+            if isinstance(w_simdtype, W_SimdType):
+                w_red = _get_or_make_simd_reduce(vm, w_simdtype, op="+")
+                return W_OpSpec(w_red)
         return W_OpSpec.NULL
 
 
@@ -585,6 +590,47 @@ def _get_or_make_simd_select(
             for m, x, y in zip(w_mask.lanes_w, w_a.lanes_w, w_b.lanes_w)
         ]
         return W_Simd(w_op_t, lanes)
+
+    w_func = W_BuiltinFunc(w_functype, fqn, w_impl)
+    vm.add_global(fqn, w_func, irtag=irtag)
+    return w_func
+
+
+def _get_or_make_simd_reduce(
+    vm: "SPyVM", w_simdtype: W_SimdType, *, op: str
+) -> "W_BuiltinFunc":  # type: ignore[name-defined]
+    """
+    Build (once per (W_SimdType, op)) and register the red `simd.reduce`
+    lowering builtin for a horizontal reduction (e.g. `reduce_add`).
+
+    Functype `(SIMD[T, W], str) -> T`: the `str` param is the method name
+    carried by `w_CALL_METHOD`; it is ignored by the impl and skipped by the
+    C lowering, but keeping it lets us return a *simple* OpSpec
+    (caching-safe), exactly like `simd.select`.
+    """
+    from spy.vm.function import FuncParam, W_BuiltinFunc, W_FuncType
+
+    w_dtype = w_simdtype.w_dtype
+    lane_ctor = _W_LANE_CTOR[w_dtype]
+    op_py = {"+": operator.add}[op]
+
+    fqn = w_simdtype.fqn.join(f"__reduce_{op}__")
+    w_functype = W_FuncType.new(
+        [FuncParam(w_simdtype, "simple"), FuncParam(B.w_str, "simple")],
+        w_dtype,
+    )
+    irtag = IRTag("simd.reduce", op=op)
+
+    w_existing = vm.lookup_global_maybe(fqn)
+    if w_existing is not None:
+        assert isinstance(w_existing, W_BuiltinFunc)
+        return w_existing
+
+    def w_impl(vm: "SPyVM", w_v: W_Simd, w_meth: W_Object) -> W_Object:
+        acc = _lane_py(w_v.lanes_w[0], w_dtype)
+        for w_lane in w_v.lanes_w[1:]:
+            acc = op_py(acc, _lane_py(w_lane, w_dtype))
+        return lane_ctor(acc)
 
     w_func = W_BuiltinFunc(w_functype, fqn, w_impl)
     vm.add_global(fqn, w_func, irtag=irtag)

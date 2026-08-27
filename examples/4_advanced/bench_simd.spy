@@ -107,10 +107,7 @@ def dot_simd[T](x: gc_ptr[T], y: gc_ptr[T], n: i32) -> T:
         vx = ptr_load_simd[T, W](x, i)
         vy = ptr_load_simd[T, W](y, i)
         acc = acc + vx * vy
-    # total: T = acc.reduce_add()
-    total: T = 0
-    for idx in range(W):
-        total += acc[idx]
+    total = acc.reduce_add()
     for j in range(bound, n):
         total = total + x[j] * y[j]
     return total
@@ -135,10 +132,7 @@ def squares_simd[T](x: gc_ptr[T], n: i32) -> T:
     for i in range(0, bound, W):
         vx = ptr_load_simd[T, W](x, i)
         acc = acc + vx * vx
-    # total: T = acc.reduce_add()
-    total: T = 0
-    for idx in range(W):
-        total += acc[idx]
+    total = acc.reduce_add()
     for j in range(bound, n):
         total = total + x[j] * x[j]
     return total
@@ -190,7 +184,7 @@ def exp_simd[T](x: gc_ptr[T], out: gc_ptr[T], n: i32) -> None:
     p5 = SIMD[T, W](EXP_P5)
     p6 = SIMD[T, W](EXP_P6)
 
-    bound: i32 = n - (n % W)
+    bound = n - (n % W)
     for i in range(0, bound, W):
         vx = ptr_load_simd[T, W](x, i)
 

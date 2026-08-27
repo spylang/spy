@@ -673,6 +673,85 @@ class TestSIMD(CompilerTest):
         errors = expect_errors("method `SIMD[i32, 2]::select` does not exist")
         self.compile_raises(src, "bad", errors)
 
+    # === simd.reduce: reduce_add ===
+
+    def test_reduce_add_all_dtypes(self):
+        mod = self.compile(
+            """
+            from _simd import SIMD
+
+            def r[T](a: T) -> T:
+                v = SIMD[T, 4](a, a, a, a)
+                return v.reduce_add()
+
+            r_i8 = r[i8]
+            r_u8 = r[u8]
+            r_i32 = r[i32]
+            r_u32 = r[u32]
+            r_f32 = r[f32]
+            r_i64 = r[i64]
+            r_u64 = r[u64]
+            r_f64 = r[f64]
+            """
+        )
+        assert mod.r_i8(5) == 20
+        assert mod.r_u8(10) == 40
+        assert mod.r_i32(-42) == -168
+        assert mod.r_u32(42) == 168
+        assert mod.r_f32(2.0) == 8.0
+        assert mod.r_i64(-42) == -168
+        assert mod.r_u64(42) == 168
+        assert mod.r_f64(2.0) == 8.0
+
+    def test_reduce_add_wraparound(self):
+        # reduce_add wraps in the lane type
+        mod = self.compile(
+            """
+            from _simd import SIMD
+
+            def r[T](a: T) -> T:
+                v = SIMD[T, 4](a, a, a, a)
+                return v.reduce_add()
+
+            r_i8 = r[i8]
+            r_u8 = r[u8]
+            """
+        )
+        # 100 * 4 = 400; 400 mod 256 = 144, interpreted as signed i8 = 144 - 256 = -112
+        assert mod.r_i8(100) == -112
+        # 200 * 4 = 800; 800 mod 256 = 32
+        assert mod.r_u8(200) == 32
+
+    def test_reduce_add_size1(self):
+        # a single-lane vector reduces to its lane value
+        mod = self.compile(
+            """
+            from _simd import SIMD
+
+            def r(x: f32) -> f32:
+                v = SIMD[f32, 1](x)
+                return v.reduce_add()
+            """
+        )
+        assert mod.r(7.5) == 7.5
+
+    def test_reduce_add_dot_product(self):
+        # the motivating use case: replace the manual scalar tail loop in
+        # dot_simd with a single horizontal reduce_add.
+        mod = self.compile(
+            """
+            from _simd import SIMD
+
+            def dot(x0: f32, x1: f32, x2: f32, x3: f32,
+                    y0: f32, y1: f32, y2: f32, y3: f32) -> f32:
+                vx = SIMD[f32, 4](x0, x1, x2, x3)
+                vy = SIMD[f32, 4](y0, y1, y2, y3)
+                acc = vx * vy
+                return acc.reduce_add()
+            """
+        )
+        assert mod.dot(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0) == 70.0
+
     # === pointer load/store of whole SIMD vectors ===
 
     def test_ptr_load_store_roundtrip(self):

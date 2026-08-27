@@ -590,6 +590,9 @@ class CFuncWriter:
         elif irtag.tag == "simd.select":
             return self.fmt_simd_select(fqn, call)
 
+        elif irtag.tag == "simd.reduce":
+            return self.fmt_simd_reduce(fqn, call, irtag)
+
         elif irtag.tag == "simd.load":
             return self.fmt_simd_load(fqn, call)
 
@@ -707,6 +710,28 @@ class CFuncWriter:
             C.BinOp("&", C.UnaryOp("~", c_m), C.Cast(c_mask, c_b)),
         )
         return C.Cast(c_op, C.Paren(blend))
+
+    def fmt_simd_reduce(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
+        # call.args = [v, "reduce_add" (blue str, ignored)]
+        assert len(call.args) == 2
+        from spy.vm.modules.simd import W_SimdType
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_simdtype = w_func.w_functype.params[0].w_T
+        assert isinstance(w_simdtype, W_SimdType)
+        w_dtype = w_simdtype.w_dtype
+        c_dtype = self.ctx.w2c(w_dtype)
+        size = w_simdtype.size
+
+        c_v = self.fmt_expr(call.args[0])
+        op = irtag.data["op"]
+        # (T)(v[0] + v[1] + ... + v[W-1])
+        terms = [C.Index(c_v, C.Literal(str(i))) for i in range(size)]
+        acc = terms[0]
+        for term in terms[1:]:
+            acc = C.BinOp(op, acc, term)
+        return C.Cast(c_dtype, C.Paren(acc))
 
     def fmt_simd_load(self, fqn: FQN, call: ast.Call) -> C.Expr:
         # ((SIMD_u *)(ptr.p + i))[0]
