@@ -10,7 +10,7 @@ spy build -x --release --march=native --simd-width 32 bench_simd.spy
 spy build -x --release --march=native --simd-width 64 bench_simd.spy
 ```
 """
-
+from __spy__ import is_compiled
 from math import exp
 from time import time
 from simd import SIMD, simd_width_of, ptr_load_simd, ptr_store_simd
@@ -210,11 +210,9 @@ def exp_simd[T](x: gc_ptr[T], out: gc_ptr[T], n: i32) -> None:
         out[j] = exp(x[j])
 
 
-N: i32 = 1 << 20  # ~1M elements
-REPEAT = 200
 
 
-def bench_dtype[T]() -> None:
+def bench_dtype[T](N: i32, repeat:i32) -> None:
 
     dtype = T
 
@@ -234,12 +232,12 @@ def bench_dtype[T]() -> None:
 
     # --- SAXPY ---
     t0 = time()
-    for _ in range(REPEAT):
+    for _ in range(repeat):
         saxpy_scalar[dtype](a, x, y, out, N)
     ts = time() - t0
 
     t0 = time()
-    for _0 in range(REPEAT):
+    for _0 in range(repeat):
         saxpy_simd[dtype](a, x, y, out, N)
     tv = time() - t0
 
@@ -249,7 +247,7 @@ def bench_dtype[T]() -> None:
     got = out[N // 2]
     print("Autovectorized scalar; no win, expected")
     print(
-        "  SAXPY   scalar=",
+        "# SAXPY   scalar=",
         ts,
         "s  simd=",
         tv,
@@ -261,12 +259,12 @@ def bench_dtype[T]() -> None:
 
     # --- ReLU ---
     t0 = time()
-    for _1 in range(REPEAT):
+    for _1 in range(repeat):
         relu_scalar[dtype](x, out, N)
     ts = time() - t0
 
     t0 = time()
-    for _2 in range(REPEAT):
+    for _2 in range(repeat):
         relu_simd[dtype](x, out, N)
     tv = time() - t0
 
@@ -275,7 +273,7 @@ def bench_dtype[T]() -> None:
     relu_simd[dtype](x, out, N)
     got = out[N // 2]
     ok = approx_eq[dtype](ref, got, 1e-4)
-    print("  ReLU    scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
+    print("# ReLU    scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
 
     print("The C compiler cannot auto-vectorize (no reordering or an external math function)")
 
@@ -284,35 +282,35 @@ def bench_dtype[T]() -> None:
     sink = gc_alloc[dtype](2)
 
     t0 = time()
-    for _3 in range(REPEAT):
+    for _3 in range(repeat):
         sink[0] += dot_scalar[dtype](x, y, N)
     ts = time() - t0
 
     t0 = time()
-    for _4 in range(REPEAT):
+    for _4 in range(repeat):
         sink[1] += dot_simd[dtype](x, y, N)
     tv = time() - t0
 
     ref = dot_scalar[dtype](x, y, N)
     got = dot_simd[dtype](x, y, N)
     ok = approx_eq[dtype](ref, got, 1e-4)
-    print("  Dot     scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
+    print("# Dot     scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
 
     # --- Sum of squares ---
     t0 = time()
-    for _5 in range(REPEAT):
+    for _5 in range(repeat):
         sink[0] += squares_scalar[dtype](x, N)
     ts = time() - t0
 
     t0 = time()
-    for _6 in range(REPEAT):
+    for _6 in range(repeat):
         sink[1] += squares_simd[dtype](x, N)
     tv = time() - t0
 
     ref = squares_scalar[dtype](x, N)
     got = squares_simd[dtype](x, N)
     ok = approx_eq[dtype](ref, got, 1e-4)
-    print("  Squares scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
+    print("# Squares scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
 
     # --- Elementwise exp: opaque scalar call vs SIMD polynomial ---
     # Narrow input range [-0.5, 0.5] where a degree-6 exp polynomial is
@@ -321,12 +319,12 @@ def bench_dtype[T]() -> None:
     fill[dtype](exp_in, N, -0.5, 1.0 / N)
 
     t0 = time()
-    for _7 in range(REPEAT):
+    for _7 in range(repeat):
         exp_scalar[dtype](exp_in, out, N)
     ts = time() - t0
 
     t0 = time()
-    for _8 in range(REPEAT):
+    for _8 in range(repeat):
         exp_simd[dtype](exp_in, out, N)
     tv = time() - t0
 
@@ -335,13 +333,20 @@ def bench_dtype[T]() -> None:
     exp_simd[dtype](exp_in, out, N)
     got = out[N // 2]
     ok = approx_eq[dtype](ref, got, 1e-5)
-    print("  Exp     scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
+    print("# Exp     scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
 
 
 
 def main() -> None:
 
+    if is_compiled():
+        N = 1 << 20  # ~1M elements
+        repeat = 200
+    else:
+        N = 1 << 7
+        repeat = 1
+
     print("N        =", N)
-    print("repeat   =", REPEAT)
-    bench_dtype[f32]()
-    bench_dtype[f64]()
+    print("repeat   =", repeat)
+    bench_dtype[f32](N, repeat)
+    bench_dtype[f64](N, repeat)
