@@ -701,7 +701,7 @@ def _get_or_make_simd_round(
         return W_Simd(
             w_simdtype,
             [
-                lane_ctor(float(op_py(_lane_py(w_lane, w_dtype))))
+                lane_ctor(float(op_py(_lane_py(w_lane, w_dtype))))  # type: ignore[arg-type,operator]
                 for w_lane in w_v.lanes_w
             ],
         )
@@ -711,7 +711,7 @@ def _get_or_make_simd_round(
     return w_func
 
 
-def _reinterpret_value(value: any, from_fmt: str, to_fmt: str) -> any:
+def _reinterpret_value(value: Any, from_fmt: str, to_fmt: str) -> Any:
     """Reinterpret one value"""
     raw_bytes = struct.pack(from_fmt, value)
     return struct.unpack(to_fmt, raw_bytes)[0]
@@ -847,7 +847,7 @@ def _get_or_make_simd_ldexp(
             w_v_t,
             [
                 lane_ctor(
-                    math.ldexp(
+                    math.ldexp(  # type: ignore[arg-type]
                         _lane_py(w_vlane, w_dtype),
                         int(_lane_py(w_klane, w_k_t.w_dtype)),
                     )

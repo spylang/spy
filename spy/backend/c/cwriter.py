@@ -740,7 +740,7 @@ class CFuncWriter:
         op = irtag.data["op"]
         # (T)(v[0] + v[1] + ... + v[W-1])
         terms = [C.Index(c_v, C.Literal(str(i))) for i in range(size)]
-        acc = terms[0]
+        acc: C.Expr = terms[0]
         for term in terms[1:]:
             acc = C.BinOp(op, acc, term)
         return C.Cast(c_dtype, C.Paren(acc))
@@ -796,10 +796,7 @@ class CFuncWriter:
 
         c_v = self.fmt_expr(call.args[0])
         # (T){ fn(v[0]), fn(v[1]), ..., fn(v[W-1]) }
-        lanes = [
-            C.Call(C.Literal(c_fn), [C.Index(c_v, C.Literal(str(i)))])
-            for i in range(size)
-        ]
+        lanes = [C.Call(c_fn, [C.Index(c_v, C.Literal(str(i)))]) for i in range(size)]
         strargs = ", ".join(map(str, lanes))
         return C.Cast(c_simdtype, C.Literal("{ %s }" % strargs))
 
