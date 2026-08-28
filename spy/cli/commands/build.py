@@ -113,7 +113,7 @@ class _build_mixin:
         Optional[str],
         Option(
             "--march",
-            help="Pass -march=<VALUE> to the C compiler, e.g. --march=native "
+            help="Pass -march={VALUE} to the C compiler, e.g. --march=native "
             "(requires --target native).",
         ),
     ] = None
