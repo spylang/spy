@@ -15,7 +15,6 @@ from __spy__ import is_compiled
 from math import exp
 from time import time
 from simd import SIMD, simd_width_of, ptr_load_simd, ptr_store_simd, cast_to, ldexp
-from simd import max as simd_max
 from unsafe import gc_alloc, gc_ptr
 
 
@@ -79,7 +78,7 @@ def relu_simd[T](x: gc_ptr[T], out: gc_ptr[T], n: i32) -> None:
     bound: i32 = n - (n % W)
     for i in range(0, bound, W):
         vx = ptr_load_simd[T, W](x, i)
-        ptr_store_simd(out, i, simd_max(vx, zero))
+        ptr_store_simd(out, i, simd.max(vx, zero))
     for j in range(bound, n):
         v = x[j]
         if v > 0.0:
