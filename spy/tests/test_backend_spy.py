@@ -254,13 +254,13 @@ class TestSPyBackend(CompilerTest):
             add_f64(3.4, 5.6)
         """)
         self.assert_dump("""
-        add_i32 = `test::add[i32]`
-        add_f64 = `test::add[f64]`
+        add_i32 = `add[i32]`
+        add_f64 = `add[f64]`
 
-        def `test::add[i32]`(x: i32, y: i32) -> i32:
+        def `add[i32]`(x: i32, y: i32) -> i32:
             return x + y
 
-        def `test::add[f64]`(x: f64, y: f64) -> f64:
+        def `add[f64]`(x: f64, y: f64) -> f64:
             return x + y
 
         def foo() -> None:
