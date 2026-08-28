@@ -1,3 +1,5 @@
+from operator import OpSpec
+
 from _simd import (
     SIMD,
     simd_width_of,
@@ -7,3 +9,52 @@ from _simd import (
     cast_to,
     ldexp,
 )
+
+@blue.metafunc
+def min(m_a, m_b):
+    if m_a.static_type != m_b.static_type:
+        return OpSpec.NULL
+    S = m_a.static_type
+
+    def impl(a: S, b: S) -> S:
+        mask = a < b
+        return mask.select(a, b)
+
+    return OpSpec(impl)
+
+
+@blue.metafunc
+def max(m_a, m_b):
+    if m_a.static_type != m_b.static_type:
+        return OpSpec.NULL
+    S = m_a.static_type
+
+    def impl(a: S, b: S) -> S:
+        mask = a > b
+        return mask.select(a, b)
+
+    return OpSpec(impl)
+
+
+@blue.metafunc
+def abs(m_a):
+    S = m_a.static_type
+
+    def impl(a: S) -> S:
+        zero = S(0)
+        mask = a < zero
+        return mask.select(zero - a, a)
+
+    return OpSpec(impl)
+
+
+@blue.metafunc
+def clamp(m_a, m_b, m_c):
+    if m_a.static_type != m_b.static_type or m_a.static_type != m_c.static_type:
+        return OpSpec.NULL
+    S = m_a.static_type
+
+    def impl(a: S, low: S, high: S) -> S:
+        return min(max(a, low), high)
+
+    return OpSpec(impl)

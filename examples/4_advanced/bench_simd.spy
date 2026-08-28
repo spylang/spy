@@ -8,10 +8,14 @@ Build & run with different SIMD widths, e.g.:
   spy build -x --release --march=native --simd-width 32 bench_simd.spy
   spy build -x --release --march=native --simd-width 64 bench_simd.spy
 """
+
+import simd
+
 from __spy__ import is_compiled
 from math import exp
 from time import time
 from simd import SIMD, simd_width_of, ptr_load_simd, ptr_store_simd, cast_to, ldexp
+from simd import max as simd_max
 from unsafe import gc_alloc, gc_ptr
 
 
@@ -75,8 +79,7 @@ def relu_simd[T](x: gc_ptr[T], out: gc_ptr[T], n: i32) -> None:
     bound: i32 = n - (n % W)
     for i in range(0, bound, W):
         vx = ptr_load_simd[T, W](x, i)
-        mask = vx > zero
-        ptr_store_simd(out, i, mask.select(vx, zero))
+        ptr_store_simd(out, i, simd_max(vx, zero))
     for j in range(bound, n):
         v = x[j]
         if v > 0.0:
@@ -231,9 +234,7 @@ def exp_simd[T](x: gc_ptr[T], out: gc_ptr[T], n: i32) -> None:
         out[j] = exp(x[j])
 
 
-
-def bench_dtype[T](N: i32, repeat:i32) -> None:
-
+def bench_dtype[T](N: i32, repeat: i32) -> None:
     dtype = T
 
     a: dtype = 2.0
@@ -295,7 +296,9 @@ def bench_dtype[T](N: i32, repeat:i32) -> None:
     ok = approx_eq[dtype](ref, got, 1e-4)
     print("# ReLU    scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
 
-    print("The C compiler cannot auto-vectorize (no reordering or an external math function)")
+    print(
+        "The C compiler cannot auto-vectorize (no reordering or an external math function)"
+    )
 
     # --- Dot product ---
     # to avoid dead-code elimination
@@ -356,7 +359,6 @@ def bench_dtype[T](N: i32, repeat:i32) -> None:
 
 
 def main() -> None:
-
     if is_compiled():
         N = 1 << 20  # ~1M elements
         repeat = 200
