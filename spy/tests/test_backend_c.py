@@ -90,6 +90,43 @@ class TestCBackend:
         assert str(sub(sub(a, b), c)) == "a - b - c"
         assert str(sub(a, BinOp("+", left=b, right=c))) == "a - (b + c)"
 
+    def test_BinOp_shift_vs_additive(self):
+        # regression test: even though '+' binds tighter than '<<' in C,
+        # gcc/clang warn about `n + 127 << 23` with -Wshift-op-parentheses
+        # (and --Werror turns it into a hard error), so we must emit
+        # explicit parens even though they are not strictly needed.
+        n, c127, c23 = Literal("n"), Literal("127"), Literal("23")
+
+        expr = BinOp("<<", left=BinOp("+", left=n, right=c127), right=c23)
+        assert str(expr) == "(n + 127) << 23"
+
+        expr = BinOp("<<", left=n, right=BinOp("+", left=c127, right=c23))
+        assert str(expr) == "n << (127 + 23)"
+
+    def test_BinOp_bitwise_mix(self):
+        # -Wbitwise-op-parentheses: mixing &, ^, | without parens, even
+        # though precedence disambiguates them.
+        a, b, c = Literal("a"), Literal("b"), Literal("c")
+        assert (
+            str(BinOp("|", left=a, right=BinOp("&", left=b, right=c))) == "a | (b & c)"
+        )
+        assert (
+            str(BinOp("&", left=BinOp("^", left=a, right=b), right=c)) == "(a ^ b) & c"
+        )
+        # bitwise mixed with equality
+        assert (
+            str(BinOp("&", left=a, right=BinOp("==", left=b, right=c)))
+            == "a & (b == c)"
+        )
+
+    def test_BinOp_logical_mix(self):
+        # -Wlogical-op-parentheses: mixing && and || without parens.
+        a, b, c = Literal("a"), Literal("b"), Literal("c")
+        assert (
+            str(BinOp("&&", left=a, right=BinOp("||", left=b, right=c)))
+            == "a && (b || c)"
+        )
+
     def test_UnaryOp(self):
         # fmt: off
         expr = UnaryOp("-",
