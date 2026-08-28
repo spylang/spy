@@ -603,6 +603,9 @@ class CFuncWriter:
         elif irtag.tag == "simd.sqrt":
             return self.fmt_simd_sqrt(fqn, call, irtag)
 
+        elif irtag.tag == "simd.anyall":
+            return self.fmt_simd_anyall(fqn, call, irtag)
+
         elif irtag.tag == "simd.cast":
             return self.fmt_simd_cast(fqn, call)
 
@@ -814,6 +817,30 @@ class CFuncWriter:
         lanes = [C.Call(c_fn, [C.Index(c_v, C.Literal(str(i)))]) for i in range(size)]
         strargs = ", ".join(map(str, lanes))
         return C.Cast(c_simdtype, C.Literal("{ %s }" % strargs))
+
+    def fmt_simd_anyall(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
+        """Reduce SIMD vector to scalar bool via any/all."""
+        from spy.vm.modules.simd import W_SimdType
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_simdtype = w_func.w_functype.params[0].w_T
+        assert isinstance(w_simdtype, W_SimdType)
+        size = w_simdtype.size
+
+        c_v = self.fmt_expr(call.args[0])
+        op = irtag.data["op"]
+
+        # Build reduction: v[0] op v[1] op ... op v[W-1]
+        acc: C.Index | C.BinOp = C.Index(c_v, C.Literal("0"))
+        for i in range(1, size):
+            lane = C.Index(c_v, C.Literal(str(i)))
+            if op == "any":
+                acc = C.BinOp("||", acc, lane)
+            else:  # all
+                acc = C.BinOp("&&", acc, lane)
+
+        return C.BinOp("!=", acc, C.Literal("0"))
 
     def fmt_simd_sqrt(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         """Format a SIMD sqrt operation."""

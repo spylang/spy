@@ -1,15 +1,18 @@
 from operator import OpSpec
 
 from _simd import (
-    SIMD,
-    simd_width_of,
+    all,
+    any,
+    cast_to,
+    ldexp,
     ptr_load_simd,
     ptr_store_simd,
     reinterpret_as,
-    cast_to,
-    ldexp,
+    SIMD,
+    simd_width_of,
     sqrt,
 )
+
 
 @blue.metafunc
 def min(m_a, m_b):

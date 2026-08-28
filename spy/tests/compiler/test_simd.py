@@ -1345,6 +1345,17 @@ class TestSIMD(CompilerTest):
         errors = expect_errors("sqrt requires float vector, got `_simd::SIMD[i32, 4]`")
         self.compile_raises(src, "bad", errors)
 
+    def test_any_all(self):
+        mod = self.compile("""
+            from _simd import SIMD, any, all
+
+            def func() -> tuple[bool, bool]:
+                v = SIMD[f32, 4](1.0, 0.0, 3.0, 0.0)
+                mask = v > SIMD[f32, 4](0.0)
+                return any(mask), all(mask)
+            """)
+        assert _as_tuple(mod.func()) == (True, False)
+
 
 def test_simd_width_resolution():
     # The default is the universally-safe width for every target.

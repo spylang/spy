@@ -873,7 +873,7 @@ def _get_or_make_simd_ldexp(
     return w_func
 
 
-def _get_or_make_simd_sqrt(vm: "SPyVM", w_simdtype: W_SimdType) -> "W_BuiltinFunc":
+def _get_or_make_simd_sqrt(vm: "SPyVM", w_simdtype: W_SimdType) -> "W_BuiltinFunc":  # type: ignore[name-defined]
     """
     Build and register the red `simd.sqrt` lowering builtin. Float-only (f32, f64).
     """
@@ -897,8 +897,38 @@ def _get_or_make_simd_sqrt(vm: "SPyVM", w_simdtype: W_SimdType) -> "W_BuiltinFun
     def w_impl(vm: "SPyVM", w_v: W_Simd) -> W_Simd:
         return W_Simd(
             w_simdtype,
-            [lane_ctor(math.sqrt(_lane_py(w_lane, w_dtype))) for w_lane in w_v.lanes_w],
+            [lane_ctor(math.sqrt(_lane_py(w_lane, w_dtype))) for w_lane in w_v.lanes_w],  # type: ignore[arg-type]
         )
+
+    w_func = W_BuiltinFunc(w_functype, fqn, w_impl)
+    vm.add_global(fqn, w_func, irtag=irtag)
+    return w_func
+
+
+def _get_or_make_simd_anyall(
+    vm: "SPyVM", w_simdtype: W_SimdType, *, op: str
+) -> "W_BuiltinFunc":  # type: ignore[name-defined]
+    from spy.vm.function import FuncParam, W_BuiltinFunc, W_FuncType
+
+    w_dtype = w_simdtype.w_dtype
+
+    fqn = w_simdtype.fqn.join(f"__{op}__")
+    w_functype = W_FuncType.new(
+        [FuncParam(w_simdtype, "simple")],
+        B.w_bool,
+    )
+    irtag = IRTag("simd.anyall", op=op)
+
+    w_existing = vm.lookup_global_maybe(fqn)
+    if w_existing is not None:
+        assert isinstance(w_existing, W_BuiltinFunc)
+        return w_existing
+
+    fct = any if op == "any" else all
+
+    def w_impl(vm: "SPyVM", w_v: W_Simd) -> W_Object:
+        acc = fct(_lane_py(lane, w_dtype) for lane in w_v.lanes_w)
+        return vm.wrap(acc)
 
     w_func = W_BuiltinFunc(w_functype, fqn, w_impl)
     vm.add_global(fqn, w_func, irtag=irtag)
@@ -1237,3 +1267,21 @@ def w_sqrt(vm: "SPyVM", wam_v: W_MetaArg) -> W_OpSpec:
 
     w_func = _get_or_make_simd_sqrt(vm, w_v_t)
     return W_OpSpec(w_func, [wam_v])
+
+
+@SIMD.builtin_func(color="blue", kind="metafunc")
+def w_any(vm: "SPyVM", m_v: W_MetaArg) -> W_OpSpec:
+    """Blue metafunc: any(v) -> bool"""
+    if not isinstance(m_v.w_static_T, W_SimdType):
+        return W_OpSpec.NULL
+    w_func = _get_or_make_simd_anyall(vm, m_v.w_static_T, op="any")
+    return W_OpSpec(w_func)
+
+
+@SIMD.builtin_func(color="blue", kind="metafunc")
+def w_all(vm: "SPyVM", m_v: W_MetaArg) -> W_OpSpec:
+    """Blue metafunc: all(v) -> bool"""
+    if not isinstance(m_v.w_static_T, W_SimdType):
+        return W_OpSpec.NULL
+    w_func = _get_or_make_simd_anyall(vm, m_v.w_static_T, op="all")
+    return W_OpSpec(w_func)
