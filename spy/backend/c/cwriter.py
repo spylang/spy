@@ -1,4 +1,5 @@
 import math
+from functools import reduce
 from typing import TYPE_CHECKING
 
 from spy import ast
@@ -721,7 +722,7 @@ class CFuncWriter:
             C.BinOp("&", c_m, C.Cast(c_mask, c_a)),
             C.BinOp("&", C.UnaryOp("~", c_m), C.Cast(c_mask, c_b)),
         )
-        return C.Cast(c_op, C.Paren(blend))
+        return C.Cast(c_op, blend)
 
     def fmt_simd_reduce(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         # call.args = [v, "reduce_add" (blue str, ignored)]
@@ -735,15 +736,26 @@ class CFuncWriter:
         w_dtype = w_simdtype.w_dtype
         c_dtype = self.ctx.w2c(w_dtype)
         size = w_simdtype.size
-
-        c_v = self.fmt_expr(call.args[0])
         op = irtag.data["op"]
-        # (T)(v[0] + v[1] + ... + v[W-1])
-        terms = [C.Index(c_v, C.Literal(str(i))) for i in range(size)]
-        acc: C.Expr = terms[0]
-        for term in terms[1:]:
-            acc = C.BinOp(op, acc, term)
-        return C.Cast(c_dtype, C.Paren(acc))
+        is_float = w_dtype in (B.w_f32, B.w_f64)
+
+        assert size > 0
+        c_v = self.fmt_expr(call.args[0])
+        terms: list[C.Expr] = [C.Index(c_v, C.Literal(str(i))) for i in range(size)]
+
+        def combine(a: C.Expr, b: C.Expr) -> C.Expr:
+            if op in ("+", "*"):
+                return C.BinOp(op, a, b)
+            elif op in ("min", "max"):
+                if is_float:
+                    return C.Call(f"f{op}", [a, b])
+                cmp = "<" if op == "min" else ">"
+                return C.Ternary(C.BinOp(cmp, a, b), a, b)
+            else:
+                raise AssertionError(f"unsupported simd reduce op: {op!r}")
+
+        acc = reduce(combine, terms)
+        return C.Cast(c_dtype, acc)
 
     def fmt_simd_reinterpret(self, fqn: FQN, call: ast.Call) -> C.Expr:
         # call.args = [v]
@@ -860,13 +872,13 @@ class CFuncWriter:
         # (iv)(k + bias_vec) << shift_vec
         bits = C.BinOp(
             "<<",
-            C.Paren(C.BinOp("+", c_k, C.Cast(c_ivec, bias_lit))),
+            C.BinOp("+", c_k, C.Cast(c_ivec, bias_lit)),
             C.Cast(c_ivec, shift_lit),
         )
         # (fv)bits  — reinterpret integer bits as float
-        two_pow_k = C.Cast(c_fvec, C.Paren(bits))
+        two_pow_k = C.Cast(c_fvec, bits)
         # v * 2^k
-        return C.Cast(c_fvec, C.Paren(C.BinOp("*", c_v, two_pow_k)))
+        return C.Cast(c_fvec, C.BinOp("*", c_v, two_pow_k))
 
     def fmt_simd_load(self, fqn: FQN, call: ast.Call) -> C.Expr:
         # ((SIMD_u *)(ptr.p + i))[0]
@@ -879,7 +891,7 @@ class CFuncWriter:
         c_unaligned = C_Type(f"{w_simdtype.fqn.c_name}_u *")
         c_ptr = self.fmt_expr(call.args[0])
         c_i = self.fmt_expr(call.args[1])
-        addr = C.Paren(C.BinOp("+", C.Dot(c_ptr, "p"), c_i))
+        addr = C.BinOp("+", C.Dot(c_ptr, "p"), c_i)
         return C.Index(C.Cast(c_unaligned, addr), C.Literal("0"))
 
     def fmt_simd_store(self, fqn: FQN, call: ast.Call) -> C.Expr:
@@ -894,7 +906,7 @@ class CFuncWriter:
         c_ptr = self.fmt_expr(call.args[0])
         c_i = self.fmt_expr(call.args[1])
         c_v = self.fmt_expr(call.args[2])
-        addr = C.Paren(C.BinOp("+", C.Dot(c_ptr, "p"), c_i))
+        addr = C.BinOp("+", C.Dot(c_ptr, "p"), c_i)
         lval = C.Index(C.Cast(c_unaligned, addr), C.Literal("0"))
         return C.BinOp("=", lval, c_v)
 

@@ -634,7 +634,7 @@ class TestSIMD(CompilerTest):
         errors = expect_errors("method `SIMD[i32, 2]::select` does not exist")
         self.compile_raises(src, "bad", errors)
 
-    # === simd.reduce: reduce_add ===
+    # === simd.reduce ===
 
     def test_reduce_add_all_dtypes(self):
         mod = self.compile("""
@@ -704,6 +704,27 @@ class TestSIMD(CompilerTest):
                 return acc.reduce_add()
             """)
         assert mod.dot(1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0) == 70.0
+
+    def test_reduce_all_operations_together(self):
+        mod = self.compile("""
+            from _simd import SIMD
+
+            def all_reductions[T]() -> tuple[T, T, T, T]:
+                v = SIMD[T, 4](1, 2, 3, 4)
+                return (v.reduce_add(), v.reduce_min(), v.reduce_max(), v.reduce_mul())
+
+            all_reductions_i8 = all_reductions[i8]
+            all_reductions_i32 = all_reductions[i32]
+            all_reductions_f32 = all_reductions[f32]
+            all_reductions_f64 = all_reductions[f64]
+            """)
+        # sum=10, min=1, max=4, product=24
+        correct_f = (10.0, 1.0, 4.0, 24.0)
+        correct_i = (10, 1, 4, 24)
+        assert _as_tuple(mod.all_reductions_i8()) == correct_i
+        assert _as_tuple(mod.all_reductions_i32()) == correct_i
+        assert _as_tuple(mod.all_reductions_f32()) == correct_f
+        assert _as_tuple(mod.all_reductions_f64()) == correct_f
 
     # === simd.reinterpret: reinterpret_as ===
 

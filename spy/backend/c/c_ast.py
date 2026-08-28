@@ -404,7 +404,10 @@ class Cast(Expr):
         return 13
 
     def __str__(self) -> str:
-        return f"({self.type}){self.expr}"
+        e = str(self.expr)
+        if self.expr.precedence() < self.precedence():
+            e = f"({e})"
+        return f"({self.type}){e}"
 
 
 @dataclass
@@ -423,15 +426,22 @@ class Index(Expr):
 
 
 @dataclass
-class Paren(Expr):
-    """
-    An explicitly parenthesized expression. ``Cast`` does not parenthesize its operand.
-    """
-
-    expr: Expr
+class Ternary(Expr):
+    cond: Expr
+    then: Expr
+    orelse: Expr
 
     def precedence(self) -> int:
-        return 100
+        return 2
 
     def __str__(self) -> str:
-        return f"({self.expr})"
+        c = str(self.cond)
+        if self.cond.precedence() <= 2:
+            c = f"({c})"
+        t = str(self.then)  # middle operand is a full expression, never needs parens
+        e = str(self.orelse)
+        # false-branch chains right-recursively (a ? b : c ? d : e), so only
+        # parenthesize if it's looser than a ternary (assignment, comma)
+        if self.orelse.precedence() < 2:
+            e = f"({e})"
+        return f"{c} ? {t} : {e}"
