@@ -873,6 +873,38 @@ def _get_or_make_simd_ldexp(
     return w_func
 
 
+def _get_or_make_simd_sqrt(vm: "SPyVM", w_simdtype: W_SimdType) -> "W_BuiltinFunc":
+    """
+    Build and register the red `simd.sqrt` lowering builtin. Float-only (f32, f64).
+    """
+    from spy.vm.function import FuncParam, W_BuiltinFunc, W_FuncType
+
+    w_dtype = w_simdtype.w_dtype
+    lane_ctor = _W_LANE_CTOR[w_dtype]
+
+    fqn = w_simdtype.fqn.join("__sqrt__")
+    w_functype = W_FuncType.new(
+        [FuncParam(w_simdtype, "simple")],
+        w_simdtype,
+    )
+    irtag = IRTag("simd.sqrt")
+
+    w_existing = vm.lookup_global_maybe(fqn)
+    if w_existing is not None:
+        assert isinstance(w_existing, W_BuiltinFunc)
+        return w_existing
+
+    def w_impl(vm: "SPyVM", w_v: W_Simd) -> W_Simd:
+        return W_Simd(
+            w_simdtype,
+            [lane_ctor(math.sqrt(_lane_py(w_lane, w_dtype))) for w_lane in w_v.lanes_w],
+        )
+
+    w_func = W_BuiltinFunc(w_functype, fqn, w_impl)
+    vm.add_global(fqn, w_func, irtag=irtag)
+    return w_func
+
+
 def _simd_binop_meta(
     vm: "SPyVM",
     wam_self: W_MetaArg,
@@ -1185,3 +1217,23 @@ def w_ldexp(vm: "SPyVM", wam_v: W_MetaArg, wam_k: W_MetaArg) -> W_OpSpec:
         return W_OpSpec.NULL
     w_ldexp = _get_or_make_simd_ldexp(vm, w_v_t, w_k_t)
     return W_OpSpec(w_ldexp, [wam_v, wam_k])
+
+
+@SIMD.builtin_func(color="blue", kind="metafunc")
+def w_sqrt(vm: "SPyVM", wam_v: W_MetaArg) -> W_OpSpec:
+    """
+    Compute the element-wise square root of a float SIMD vector.
+    Only supported on float types (f32, f64).
+    """
+    w_v_t = wam_v.w_static_T
+    if not isinstance(w_v_t, W_SimdType):
+        return W_OpSpec.NULL
+
+    if w_v_t.w_dtype not in (B.w_f32, B.w_f64):
+        raise SPyError(
+            "W_TypeError",
+            f"sqrt requires float vector, got `{w_v_t.fqn}`",
+        )
+
+    w_func = _get_or_make_simd_sqrt(vm, w_v_t)
+    return W_OpSpec(w_func, [wam_v])

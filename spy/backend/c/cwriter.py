@@ -600,6 +600,9 @@ class CFuncWriter:
         elif irtag.tag == "simd.round":
             return self.fmt_simd_round(fqn, call, irtag)
 
+        elif irtag.tag == "simd.sqrt":
+            return self.fmt_simd_sqrt(fqn, call, irtag)
+
         elif irtag.tag == "simd.cast":
             return self.fmt_simd_cast(fqn, call)
 
@@ -808,6 +811,25 @@ class CFuncWriter:
 
         c_v = self.fmt_expr(call.args[0])
         # (T){ fn(v[0]), fn(v[1]), ..., fn(v[W-1]) }
+        lanes = [C.Call(c_fn, [C.Index(c_v, C.Literal(str(i)))]) for i in range(size)]
+        strargs = ", ".join(map(str, lanes))
+        return C.Cast(c_simdtype, C.Literal("{ %s }" % strargs))
+
+    def fmt_simd_sqrt(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
+        """Format a SIMD sqrt operation."""
+        from spy.vm.modules.simd import W_SimdType
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_simdtype = w_func.w_functype.params[0].w_T
+        assert isinstance(w_simdtype, W_SimdType)
+        c_simdtype = self.ctx.w2c(w_simdtype)
+        size = w_simdtype.size
+        w_dtype = w_simdtype.w_dtype
+
+        c_v = self.fmt_expr(call.args[0])
+        c_fn = "sqrtf" if w_dtype is B.w_f32 else "sqrt"
+
         lanes = [C.Call(c_fn, [C.Index(c_v, C.Literal(str(i)))]) for i in range(size)]
         strargs = ", ".join(map(str, lanes))
         return C.Cast(c_simdtype, C.Literal("{ %s }" % strargs))

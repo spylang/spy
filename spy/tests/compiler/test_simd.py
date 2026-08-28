@@ -1323,6 +1323,28 @@ class TestSIMD(CompilerTest):
         )
         self.compile_raises(src, "bad", errors)
 
+    def test_sqrt_basic(self):
+        mod = self.compile("""
+            from _simd import SIMD, sqrt
+
+            def test_sqrt_f32(x: f32) -> f32:
+                v = SIMD[f32, 4](x, x, x, x)
+                w = sqrt(v)
+                return w[0]
+            """)
+        assert mod.test_sqrt_f32(4.0) == 2.0
+        assert mod.test_sqrt_f32(9.0) == 3.0
+
+    def test_sqrt_integer_rejected(self):
+        src = """
+        from _simd import SIMD, sqrt
+        def bad() -> None:
+            v = SIMD[i32, 4](1, 2, 3, 4)
+            w = sqrt(v)
+        """
+        errors = expect_errors("sqrt requires float vector, got `_simd::SIMD[i32, 4]`")
+        self.compile_raises(src, "bad", errors)
+
 
 def test_simd_width_resolution():
     # The default is the universally-safe width for every target.
