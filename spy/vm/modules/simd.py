@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING, Annotated, Any
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.b import B
-from spy.vm.builtin import builtin_method
+from spy.vm.builtin import builtin_classmethod, builtin_method
 from spy.vm.irtag import IRTag
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opspec import W_MetaArg, W_OpSpec
@@ -202,6 +202,43 @@ class W_Simd(W_Object):
             # Anything else (e.g. 2 args for a 4-wide vector): not supported in
             # PR1.  Returning NULL yields a clear "cannot call" type error.
             return W_OpSpec.NULL
+
+    # ===== SIMD[T, N].iota(): a "pure factory" classmethod =====
+    #
+    # `iota()` is fully determined by (dtype, size) alone: like the other
+    # "no runtime input" SIMD factories, it's a classmethod on the type
+    # rather than a free function in `_simd`.
+    #
+    # `SIMD[T, N].iota()` is dispatched through the *generic*
+    # `W_Type.w_CALL_METHOD` (every type gets `__call_method__` for free),
+    # which resolves `"iota"` in `w_cls.dict_w` to our `W_ClassMethod` and
+    # calls it as `iota(SIMD[T, N])`. If that classmethod were `kind="plain"`,
+    # the type `SIMD[T, N]` itself would need to be passed as a *runtime*
+    # argument -- but the C backend has no runtime representation for type
+    # values (they only exist at blue/compile time), so compilation would
+    # fail. We therefore make it `kind="metafunc"`, exactly like `__new__`:
+    # `wam_cls` is a blue `W_MetaArg` consumed here at redshift time, and we
+    # return an `W_OpSpec` around a zero-arg, per-specialization builtin
+    # (cached in `_get_or_make_simd_iota`) that carries no reference to the
+    # type at runtime.
+    @builtin_classmethod("iota", color="blue", kind="metafunc")
+    @staticmethod
+    def w_iota(vm: "SPyVM", wam_cls: W_MetaArg, *args_wam: W_MetaArg) -> W_OpSpec:
+        """
+        `SIMD[T, N].iota()` returns the vector `[0, 1, ..., N-1]`, with each
+        lane value converted to the lane dtype `T`.
+        """
+        if len(args_wam) != 0:
+            # iota() takes no arguments -- same "return NULL for an
+            # unsupported shape" convention as w_NEW above, which turns
+            # into a clean SPyError instead of an internal crash.
+            return W_OpSpec.NULL
+        w_simdtype = wam_cls.w_blueval
+        assert isinstance(w_simdtype, W_SimdType)
+        w_func = _get_or_make_simd_iota(vm, w_simdtype)
+        # Explicitly pass an empty args list (not the default `None`): a
+        # `None` args list makes this a "simple" opspec.
+        return W_OpSpec(w_func, [])
 
     # ===== lane read: v[i] (red index) -> simd.getitem =====
     @builtin_method("__getitem__", color="blue", kind="metafunc")
@@ -899,6 +936,39 @@ def _get_or_make_simd_sqrt(vm: "SPyVM", w_simdtype: W_SimdType) -> "W_BuiltinFun
             w_simdtype,
             [lane_ctor(math.sqrt(_lane_py(w_lane, w_dtype))) for w_lane in w_v.lanes_w],  # type: ignore[arg-type]
         )
+
+    w_func = W_BuiltinFunc(w_functype, fqn, w_impl)
+    vm.add_global(fqn, w_func, irtag=irtag)
+    return w_func
+
+
+def _get_or_make_simd_iota(vm: "SPyVM", w_simdtype: W_SimdType) -> "W_BuiltinFunc":  # type: ignore[name-defined]
+    """
+    Build and register the red `simd.iota` lowering
+    builtin, returning the cached instance on subsequent calls.
+    """
+    from spy.vm.function import W_BuiltinFunc, W_FuncType
+
+    w_dtype = w_simdtype.w_dtype
+    size = w_simdtype.size
+    lane_ctor = _W_LANE_CTOR[w_dtype]
+    is_float = w_dtype in (B.w_f32, B.w_f64)
+
+    fqn = w_simdtype.fqn.join("__iota__")
+    w_functype = W_FuncType.new([], w_simdtype)
+    irtag = IRTag("simd.iota")
+
+    w_existing = vm.lookup_global_maybe(fqn)
+    if w_existing is not None:
+        assert isinstance(w_existing, W_BuiltinFunc)
+        return w_existing
+
+    def w_impl(vm: "SPyVM") -> W_Simd:
+        if is_float:
+            lanes_w = [lane_ctor(float(i)) for i in range(size)]  # type: ignore[arg-type]
+        else:
+            lanes_w = [lane_ctor(i) for i in range(size)]
+        return W_Simd(w_simdtype, lanes_w)
 
     w_func = W_BuiltinFunc(w_functype, fqn, w_impl)
     vm.add_global(fqn, w_func, irtag=irtag)

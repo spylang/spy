@@ -11,6 +11,7 @@ class TestSIMD(CompilerTest):
         src = """
         from simd import SIMD, simd_width_of, ptr_load_simd, ptr_store_simd
         from simd import reinterpret_as, min, max, abs, clamp, sqrt, any, all
+        from simd import iota
 
         def width() -> i32:
             return simd_width_of[i32]
@@ -54,3 +55,13 @@ class TestSIMD(CompilerTest):
                 """)
         assert _as_tuple(mod.t_abs()) == (1.0, 2.0, 3.0, 4.0)
         assert _as_tuple(mod.t_clamp()) == (0.0, 5.0, 15.0, 25.0)
+
+    def test_iota(self):
+        mod = self.compile("""
+            from simd import iota
+
+            def fct() -> tuple[i32, i32, i32, i32]:
+                s = iota[i32, 4]()
+                return s[0], s[1], s[2], s[3]
+            """)
+        assert _as_tuple(mod.fct()) == (0, 1, 2, 3)

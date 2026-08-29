@@ -603,6 +603,9 @@ class CFuncWriter:
         elif irtag.tag == "simd.sqrt":
             return self.fmt_simd_sqrt(fqn, call, irtag)
 
+        elif irtag.tag == "simd.iota":
+            return self.fmt_simd_iota(fqn, call)
+
         elif irtag.tag == "simd.anyall":
             return self.fmt_simd_anyall(fqn, call, irtag)
 
@@ -859,6 +862,26 @@ class CFuncWriter:
 
         lanes = [C.Call(c_fn, [C.Index(c_v, C.Literal(str(i)))]) for i in range(size)]
         strargs = ", ".join(map(str, lanes))
+        return C.Cast(c_simdtype, C.Literal("{ %s }" % strargs))
+
+    def fmt_simd_iota(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        """Format `SIMD[T, N].iota()`."""
+        assert len(call.args) == 0
+        from spy.vm.modules.simd import W_SimdType
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_simdtype = w_func.w_functype.w_restype
+        assert isinstance(w_simdtype, W_SimdType)
+        c_simdtype = self.ctx.w2c(w_simdtype)
+        size = w_simdtype.size
+        w_dtype = w_simdtype.w_dtype
+        is_float = w_dtype in (B.w_f32, B.w_f64)
+
+        def lane_literal(i: int) -> str:
+            return f"{i}.0" if is_float else str(i)
+
+        strargs = ", ".join(lane_literal(i) for i in range(size))
         return C.Cast(c_simdtype, C.Literal("{ %s }" % strargs))
 
     def fmt_simd_cast(self, fqn: FQN, call: ast.Call) -> C.Expr:

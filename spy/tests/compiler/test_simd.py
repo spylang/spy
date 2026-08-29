@@ -86,6 +86,85 @@ class TestSIMD(CompilerTest):
         assert mod.f_f32(1.5) == 1.5
         assert mod.f_f64(2.25) == 2.25
 
+    # === SIMD[T, N].iota(): classmethod factory ===
+
+    def test_iota_basic(self):
+        # SIMD[T, N].iota() -> [0, 1, ..., N-1], fully determined by (T, N).
+        mod = self.compile("""
+            from _simd import SIMD
+
+            def get_i32(i: i32) -> i32:
+                v = SIMD[i32, 4].iota()
+                return v[i]
+
+            def get_f32(i: i32) -> f32:
+                v = SIMD[f32, 4].iota()
+                return v[i]
+            """)
+        for i in range(4):
+            assert mod.get_i32(i) == i
+            assert mod.get_f32(i) == float(i)
+
+    def test_iota_all_dtypes(self):
+        # every v1 numeric primitive can be used as the lane dtype
+        mod = self.compile("""
+            from _simd import SIMD
+
+            def last[T]() -> T:
+                v = SIMD[T, 4].iota()
+                return v[3]
+
+            last_i8 = last[i8]
+            last_u8 = last[u8]
+            last_i32 = last[i32]
+            last_u32 = last[u32]
+            last_i64 = last[i64]
+            last_u64 = last[u64]
+            last_f32 = last[f32]
+            last_f64 = last[f64]
+            """)
+        assert mod.last_i8() == 3
+        assert mod.last_u8() == 3
+        assert mod.last_i32() == 3
+        assert mod.last_u32() == 3
+        assert mod.last_i64() == 3
+        assert mod.last_u64() == 3
+        assert mod.last_f32() == 3.0
+        assert mod.last_f64() == 3.0
+
+    def test_iota_sizes(self):
+        # size must be a positive power of two: 1, 2, 4, 8 are all valid,
+        # same as construction (test_valid_sizes).
+        mod = self.compile("""
+            from _simd import SIMD
+
+            def s1() -> i32:
+                v = SIMD[i32, 1].iota()
+                return v[0]
+
+            def s2() -> i32:
+                v = SIMD[i32, 2].iota()
+                return v[1]
+
+            def s8() -> i32:
+                v = SIMD[i32, 8].iota()
+                return v[7]
+            """)
+        assert mod.s1() == 0
+        assert mod.s2() == 1
+        assert mod.s8() == 7
+
+    def test_iota_reduce_add(self):
+        # iota() composes with other SIMD operations like any other vector.
+        mod = self.compile("""
+            from _simd import SIMD
+
+            def sum_iota() -> i32:
+                v = SIMD[i32, 4].iota()  # [0, 1, 2, 3]
+                return v.reduce_add()
+            """)
+        assert mod.sum_iota() == 6  # 0+1+2+3
+
     def test_invalid_size_not_power_of_two(self):
         src = """
         from _simd import SIMD

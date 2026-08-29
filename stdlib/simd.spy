@@ -62,3 +62,7 @@ def clamp(m_a, m_b, m_c):
         return min(max(a, low), high)
 
     return OpSpec(impl)
+
+
+def iota[T, N]() -> SIMD[T, N]:
+    return SIMD[T, N].iota()
