@@ -44,6 +44,7 @@ from spy.vm.modules.math import MATH
 from spy.vm.modules.operator import OPERATOR, convop
 from spy.vm.modules.posix import POSIX
 from spy.vm.modules.rawbuffer import RAW_BUFFER
+from spy.vm.modules.simd import SIMD
 from spy.vm.modules.time import TIME
 from spy.vm.modules.types import TYPES, W_Loc
 from spy.vm.modules.unsafe import UNSAFE
@@ -166,6 +167,7 @@ class SPyVM:
         self.make_module(TYPES)
         self.make_module(MATH)
         self.make_module(UNSAFE)
+        self.make_module(SIMD)
         self.make_module(RAW_BUFFER)
         self.make_module(JSFFI)
         self.make_module(POSIX)
