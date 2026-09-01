@@ -27,7 +27,7 @@ class TestStructOnStack(CompilerTest):
     Test for structs allocated on the stack, passed around by value as
     primitive types.
 
-    There are additional tests for ptr-to-structs in tests/compiler/unsafe and test_struct_ptr.py.
+    There are additional tests for ptr-to-structs in tests/compiler/unsafe.
     """
 
     def test_simple(self):

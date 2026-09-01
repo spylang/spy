@@ -724,52 +724,114 @@ class TestUnsafePtr(CompilerTest):
             """
             from unsafe import gc_alloc, gc_ptr
 
-            def rt_i8(v: i32) -> i8:
-                p: gc_ptr[i8] = gc_alloc[i8](4)
-                p[0] = i8(v)
-                return p[0]
-
-            def rt_u8(v: i32) -> u8:
-                p: gc_ptr[u8] = gc_alloc[u8](4)
-                p[0] = u8(v)
-                return p[0]
-
-            def rt_i32(v: i32) -> i32:
-                p: gc_ptr[i32] = gc_alloc[i32](4)
+            def rt[T](v: T) -> T:
+                p: gc_ptr[T] = gc_alloc[T](4)
                 p[0] = v
                 return p[0]
 
-            def rt_u32(v: u32) -> u32:
-                p: gc_ptr[u32] = gc_alloc[u32](4)
-                p[0] = v
-                return p[0]
-
-            def rt_i64(v: i32) -> i64:
-                p: gc_ptr[i64] = gc_alloc[i64](4)
-                p[0] = i64(v)
-                return p[0]
-
-            def rt_u64(v: i32) -> u64:
-                p: gc_ptr[u64] = gc_alloc[u64](4)
-                p[0] = u64(i64(v))
-                return p[0]
-
-            def rt_f32(v: i32) -> f32:
-                p: gc_ptr[f32] = gc_alloc[f32](4)
-                p[0] = f32(v)
-                return p[0]
-
-            def rt_f64(v: f64) -> f64:
-                p: gc_ptr[f64] = gc_alloc[f64](4)
-                p[0] = v
-                return p[0]
+            rt_i8 = rt[i8]
+            rt_u8 = rt[u8]
+            rt_i32 = rt[i32]
+            rt_u32 = rt[u32]
+            rt_i64 = rt[i64]
+            rt_u64 = rt[u64]
+            rt_f32 = rt[f32]
+            rt_f64 = rt[f64]
             """
         )
-        assert mod.rt_i32(42) == 42
-        assert mod.rt_u8(200) == 200
-        assert mod.rt_f64(1.5) == 1.5
-        assert mod.rt_i8(-5) == -5
-        assert mod.rt_u32(42) == 42
-        assert mod.rt_i64(42) == 42
-        assert mod.rt_u64(42) == 42
+        assert mod.rt_i8(-(2**7)) == -(2**7)
+        assert mod.rt_u8(2**8 - 1) == 2**8 - 1
+        assert mod.rt_i32(-(2**31)) == -(2**31)
+        assert mod.rt_u32(2**32 - 1) == 2**32 - 1
+        assert mod.rt_i64(2**63 - 1) == 2**63 - 1
+        assert mod.rt_i64(-(2**63)) == -(2**63)
+        assert mod.rt_u64(2**64 - 1) == 2**64 - 1
         assert mod.rt_f32(7) == 7.0
+        assert mod.rt_f64(1.5) == 1.5
+
+    def test_ptr_struct_fields_all_dtypes(self):
+        mod = self.compile("""
+            from unsafe import gc_alloc, gc_ptr
+
+            @struct
+            class BoxI8:
+                v: i8
+            @struct
+            class BoxU8:
+                v: u8
+            @struct
+            class BoxI32:
+                v: i32
+            @struct
+            class BoxU32:
+                v: u32
+            @struct
+            class BoxI64:
+                v: i64
+            @struct
+            class BoxU64:
+                v: u64
+            @struct
+            class BoxF32:
+                v: f32
+            @struct
+            class BoxF64:
+                v: f64
+
+            def rt_i8(v: i8) -> i8:
+                p: gc_ptr[BoxI8] = gc_alloc[BoxI8](1)
+                p.v = v
+                return p.v
+
+            def rt_u8(v: u8) -> u8:
+                p: gc_ptr[BoxU8] = gc_alloc[BoxU8](1)
+                p.v = v
+                return p.v
+
+            def rt_i32(v: i32) -> i32:
+                p: gc_ptr[BoxI32] = gc_alloc[BoxI32](1)
+                p.v = v
+                return p.v
+
+            def rt_u32(v: u32) -> u32:
+                p: gc_ptr[BoxU32] = gc_alloc[BoxU32](1)
+                p.v = v
+                return p.v
+
+            def rt_i64(v: i64) -> i64:
+                p: gc_ptr[BoxI64] = gc_alloc[BoxI64](1)
+                p.v = v
+                return p.v
+
+            def rt_u64(v: u64) -> u64:
+                p: gc_ptr[BoxU64] = gc_alloc[BoxU64](1)
+                p.v = v
+                return p.v
+
+            def rt_f32(v: f32) -> f32:
+                p: gc_ptr[BoxF32] = gc_alloc[BoxF32](1)
+                p.v = v
+                return p.v
+
+            def rt_f64(v: f64) -> f64:
+                p: gc_ptr[BoxF64] = gc_alloc[BoxF64](1)
+                p.v = v
+                return p.v
+
+            def rt_struct_byval_f32(v: f32) -> f32:
+                p: gc_ptr[BoxF32] = gc_alloc[BoxF32](1)
+                p.v = v
+                x: BoxF32 = p[0]
+                return x.v
+            """)
+        assert mod.rt_i8(-(2**7)) == -(2**7)
+        assert mod.rt_u8(2**8 - 1) == 2**8 - 1
+        assert mod.rt_i32(-(2**31)) == -(2**31)
+        assert mod.rt_u32(2**32 - 1) == 2**32 - 1
+        assert mod.rt_i64(2**63 - 1) == 2**63 - 1
+        assert mod.rt_i64(-(2**63)) == -(2**63)
+        assert mod.rt_u64(2**64 - 1) == 2**64 - 1
+
+        assert mod.rt_f32(7) == 7.0
+        assert mod.rt_f64(1.5) == 1.5
+        assert mod.rt_struct_byval_f32(7) == 7.0
