@@ -579,6 +579,12 @@ class CFuncWriter:
         elif irtag.tag == "struct.getfield":
             return self.fmt_struct_getfield(fqn, call, irtag)
 
+        elif irtag.tag == "simd.make":
+            return self.fmt_simd_make(fqn, call, irtag)
+
+        elif irtag.tag == "simd.getitem":
+            return self.fmt_simd_getitem(fqn, call)
+
         elif irtag.tag == "ptr.getfield":
             return self.fmt_ptr_getfield(fqn, call, irtag)
 
@@ -631,6 +637,32 @@ class CFuncWriter:
         c_struct = self.fmt_expr(call.args[0])
         name = irtag.data["name"]
         return C.Dot(c_struct, name)
+
+    def fmt_simd_make(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
+        from spy.vm.modules.simd import W_SimdType
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_simdtype = w_func.w_functype.w_restype
+        assert isinstance(w_simdtype, W_SimdType)
+        c_simdtype = self.ctx.w2c(w_simdtype)
+
+        c_args = [self.fmt_expr(arg) for arg in call.args]
+        if irtag.data.get("broadcast"):
+            # SIMD[T, N](scalar) -> (T){scalar, scalar, ..., scalar}
+            assert len(c_args) == 1
+            s_arg = str(c_args[0])
+            strargs = ", ".join([s_arg] * w_simdtype.size)
+        else:
+            # SIMD[T, N](v0, ..., v_{N-1}) -> (T){v0, ..., v_{N-1}}
+            strargs = ", ".join(map(str, c_args))
+        return C.Cast(c_simdtype, C.Literal("{ %s }" % strargs))
+
+    def fmt_simd_getitem(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        assert len(call.args) == 2
+        c_v = self.fmt_expr(call.args[0])
+        c_i = self.fmt_expr(call.args[1])
+        return C.Index(c_v, c_i)
 
     def fmt_ptr_getfield(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         assert isinstance(call.args[1], ast.StrLiteral)
