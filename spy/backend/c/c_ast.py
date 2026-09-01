@@ -143,6 +143,72 @@ class Void(Expr):
 Void._singleton = object.__new__(Void)
 
 
+# Operators grouped by "family", for the purposes of GCC/Clang's
+# -Wparentheses warnings (which include e.g. -Wshift-op-parentheses,
+# -Wbitwise-op-parentheses and -Wlogical-op-parentheses). Even when our
+# precedence table above already disambiguates two operators correctly,
+# mixing operators from *different* families without explicit
+# parentheses is flagged by those compilers as potentially confusing to
+# a human reader. E.g. `n + 127 << 23` is unambiguous C (the '+' binds
+# tighter than '<<'), but clang still warns:
+#
+#   fatal error: '<<' has lower precedence than '+';
+#   '+' will be evaluated first [-Wshift-op-parentheses]
+#
+# and with --Werror this turns into a hard compile error. So, on top of
+# the strict precedence-based logic in BinOp.__str__, we add "belt and
+# braces" parens whenever an operand belongs to a different family than
+# its parent, for the specific combinations that gcc/clang are known to
+# warn about.
+_FAMILY = {
+    "*": "arith",
+    "/": "arith",
+    "%": "arith",
+    "+": "arith",
+    "-": "arith",
+    "<<": "shift",
+    ">>": "shift",
+    "<": "rel",
+    "<=": "rel",
+    ">": "rel",
+    ">=": "rel",
+    "==": "eq",
+    "!=": "eq",
+    "&": "bitand",
+    "^": "bitxor",
+    "|": "bitor",
+    "&&": "and",
+    "||": "or",
+    "=": "assign",
+}
+
+# unordered pairs of families which gcc/clang warn about when mixed
+# without explicit parens, even though precedence already disambiguates
+# them.
+_AMBIGUOUS_FAMILY_PAIRS = {
+    frozenset({"arith", "shift"}),  # -Wshift-op-parentheses
+    frozenset({"bitand", "bitxor"}),  # -Wbitwise-op-parentheses
+    frozenset({"bitxor", "bitor"}),  # -Wbitwise-op-parentheses
+    frozenset({"bitand", "bitor"}),  # -Wbitwise-op-parentheses
+    frozenset({"bitand", "eq"}),  # -Wparentheses
+    frozenset({"bitxor", "eq"}),  # -Wparentheses
+    frozenset({"bitor", "eq"}),  # -Wparentheses
+    frozenset({"and", "or"}),  # -Wlogical-op-parentheses
+}
+
+
+def _ambiguous_mix(parent_op: str, child_op: str) -> bool:
+    """
+    Whether mixing parent_op and child_op without parens would trigger
+    a gcc/clang -Wparentheses-family warning.
+    """
+    pf = _FAMILY.get(parent_op)
+    cf = _FAMILY.get(child_op)
+    if pf is None or cf is None or pf == cf:
+        return False
+    return frozenset({pf, cf}) in _AMBIGUOUS_FAMILY_PAIRS
+
+
 @dataclass
 class BinOp(Expr):
     op: str
@@ -184,9 +250,15 @@ class BinOp(Expr):
             l = f"({l})"
         elif self.left.precedence() == prec and assoc == "R":
             l = f"({l})"
+        elif isinstance(self.left, BinOp) and _ambiguous_mix(self.op, self.left.op):
+            # strictly unambiguous per the precedence table, but gcc/clang
+            # would still warn about it (see _AMBIGUOUS_FAMILY_PAIRS above)
+            l = f"({l})"
         if self.right.precedence() < prec:
             r = f"({r})"
         elif self.right.precedence() == prec and assoc == "L":
+            r = f"({r})"
+        elif isinstance(self.right, BinOp) and _ambiguous_mix(self.op, self.right.op):
             r = f"({r})"
         return f"{l} {self.op} {r}"
 
@@ -332,4 +404,44 @@ class Cast(Expr):
         return 13
 
     def __str__(self) -> str:
-        return f"({self.type}){self.expr}"
+        e = str(self.expr)
+        if self.expr.precedence() < self.precedence():
+            e = f"({e})"
+        return f"({self.type}){e}"
+
+
+@dataclass
+class Index(Expr):
+    expr: Expr
+    index: Expr
+
+    def precedence(self) -> int:
+        return 14
+
+    def __str__(self) -> str:
+        e = str(self.expr)
+        if self.expr.precedence() < self.precedence():
+            e = f"({e})"
+        return f"{e}[{self.index}]"
+
+
+@dataclass
+class Ternary(Expr):
+    cond: Expr
+    then: Expr
+    orelse: Expr
+
+    def precedence(self) -> int:
+        return 2
+
+    def __str__(self) -> str:
+        c = str(self.cond)
+        if self.cond.precedence() <= 2:
+            c = f"({c})"
+        t = str(self.then)  # middle operand is a full expression, never needs parens
+        e = str(self.orelse)
+        # false-branch chains right-recursively (a ? b : c ? d : e), so only
+        # parenthesize if it's looser than a ternary (assignment, comma)
+        if self.orelse.precedence() < 2:
+            e = f"({e})"
+        return f"{c} ? {t} : {e}"

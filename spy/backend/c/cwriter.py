@@ -1,10 +1,10 @@
 import math
-from types import NoneType
+from functools import reduce
 from typing import TYPE_CHECKING
 
 from spy import ast
 from spy.backend.c import c_ast as C
-from spy.backend.c.context import C_Ident, Context
+from spy.backend.c.context import C_Ident, C_Type, Context
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.location import Loc
@@ -579,6 +579,48 @@ class CFuncWriter:
         elif irtag.tag == "struct.getfield":
             return self.fmt_struct_getfield(fqn, call, irtag)
 
+        elif irtag.tag == "simd.make":
+            return self.fmt_simd_make(fqn, call, irtag)
+
+        elif irtag.tag == "simd.getitem":
+            return self.fmt_simd_getitem(fqn, call)
+
+        elif irtag.tag in ("simd.binop", "simd.cmp"):
+            return self.fmt_simd_binop(fqn, call, irtag)
+
+        elif irtag.tag == "simd.select":
+            return self.fmt_simd_select(fqn, call)
+
+        elif irtag.tag == "simd.reduce":
+            return self.fmt_simd_reduce(fqn, call, irtag)
+
+        elif irtag.tag == "simd.reinterpret":
+            return self.fmt_simd_reinterpret(fqn, call)
+
+        elif irtag.tag == "simd.round":
+            return self.fmt_simd_round(fqn, call, irtag)
+
+        elif irtag.tag == "simd.sqrt":
+            return self.fmt_simd_sqrt(fqn, call, irtag)
+
+        elif irtag.tag == "simd.iota":
+            return self.fmt_simd_iota(fqn, call)
+
+        elif irtag.tag == "simd.anyall":
+            return self.fmt_simd_anyall(fqn, call, irtag)
+
+        elif irtag.tag == "simd.cast":
+            return self.fmt_simd_cast(fqn, call)
+
+        elif irtag.tag == "simd.ldexp":
+            return self.fmt_simd_ldexp(fqn, call)
+
+        elif irtag.tag == "simd.load":
+            return self.fmt_simd_load(fqn, call)
+
+        elif irtag.tag == "simd.store":
+            return self.fmt_simd_store(fqn, call)
+
         elif irtag.tag == "ptr.getfield":
             return self.fmt_ptr_getfield(fqn, call, irtag)
 
@@ -631,6 +673,314 @@ class CFuncWriter:
         c_struct = self.fmt_expr(call.args[0])
         name = irtag.data["name"]
         return C.Dot(c_struct, name)
+
+    def fmt_simd_make(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
+        from spy.vm.modules.simd import W_SimdType
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_simdtype = w_func.w_functype.w_restype
+        assert isinstance(w_simdtype, W_SimdType)
+        c_simdtype = self.ctx.w2c(w_simdtype)
+
+        c_args = [self.fmt_expr(arg) for arg in call.args]
+        if irtag.data.get("broadcast"):
+            # SIMD[T, N](scalar) -> (T){scalar, scalar, ..., scalar}
+            assert len(c_args) == 1
+            s_arg = str(c_args[0])
+            strargs = ", ".join([s_arg] * w_simdtype.size)
+        else:
+            # SIMD[T, N](v0, ..., v_{N-1}) -> (T){v0, ..., v_{N-1}}
+            strargs = ", ".join(map(str, c_args))
+        return C.Cast(c_simdtype, C.Literal("{ %s }" % strargs))
+
+    def fmt_simd_getitem(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        assert len(call.args) == 2
+        c_v = self.fmt_expr(call.args[0])
+        c_i = self.fmt_expr(call.args[1])
+        return C.Index(c_v, c_i)
+
+    def fmt_simd_binop(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
+        assert len(call.args) == 2
+        l, r = [self.fmt_expr(arg) for arg in call.args]
+        return C.BinOp(irtag.data["op"], l, r)
+
+    def fmt_simd_select(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        # call.args = [mask, "select" (blue str, ignored), a, b]
+        assert len(call.args) == 4
+        from spy.vm.modules.simd import W_SimdType
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_ft = w_func.w_functype
+        w_mask_t = w_ft.params[0].w_T
+        w_op_t = w_ft.w_restype
+        assert isinstance(w_mask_t, W_SimdType)
+        assert isinstance(w_op_t, W_SimdType)
+        c_mask = self.ctx.w2c(w_mask_t)
+        c_op = self.ctx.w2c(w_op_t)
+        c_m = self.fmt_expr(call.args[0])
+        c_a = self.fmt_expr(call.args[2])
+        c_b = self.fmt_expr(call.args[3])
+        # (T)((mask & (M)a) | (~mask & (M)b))
+        # The vector ternary `?:` is C++-only, so we use the same-size
+        # bit-trick blend, valid for every dtype via reinterpret casts (M and
+        # T share the same total byte size, validated in _is_valid_mask).
+        blend = C.BinOp(
+            "|",
+            C.BinOp("&", c_m, C.Cast(c_mask, c_a)),
+            C.BinOp("&", C.UnaryOp("~", c_m), C.Cast(c_mask, c_b)),
+        )
+        return C.Cast(c_op, blend)
+
+    def fmt_simd_reduce(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
+        # call.args = [v, "reduce_add" (blue str, ignored)]
+        assert len(call.args) == 2
+        from spy.vm.modules.simd import W_SimdType
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_simdtype = w_func.w_functype.params[0].w_T
+        assert isinstance(w_simdtype, W_SimdType)
+        w_dtype = w_simdtype.w_dtype
+        c_dtype = self.ctx.w2c(w_dtype)
+        size = w_simdtype.size
+        op = irtag.data["op"]
+        is_float = w_dtype in (B.w_f32, B.w_f64)
+
+        assert size > 0
+        c_v = self.fmt_expr(call.args[0])
+        terms: list[C.Expr] = [C.Index(c_v, C.Literal(str(i))) for i in range(size)]
+
+        def combine(a: C.Expr, b: C.Expr) -> C.Expr:
+            if op in ("+", "*"):
+                return C.BinOp(op, a, b)
+            elif op in ("min", "max"):
+                if is_float:
+                    return C.Call(f"f{op}", [a, b])
+                cmp = "<" if op == "min" else ">"
+                return C.Ternary(C.BinOp(cmp, a, b), a, b)
+            else:
+                raise AssertionError(f"unsupported simd reduce op: {op!r}")
+
+        acc = reduce(combine, terms)
+        return C.Cast(c_dtype, acc)
+
+    def fmt_simd_reinterpret(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        # call.args = [v]
+        assert len(call.args) == 1
+        from spy.vm.modules.simd import W_SimdType
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_ft = w_func.w_functype
+        w_src_t = w_ft.params[0].w_T
+        w_tgt_t = w_ft.w_restype
+        assert isinstance(w_src_t, W_SimdType)
+        assert isinstance(w_tgt_t, W_SimdType)
+        c_tgt = self.ctx.w2c(w_tgt_t)
+        c_v = self.fmt_expr(call.args[0])
+        # (T)v — a same-size bit reinterpret between two vector_size typedefs,
+        # not a numeric conversion.  Valid because the interp metafunc only
+        # builds this builtin when src and target lanes have the same
+        # byte-width (so the two typedefs have the same total size).
+        return C.Cast(c_tgt, c_v)
+
+    def fmt_simd_round(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
+        # call.args = [v, "floor" (blue str, ignored)]
+        assert len(call.args) == 2
+        from spy.vm.modules.simd import W_SimdType
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_simdtype = w_func.w_functype.params[0].w_T
+        assert isinstance(w_simdtype, W_SimdType)
+        c_simdtype = self.ctx.w2c(w_simdtype)
+        size = w_simdtype.size
+
+        op = irtag.data["op"]
+        w_dtype = w_simdtype.w_dtype
+        # round is half-to-even (rint/rintf), NOT libc round/roundf
+        # (which is half-away-from-zero).  This matches Python 3 round() and
+        # the hardware roundps instruction.
+        c_fns = {
+            (B.w_f32, "floor"): "floorf",
+            (B.w_f32, "trunc"): "truncf",
+            (B.w_f32, "round"): "rintf",
+            (B.w_f32, "ceil"): "ceilf",
+            (B.w_f64, "floor"): "floor",
+            (B.w_f64, "trunc"): "trunc",
+            (B.w_f64, "round"): "rint",
+            (B.w_f64, "ceil"): "ceil",
+        }
+        c_fn = c_fns[(w_dtype, op)]
+
+        c_v = self.fmt_expr(call.args[0])
+        # (T){ fn(v[0]), fn(v[1]), ..., fn(v[W-1]) }
+        lanes = [C.Call(c_fn, [C.Index(c_v, C.Literal(str(i)))]) for i in range(size)]
+        strargs = ", ".join(map(str, lanes))
+        return C.Cast(c_simdtype, C.Literal("{ %s }" % strargs))
+
+    def fmt_simd_anyall(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
+        """Reduce SIMD vector to scalar bool via any/all."""
+        from spy.vm.modules.simd import W_SimdType
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_simdtype = w_func.w_functype.params[0].w_T
+        assert isinstance(w_simdtype, W_SimdType)
+        size = w_simdtype.size
+
+        c_v = self.fmt_expr(call.args[0])
+        op = irtag.data["op"]
+
+        # Build reduction: v[0] op v[1] op ... op v[W-1]
+        acc: C.Index | C.BinOp = C.Index(c_v, C.Literal("0"))
+        for i in range(1, size):
+            lane = C.Index(c_v, C.Literal(str(i)))
+            if op == "any":
+                acc = C.BinOp("||", acc, lane)
+            else:  # all
+                acc = C.BinOp("&&", acc, lane)
+
+        return C.BinOp("!=", acc, C.Literal("0"))
+
+    def fmt_simd_sqrt(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
+        """Format a SIMD sqrt operation."""
+        from spy.vm.modules.simd import W_SimdType
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_simdtype = w_func.w_functype.params[0].w_T
+        assert isinstance(w_simdtype, W_SimdType)
+        c_simdtype = self.ctx.w2c(w_simdtype)
+        size = w_simdtype.size
+        w_dtype = w_simdtype.w_dtype
+
+        c_v = self.fmt_expr(call.args[0])
+        c_fn = "sqrtf" if w_dtype is B.w_f32 else "sqrt"
+
+        lanes = [C.Call(c_fn, [C.Index(c_v, C.Literal(str(i)))]) for i in range(size)]
+        strargs = ", ".join(map(str, lanes))
+        return C.Cast(c_simdtype, C.Literal("{ %s }" % strargs))
+
+    def fmt_simd_iota(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        """Format `SIMD[T, N].iota()`."""
+        assert len(call.args) == 0
+        from spy.vm.modules.simd import W_SimdType
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_simdtype = w_func.w_functype.w_restype
+        assert isinstance(w_simdtype, W_SimdType)
+        c_simdtype = self.ctx.w2c(w_simdtype)
+        size = w_simdtype.size
+        w_dtype = w_simdtype.w_dtype
+        is_float = w_dtype in (B.w_f32, B.w_f64)
+
+        def lane_literal(i: int) -> str:
+            return f"{i}.0" if is_float else str(i)
+
+        strargs = ", ".join(lane_literal(i) for i in range(size))
+        return C.Cast(c_simdtype, C.Literal("{ %s }" % strargs))
+
+    def fmt_simd_cast(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        # call.args = [v]
+        assert len(call.args) == 1
+        from spy.vm.modules.simd import W_SimdType
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_ft = w_func.w_functype
+        w_src_t = w_ft.params[0].w_T
+        w_tgt_t = w_ft.w_restype
+        assert isinstance(w_src_t, W_SimdType)
+        assert isinstance(w_tgt_t, W_SimdType)
+        c_tgt = self.ctx.w2c(w_tgt_t)
+        c_tgt_lane = self.ctx.w2c(w_tgt_t.w_dtype)
+        c_v = self.fmt_expr(call.args[0])
+        size = w_tgt_t.size
+        # (T){(Tlane)v[0], (Tlane)v[1], ..., (Tlane)v[W-1]}
+        # numeric cast per lane, NOT bit reinterpret
+        lanes = [
+            C.Cast(c_tgt_lane, C.Index(c_v, C.Literal(str(i)))) for i in range(size)
+        ]
+        strargs = ", ".join(map(str, lanes))
+        return C.Cast(c_tgt, C.Literal("{ %s }" % strargs))
+
+    def fmt_simd_ldexp(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        # call.args = [v, k]  where v is float SIMD, k is int SIMD
+        assert len(call.args) == 2
+        from spy.vm.modules.simd import W_SimdType
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_ft = w_func.w_functype
+        w_v_t = w_ft.params[0].w_T
+        w_k_t = w_ft.params[1].w_T
+        assert isinstance(w_v_t, W_SimdType)
+        assert isinstance(w_k_t, W_SimdType)
+        c_fvec = self.ctx.w2c(w_v_t)
+        c_ivec = self.ctx.w2c(w_k_t)
+        size = w_v_t.size
+
+        # 2^k via the IEEE bit trick, using pure C vector arithmetic:
+        #   bits = (k + bias) << shift
+        #   2^k = (float_vec)bits      (bit reinterpret)
+        #   result = v * 2^k           (vector multiply)
+        # For f32: bias=127, shift=23;  for f64: bias=1023, shift=52
+        if w_v_t.w_dtype is B.w_f32:
+            bias, shift = 127, 23
+        else:
+            bias, shift = 1023, 52
+
+        c_v = self.fmt_expr(call.args[0])
+        c_k = self.fmt_expr(call.args[1])
+
+        # broadcast bias and shift as integer vector literals
+        bias_lit = C.Literal("{ %s }" % ", ".join([str(bias)] * size))
+        shift_lit = C.Literal("{ %s }" % ", ".join([str(shift)] * size))
+
+        # (iv)(k + bias_vec) << shift_vec
+        bits = C.BinOp(
+            "<<",
+            C.BinOp("+", c_k, C.Cast(c_ivec, bias_lit)),
+            C.Cast(c_ivec, shift_lit),
+        )
+        # (fv)bits  — reinterpret integer bits as float
+        two_pow_k = C.Cast(c_fvec, bits)
+        # v * 2^k
+        return C.Cast(c_fvec, C.BinOp("*", c_v, two_pow_k))
+
+    def fmt_simd_load(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        # ((SIMD_u *)(ptr.p + i))[0]
+        from spy.vm.modules.simd import W_SimdType
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_simdtype = w_func.w_functype.w_restype
+        assert isinstance(w_simdtype, W_SimdType)
+        c_unaligned = C_Type(f"{w_simdtype.fqn.c_name}_u *")
+        c_ptr = self.fmt_expr(call.args[0])
+        c_i = self.fmt_expr(call.args[1])
+        addr = C.BinOp("+", C.Dot(c_ptr, "p"), c_i)
+        return C.Index(C.Cast(c_unaligned, addr), C.Literal("0"))
+
+    def fmt_simd_store(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        # ((SIMD_u *)(ptr.p + i))[0] = v
+        from spy.vm.modules.simd import W_SimdType
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_simdtype = w_func.w_functype.params[2].w_T
+        assert isinstance(w_simdtype, W_SimdType)
+        c_unaligned = C_Type(f"{w_simdtype.fqn.c_name}_u *")
+        c_ptr = self.fmt_expr(call.args[0])
+        c_i = self.fmt_expr(call.args[1])
+        c_v = self.fmt_expr(call.args[2])
+        addr = C.BinOp("+", C.Dot(c_ptr, "p"), c_i)
+        lval = C.Index(C.Cast(c_unaligned, addr), C.Literal("0"))
+        return C.BinOp("=", lval, c_v)
 
     def fmt_ptr_getfield(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         assert isinstance(call.args[1], ast.StrLiteral)

@@ -12,6 +12,7 @@ from typing import (
     Protocol,
 )
 
+from spy.build.build_info import SIMD_ALLOWED_WIDTHS, SIMD_DEFAULT_WIDTH
 from spy.cli._tb import tb_hide_magic_frames_maybe
 from spy.cli.commands.shared_args import Base_Args
 from spy.cli.spy_toml import SpyToml
@@ -128,6 +129,7 @@ class Init_Args(Protocol):
     filename: Path
     extra_vm_modules: Optional[list[str]]
     no_spy_toml: bool
+    simd_width: Optional[int]
 
 
 async def init_vm(args: Init_Args) -> SPyVM:
@@ -157,6 +159,18 @@ async def init_vm(args: Init_Args) -> SPyVM:
     GLOBAL_VM = vm
 
     vm.robust_import_caching = True  # don't raise if .spyc are unreadable/invalid
+
+    if args.simd_width is None:
+        vm.simd_width = SIMD_DEFAULT_WIDTH
+    else:
+        allowed = set().union(*SIMD_ALLOWED_WIDTHS.values())  # {128, 256, 512}
+        if args.simd_width not in allowed:
+            import click
+
+            raise click.UsageError(
+                f"simd_width {args.simd_width} is not valid; allowed: {sorted(allowed)}"
+            )
+        vm.simd_width = args.simd_width
 
     vm.path.append(str(srcdir))
     if args.error_mode == "warn":

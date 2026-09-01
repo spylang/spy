@@ -109,6 +109,15 @@ class _build_mixin:
         ),
     ] = False
 
+    march: Annotated[
+        Optional[str],
+        Option(
+            "--march",
+            help="Pass -march={VALUE} to the C compiler, e.g. --march=native "
+            "(requires --target native).",
+        ),
+    ] = None
+
 
 @dataclass
 class Build_Args(
@@ -148,6 +157,11 @@ async def build(args: Build_Args) -> None:
     if args.static and sys.platform == "darwin":
         raise click.UsageError("--static is not supported on macOS")
 
+    if args.march is not None and args.target != "native":
+        raise click.UsageError(
+            f"--march can only be used with --target native, got --target={args.target}"
+        )
+
     config = BuildConfig(
         target=args.target,
         kind=args.output_kind,
@@ -155,6 +169,8 @@ async def build(args: Build_Args) -> None:
         warning_as_error=args.warning_as_error,
         gc=gc,
         static=args.static,
+        simd_width=args.simd_width,
+        march=args.march,
     )
 
     cwd = py.path.local(".")

@@ -5,6 +5,16 @@ BuildTarget = Literal["native", "wasi", "emscripten"]
 BuildType = Literal["release", "debug"]
 OutputKind = Literal["exe", "testlib", "py-cffi"]
 
+# Default SIMD vector width (in bytes), used when --simd-width is not given.
+SIMD_DEFAULT_WIDTH = 16
+
+# SIMD widths (in bytes) a build target may select.
+SIMD_ALLOWED_WIDTHS: dict[BuildTarget, frozenset[int]] = {
+    "native": frozenset({16, 32, 64}),
+    "wasi": frozenset({16}),
+    "emscripten": frozenset({16}),
+}
+
 
 @dataclass
 class BuildInfo:

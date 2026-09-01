@@ -42,4 +42,4 @@ async def cleanup(args: Cleanup_Args) -> None:
     if not removed_count:
         print("No .spyc files found")
     else:
-        print(f"2 {removed_count} file(s) removed")
+        print(f"{removed_count} file(s) removed")

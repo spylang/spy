@@ -535,6 +535,7 @@ def w_mem_write(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
 
 def generic_mem_read(vm: "SPyVM", addr: int, w_T: W_Type) -> W_Object:
     from spy.vm.modules.posix import POSIX, W__FILE
+    from spy.vm.modules.simd import W_Simd, W_SimdType
 
     if w_T is B.w_i8:
         return W_I8(vm.ll.mem.read_i8(addr))
@@ -569,6 +570,13 @@ def generic_mem_read(vm: "SPyVM", addr: int, w_T: W_Type) -> W_Object:
             offset = w_field.offset
             values_w[fname] = generic_mem_read(vm, addr + offset, w_field.w_T)
         return W_Struct(w_T, values_w)
+    elif isinstance(w_T, W_SimdType):
+        lane_size = sizeof(w_T.w_dtype)
+        lanes_w = [
+            generic_mem_read(vm, addr + i * lane_size, w_T.w_dtype)
+            for i in range(w_T.size)
+        ]
+        return W_Simd(w_T, lanes_w)
     else:
         t = w_T.fqn.human_name(vm)
         raise WIP(f"Cannot read memory of type `{t}`")
@@ -576,6 +584,7 @@ def generic_mem_read(vm: "SPyVM", addr: int, w_T: W_Type) -> W_Object:
 
 def generic_mem_write(vm: "SPyVM", addr: int, w_T: W_Type, w_val: W_Object) -> None:
     from spy.vm.modules.posix import POSIX, W__FILE
+    from spy.vm.modules.simd import W_Simd, W_SimdType
 
     if w_T is B.w_i8:
         assert isinstance(w_val, W_I8)
@@ -621,6 +630,11 @@ def generic_mem_write(vm: "SPyVM", addr: int, w_T: W_Type, w_val: W_Object) -> N
             fname = w_field.name
             offset = w_field.offset
             generic_mem_write(vm, addr + offset, w_field.w_T, w_val.values_w[fname])
+    elif isinstance(w_T, W_SimdType):
+        assert isinstance(w_val, W_Simd)
+        lane_size = sizeof(w_T.w_dtype)
+        for i in range(w_T.size):
+            generic_mem_write(vm, addr + i * lane_size, w_T.w_dtype, w_val.lanes_w[i])
     else:
         t = w_T.fqn.human_name(vm)
         raise WIP(f"Cannot write memory of type `{t}`")

@@ -7,7 +7,13 @@ from typing import Literal, Optional
 import py.path
 
 import spy.libspy
-from spy.build.build_info import BuildTarget, BuildType, OutputKind
+from spy.build.build_info import (
+    SIMD_ALLOWED_WIDTHS,
+    SIMD_DEFAULT_WIDTH,
+    BuildTarget,
+    BuildType,
+    OutputKind,
+)
 from spy.build.flags import get_cc, get_cflags, get_ldflags, get_libdir
 from spy.errors import WIP
 
@@ -23,12 +29,58 @@ class BuildConfig:
     warning_as_error: bool = False
     gc: GCOption = "none"
     static: bool = False
+    # SIMD vector width in bytes, or None to use the per-target default.
+    # This is a *static*, build-time configuration: it is fixed before
+    # redshift, because redshift runs before the final C compiler.
+    # See `resolve_simd_width` / `simd_width_of`.
+    simd_width: Optional[int] = None
+    # Value passed as `-march=<march>` to the C compiler (e.g. "native",
+    # "x86-64-v3", "znver4"). None means "don't pass -march at all", i.e.
+    # the compiler's default baseline ISA for the target (e.g. plain SSE2
+    # on x86-64). Only meaningful for --target native[-static]: the C
+    # compiler is the one that decides how a `--simd-width` wider than one
+    # native register gets legalized, so --simd-width and --march need to
+    # be chosen together to get genuine wide-SIMD codegen instead of the
+    # compiler silently splitting/scalarizing.
+    march: Optional[str] = None
 
     def __post_init__(self) -> None:
         if self.kind == "testlib" and self.target not in ("wasi", "emscripten"):
             raise WIP(
                 "--output-kind=testlib works only for wasi and emscripten targets"
             )
+        self._simd_width = resolve_simd_width(self.target, self.simd_width)
+
+    @property
+    def effective_simd_width(self) -> int:
+        return self._simd_width
+
+
+def resolve_simd_width(target: BuildTarget, override: Optional[int]) -> int:
+    """
+    Return the effective SIMD vector width (in bytes) for a build.
+
+    The width is a *static*, build-time configuration: it is fixed before
+    redshift, because redshift runs before the final C compiler / `-march=`
+    is pinned, so per-target autodetection is not possible at redshift time.
+    The default (16) is universally safe.
+
+    `--simd-width=32`/`64` opt into wider native vectors
+    (the user is responsible for matching `-march`).
+
+    `override` is the value of `--simd-width` (or `None`); it must be one
+    of `SIMD_ALLOWED_WIDTHS[target]`.
+    """
+    if override is None:
+        return SIMD_DEFAULT_WIDTH
+    allowed = SIMD_ALLOWED_WIDTHS[target]
+    if override not in allowed:
+        allowed_str = "/".join(str(w) for w in sorted(allowed))
+        raise ValueError(
+            f"--simd-width={override} is not valid for target {target!r}; "
+            f"allowed: {allowed_str}"
+        )
+    return override
 
 
 # ======= CFLAGS and LDFLAGS logic =======
@@ -59,16 +111,31 @@ class CompilerConfig:
         else:
             flags_target = config.target
 
+        if config.march is not None:
+            # Only asserted here as a last-resort check in case BuildConfig
+            # is constructed directly (e.g. from tests) rather than via the
+            # CLI, which already validates --march against --target.
+            assert config.target == "native", (
+                f"--march is only supported for --target native "
+                f"(including --static), got target={config.target!r}"
+            )
+
         self.CC = get_cc(flags_target)
         self.cflags += get_cflags(
-            flags_target, config.build_type, config.kind, config.warning_as_error
+            flags_target,
+            config.build_type,
+            config.kind,
+            config.warning_as_error,
+            config.march,
         )
         self.cflags += EXTRA_CFLAGS
 
-        self.ldflags += LDFLAGS
         self.ldflags += get_ldflags(flags_target, config.build_type)
 
-        libdir = get_libdir(flags_target, config.build_type, config.kind)
+        libdir = get_libdir(flags_target, config.build_type, config.kind, config.march)
+        self._ensure_libspy_built(
+            flags_target, config.build_type, config.kind, config.march
+        )
         if config.target == "wasi" and config.kind == "testlib":
             # WASM testlibs are used by tests: in this case we want to make sure to
             # include the whole libspy.a, so that helper functions such as spy_str_alloc
@@ -88,6 +155,8 @@ class CompilerConfig:
                 "-L", libdir,
                 "-lspy",
             ]  # fmt: skip
+
+        self.ldflags += LDFLAGS
 
         # target specific flags
         if config.target == "native":
@@ -137,6 +206,49 @@ class CompilerConfig:
                     if prefix:
                         self.cflags += ["-I", f"{prefix}/include"]
                         self.ldflags += ["-L", f"{prefix}/lib"]
+
+    @staticmethod
+    def _ensure_libspy_built(
+        target: str, build_type: BuildType, kind: OutputKind, march: Optional[str]
+    ) -> None:
+        """
+        libspy.a is normally built ahead of time (`pixi run make-libspy`)
+        and simply linked against. That's fine for the baseline (no
+        --march) case, which is left untouched here on purpose: don't
+        surprise people who expect `spy build` to just link, not compile
+        libspy on the fly.
+
+        But a non-default --march gets its own cache dir (see
+        get_build_dirname), which nobody could have pre-built by hand, and
+        silently falling back to the baseline libspy.a would reintroduce
+        exactly the ISA mismatch this is meant to fix. So: only when march
+        is explicitly requested, build that one variant on demand, mirroring
+        _build_bdwgc_static below.
+        """
+        if march is None:
+            return
+        libdir = py.path.local(get_libdir(target, build_type, kind, march))
+        libspy_a = libdir.join("libspy.a")
+        if libspy_a.check(file=True):
+            return
+        libspy_dir = str(spy.libspy.BUILD.dirpath())
+        subprocess.run(
+            [
+                "make",
+                "-C",
+                libspy_dir,
+                f"TARGET={target}",
+                f"BUILD_TYPE={build_type}",
+                f"OUTPUT_KIND={kind}",
+                f"MARCH={march}",
+            ],  # fmt: skip
+            check=True,
+        )
+        if not libspy_a.check(file=True):
+            raise WIP(
+                f"expected {libspy_a} to exist after building libspy with "
+                f"MARCH={march}, but it doesn't. Check the `make` output above."
+            )
 
     @staticmethod
     def _build_bdwgc_static() -> None:

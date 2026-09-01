@@ -129,6 +129,7 @@ def get_cflags(
     build_type: BuildType,
     output_kind: OutputKind = "exe",
     warning_as_error: bool = False,
+    march: Optional[str] = None,
 ) -> list[str]:
     _check_target(target)
     _check_build_type(build_type)
@@ -138,6 +139,7 @@ def get_cflags(
     else:
         warning_flags = _WARNING_CFLAGS
     include = ["-I", str(_INCLUDE)]
+    march_flags = [f"-march={march}"] if march is not None else []
     return (
         _BASE_CFLAGS
         + _TARGET_CFLAGS[target]
@@ -145,6 +147,7 @@ def get_cflags(
         + _OUTPUT_KIND_CFLAGS[output_kind]
         + warning_flags
         + include
+        + march_flags
     )
 
 
@@ -154,26 +157,51 @@ def get_ldflags(target: str, build_type: BuildType) -> list[str]:
     return _TARGET_LDFLAGS[target] + _BUILD_TYPE_LDFLAGS[build_type]
 
 
-def get_build_dirname(build_type: BuildType, output_kind: OutputKind = "exe") -> str:
+def _sanitize_march(march: str) -> str:
+    """
+    Turn a -march value into something safe to use as a single path
+    component (e.g. "native" -> "native", "x86-64-v3" -> "x86-64-v3").
+    Conservative: anything that isn't alphanumeric/./-/+/_ gets replaced.
+    """
+    return "".join(c if c.isalnum() or c in "-._+" else "_" for c in march)
+
+
+def get_build_dirname(
+    build_type: BuildType,
+    output_kind: OutputKind = "exe",
+    march: Optional[str] = None,
+) -> str:
     """
     Name of the libspy build dir for the given flavor, e.g. 'debug' or
     'debug-testlib'.
 
     testlibs need their own libspy.a, which expects the host to provide the
     debug helpers instead of implementing them in debug.c.
+
+    If march is given, it is appended as a suffix (e.g. 'release-march-native')
+    so that different -march values get their own cached libspy.a instead of
+    silently linking a module against a libspy.a built for a different ISA
+    (see issue: --march mismatch between the module and libspy.a).
     """
     _check_build_type(build_type)
     _check_output_kind(output_kind)
     if output_kind == "testlib":
-        return f"{build_type}-testlib"
-    return build_type
+        name = f"{build_type}-testlib"
+    else:
+        name = build_type
+    if march is not None:
+        name += f"-march-{_sanitize_march(march)}"
+    return name
 
 
 def get_libdir(
-    target: str, build_type: BuildType, output_kind: OutputKind = "exe"
+    target: str,
+    build_type: BuildType,
+    output_kind: OutputKind = "exe",
+    march: Optional[str] = None,
 ) -> str:
     _check_target(target)
-    return str(_BUILD.join(target, get_build_dirname(build_type, output_kind)))
+    return str(_BUILD.join(target, get_build_dirname(build_type, output_kind, march)))
 
 
 def get_cc(target: str) -> str:
@@ -213,6 +241,13 @@ def main(argv: Optional[list[str]] = None) -> None:
         help="Treat warnings as errors (overrides SPY_WERROR env var)",
     )
     parser.add_argument(
+        "--march",
+        default=None,
+        help="Value for -march=<VALUE> (e.g. 'native'); also used to pick "
+        "a dedicated libspy build dir so it never gets mixed up with a "
+        "libspy.a built for a different ISA",
+    )
+    parser.add_argument(
         "--cflags",
         action="store_true",
         help="Print CFLAGS (requires --target)",
@@ -250,6 +285,7 @@ def main(argv: Optional[list[str]] = None) -> None:
             args.build_type,
             args.output_kind,
             args.warning_as_error,
+            args.march,
         )
 
     if args.ldflags:
@@ -262,7 +298,9 @@ def main(argv: Optional[list[str]] = None) -> None:
         if not args.target:
             print("error: --libdir requires --target", file=sys.stderr)
             sys.exit(1)
-        parts.append(f"-L{get_libdir(args.target, args.build_type, args.output_kind)}")
+        parts.append(
+            f"-L{get_libdir(args.target, args.build_type, args.output_kind, args.march)}"
+        )
 
     if args.cc:
         if not args.target:

@@ -1,0 +1,371 @@
+"""
+Benchmarks comparing scalar (non-SIMD) and SIMD implementations of a few
+simple elementwise / reduction kernels.
+
+Build & run with different SIMD widths, e.g.:
+
+  spy build -x --release --march=native --simd-width 16 bench_simd.spy  # default
+  spy build -x --release --march=native --simd-width 32 bench_simd.spy
+  spy build -x --release --march=native --simd-width 64 bench_simd.spy
+"""
+
+import simd
+
+from __spy__ import is_compiled
+from math import exp
+from time import time
+from simd import SIMD, simd_width_of, ptr_load_simd, ptr_store_simd, cast_to, ldexp
+from unsafe import gc_alloc, gc_ptr
+
+
+# ---------------------------------------------------------------------------
+# helpers
+# ---------------------------------------------------------------------------
+
+
+def fill[T](arr: gc_ptr[T], n: i32, start: T, step: T) -> None:
+    v = start
+    for i in range(n):
+        arr[i] = v
+        v = v + step
+
+
+def approx_eq[T](a: T, b: T, rel_tol: T) -> bool:
+    d = abs(a - b)
+    ok = d / abs(a) < rel_tol
+    return ok
+
+
+# ---------------------------------------------------------------------------
+# SAXPY:  out = a * x + y
+# ---------------------------------------------------------------------------
+
+
+def saxpy_scalar[T](a: T, x: gc_ptr[T], y: gc_ptr[T], out: gc_ptr[T], n: i32) -> None:
+    for i in range(n):
+        out[i] = a * x[i] + y[i]
+
+
+def saxpy_simd[T](a: T, x: gc_ptr[T], y: gc_ptr[T], out: gc_ptr[T], n: i32) -> None:
+    W = simd_width_of[T]
+    va = SIMD[T, W](a)
+    bound: i32 = n - (n % W)
+    for i in range(0, bound, W):
+        vx = ptr_load_simd[T, W](x, i)
+        vy = ptr_load_simd[T, W](y, i)
+        ptr_store_simd(out, i, va * vx + vy)
+    for j in range(bound, n):
+        out[j] = a * x[j] + y[j]
+
+
+# ---------------------------------------------------------------------------
+# Masked elementwise:  ReLU  (max(x, 0))
+# ---------------------------------------------------------------------------
+
+
+def relu_scalar[T](x: gc_ptr[T], out: gc_ptr[T], n: i32) -> None:
+    for i in range(n):
+        v = x[i]
+        if v > 0.0:
+            out[i] = v
+        else:
+            out[i] = 0.0
+
+
+def relu_simd[T](x: gc_ptr[T], out: gc_ptr[T], n: i32) -> None:
+    W = simd_width_of[T]
+    zero = SIMD[T, W](0.0)
+    bound: i32 = n - (n % W)
+    for i in range(0, bound, W):
+        vx = ptr_load_simd[T, W](x, i)
+        ptr_store_simd(out, i, simd.max(vx, zero))
+    for j in range(bound, n):
+        v = x[j]
+        if v > 0.0:
+            out[j] = v
+        else:
+            out[j] = 0.0
+
+
+# ---------------------------------------------------------------------------
+# Reduction:  dot product  (sum(x * y))
+# ---------------------------------------------------------------------------
+
+
+def dot_scalar[T](x: gc_ptr[T], y: gc_ptr[T], n: i32) -> T:
+    total: T = 0.0
+    for i in range(n):
+        total = total + x[i] * y[i]
+    return total
+
+
+def dot_simd[T](x: gc_ptr[T], y: gc_ptr[T], n: i32) -> T:
+    W = simd_width_of[T]
+    acc = SIMD[T, W](0.0)
+    bound = n - (n % W)
+    for i in range(0, bound, W):
+        vx = ptr_load_simd[T, W](x, i)
+        vy = ptr_load_simd[T, W](y, i)
+        acc = acc + vx * vy
+    total = acc.reduce_add()
+    for j in range(bound, n):
+        total = total + x[j] * y[j]
+    return total
+
+
+# -----------------------------------------
+# Reduction:  sum of squares  (sum(x * x))
+# -----------------------------------------
+
+
+def squares_scalar[T](x: gc_ptr[T], n: i32) -> T:
+    total: T = 0.0
+    for i in range(n):
+        total = total + x[i] * x[i]
+    return total
+
+
+def squares_simd[T](x: gc_ptr[T], n: i32) -> T:
+    W = simd_width_of[T]
+    acc = SIMD[T, W](0.0)
+    bound = n - (n % W)
+    for i in range(0, bound, W):
+        vx = ptr_load_simd[T, W](x, i)
+        acc = acc + vx * vx
+    total = acc.reduce_add()
+    for j in range(bound, n):
+        total = total + x[j] * x[j]
+    return total
+
+
+# -------------------------------------------------------------
+# Elementwise:  exp(x) — opaque scalar call vs SIMD with
+# argument reduction + polynomial
+# -------------------------------------------------------------
+#
+# Full-range exp via argument reduction:
+#   k = trunc(x / ln2)        (integer exponent per lane, via cast_to)
+#   r = x - k * ln2           (remainder, |r| < ln2 ~ 0.693)
+#   exp(x) = 2^k * exp(r)     (2^k via ldexp bit trick, exp(r) via polynomial)
+#
+# The scalar loop calls the real (non-inlined) libm exp on every
+# element.  The compiler cannot see through the external call, so
+# this loop does NOT autovectorize.  The SIMD path uses only +/-/*,
+# cast_to (inline type conversion, no function call), and ldexp
+# (bit-manipulation, no function call) — all of which lower to pure
+# vector ops under -O3 --march=native, so the whole loop body vectorizes.
+# This is exactly why vectorized math libraries (SVML, SLEEF) exist.
+
+# ln2 and 1/ln2 as f32 constants
+EXP_LN2 = 0.6931471805599453
+EXP_INV_LN2 = 1.4426950408889634
+
+# exp(r) polynomial, degree 6, accurate to ~1e-7 on [-ln2, ln2].
+# truncation gives |r| < ln2 (not ln2/2), so we need degree 6.
+EXP_P0 = 1.0
+EXP_P1 = 1.0
+EXP_P2 = 0.5
+EXP_P3 = 0.166666667
+EXP_P4 = 0.0416666667
+EXP_P5 = 0.00833333333
+EXP_P6 = 0.00138888889
+
+
+# Scalar reference: calls the real (non-inlined) libm exp on every element.
+# The compiler cannot see through the external call, so this loop does NOT
+# autovectorize regardless of how simple it looks.
+def exp_scalar[T](x: gc_ptr[T], out: gc_ptr[T], n: i32) -> None:
+    for i in range(n):
+        out[i] = exp(x[i])
+
+
+@blue.generic
+def int_len_T(T):
+    if T == f32:
+        return i32
+    else:
+        return i64
+
+
+# SIMD path: argument reduction via cast_to (truncation, no function call)
+# + degree-6 Horner polynomial + ldexp scaling (bit trick, no function call).
+# Uses only +/-/*, cast_to, and ldexp — all inline vector ops.
+def exp_simd[T](x: gc_ptr[T], out: gc_ptr[T], n: i32) -> None:
+    W = simd_width_of[T]
+
+    ln2 = SIMD[T, W](EXP_LN2)
+    inv_ln2 = SIMD[T, W](EXP_INV_LN2)
+    p0 = SIMD[T, W](EXP_P0)
+    p1 = SIMD[T, W](EXP_P1)
+    p2 = SIMD[T, W](EXP_P2)
+    p3 = SIMD[T, W](EXP_P3)
+    p4 = SIMD[T, W](EXP_P4)
+    p5 = SIMD[T, W](EXP_P5)
+    p6 = SIMD[T, W](EXP_P6)
+    one = SIMD[T, W](1.0)
+
+    bound = n - (n % W)
+    for i in range(0, bound, W):
+        vx = ptr_load_simd[T, W](x, i)
+
+        # argument reduction via truncation (cast_to = inline, no floorf call):
+        # k = trunc(x / ln2), r = x - k*ln2, |r| < ln2
+        vk_f = vx * inv_ln2
+        vk_i = cast_to(vk_f, int_len_T[T])
+        vk_f = cast_to(vk_i, T)
+        vr = vx - vk_f * ln2
+
+        # Horner: p6*r + p5, ..., *r + p0  ->  exp(r)
+        pr = p6
+        pr = pr * vr + p5
+        pr = pr * vr + p4
+        pr = pr * vr + p3
+        pr = pr * vr + p2
+        pr = pr * vr + p1
+        pr = pr * vr + p0
+
+        # exp(x) = 2^k * exp(r)
+        result = ldexp(pr, vk_i)
+        ptr_store_simd(out, i, result)
+
+    # scalar tail for the remainder (uses the real exp, like the scalar path)
+    for j in range(bound, n):
+        out[j] = exp(x[j])
+
+
+def bench_dtype[T](N: i32, repeat: i32) -> None:
+    dtype = T
+
+    a: dtype = 2.0
+    x = gc_alloc[dtype](N)
+    y = gc_alloc[dtype](N)
+    out = gc_alloc[dtype](N)
+
+    fill[dtype](x, N, 1.0, 0.0001)
+    fill[dtype](y, N, 0.5, -0.0001)
+
+    W = simd_width_of[dtype]
+
+    print("\ndtype    =", dtype)
+    print("simd W   =", W)
+    print()
+
+    # --- SAXPY ---
+    t0 = time()
+    for _ in range(repeat):
+        saxpy_scalar[dtype](a, x, y, out, N)
+    ts = time() - t0
+
+    t0 = time()
+    for _0 in range(repeat):
+        saxpy_simd[dtype](a, x, y, out, N)
+    tv = time() - t0
+
+    saxpy_scalar[dtype](a, x, y, out, N)
+    ref = out[N // 2]
+    saxpy_simd[dtype](a, x, y, out, N)
+    got = out[N // 2]
+    print("Autovectorized scalar; no win, expected")
+    print(
+        "# SAXPY   scalar=",
+        ts,
+        "s  simd=",
+        tv,
+        "s  speedup=",
+        ts / tv,
+        "x  ok=",
+        approx_eq[dtype](ref, got, 1e-4),
+    )
+
+    # --- ReLU ---
+    t0 = time()
+    for _1 in range(repeat):
+        relu_scalar[dtype](x, out, N)
+    ts = time() - t0
+
+    t0 = time()
+    for _2 in range(repeat):
+        relu_simd[dtype](x, out, N)
+    tv = time() - t0
+
+    relu_scalar[dtype](x, out, N)
+    ref = out[N // 2]
+    relu_simd[dtype](x, out, N)
+    got = out[N // 2]
+    ok = approx_eq[dtype](ref, got, 1e-4)
+    print("# ReLU    scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
+
+    print(
+        "The C compiler cannot auto-vectorize (no reordering or an external math function)"
+    )
+
+    # --- Dot product ---
+    # to avoid dead-code elimination
+    sink = gc_alloc[dtype](2)
+
+    t0 = time()
+    for _3 in range(repeat):
+        sink[0] += dot_scalar[dtype](x, y, N)
+    ts = time() - t0
+
+    t0 = time()
+    for _4 in range(repeat):
+        sink[1] += dot_simd[dtype](x, y, N)
+    tv = time() - t0
+
+    ref = dot_scalar[dtype](x, y, N)
+    got = dot_simd[dtype](x, y, N)
+    ok = approx_eq[dtype](ref, got, 1e-4)
+    print("# Dot     scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
+
+    # --- Sum of squares ---
+    t0 = time()
+    for _5 in range(repeat):
+        sink[0] += squares_scalar[dtype](x, N)
+    ts = time() - t0
+
+    t0 = time()
+    for _6 in range(repeat):
+        sink[1] += squares_simd[dtype](x, N)
+    tv = time() - t0
+
+    ref = squares_scalar[dtype](x, N)
+    got = squares_simd[dtype](x, N)
+    ok = approx_eq[dtype](ref, got, 1e-4)
+    print("# Squares scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
+
+    # --- Elementwise exp: opaque scalar call vs SIMD with argument reduction ---
+    # Full-range input [-20, 20] — exercises argument reduction + 2^k scaling.
+    exp_in = gc_alloc[dtype](N)
+    fill[dtype](exp_in, N, -20.0, 40.0 / N)
+
+    t0 = time()
+    for _7 in range(repeat):
+        exp_scalar[dtype](exp_in, out, N)
+    ts = time() - t0
+
+    t0 = time()
+    for _8 in range(repeat):
+        exp_simd[dtype](exp_in, out, N)
+    tv = time() - t0
+
+    exp_scalar[dtype](exp_in, out, N)
+    ref = out[N // 2]
+    exp_simd[dtype](exp_in, out, N)
+    got = out[N // 2]
+    ok = approx_eq[dtype](ref, got, 1e-5)
+    print("# Exp     scalar=", ts, "s  simd=", tv, "s  speedup=", ts / tv, "x  ok=", ok)
+
+
+def main() -> None:
+    if is_compiled():
+        N = 1 << 20  # ~1M elements
+        repeat = 200
+    else:
+        N = 1 << 7
+        repeat = 1
+
+    print("N        =", N)
+    print("repeat   =", repeat)
+    bench_dtype[f32](N, repeat)
+    bench_dtype[f64](N, repeat)

@@ -1,0 +1,14 @@
+N        = 128
+repeat   = 1
+
+dtype    = <spy type 'f32'>
+simd W   = 4
+
+Autovectorized scalar; no win, expected
+The C compiler cannot auto-vectorize (no reordering or an external math function)
+
+dtype    = <spy type 'f64'>
+simd W   = 2
+
+Autovectorized scalar; no win, expected
+The C compiler cannot auto-vectorize (no reordering or an external math function)
