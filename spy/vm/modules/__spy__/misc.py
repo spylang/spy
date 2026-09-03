@@ -129,6 +129,24 @@ def w__stdout_write(vm: "SPyVM", w_s: W_Str) -> None:
     sys.stdout.write(vm.unwrap(w_s))
 
 
+@SPY.builtin_func
+def w__stdout_flush(vm: "SPyVM") -> None:
+    sys.stdout.flush()
+
+
+@SPY.builtin_func
+def w__stdin_readline(vm: "SPyVM") -> W_Str:
+    line = sys.stdin.readline()
+    if line == "":
+        # this happens only at EOF
+        raise SPyError("W_EOFError", "EOF when reading a line")
+    if line.endswith("\n"):
+        line = line[:-1]
+    if line.endswith("\r"):
+        line = line[:-1]
+    return vm.wrap(line)
+
+
 @SPY.builtin_func(color="blue")
 def w_lookup_fqn(vm: "SPyVM", w_s: W_Str) -> W_Dynamic:
     fqn_str = vm.unwrap_str(w_s)

@@ -141,6 +141,36 @@ def w_print(vm: "SPyVM", *args_wam: W_MetaArg) -> W_OpSpec:
 
 
 @BUILTINS.builtin_func(color="blue", kind="metafunc")
+def w_input(vm: "SPyVM", *args_wam: W_MetaArg) -> W_OpSpec:
+    vm.import_("_input")
+    w_input_fn = vm.lookup_global(FQN("_input::_input"))
+
+    if len(args_wam) == 0:
+        # input() with no args: equivalent to input("")
+        prompt = W_MetaArg.from_w_obj(vm, vm.wrap(""), loc=Loc.here())
+        return W_OpSpec(w_input_fn, [prompt])
+
+    if len(args_wam) > 1:
+        raise SPyError.simple(
+            "W_TypeError",
+            f"input expected at most 1 argument, got {len(args_wam)}",
+            f"this is the extra argument",
+            args_wam[1].loc,
+        )
+
+    wam_prompt = args_wam[0]
+    if wam_prompt.w_static_T is not B.w_str:
+        t = wam_prompt.w_static_T.fqn.human_name(vm)
+        raise SPyError.simple(
+            "W_TypeError",
+            f"input() argument must be str, not `{t}`",
+            f"this is `{t}`",
+            wam_prompt.loc,
+        )
+    return W_OpSpec(w_input_fn, [wam_prompt])
+
+
+@BUILTINS.builtin_func(color="blue", kind="metafunc")
 def w_len(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
     w_T = wam_obj.w_static_T
     if w_fn := w_T.lookup_func(vm, "__len__"):
