@@ -21,7 +21,7 @@ def main() -> None:
     print("__full_fqn__ ", Foo[i32].__full_fqn__)
 ```
 ```
-# result 
+# result
 __name__      Foo[i32]
 __fqn__       a::Foo[i32]
 __qualname__  a::Foo[i32]
@@ -34,7 +34,7 @@ __full_fqn__  a::Foo[i32]::Self
 
 ### \_\_fqn\_\_
 
-:   The Fully Qualified Name of the type object, including the module it originates from. 
+:   The Fully Qualified Name of the type object, including the module it originates from.
 
 ### \_\_qualname\_\_
 
@@ -43,5 +43,3 @@ __full_fqn__  a::Foo[i32]::Self
 ### \_\_full_fqn\_\_
 
 :   An expended representation of the FQN, and the most complete name used in the SPy internals. This is what is shown when running `spy redshift --full-fqn`.
-
-

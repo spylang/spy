@@ -41,7 +41,7 @@ class range:
         else:
             if value > self.start or value <= self.stop:
                 return False
-        
+
         return (value - self.start) % self.step == 0
 
     def __fastiter__(self) -> range_iterator:

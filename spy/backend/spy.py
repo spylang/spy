@@ -23,6 +23,7 @@ from spy.vm.object import W_Object, W_Type
 from spy.vm.vm import SPyVM
 
 FQN_FORMAT = Literal["full", "short"]
+AST_FORMAT = Literal["full", "short"]
 
 # Regex pattern for valid identifiers (alphanumeric + underscore)
 VALID_IDENTIFIER = re.compile(r"^[a-zA-Z0-9_]+$")
@@ -35,9 +36,16 @@ class SPyBackend:
     Mostly used for testing.
     """
 
-    def __init__(self, vm: SPyVM, *, fqn_format: FQN_FORMAT = "short") -> None:
+    def __init__(
+        self,
+        vm: SPyVM,
+        *,
+        fqn_format: FQN_FORMAT = "short",
+        ast_format: AST_FORMAT = "short",
+    ) -> None:
         self.vm = vm
         self.fqn_format = fqn_format
+        self.ast_format = ast_format
         self.out = TextBuilder(use_colors=False)
         self.w = self.out.w
         self.wl = self.out.wl
@@ -212,13 +220,28 @@ class SPyBackend:
     def emit_decl_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> None:
         self.emit_stmt(decl.funcdef)
 
+    def emit_decl_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
+        vardef = decl.vardef
+        name = vardef.name.value
+        has_type = not isinstance(vardef.type, ast.Auto)
+        t = self.fmt_expr(vardef.type) if has_type else ""
+        if vardef.value is not None:
+            v = self.fmt_expr(vardef.value)
+            if has_type:
+                self.wl(f"var {name}: {t} = {v}")
+            else:
+                self.wl(f"var {name} = {v}")
+        else:
+            self.wl(f"var {name}: {t}")
+
     # statements
 
     def get_vartype_to_declare_maybe(self, varname: str) -> Optional[str]:
         symtable = self.scope_stack[-1]
         sym = symtable.lookup(varname)
         if (
-            self.w_func.lowering_stage != "source"
+            self.w_func is not None
+            and self.w_func.stage not in ("parsed", "astcompiled")
             and sym.level == 0
             and varname not in self.vars_declared
         ):
@@ -270,27 +293,55 @@ class SPyBackend:
         self.wl(f"return {v}")
 
     def emit_stmt_Assign(self, assign: ast.Assign) -> None:
-        varname = assign.target.value
-        t = self.get_vartype_to_declare_maybe(varname)
-        v = self.fmt_expr(assign.value)
-        if t is not None:
-            self.wl(f"{varname}: {t} = {v}")
+        if isinstance(assign.target, ast.SingleTarget):
+            varname = assign.target.name.value
+            t = self.get_vartype_to_declare_maybe(varname)
+            v = self.fmt_expr(assign.value)
+            if t is not None:
+                self.wl(f"{varname}: {t} = {v}")
+            else:
+                self.wl(f"{varname} = {v}")
         else:
-            self.wl(f"{varname} = {v}")
+            unpack = assign.target
+            assert isinstance(unpack, ast.UnpackTarget)
+            names = []
+            for tt in unpack.targets:
+                assert isinstance(tt, ast.SingleTarget)
+                names.append(tt.name.value)
+            targets = ", ".join(names)
+            v = self.fmt_expr(assign.value)
+            self.wl(f"{targets} = {v}")
+
+    def emit_stmt_AssignConstError(self, node: ast.AssignConstError) -> None:
+        self.wl(f"{node.expr.sym.name} = <AssignConstError>")
 
     def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
-        varname = assign.target.value
+        varname = assign.expr.target.value
         t = self.get_vartype_to_declare_maybe(varname)
-        v = self.fmt_expr(assign.value)
-        if t is not None:
+        v = self.fmt_expr(assign.expr.value)
+        if self.ast_format == "full":
+            self.wl(f"AssignLocal({varname} := {v})")
+        elif t is not None:
             self.wl(f"{varname}: {t} = {v}")
         else:
             self.wl(f"{varname} = {v}")
 
-    def emit_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
-        varname = self.fmt_fqn(assign.target_fqn)
+    def emit_stmt_AssignUnpack(self, assign: ast.AssignUnpack) -> None:
+        targets = ", ".join(t.value for t in assign.targets)
         v = self.fmt_expr(assign.value)
-        self.wl(f"{varname} = {v}")
+        self.wl(f"{targets} = {v}")
+
+    def emit_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
+        varname = (
+            self.fmt_fqn(assign.expr.target_fqn)
+            if assign.expr.target_fqn is not None
+            else assign.expr.sym.name
+        )
+        v = self.fmt_expr(assign.expr.value)
+        if self.ast_format == "full":
+            self.wl(f"AssignCell({varname} := {v})")
+        else:
+            self.wl(f"{varname} = {v}")
 
     def emit_stmt_AugAssign(self, node: ast.AugAssign) -> None:
         varname = node.target.value
@@ -298,16 +349,17 @@ class SPyBackend:
         v = self.fmt_expr(node.value)
         self.wl(f"{varname} {op}= {v}")
 
-    def emit_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
-        targets = ", ".join([t.value for t in unpack.targets])
-        v = self.fmt_expr(unpack.value)
-        self.wl(f"{targets} = {v}")
-
     def emit_stmt_SetAttr(self, node: ast.SetAttr) -> None:
         t = self.fmt_expr(node.target)
         a = node.attr.value
         v = self.fmt_expr(node.value)
         self.wl(f"{t}.{a} = {v}")
+
+    def emit_stmt_AugSetAttr(self, node: ast.AugSetAttr) -> None:
+        t = self.fmt_expr(node.target)
+        a = node.attr.value
+        v = self.fmt_expr(node.value)
+        self.wl(f"{t}.{a} {node.op}= {v}")
 
     def emit_stmt_SetItem(self, node: ast.SetItem) -> None:
         t = self.fmt_expr(node.target)
@@ -315,6 +367,13 @@ class SPyBackend:
         args = ", ".join(arglist)
         v = self.fmt_expr(node.value)
         self.wl(f"{t}[{args}] = {v}")
+
+    def emit_stmt_AugSetItem(self, node: ast.AugSetItem) -> None:
+        t = self.fmt_expr(node.target)
+        arglist = [self.fmt_expr(arg) for arg in node.args]
+        args = ", ".join(arglist)
+        v = self.fmt_expr(node.value)
+        self.wl(f"{t}[{args}] {node.op}= {v}")
 
     def emit_stmt_VarDef(self, vardef: ast.VarDef) -> None:
         varname = vardef.name.value
@@ -381,7 +440,7 @@ class SPyBackend:
     def fmt_expr_Auto(self, node: ast.Auto) -> str:
         # this should never happen when formatting a module using the SPy backend
         # (because ast.Auto is special-cased by emit_stmt_VarDef, but it happens when
-        # using the HTML backend (because it inconditionally formats ALL the ast.Expr,
+        # using the HTML backend (because it unconditionally formats ALL the ast.Expr,
         # including ast.Auto).
         return ""
 
@@ -444,11 +503,39 @@ class SPyBackend:
     def fmt_expr_Name(self, name: ast.Name) -> str:
         return name.id
 
+    def fmt_expr_NameError(self, name: ast.NameError) -> str:
+        if self.ast_format == "full":
+            return f"NameError({name.id})"
+        return name.id
+
+    def fmt_expr_NameImportRef(self, name: ast.NameImportRef) -> str:
+        if self.ast_format == "full":
+            return f"ImportRef({name.sym.name})"
+        return name.sym.name
+
     def fmt_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> str:
+        if self.ast_format == "full":
+            return f"LocalDirect({name.sym.name})"
+        return name.sym.name
+
+    def fmt_expr_NameLocalCell(self, name: ast.NameLocalCell) -> str:
+        if self.ast_format == "full":
+            return f"LocalCell({name.sym.name})"
+        return name.sym.name
+
+    def fmt_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> str:
+        if self.ast_format == "full":
+            return f"OuterDirect({name.sym.name})"
         return name.sym.name
 
     def fmt_expr_NameOuterCell(self, name: ast.NameOuterCell) -> str:
-        return self.fmt_fqn(name.fqn)
+        if name.fqn is not None:
+            varname = self.fmt_fqn(name.fqn)
+        else:
+            varname = name.sym.name
+        if self.ast_format == "full":
+            return f"OuterCell({varname})"
+        return varname
 
     def fmt_expr_BinOp(self, binop: ast.BinOp) -> str:
         l = self.fmt_expr(binop.left)
@@ -515,13 +602,20 @@ class SPyBackend:
             assignexpr.target.value, assignexpr.value, assignexpr.precedence
         )
 
+    def fmt_expr_AssignExprConstError(self, node: ast.AssignExprConstError) -> str:
+        return f"{node.sym.name} := <AssignExprConstError>"
+
     def fmt_expr_AssignExprLocal(self, assignexpr: ast.AssignExprLocal) -> str:
         return self._fmt_assignexpr(
             assignexpr.target.value, assignexpr.value, assignexpr.precedence
         )
 
     def fmt_expr_AssignExprCell(self, assignexpr: ast.AssignExprCell) -> str:
-        target = self.fmt_fqn(assignexpr.target_fqn)
+        target = (
+            self.fmt_fqn(assignexpr.target_fqn)
+            if assignexpr.target_fqn is not None
+            else assignexpr.sym.name
+        )
         return self._fmt_assignexpr(target, assignexpr.value, assignexpr.precedence)
 
     def _fmt_assignexpr(

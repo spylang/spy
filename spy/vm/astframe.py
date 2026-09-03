@@ -1,7 +1,6 @@
-from contextlib import contextmanager
 from ctypes import c_float as float32
 from types import NoneType
-from typing import TYPE_CHECKING, Iterator, Optional, Sequence
+from typing import TYPE_CHECKING, Never, Optional, Sequence
 
 from fixedint import Int8, Int32, Int64, UInt8, UInt32, UInt64
 
@@ -13,7 +12,7 @@ from spy.location import Loc
 from spy.util import magic_dispatch
 from spy.vm.b import B
 from spy.vm.cell import W_Cell
-from spy.vm.exc import W_TypeError
+from spy.vm.exc import W_NameError, W_TypeError
 from spy.vm.function import CLOSURE, FuncParam, LocalVar, W_ASTFunc, W_Func, W_FuncType
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
@@ -63,10 +62,6 @@ class AbstractFrame:
     symtable: SymTable
     locals: dict[str, LocalVar]
     special_calls: dict[ast.Call, str]
-    specialized_names: dict[ast.Name, ast.Expr]
-    specialized_assigns: dict[ast.Assign, ast.Stmt]
-    specialized_assignexprs: dict[ast.AssignExpr, ast.Expr]
-    desugared_fors: dict[ast.For, tuple[ast.Assign, ast.While]]
 
     def __init__(
         self, vm: "SPyVM", ns: FQN, loc: Loc, symtable: SymTable, closure: CLOSURE
@@ -78,39 +73,12 @@ class AbstractFrame:
         self.symtable = symtable
         self.closure = closure
         self.locals = {}
-
-        # when we interact with a frame from a SPdb prompt we have slightly different
-        # rules, because e.g. we might try to evaluate an ast.Name which is not in the
-        # symtable
-        self.is_interactive = False
-
-        # ast.Name and ast.Assign are special, because depending on the
-        # content of the symtable it has different meanings (e.g. local, outer
-        # direct, outer cell, ...), so we need some logic to distinguish
-        # between the cases.
-        #
-        # The first time eval_expr_Name and exec_stmt_Assign are called, they
-        # understand which kind of name it is and create specialized ast.Name*
-        # or ast.Assign* nodes, which are then used from now on.  This is also
-        # useful for Doppler, since shifting simply means to return the
-        # specialized version.
         self.special_calls = {}
-        self.specialized_names = {}
-        self.specialized_assigns = {}
-        self.specialized_assignexprs = {}
-        self.desugared_fors = {}
 
     # overridden by DopplerFrame
     @property
     def redshifting(self) -> bool:
         return False
-
-    @contextmanager
-    def interactive(self) -> Iterator[None]:
-        old = self.is_interactive
-        self.is_interactive = True
-        yield
-        self.is_interactive = False
 
     def get_locals_types_w(self) -> dict[str, W_Type]:
         return {
@@ -141,7 +109,7 @@ class AbstractFrame:
         #   - varkind is statically known and depends on the symbol
         #   - desired_color is the color of the wam that we determine during execution
         #
-        # The local variable will be "blue" IIF varkind is "const" and "desired_color"
+        # The local variable will be "blue" IF varkind is "const" and "desired_color"
         # is actually a "blue". Consider this case:
         #     x = 0                # const, blue
         #     y = some_red_func()  # const, red
@@ -228,7 +196,7 @@ class AbstractFrame:
                 # sanity check. After redshifting, all type conversions should be
                 # explicit. If w_typeconv is not None here, it means that Doppler failed
                 # to insert the appropriate conversion
-                assert self.w_func.lowering_stage == "source"
+                assert self.w_func.stage == "astcompiled"
 
             # apply the conversion
             assert varname is not None
@@ -352,7 +320,7 @@ class AbstractFrame:
             funcdef,
             closure,
             defaults_w=defaults_w,
-            lowering_stage="source",
+            stage="astcompiled",
         )
         self.vm.add_global(fqn, w_func)
 
@@ -403,6 +371,7 @@ class AbstractFrame:
 
         outer_funcdef = ast.FuncDef(
             loc=loc,
+            stage="astcompiled",
             color="blue",
             kind="generic",
             name=gfuncdef.name,
@@ -491,6 +460,7 @@ class AbstractFrame:
 
         outer_funcdef = ast.FuncDef(
             loc=loc,
+            stage="astcompiled",
             color="blue",
             kind="generic",
             name=gclassdef.name,
@@ -551,114 +521,17 @@ class AbstractFrame:
         if not self.redshifting or lv.color == "blue":
             self.store_local(varname, wam.w_val)
 
-    def exec_stmt_Assign(self, assign: ast.Assign) -> None:
-        # see the commnet in __init__ about specialized_assigns
-        specialized = self.specialized_assigns.get(assign)
-        if specialized is None:
-            specialized = self._specialize_Assign(assign)
-            self.specialized_assigns[assign] = specialized
-        self.exec_stmt(specialized)
-
-    def _specialize_assign_common(
-        self, loc: Loc, target: ast.StrLiteral, value: ast.Expr, expr: bool
-    ) -> ast.AssignLocal | ast.AssignCell | ast.AssignExprLocal | ast.AssignExprCell:
-        varname = target.value
-        sym = self.symtable.lookup(varname)
-
-        if sym.varkind == "const" and sym.varkind_origin != "auto":
-            err = SPyError("W_TypeError", "invalid assignment target")
-            err.add("error", f"{sym.name} is const", target.loc)
-            err.add("note", f"const declared here ({sym.varkind_origin})", sym.loc)
-
-            if sym.varkind_origin == "global-const":
-                msg = f"help: declare it as variable: `var {sym.name} ...`"
-                err.add("note", msg, sym.loc)
-            elif sym.varkind_origin == "blue-param":
-                msg = "blue function arguments are const by default"
-                err.add("note", msg, sym.loc)
-
-            raise err
-        elif sym.storage == "direct":
-            assert sym.is_local
-            if expr:
-                return ast.AssignExprLocal(loc, target, value)
-            else:
-                return ast.AssignLocal(loc, target, value)
-
-        elif sym.storage == "cell":
-            outervars = self.closure[-sym.level]
-            w_cell = outervars[sym.name].w_val
-            assert isinstance(w_cell, W_Cell)
-            if expr:
-                return ast.AssignExprCell(
-                    loc=loc,
-                    target=target,
-                    target_fqn=w_cell.fqn,
-                    value=value,
-                )
-            else:
-                return ast.AssignCell(
-                    loc=loc,
-                    target=target,
-                    target_fqn=w_cell.fqn,
-                    value=value,
-                )
-
-        else:
-            assert False
-
-    def _specialize_Assign(self, assign: ast.Assign) -> ast.Stmt:
-        res = self._specialize_assign_common(
-            loc=assign.loc, target=assign.target, value=assign.value, expr=False
-        )
-        assert isinstance(res, (ast.AssignLocal, ast.AssignCell))
-        return res
-
-    def _specialize_AssignExpr(self, assignexpr: ast.AssignExpr) -> ast.Expr:
-        res = self._specialize_assign_common(
-            loc=assignexpr.loc,
-            target=assignexpr.target,
-            value=assignexpr.value,
-            expr=True,
-        )
-        assert isinstance(res, (ast.AssignExprLocal, ast.AssignExprCell))
-        return res
-
     def exec_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
-        self._execute_AssignLocal(assign.target, assign.value)
-
-    def _execute_AssignLocal(
-        self, target: ast.StrLiteral, value: ast.Expr
-    ) -> W_MetaArg:
-        varname = target.value
-        lv = self.locals.get(varname)
-        if lv is None:
-            # first assignment, implicit declaration
-            wam = self.eval_expr(value)
-            self.declare_local(varname, wam.color, wam.w_static_T, target.loc)
-            lv = self.locals[varname]
-        else:
-            wam = self.eval_expr(value, varname=varname)
-
-        if not self.redshifting or lv.color == "blue":
-            self.store_local(varname, wam.w_val)
-        return wam
+        self.eval_expr(assign.expr)
 
     def exec_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
-        self._execute_AssignCell(assign.target, assign.target_fqn, assign.value)
+        self.eval_expr(assign.expr)
 
-    def _execute_AssignCell(
-        self, target: ast.StrLiteral, target_fqn: FQN, value: ast.Expr
-    ) -> W_MetaArg:
-        wam = self.eval_expr(value)
-        if not self.redshifting:
-            w_cell = self.vm.lookup_global(target_fqn)
-            assert isinstance(w_cell, W_Cell)
-            w_cell.set(wam.w_val)
-        return wam
+    def exec_stmt_AssignConstError(self, assign: ast.AssignConstError) -> None:
+        self.eval_expr(assign.expr)
 
-    def exec_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
-        wam_tup = self.eval_expr(unpack.value)
+    def exec_stmt_AssignUnpack(self, assign: ast.AssignUnpack) -> None:
+        wam_tup = self.eval_expr(assign.value)
         w_T = wam_tup.w_static_T
 
         is_interp_tuple = w_T is SPY.w_interp_tuple
@@ -669,12 +542,10 @@ class AbstractFrame:
                 "W_TypeError",
                 f"`{t}` does not support unpacking",
             )
-            err.add("error", f"this is `{t}`", unpack.value.loc)
+            err.add("error", f"this is `{t}`", assign.value.loc)
             raise err
 
-        # check that the tuple has the right length
         if is_interp_tuple:
-            # XXX: probably we should put the number of items on the type
             w_tup = wam_tup.w_val
             assert isinstance(w_tup, W_InterpTuple)
             got = len(w_tup.items_w)
@@ -682,13 +553,11 @@ class AbstractFrame:
             assert isinstance(w_T, W_StructType)
             got = len(list(w_T.iterfields_w()))
 
-        exp = len(unpack.targets)
+        exp = len(assign.targets)
         if exp != got:
-            # we cannot use ValueError because we want an exception type which
-            # inherits from StaticError.
             targets_loc = Loc.combine(
-                start=unpack.targets[0].loc,
-                end=unpack.targets[-1].loc,
+                start=assign.targets[0].loc,
+                end=assign.targets[-1].loc,
             )
             err = SPyError(
                 "W_TypeError",
@@ -697,23 +566,22 @@ class AbstractFrame:
             exp_values = maybe_plural(exp, "value")
             got_values = maybe_plural(got, "value")
             err.add("error", f"expected {exp} {exp_values}", targets_loc)
-            err.add("error", f"got {got} {got_values}", unpack.value.loc)
+            err.add("error", f"got {got} {got_values}", assign.value.loc)
             raise err
 
-        for i, target in enumerate(unpack.targets):
-            # fabricate an expr to get an individual item of the tuple
-            expr = ast.GetItem(
-                loc=unpack.value.loc,
-                value=unpack.value,
-                args=[ast.Literal(loc=unpack.value.loc, value=i)],
+        for i, target in enumerate(assign.targets):
+            getitem = ast.GetItem(
+                loc=assign.value.loc,
+                value=assign.value,
+                args=[ast.Literal(loc=assign.value.loc, value=i)],
             )
-            # fabricate an ast.Assign
-            # XXX: ideally we should cache the specialization instead of
-            # rebuilding it at every exec
-            assign = self._specialize_Assign(
-                ast.Assign(loc=unpack.loc, target=target, value=expr)
+            assign_expr = ast.AssignExprLocal(
+                loc=target.loc,
+                target=target,
+                sym=self.symtable.lookup(target.value),
+                value=getitem,
             )
-            self.exec_stmt(assign)
+            self.eval_expr_AssignExprLocal(assign_expr)
 
     def exec_stmt_AugAssign(self, node: ast.AugAssign) -> None:
         # XXX: eventually we want to support things like __IADD__ etc, but for
@@ -725,7 +593,7 @@ class AbstractFrame:
         # transform "x += 1" into "x = x + 1"
         return ast.Assign(
             loc=node.loc,
-            target=node.target,
+            target=ast.SingleTarget(node.loc, node.target),
             value=ast.BinOp(
                 loc=node.loc,
                 op=node.op,
@@ -782,82 +650,6 @@ class AbstractFrame:
             except Continue:
                 continue
 
-    def exec_stmt_For(self, for_node: ast.For) -> None:
-        # see the comment in __init__ about desugared_fors
-        if for_node in self.desugared_fors:
-            init_iter, while_loop = self.desugared_fors[for_node]
-        else:
-            init_iter, while_loop = self._desugar_For(for_node)
-            self.desugared_fors[for_node] = (init_iter, while_loop)
-        self.exec_stmt(init_iter)
-        self.exec_stmt(while_loop)
-
-    def _desugar_For(self, for_node: ast.For) -> tuple[ast.Assign, ast.While]:
-        # Desugar the for loop into an equivalent while loop
-        # Transform:
-        #     for i in X:
-        #         body
-        # Into:
-        #     it = X.__fastiter__()
-        #     while it.__continue_iteration__():
-        #         i = it.__item__()
-        #         it = it.__next__()
-        #         body
-        #
-        # (instead of 'it' we use the special variable '_$iterN')
-        #
-        # Note that "body" is placed AFTER the call to it.__next__(). This
-        # way, 'continue' works out of the box.
-        iter_name = f"_$iter{for_node.seq}"
-        iter_sym = self.symtable.lookup(iter_name)
-        iter_target = ast.StrLiteral(for_node.loc, iter_name)
-
-        # it = X.__fastiter__()
-        init_iter = ast.Assign(
-            loc=for_node.loc,
-            target=iter_target,
-            value=ast.CallMethod(
-                loc=for_node.loc,
-                target=for_node.iter,
-                method=ast.StrLiteral(for_node.loc, "__fastiter__"),
-                args=[],
-            ),
-        )
-        # i = it.__item__()
-        assign_item = ast.Assign(
-            loc=for_node.loc,
-            target=for_node.target,
-            value=ast.CallMethod(
-                loc=for_node.loc,
-                target=ast.NameLocalDirect(for_node.loc, iter_sym),
-                method=ast.StrLiteral(for_node.loc, "__item__"),
-                args=[],
-            ),
-        )
-        # it = it.__next__()
-        advance_iter = ast.Assign(
-            loc=for_node.loc,
-            target=iter_target,
-            value=ast.CallMethod(
-                loc=for_node.loc,
-                target=ast.NameLocalDirect(for_node.loc, iter_sym),
-                method=ast.StrLiteral(for_node.loc, "__next__"),
-                args=[],
-            ),
-        )
-        # while it.__continue_iteration__(): ...
-        while_loop = ast.While(
-            loc=for_node.loc,
-            test=ast.CallMethod(
-                loc=for_node.loc,
-                target=ast.NameLocalDirect(for_node.loc, iter_sym),
-                method=ast.StrLiteral(for_node.loc, "__continue_iteration__"),
-                args=[],
-            ),
-            body=[assign_item, advance_iter] + for_node.body,
-        )
-        return init_iter, while_loop
-
     def exec_stmt_Raise(self, raise_node: ast.Raise) -> None:
         wam_exc = self.eval_expr(raise_node.exc)
         w_opimpl = self.vm.call_OP(raise_node.loc, OP.w_RAISE, [wam_exc])
@@ -892,7 +684,7 @@ class AbstractFrame:
     def eval_expr_Auto(self, auto: ast.Auto) -> W_MetaArg:
         raise SPyError.simple(
             "W_TypeError",
-            "Interal SPy error: ast.Auto expressions should be handled case-by-case",
+            "Internal SPy error: ast.Auto expressions should be handled case-by-case",
             "this is `auto`",
             auto.loc,
         )
@@ -947,58 +739,70 @@ class AbstractFrame:
         assert w_value is not None
         return W_MetaArg.from_w_obj(self.vm, w_value)
 
-    def eval_expr_Name(self, name: ast.Name) -> W_MetaArg:
-        # see the comment in __init__ about specialized_names
-        specialized = self.specialized_names.get(name)
-        if specialized is None:
-            specialized = self._specialize_Name(name)
-            self.specialized_names[name] = specialized
-        return self.eval_expr(specialized)
+    def eval_expr_NameError(self, name: ast.NameError) -> W_MetaArg:
+        raise SPyError.simple(
+            "W_NameError",
+            f"name `{name.id}` is not defined",
+            "not found in this scope",
+            name.loc,
+        )
 
-    def _specialize_Name(self, name: ast.Name) -> ast.Expr:
-        varname = name.id
-        sym = self.symtable.lookup_maybe(varname)
-        if not self.is_interactive:
-            assert sym is not None
+    def eval_expr_NameInteractive(self, name: ast.NameInteractive) -> W_MetaArg:
+        # NameInteractive is generated only during interactive sessions, like SPdb.  See
+        # e.g. test_astcompile::test_NameInteractive and
+        # test_spdb::test_NameInteractive.
+        #
+        # We want to lookup a name which is NOT found in the symtable. We basically need
+        # to do at runtime usually is done at ScopeAnalyzer time:
+        w_val: Optional[W_Object]
+        for level in range(1, len(self.closure) + 1):
+            outervars = self.closure[-level]
+            lv = outervars.get(name.id)
+            if lv is None:
+                continue
+            if isinstance(lv.w_val, W_Cell):
+                w_val = lv.w_val.get()
+            else:
+                w_val = lv.w_val
+            assert w_val is not None
+            return W_MetaArg(self.vm, lv.color, lv.w_T, w_val, name.loc)
 
-        if sym is None:
-            # sym can be None ONLY in interactive frames (in which case we do a dynamic
-            # lookup), else it means that there is a bug in symtable.
-            assert self.is_interactive, "sym not found"
-            # create a fake symbol to be used below
-            sym = Symbol(
-                varname,
-                "var",
-                "auto",
-                "NameError",
-                loc=name.loc,
-                type_loc=name.loc,
-                level=-1,
-            )
+        # name not found. Let's try the builtins
+        sym = SymTable.from_builtins().lookup_maybe(name.id)
+        if sym is not None:
+            assert sym.impref is not None
+            w_val = self.vm.lookup_ImportRef(sym.impref)
+            if w_val is None:
+                # this is likely a builtin which triggers an implicit import. Do the
+                # import and redo the lookup
+                self.vm.import_(sym.impref.modname)
+                w_val = self.vm.lookup_ImportRef(sym.impref)
+                assert w_val is not None
+            w_T = self.vm.dynamic_type(w_val)
+            return W_MetaArg(self.vm, "blue", w_T, w_val, name.loc)
 
-        if sym.impref is not None:
-            return ast.NameImportRef(name.loc, sym)
-        elif sym.storage == "direct" and sym.is_local:
-            return ast.NameLocalDirect(name.loc, sym)
-        elif sym.storage == "direct":
-            return ast.NameOuterDirect(name.loc, sym)
-        elif sym.storage == "cell" and sym.is_local:
-            return ast.NameLocalCell(name.loc, sym)
-        elif sym.storage == "cell":
-            outervars = self.closure[-sym.level]
-            w_cell = outervars[sym.name].w_val
-            assert isinstance(w_cell, W_Cell)
-            return ast.NameOuterCell(name.loc, sym, w_cell.fqn)
-        elif sym.storage == "NameError":
-            msg = f"name `{name.id}` is not defined"
-            raise SPyError.simple(
-                "W_NameError",
-                msg,
-                "not found in this scope",
-                name.loc,
-            )
-        else:
-            assert False
+        raise SPyError.simple(
+            "W_NameError",
+            f"name `{name.id}` is not defined",
+            "not found in this scope",
+            name.loc,
+        )
+
+    def eval_expr_AssignExprConstError(
+        self, node: ast.AssignExprConstError
+    ) -> W_MetaArg:
+        sym = node.sym
+        target_loc = node.target_loc
+        err = SPyError("W_TypeError", "invalid assignment target")
+        err.add("error", f"{sym.name} is const", target_loc)
+        err.add("note", f"const declared here ({sym.varkind_origin})", sym.loc)
+        if sym.varkind_origin == "global-const":
+            msg = f"help: declare it as variable: `var {sym.name} ...`"
+            err.add("note", msg, sym.loc)
+        elif sym.varkind_origin == "blue-param":
+            msg = "blue function arguments are const by default"
+            err.add("note", msg, sym.loc)
+        raise err
 
     def eval_expr_NameImportRef(self, name: ast.NameImportRef) -> W_MetaArg:
         # this is correct as long as we import 'const', but if we import 'var', then it
@@ -1052,7 +856,12 @@ class AbstractFrame:
     def eval_expr_NameOuterCell(self, name: ast.NameOuterCell) -> W_MetaArg:
         sym = name.sym
         assert not sym.is_local
-        w_cell = self.vm.lookup_global(name.fqn)
+        w_cell: Optional[W_Object]
+        if name.fqn is not None:
+            w_cell = self.vm.lookup_global(name.fqn)
+        else:
+            outervars = self.closure[-sym.level]
+            w_cell = outervars[sym.name].w_val
         assert isinstance(w_cell, W_Cell)
         w_val = w_cell.get()
         w_T = self.vm.dynamic_type(w_val)
@@ -1064,44 +873,43 @@ class AbstractFrame:
             self.exec_stmt(stmt)
         return self.eval_expr(block.value)
 
-    def eval_expr_AssignExpr(self, assignexpr: ast.AssignExpr) -> W_MetaArg:
-        specialized = self.specialized_assignexprs.get(assignexpr)
-        if specialized is None:
-            specialized = self._specialize_AssignExpr(assignexpr)
-            self.specialized_assignexprs[assignexpr] = specialized
-        if isinstance(specialized, ast.AssignExprLocal):
-            return self._set_assignexpr_color(
-                specialized.target,
-                self._execute_AssignLocal(specialized.target, specialized.value),
-            )
-        elif isinstance(specialized, ast.AssignExprCell):
-            return self._set_assignexpr_color(
-                specialized.target,
-                self._execute_AssignCell(
-                    specialized.target, specialized.target_fqn, specialized.value
-                ),
-            )
+    def eval_expr_AssignExprLocal(self, assign: ast.AssignExprLocal) -> W_MetaArg:
+        target = assign.target
+        value = assign.value
+        varname = target.value
+
+        lv = self.locals.get(varname)
+        if lv is None:
+            # first assignment, implicit declaration
+            wam = self.eval_expr(value)
+            self.declare_local(varname, wam.color, wam.w_static_T, target.loc)
+            lv = self.locals[varname]
         else:
-            assert False
+            wam = self.eval_expr(value, varname=varname)
 
-    def eval_expr_AssignExprLocal(self, assignexpr: ast.AssignExprLocal) -> W_MetaArg:
-        return self._set_assignexpr_color(
-            assignexpr.target,
-            self._execute_AssignLocal(assignexpr.target, assignexpr.value),
-        )
+        if not self.redshifting or lv.color == "blue":
+            self.store_local(varname, wam.w_val)
 
-    def eval_expr_AssignExprCell(self, assignexpr: ast.AssignExprCell) -> W_MetaArg:
-        return self._set_assignexpr_color(
-            assignexpr.target,
-            self._execute_AssignCell(
-                assignexpr.target, assignexpr.target_fqn, assignexpr.value
-            ),
-        )
+        if assign.sym.varkind == "var":
+            return wam.as_red(self.vm)
+        return wam
 
-    def _set_assignexpr_color(
-        self, target: ast.StrLiteral, wam: W_MetaArg
-    ) -> W_MetaArg:
-        sym = self.symtable.lookup(target.value)
+    def eval_expr_AssignExprCell(self, assign: ast.AssignExprCell) -> W_MetaArg:
+        target_fqn = assign.target_fqn
+        value = assign.value
+        sym = assign.sym
+
+        wam = self.eval_expr(value)
+        if not self.redshifting:
+            w_cell: Optional[W_Object]
+            if target_fqn is not None:
+                w_cell = self.vm.lookup_global(target_fqn)
+            else:
+                outervars = self.closure[-sym.level]
+                w_cell = outervars[sym.name].w_val
+            assert isinstance(w_cell, W_Cell)
+            w_cell.set(wam.w_val)
+
         if sym.varkind == "var":
             return wam.as_red(self.vm)
         return wam
@@ -1113,7 +921,7 @@ class AbstractFrame:
         args_wam: list[W_MetaArg],
     ) -> W_MetaArg:
         """
-        Note: this is overrided by DopplerFrame to remember the w_opimpl.
+        Note: this is overridden by DopplerFrame to remember the w_opimpl.
         """
         return self.vm.eval_opimpl(
             w_opimpl,
@@ -1418,10 +1226,11 @@ class ASTFrame(AbstractFrame):
     def __init__(
         self, vm: "SPyVM", w_func: W_ASTFunc, args_w: Optional[Sequence[W_Object]]
     ) -> None:
-        assert w_func.funcdef.symtable.kind == "function"
         # if w_func was lowered, automatically use the most lowered version
         w_func = w_func.get_most_lowered_version()
         assert isinstance(w_func, W_ASTFunc)
+        assert w_func.funcdef.symtable.kind == "function"
+        assert w_func.funcdef.stage in ("astcompiled", "redshifted", "linearized")
         ns = w_func.compute_inner_ns(args_w or [])
         super().__init__(
             vm, ns, w_func.funcdef.loc, w_func.funcdef.symtable, w_func.closure
@@ -1431,8 +1240,8 @@ class ASTFrame(AbstractFrame):
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
-        if self.w_func.lowering_stage != "source":
-            extra = f" ({self.w_func.lowering_stage})"
+        if self.w_func.stage != "astcompiled":
+            extra = f" ({self.w_func.stage})"
         elif self.w_func.color == "blue":
             extra = " (blue)"
         else:

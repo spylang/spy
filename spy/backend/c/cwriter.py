@@ -1,3 +1,4 @@
+import math
 from types import NoneType
 from typing import TYPE_CHECKING
 
@@ -36,7 +37,7 @@ class CFuncWriter:
         self.fqn = fqn
         self.last_emitted_linenos = (-1, -1)  # see emit_lineno_maybe
 
-        assert w_func.lowering_stage == "linearize"
+        assert w_func.stage == "linearized"
         self.w_func = w_func
 
     def ppc(self) -> None:
@@ -176,28 +177,26 @@ class CFuncWriter:
             else:
                 self.tbc.wl(f"{target} = {v};")
 
-    def emit_stmt_Assign(self, assign: ast.Assign) -> None:
-        assert False, "ast.Assign nodes should not survive redshifting"
-
     def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
-        target = assign.target.value
-        v = self.fmt_expr(assign.value)
+        target = assign.expr.target.value
+        v = self.fmt_expr(assign.expr.value)
         c_varname = C_Ident(target)
-        if assign.value.w_T is TYPES.w_NoneType:
+        if assign.expr.value.w_T is TYPES.w_NoneType:
             self.tbc.wl(f"/* {c_varname} = */ {v};")
         else:
             self.tbc.wl(f"{c_varname} = {v};")
 
     def emit_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
-        v = self.fmt_expr(assign.value)
-        target = assign.target_fqn.c_name
+        v = self.fmt_expr(assign.expr.value)
+        assert assign.expr.target_fqn is not None, "fqn is set during redshift"
+        target = assign.expr.target_fqn.c_name
         c_varname = C_Ident(target)
         self.tbc.wl(f"{c_varname} = {v};")
 
-    def emit_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
-        if isinstance(unpack.value, ast.Tuple):
+    def emit_stmt_AssignUnpack(self, assign: ast.AssignUnpack) -> None:
+        if isinstance(assign.value, ast.Tuple):
             # Blue tuple literal: directly assign each item to its target
-            for target, item in zip(unpack.targets, unpack.value.items):
+            for target, item in zip(assign.targets, assign.value.items):
                 c_target = C_Ident(target.value)
                 v = self.fmt_expr(item)
                 self.tbc.wl(f"{c_target} = {v};")
@@ -209,13 +208,13 @@ class CFuncWriter:
             #     a = tmp._item0;
             #     b = tmp._item1;
             # }
-            assert unpack.value.w_T is not None
-            c_tuple_type = self.ctx.w2c(unpack.value.w_T)
-            v = self.fmt_expr(unpack.value)
+            assert assign.value.w_T is not None
+            c_tuple_type = self.ctx.w2c(assign.value.w_T)
+            v = self.fmt_expr(assign.value)
             self.tbc.wl("{")
             with self.tbc.indent():
                 self.tbc.wl(f"{c_tuple_type} tmp = {v};")
-                for i, target in enumerate(unpack.targets):
+                for i, target in enumerate(assign.targets):
                     c_target = C_Ident(target.value)
                     self.tbc.wl(f"{c_target} = tmp._item{i};")
             self.tbc.wl("}")
@@ -288,9 +287,17 @@ class CFuncWriter:
         elif w_T is B.w_f64:
             return C.Literal(str(vm.unwrap_f64(w_val)))
         elif w_T is B.w_f32:
+            value = vm.unwrap_f32(w_val)
+            # Python's "inf" and "nan" spellings are not C literals. Use the
+            # C99 macros so folded non-finite values remain valid float constants.
+            if math.isnan(value):
+                return C.Literal("NAN")
+            if math.isinf(value):
+                sign = "-" if value < 0 else ""
+                return C.Literal(f"{sign}INFINITY")
             # the 'f' suffix makes it a float literal, avoiding double->float
             # narrowing warnings
-            return C.Literal(f"{vm.unwrap_f32(w_val)}f")
+            return C.Literal(f"{value}f")
         elif w_T is B.w_complex128:
             val = vm.unwrap_complex128(w_val)
             return C.Literal(
@@ -386,12 +393,13 @@ class CFuncWriter:
             return C.Literal(f"{varname}")
 
     def fmt_expr_NameOuterCell(self, name: ast.NameOuterCell) -> C.Expr:
+        assert name.fqn is not None, "fqn is set during redshift"
         return C.Literal(name.fqn.c_name)
 
     def fmt_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> C.Expr:
         # at the moment of writing, closed-over variables are always blue, so
         # they should not survive redshifting
-        assert False, "unexepcted NameOuterDirect"
+        assert False, "unexpected NameOuterDirect"
 
     def fmt_expr_AssignExpr(self, assignexpr: ast.AssignExpr) -> C.Expr:
         return self._fmt_assignexpr(assignexpr.target.value, assignexpr.value)
@@ -400,6 +408,7 @@ class CFuncWriter:
         return self._fmt_assignexpr(assignexpr.target.value, assignexpr.value)
 
     def fmt_expr_AssignExprCell(self, assignexpr: ast.AssignExprCell) -> C.Expr:
+        assert assignexpr.target_fqn is not None, "fqn is set during redshift"
         return self._fmt_assignexpr(assignexpr.target_fqn.c_name, assignexpr.value)
 
     def _fmt_assignexpr(self, target: str, value_expr: ast.Expr) -> C.Expr:

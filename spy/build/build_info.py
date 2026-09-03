@@ -3,6 +3,7 @@ from typing import Callable, Literal
 
 BuildTarget = Literal["native", "wasi", "emscripten"]
 BuildType = Literal["release", "debug"]
+OutputKind = Literal["exe", "testlib", "py-cffi"]
 
 
 @dataclass

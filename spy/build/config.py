@@ -4,11 +4,13 @@ import sys
 from dataclasses import dataclass
 from typing import Literal, Optional
 
-import spy.libspy
-from spy.build.build_info import BuildTarget, BuildType
-from spy.build.flags import get_cc, get_cflags, get_ldflags, get_libdir
+import py.path
 
-OutputKind = Literal["exe", "lib", "py-cffi"]
+import spy.libspy
+from spy.build.build_info import BuildTarget, BuildType, OutputKind
+from spy.build.flags import get_cc, get_cflags, get_ldflags, get_libdir
+from spy.errors import WIP
+
 GCOption = Literal["none", "bdwgc"]
 
 
@@ -21,6 +23,12 @@ class BuildConfig:
     warning_as_error: bool = False
     gc: GCOption = "none"
     static: bool = False
+
+    def __post_init__(self) -> None:
+        if self.kind == "testlib" and self.target not in ("wasi", "emscripten"):
+            raise WIP(
+                "--output-kind=testlib works only for wasi and emscripten targets"
+            )
 
 
 # ======= CFLAGS and LDFLAGS logic =======
@@ -53,25 +61,23 @@ class CompilerConfig:
 
         self.CC = get_cc(flags_target)
         self.cflags += get_cflags(
-            flags_target, config.build_type, config.warning_as_error
+            flags_target, config.build_type, config.kind, config.warning_as_error
         )
         self.cflags += EXTRA_CFLAGS
 
         self.ldflags += LDFLAGS
         self.ldflags += get_ldflags(flags_target, config.build_type)
 
-        libdir = get_libdir(flags_target, config.build_type)
-        if config.target == "wasi" and config.kind == "lib":
-            # WASM libs are mostly used by tests: in this case we want to make sure to
+        libdir = get_libdir(flags_target, config.build_type, config.kind)
+        if config.target == "wasi" and config.kind == "testlib":
+            # WASM testlibs are used by tests: in this case we want to make sure to
             # include the whole libspy.a, so that helper functions such as spy_str_alloc
             # are always available.
             #
             # If you don't pass --whole-archive, the linker will silently discard all
             # the .o files which are not used (so e.g. if you never call any str_*
             # function, str.o is discarded and spy_str_alloc is not present at all).
-            libspy_a = str(
-                spy.libspy.BUILD.join(flags_target, config.build_type, "libspy.a")
-            )
+            libspy_a = str(py.path.local(libdir).join("libspy.a"))
             self.ldflags += [
                 "-Wl,--whole-archive",
                 libspy_a,
@@ -89,16 +95,17 @@ class CompilerConfig:
 
         elif config.target == "wasi":
             self.ext = ".wasm"
-            if config.kind == "lib":
+            if config.kind == "testlib":
                 self.ldflags += ["-mexec-model=reactor"]
 
         elif config.target == "emscripten":
             self.ext = ".mjs"
             post_js = spy.libspy.SRC.join("emscripten_extern_post.js")
+            pre_js = spy.libspy.SRC.join("emscripten_pre.js")
             self.ldflags += [
                 "-sWASM_BIGINT",
-                "-sERROR_ON_UNDEFINED_SYMBOLS=0",
                 "-sEXPORTED_RUNTIME_METHODS=HEAP8",  # for exporting function in wasm, and running on CI
+                f"--pre-js={pre_js}",
                 f"--extern-post-js={post_js}",
             ]
 

@@ -11,6 +11,15 @@ from spy.util import print_diff
 from spy.vm.b import B
 
 
+def assert_node_dump(node: ast.Node, expected: str):
+    dumped = dump(node, use_colors=False, fields_to_ignore=("symtable",))
+    dumped = dumped.strip()
+    expected = textwrap.dedent(expected).strip()
+    if dumped != expected:
+        print_diff(expected, dumped, "expected", "got")
+        pytest.fail("assert_dump failed")
+
+
 @pytest.mark.usefixtures("init")
 class TestParser:
     @pytest.fixture
@@ -30,14 +39,9 @@ class TestParser:
             self.parse(src)
 
     def assert_dump(self, node: ast.Node, expected: str):
-        dumped = dump(node, use_colors=False, fields_to_ignore=("symtable",))
-        dumped = dumped.strip()
-        expected = textwrap.dedent(expected).strip()
         if "{tmpdir}" in expected:
             expected = expected.format(tmpdir=self.tmpdir)
-        if dumped != expected:
-            print_diff(expected, dumped, "expected", "got")
-            pytest.fail("assert_dump failed")
+        assert_node_dump(node, expected)
 
     def test_Module(self):
         src = """
@@ -47,11 +51,13 @@ class TestParser:
         mod = self.parse(src)
         expected = """
         Module(
+            stage='parsed',
             filename='{tmpdir}/test.spy',
             docstring=None,
             decls=[
                 GlobalFuncDef(
                     funcdef=FuncDef(
+                        stage='parsed',
                         color='red',
                         kind='plain',
                         name='foo',
@@ -78,11 +84,13 @@ class TestParser:
         """)
         expected = """
         Module(
+            stage='parsed',
             filename='{tmpdir}/test.spy',
             docstring=None,
             decls=[
                 GlobalFuncDef(
                     funcdef=FuncDef(
+                        stage='parsed',
                         color='red',
                         kind='plain',
                         name='foo',
@@ -120,6 +128,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            stage='parsed',
             color='red',
             kind='plain',
             name='foo',
@@ -190,6 +199,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            stage='parsed',
             color='red',
             kind='plain',
             name='foo',
@@ -218,6 +228,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            stage='parsed',
             color='red',
             kind='plain',
             name='foo',
@@ -256,6 +267,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            stage='parsed',
             color='blue',
             kind='plain',
             name='foo',
@@ -284,6 +296,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            stage='parsed',
             color='red',
             kind='plain',
             name='foo',
@@ -310,6 +323,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            stage='parsed',
             color='red',
             kind='plain',
             name='foo',
@@ -336,6 +350,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            stage='parsed',
             color='blue',
             kind='plain',
             name='foo',
@@ -362,6 +377,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            stage='parsed',
             color='blue',
             kind='generic',
             name='foo',
@@ -396,6 +412,7 @@ class TestParser:
                 ),
             ],
             inner=FuncDef(
+                stage='parsed',
                 color='red',
                 kind='plain',
                 name='__impl',
@@ -468,6 +485,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            stage='parsed',
             color='blue',
             kind='metafunc',
             name='foo',
@@ -649,6 +667,7 @@ class TestParser:
         """)
         expected = f"""
         Module(
+            stage='parsed',
             filename='{self.tmpdir}/test.spy',
             docstring=None,
             decls=[
@@ -681,6 +700,38 @@ class TestParser:
                         kind='const',
                         name=StrLiteral(value='d'),
                         type=Name(id='i32'),
+                        value=Literal(value=44),
+                    ),
+                ),
+            ],
+        )
+        """
+        self.assert_dump(mod, expected)
+
+    def test_global_VarDef_without_type(self):
+        mod = self.parse("""
+        var c = 43
+        const d = 44
+        """)
+        expected = f"""
+        Module(
+            stage='parsed',
+            filename='{self.tmpdir}/test.spy',
+            docstring=None,
+            decls=[
+                GlobalVarDef(
+                    vardef=VarDef(
+                        kind='var',
+                        name=StrLiteral(value='c'),
+                        type=Auto(),
+                        value=Literal(value=43),
+                    ),
+                ),
+                GlobalVarDef(
+                    vardef=VarDef(
+                        kind='const',
+                        name=StrLiteral(value='d'),
+                        type=Auto(),
                         value=Literal(value=44),
                     ),
                 ),
@@ -737,7 +788,9 @@ class TestParser:
         stmt = mod.get_funcdef("foo").body[0]
         expected = f"""
             Assign(
-                target=StrLiteral(value='dict_test'),
+                target=SingleTarget(
+                    name=StrLiteral(value='dict_test'),
+                ),
                 value=Dict(
                     items=[
                         KeyValuePair(
@@ -821,6 +874,86 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
+    @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
+    def test_AugSetAttr(self, op):
+        mod = self.parse(f"""
+        def foo() -> None:
+            a = obj()
+            a.b {op}= 42
+        """)
+        stmt = mod.get_funcdef("foo").body[1]
+        expected = f"""
+        AugSetAttr(
+            seq=0,
+            target=Name(id='a'),
+            attr=StrLiteral(value='b'),
+            op='{op}',
+            value=Literal(value=42),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
+    def test_AugSetItem(self, op):
+        mod = self.parse(f"""
+        def foo() -> None:
+            arr = [1, 2, 3]
+            arr[1] {op}= 42
+        """)
+        stmt = mod.get_funcdef("foo").body[1]
+        expected = f"""
+        AugSetItem(
+            seq=0,
+            target=Name(id='arr'),
+            args=[
+                Literal(value=1),
+            ],
+            op='{op}',
+            value=Literal(value=42),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    @pytest.mark.parametrize("op", "+ - * / // % ** << >> | ^ & @".split())
+    def test_AugSetItem_multiple_indices(self, op):
+        mod = self.parse(f"""
+        def foo() -> None:
+            matrix = [[1, 2], [3, 4]]
+            i = 0
+            j = 1
+            matrix[i, j] {op}= 1
+        """)
+        stmt = mod.get_funcdef("foo").body[3]
+        expected = f"""
+        AugSetItem(
+            seq=0,
+            target=Name(id='matrix'),
+            args=[
+                Name(id='i'),
+                Name(id='j'),
+            ],
+            op='{op}',
+            value=Literal(value=1),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    def test_complex_AugAssign_unique_seq(self):
+        mod = self.parse("""
+        def foo() -> None:
+            obj().x += 1
+            items()[index()] += 2
+            obj().y += 3
+        """)
+        body = mod.get_funcdef("foo").body
+        assert all(isinstance(stmt, (ast.AugSetAttr, ast.AugSetItem)) for stmt in body)
+        seqs = [
+            stmt.seq
+            for stmt in body
+            if isinstance(stmt, ast.AugSetAttr | ast.AugSetItem)
+        ]
+        assert seqs == [0, 1, 2]
+
     @pytest.mark.parametrize("op", "+ - ~ not".split())
     def test_UnaryOp(self, op):
         mod = self.parse(f"""
@@ -850,6 +983,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            stage='parsed',
             color='red',
             kind='plain',
             name='foo',
@@ -889,6 +1023,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            stage='parsed',
             color='red',
             kind='plain',
             name='foo',
@@ -934,6 +1069,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            stage='parsed',
             color='red',
             kind='plain',
             name='foo',
@@ -1017,7 +1153,9 @@ class TestParser:
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
         Assign(
-            target=StrLiteral(value='x'),
+            target=SingleTarget(
+                name=StrLiteral(value='x'),
+            ),
             value=Literal(value=42),
         )
         """
@@ -1052,12 +1190,20 @@ class TestParser:
         """)
         stmt = mod.get_funcdef("foo").body[0]
         expected = """
-        UnpackAssign(
-            targets=[
-                StrLiteral(value='a'),
-                StrLiteral(value='b'),
-                StrLiteral(value='c'),
-            ],
+        Assign(
+            target=UnpackTarget(
+                targets=[
+                    SingleTarget(
+                        name=StrLiteral(value='a'),
+                    ),
+                    SingleTarget(
+                        name=StrLiteral(value='b'),
+                    ),
+                    SingleTarget(
+                        name=StrLiteral(value='c'),
+                    ),
+                ],
+            ),
             value=Name(id='x'),
         )
         """
@@ -1361,6 +1507,7 @@ class TestParser:
         #
         expected = """
         Module(
+            stage='parsed',
             filename='{tmpdir}/test.spy',
             docstring=None,
             decls=[
@@ -1380,6 +1527,7 @@ class TestParser:
         #
         expected = """
         Module(
+            stage='parsed',
             filename='{tmpdir}/test.spy',
             docstring=None,
             decls=[
@@ -1400,6 +1548,7 @@ class TestParser:
 
         expected = """
         Module(
+            stage='parsed',
             filename='{tmpdir}/test.spy',
             docstring='hello',
             decls=[
@@ -1433,11 +1582,12 @@ class TestParser:
         assert isclass(nodes[4], "If")
         assert isclass(nodes[5], "Literal") and nodes[5].value is True
         assert isclass(nodes[6], "Assign")
-        assert isclass(nodes[7], "StrLiteral") and nodes[7].value == "x"
-        assert isclass(nodes[8], "BinOp")
-        assert isclass(nodes[9], "Name") and nodes[9].id == "y"
-        assert isclass(nodes[10], "Literal") and nodes[10].value == 1
-        assert len(nodes) == 11
+        assert isclass(nodes[7], "SingleTarget")
+        assert isclass(nodes[8], "StrLiteral") and nodes[8].value == "x"
+        assert isclass(nodes[9], "BinOp")
+        assert isclass(nodes[10], "Name") and nodes[10].id == "y"
+        assert isclass(nodes[11], "Literal") and nodes[11].value == 1
+        assert len(nodes) == 12
         #
         nodes2 = list(mod.walk(ast.Stmt))
         expected2 = [node for node in nodes if isinstance(node, ast.Stmt)]
@@ -1460,15 +1610,15 @@ class TestParser:
         assert isclass(nodes[0], "Literal") and nodes[0].value is None
         assert isclass(nodes[1], "Literal") and nodes[1].value is True
         assert isclass(nodes[2], "StrLiteral") and nodes[2].value == "x"
-        assert isclass(nodes[3], "Name") and nodes[3].id == "y"
-        assert isclass(nodes[4], "Literal") and nodes[4].value == 1
-        assert isclass(nodes[5], "BinOp")
-        assert isclass(nodes[6], "Assign")
-        assert isclass(nodes[7], "If")
-        assert isclass(nodes[8], "FuncDef")
-        assert isclass(nodes[9], "GlobalFuncDef")
-        assert isclass(nodes[10], "Module")
-        assert len(nodes) == 11
+        assert isclass(nodes[4], "Name") and nodes[4].id == "y"
+        assert isclass(nodes[5], "Literal") and nodes[5].value == 1
+        assert isclass(nodes[6], "BinOp")
+        assert isclass(nodes[7], "Assign")
+        assert isclass(nodes[8], "If")
+        assert isclass(nodes[9], "FuncDef")
+        assert isclass(nodes[10], "GlobalFuncDef")
+        assert isclass(nodes[11], "Module")
+        assert len(nodes) == 12
         #
         nodes2 = list(mod.walk_postorder(ast.Stmt))
         expected2 = [node for node in nodes if isinstance(node, ast.Stmt)]
@@ -1504,11 +1654,13 @@ class TestParser:
         """)
         expected = """
         Module(
+            stage='parsed',
             filename='{tmpdir}/test.spy',
             docstring=None,
             decls=[
                 GlobalFuncDef(
                     funcdef=FuncDef(
+                        stage='parsed',
                         color='blue',
                         kind='plain',
                         name='foo',
@@ -1518,6 +1670,7 @@ class TestParser:
                         docstring=None,
                         body=[
                             FuncDef(
+                                stage='parsed',
                                 color='red',
                                 kind='plain',
                                 name='bar',
@@ -1683,7 +1836,9 @@ class TestParser:
                     value=Literal(value=42),
                 ),
                 Assign(
-                    target=StrLiteral(value='y'),
+                    target=SingleTarget(
+                        name=StrLiteral(value='y'),
+                    ),
                     value=Literal(value=1),
                 ),
             ],
@@ -1714,6 +1869,7 @@ class TestParser:
                     value=None,
                 ),
                 FuncDef(
+                    stage='parsed',
                     color='red',
                     kind='plain',
                     name='foo',
@@ -1740,6 +1896,7 @@ class TestParser:
         funcdef = mod.get_funcdef("foo")
         expected = """
         FuncDef(
+            stage='parsed',
             color='red',
             kind='plain',
             name='foo',
@@ -1907,7 +2064,9 @@ class TestParser:
             BlockExpr(
                 body=[
                     Assign(
-                        target=StrLiteral(value='x'),
+                        target=SingleTarget(
+                            name=StrLiteral(value='x'),
+                        ),
                         value=Literal(value=1),
                     ),
                 ],

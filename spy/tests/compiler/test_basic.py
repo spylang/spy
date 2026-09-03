@@ -22,9 +22,9 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 42
         if self.backend == "interp":
-            assert mod.foo.w_func.lowering_stage == "source"
+            assert mod.foo.w_func.stage == "astcompiled"
         elif self.backend == "doppler":
-            assert mod.foo.w_func.lowering_stage == "redshift"
+            assert mod.foo.w_func.stage == "redshifted"
 
     def test_return_None(self):
         mod = self.compile("""
@@ -154,67 +154,6 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 100
 
-    def test_assignexpr_basic(self):
-        mod = self.compile("""
-        def foo() -> i32:
-            total = 0
-            if (current := 5):
-                total = current * 2
-            return total + current
-        """)
-        assert mod.foo() == 15
-
-    def test_assignexpr_argument(self):
-        mod = self.compile("""
-        def inc(x: i32) -> i32:
-            return x + 1
-
-        def foo() -> i32:
-            x = 0
-            y = inc(x := 1)
-            return x + y
-        """)
-        assert mod.foo() == 3
-
-    def test_assignexpr_updates_cell(self):
-        mod = self.compile("""
-        var counter: i32 = 0
-
-        def bump() -> i32:
-            return (counter := counter + 1)
-
-        def current() -> i32:
-            return counter
-        """)
-        assert mod.bump() == 1
-        assert mod.current() == 1
-        assert mod.bump() == 2
-
-    def test_assignexpr_single_eval(self):
-        mod = self.compile("""
-        var calls: i32 = 0
-
-        def bump() -> i32:
-            calls = calls + 1
-            return calls
-
-        def foo() -> i32:
-            y = (x := bump())
-            return x + calls
-        """)
-        assert mod.foo() == 2  # bump() runs once: x=1, calls=1
-        assert mod.calls == 1
-        assert mod.foo() == 4  # second call: x=2, calls=2
-        assert mod.calls == 2
-
-    def test_assignexpr_preserves_binding(self):
-        mod = self.compile("""
-        def foo() -> i32:
-            result = (x := 1)
-            return x + result
-        """)
-        assert mod.foo() == 2
-
     @only_interp
     def test_blue_cannot_redeclare(self):
         # see also the equivalent test
@@ -243,19 +182,6 @@ class TestBasic(CompilerTest):
             ("expected `str` because of type declaration", "str"),
         )
         self.compile_raises(src, "foo", errors)
-
-    def test_blue_locals(self):
-        src = """
-        def inc(x: i32) -> i32:
-            return x + 1
-
-        def foo() -> i32:
-            x = 1        # this is a blue local
-            y = inc(1)   # this is a red local because inc() is @red
-            return x + y
-        """
-        mod = self.compile(src)
-        assert mod.foo() == 3
 
     @skip_backends("C", reason="type <object> not supported")
     def test_upcast_and_downcast(self):
@@ -371,6 +297,80 @@ class TestBasic(CompilerTest):
             ("blue function arguments are const by default", "x: i32"),
         )
         self.compile_raises(src, "foo", errors)
+
+    def test_blue_locals(self):
+        src = """
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        def foo() -> i32:
+            x = 1        # this is a blue local
+            y = inc(1)   # this is a red local because inc() is @red
+            return x + y
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 3
+
+    def test_assignexpr_basic(self):
+        mod = self.compile("""
+        def foo() -> i32:
+            total = 0
+            if (current := 5):
+                total = current * 2
+            return total + current
+        """)
+        assert mod.foo() == 15
+
+    def test_assignexpr_argument(self):
+        mod = self.compile("""
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        def foo() -> i32:
+            x = 0
+            y = inc(x := 1)
+            return x + y
+        """)
+        assert mod.foo() == 3
+
+    def test_assignexpr_updates_cell(self):
+        mod = self.compile("""
+        var counter: i32 = 0
+
+        def bump() -> i32:
+            return (counter := counter + 1)
+
+        def current() -> i32:
+            return counter
+        """)
+        assert mod.bump() == 1
+        assert mod.current() == 1
+        assert mod.bump() == 2
+
+    def test_assignexpr_single_eval(self):
+        mod = self.compile("""
+        var calls: i32 = 0
+
+        def bump() -> i32:
+            calls = calls + 1
+            return calls
+
+        def foo() -> i32:
+            y = (x := bump())
+            return x + calls
+        """)
+        assert mod.foo() == 2  # bump() runs once: x=1, calls=1
+        assert mod.calls == 1
+        assert mod.foo() == 4  # second call: x=2, calls=2
+        assert mod.calls == 2
+
+    def test_assignexpr_preserves_binding(self):
+        mod = self.compile("""
+        def foo() -> i32:
+            result = (x := 1)
+            return x + result
+        """)
+        assert mod.foo() == 2
 
     @only_interp
     def test_int_float(self):
@@ -890,6 +890,86 @@ class TestBasic(CompilerTest):
             return x
         """)
         assert mod.foo(10) == ((10 + 1) * 2) - 3
+
+    @no_C
+    def test_aug_assign_subscript(self):
+        mod = self.compile("""
+        from __spy__ import interp_list
+
+        var count: i32 = 0
+
+        def get_count() -> i32:
+            return count
+
+        def idx() -> i32:
+            count = count + 1
+            return 0
+
+        def test_add() -> i32:
+            arr = interp_list[i32](10)
+            arr[idx()] += 5
+            return arr[0]
+
+        def test_mul() -> i32:
+            arr = interp_list[i32](10)
+            arr[idx()] *= 3
+            return arr[0]
+
+        def test_sub() -> i32:
+            arr = interp_list[i32](10)
+            arr[idx()] -= 3
+            return arr[0]
+        """)
+        assert mod.test_add() == 15
+        assert mod.get_count() == 1
+        assert mod.test_mul() == 30
+        assert mod.get_count() == 2
+        assert mod.test_sub() == 7
+        assert mod.get_count() == 3
+
+    def test_aug_assign_attribute(self):
+        mod = self.compile("""
+        from unsafe import raw_alloc, raw_ptr
+
+        @struct
+        class Box:
+            value: i32
+
+        def test_add() -> i32:
+            b = raw_alloc[Box](1)
+            setattr(b, 'value', 10)
+            b.value += 5
+            return b.value
+
+        def test_sub() -> i32:
+            b = raw_alloc[Box](1)
+            setattr(b, 'value', 20)
+            b.value -= 3
+            return b.value
+
+        def test_mul() -> i32:
+            b = raw_alloc[Box](1)
+            setattr(b, 'value', 10)
+            b.value *= 2
+            return b.value
+
+        def test_div() -> i32:
+            b = raw_alloc[Box](1)
+            setattr(b, 'value', 20)
+            b.value //= 2
+            return b.value
+
+        def test_mod() -> i32:
+            b = raw_alloc[Box](1)
+            setattr(b, 'value', 10)
+            b.value %= 3
+            return b.value
+        """)
+        assert mod.test_add() == 15
+        assert mod.test_sub() == 17
+        assert mod.test_mul() == 20
+        assert mod.test_div() == 10
+        assert mod.test_mod() == 1
 
     def test_resolve_name(self):
         mod = self.compile("""
@@ -1550,6 +1630,19 @@ class TestBasic(CompilerTest):
         mod = self.compile(src)
         assert mod.foo(5) == 6
         assert mod.bar(5, 6) == 11
+
+    def test_default_args_name(self):
+        src = """
+        DEFAULT: int = 42
+
+        def add(x: int, y: int = DEFAULT) -> int:
+            return x + y
+
+        def foo(x: int) -> int:
+            return add(x)
+        """
+        mod = self.compile(src)
+        assert mod.foo(5) == 47
 
     def test_default_args_too_few(self):
         src = """

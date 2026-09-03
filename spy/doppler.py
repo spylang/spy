@@ -10,6 +10,7 @@ from spy.location import Loc
 from spy.util import magic_dispatch
 from spy.vm.astframe import ASTFrame
 from spy.vm.b import B
+from spy.vm.cell import W_Cell
 from spy.vm.exc import W_Exception, W_StaticError
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.__spy__ import SPY
@@ -138,8 +139,8 @@ class DopplerFrame(ASTFrame):
         return True
 
     def redshift(self) -> W_ASTFunc:
-        assert self.w_func.lowering_stage == "source", "cannot redshift twice"
-        self.w_func.lowering_stage = "redshift_in_progress"
+        assert self.w_func.stage == "astcompiled", "cannot redshift twice"
+        self.w_func.stage = "redshifting"
         self.declare_arguments()
         funcdef = self.w_func.funcdef
         new_body = []
@@ -154,7 +155,11 @@ class DopplerFrame(ASTFrame):
         new_symtable = funcdef.symtable.copy()
         for sym in self._new_symbols:
             new_symtable.add(sym)
-        new_funcdef = funcdef.replace(body=new_body, symtable=new_symtable)
+        new_funcdef = funcdef.replace(
+            stage="redshifted",
+            body=new_body,
+            symtable=new_symtable,
+        )
         #
         new_fqn = self.w_func.fqn
         # all the non-local lookups are redshifted into constants, so the
@@ -168,7 +173,7 @@ class DopplerFrame(ASTFrame):
             w_functype=w_newfunctype,
             funcdef=new_funcdef,
             defaults_w=self.w_func.defaults_w,
-            lowering_stage="redshift",
+            stage="redshifted",
             locals_types_w=locals_types_w,
             is_force_inline=self.w_func.is_force_inline,
         )
@@ -247,45 +252,38 @@ class DopplerFrame(ASTFrame):
             newvalue = self.shifted_expr[vardef.value]
         return [vardef.replace(name=newname, type=newtype, value=newvalue)]
 
-    def shift_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
-        self.exec_stmt_Assign(assign)
-        varname = assign.target.value
-        sym = self.symtable.lookup(varname)
-        if sym.is_local and self.locals[varname].color == "blue":
-            self.record_node_color(assign, "blue")
-            # redshift away assignments to blue locals, but preserve
-            # any side effects from BlockExpr bodies
-            shifted_value = self.shifted_expr[assign.value]
+    def shift_stmt_AssignLocal(self, assign: ast.AssignLocal) -> list[ast.Stmt]:
+        self.exec_stmt(assign)
+        expr = assign.expr
+        varname = expr.target.value
+        lv = self.locals[varname]
+        self.record_node_color(assign, lv.color)
+        if lv.color == "blue":
+            # blue local: redshift away the assign, but preserve any side effects from
+            # BlockExpr bodies
+            shifted_value = self.shifted_expr[expr.value]
             if isinstance(shifted_value, ast.BlockExpr):
                 return shifted_value.body
-            return []
+            else:
+                return []
         else:
-            if sym.is_local:
-                self.record_node_color(assign, self.locals[varname].color)
-            specialized = self.specialized_assigns[assign]
-            newtarget = assign.target.as_typed_node()
-            newvalue = self.shifted_expr[assign.value]
-            return [specialized.replace(target=newtarget, value=newvalue)]
-
-    def shift_stmt_AssignLocal(self, assign: ast.AssignLocal) -> list[ast.Stmt]:
-        # specialized stmts such as AssignLocal and AssignCell are present
-        # ONLY inside redshifted ASTs, so we should never see them here
-        assert False, "not supposed to happen"
+            new_expr = self.shifted_expr[expr]
+            return [assign.replace(expr=new_expr)]
 
     def shift_stmt_AssignCell(self, assign: ast.AssignCell) -> list[ast.Stmt]:
-        # specialized stmts such as AssignLocal and AssignCell are present
-        # ONLY inside redshifted ASTs, so we should never see them here
-        assert False, "not supposed to happen"
+        self.exec_stmt(assign)
+        new_expr = self.shifted_expr[assign.expr]
+        return [assign.replace(expr=new_expr)]
 
-    def shift_stmt_AugAssign(self, node: ast.AugAssign) -> list[ast.Stmt]:
-        assign = self._desugar_AugAssign(node)
-        return self.shift_stmt_Assign(assign)
-
-    def shift_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> list[ast.Stmt]:
+    def shift_stmt_AssignUnpack(self, unpack: ast.AssignUnpack) -> list[ast.Stmt]:
+        self.exec_stmt(unpack)
         newtargets = [target.as_typed_node() for target in unpack.targets]
-        self.exec_stmt_UnpackAssign(unpack)
         newvalue = self.shifted_expr[unpack.value]
         return [unpack.replace(targets=newtargets, value=newvalue)]
+
+    def shift_stmt_AssignConstError(self, node: ast.AssignConstError) -> list[ast.Stmt]:
+        self.exec_stmt(node)
+        assert False, "unreachable"
 
     def shift_stmt_SetAttr(self, node: ast.SetAttr) -> list[ast.Stmt]:
         self.exec_stmt(node)
@@ -325,10 +323,6 @@ class DopplerFrame(ASTFrame):
         newtest = self.eval_and_shift(while_node.test, varname="@while")
         newbody = self.shift_body(while_node.body)
         return [while_node.replace(test=newtest, body=newbody)]
-
-    def shift_stmt_For(self, for_node: ast.For) -> list[ast.Stmt]:
-        init_iter, while_loop = self._desugar_For(for_node)
-        return self.shift_stmt(init_iter) + self.shift_stmt(while_loop)
 
     def shift_stmt_Raise(self, raise_node: ast.Raise) -> list[ast.Stmt]:
         self.exec_stmt(raise_node)
@@ -491,8 +485,8 @@ class DopplerFrame(ASTFrame):
         from spy.force_inline import inline_call
 
         w_callee = w_func.get_most_lowered_version()
-        stage = w_callee.lowering_stage
-        if stage == "redshift_in_progress":
+        stage = w_callee.stage
+        if stage == "redshifting":
             callee = w_callee.fqn.human_name(self.vm)
             err = SPyError(
                 "W_TypeError",
@@ -500,10 +494,10 @@ class DopplerFrame(ASTFrame):
             )
             err.add("error", "recursive inline call", op.loc)
             raise err
-        if stage == "source":
+        if stage == "astcompiled":
             self.vm._redshift_some([(w_callee.fqn, w_callee)], self.error_mode)
             w_callee = w_callee.get_most_lowered_version()
-        assert w_callee.lowering_stage == "redshift"
+        assert w_callee.stage == "redshifted"
 
         n = self._inline_counter
         self._inline_counter += 1
@@ -556,9 +550,6 @@ class DopplerFrame(ASTFrame):
         w_val = self.vm.wrap(const.value)
         return ast.Const(const.loc, w_val, w_T=wam.w_static_T)
 
-    def shift_expr_Name(self, name: ast.Name, wam: W_MetaArg) -> ast.Expr:
-        return self.specialized_names[name].replace(w_T=wam.w_static_T)
-
     def shift_expr_NameLocalDirect(
         self, name: ast.NameLocalDirect, wam: W_MetaArg
     ) -> ast.Expr:
@@ -572,7 +563,14 @@ class DopplerFrame(ASTFrame):
     def shift_expr_NameOuterCell(
         self, name: ast.NameOuterCell, wam: W_MetaArg
     ) -> ast.Expr:
-        return name.replace(w_T=wam.w_static_T)
+        # NameOuterCell is a bit special: at redshift time we KNOW the FQN of the cell,
+        # so we want to record it in the node. This is a small code duplication with
+        # ASTFrame, but too bad.  See also shift_stmt_AssignCell.
+        sym = name.sym
+        outervars = self.closure[-sym.level]
+        w_cell = outervars[sym.name].w_val
+        assert isinstance(w_cell, W_Cell)
+        return name.replace(w_T=wam.w_static_T, fqn=w_cell.fqn)
 
     def shift_expr_BinOp(self, binop: ast.BinOp, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[binop]
@@ -727,14 +725,31 @@ class DopplerFrame(ASTFrame):
         new_value = self.shifted_expr[block.value]
         return block.replace(body=new_body, value=new_value, w_T=wam.w_static_T)
 
-    def shift_expr_AssignExpr(
-        self, assignexpr: ast.AssignExpr, wam: W_MetaArg
+    def shift_expr_AssignExprLocal(
+        self, assignexpr: ast.AssignExprLocal, wam: W_MetaArg
     ) -> ast.Expr:
-        specialized = self.specialized_assignexprs[assignexpr]
         new_target = assignexpr.target.as_typed_node()
         new_value = self.shifted_expr[assignexpr.value]
-        return specialized.replace(
+        return assignexpr.replace(
             target=new_target,
+            value=new_value,
+            w_T=wam.w_static_T,
+        )
+
+    def shift_expr_AssignExprCell(
+        self, assignexpr: ast.AssignExprCell, wam: W_MetaArg
+    ) -> ast.Expr:
+        new_target = assignexpr.target.as_typed_node()
+        new_value = self.shifted_expr[assignexpr.value]
+        # at redshift time we KNOW the FQN of the cell
+        assert assignexpr.target_fqn is None, "already redshifted?"
+        sym = assignexpr.sym
+        outervars = self.closure[-sym.level]
+        w_cell = outervars[sym.name].w_val
+        assert isinstance(w_cell, W_Cell)
+        return assignexpr.replace(
+            target=new_target,
+            target_fqn=w_cell.fqn,
             value=new_value,
             w_T=wam.w_static_T,
         )

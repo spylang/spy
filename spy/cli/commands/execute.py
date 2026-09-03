@@ -19,7 +19,7 @@ async def execute(args: Execute_Args) -> None:
     vm = await init_vm(args)
 
     importer = ImportAnalyzer(vm, modname, use_spyc=not args.no_spyc)
-    importer.parse_all()
+    importer.astcompile_all()
     importer.import_all()
     w_mod = vm.modules_w[modname]
 

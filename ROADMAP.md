@@ -21,7 +21,7 @@ The pillars are:
   - **stdlib**: libraries written in SPy itself; lives in `stdlib/*.spy`. Often these
     tasks depends on one or more "core language" features.
 
-  - **Memory managment**: integration with refcounting and/or other GCs.
+  - **Memory management**: integration with refcounting and/or other GCs.
 
   - **SPy/C integration**: make it possible to seamlessly use C libraries from SPy programs.
 

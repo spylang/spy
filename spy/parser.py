@@ -78,11 +78,13 @@ class Parser:
     src: str
     filename: str
     for_loop_seq: int  # counter for for loops within the current function
+    augassign_seq: int  # counter for complex augassigns within the current function
 
     def __init__(self, src: str, filename: str) -> None:
         self.src = src
         self.filename = filename
         self.for_loop_seq = 0
+        self.augassign_seq = 0
 
     @classmethod
     def from_filename(cls, filename: str) -> "Parser":
@@ -94,7 +96,10 @@ class Parser:
         py_mod = magic_py_parse(self.src, self.filename)
         assert isinstance(py_mod, py_ast.Module)
         py_mod.compute_all_locs(self.filename)
-        return self.from_py_Module(py_mod)
+        parsed_mod = self.from_py_Module(py_mod)
+        assert parsed_mod.stage == "parsed"
+        parsed_mod.assert_valid_at("parsed")
+        return parsed_mod
 
     def parse_single_stmt(self) -> spy.ast.Stmt:
         """
@@ -153,7 +158,11 @@ class Parser:
         docstring, py_body = self.get_docstring_maybe(py_mod.body)
 
         mod = spy.ast.Module(
-            loc=loc, filename=self.filename, decls=[], docstring=docstring
+            loc=loc,
+            stage="parsed",
+            filename=self.filename,
+            decls=[],
+            docstring=docstring,
         )
 
         for py_stmt in py_body:
@@ -307,12 +316,15 @@ class Parser:
         # by doing this "saved_seq" dance, we ensure that nested functions "continue"
         # the numbering from the their parent, but sibling functions reset the
         # numbering. See test_scope::test_for_loop_nested_funcs
-        saved_seq = self.for_loop_seq
+        saved_for_loop_seq = self.for_loop_seq
+        saved_augassign_seq = self.augassign_seq
         body = self.from_py_body(py_body)
-        self.for_loop_seq = saved_seq
+        self.for_loop_seq = saved_for_loop_seq
+        self.augassign_seq = saved_augassign_seq
 
         return spy.ast.FuncDef(
             loc=py_funcdef.loc,
+            stage="parsed",
             color=color,
             kind=func_kind,
             name=py_funcdef.name,
@@ -506,17 +518,22 @@ class Parser:
         return spy.ast.Return(py_node.loc, value)
 
     def from_py_global_Assign(self, py_node: py_ast.Assign) -> spy.ast.VarDef:
-        assign = self.from_py_stmt_Assign(py_node)
-        assert isinstance(assign, spy.ast.Assign)
+        stmt = self.from_py_stmt_Assign(py_node)
+        # `var x = ...` and `const x = ...` are already lowered to VarDef
+        # by from_py_stmt_Assign; only bare `x = ...` returns Assign.
+        if isinstance(stmt, spy.ast.VarDef):
+            return stmt
+        assert isinstance(stmt, spy.ast.Assign)
         assert len(py_node.targets) == 1
         assert isinstance(py_node.targets[0], py_ast.Name)
+        assert isinstance(stmt.target, spy.ast.SingleTarget)
         varkind, _ = parse_var_name(py_node.targets[0].id)
         vardef = spy.ast.VarDef(
             loc=py_node.loc,
             kind=varkind,
-            name=assign.target,
+            name=stmt.target.name,
             type=spy.ast.Auto(loc=py_node.loc),
-            value=assign.value,
+            value=stmt.value,
         )
         return vardef
 
@@ -568,7 +585,9 @@ class Parser:
                 # "x = 0" is an Assign
                 return spy.ast.Assign(
                     loc=py_node.loc,
-                    target=spy.ast.StrLiteral(py_target.loc, real_name),
+                    target=spy.ast.SingleTarget(
+                        py_target.loc, spy.ast.StrLiteral(py_target.loc, real_name)
+                    ),
                     value=self.from_py_expr(py_node.value),
                 )
         elif isinstance(py_target, py_ast.Attribute):
@@ -596,22 +615,63 @@ class Parser:
             targets = []
             for item in py_target.elts:
                 assert isinstance(item, py_ast.Name)
-                targets.append(spy.ast.StrLiteral(item.loc, item.id))
-            return spy.ast.UnpackAssign(
-                loc=py_node.loc, targets=targets, value=self.from_py_expr(py_node.value)
+                targets.append(
+                    spy.ast.SingleTarget(
+                        item.loc, spy.ast.StrLiteral(item.loc, item.id)
+                    )
+                )
+            newtarget = spy.ast.UnpackTarget(loc=py_target.loc, targets=targets)
+            return spy.ast.Assign(
+                loc=py_node.loc,
+                target=newtarget,
+                value=self.from_py_expr(py_node.value),
             )
         else:
             self.unsupported(py_target, "assign to complex expressions")
 
-    def from_py_stmt_AugAssign(self, py_node: py_ast.AugAssign) -> spy.ast.AugAssign:
+    def from_py_stmt_AugAssign(self, py_node: py_ast.AugAssign) -> spy.ast.Stmt:
         py_target = py_node.target
+        opname = type(py_node.op).__name__
+        op = self._binops[opname]
+
         if isinstance(py_target, py_ast.Name):
-            opname = type(py_node.op).__name__
-            op = self._binops[opname]
+            # Simple case: x += 1
             return spy.ast.AugAssign(
                 loc=py_node.loc,
                 op=op,
                 target=spy.ast.StrLiteral(py_target.loc, py_target.id),
+                value=self.from_py_expr(py_node.value),
+            )
+        elif isinstance(py_target, py_ast.Attribute):
+            # Attribute access: a.b += 1
+            seq = self.augassign_seq
+            self.augassign_seq += 1
+            return spy.ast.AugSetAttr(
+                loc=py_node.loc,
+                seq=seq,
+                op=op,
+                target=self.from_py_expr(py_target.value),
+                attr=spy.ast.StrLiteral(py_target.loc, py_target.attr),
+                value=self.from_py_expr(py_node.value),
+            )
+        elif isinstance(py_target, py_ast.Subscript):
+            # Subscript access: arr[i] += 1
+            seq = self.augassign_seq
+            self.augassign_seq += 1
+            target = self.from_py_expr(py_target.value)
+            index = self.from_py_expr(py_target.slice)
+
+            if isinstance(index, spy.ast.Tuple):
+                args = index.items
+            else:
+                args = [index]
+
+            return spy.ast.AugSetItem(
+                loc=py_node.loc,
+                seq=seq,
+                op=op,
+                target=target,
+                args=args,
                 value=self.from_py_expr(py_node.value),
             )
         else:
@@ -637,7 +697,7 @@ class Parser:
     def from_py_stmt_For(self, py_node: py_ast.For) -> spy.ast.For:
         if py_node.orelse:
             # ideally, we would like to point to the 'else:' line, but we
-            # cannot easiy get it from the ast. Too bad, let's point at the
+            # cannot easily get it from the ast. Too bad, let's point at the
             # 'for'.
             msg = "not implemented yet: `else` clause in `for` loops"
             forloc = py_node.loc.replace(

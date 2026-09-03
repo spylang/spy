@@ -28,7 +28,7 @@ class ScopeAnalyzer:
       - names defined at module-level scopes are always available to all
         their inner scopes
 
-      - inside a function, assigment defines a local variable ONLY if this
+      - inside a function, assignment defines a local variable ONLY if this
         name does not exist in an outer scope. Note that this is different
         from Python rules. No more 'global' and 'nonlocal' declarations.
 
@@ -378,17 +378,32 @@ class ScopeAnalyzer:
         self.pop_scope()
 
     def declare_Assign(self, assign: ast.Assign) -> None:
-        self._declare_target_maybe(assign.target, assign.value)
+        for target in assign.target.flatten():
+            self._declare_target_maybe(target, assign.value)
         self.declare(assign.value)
 
     def declare_AugAssign(self, augassign: ast.AugAssign) -> None:
         self._promote_const_to_var_maybe(augassign.target)
         self.declare(augassign.value)
 
-    def declare_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
-        for target in unpack.targets:
-            self._declare_target_maybe(target, unpack.value)
-        self.declare(unpack.value)
+    def _declare_hidden_local(self, name: str, value: ast.Expr) -> None:
+        self.define_name(name, "var", "auto", value.loc, value.loc)
+
+    def declare_AugSetAttr(self, augsetattr: ast.AugSetAttr) -> None:
+        target_name = f"_$aug_target{augsetattr.seq}"
+        self._declare_hidden_local(target_name, augsetattr.target)
+        self.declare(augsetattr.target)
+        self.declare(augsetattr.value)
+
+    def declare_AugSetItem(self, augsetitem: ast.AugSetItem) -> None:
+        target_name = f"_$aug_target{augsetitem.seq}"
+        self._declare_hidden_local(target_name, augsetitem.target)
+        self.declare(augsetitem.target)
+        for i, arg in enumerate(augsetitem.args):
+            arg_name = f"_$aug_arg{augsetitem.seq}_{i}"
+            self._declare_hidden_local(arg_name, arg)
+            self.declare(arg)
+        self.declare(augsetitem.value)
 
     def declare_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
         self._declare_target_maybe(assignexpr.target, assignexpr.value)
@@ -556,7 +571,11 @@ class ScopeAnalyzer:
         self.capture_maybe(name.id)
 
     def flatten_Assign(self, assign: ast.Assign) -> None:
-        self.capture_maybe(assign.target.value)
+        if isinstance(assign.target, ast.UnpackTarget):
+            self.mod_scope.implicit_imports.add("_tuple")
+        for target in assign.target.flatten():
+            assert isinstance(target, ast.StrLiteral)
+            self.capture_maybe(target.value)
         self.flatten(assign.value)
 
     def flatten_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
@@ -585,12 +604,6 @@ class ScopeAnalyzer:
         self.mod_scope.implicit_imports.add("_slice")
         for item in (slc.start, slc.stop, slc.step):
             self.flatten(item)
-
-    def flatten_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
-        self.mod_scope.implicit_imports.add("_tuple")
-        for target in unpack.targets:
-            self.flatten(target)
-        self.flatten(unpack.value)
 
     def flatten_Dict(self, dict: ast.Dict) -> None:
         self.mod_scope.implicit_imports.add("_dict")

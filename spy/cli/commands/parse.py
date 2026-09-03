@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Annotated
 
 import click
+import py
 from typer import Option
 
 from spy.analyze.importing import ImportAnalyzer
@@ -42,19 +43,18 @@ class Parse_Args(Base_Args, _parse_mixin, Filename_Required_Args): ...
 
 async def parse(args: Parse_Args) -> None:
     """Dump the SPy AST"""
+    filename = py.path.local(args.filename)
     modname = args.filename.stem
     vm = await init_vm(args)
 
     importer = ImportAnalyzer(vm, modname, use_spyc=not args.no_spyc)
-    importer.parse_all()
-
-    orig_mod = importer.getmod(modname)
+    parsed_mod = importer.parse_one(filename)
 
     if args.format == "ast":
-        orig_mod.pp()
+        parsed_mod.pp()
     elif args.format == "html":
         b = HTMLBackend(args.spyast_js)
-        html = b.generate([(modname, orig_mod)])
+        html = b.generate([(modname, parsed_mod)])
         build_dir = Path(args.filename.parent) / "build"
         build_dir.mkdir(exist_ok=True, parents=True)
         out = build_dir / f"{modname}_parse.html"

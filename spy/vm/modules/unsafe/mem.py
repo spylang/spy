@@ -4,7 +4,7 @@ from spy.errors import WIP, SPyError
 from spy.vm.b import B
 from spy.vm.irtag import IRTag
 from spy.vm.opspec import W_MetaArg, W_OpSpec
-from spy.vm.primitive import W_I32, W_U8, W_Dynamic
+from spy.vm.primitive import W_F32, W_I8, W_I32, W_I64, W_U8, W_U32, W_U64, W_Dynamic
 from spy.vm.str import W_Str
 from spy.vm.struct import W_Struct, W_StructType
 from spy.vm.w import W_Object, W_Type
@@ -536,10 +536,20 @@ def w_mem_write(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
 def generic_mem_read(vm: "SPyVM", addr: int, w_T: W_Type) -> W_Object:
     from spy.vm.modules.posix import POSIX, W__FILE
 
-    if w_T is B.w_i32:
-        return vm.wrap(vm.ll.mem.read_i32(addr))
+    if w_T is B.w_i8:
+        return W_I8(vm.ll.mem.read_i8(addr))
     elif w_T is B.w_u8:
         return W_U8(vm.ll.mem.read_u8(addr))
+    elif w_T is B.w_i32:
+        return vm.wrap(vm.ll.mem.read_i32(addr))
+    elif w_T is B.w_u32:
+        return W_U32(vm.ll.mem.read_u32(addr))
+    elif w_T is B.w_f32:
+        return W_F32(vm.ll.mem.read_f32(addr))
+    elif w_T is B.w_i64:
+        return W_I64(vm.ll.mem.read_i64(addr))
+    elif w_T is B.w_u64:
+        return W_U64(vm.ll.mem.read_u64(addr))
     elif w_T is B.w_f64:
         return vm.wrap(vm.ll.mem.read_f64(addr))
     elif w_T is B.w_str:
@@ -567,12 +577,28 @@ def generic_mem_read(vm: "SPyVM", addr: int, w_T: W_Type) -> W_Object:
 def generic_mem_write(vm: "SPyVM", addr: int, w_T: W_Type, w_val: W_Object) -> None:
     from spy.vm.modules.posix import POSIX, W__FILE
 
-    if w_T is B.w_i32:
-        v = vm.unwrap_i32(w_val)
-        vm.ll.mem.write_i32(addr, v)
+    if w_T is B.w_i8:
+        assert isinstance(w_val, W_I8)
+        vm.ll.mem.write_i8(addr, int(w_val.value))
     elif w_T is B.w_u8:
         assert isinstance(w_val, W_U8)
         vm.ll.mem.write_u8(addr, int(w_val.value))
+    elif w_T is B.w_i32:
+        v = vm.unwrap_i32(w_val)
+        vm.ll.mem.write_i32(addr, v)
+    elif w_T is B.w_u32:
+        assert isinstance(w_val, W_U32)
+        vm.ll.mem.write_u32(addr, int(w_val.value))
+    elif w_T is B.w_f32:
+        assert isinstance(w_val, W_F32)
+        v = vm.unwrap_f32(w_val)
+        vm.ll.mem.write_f32(addr, v)
+    elif w_T is B.w_i64:
+        assert isinstance(w_val, W_I64)
+        vm.ll.mem.write_i64(addr, int(w_val.value))
+    elif w_T is B.w_u64:
+        assert isinstance(w_val, W_U64)
+        vm.ll.mem.write_u64(addr, int(w_val.value))
     elif w_T is B.w_f64:
         v = vm.unwrap_f64(w_val)
         vm.ll.mem.write_f64(addr, v)

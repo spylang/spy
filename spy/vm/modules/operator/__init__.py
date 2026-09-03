@@ -51,7 +51,7 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-# the folloing imports register all the various objects on OP
+# the following imports register all the various objects on OP
 # isort: off
 from . import opimpl_int  # noqa: F401 -- side effects
 from . import opimpl_f64  # noqa: F401 -- side effects

@@ -34,7 +34,9 @@ class TestCBackend:
         vm.import_(modname)
         vm.redshift(error_mode="eager")
         builddir = self.tmpdir.join("build").ensure(dir=True)
-        config = BuildConfig(target="wasi", kind="lib", build_type="debug", opt_level=0)
+        config = BuildConfig(
+            target="wasi", kind="testlib", build_type="debug", opt_level=0
+        )
         backend = CBackend(vm, modname, config, builddir, dump_c=False)
         return backend
 

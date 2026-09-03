@@ -131,7 +131,7 @@ class CBackend:
         #   3. ensure that structs in each SCC is in topological order
         #   4. emit one .h for each SCC (or maybe group multiple SCC by
         #      modname, but keep in mind that in case of circular deps it will
-        #      be impossible to guarantee the correspondance fqn.modname <=>
+        #      be impossible to guarantee the correspondence fqn.modname <=>
         #      modname.h)
         structdefs: list[tuple[FQN, W_Type]] = []
 
@@ -206,7 +206,7 @@ class CBackend:
     def write_build_script(self) -> None:
         assert self.cfiles != [], "call .cwrite() first"
         wasm_exports = []
-        if self.config.target == "wasi" and self.config.kind == "lib":
+        if self.config.target == "wasi" and self.config.kind == "testlib":
             wasm_exports = self.get_wasm_exports()
 
         extra = self.get_merged_build_info()

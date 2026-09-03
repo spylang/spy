@@ -31,8 +31,9 @@ def tuple(*items_T):
     class _tup:
         __extra_fields__ = get_fields()
 
-        def __len__(self) -> i32:
-            return N
+        @blue.metafunc
+        def __len__(m_self):
+            return OpSpec.const(N)
 
         @blue.metafunc
         def __getitem__(m_self, m_i):
@@ -64,7 +65,7 @@ def tuple(*items_T):
 
             with no loop or dynamic dispatch left at runtime.
             """
-            
+
             T = m_v.static_type
 
             @blue

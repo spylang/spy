@@ -76,12 +76,12 @@ make -C spy/libspy
 
 ### pip
 
-**Prerequisites:** Python 3.12, and bdw-gc (`libgc-dev` on Debian/Ubuntu).
+**Prerequisites:** Python 3.12, pip >= 25.1 (to support PEP 735 Dependency Groups), and bdw-gc (`libgc-dev` on Debian/Ubuntu).
 
 ```sh
 python3 -m venv .venv
 . .venv/bin/activate
-pip install -e .[dev]
+pip install -e . --group dev
 # build the `libspy` runtime library
 make -C spy/libspy
 ```
@@ -257,7 +257,10 @@ ways:
     statically linked to any spy executable
 
   - `make -C spy/libspy` creates a `libspy.a` for each supported target, which
-    currently are `native`, `emscripten` and `wasi`
+    currently are `native`, `emscripten` and `wasi`. For `emscripten` and `wasi`
+    it also creates a second `libspy.a` used by llwasm which expects the
+    WebAssembly host to provide debug helpers as WASM imports. The normal
+    `libspy.a` implements them in `debug.c`.
 
   - `spy/libspy/__init__.py` contains some support code to be able to load the
     WASM version of libspy in the interpreter.

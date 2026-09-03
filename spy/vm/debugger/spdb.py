@@ -8,6 +8,7 @@ import sys
 from typing import IO, TYPE_CHECKING, Annotated, Any, Literal, Optional
 
 from spy import ast
+from spy.astcompile import astcompile_interactive
 from spy.doppler import DopplerFrame
 from spy.errfmt import ErrorFormatter
 from spy.errors import SPyError
@@ -52,12 +53,18 @@ def print_wam(
     if file is None:
         file = sys.stdout
     w_T = vm.dynamic_type(wam_arg.w_val)
+    w_static_T = wam_arg.w_static_T
     wam_s = vm.repr_wam(wam_arg, loc=Loc.here())
     s = vm.unwrap_str(wam_s.w_val)
     #
     color = ColorFormatter(use_colors=use_colors)
-    print(color.set("green", "static type: "), wam_arg.w_static_T, file=file)
-    print(color.set("green", "dynamic type:"), w_T, file=file)
+    T = w_T.fqn.human_name(vm)
+    static_T = w_static_T.fqn.human_name(vm)
+    if w_T is w_static_T:
+        print(color.set("green", "type:"), T, file=file)
+    else:
+        print(color.set("green", "static type: "), static_T, file=file)
+        print(color.set("green", "dynamic type:"), T, file=file)
     print(s, file=file)
 
 
@@ -229,10 +236,12 @@ class SPdb(cmd.Cmd):
                 )
 
             f = self.get_curframe()
-            with f.spyframe.interactive():
-                f.spyframe.is_interactive = True  # ???
-                wam = f.spyframe.eval_expr(stmt.value)
-                print_wam(self.vm, wam, file=self.stdout, use_colors=self.use_colors)
+            # the parser produces a "parsed"-stage expression, but the frame can
+            # only evaluate astcompiled nodes: run the astcompile pass on the
+            # fly, against the symtable of the live frame
+            expr = astcompile_interactive(stmt.value, f.spyframe.symtable)
+            wam = f.spyframe.eval_expr(expr)
+            print_wam(self.vm, wam, file=self.stdout, use_colors=self.use_colors)
 
         except SPyError as e:
             etype = e.etype[2:]

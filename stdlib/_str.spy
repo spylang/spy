@@ -98,19 +98,19 @@ class methods:
                 out.utf8[0] = ll.utf8[i]
                 return StrObject.to_str(out)
             return OpSpec(_getitem_int, [self, wam_i])
-        
+
         if wam_i.static_type == slice:
             def _getitem_slice(s: str, slc: slice) -> str:
                 # Fast path for trivial slices:
                 if (slc.start == 0 or slc.start_is_none) and (slc.stop == -1 or slc.stop_is_none) and (slc.step == 1 or slc.step_is_none): return s
-                
+
                 indices = slc.indices(len(s))
                 start = indices.start
                 stop = indices.stop
                 step = indices.step
 
                 ll = StrObject.from_str(s)
-                
+
                 # Fast path for simple slices
                 if slc.step == 1:
                     length = stop - start
@@ -134,7 +134,7 @@ class methods:
                     return ""
 
                 llnew = StrObject.alloc(new_string_length)
-                
+
                 current = start
                 i = 0
                 if step > 0:
@@ -152,7 +152,7 @@ class methods:
 
                 return StrObject.to_str(llnew)
             return OpSpec(_getitem_slice, [self, wam_i])
-        
+
         return OpSpec.NULL
 
     def __add__(self: str, other: str) -> str:
@@ -264,8 +264,8 @@ class methods:
                 j = j + 1
                 out.utf8[j] = ord(b"x")
                 j = j + 1
-                hi: i32 = i32(c2) >> 4
-                lo: i32 = i32(c2) & 15
+                hi = i32(c2) >> 4
+                lo = i32(c2) & 15
                 if hi < 10:
                     out.utf8[j] = u8(hi) + ord(b"0")
                 else:
@@ -389,7 +389,7 @@ class methods:
             else:
                 llnew.utf8[i] = ch
         return StrObject.to_str(llnew)
-    
+
     @blue.metafunc
     def split(m_self, *args_m):
         if len(args_m) == 1 and args_m[0].static_type == str:
@@ -414,7 +414,7 @@ class methods:
             # in CPython:
             if not (u8(9) <= ch and ch <= u8(32)) or ch == u8(133) or ch == u8(160):
                 return False
-        
+
         return True
 
     @blue.metafunc
@@ -550,33 +550,33 @@ def _split_sep(self: str, sep: str) -> list[str]:
     if len_self == 0:
         return [""]
 
-        
+
         sep_len_check = len(sep)
         if sep_len_check == 0:
             raise ValueError("empty separator")
 
     # TODO - CPython has an additional branch here if the separator is only
     # a single char. Would be good to do in a future PR
-            
+
     llself = StrObject.from_str(self)
     llsep = StrObject.from_str(sep)
     sep_len = llsep.length
-    
+
     # For each starting position in the target string, look through len(sep) characters
     # If all of them match the characters in sep, we have a match and should split here
     # If not, increment starting position and try again
-        
+
     # We would ideally pre-allocate a list with a reasonable guess at capacity
-    # CPython uses the maxsplit parameter+1 (WIP not implemented yet), or 
+    # CPython uses the maxsplit parameter+1 (WIP not implemented yet), or
     # 12 if maxsplit is not given or if maxsplit > 12. Would be good to add here
     # when pre-allocating a list of a given size is possible
     result = list[str]()
 
     # Starting positions in the target string
-    search_position: int = 0 
+    search_position: int = 0
 
     # Start of the next "chunk" to be added after we find the next separator (or end of target string)
-    start_of_chunk: int = 0 
+    start_of_chunk: int = 0
 
     while search_position < llself.length:
         end_of_string = False
@@ -594,7 +594,7 @@ def _split_sep(self: str, sep: str) -> list[str]:
         if end_of_string:
             break
         elif matched:
-            # If we matched a separator, copy the items from start_of_chunk up to the 
+            # If we matched a separator, copy the items from start_of_chunk up to the
             # separator as the latest list item
             new_len = search_position-start_of_chunk
 
@@ -606,7 +606,7 @@ def _split_sep(self: str, sep: str) -> list[str]:
             search_position += sep_len
         else:
             search_position += 1
-        
+
 
     if start_of_chunk < len_self:
         # If we reach the end of the target string and we had characters after the final separator,
@@ -629,7 +629,7 @@ def _split_whitespace(self:str) -> list[str]:
         return [""]
 
     llself = StrObject.from_str(self)
-    
+
     # Walking through the string, alternate matching against whitespace and
     # non-whitespace characters
     result = list[str]()
@@ -648,7 +648,7 @@ def _split_whitespace(self:str) -> list[str]:
         rear_pointer = lead_pointer
         while lead_pointer < len_self and not _ll_isspace(llself.utf8[lead_pointer]):
             lead_pointer += 1
-        
+
         # Add the non-whitespace chunk to the result list
         llnew_len = lead_pointer - rear_pointer
         llnew = StrObject.alloc(llnew_len)
@@ -656,3 +656,62 @@ def _split_whitespace(self:str) -> list[str]:
         result.append(StrObject.to_str(llnew))
 
     return result
+
+
+@struct
+class unicode_codepoints:
+    """Iterates over the unicode codepoints in a string."""
+    str: gc_ptr[StrObject]
+
+    def __fastiter__(self) -> unicode_codepoints_iterator:
+        return unicode_codepoints_iterator(self.str, 0)
+
+@struct
+class unicode_codepoints_iterator:
+    str_ptr: gc_ptr[StrObject]
+    i: int
+
+    def __next__(self) -> unicode_codepoints_iterator:
+        return unicode_codepoints_iterator(self.str_ptr, self.i + self.__item_len())
+
+    def __item__(self) -> i32:
+        current_byte = self.str_ptr.utf8[self.i]
+        codepoint: i32 = current_byte & __first_byte_mask(current_byte)
+
+        for j in range(self.__item_len() - 1):
+            current_byte = self.str_ptr.utf8[self.i + j + 1] & u8(0b0011_1111)
+            codepoint = i32(current_byte) | (codepoint << 6)
+
+        return codepoint
+
+    # the opposite of StopIteration :)
+    def __continue_iteration__(self) -> bool:
+        return self.i < self.str_ptr.length
+
+    def __item_len(self) -> int:
+        current_byte: u8 = self.str_ptr.utf8[self.i]
+        if (current_byte & u8(0b1000_0000)) == u8(0):
+            return 1
+        elif (current_byte & u8(0b1110_0000)) == u8(0b1100_0000):
+            return 2
+        elif (current_byte & u8(0b1111_0000)) == u8(0b1110_0000):
+            return 3
+        elif (current_byte & u8(0b1111_1000)) == u8(0b1111_0000):
+            return 4
+        assert False, "invalid first utf-8 byte: " + str(current_byte)
+
+def __first_byte_mask(byte: u8) -> u8:
+    """returns the bitmaks for the first byte"""
+    if (byte & u8(0b1000_0000)) == u8(0):
+        # for 1-byte sequence
+        return u8(0b0111_1111)
+    elif (byte & u8(0b1110_0000)) == u8(0b1100_0000):
+        # for 2-byte sequence
+        return u8(0b0001_1111)
+    elif (byte & u8(0b1111_0000)) == u8(0b1110_0000):
+        # for 3-byte sequence
+        return u8(0b0000_1111)
+    elif (byte & u8(0b1111_1000)) == u8(0b1111_0000):
+        # for 4-byte sequence
+        return u8(0b0000_0111)
+    assert False, "invalid first utf-8 byte: " + str(byte)

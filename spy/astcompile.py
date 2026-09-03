@@ -1,0 +1,588 @@
+"""
+astcompile pass
+
+The main job of this pass is to resolve names and symbols using the symtable collected
+by ScopeAnalyzer.  In particular rewrites generic ast.Name into more specific
+ast.NameLocalDirect, ast.NameOuterDirect, etc.
+
+Moreover, do other easy desugaring like converting `for` loops into `while` loops, etc.
+"""
+
+from typing import Optional
+
+import spy.ast as ast
+from spy.analyze.symtable import SymTable
+from spy.ast import LoweringStage
+from spy.errors import WIP, SPyError
+from spy.location import Loc
+from spy.util import magic_dispatch
+
+
+def astcompile(parsed_mod: ast.Module) -> ast.Module:
+    assert parsed_mod.stage == "parsed"
+    compiled_mod = ASTCompiler(parsed_mod).compile_mod()
+    assert compiled_mod.stage == "astcompiled"
+    compiled_mod.assert_valid_at("astcompiled")
+    return compiled_mod
+
+
+def astcompile_interactive(expr: ast.Expr, symtable: SymTable) -> ast.Expr:
+    """
+    Compile a single expression against the given symtable, in interactive
+    mode. This is meant to be used by SPdb.
+    """
+    compiler = ASTCompiler(None, interactive=True)
+    compiler.push_symtable(symtable)
+    return compiler.compile_expr(expr)
+
+
+class ASTCompiler:
+    def __init__(self, mod: Optional[ast.Module], *, interactive: bool = False) -> None:
+        self.mod = mod
+        self.interactive = interactive
+        self.symtable_stack: list[SymTable] = []
+
+    def push_symtable(self, symtable: SymTable) -> None:
+        self.symtable_stack.append(symtable)
+
+    def pop_symtable(self) -> SymTable:
+        return self.symtable_stack.pop()
+
+    @property
+    def symtable(self) -> SymTable:
+        return self.symtable_stack[-1]
+
+    def compile_mod(self) -> ast.Module:
+        assert self.mod is not None
+        self.push_symtable(self.mod.symtable)
+        new_decls = [self.compile_decl(decl) for decl in self.mod.decls]
+        self.pop_symtable()
+        return self.mod.replace(
+            stage="astcompiled",
+            decls=new_decls,
+        )
+
+    def compile_decl(self, decl: ast.Decl) -> ast.Decl:
+        return magic_dispatch(self, "compile_decl", decl)
+
+    def compile_stmt(self, stmt: ast.Stmt) -> list[ast.Stmt]:
+        # if we are in a ClassDef, only a few stmts are actually allowed
+        in_classdef = self.symtable.kind == "class"
+        allowed = (
+            ast.VarDef,
+            ast.Assign,
+            ast.If,
+            ast.Pass,
+            ast.FuncDef,
+        )
+        if in_classdef and type(stmt) not in allowed:
+            STMT = type(stmt).__name__
+            raise SPyError.simple(
+                "W_SyntaxError",
+                f"`{STMT}` not supported inside a classdef",
+                "this is not supported",
+                stmt.loc,
+            )
+        return magic_dispatch(self, "compile_stmt", stmt)
+
+    def compile_body(self, body: list[ast.Stmt]) -> list[ast.Stmt]:
+        result = []
+        for stmt in body:
+            result.extend(self.compile_stmt(stmt))
+        return result
+
+    def compile_expr(self, expr: ast.Expr) -> ast.Expr:
+        return magic_dispatch(self, "compile_expr", expr)
+
+    # ===== Decl handlers =====
+
+    def compile_decl_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> ast.Decl:
+        new_funcdef = self.compile_funcdef(decl.funcdef)
+        return decl.replace(funcdef=new_funcdef)
+
+    def compile_decl_GlobalGenericFuncDef(
+        self, decl: ast.GlobalGenericFuncDef
+    ) -> ast.Decl:
+        gfuncdef = decl.funcdef
+        self.push_symtable(gfuncdef.symtable)
+        new_inner = self.compile_funcdef(gfuncdef.inner)
+        self.pop_symtable()
+        new_gfuncdef = gfuncdef.replace(inner=new_inner)
+        return decl.replace(funcdef=new_gfuncdef)
+
+    def compile_decl_GlobalGenericClassDef(
+        self, decl: ast.GlobalGenericClassDef
+    ) -> ast.Decl:
+        # GenericClassDef is basically _function_ which returns a class. So when
+        # evaluating the body we need to push:
+        #     gclassdef.symtable which contains e.g. 'T'
+        #     inner.symtable which contains the body of the class
+        gclassdef = decl.classdef
+        inner = gclassdef.inner
+        self.push_symtable(gclassdef.symtable)
+        self.push_symtable(inner.symtable)
+        new_body = self.compile_body(inner.body)
+        self.pop_symtable()
+        self.pop_symtable()
+        new_inner = inner.replace(body=new_body)
+        new_gclassdef = gclassdef.replace(inner=new_inner)
+        return decl.replace(classdef=new_gclassdef)
+
+    def compile_decl_GlobalVarDef(self, decl: ast.GlobalVarDef) -> ast.Decl:
+        new_vardef = self.compile_stmt_VarDef(decl.vardef)
+        assert isinstance(new_vardef, list) and len(new_vardef) == 1
+        assert isinstance(new_vardef[0], ast.VarDef)
+        return decl.replace(vardef=new_vardef[0])
+
+    def compile_decl_GlobalClassDef(self, decl: ast.GlobalClassDef) -> ast.Decl:
+        classdef = decl.classdef
+        self.push_symtable(classdef.symtable)
+        new_body = self.compile_body(classdef.body)
+        self.pop_symtable()
+        new_classdef = classdef.replace(body=new_body)
+        return decl.replace(classdef=new_classdef)
+
+    def compile_decl_Import(self, decl: ast.Import) -> ast.Decl:
+        return decl
+
+    # ===== FuncDef =====
+
+    def compile_funcdef(self, funcdef: ast.FuncDef) -> ast.FuncDef:
+        # decorators, arg types, return type and defaults are evaluated in the outer scope
+        new_decorators = [self.compile_expr(d) for d in funcdef.decorators]
+        new_return_type = self.compile_expr(funcdef.return_type)
+        new_args = [
+            arg.replace(type=self.compile_expr(arg.type)) for arg in funcdef.args
+        ]
+        new_defaults = [self.compile_expr(d) for d in funcdef.defaults]
+
+        # the statements of the function are evaluated in the inner scope
+        self.push_symtable(funcdef.symtable)
+        new_body = self.compile_body(funcdef.body)
+        self.pop_symtable()
+        return funcdef.replace(
+            stage="astcompiled",
+            decorators=new_decorators,
+            return_type=new_return_type,
+            args=new_args,
+            defaults=new_defaults,
+            body=new_body,
+        )
+
+    # ===== Stmt handlers =====
+    # Each handler returns list[ast.Stmt]. Usually it's a list of one,
+    # but For desugaring returns two stmts.
+
+    def compile_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
+        return [ret.replace(value=self.compile_expr(ret.value))]
+
+    def compile_stmt_Raise(self, stmt: ast.Raise) -> list[ast.Stmt]:
+        return [stmt.replace(exc=self.compile_expr(stmt.exc))]
+
+    def compile_stmt_Pass(self, stmt: ast.Pass) -> list[ast.Stmt]:
+        return [stmt]
+
+    def compile_stmt_Break(self, stmt: ast.Break) -> list[ast.Stmt]:
+        return [stmt]
+
+    def compile_stmt_Continue(self, stmt: ast.Continue) -> list[ast.Stmt]:
+        return [stmt]
+
+    def compile_stmt_VarDef(self, stmt: ast.VarDef) -> list[ast.Stmt]:
+        new_type = self.compile_expr(stmt.type)
+        new_value = self.compile_expr(stmt.value) if stmt.value is not None else None
+        return [stmt.replace(type=new_type, value=new_value)]
+
+    def compile_stmt_Assign(self, stmt: ast.Assign) -> list[ast.Stmt]:
+        if isinstance(stmt.target, ast.SingleTarget):
+            # this is a simple `x = E`:
+            #   - synthesize the equivalent `x := E` AssignExpr
+            #   - compile the AssignExpr
+            #   - wrap the result into the appropriate Stmt
+            expr: ast.Expr
+            assign: ast.Stmt
+            expr = ast.AssignExpr(stmt.loc, stmt.target.name, stmt.value)
+            expr = self.compile_expr(expr)
+            if isinstance(expr, ast.AssignExprLocal):
+                assign = ast.AssignLocal(stmt.loc, expr)
+            elif isinstance(expr, ast.AssignExprCell):
+                assign = ast.AssignCell(stmt.loc, expr)
+            elif isinstance(expr, ast.AssignExprConstError):
+                assign = ast.AssignConstError(stmt.loc, expr)
+            else:
+                assert False, "unknown AssignExpr node"
+            return [assign]
+
+        elif isinstance(stmt.target, ast.UnpackTarget):
+            # TODO: support nested unpack targets (e.g. (a, (b, c)) = ...)
+            targets = []
+            for t in stmt.target.targets:
+                if isinstance(t, ast.SingleTarget):
+                    targets.append(t.name)
+                else:
+                    raise WIP("nested unpack targets are not supported yet")
+            return [
+                ast.AssignUnpack(
+                    loc=stmt.loc,
+                    targets=targets,
+                    value=self.compile_expr(stmt.value),
+                )
+            ]
+
+        else:
+            assert False
+
+    def compile_stmt_ClassDef(self, stmt: ast.ClassDef) -> list[ast.Stmt]:
+        self.push_symtable(stmt.symtable)
+        new_body = self.compile_body(stmt.body)
+        self.pop_symtable()
+        return [stmt.replace(body=new_body)]
+
+    def compile_stmt_FuncDef(self, stmt: ast.FuncDef) -> list[ast.Stmt]:
+        return [self.compile_funcdef(stmt)]
+
+    def compile_stmt_For(self, stmt: ast.For) -> list[ast.Stmt]:
+        # desugar:
+        #   for i in X:
+        #       body
+        # into:
+        #   it = X.__fastiter__()
+        #   while it.__continue_iteration__():
+        #       i = it.__item__()
+        #       it = it.__next__()
+        #       body
+        loc = stmt.loc
+        # use non-colorize locs for synthetic nodes, to avoid painting over user nodes
+        iter_loc = stmt.iter.loc.replace(colorize=False)
+        target_loc = stmt.target.loc.replace(colorize=False)
+        iter_name = f"_$iter{stmt.seq}"
+        iter_target = ast.SingleTarget(iter_loc, ast.StrLiteral(iter_loc, iter_name))
+        iter_name_node = ast.Name(loc=iter_loc, id=iter_name)
+
+        init_iter = ast.Assign(
+            loc=iter_loc,
+            target=iter_target,
+            value=ast.CallMethod(
+                loc=iter_loc,
+                target=stmt.iter,
+                method=ast.StrLiteral(iter_loc, "__fastiter__"),
+                args=[],
+            ),
+        )
+        assign_item = ast.Assign(
+            loc=target_loc,
+            target=ast.SingleTarget(target_loc, stmt.target),
+            value=ast.CallMethod(
+                loc=target_loc,
+                target=iter_name_node,
+                method=ast.StrLiteral(target_loc, "__item__"),
+                args=[],
+            ),
+        )
+        advance_iter = ast.Assign(
+            loc=iter_loc,
+            target=iter_target,
+            value=ast.CallMethod(
+                loc=iter_loc,
+                target=iter_name_node,
+                method=ast.StrLiteral(iter_loc, "__next__"),
+                args=[],
+            ),
+        )
+        while_loop = ast.While(
+            loc=loc,
+            test=ast.CallMethod(
+                loc=iter_loc,
+                target=iter_name_node,
+                method=ast.StrLiteral(iter_loc, "__continue_iteration__"),
+                args=[],
+            ),
+            body=[assign_item, advance_iter] + stmt.body,
+        )
+        compiled_init = self.compile_stmt(init_iter)
+        compiled_while = self.compile_stmt(while_loop)
+        return compiled_init + compiled_while
+
+    def compile_stmt_AugAssign(self, stmt: ast.AugAssign) -> list[ast.Stmt]:
+        # desugar "x += 1" into "x = x + 1" and compile the result.
+        # use non-colorize locs for synthetic nodes, to avoid painting over user nodes
+        binop_loc = stmt.loc.replace(colorize=False)
+        target_loc = stmt.target.loc.replace(colorize=False)
+        desugared = ast.Assign(
+            loc=stmt.loc,
+            target=ast.SingleTarget(target_loc, stmt.target),
+            value=ast.BinOp(
+                loc=binop_loc,
+                op=stmt.op,
+                left=ast.Name(loc=target_loc, id=stmt.target.value),
+                right=stmt.value,
+            ),
+        )
+        return self.compile_stmt(desugared)
+
+    def compile_stmt_AugSetAttr(self, stmt: ast.AugSetAttr) -> list[ast.Stmt]:
+        target_loc = stmt.target.loc.replace(colorize=False)
+        value_loc = stmt.loc.replace(colorize=False)
+        target_name = f"_$aug_target{stmt.seq}"
+        target = ast.SingleTarget(
+            target_loc,
+            ast.StrLiteral(target_loc, target_name),
+        )
+        desugared: list[ast.Stmt] = [
+            ast.Assign(loc=target_loc, target=target, value=stmt.target),
+            ast.SetAttr(
+                loc=stmt.loc,
+                target=ast.Name(loc=target_loc, id=target_name),
+                attr=stmt.attr,
+                value=ast.BinOp(
+                    loc=value_loc,
+                    op=stmt.op,
+                    left=ast.GetAttr(
+                        loc=target_loc,
+                        value=ast.Name(loc=target_loc, id=target_name),
+                        attr=stmt.attr,
+                    ),
+                    right=stmt.value,
+                ),
+            ),
+        ]
+        return self.compile_body(desugared)
+
+    def compile_stmt_AugSetItem(self, stmt: ast.AugSetItem) -> list[ast.Stmt]:
+        target_loc = stmt.target.loc.replace(colorize=False)
+        value_loc = stmt.loc.replace(colorize=False)
+        target_name = f"_$aug_target{stmt.seq}"
+        target = ast.SingleTarget(
+            target_loc,
+            ast.StrLiteral(target_loc, target_name),
+        )
+        desugared: list[ast.Stmt] = [
+            ast.Assign(loc=target_loc, target=target, value=stmt.target)
+        ]
+        arg_names = []
+        for i, arg in enumerate(stmt.args):
+            arg_loc = arg.loc.replace(colorize=False)
+            arg_name = f"_$aug_arg{stmt.seq}_{i}"
+            arg_names.append((arg_name, arg_loc))
+            desugared.append(
+                ast.Assign(
+                    loc=arg_loc,
+                    target=ast.SingleTarget(
+                        arg_loc,
+                        ast.StrLiteral(arg_loc, arg_name),
+                    ),
+                    value=arg,
+                )
+            )
+
+        def make_args() -> list[ast.Expr]:
+            return [ast.Name(loc=loc, id=name) for name, loc in arg_names]
+
+        desugared.append(
+            ast.SetItem(
+                loc=stmt.loc,
+                target=ast.Name(loc=target_loc, id=target_name),
+                args=make_args(),
+                value=ast.BinOp(
+                    loc=value_loc,
+                    op=stmt.op,
+                    left=ast.GetItem(
+                        loc=target_loc,
+                        value=ast.Name(loc=target_loc, id=target_name),
+                        args=make_args(),
+                    ),
+                    right=stmt.value,
+                ),
+            )
+        )
+        return self.compile_body(desugared)
+
+    def compile_stmt_SetItem(self, stmt: ast.SetItem) -> list[ast.Stmt]:
+        return [
+            stmt.replace(
+                target=self.compile_expr(stmt.target),
+                args=[self.compile_expr(a) for a in stmt.args],
+                value=self.compile_expr(stmt.value),
+            )
+        ]
+
+    def compile_stmt_SetAttr(self, stmt: ast.SetAttr) -> list[ast.Stmt]:
+        return [
+            stmt.replace(
+                target=self.compile_expr(stmt.target),
+                value=self.compile_expr(stmt.value),
+            )
+        ]
+
+    def compile_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> list[ast.Stmt]:
+        return [stmt.replace(value=self.compile_expr(stmt.value))]
+
+    def compile_stmt_While(self, stmt: ast.While) -> list[ast.Stmt]:
+        return [
+            stmt.replace(
+                test=self.compile_expr(stmt.test),
+                body=self.compile_body(stmt.body),
+            )
+        ]
+
+    def compile_stmt_Assert(self, stmt: ast.Assert) -> list[ast.Stmt]:
+        new_msg = self.compile_expr(stmt.msg) if stmt.msg is not None else None
+        return [
+            stmt.replace(
+                test=self.compile_expr(stmt.test),
+                msg=new_msg,
+            )
+        ]
+
+    def compile_stmt_If(self, stmt: ast.If) -> list[ast.Stmt]:
+        return [
+            stmt.replace(
+                test=self.compile_expr(stmt.test),
+                then_body=self.compile_body(stmt.then_body),
+                else_body=self.compile_body(stmt.else_body),
+            )
+        ]
+
+    # ===== Expr handlers =====
+
+    def compile_expr_Auto(self, auto: ast.Auto) -> ast.Expr:
+        return auto
+
+    def compile_expr_FQNConst(self, expr: ast.FQNConst) -> ast.Expr:
+        return expr
+
+    def compile_expr_StrLiteral(self, lit: ast.StrLiteral) -> ast.Expr:
+        return lit
+
+    def compile_expr_BytesLiteral(self, lit: ast.BytesLiteral) -> ast.Expr:
+        return lit
+
+    def compile_expr_BinOp(self, expr: ast.BinOp) -> ast.Expr:
+        return expr.replace(
+            left=self.compile_expr(expr.left),
+            right=self.compile_expr(expr.right),
+        )
+
+    def compile_expr_CmpOp(self, expr: ast.CmpOp) -> ast.Expr:
+        return expr.replace(
+            left=self.compile_expr(expr.left),
+            right=self.compile_expr(expr.right),
+        )
+
+    def compile_expr_Literal(self, expr: ast.Literal) -> ast.Expr:
+        return expr
+
+    def compile_expr_Slice(self, expr: ast.Slice) -> ast.Expr:
+        return expr.replace(
+            start=self.compile_expr(expr.start),
+            stop=self.compile_expr(expr.stop),
+            step=self.compile_expr(expr.step),
+        )
+
+    def compile_expr_GetItem(self, expr: ast.GetItem) -> ast.Expr:
+        return expr.replace(
+            value=self.compile_expr(expr.value),
+            args=[self.compile_expr(a) for a in expr.args],
+        )
+
+    def compile_expr_GetAttr(self, expr: ast.GetAttr) -> ast.Expr:
+        return expr.replace(value=self.compile_expr(expr.value))
+
+    def compile_expr_UnaryOp(self, expr: ast.UnaryOp) -> ast.Expr:
+        return expr.replace(value=self.compile_expr(expr.value))
+
+    def compile_expr_And(self, expr: ast.And) -> ast.Expr:
+        return expr.replace(
+            left=self.compile_expr(expr.left),
+            right=self.compile_expr(expr.right),
+        )
+
+    def compile_expr_Or(self, expr: ast.Or) -> ast.Expr:
+        return expr.replace(
+            left=self.compile_expr(expr.left),
+            right=self.compile_expr(expr.right),
+        )
+
+    def compile_expr_CallMethod(self, expr: ast.CallMethod) -> ast.Expr:
+        return expr.replace(
+            target=self.compile_expr(expr.target),
+            args=[self.compile_expr(a) for a in expr.args],
+        )
+
+    def compile_expr_Call(self, expr: ast.Call) -> ast.Expr:
+        return expr.replace(
+            func=self.compile_expr(expr.func),
+            args=[self.compile_expr(arg) for arg in expr.args],
+        )
+
+    def compile_expr_List(self, expr: ast.List) -> ast.Expr:
+        return expr.replace(items=[self.compile_expr(item) for item in expr.items])
+
+    def compile_expr_Tuple(self, expr: ast.Tuple) -> ast.Expr:
+        return expr.replace(items=[self.compile_expr(item) for item in expr.items])
+
+    def compile_expr_Dict(self, expr: ast.Dict) -> ast.Expr:
+        new_items = [
+            item.replace(
+                key=self.compile_expr(item.key), value=self.compile_expr(item.value)
+            )
+            for item in expr.items
+        ]
+        return expr.replace(items=new_items)
+
+    def compile_expr_BlockExpr(self, expr: ast.BlockExpr) -> ast.Expr:
+        return expr.replace(
+            body=self.compile_body(expr.body),
+            value=self.compile_expr(expr.value),
+        )
+
+    def compile_expr_AssignExpr(self, expr: ast.AssignExpr) -> ast.Expr:
+        target = expr.target
+        sym = self.symtable.lookup(target.value)
+        value = self.compile_expr(expr.value)
+
+        if sym.varkind == "const" and sym.varkind_origin != "auto":
+            # this is an error, let's insert the appropriate poison node
+            return ast.AssignExprConstError(expr.loc, sym, target.loc)
+
+        if sym.storage == "direct":
+            assert sym.is_local
+            return ast.AssignExprLocal(expr.loc, target, sym, value)
+
+        elif sym.storage == "cell":
+            assert not sym.is_local
+            return ast.AssignExprCell(
+                loc=expr.loc,
+                target=target,
+                target_fqn=None,
+                sym=sym,
+                value=value,
+            )
+
+        else:
+            assert False, f"unexpected storage: {sym.storage!r}"
+
+    def compile_expr_Name(self, name: ast.Name) -> ast.Expr:
+        varname = name.id
+        sym = self.symtable.lookup_maybe(varname)
+        if sym is None:
+            # sym can be None ONLY in interactive mode (i.e. an expression typed at
+            # the SPdb prompt, compiled against the symtable of a live frame), else
+            # it means that there is a bug in symtable.
+            assert self.interactive, "sym not found"
+            return ast.NameInteractive(name.loc, name.id)
+
+        if sym.impref is not None:
+            return ast.NameImportRef(name.loc, sym)
+        elif sym.storage == "direct" and sym.is_local:
+            return ast.NameLocalDirect(name.loc, sym)
+        elif sym.storage == "direct":
+            return ast.NameOuterDirect(name.loc, sym)
+        elif sym.storage == "cell" and sym.is_local:
+            return ast.NameLocalCell(name.loc, sym)
+        elif sym.storage == "cell" and not sym.is_local:
+            return ast.NameOuterCell(name.loc, sym, fqn=None)
+        elif sym.storage == "NameError":
+            return ast.NameError(name.loc, name.id)
+        else:
+            assert False, f"unexpected storage: {sym.storage!r}"

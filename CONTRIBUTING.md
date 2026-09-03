@@ -11,6 +11,10 @@ Thanks for helping improve SPy! Follow these quick steps:
   cd spy
   ```
 
+- Install the native prerequisite: [bdw-gc](https://www.hboehm.info/gc/) (the
+  Boehm-Demers-Weiser garbage collector), e.g. `libgc-dev` on Debian/Ubuntu
+  (`apt install libgc-dev`) or `bdw-gc` on macOS (`brew install bdw-gc`)
+
 - Create the virtualenv and install SPy with its dev dependencies
 
   ```bash

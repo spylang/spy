@@ -82,7 +82,7 @@ def linearize(vm: "SPyVM", w_func: W_ASTFunc) -> W_ASTFunc:
     """
     Run the linearize pass on the given already-redshifted function.
     """
-    assert w_func.lowering_stage == "redshift", "linearize must run after redshift"
+    assert w_func.stage == "redshifted", "linearize must run after redshift"
     lin = Linearizer(vm, w_func)
     return lin.linearize()
 
@@ -110,7 +110,9 @@ class Linearizer:
         funcdef = self.w_func.funcdef
         new_body = self.rewrite_body(funcdef.body)
         new_symtable = self._copy_symtable(funcdef.symtable)
-        new_funcdef = funcdef.replace(body=new_body, symtable=new_symtable)
+        new_funcdef = funcdef.replace(
+            stage="linearized", body=new_body, symtable=new_symtable
+        )
 
         assert self.w_func.locals_types_w is not None
         new_locals_types_w = dict(self.w_func.locals_types_w)
@@ -122,7 +124,7 @@ class Linearizer:
             w_functype=self.w_func.w_functype,
             funcdef=new_funcdef,
             defaults_w=self.w_func.defaults_w,
-            lowering_stage="linearize",
+            stage="linearized",
             locals_types_w=new_locals_types_w,
             is_force_inline=self.w_func.is_force_inline,
         )
@@ -168,8 +170,13 @@ class Linearizer:
         self.hoisted.append(
             ast.AssignLocal(
                 loc=loc,
-                target=ast.StrLiteral(loc, name),
-                value=expr,
+                expr=ast.AssignExprLocal(
+                    loc=loc,
+                    target=ast.StrLiteral(loc, name),
+                    sym=sym,
+                    value=expr,
+                    w_T=expr.w_T,
+                ),
             )
         )
         return ast.NameLocalDirect(loc=loc, sym=sym, w_T=expr.w_T)
@@ -211,19 +218,24 @@ class Linearizer:
         return [vardef.replace(value=new_value)]
 
     def rewrite_stmt_AssignLocal(self, assign: ast.AssignLocal) -> list[ast.Stmt]:
-        to_spill = self.mark_to_spill([assign.value])
-        new_value = self.rewrite_expr(assign.value, to_spill)
-        return [assign.replace(value=new_value)]
+        to_spill = self.mark_to_spill([assign.expr.value])
+        new_value = self.rewrite_expr(assign.expr.value, to_spill)
+        return [assign.replace(expr=assign.expr.replace(value=new_value))]
 
-    def rewrite_stmt_UnpackAssign(self, assign: ast.UnpackAssign) -> list[ast.Stmt]:
+    def rewrite_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
         to_spill = self.mark_to_spill([assign.value])
         new_value = self.rewrite_expr(assign.value, to_spill)
         return [assign.replace(value=new_value)]
 
     def rewrite_stmt_AssignCell(self, assign: ast.AssignCell) -> list[ast.Stmt]:
-        to_spill = self.mark_to_spill([assign.value])
-        new_value = self.rewrite_expr(assign.value, to_spill)
-        return [assign.replace(value=new_value)]
+        to_spill = self.mark_to_spill([assign.expr.value])
+        new_value = self.rewrite_expr(assign.expr.value, to_spill)
+        return [assign.replace(expr=assign.expr.replace(value=new_value))]
+
+    def rewrite_stmt_AssignUnpack(self, unpack: ast.AssignUnpack) -> list[ast.Stmt]:
+        to_spill = self.mark_to_spill([unpack.value])
+        new_value = self.rewrite_expr(unpack.value, to_spill)
+        return [unpack.replace(value=new_value)]
 
     def rewrite_stmt_Pass(self, stmt: ast.Pass) -> list[ast.Stmt]:
         return [stmt]
@@ -301,7 +313,7 @@ class Linearizer:
     #   - pure: no side effects, no dependence on mutable state; never spilled.
     #
     #   - names: trivially side-effect free, but they are not pure because earlier calls
-    #     might modifiy their value. The gets added to `pending_spills`
+    #     might modify their value. The gets added to `pending_spills`
     #
     #   - side-effecting (impure Call, or anything not whitelisted): acts
     #     as a sequence point. Promote ``pending_spills`` into ``to_spill``
@@ -408,14 +420,24 @@ class Linearizer:
         assert op.w_T is not None
         name, sym = self.fresh_tmp(op.w_T, loc)
         target = ast.StrLiteral(loc, name)
-        assign_rhs = ast.AssignLocal(loc=loc, target=target, value=new_right)
+        assign_rhs = ast.AssignLocal(
+            loc=loc,
+            expr=ast.AssignExprLocal(
+                loc=loc, target=target, sym=sym, value=new_right, w_T=op.w_T
+            ),
+        )
 
         # new_left is used as both the if-test and the value for the
         # short-circuit branch; spill it if needed so it is only evaluated once.
         # Names are safe to reuse without spilling (reading a name is not a call).
         if not isinstance(new_left, self.NAME_EXPRS):
             new_left = self.spill(new_left)
-        assign_left = ast.AssignLocal(loc=loc, target=target, value=new_left)
+        assign_left = ast.AssignLocal(
+            loc=loc,
+            expr=ast.AssignExprLocal(
+                loc=loc, target=target, sym=sym, value=new_left, w_T=op.w_T
+            ),
+        )
 
         if kind == "and":
             then_body: list[ast.Stmt] = rhs_hoisted + [assign_rhs]

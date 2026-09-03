@@ -58,7 +58,7 @@ def colorize_mod(
     Return the original (pre-redshift) AST module.
     """
     importer = ImportAnalyzer(vm, modname, use_spyc=use_spyc)
-    importer.parse_all()
+    importer.astcompile_all()
     orig_mod = importer.getmod(modname)
     importer.import_all()
     vm.ast_color_map = {}

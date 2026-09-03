@@ -40,6 +40,23 @@ class TestTange(CompilerTest):
         x = mod.foo()
         assert x == 3
 
+    def test_len_blue(self):
+        mod = self.compile("""
+        @blue
+        def get_tup():
+            return (1, "hi")
+
+        @blue
+        def assert_blue(x):
+            return x
+
+        def foo() -> i32:
+            a = get_tup()
+            return assert_blue(len(a))
+        """)
+        x = mod.foo()
+        assert x == 2
+
     def test_eq(self):
         mod = self.compile("""
         def tup1() -> tuple[int, int]:

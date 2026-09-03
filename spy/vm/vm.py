@@ -194,7 +194,7 @@ class SPyVM:
             return self.modules_w[modname]
 
         importer = ImportAnalyzer(self, modname)
-        importer.parse_all()
+        importer.astcompile_all()
         # importer.pp()
         importer.import_all()
         w_mod = self.modules_w[modname]
@@ -207,7 +207,7 @@ class SPyVM:
 
         def should_redshift(w_func: W_ASTFunc) -> bool:
             # we don't want to redshift @blue functions
-            return w_func.color != "blue" and w_func.lowering_stage == "source"
+            return w_func.color != "blue" and w_func.stage == "astcompiled"
 
         def get_funcs() -> Iterable[tuple[FQN, W_ASTFunc]]:
             for fqn, w_func in self.globals_w.items():
@@ -227,9 +227,9 @@ class SPyVM:
     ) -> None:
         for fqn, w_func in funcs:
             assert w_func.color != "blue"
-            assert w_func.lowering_stage == "source"
+            assert w_func.stage == "astcompiled"
             w_newfunc = redshift(self, w_func, error_mode)
-            assert w_newfunc.lowering_stage == "redshift"
+            assert w_newfunc.stage == "redshifted"
             self.globals_w[fqn] = w_newfunc
 
     def linearize_all(self) -> None:
@@ -237,7 +237,7 @@ class SPyVM:
         Apply the linearize pass to all redshifted W_ASTFuncs.
         """
         for fqn, w_obj in list(self.globals_w.items()):
-            if isinstance(w_obj, W_ASTFunc) and w_obj.lowering_stage == "redshift":
+            if isinstance(w_obj, W_ASTFunc) and w_obj.stage == "redshifted":
                 self.globals_w[fqn] = linearize(self, w_obj)
 
     def register_module(self, w_mod: W_Module) -> None:
@@ -430,7 +430,7 @@ class SPyVM:
         cannot call it directly, but you need to use vm.call.
 
         Registering a function with a FQN which is already in use is an
-        error. Howver, it is explicitly allowed to register the SAME function
+        error. However, it is explicitly allowed to register the SAME function
         with the SAME FQN multiple times. This is needed to allow this
         pattern:
 
@@ -497,7 +497,7 @@ class SPyVM:
             # already have
             w_func = self.lookup_global(w_val.fqn)
             assert isinstance(w_func, W_ASTFunc)
-            assert w_func.lowering_stage != "source"
+            assert w_func.stage != "parsed"
             return w_val.fqn
         elif isinstance(w_val, W_BuiltinFunc):
             # ideally, I'd like ALL builtin funcs to be created with
@@ -507,7 +507,7 @@ class SPyVM:
             # However, this is not easily achievable at the moment, because we
             # create all module-level builtin functions AND all the
             # @builtin_method with make_builtin_func, bypassing the
-            # @vm.register_builtin_func pass. This happens becuse we don't
+            # @vm.register_builtin_func pass. This happens because we don't
             # have a vm available at that point, so it would require some
             # serious refactoring.
             fqn = w_val.fqn
@@ -682,7 +682,7 @@ class SPyVM:
 
     def wrap(self, value: Any) -> W_Object:
         """
-        Useful for tests: magic funtion which wraps the given interp-level
+        Useful for tests: magic function which wraps the given interp-level
         object into the most appropriate app-level W_* object.
         """
         T = type(value)
@@ -763,7 +763,7 @@ class SPyVM:
 
     def unwrap(self, w_value: W_Object) -> Any:
         """
-        Useful for tests: magic funtion which wraps the given app-level w_
+        Useful for tests: magic function which wraps the given app-level w_
         object into the most appropriate interp-level object. Opposite of
         wrap().
         """

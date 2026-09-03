@@ -6,6 +6,9 @@ repos:
       - id: check-toml # checks toml files for parseable syntax.
       - id: check-xml # checks xml files for parseable syntax.
       - id: check-yaml # checks yaml files for parseable syntax.
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+        exclude: ^examples/expected_output/
   # 🧹 Ruff for linting, import sorting, and formatting
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.14.0
@@ -21,3 +24,12 @@ repos:
         files: ^spy/libspy
         types_or: [c, c++]
         exclude: ^spy/libspy/vendored/
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.4.2
+    hooks:
+      - id: codespell
+        args:
+          [
+            "--ignore-words-list",
+            "nd,NotIn",
+          ]

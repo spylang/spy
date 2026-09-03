@@ -26,7 +26,7 @@ dev = [
     "ruff~=0.14.0",
     "mypy==1.15.0",
     "types-pexpect==4.9.0.20250516; sys_platform != 'emscripten'",
-    # the followings are needed for "tests/compiler/test_cffi.py"
+    # the following are needed for "tests/compiler/test_cffi.py"
     "cffi",
     "setuptools",
     "pyperclip>=1.10",
@@ -60,6 +60,14 @@ spy = "spy.cli:pyproject_entry_point"
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+
+[tool.uv]
+# Instruct uv to never use the system Python installations.
+# This is to avoid errors during CFFI tests (i.e. when building
+# a native extension) when the system Python doesn't contain the
+# Python C headers (e.g. `python3-dev` package not installed).
+# See: https://github.com/spylang/spy/issues/621
+python-preference = "only-managed"
 
 [tool.setuptools]
 include-package-data = true

@@ -4,7 +4,6 @@ from typing import Optional
 import py.path
 
 from spy.build.config import BuildConfig, CompilerConfig
-from spy.errors import WIP
 from spy.textbuilder import TextBuilder
 from spy.util import robust_run
 
@@ -37,12 +36,6 @@ class NinjaWriter:
     out: Optional[str]
 
     def __init__(self, config: BuildConfig, build_dir: py.path.local) -> None:
-        # for now, we support only some combinations of target/kind
-        if config.kind == "lib":
-            if config.target not in ("wasi", "emscripten"):
-                raise WIP(
-                    "--output-kind=lib works only for wasi and emscripten targets"
-                )
         self.config = config
         self.build_dir = build_dir
         self.out = None
@@ -60,7 +53,7 @@ class NinjaWriter:
     ) -> None:
         comp = CompilerConfig(self.config)
         self.out = basename + comp.ext
-        if self.config.kind == "lib":
+        if self.config.kind == "testlib":
             comp.ldflags += [f"-Wl,--export={name}" for name in wasm_exports]
         for d in extra_include_dirs:
             comp.cflags += ["-I", d]

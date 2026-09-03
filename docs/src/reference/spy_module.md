@@ -15,7 +15,7 @@ The contents of the `__spy__` module and SPy's builtins form the API surface of 
 :   Returns the current color of the passed expression. Mainly useful in tests, but may be useful to give users a view into the color of expressions during development.
 
 ### __as_red__(object) { #markdown data-toc-label='as_red()' }
-:   If `object` is a reference type (e.g. strings, int, etc.), `as_red` simply changes the passed object's color to red. If `object` is a value type, returns a copy of the object as a red object. 
+:   If `object` is a reference type (e.g. strings, int, etc.), `as_red` simply changes the passed object's color to red. If `object` is a value type, returns a copy of the object as a red object.
 
 : May be useful during metaprograming ensure that blue objects which are equal do not get optimized into the same object at redshift time. See, for example, the [implementation of `exal_expr_List`](https://github.com/spylang/spy/blob/main/spy/vm/astframe.py#L1161).
 
