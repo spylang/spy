@@ -49,7 +49,7 @@ typedef struct spy_unsafe$gc_ptr___bytes$BytesObject {
 #endif
 } spy_unsafe$gc_ptr___bytes$BytesObject;
 
-SPY_PTR_FUNCTIONS(gc, spy_unsafe$gc_ptr___bytes$BytesObject, spy_BytesObject)
+SPY_PTR_FUNCTIONS(gc_alloc, spy_unsafe$gc_ptr___bytes$BytesObject, spy_BytesObject)
 #define spy_unsafe$gc_ptr___bytes$BytesObject$NULL                                     \
     ((spy_unsafe$gc_ptr___bytes$BytesObject){0})
 
