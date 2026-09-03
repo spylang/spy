@@ -462,6 +462,30 @@ class TestStr(CompilerTest):
         assert mod.upper("ABC123") == "ABC123"
         assert mod.upper("") == ""
 
+    def test_strip(self):
+        src = """
+        def strip(s: str) -> str:
+            return s.strip()
+
+        def strip_chars(s: str, chars: str) -> str:
+            return s.strip(chars)
+        """
+        mod = self.compile(src)
+        # no-args
+        assert mod.strip("  hello  ") == "hello"
+        assert mod.strip("hello") == "hello"
+        assert mod.strip("   ") == ""
+        assert mod.strip("") == ""
+        assert mod.strip("\t\n hello \t\n") == "hello"
+        assert mod.strip(" \t\r\n") == ""
+        # with chars
+        assert mod.strip_chars("xxhelloxx", "x") == "hello"
+        assert mod.strip_chars("abchelloabc", "abc") == "hello"
+        assert mod.strip_chars("xyxhelloxyx", "xy") == "hello"
+        assert mod.strip_chars("hello", "") == "hello"
+        assert mod.strip_chars("hello", "xyz") == "hello"
+        assert mod.strip_chars("aaaa", "a") == ""
+
     def test_str_replace(self):
         mod = self.compile("""
         def foo(s: str, old: str, new: str) -> str:

@@ -1,0 +1,4 @@
+Original: 
+    Something important with whitespaces.   
+Stripped: 
+Something important with whitespaces.
