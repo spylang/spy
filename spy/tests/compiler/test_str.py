@@ -129,6 +129,32 @@ class TestStr(CompilerTest):
         assert mod.split_whitespace("  a    b   c   ") == ["a", "b", "c"]
         assert mod.split_whitespace("\n\ta \t\r b \v ") == ["a", "b"]
 
+    def test_join(self):
+        mod = self.compile("""
+            def join_words(sep: str) -> str:
+                return sep.join(["a", "b", "c"])
+
+            def join_single(sep: str) -> str:
+                return sep.join(["one"])
+
+            def join_empty(sep: str) -> str:
+                return sep.join([])
+
+            def join_empty_items(sep: str) -> str:
+                return sep.join(["", "a", "", "b", ""])
+
+            def split_then_join(s: str) -> str:
+                return " ".join(s.split())
+        """)
+
+        assert mod.join_words(" ") == "a b c"
+        assert mod.join_words("") == "abc"
+        assert mod.join_words("-") == "a-b-c"
+        assert mod.join_single("x") == "one"
+        assert mod.join_empty("-") == ""
+        assert mod.join_empty_items(",") == ",a,,b,"
+        assert mod.split_then_join("hello  world  from spy") == "hello world from spy"
+
     def test_find(self):
         mod = self.compile("""
             def find(s: str, sub: str) -> i32:
