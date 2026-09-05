@@ -121,7 +121,7 @@ def make_builtin_func(
     assert isinstance(namespace, FQN)
     fqn = namespace.join(fname, qualifiers)
 
-    if kind == "metafunc" and color != "blue":
+    if kind in ("metafunc", "generic_metafunc") and color != "blue":
         msg = f"wrong color for metafunc `{fqn.debug_human_name}`: expected `blue`, got `{color}`"
         raise SPyError("W_TypeError", msg)
 

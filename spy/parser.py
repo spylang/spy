@@ -229,6 +229,9 @@ class Parser:
             elif d == "blue.metafunc":
                 color = "blue"
                 func_kind = "metafunc"
+            elif d == "blue.generic_metafunc":
+                color = "blue"
+                func_kind = "generic_metafunc"
             else:
                 # other decorators are stored as general decorators
                 decorators.append(self.from_py_expr(deco))

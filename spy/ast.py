@@ -64,7 +64,7 @@ LoweringStage = typing.Literal[
 
 
 ClassKind = typing.Literal["class", "struct"]
-FuncKind = typing.Literal["plain", "generic", "metafunc"]
+FuncKind = typing.Literal["plain", "generic", "metafunc", "generic_metafunc"]
 FuncParamKind = typing.Literal["simple", "var_positional"]
 
 

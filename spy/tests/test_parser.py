@@ -503,6 +503,33 @@ class TestParser:
         """
         self.assert_dump(funcdef, expected)
 
+    def test_blue_generic_metafunc_FuncDef(self):
+        mod = self.parse("""
+        @blue.generic_metafunc
+        def foo() -> i32:
+            return 42
+        """)
+        funcdef = mod.get_funcdef("foo")
+        expected = """
+        FuncDef(
+            stage='parsed',
+            color='blue',
+            kind='generic_metafunc',
+            name='foo',
+            args=[],
+            return_type=Name(id='i32'),
+            defaults=[],
+            docstring=None,
+            body=[
+                Return(
+                    value=Literal(value=42),
+                ),
+            ],
+            decorators=[],
+        )
+        """
+        self.assert_dump(funcdef, expected)
+
     def test_FuncDef_prototype_loc(self):
         # blue functions without return type, are parsed as if they had a
         # synthetic '-> dynamic' annotation. We also need to generate a

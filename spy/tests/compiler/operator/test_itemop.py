@@ -128,3 +128,34 @@ class TestItemop(CompilerTest):
         assert mod.set_and_get(0, 2, 24) == 24
         assert mod.set_and_get(2, 1, 99) == 99
         assert mod.get_default(1, 2) == 0
+
+    def test_generic_metafunc_getitem(self):
+        EXT = ModuleRegistry("ext")
+
+        @EXT.builtin_func(color="blue", kind="generic_metafunc")
+        def w_make_adder(
+            vm: "SPyVM", wam_x: W_MetaArg, *rest_wam: W_MetaArg
+        ) -> W_OpSpec:
+            if rest_wam:
+                wam_y = rest_wam[0]
+            else:
+                wam_y = W_MetaArg.from_w_obj(vm, vm.wrap(100), color="blue")
+
+            @vm.register_builtin_func(EXT.fqn.join("make_adder"), "impl")
+            def w_impl(vm: "SPyVM", w_x: W_I32, w_y: W_I32) -> W_I32:
+                return vm.wrap(vm.unwrap_i32(w_x) + vm.unwrap_i32(w_y))
+
+            return W_OpSpec(w_impl, [wam_x, wam_y])
+
+        self.vm.make_module(EXT)
+        mod = self.compile("""
+        from ext import make_adder
+
+        def with_default(x: i32) -> i32:
+            return make_adder[x]
+
+        def with_explicit_y(x: i32, y: i32) -> i32:
+            return make_adder[x, y]
+        """)
+        assert mod.with_default(5) == 105
+        assert mod.with_explicit_y(5, 6) == 11
