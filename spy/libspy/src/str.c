@@ -110,9 +110,9 @@ spy_builtins$f64$__str__(double x) {
     return spy_str_from_format("%g", x);
 }
 
-/* Ryu finds the shortest digits but always renders them in scientific notation.
-   Reformat those digits to match CPython's repr conventions without changing the
-   round-trippable value. */
+/* Ryu's f2s_buffered_n finds the shortest round-trippable digits and renders
+   finite nonzero values in scientific notation. Reformat those digits to match
+   CPython's repr conventions without changing the represented value. */
 static size_t
 spy_normalize_ryu_f32(char *out, char *raw) {
     /* Ryu uses Java-style names for non-finite values, while CPython uses these
