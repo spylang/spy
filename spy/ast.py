@@ -65,7 +65,7 @@ LoweringStage = typing.Literal[
 
 ClassKind = typing.Literal["class", "struct"]
 FuncKind = typing.Literal["plain", "generic", "metafunc"]
-FuncParamKind = typing.Literal["simple", "var_positional"]
+FuncParamKind = typing.Literal["simple", "var_positional", "optional"]
 
 
 @extend(py_ast.AST)

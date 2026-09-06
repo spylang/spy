@@ -4,7 +4,7 @@ from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_I32
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
-from spy.vm.w import W_Object
+from spy.vm.w import W_Object, W_Type
 
 
 class W_MyClass(W_Object):
@@ -128,3 +128,27 @@ class TestItemop(CompilerTest):
         assert mod.set_and_get(0, 2, 24) == 24
         assert mod.set_and_get(2, 1, 99) == 99
         assert mod.get_default(1, 2) == 0
+
+    def test_generic_builtin_func_with_optional_arg(self):
+        EXT = ModuleRegistry("ext")
+
+        @EXT.builtin_func(color="blue", kind="generic")
+        def w_scaled(vm: "SPyVM", w_T: W_Type, w_N: W_I32 | None = None) -> W_I32:
+            if w_N is None:
+                n = 100
+            else:
+                n = vm.unwrap_i32(w_N)
+            return vm.wrap(n)
+
+        self.vm.make_module(EXT)
+        mod = self.compile("""
+        from ext import scaled
+
+        def with_default() -> i32:
+            return scaled[i32]
+
+        def with_explicit_n() -> i32:
+            return scaled[i32, 42]
+        """)
+        assert mod.with_default() == 100
+        assert mod.with_explicit_n() == 42

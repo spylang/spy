@@ -174,18 +174,14 @@ class W_FuncType(W_Type):
     def arity(self) -> int:
         """
         Return the *minimum* number of arguments expected by the function.
-        In case of varargs, it's the number of non-varargs parameters.
         """
-        if self.has_varargs:
-            return len(self.params) - 1
-        else:
-            return len(self.params)
+        return sum(1 for p in self.params if p.kind == "simple")
 
     def is_argcount_ok(self, n: int) -> bool:
         if self.has_varargs:
             return n >= self.arity
         else:
-            return n == self.arity
+            return self.arity <= n <= len(self.params)
 
     def all_params(self) -> Iterator[FuncParam]:
         """

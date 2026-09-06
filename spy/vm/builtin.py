@@ -71,7 +71,10 @@ def to_spy_FuncParam(p: Any, extra_types: TYPES_DICT) -> FuncParam:
     w_T = to_spy_type(annotation)
     kind: FuncParamKind
     if p.kind == p.POSITIONAL_OR_KEYWORD:
-        kind = "simple"
+        if p.default is not inspect.Parameter.empty:
+            kind = "optional"
+        else:
+            kind = "simple"
     elif p.kind == p.VAR_POSITIONAL:
         kind = "var_positional"
     else:
