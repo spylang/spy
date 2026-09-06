@@ -55,6 +55,10 @@ The following built-in functions work similarly to their equivalents in CPython;
 
 :   The `int` type is currently an alias to `i32`. In the future, `int` will alias preferred individual types for specific platforms, but currently it is always `i32`.
 
+### __input__(prompt: str = "") { data-toc-label='input()' }
+
+:   Writes `prompt` to standard out (and flushes it), then reads a line from standard input. The trailing newline is stripped from the result. Raises `EOFError` if standard input is exhausted before any character is read.
+
 ### __len__(object) { data-toc-label='len()' }
 
 :   Return the length (the number of items) in a container
@@ -152,9 +156,3 @@ The internals of SPy are significantly different from CPython; as such, the road
 Many of these types are not implemented yet; others are in active development.
 
 :   ascii(), bool(), bytearray(), bytes(), chr(), complex(), format(), frozenset(), memoryview(), ord() set()
-
-### I/O
-
-The I/O story is currently a high priority and is in active development.
-
-:   input(), open()

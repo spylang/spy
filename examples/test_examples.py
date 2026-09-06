@@ -10,7 +10,15 @@ from spy.util import print_diff
 EXAMPLES_DIR = Path(__file__).parent
 EXPECTED_OUTPUT_DIR = EXAMPLES_DIR / "expected_output"
 
-_spy_files = sorted(EXAMPLES_DIR.glob("[0-9]*/**/*.spy"))
+# Examples which read from stdin cannot be run non-interactively by the test
+# harness, so they are excluded from the parametrized tests.
+INTERACTIVE_EXAMPLES = {"input_print.spy"}
+
+_spy_files = sorted(
+    f
+    for f in EXAMPLES_DIR.glob("[0-9]*/**/*.spy")
+    if f.name not in INTERACTIVE_EXAMPLES
+)
 
 
 def expected_returncode(path: Path) -> int:

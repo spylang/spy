@@ -1,0 +1,6 @@
+from __spy__ import _stdout_write, _stdout_flush, _stdin_readline
+
+def _input(prompt: str) -> str:
+    _stdout_write(prompt)
+    _stdout_flush()
+    return _stdin_readline()
