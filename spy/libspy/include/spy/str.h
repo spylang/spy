@@ -128,7 +128,8 @@ spy_StrObject *spy_builtins$i64$__str__(int64_t x);
 
 spy_StrObject *spy_builtins$u64$__str__(uint64_t x);
 
-spy_StrObject *spy_builtins$f64$__str__(double x);
+spy_StrObject *WASM_EXPORT(spy_f64_to_str)(double x);
+#define spy_builtins$f64$__str__ spy_f64_to_str
 
 spy_StrObject *WASM_EXPORT(spy_f32_to_str)(float x);
 #define spy_builtins$f32$__str__ spy_f32_to_str

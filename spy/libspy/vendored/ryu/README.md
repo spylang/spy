@@ -7,9 +7,9 @@ Paper: Ulf Adams, "Ryū: Fast Float-to-String Conversion"
        https://dl.acm.org/doi/10.1145/3296979.3192369
 
 The files in this directory are an unmodified subset of upstream Ryu. They are
-used for shortest-round-trip conversion of IEEE-754 binary32 values. The
-`RYU_FLOAT_FULL_TABLE` configuration requires only the dedicated f32 table and
-avoids pulling in the d2s tables before SPy adds binary64 support.
+used for shortest-round-trip conversion of IEEE-754 binary32 and binary64 values.
+`RYU_FLOAT_FULL_TABLE` makes binary32 conversion use its dedicated f32 table;
+binary64 conversion uses the full d2s table.
 
 Vendored files
 --------------
@@ -18,6 +18,9 @@ Vendored files
 - LICENSE-Boost
 - ryu/common.h
 - ryu/digit_table.h
+- ryu/d2s.c
+- ryu/d2s_full_table.h
+- ryu/d2s_intrinsics.h
 - ryu/f2s.c
 - ryu/f2s_full_table.h
 - ryu/f2s_intrinsics.h

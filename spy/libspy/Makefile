@@ -11,10 +11,15 @@
 EMCC_AVAILABLE := $(shell which emcc 2>/dev/null)
 
 SRCS = src/str.c src/bytes.c src/builtins.c src/debug.c src/unsafe.c src/operator.c src/posix.c \
-       vendored/ryu/ryu/f2s.c
+       vendored/ryu/ryu/f2s.c vendored/ryu/ryu/d2s.c
 
-# Use Ryu's dedicated f32 lookup tables instead of depending on its d2s tables.
-RYU_CFLAGS := -I $(CURDIR)/vendored/ryu -DRYU_FLOAT_FULL_TABLE
+# RYU_FLOAT_FULL_TABLE makes f2s use its dedicated binary32 powers-of-five
+# tables instead of depending on the larger d2s tables.
+#
+# RYU_ONLY_64_BIT_OPS disables d2s's __uint128_t path. Zig lowers those
+# operations to compiler runtime helpers whose signatures conflict under the
+# WASM multivalue ABI, so use Ryu's portable 64-bit implementation instead.
+RYU_CFLAGS := -I $(CURDIR)/vendored/ryu -DRYU_FLOAT_FULL_TABLE -DRYU_ONLY_64_BIT_OPS
 
 # Add BUILD_TYPE with a default value
 BUILD_TYPE ?= release

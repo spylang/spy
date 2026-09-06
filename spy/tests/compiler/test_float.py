@@ -91,6 +91,41 @@ class TestFloat(CompilerTest):
         assert s == "3.4028235e+38"
         assert mod.f32_equal(x, float(s))
 
+    def test_f64_repr(self):
+        mod = self.compile("""
+        def repr_f64(x: f64) -> str:
+            return repr(x)
+
+        def str_f64(x: f64) -> str:
+            return str(x)
+        """)
+        assert mod.repr_f64(1.0) == "1.0"
+        assert mod.repr_f64(-0.0) == "-0.0"
+        assert mod.repr_f64(float("nan")) == "nan"
+        assert mod.repr_f64(float("inf")) == "inf"
+        assert mod.repr_f64(float("-inf")) == "-inf"
+        assert mod.repr_f64(1e-5) == "1e-05"
+        assert mod.repr_f64(1e-4) == "0.0001"
+        assert mod.repr_f64(1e15) == "1000000000000000.0"
+        assert mod.repr_f64(1e16) == "1e+16"
+        x = 1.0000000000000002
+        assert mod.str_f64(x) == mod.repr_f64(x)
+
+    def test_f64_repr_roundtrip(self):
+        mod = self.compile("""
+        def repr_f64(x: f64) -> str:
+            return repr(x)
+        """)
+
+        def assert_roundtrip(x: float, expected: str):
+            result = mod.repr_f64(x)
+            assert result == expected
+            assert float(result) == x
+
+        assert_roundtrip(1.0000000000000002, "1.0000000000000002")
+        assert_roundtrip(5e-324, "5e-324")
+        assert_roundtrip(1.7976931348623157e308, "1.7976931348623157e+308")
+
     def test_f32_inf_const(self):
         mod = self.compile("""
         def positive_inf() -> f32:

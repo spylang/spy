@@ -367,17 +367,25 @@ class W_F64(W_Object):
     def spy_key(self, vm: "SPyVM") -> float:
         return self.value
 
+    @staticmethod
+    def _w_format(vm: "SPyVM", w_self: "W_F64") -> "W_Str":
+        # Import locally so str registration does not run while primitive builtins
+        # are still being initialized.
+        from spy.vm.str import W_Str
+
+        f = vm.unwrap_f64(w_self)
+        ptr = vm.ll.call("spy_f64_to_str", f)
+        return W_Str.from_ptr(vm, ptr)
+
     @builtin_method("__str__")
     @staticmethod
     def w_str(vm: "SPyVM", w_self: "W_F64") -> "W_Str":
-        f = vm.unwrap_f64(w_self)
-        return vm.wrap(str(f))
+        return W_F64._w_format(vm, w_self)
 
     @builtin_method("__repr__")
     @staticmethod
     def w_repr(vm: "SPyVM", w_self: "W_F64") -> "W_Str":
-        f = vm.unwrap_f64(w_self)
-        return vm.wrap(str(f))
+        return W_F64._w_format(vm, w_self)
 
 
 @B.builtin_type("f32", lazy_definition=True)

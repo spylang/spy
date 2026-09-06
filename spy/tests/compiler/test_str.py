@@ -263,10 +263,6 @@ class TestStr(CompilerTest):
         assert mod.type_str() == "<spy type 'i32'>"
 
     def test_str_numbers(self):
-        # NOTE: float2str produces slightly different results in Python vs C
-        # backend: e.g. str(0.0) == '0' in Python, '0.0' in the C backend.
-        # Eventually, we want to port the formatting code from CPython, but
-        # for now we just allow both results and keep the C backend simple.
         mod = self.compile("""
         def str_i32(x: i32) -> str:
             return str(x)
@@ -299,7 +295,7 @@ class TestStr(CompilerTest):
         assert mod.str_u32(0) == "0"
         assert mod.str_u32(4294967295) == "4294967295"
         assert mod.str_f64(-10.5) == "-10.5"
-        assert mod.str_f64(0.0) in ("0", "0.0")
+        assert mod.str_f64(0.0) == "0.0"
         assert mod.str_f64(3.14) == "3.14"
         assert mod.str_f64(123.456) == "123.456"
         assert mod.str_f32(3.14) == "3.14"

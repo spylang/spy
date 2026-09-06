@@ -105,16 +105,11 @@ spy_builtins$u64$__str__(uint64_t x) {
     return spy_str_from_format("%llu", (unsigned long long)x);
 }
 
-spy_StrObject *
-spy_builtins$f64$__str__(double x) {
-    return spy_str_from_format("%g", x);
-}
-
-/* Ryu's f2s_buffered_n finds the shortest round-trippable digits and renders
-   finite nonzero values in scientific notation. Reformat those digits to match
+/* Ryu's shortest-format APIs find round-trippable digits and render finite
+   nonzero values in scientific notation. Reformat those digits to match
    CPython's repr conventions without changing the represented value. */
 static size_t
-spy_normalize_ryu_f32(char *out, char *raw) {
+spy_normalize_ryu_float(char *out, char *raw) {
     /* Ryu uses Java-style names for non-finite values, while CPython uses these
        lowercase spellings. */
     if (strcmp(raw, "NaN") == 0) {
@@ -133,7 +128,8 @@ spy_normalize_ryu_f32(char *out, char *raw) {
     char *e = strchr(raw, 'E');
     assert(e != NULL);
     int exponent = atoi(e + 1);
-    char digits[16];
+    /* binary64 needs at most 17 significant decimal digits. */
+    char digits[24];
     size_t ndigits = 0;
     char *p = raw;
     size_t outpos = 0;
@@ -190,20 +186,44 @@ spy_normalize_ryu_f32(char *out, char *raw) {
         } else {
             out[outpos++] = '+';
         }
-        if (exponent < 10) {
+        char exponent_digits[4];
+        size_t exponent_length = 0;
+        do {
+            exponent_digits[exponent_length++] = (char)('0' + exponent % 10);
+            exponent /= 10;
+        } while (exponent != 0);
+        if (exponent_length == 1) {
             out[outpos++] = '0';
         }
-        if (exponent >= 10) {
-            out[outpos++] = (char)('0' + exponent / 10);
+        while (exponent_length > 0) {
+            out[outpos++] = exponent_digits[--exponent_length];
         }
-        out[outpos++] = (char)('0' + exponent % 10);
     }
     return outpos;
 }
 
+static spy_StrObject *
+spy_ryu_float_to_str(char *raw) {
+    char formatted[64];
+    size_t length = spy_normalize_ryu_float(formatted, raw);
+    spy_StrObject *res = spy_str_alloc(length);
+    memcpy(spy_StrObject_UTF8(res), formatted, length);
+    return res;
+}
+
+/* Format binary64 with Ryu's shortest-round-trip digits and CPython float repr's
+   presentation conventions. */
+spy_StrObject *
+spy_f64_to_str(double x) {
+    char raw[32];
+    int raw_length = d2s_buffered_n(x, raw);
+    raw[raw_length] = '\0';
+    return spy_ryu_float_to_str(raw);
+}
+
 /* Format binary32 with Ryu's shortest-round-trip digits and CPython float repr's
-   presentation conventions. This is exported so the interpreter and generated C
-   share one formatter instead of developing backend-specific behavior. */
+   presentation conventions. These functions are exported so the interpreter and
+   generated C share one formatter instead of developing backend-specific behavior. */
 spy_StrObject *
 spy_f32_to_str(float x) {
     /* Upstream's allocating f2s reserves 16 bytes; keep extra room here and in
@@ -212,11 +232,7 @@ spy_f32_to_str(float x) {
     int raw_length = f2s_buffered_n(x, raw);
     raw[raw_length] = '\0';
 
-    char formatted[64];
-    size_t length = spy_normalize_ryu_f32(formatted, raw);
-    spy_StrObject *res = spy_str_alloc(length);
-    memcpy(spy_StrObject_UTF8(res), formatted, length);
-    return res;
+    return spy_ryu_float_to_str(raw);
 }
 
 spy_StrObject *
