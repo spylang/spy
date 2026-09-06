@@ -13,6 +13,7 @@ EMCC_AVAILABLE := $(shell which emcc 2>/dev/null)
 SRCS = src/str.c src/bytes.c src/builtins.c src/debug.c src/unsafe.c src/operator.c src/posix.c \
        vendored/ryu/ryu/f2s.c
 
+# Use Ryu's dedicated f32 lookup tables instead of depending on its d2s tables.
 RYU_CFLAGS := -I $(CURDIR)/vendored/ryu -DRYU_FLOAT_FULL_TABLE
 
 # Add BUILD_TYPE with a default value
