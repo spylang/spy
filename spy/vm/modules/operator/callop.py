@@ -34,6 +34,8 @@ def w_CALL(vm: "SPyVM", wam_obj: W_MetaArg, *args_wam: W_MetaArg) -> W_OpImpl:
             w_opspec = W_Func.op_METACALL(vm, wam_obj, *args_wam)  # type: ignore
         elif w_T.kind == "generic":
             errmsg = "generic functions must be called via `[...]`"
+        elif w_T.kind == "generic_metafunc":
+            errmsg = "generic metafunctions must be called via `[...]`"
         else:
             assert False, f"unknown FuncKind: {w_T.kind}"
 

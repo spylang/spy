@@ -862,7 +862,7 @@ class SPyVM:
             w_result = self._raw_call(w_func, args_w)
             self.bluecache.record(w_func, args_w, w_result)
             if (
-                w_func.w_functype.kind == "generic"
+                w_func.w_functype.kind in ("generic", "generic_metafunc")
                 and isinstance(w_result, (W_Type, W_Func))
                 and w_result.w_origin is None
             ):

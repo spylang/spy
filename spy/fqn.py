@@ -213,7 +213,13 @@ class FQN:
             len(self.parts) == 2
             and self.modname == "builtins"
             and self.parts[1].name
-            in ("def", "blue.def", "blue.generic.def", "blue.metafunc.def")
+            in (
+                "def",
+                "blue.def",
+                "blue.generic.def",
+                "blue.metafunc.def",
+                "blue.generic_metafunc.def",
+            )
         )
         if is_def:
             p1 = self.parts[1]
@@ -223,8 +229,11 @@ class FQN:
                 d = "@blue def"
             elif p1.name == "blue.generic.def":
                 d = "@blue.generic def"
-            else:
+            elif p1.name == "blue.metafunc.def":
                 d = "@blue.metafunc def"
+            else:
+                d = "@blue.generic_metafunc def"
+
             quals = [q._human_render() for q in p1.qualifiers]
             p = ", ".join(quals[:-1])
             r = quals[-1]

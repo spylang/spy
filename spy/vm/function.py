@@ -113,6 +113,8 @@ class W_FuncType(W_Type):
             t = "blue.generic.def"
         elif color == "blue" and kind == "metafunc":
             t = "blue.metafunc.def"
+        elif color == "blue" and kind == "generic_metafunc":
+            t = "blue.generic_metafunc.def"
         else:
             assert False
         fqn = FQN("builtins").join(t, qualifiers)
@@ -332,7 +334,7 @@ class W_Func(W_Object):
 
         w_func = wam_func.w_blueval
         assert isinstance(w_func, W_Func)
-        assert w_func.w_functype.kind == "metafunc"
+        assert w_func.w_functype.kind in ("metafunc", "generic_metafunc")
 
         # Now we want to call the metafunc to get the opspec to return.  Note
         # that we cannot just vm.fast_call() it, because we don't know whether
