@@ -50,6 +50,7 @@ class W_Str(W_Object):
         "__contains__": FQN("_str::methods::__contains__"),
         "split": FQN("_str::methods::split"),
         "isspace": FQN("_str::methods::isspace"),
+        "strip": FQN("_str::methods::strip"),
         "find": FQN("_str::methods::find"),
         "count": FQN("_str::methods::count"),
         "__repr__": FQN("_str::methods::__repr__"),

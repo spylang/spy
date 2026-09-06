@@ -1,0 +1,7 @@
+def main() -> None:
+    text = "    Something important with whitespaces.    "
+    stripped = text.strip()
+    print("Original: ")
+    print(text)
+    print("Stripped: ")
+    print(stripped)
