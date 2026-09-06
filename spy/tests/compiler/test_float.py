@@ -116,15 +116,15 @@ class TestFloat(CompilerTest):
         def repr_f64(x: f64) -> str:
             return repr(x)
         """)
-        test_cases = [
-            (1.0000000000000002, "1.0000000000000002"),
-            (5e-324, "5e-324"),
-            (1.7976931348623157e308, "1.7976931348623157e+308"),
-        ]
-        for x, expected in test_cases:
+
+        def assert_roundtrip(x: float, expected: str):
             result = mod.repr_f64(x)
             assert result == expected
             assert float(result) == x
+
+        assert_roundtrip(1.0000000000000002, "1.0000000000000002")
+        assert_roundtrip(5e-324, "5e-324")
+        assert_roundtrip(1.7976931348623157e308, "1.7976931348623157e+308")
 
     def test_f32_inf_const(self):
         mod = self.compile("""
