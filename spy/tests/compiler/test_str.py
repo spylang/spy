@@ -283,6 +283,9 @@ class TestStr(CompilerTest):
         def str_f64(x: f64) -> str:
             return str(x)
 
+        def str_f32(x: f32) -> str:
+            return str(x)
+
         def str_bool(x: bool) -> str:
             return str(x)
         """)
@@ -299,6 +302,7 @@ class TestStr(CompilerTest):
         assert mod.str_f64(0.0) in ("0", "0.0")
         assert mod.str_f64(3.14) == "3.14"
         assert mod.str_f64(123.456) == "123.456"
+        assert mod.str_f32(3.14) == "3.14"
         assert mod.str_bool(True) == "True"
         assert mod.str_bool(False) == "False"
 
@@ -315,12 +319,24 @@ class TestStr(CompilerTest):
 
         def repr_u32(x: u32) -> str:
             return repr(x)
+
+        def repr_f64(x: f64) -> str:
+            return repr(x)
+
+        def str_f64(x: f64) -> str:
+            return str(x)
+
+        def repr_f32(x: f32) -> str:
+            return repr(x)
         """)
         assert mod.repr_i32(-10) == "-10"
         assert mod.repr_i32(123) == "123"
         assert mod.repr_i8(-128) == "-128"
         assert mod.repr_u8(255) == "255"
         assert mod.repr_u32(4294967295) == "4294967295"
+        assert mod.repr_f64(3.14) == "3.14"
+        assert mod.repr_f64(3.14) == mod.str_f64(3.14)
+        assert mod.repr_f32(3.14) == "3.14"
 
     def test_repr_blue(self):
         src = """
