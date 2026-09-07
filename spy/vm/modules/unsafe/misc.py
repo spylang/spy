@@ -1,6 +1,14 @@
+from typing import TYPE_CHECKING
+
 from spy.errors import WIP
 from spy.vm.b import B
 from spy.vm.object import W_Type
+from spy.vm.primitive import W_I32
+
+from . import UNSAFE
+
+if TYPE_CHECKING:
+    from spy.vm.vm import SPyVM
 
 
 def sizeof(w_T: W_Type) -> int:
@@ -73,3 +81,34 @@ def contains_gc_ptr(w_T: W_Type) -> bool:
         return True
 
     raise NotImplementedError(f"{w_T=}")
+
+
+def alignof(w_T: W_Type) -> int:
+    """
+    The natural alignment of a type, in bytes.
+    """
+    from spy.vm.struct import W_StructType
+
+    # for every scalar type SPy has today, natural alignment == size
+    if w_T in (B.w_bool, B.w_i8, B.w_u8):
+        return 1
+    elif w_T in (B.w_i32, B.w_u32, B.w_f32):
+        return 4
+    elif w_T in (B.w_i64, B.w_u64, B.w_f64):
+        return 8
+    elif isinstance(w_T, W_StructType):
+        # the usual "max of the fields' alignments" rule. A struct with no
+        # fields has nothing to take the max over, so fall back to 1
+        # (matching a struct of size 0) rather than raising.
+        aligns = [alignof(w_field.w_T) for w_field in w_T.iterfields_w()]
+        return max(aligns, default=1)
+    else:
+        raise WIP(f"alignof({w_T}) not implemented")
+
+
+@UNSAFE.builtin_func(color="blue")
+def w_alignof(vm: "SPyVM", w_T: W_Type) -> W_I32:
+    """
+    The SPy-visible `alignof(T)` blue builtin.
+    """
+    return vm.wrap(alignof(w_T))
