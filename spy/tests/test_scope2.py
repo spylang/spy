@@ -121,3 +121,17 @@ class TestScopeAnalyzer2:
             ("this is the new declaration", "var x: i32 = 1"),
             ("this is the previous declaration", "var x: i32 = 0"),
         )
+
+    def test_NameError(self):
+        scopes = self.analyze("""
+        from __spy__ import strict_scoping
+
+        def foo() -> None:
+            nope
+        """)
+        funcdef = self.mod.get_funcdef("foo")
+        scope = scopes.by_funcdef(funcdef)
+        assert scope._symbols == {
+            "@return": MatchSymbol("@return", "var", "auto"),
+            "nope": MatchSymbol("nope", "var", "auto", storage="NameError", level=-1),
+        }

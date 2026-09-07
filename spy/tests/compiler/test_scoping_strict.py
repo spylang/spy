@@ -32,3 +32,16 @@ class TestStrictScoping(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == 42
+
+    def test_NameError(self):
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo() -> None:
+            nope
+        """
+        errors = expect_errors(
+            "name `nope` is not defined",
+            ("not found in this scope", "nope"),
+        )
+        self.compile_raises(src, "foo", errors)
