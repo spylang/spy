@@ -142,6 +142,18 @@ def f() -> None:
                          #        help: declare `var i: auto` before the loop
 ```
 
+
+The next loop may therefore reuse the name at a different type.
+
+```python
+def f() -> None:
+    for i in [1, 2, 3]:
+        print(i)         # i: i32
+    for i in ["a", "b"]:
+        print(i)         # i: str, a different binding
+```
+
+
 ### `[scope.loop-target-declare]` Declaring the target first makes it outlive the loop { #scope-loop-target-declare }
 
 A loop target is an ordinary assignment: if a binding of the same name already
@@ -354,54 +366,11 @@ def f() -> None:
     print(a)             # 1
 ```
 
-### `[sugar.def-class]` A nested `def` or `class` is a binding like any other { #sugar-def-class }
-
-There is no special case: it follows the same rules as other assignments, so
-it is block-local, and eligible for promotion
-([`[sugar.promotion]`](#sugar-promotion)).
-
-```python
-COND = True
-
-def main() -> None:
-    if COND:
-        def g() -> i32:
-            return 42
-    print(g())           # ERROR: `g` is local to the `if` body
-```
-
-```python
-def main() -> None:
-    if COND:
-        def g() -> i32: return 42
-    else:
-        def g() -> i32: return 0
-    print(g())           # OK: promoted
-```
-
-### `[sugar.walrus]` A walrus binds in the enclosing block { #sugar-walrus }
-
-The test is not part of either body.
-
-```python
-def main() -> None:
-    if (x := 5) > 0:
-        print(x)         # 5
-    print(x)             # 5
-```
-
-```python
-def f() -> None:
-    while (n := next_one()) > 0:
-        print(n)
-    print(n)             # OK: n lives in the function block
-```
-
 ### `[sugar.constness]` `var` / `const` is inferred from the number of assignments { #sugar-constness }
 
-Not to be confused with mutability of values: this is about whether the
-*name* is rebound, not whether the object it refers to can be mutated.
-Assigned once → `const`; assigned more than once → `var`.
+Not to be confused with mutability of values: this is about whether the *name* is
+rebound, not whether the object it refers to can be mutated.  Assigned once → `const`;
+assigned more than once → `var`.
 
 ```python
 def f() -> None:
@@ -412,8 +381,8 @@ def f() -> None:
     c += 1
 ```
 
-The same inference applies to a declaration that has a type but no modifier
-(see [`[decl.forms]`](#decl-forms)):
+The same inference applies to a declaration that has a type but no modifier (see
+[`[decl.forms]`](#decl-forms)):
 
 ```python
 def f() -> None:
@@ -428,6 +397,7 @@ A statement sequence sums; an `if` chain takes the max over its branches.
 
 ```python
 def f(cond: bool) -> None:
+    n: auto
     if cond:
         n = 0            # one assignment on either path → const
     else:
@@ -436,6 +406,7 @@ def f(cond: bool) -> None:
 
 ```python
 def f(cond: bool) -> None:
+    n: auto
     if cond:
         n = 0
     else:
@@ -463,6 +434,23 @@ def f(cond: bool) -> None:
         x = 1            # one on this path
 ```
 
+### `[sugar.walrus]` A walrus binds in the enclosing block { #sugar-walrus }
+
+```python
+def main() -> None:
+    if (x := 5) > 0:
+        print(x)         # 5
+    print(x)             # OK: x lives in the function block
+```
+
+```python
+def f() -> None:
+    while (n := next_one()) > 0:
+        print(n)
+    print(n)             # OK: n lives in the function block
+```
+
+
 ### `[sugar.blue-params]` Blue parameters are always `const` { #sugar-blue-params }
 
 ```python
@@ -471,7 +459,7 @@ def h(x: i32) -> None:
     x = x + 1            # ERROR: blue function arguments are const by default
 ```
 
-### `[sugar.module-level]` Module level is `const` unless you write `var` { #sugar-module-level }
+### `[sugar.global-const-by-default]` Module level is `const` by default { #sugar-global-const-by-default }
 
 ```python
 A = 1                    # const
@@ -490,69 +478,31 @@ def f() -> None:
     x += 1               # ERROR: name `x` is not defined
 ```
 
-### `[sugar.blue-const]` `const` is what makes a value usable at blue time { #sugar-blue-const }
+### `[sugar.def-class]` A nested `def` or `class` is a binding like any other { #sugar-def-class }
 
-A `const` holding a blue value stays blue.
+There is no special case: it follows the same rules as other assignments, so
+it is block-local, and eligible for promotion
+([`[sugar.promotion]`](#sugar-promotion)).
 
 ```python
-TUP = 1, 2.5, "hello"
+COND = True
 
-@blue
-def f() -> None:
-    n = 2                # const → blue
-    print(TUP[n])        # "hello"
+def main() -> None:
+    if COND:
+        def g() -> i32:
+            return 42
+    print(g())           # ERROR: `g` is local to the `if` body
 ```
 
 ```python
-@blue
-def f() -> None:
-    n = 2                # var → red
-    n = n + 0
-    print(TUP[n])        # ERROR: tuple index must be blue
+def main() -> None:
+    if COND:
+        def g() -> i32: return 42
+    else:
+        def g() -> i32: return 0
+    print(g())           # OK: promoted
 ```
 
-### `[sugar.loop-target-scope]` A loop target binds in the loop block { #sugar-loop-target-scope }
-
-The next loop may therefore reuse the name at a different type.
-
-```python
-def f() -> None:
-    for i in [1, 2, 3]:
-        print(i)         # i: i32
-    for i in ["a", "b"]:
-        print(i)         # i: str, a different binding
-```
-
-### `[sugar.loop-target-declare]` Declaring the target first makes it outlive the loop { #sugar-loop-target-declare }
-
-```python
-def f() -> None:
-    var i: auto
-    for i in range(3):
-        pass
-    print(i)             # OK: 2
-```
-
-
-If the target is declared with a type, the element type must match it:
-
-```python
-def f() -> None:
-    var i: str
-    for i in range(10):  # ERROR: expected `str`, got `i32`
-        pass
-```
-
-The reuse looks only at enclosing blocks of the same function, never at an
-outer function or module scope:
-
-```python
-var i: i32 = 99
-
-def f() -> None:
-    for i in range(3):   # fresh loop-local; the global is untouched
-        print(i)
-```
 
 ### `[sugar.promotion]` DWIM promotion { #sugar-promotion }
 
@@ -795,8 +745,7 @@ def f(cond: bool) -> None:
 ```
 
 The fix is to name the type you mean, and then the branches are ordinary
-reassignments against a declared type
-([`[decl.type-fixed]`](#decl-type-fixed)), so conversions apply:
+reassignments against a declared type, so conversions apply:
 
 ```python
 def f(cond: bool) -> None:
@@ -986,8 +935,7 @@ def f(cond: bool) -> None:
 
 ### `[future.narrowing]` Type narrowing, read-side only { #future-narrowing }
 
-The declared type never changes ([`[decl.type-fixed]`](#decl-type-fixed));
-narrowing is a lens for reads.
+The declared type never changes; narrowing is a lens for reads.
 
 ```python
 def f(x: i32 | str) -> None:
