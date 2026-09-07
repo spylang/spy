@@ -73,7 +73,7 @@ def f() -> None:
     var x: i32
     if False:
         x = 42
-    print(x)             # runtime error / UB: `i` may be unassigned
+    print(x)             # runtime error / UB: `x` may be unassigned
 ```
 
 This error is caught at runtime by the interpreter, and results in UB in compiled mode.
@@ -81,16 +81,97 @@ This is a temporary limitation of SPy. Eventually we will implement
 [`[future.definite-assignment]`](#future-definite-assignment).
 
 
-### `[decl.type-inference]` `auto` defers the type to the first assignment { #decl-type-inference }
+### `[decl.auto]` Rules for `auto` type inference { #decl-auto }
 
-Without an initializer there is nothing to infer the type from at the declaration site,
-so the type must be given explicitly as `auto`.
+`auto` implements a very limited form of type inference, by looking at the type of the
+initializer:
+
+```python
+def f() -> None:
+    const x: auto = 42  # i32
+    const y = "hello"   # str
+```
+
+By design, SPy doesn't do whole-function or whole-program type inference. This is needed
+to support the "fully interpreted" case, in which we execute things line by line:
+
+```python
+def f() -> None:
+    var x: object = 42
+    x = "hello"         # OK
+
+    var y: auto = 42    # infers i32
+    y = "hello"         # TypeError
+```
+
+If the initializer is omitted, the type is fixed on the **first assignment**:
 
 ```python
 def f(cond: bool) -> None:
     var x: auto
-    x = 1            # fixes x: i32
+    x = 1               # fixes x: i32
     print(x)
+```
+
+### `[decl.auto-unification]` Branches must assign the same type { #decl-auto-unification }
+
+Uninitialized `auto` variables pose a problem in case the first assignment is executed
+inside a conditional:
+
+```python
+def f(cond: bool) -> None:
+    var x: auto
+    if cond:
+        x = 1
+    else:
+        x = "hello"
+    print(STATIC_TYPE(x))
+```
+
+We have multiple goals and implementation constraints:
+
+  1. we would like to check that the type of `x` is the same in both branches and emit
+     an error if they don't match.
+
+  2. we would like that the *SPy interpreter* and the *SPy compiler* produce the exact
+     same behavior.
+
+The problem is that the interpreter only sees the branch which is actually taken, never
+sees the other and thus it cannot possibly do the check.  **The unification check is
+done only when compiling**.
+
+This means that the snippet above prints either `i32` or `str` in `interp` mode, and
+raises a compile time error in the other cases.  **This is the only known case in which
+compiled code behaves differently than the interpreter**.
+
+As a partial mitigation, we impose the rule that the type must be **exactly the same**
+in all branches: we never try to find a common supertype. This way, we guarantee that
+**if compilation succeeds, the behavior is exactly the same as in the interpreter**.
+
+Consider this case:
+
+```python
+def f(cond: bool) -> f64:
+    var x: auto
+    if cond:
+        x = 1      # i32
+    else:
+        x = 2.5    # f64
+    return x
+```
+
+This fails because the inferred type is not an exact match in the two branches.  The fix
+is to name the type you mean, and then the branches are ordinary reassignments against a
+declared type, so conversions apply:
+
+```python
+def f(cond: bool) -> f64:
+    var x: f64 = 0.0
+    if cond:
+        x = 1            # OK: implicit i32->f64 conversion
+    else:
+        x = 2.5
+    return x
 ```
 
 ### `[decl.no-redeclare]` No re-declaration in the same scope { #decl-no-redeclare }
@@ -713,64 +794,8 @@ def f() -> None:
 
 #### `[sugar.promotion-types]` Every branch must assign the identical type { #sugar-promotion-types }
 
-SPy never unifies branch types into a common supertype: that would be
-behavior-changing and backend-divergent.
-
-```python
-def f(cond: bool) -> None:
-    if cond:
-        x = 1            # fixes x: i32
-    else:
-        x = 2.5          # ERROR: expected `i32`, got `f64`
-    print(x)
-```
-
-Both orders are rejected:
-
-```python
-def f(cond: bool) -> None:
-    if cond:
-        p = Person()
-    else:
-        p = Student()    # ERROR: expected `Person`, got `Student`
-    p.work()
-```
-
-```python
-def f(cond: bool) -> None:
-    if cond:
-        p = Student()
-    else:
-        p = Person()     # ERROR: expected `Student`, got `Person`
-    p.work()
-```
-
-The fix is to name the type you mean, and then the branches are ordinary
-reassignments against a declared type, so conversions apply:
-
-```python
-def f(cond: bool) -> None:
-    var p: Person
-    if cond:
-        p = Person()
-    else:
-        p = Student()    # OK: Student <: Person
-    p.work()             # non-virtual: Person.work, in every backend
-```
-
-```python
-def f(cond: bool) -> None:
-    var x: f64 = 0.0
-    if cond:
-        x = 1            # OK: i32 converts to the declared f64
-    else:
-        x = 2.5
-    print(x)
-```
-
-The conflict is detected when both branches are compiled, so it is reported
-by `-m doppler` and `-m C`, and not by `-m interp`, which executes only one
-branch.
+Promotion requires every branch to assign the identical type; see
+[`[decl.auto-unification]`](#decl-auto-unification).
 
 #### `[sugar.promotion-blue]` A blue test collapses the chain { #sugar-promotion-blue }
 
