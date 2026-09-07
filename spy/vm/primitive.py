@@ -443,6 +443,10 @@ class W_F32(W_Object):
 @B.builtin_type("complex128", lazy_definition=True)
 class W_Complex128(W_Object):
     __spy_storage_category__ = "value"
+    __spy_lazy_attributes__ = {
+        "__str__": FQN("_complex::methods::__str__"),
+        "__repr__": FQN("_complex::methods::__repr__"),
+    }
     value: complex
     w_real: Annotated[W_F64, Member("real")]
     w_imag: Annotated[W_F64, Member("imag")]
@@ -487,12 +491,6 @@ class W_Complex128(W_Object):
 
     def spy_key(self, vm: "SPyVM") -> complex:
         return self.value
-
-    @builtin_method("__str__")
-    @staticmethod
-    def w_str(vm: "SPyVM", w_self: "W_Complex128") -> "W_Str":
-        c = vm.unwrap_complex128(w_self)
-        return vm.wrap(str(c))
 
     @builtin_method("conjugate")
     @staticmethod

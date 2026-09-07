@@ -19,6 +19,44 @@ class TestComplex(CompilerTest):
         """)
         assert mod.foo() == 12.3j
 
+    def test_repr(self):
+        mod = self.compile("""
+        def complex_repr(x: complex128) -> str:
+            return repr(x)
+
+        def complex_str(x: complex128) -> str:
+            return str(x)
+        """)
+
+        def assert_format(value: complex, expected: str) -> None:
+            assert mod.complex_repr(value) == expected
+            assert mod.complex_str(value) == expected
+
+        assert_format(1.5 + 2.5j, "(1.5+2.5j)")
+        assert_format(1.5 - 2.5j, "(1.5-2.5j)")
+        assert_format(complex(1.0, 2.0), "(1+2j)")
+
+        assert_format(complex(1.0, float("inf")), "(1+infj)")
+        assert_format(complex(1.0, float("-inf")), "(1-infj)")
+        assert_format(complex(float("inf"), 1.0), "(inf+1j)")
+        assert_format(complex(float("-inf"), float("inf")), "(-inf+infj)")
+        assert_format(complex(float("nan"), 1.0), "(nan+1j)")
+        assert_format(complex(1.0, float("nan")), "(1+nanj)")
+        assert_format(complex(float("nan"), float("nan")), "(nan+nanj)")
+
+        assert_format(complex(0.0, float("inf")), "infj")
+        assert_format(complex(0.0, float("-inf")), "-infj")
+        assert_format(complex(0.0, float("nan")), "nanj")
+
+        assert_format(complex(0.0, 1.0), "1j")
+        assert_format(complex(-0.0, 1.0), "(-0+1j)")
+        assert_format(complex(0.0, -1.0), "-1j")
+        assert_format(complex(-0.0, -1.0), "(-0-1j)")
+        assert_format(complex(0.0, 0.0), "0j")
+        assert_format(complex(0.0, -0.0), "-0j")
+        assert_format(complex(-0.0, 0.0), "(-0+0j)")
+        assert_format(complex(-0.0, -0.0), "(-0-0j)")
+
     def test_BinOp(self, complex_type):
         mod = self.compile(f"""
         T = {complex_type}

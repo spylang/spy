@@ -1,0 +1,39 @@
+def _strip_integral_suffix(value: str) -> str:
+    if len(value) >= 2 and value[-2:] == ".0":
+        return value[:-2]
+    return value
+
+
+def _format(value: complex128) -> str:
+    real = str(value.real)
+    imag = str(value.imag)
+
+    if real == "0.0":
+        return _strip_integral_suffix(imag) + "j"
+
+    sign = "+"
+    if imag[0] == "-":
+        sign = ""
+    return (
+        "("
+        + _strip_integral_suffix(real)
+        + sign
+        + _strip_integral_suffix(imag)
+        + "j)"
+    )
+
+
+@struct
+class methods:
+    """
+    A fake empty struct used as a container for app-level complex128 methods.
+
+    Each method must have a corresponding entry in
+    W_Complex128.__spy_lazy_attributes__.
+    """
+
+    def __str__(self: complex128) -> str:
+        return _format(self)
+
+    def __repr__(self: complex128) -> str:
+        return _format(self)
