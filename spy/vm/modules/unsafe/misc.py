@@ -87,6 +87,7 @@ def alignof(w_T: W_Type) -> int:
     """
     The natural alignment of a type, in bytes.
     """
+    from spy.vm.modules.posix import POSIX
     from spy.vm.modules.unsafe.ptr import W_PtrType, W_RefType
     from spy.vm.struct import W_StructType
 
@@ -99,6 +100,8 @@ def alignof(w_T: W_Type) -> int:
         return 8
     elif isinstance(w_T, (W_PtrType, W_RefType)) or w_T is B.w_str:
         # pointers are 4 bytes on wasm32; see the comment in sizeof()
+        return 4
+    elif w_T is POSIX.w__FILE:
         return 4
     elif isinstance(w_T, W_StructType):
         if not w_T.is_defined():
