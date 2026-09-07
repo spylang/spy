@@ -145,6 +145,7 @@ spy_StrObject *spy_builtins$bool$__str__(bool x);
 #define spy_builtins$u64$__repr__ spy_builtins$u64$__str__
 #define spy_builtins$f64$__repr__ spy_builtins$f64$__str__
 #define spy_builtins$f32$__repr__ spy_builtins$f32$__str__
+#define spy_builtins$bool$__repr__ spy_builtins$bool$__str__
 
 // str -> numeric conversion operators
 int32_t spy_operator$str_to_i32(spy_StrObject *s);
