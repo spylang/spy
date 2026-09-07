@@ -22,6 +22,16 @@ This is achieved by having two scoping modes:
 This document describes strict scoping first, and then shows how we implement Pythonic
 scoping by desugaring implicit declarations into explicit ones.
 
+We expect that Pythonic scoping rules are good enough for most daily usage, and most SPy
+code will be written in that style.  The guidelines for the design are:
+
+1. We aim to preserve Python semantics and/or Python "feeling" when possible.
+
+2. It is fine to deviate from Python semantics if it makes the whole language better.
+
+3. If we deviate from Python semantics, we should detect conflicting/ambiguous cases and
+   report helpful error messages to guide the user towards the equivalent SPy form.
+
 ## Part 1 - Strict scoping
 
 ### `[decl.forms]` Declaring a name { #decl-forms }
