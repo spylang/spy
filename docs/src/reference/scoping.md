@@ -49,7 +49,7 @@ MODIFIER name: TYPE = initializer
 
 In strict scoping, `MODIFIER` is mandatory. Under pythonic scoping it can be
 omitted and inferred from the number of assignments, see
-[`[sugar.constness]`](#sugar-constness).
+[`[py.constness]`](#py-constness).
 
 If `TYPE` is `auto` or omitted, the type is inferred, see
 [`[decl.auto]`](#decl-auto).
@@ -435,7 +435,7 @@ class P:
 Sugar over strict scoping: every rule below has an explicit equivalent, and
 `from __spy__ import strict_scoping` removes it.
 
-### `[py.first-assign]` The first assignment declares { #sugar-first-assign }
+### `[py.implicit-decl]` Implicit declaration on the first assignment { #py-implicit-decl }
 
 ```python
 def f() -> None:
@@ -460,7 +460,7 @@ def f() -> None:
     print(a)             # 1
 ```
 
-### `[py.constness]` `var` / `const` is inferred from the number of assignments { #sugar-constness }
+### `[py.constness]` `var` / `const` is inferred from the number of assignments { #py-constness }
 
 Not to be confused with mutability of values: this is about whether the *name* is
 rebound, not whether the object it refers to can be mutated.  Assigned once → `const`;
@@ -485,7 +485,7 @@ def f() -> None:
     b = b + 1
 ```
 
-### `[py.constness-paths]` The count is per execution path { #sugar-constness-paths }
+### `[py.constness-paths]` The count is per execution path { #py-constness-paths }
 
 A statement sequence sums; an `if` chain takes the max over its branches.
 
@@ -528,7 +528,18 @@ def f(cond: bool) -> None:
         x = 1            # one on this path
 ```
 
-### `[py.walrus]` A walrus binds in the enclosing block { #sugar-walrus }
+An assignment inside a loop counts as multiple assignments, since the loop may
+run more than once. A name declared outside the loop and assigned inside it is
+therefore `var`:
+
+```python
+def f() -> None:
+    n: auto
+    for i in range(3):
+        n = i            # inside a loop → counts as multiple → var
+```
+
+### `[py.walrus]` A walrus binds in the enclosing block { #py-walrus }
 
 ```python
 def main() -> None:
@@ -545,7 +556,7 @@ def f() -> None:
 ```
 
 
-### `[py.blue-params]` Blue parameters are always `const` { #sugar-blue-params }
+### `[py.blue-params]` Blue parameters are always `const` { #py-blue-params }
 
 ```python
 @blue
@@ -553,7 +564,7 @@ def h(x: i32) -> None:
     x = x + 1            # ERROR: blue function arguments are const by default
 ```
 
-### `[py.global-const-by-default]` Module level is `const` by default { #sugar-global-const-by-default }
+### `[py.global-const-by-default]` Module level is `const` by default { #py-global-const-by-default }
 
 ```python
 A = 1                    # const
@@ -565,18 +576,18 @@ A = 1
 A = 2                    # ERROR: `A` already declared
 ```
 
-### `[py.augassign]` `AugAssign` needs an existing binding { #sugar-augassign }
+### `[py.augassign]` `AugAssign` needs an existing binding { #py-augassign }
 
 ```python
 def f() -> None:
     x += 1               # ERROR: name `x` is not defined
 ```
 
-### `[py.def-class]` A nested `def` or `class` is a binding like any other { #sugar-def-class }
+### `[py.def-class]` A nested `def` or `class` is a binding like any other { #py-def-class }
 
 There is no special case: it follows the same rules as other assignments, so
-it is block-local, and eligible for promotion
-([`[py.promotion]`](#sugar-promotion)).
+it is block-local, and eligible for scope lifting
+([`[py.scope-lifting]`](#py-scope-lifting)).
 
 ```python
 COND = True
@@ -594,15 +605,15 @@ def main() -> None:
         def g() -> i32: return 42
     else:
         def g() -> i32: return 0
-    print(g())           # OK: promoted
+    print(g())           # OK: lifted
 ```
 
 
-### `[py.promotion]` DWIM promotion { #sugar-promotion }
+### `[py.scope-lifting]` Automatic scope lifting { #py-scope-lifting }
 
-A name implicitly assigned in every branch of a complete `if` chain is
-promoted to the enclosing block. This must work, period, without the user
-playing tricks.
+A name implicitly assigned in every branch of a complete `if` chain is lifted to the
+enclosing block. The basic idea is that something like this should work "out of the
+box":
 
 ```python
 def f(x: i32) -> i32:
@@ -610,7 +621,7 @@ def f(x: i32) -> i32:
         y = -x
     else:
         y = x
-    return y             # OK: promoted
+    return y             # OK: lifted
 ```
 
 Explicit equivalent:
@@ -625,7 +636,7 @@ def f(x: i32) -> i32:
     return y
 ```
 
-`elif` chains promote the same way:
+`elif` chains lift the same way:
 
 ```python
 def f(n: i32) -> str:
@@ -638,7 +649,7 @@ def f(n: i32) -> str:
     return s             # OK
 ```
 
-#### `[py.promotion-terminators]` Branches that cannot fall through are ignored { #sugar-promotion-terminators }
+#### `[py.scope-lifting-terminators]` Branches that cannot fall through are ignored { #py-scope-lifting-terminators }
 
 `return`, `raise`, `break` and `continue` end a branch, so it need not assign
 the name.
@@ -683,7 +694,7 @@ def f(cond: bool) -> i32:
     return x             # ERROR: `x` not in scope
 ```
 
-#### `[py.promotion-incomplete]` An incomplete chain does not promote { #sugar-promotion-incomplete }
+#### `[py.scope-lifting-incomplete]` An incomplete chain does not lift { #py-scope-lifting-incomplete }
 
 ```python
 def f(cond: bool) -> None:
@@ -692,7 +703,7 @@ def f(cond: bool) -> None:
     print(x)             # ERROR: `x` not in scope
 ```
 
-#### `[py.promotion-transitive]` Promotion targets the enclosing block, and is transitive { #sugar-promotion-transitive }
+#### `[py.scope-lifting-transitive]` Scope lifting targets the enclosing block, and is transitive { #py-scope-lifting-transitive }
 
 ```python
 def f(a: bool, b: bool) -> None:
@@ -701,7 +712,7 @@ def f(a: bool, b: bool) -> None:
             x = 1
         else:
             x = 2
-        print(x)         # OK: promoted to the `if a:` block
+        print(x)         # OK: lifted to the `if a:` block
     print(x)             # ERROR: `x` not in scope here
 ```
 
@@ -714,10 +725,10 @@ def f(a: bool, b: bool) -> i32:
             x = 2
     else:
         x = 3
-    return x             # OK: promoted twice
+    return x             # OK: lifted twice
 ```
 
-#### `[py.promotion-opt-out]` Explicit declarations are never promoted { #sugar-promotion-opt-out }
+#### `[py.scope-lifting-opt-out]` Explicit declarations are never lifted { #py-scope-lifting-opt-out }
 
 This is how you opt out.
 
@@ -730,10 +741,10 @@ def f(cond: bool) -> None:
     print(x)             # ERROR: branch-local
 ```
 
-#### `[py.promotion-conflict]` A chain may not both declare and assign one name { #sugar-promotion-conflict }
+#### `[py.scope-lifting-conflict]` A chain may not both declare and assign one name { #py-scope-lifting-conflict }
 
 If one fall-through branch declares a name explicitly and another assigns it,
-that is an error: otherwise the code below would read like the promoting form
+that is an error: otherwise the code below would read like the lifting form
 and behave like the opt-out. The error is reported on the chain itself,
 whether or not `x` is used afterwards.
 
@@ -766,7 +777,7 @@ def f(cond: bool) -> None:
         x = 1
     else:
         x = 2
-    print(x)             # OK: all implicit → promoted
+    print(x)             # OK: all implicit → lifted
 ```
 
 ```python
@@ -777,22 +788,10 @@ def f(cond: bool) -> None:
         var x: i32 = 2   # OK: all explicit → both branch-local
 ```
 
-A name promoted into a branch from a nested chain counts as implicit, so it
+A name lifted into a branch from a nested chain counts as implicit, so it
 does not clash with an implicit binding in a sibling branch.
 
-A branch that cannot fall through is not part of the comparison:
-
-```python
-def f(cond: bool) -> i32:
-    if cond:
-        var x: i32 = 1
-        return x
-    else:
-        x = 2
-    return x             # OK: the then branch cannot fall through
-```
-
-#### `[py.promotion-loop]` Loop bodies never promote { #sugar-promotion-loop }
+#### `[py.scope-lifting-loop]` Loop bodies never lift { #py-scope-lifting-loop }
 
 A loop runs 0..N times, so a name assigned only inside it is never definitely
 assigned.
@@ -804,12 +803,7 @@ def f() -> None:
     print(total)         # ERROR: `total` not in scope
 ```
 
-#### `[py.promotion-types]` Every branch must assign the identical type { #sugar-promotion-types }
-
-Promotion requires every branch to assign the identical type; see
-[`[decl.auto-unification]`](#decl-auto-unification).
-
-#### `[py.promotion-blue]` A blue test collapses the chain { #sugar-promotion-blue }
+#### `[py.scope-lifting-blue]` A blue test collapses the chain { #py-scope-lifting-blue }
 
 Only the taken branch is compiled, so there is no second type to compare.
 
@@ -823,7 +817,7 @@ def f() -> None:
     print(x)             # OK
 ```
 
-#### `[py.promotion-const]` A promoted binding is `const` when every path assigns it once { #sugar-promotion-const }
+#### `[py.scope-lifting-const]` A lifted binding is `const` when every path assigns it once { #py-scope-lifting-const }
 
 So it stays blue under a blue test:
 
@@ -851,7 +845,7 @@ def f(cond: bool) -> None:
     print(TUP[n])        # ERROR: tuple index must be blue
 ```
 
-This applies only to promoted bindings: an ordinary block-local inside a
+This applies only to lifted bindings: an ordinary block-local inside a
 red-tested branch is still blue.
 
 ```python
@@ -861,9 +855,9 @@ def f(cond: bool) -> None:
         print(TUP[m])    # 1
 ```
 
-#### `[py.promotion-unroll]` Promotion + blue-time loop unrolling { #sugar-promotion-unroll }
+#### `[py.scope-lifting-unroll]` Scope lifting + blue-time loop unrolling { #py-scope-lifting-unroll }
 
-`item` is promoted to the loop body block, never to the function, so each
+`item` is lifted to the loop body block, never to the function, so each
 unrolled iteration gets its own binding with its own type.
 
 ```python
@@ -890,7 +884,7 @@ def f() -> None:
     print(item$2)
 ```
 
-### `[py.shadow-write]` A bare assignment never targets an outer function or module { #sugar-shadow-write }
+### `[py.shadow-write]` A bare assignment never targets an outer function or module { #py-shadow-write }
 
 It binds locally even when the name is visible outside. Use `global` /
 `nonlocal` to reach outward, the same rule as Python.
@@ -928,7 +922,7 @@ def outer() -> None:
         n = 1            # mutates outer's n
 ```
 
-### `[py.shadow-write-caught]` The read-then-write mistake is caught by use-before-declaration { #sugar-shadow-write-caught }
+### `[py.shadow-write-caught]` The read-then-write mistake is caught by use-before-declaration { #py-shadow-write-caught }
 
 Forgetting `global` is the classic Python mistake. In its usual shape,
 [`[decl.use-before]`](#decl-use-before) turns it into a static error.
@@ -942,7 +936,7 @@ def bump() -> None:
 
 A write-only shadow stays silent. We are aware of it and accept it for now;
 real usage will tell us whether it deserves a diagnostic (see
-[`[future.firewall]`](#future-firewall)).
+[`[future.shadow-guard]`](#future-shadow-guard)).
 
 ```python
 var COUNT: i32 = 0
@@ -1028,11 +1022,11 @@ def f(cond: bool) -> None:
     do_other_work()
 ```
 
-### `[future.firewall]` The firewall { #future-firewall }
+### `[future.shadow-guard]` The shadow guard { #future-shadow-guard }
 
 Reject a bare assignment when the name is visible as a mutable `var` in an
 outer function or module scope, instead of silently making a local
-([`[py.shadow-write]`](#sugar-shadow-write)). Shadowing an outer `const`
+([`[py.shadow-write]`](#py-shadow-write)). Shadowing an outer `const`
 would stay silent, since there is no mutable binding to hit by accident.
 
 ```python
