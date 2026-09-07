@@ -41,7 +41,8 @@ In strict scoping, `MODIFIER` is mandatory. Under pythonic scoping it can be
 omitted and inferred from the number of assignments, see
 [`[sugar.constness]`](#sugar-constness).
 
-If `TYPE` is `auto`, the type is inferred. If `TYPE` is omitted it's the same as `auto`.
+If `TYPE` is `auto` or omitted, the type is inferred, see
+[`[decl.auto]`](#decl-auto).
 
 `initializer` can be omitted.
 
@@ -57,6 +58,13 @@ def f() -> None:
     var g: auto        # same as above, will be initialized later
 ```
 
+### `[decl.no-redeclare]` No re-declaration in the same scope { #decl-no-redeclare }
+
+```python
+def f() -> None:
+    var x: i32 = 0
+    var x: i32 = 1       # ERROR: `x` already declared
+```
 
 ### `[decl.initializer]` The initializer may be omitted { #decl-initializer }
 
@@ -101,7 +109,7 @@ def f() -> None:
     x = "hello"         # OK
 
     var y: auto = 42    # infers i32
-    y = "hello"         # TypeError
+    y = "hello"         # ERROR: expected `i32`, got `str`
 ```
 
 If the initializer is omitted, the type is fixed on the **first assignment**:
@@ -110,7 +118,7 @@ If the initializer is omitted, the type is fixed on the **first assignment**:
 def f(cond: bool) -> None:
     var x: auto
     x = 1               # fixes x: i32
-    print(x)
+    x = "hello"         # ERROR: expected `i32`, got `str`
 ```
 
 ### `[decl.auto-unification]` Branches must assign the same type { #decl-auto-unification }
@@ -125,7 +133,7 @@ def f(cond: bool) -> None:
         x = 1
     else:
         x = "hello"
-    print(STATIC_TYPE(x))
+    print(STATIC_TYPE(x))    # works in interp, ERROR in compiler
 ```
 
 We have multiple goals and implementation constraints:
@@ -172,14 +180,6 @@ def f(cond: bool) -> f64:
     else:
         x = 2.5
     return x
-```
-
-### `[decl.no-redeclare]` No re-declaration in the same scope { #decl-no-redeclare }
-
-```python
-def f() -> None:
-    var x: i32 = 0
-    var x: i32 = 1       # ERROR: `x` already declared
 ```
 
 ### `[scope.block]` Blocks are scopes { #scope-block }
