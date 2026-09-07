@@ -48,10 +48,10 @@ The following are valid declarations:
 ```python
 def f() -> None:
     var a: int = 42    # full form
-    const b: int = 43  # immutable
+    const b: int = 43  # cannot be re-assigned
     var c: auto = 44   # inferred type
     var d = 45         # same as above
-    var e: auto        # will be initialized later
+    var e: auto        # same as above, will be initialized later
 ```
 
 
@@ -63,6 +63,22 @@ def f() -> None:
     x = 1
     print(x)             # 1
 ```
+
+### `[decl.uninitialized-read]` Reading uninitialized variables { #decl-uninitialized-read }
+
+With the current rules, it might happen to read an uninitialized variable:
+```python
+def f() -> None:
+    var x: i32
+    if False:
+        x = 42
+    print(x)             # runtime error / UB: `i` may be unassigned
+```
+
+This error is caught at runtime by the interpreter, and results in UB in compiled mode.
+This is a temporary limitation of SPy. Eventually we will implement
+[`[future-definite-assignment]`(#future-definite-assignment).
+
 
 ### `[decl.type-inference]` `auto` defers the type to the first assignment { #decl-type-inference }
 
@@ -76,32 +92,14 @@ def f(cond: bool) -> None:
     print(x)
 ```
 
-### `[decl.explicit-only]` `var`/`const` is mandatory { #decl-explicit-only }
-
-Under strict scoping, a name must be declared with an explicit `var` or
-`const`. A type annotation alone is not enough, and neither is a bare
-assignment:
-
-```python
-from __spy__ import strict_scoping
-
-def f() -> None:
-    x: i32 = 0           # ERROR: `x` is not declared (missing var/const)
-    y = 0                # ERROR: `y` is not declared
-```
-
 ### `[scope.block]` Blocks are scopes { #scope-block }
 
 The bodies of `if` / `elif` / `else` / `for` / `while` each introduce a scope.
 
-Nested block scopes are what make blue-time loop unrolling work: each unrolled
-iteration gets its own binding, and therefore its own type (see
-[`[sugar.promotion-unroll]`](#sugar-promotion-unroll)).
-
 ```python
 def f(cond: bool) -> None:
     if cond:
-        var x: i32 = 1
+        const x: i32 = 1
         print(x)         # 1
     print(x)             # ERROR: `x` not in scope
 ```
@@ -114,6 +112,18 @@ def f() -> None:
     print(x)             # ERROR: `x` not in scope
 ```
 
+### `[scope.shadow]` An inner block may shadow an outer name { #scope-shadow }
+
+```python
+def f(cond: bool) -> None:
+    const x: i32 = 42
+    if cond:
+        const x: str = "hi"
+        print(x)         # "hi"
+    print(x)             # 42
+```
+
+
 ### `[scope.loop-target]` A loop target dies with its block { #scope-loop-target }
 
 ```python
@@ -124,10 +134,33 @@ def f() -> None:
                          #        help: declare `var i: auto` before the loop
 ```
 
-### `[decl.no-redeclare]` No re-declaration in the same scope { #decl-no-redeclare }
+### `[scope.loop-target-declare]` Declaring the target first makes it outlive the loop { #scope-loop-target-declare }
 
-This is a baseline restriction, not a fundamental choice: Rust-style rebinding
-is planned as [`[future.rebind]`](#future-rebind).
+A loop target is an ordinary assignment: if a binding of the same name already
+exists in an enclosing block, the loop reuses it instead of creating a fresh
+block-local.
+
+```python
+def f() -> None:
+    var i: auto
+    for i in range(3):
+        pass
+    print(i)             # OK: 2
+```
+
+If the target is declared with a type, the element type must match it:
+
+```python
+def f() -> None:
+    var i: str
+    for i in range(10):  # ERROR: expected `str`, got `i32`
+        pass
+```
+
+An empty iterable leaves it unassigned, see
+[`[decl.uninitialized-read]`](#decl-uninitialized-read).
+
+### `[decl.no-redeclare]` No re-declaration in the same scope { #decl-no-redeclare }
 
 ```python
 def f() -> None:
@@ -160,16 +193,6 @@ def f(cond: bool) -> None:
     print(x)             # OK
 ```
 
-### `[scope.shadow]` An inner block may shadow an outer name { #scope-shadow }
-
-```python
-def f(cond: bool) -> None:
-    var x: i32 = 1
-    if cond:
-        var x: str = "hi"
-        print(x)         # the inner str
-    print(x)             # the outer i32
-```
 
 ```python
 def f() -> None:
@@ -512,21 +535,6 @@ def f() -> None:
 
 ### `[sugar.loop-target-declare]` Declaring the target first makes it outlive the loop { #sugar-loop-target-declare }
 
-Like any other assignment ([`[sugar.first-assign]`](#sugar-first-assign)), the
-target reuses a binding that already exists in an enclosing block.
-
-`print(i)` after a loop works in Python and not in SPy, so we detect that
-case, give a helpful error, and offer a one-line fix that recovers the CPython
-behavior.
-
-```python
-def f() -> None:
-    for i in range(3):
-        pass
-    print(i)             # ERROR: `i` is local to the `for` body
-                         #        help: declare `var i: auto` before the loop
-```
-
 ```python
 def f() -> None:
     var i: auto
@@ -535,15 +543,6 @@ def f() -> None:
     print(i)             # OK: 2
 ```
 
-The hazard comes with the behavior: an empty iterable leaves it unassigned.
-
-```python
-def f() -> None:
-    var i: auto
-    for i in range(0):
-        pass
-    print(i)             # ERROR: `i` may be unassigned
-```
 
 If the target is declared with a type, the element type must match it:
 
