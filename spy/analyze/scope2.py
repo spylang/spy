@@ -138,12 +138,12 @@ class ScopeAnalyzer:
         level, scope, sym = self.lookup_ref(name)
         if sym and name != "@return":
             assert scope is not None
-            ## if level == 0:
-            ##     msg = f"variable `{name}` already declared"
-            ##     err = SPyError("W_ScopeError", msg)
-            ##     err.add("error", "this is the new declaration", loc)
-            ##     err.add("note", "this is the previous declaration", sym.loc)
-            ##     raise err
+            if level == 0:
+                msg = f"variable `{name}` already declared"
+                err = SPyError("W_ScopeError", msg)
+                err.add("error", "this is the new declaration", loc)
+                err.add("note", "this is the previous declaration", sym.loc)
+                raise err
 
         storage = "direct"
         ## storage: VarStorage

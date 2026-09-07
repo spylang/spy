@@ -103,3 +103,21 @@ class TestScopeAnalyzer2:
             # captured builtins
             "i32": MatchSymbol("i32", "const", "explicit", level=2),
         }
+
+    def test_decl_no_redeclare(self):
+        """
+        [decl.no-redeclare]: declaring the same name twice in the same scope is an error
+        """
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo() -> None:
+            var x: i32 = 0
+            var x: i32 = 1
+        """
+        self.expect_errors(
+            src,
+            "variable `x` already declared",
+            ("this is the new declaration", "var x: i32 = 1"),
+            ("this is the previous declaration", "var x: i32 = 0"),
+        )
