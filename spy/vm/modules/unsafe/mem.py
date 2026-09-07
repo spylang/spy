@@ -19,9 +19,24 @@ if TYPE_CHECKING:
 
 @UNSAFE.builtin_func(color="blue", kind="generic")
 def w_raw_alloc(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
-    alignment = parse_optional_alignment(vm, w_T, args_w, "raw_alloc")
-    w_N = vm.wrap(alignment)
-    w_ptrtype = vm.fast_call(w_raw_ptr, [w_T, w_N])  # unsafe::raw_ptr[...]
+    if len(args_w) == 0:
+        # raw_alloc[T] means "default alignment", same as raw_ptr[T]. Go
+        # through the 0-arg raw_ptr[T] call rather than pre-resolving
+        # alignof(T) here: this lands on the SAME blue-cache entry that a
+        # field declaration like `next: raw_ptr[Node]` produces, so we get
+        # the identical W_PtrType object back.
+        #
+        # If we instead resolved alignof(T) ourselves and called
+        # raw_ptr[T, alignof(T)], the blue-cache key would differ whenever
+        # T is a not-yet-defined (e.g. self-referential) struct: alignof(T)
+        # is 1 during the struct body but its real value after definition.
+        # That would create a second W_PtrType with the same FQN and trip
+        # make_fqn_const's uniqueness assertion.
+        w_ptrtype = vm.fast_call(w_raw_ptr, [w_T])
+    else:
+        alignment = parse_optional_alignment(vm, w_T, args_w, "raw_alloc")
+        w_N = vm.wrap(alignment)
+        w_ptrtype = vm.fast_call(w_raw_ptr, [w_T, w_N])  # unsafe::raw_ptr[...]
     assert isinstance(w_ptrtype, W_PtrType)
     ITEMSIZE = sizeof(w_T)
 
@@ -41,9 +56,13 @@ def w_raw_alloc(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
 
 @UNSAFE.builtin_func(color="blue", kind="generic")
 def w_gc_alloc(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
-    alignment = parse_optional_alignment(vm, w_T, args_w, "gc_alloc")
-    w_N = vm.wrap(alignment)
-    w_ptrtype = vm.fast_call(w_gc_ptr, [w_T, w_N])  # unsafe::gc_ptr[...]
+    if len(args_w) == 0:
+        # see the comment in w_raw_alloc above
+        w_ptrtype = vm.fast_call(w_gc_ptr, [w_T])
+    else:
+        alignment = parse_optional_alignment(vm, w_T, args_w, "gc_alloc")
+        w_N = vm.wrap(alignment)
+        w_ptrtype = vm.fast_call(w_gc_ptr, [w_T, w_N])  # unsafe::gc_ptr[...]
     assert isinstance(w_ptrtype, W_PtrType)
     ITEMSIZE = sizeof(w_T)
 
