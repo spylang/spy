@@ -5,6 +5,7 @@ from spy.tests.support import CompilerTest, expect_errors, only_C, only_interp
 from spy.tests.wasm_wrapper import WasmPtr
 from spy.vm.b import B
 from spy.vm.modules.unsafe import UNSAFE
+from spy.vm.modules.unsafe.misc import alignof
 from spy.vm.modules.unsafe.ptr import W_Ptr
 
 
@@ -720,8 +721,7 @@ class TestUnsafePtr(CompilerTest):
         assert mod.get_byte("hello", 4) == ord("o")
 
     def test_ptr_index_all_dtypes(self):
-        mod = self.compile(
-            """
+        mod = self.compile("""
             from unsafe import gc_alloc, gc_ptr
 
             def rt[T](v: T) -> T:
@@ -737,8 +737,7 @@ class TestUnsafePtr(CompilerTest):
             rt_u64 = rt[u64]
             rt_f32 = rt[f32]
             rt_f64 = rt[f64]
-            """
-        )
+            """)
         assert mod.rt_i8(-(2**7)) == -(2**7)
         assert mod.rt_u8(2**8 - 1) == 2**8 - 1
         assert mod.rt_i32(-(2**31)) == -(2**31)
@@ -835,3 +834,86 @@ class TestUnsafePtr(CompilerTest):
         assert mod.rt_f32(7) == 7.0
         assert mod.rt_f64(1.5) == 1.5
         assert mod.rt_struct_byval_f32(7) == 7.0
+
+    @only_interp
+    def test_default_alignment_matches_alignof(self):
+        w_default = self.vm.fast_call(UNSAFE.w_gc_ptr, [B.w_f64])
+        N = alignof(B.w_f64)
+        w_explicit = self.vm.fast_call(UNSAFE.w_gc_ptr, [B.w_f64, self.vm.wrap(N)])
+        assert w_default is w_explicit
+        assert repr(w_default) == "<spy type 'unsafe::gc_ptr[f64]'>"
+
+    @only_interp
+    def test_explicit_alignment_in_fqn(self):
+        w_ptrtype = self.vm.fast_call(UNSAFE.w_gc_ptr, [B.w_i32, self.vm.wrap(8)])
+        assert repr(w_ptrtype) == "<spy type 'unsafe::gc_ptr[i32, 8]'>"
+
+    @only_interp
+    def test_different_alignments_are_different_types(self):
+        w_8 = self.vm.fast_call(UNSAFE.w_gc_ptr, [B.w_i32, self.vm.wrap(8)])
+        w_16 = self.vm.fast_call(UNSAFE.w_gc_ptr, [B.w_i32, self.vm.wrap(16)])
+        assert w_8 is not w_16
+
+    @only_interp
+    def test_too_many_arguments(self):
+        with pytest.raises(SPyError, match="accepts 1 or 2 arguments"):
+            self.vm.fast_call(
+                UNSAFE.w_gc_ptr,
+                [B.w_i32, self.vm.wrap(8), self.vm.wrap(16)],
+            )
+
+    def test_explicit_alignment_roundtrip(self):
+        mod = self.compile("""
+            from unsafe import gc_alloc, gc_ptr
+
+            def foo() -> i32:
+                p: gc_ptr[i32, 8] = gc_alloc[i32, 8](1)
+                p[0] = 42
+                return p[0]
+            """)
+        assert mod.foo() == 42
+
+    def test_default_equals_explicit_alignof(self):
+        mod = self.compile("""
+            from unsafe import gc_alloc, gc_ptr
+
+            def foo() -> i32:
+                p: gc_ptr[i32] = gc_alloc[i32, 4](1)
+                p[0] = 7
+                return p[0]
+            """)
+        assert mod.foo() == 7
+
+    def test_weakening_is_implicit(self):
+        mod = self.compile("""
+            from unsafe import gc_alloc, gc_ptr
+
+            def foo() -> i32:
+                p16: gc_ptr[i32, 16] = gc_alloc[i32, 16](1)
+                # implicit weakening: gc_ptr[i32, 16] -> gc_ptr[i32, 8]
+                p8: gc_ptr[i32, 8] = p16
+                p8[0] = 123
+                return p8[0]
+            """)
+        assert mod.foo() == 123
+
+    def test_strengthening_is_a_type_error(self):
+        src = """
+        from unsafe import gc_alloc, gc_ptr
+
+        def foo() -> None:
+            p8: gc_ptr[i32, 8] = gc_alloc[i32, 8](1)
+            p16: gc_ptr[i32, 16] = p8
+        """
+        errors = expect_errors(
+            "mismatched types",
+            (
+                "expected `unsafe::gc_ptr[i32, 16]`, got `unsafe::gc_ptr[i32, 8]`",
+                "p8",
+            ),
+            (
+                "expected `unsafe::gc_ptr[i32, 16]` because of type declaration",
+                "gc_ptr[i32, 16]",
+            ),
+        )
+        self.compile_raises(src, "foo", errors)
