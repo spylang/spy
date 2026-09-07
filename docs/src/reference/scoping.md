@@ -159,8 +159,8 @@ sees the other and thus it cannot possibly do the check.  **The unification chec
 done only when compiling**.
 
 This means that the snippet above prints either `i32` or `str` in `interp` mode, and
-raises a compile time error in the other cases.  **This is the only known case in which
-compiled code behaves differently than the interpreter**.
+raises a compile time error in the other cases.  **This is one of the very few known
+cases in which compiled code behaves differently than the interpreter**.
 
 As a partial mitigation, we impose the rule that the type must be **exactly the same**
 in all branches: we never try to find a common supertype. This way, we guarantee that
@@ -208,12 +208,12 @@ def f(cond: bool) -> None:
 The same holds when the declaration comes later in an *enclosing* block:
 
 ```python
-A = 1
+const A: i32 = 1
 
 def main(cond: bool) -> None:
     if cond:
         print(A)         # ERROR: `A` is declared later in this function
-    A = 0
+    var A: i32 = 0
 ```
 
 ### `[scope.block]` Blocks are scopes { #scope-block }
@@ -247,6 +247,17 @@ def f(cond: bool) -> None:
     print(x)             # 42
 ```
 
+The same holds for loop bodies:
+
+```python
+def f() -> None:
+    var x: i32 = 1
+    for i in range(3):
+        var x: i32 = i * 10
+        print(x)         # 0, 10, 20
+    print(x)             # 1
+```
+
 ### `[scope.branch-local]` A branch declaration is branch-local { #scope-branch-local }
 
 Each branch is its own scope, so neither declaration survives the `if`:
@@ -270,16 +281,6 @@ def f(cond: bool) -> None:
     else:
         x = 2
     print(x)             # OK
-```
-
-
-```python
-def f() -> None:
-    var x: i32 = 1
-    for i in range(3):
-        var x: i32 = i * 10
-        print(x)         # 0, 10, 20
-    print(x)             # 1
 ```
 
 
@@ -523,7 +524,7 @@ A declaration counts one only if it has an initializer:
 
 ```python
 def f(cond: bool) -> None:
-    var x: i32           # zero
+    x: i32               # zero
     if cond:
         x = 1            # one on this path
 ```
