@@ -657,6 +657,54 @@ class TestParser:
         """
         self.assert_dump(vardef, expected)
 
+    def test_VarDef_auto(self):
+        mod = self.parse("""
+        def foo() -> None:
+            x: auto = 42
+        """)
+        vardef = mod.get_funcdef("foo").body[0]
+        expected = """
+        VarDef(
+            kind=None,
+            name=StrLiteral(value='x'),
+            type=Auto(),
+            value=Literal(value=42),
+        )
+        """
+        self.assert_dump(vardef, expected)
+
+    def test_VarDef_auto_no_value(self):
+        mod = self.parse("""
+        def foo() -> None:
+            x: auto
+        """)
+        vardef = mod.get_funcdef("foo").body[0]
+        expected = """
+        VarDef(
+            kind=None,
+            name=StrLiteral(value='x'),
+            type=Auto(),
+            value=None,
+        )
+        """
+        self.assert_dump(vardef, expected)
+
+    def test_VarDef_var_auto(self):
+        mod = self.parse("""
+        def foo() -> None:
+            var x: auto = 42
+        """)
+        vardef = mod.get_funcdef("foo").body[0]
+        expected = """
+        VarDef(
+            kind='var',
+            name=StrLiteral(value='x'),
+            type=Auto(),
+            value=Literal(value=42),
+        )
+        """
+        self.assert_dump(vardef, expected)
+
     def test_global_VarDef(self):
         mod = self.parse("""
         a = 1

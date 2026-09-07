@@ -747,7 +747,9 @@ class Parser:
 
     from_py_expr_NotImplemented = unsupported
 
-    def from_py_expr_Name(self, py_node: py_ast.Name) -> spy.ast.Name:
+    def from_py_expr_Name(self, py_node: py_ast.Name) -> spy.ast.Expr:
+        if py_node.id == "auto":
+            return spy.ast.Auto(py_node.loc)
         return spy.ast.Name(py_node.loc, py_node.id)
 
     def from_py_expr_Constant(self, py_node: py_ast.Constant) -> spy.ast.Expr:
