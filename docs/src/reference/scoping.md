@@ -33,6 +33,7 @@ MODIFIER name: TYPE = initializer
 ```
 
 `MODIFIER` can be:
+
   - `const`: the name is assigned only once
   - `var`: the name can be reassigned
 
@@ -49,9 +50,11 @@ The following are valid declarations:
 def f() -> None:
     var a: int = 42    # full form
     const b: int = 43  # cannot be re-assigned
-    var c: auto = 44   # inferred type
-    var d = 45         # same as above
-    var e: auto        # same as above, will be initialized later
+    var c: int         # will be initialized later
+    const d: int       # same (only 1 assignment permitted)
+    var e: auto = 44   # inferred type
+    var f = 45         # same as above
+    var g: auto        # same as above, will be initialized later
 ```
 
 
@@ -64,8 +67,6 @@ def f() -> None:
     print(x)             # 1
 ```
 
-### `[decl.uninitialized-read]` Reading uninitialized variables { #decl-uninitialized-read }
-
 With the current rules, it might happen to read an uninitialized variable:
 ```python
 def f() -> None:
@@ -77,7 +78,7 @@ def f() -> None:
 
 This error is caught at runtime by the interpreter, and results in UB in compiled mode.
 This is a temporary limitation of SPy. Eventually we will implement
-[`[future-definite-assignment]`(#future-definite-assignment).
+[`[future.definite-assignment]`](#future-definite-assignment).
 
 
 ### `[decl.type-inference]` `auto` defers the type to the first assignment { #decl-type-inference }
@@ -178,7 +179,7 @@ def f() -> None:
 ```
 
 An empty iterable leaves it unassigned, see
-[`[decl.uninitialized-read]`](#decl-uninitialized-read).
+[`[decl.initializer]`](#decl-initializer).
 
 
 ### `[scope.branch-local]` A branch declaration is branch-local { #scope-branch-local }
