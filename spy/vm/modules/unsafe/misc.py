@@ -116,8 +116,7 @@ def alignof(w_T: W_Type) -> int:
         aligns = [alignof(w_field.w_T) for w_field in w_T.iterfields_w()]
         return max(aligns, default=1)
     else:
-        # tmp: we don't know, better than crashing
-        return 1
+        raise WIP(f"alignof({w_T}) not implemented")
 
 
 @UNSAFE.builtin_func(color="blue")
