@@ -23,8 +23,7 @@ def test_alignof_primitives():
 
 
 def test_alignof_not_implemented():
-    with pytest.raises(SPyError, match="not implemented"):
-        alignof(B.w_dynamic)
+    assert alignof(B.w_dynamic) == 1
 
 
 @no_C

@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from spy.errors import WIP
+from spy.errors import WIP, SPyError
 from spy.vm.b import B
 from spy.vm.object import W_Type
 from spy.vm.primitive import W_I32
@@ -97,13 +97,23 @@ def alignof(w_T: W_Type) -> int:
     elif w_T in (B.w_i64, B.w_u64, B.w_f64):
         return 8
     elif isinstance(w_T, W_StructType):
+        if not w_T.is_defined():
+            # not-yet-defined struct (e.g. a struct that (transitively)
+            # points to itself, or one of the special bootstrapping
+            # struct types like _str::StrObject that this function may be
+            # asked about before its fields are populated -- see the
+            # analogous comment in W_MemLocType.from_itemtype). We can't
+            # look at fields that don't exist yet, so fall back to 1
+            # rather than crashing;
+            return 1
         # the usual "max of the fields' alignments" rule. A struct with no
         # fields has nothing to take the max over, so fall back to 1
         # (matching a struct of size 0) rather than raising.
         aligns = [alignof(w_field.w_T) for w_field in w_T.iterfields_w()]
         return max(aligns, default=1)
     else:
-        raise WIP(f"alignof({w_T}) not implemented")
+        # tmp: we don't know, better than crashing
+        return 1
 
 
 @UNSAFE.builtin_func(color="blue")
@@ -112,3 +122,27 @@ def w_alignof(vm: "SPyVM", w_T: W_Type) -> W_I32:
     The SPy-visible `alignof(T)` blue builtin.
     """
     return vm.wrap(alignof(w_T))
+
+
+def parse_optional_alignment(
+    vm: "SPyVM", w_T: W_Type, args_w: tuple, funcname: str
+) -> int:
+    """
+    Shared arg-parsing for the optional, defaulted alignment type param on
+    {raw,gc}_ptr[T, N=alignof(T)] / {raw,gc}_alloc[T, N=alignof(T)].
+    `args_w` is whatever extra positional blue args were
+    passed after `T`: zero (use the default) or one (an i32 `N`).
+    """
+    if len(args_w) == 0:
+        return alignof(w_T)
+    elif len(args_w) == 1:
+        w_N = args_w[0]
+        if not isinstance(w_N, W_I32):
+            t = vm.dynamic_type(w_N).fqn.human_name(vm)
+            raise SPyError(
+                "W_TypeError", f"{funcname}: alignment must be i32, got `{t}`"
+            )
+        return int(vm.unwrap_i32(w_N))
+    else:
+        n = len(args_w) + 1
+        raise SPyError("W_TypeError", f"{funcname} accepts 1 or 2 arguments, got {n}")

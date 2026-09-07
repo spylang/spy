@@ -69,6 +69,14 @@ spy_gc_alloc_pointerless_bdwgc(size_t size) {
     static inline PTR PTR##_from_addr(T *p) {                                          \
         return (PTR){p};                                                               \
     }                                                                                  \
+    static inline ptrdiff_t PTR##_get_length(PTR p) {                                  \
+        (void)p;                                                                       \
+        return 0;                                                                      \
+    }                                                                                  \
+    static inline PTR PTR##_from_raw(T *p, ptrdiff_t length) {                         \
+        (void)length;                                                                  \
+        return (PTR){p};                                                               \
+    }                                                                                  \
     static inline PTR PTR##$alloc(size_t n) {                                          \
         return (PTR){(T*)spy_##ALLOC_FUNC(sizeof(T) * n)};                             \
     }                                                                                  \
@@ -97,6 +105,12 @@ spy_gc_alloc_pointerless_bdwgc(size_t size) {
 #define _SPY_PTR_FUNCTIONS_CHECKED(ALLOC_FUNC, PTR, T)                                 \
     static inline PTR PTR##_from_addr(T *p) {                                          \
         return (PTR){p, 1};                                                            \
+    }                                                                                  \
+    static inline ptrdiff_t PTR##_get_length(PTR p) {                                  \
+        return p.length;                                                               \
+    }                                                                                  \
+    static inline PTR PTR##_from_raw(T *p, ptrdiff_t length) {                         \
+        return (PTR){p, length};                                                       \
     }                                                                                  \
     static inline PTR PTR##$alloc(size_t n) {                                          \
         return (PTR){(T*)spy_##ALLOC_FUNC(sizeof(T) * n), (ptrdiff_t) n};              \

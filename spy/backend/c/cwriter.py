@@ -590,6 +590,9 @@ class CFuncWriter:
             # we handle ptr.deref explicitly for extra clarity
             return self.fmt_generic_call(fqn, call)
 
+        elif irtag.tag == "ptr.weaken_align":
+            return self.fmt_ptr_weaken_align(fqn, call)
+
         elif irtag.tag in ("ptr.getitem", "ptr.store"):
             # see unsafe/ptr.py::w_GETITEM and w_SETITEM there, we insert an
             # extra "w_loc" argument, which is not needed by the C backend
@@ -631,6 +634,22 @@ class CFuncWriter:
         c_struct = self.fmt_expr(call.args[0])
         name = irtag.data["name"]
         return C.Dot(c_struct, name)
+
+    def fmt_ptr_weaken_align(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        """
+        gc_ptr[T,N] -> gc_ptr[T,M] weakening conversion. Both types have
+        byte-identical C layout ({T *p; length}), so this is just a
+        relabeling.
+        """
+        assert len(call.args) == 1
+        w_srcT = call.args[0].w_T
+        assert w_srcT is not None
+        c_src = self.fmt_expr(call.args[0])
+        c_srctype = self.ctx.w2c(w_srcT)
+        c_targettype = self.ctx.c_restype_by_fqn(fqn)
+        c_p = C.Literal(f"({c_src}).p")
+        c_length = C.Call(f"{c_srctype}_get_length", [c_src])
+        return C.Call(f"{c_targettype}_from_raw", [c_p, c_length])
 
     def fmt_ptr_getfield(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         assert isinstance(call.args[1], ast.StrLiteral)
