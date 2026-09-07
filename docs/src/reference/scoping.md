@@ -92,6 +92,14 @@ def f(cond: bool) -> None:
     print(x)
 ```
 
+### `[decl.no-redeclare]` No re-declaration in the same scope { #decl-no-redeclare }
+
+```python
+def f() -> None:
+    var x: i32 = 0
+    var x: i32 = 1       # ERROR: `x` already declared
+```
+
 ### `[scope.block]` Blocks are scopes { #scope-block }
 
 The bodies of `if` / `elif` / `else` / `for` / `while` each introduce a scope.
@@ -160,13 +168,6 @@ def f() -> None:
 An empty iterable leaves it unassigned, see
 [`[decl.uninitialized-read]`](#decl-uninitialized-read).
 
-### `[decl.no-redeclare]` No re-declaration in the same scope { #decl-no-redeclare }
-
-```python
-def f() -> None:
-    var x: i32 = 0
-    var x: i32 = 1       # ERROR: `x` already declared
-```
 
 ### `[scope.branch-local]` A branch declaration is branch-local { #scope-branch-local }
 
@@ -203,15 +204,17 @@ def f() -> None:
     print(x)             # 1
 ```
 
-### `[scope.sibling-reuse]` Sibling blocks may reuse a name at different types { #scope-sibling-reuse }
+### `[scope.loop-fresh]` A block-local is fresh on each loop iteration { #scope-loop-fresh }
 
 ```python
-def f(cond: bool) -> None:
-    if cond:
-        var x: i32 = 1
-    else:
-        var x: str = "hi"
+def f() -> None:
+    for i in range(3):
+        var x: i32
+        if i == 0:
+            x = 1
+        print(x)         # when i == 1: `x` is unassigned
 ```
+
 
 ### `[name.resolution]` Names resolve outward, lexically { #name-resolution }
 
@@ -233,59 +236,56 @@ class P:
         return x         # ERROR: NameError (use `self.x`)
 ```
 
-### `[closure.nonlocal]` Closures read outer names freely; writing needs `nonlocal` { #closure-nonlocal }
+### `[global.write]` Writing to a global needs `global` { #global-write }
 
-Under strict scoping a bare assignment declares nothing, so writing an outer
-name requires `nonlocal`. (Under pythonic scoping the bare form is a fresh
-local instead, see [`[sugar.shadow-write]`](#sugar-shadow-write).)
+A function can read a module-level name freely, but assigning to it requires
+the `global` declaration, and the binding must be a `var`:
 
 ```python
-from __spy__ import strict_scoping
+var x: i32 = 42
+var y: i32 = 43
 
-def outer() -> None:
-    var x: i32 = 0
-    def inner() -> None:
-        print(x)         # OK: read capture
-    def bad() -> None:
-        x = 1            # ERROR: `x` is not declared; say `nonlocal x`
-    def good() -> None:
-        nonlocal x
-        x = 1            # OK
+def f() -> None:
+    print(x)             # OK: read
+    y = 0                # ERROR: `y` is not declared; say `global x`
+
+def g() -> None:
+    global x
+    x = 0                # OK: mutates the global
 ```
 
-`nonlocal` / `global` only re-target the assignment; they do not grant
-mutability:
+`global` only re-targets the assignment; it does not grant mutability, so a
+`const` global cannot be modified:
 
 ```python
-A = 1                    # const
+const A = 1
 
 def main() -> None:
     global A
     A = 0                # ERROR: `A` is a const (help: declare it `var A`)
 ```
 
-### `[decl.type-fixed]` The declared type never moves { #decl-type-fixed }
+### `[closure.nonlocal]` Closures read outer names freely; writing needs `nonlocal` { #closure-nonlocal }
 
-This is what makes the model implementable without CFGs or fixpoint analysis.
-
+This works like `global`, but for closures:
 ```python
-def f() -> None:
+from __spy__ import strict_scoping
+
+def outer() -> None:
     var x: i32 = 0
-    x = 1                # OK
-    x = "hi"             # ERROR: expected `i32` because of type declaration
+    const y: i32 = 1
+    def inner() -> None:
+        print(x)         # OK: read capture
+    def bad() -> None:
+        x = 1            # ERROR: `x` is not declared; say `nonlocal x`
+    def good() -> None:
+        nonlocal x, y
+        x = 1            # OK
+        y = 1            # ERROR: `y` is a const (help: declare it `var y`)
 ```
 
-A wide declared type is how you get a wide variable:
-
-```python
-def f(cond: bool) -> None:
-    var x: i32 | str
-    if cond:
-        x = 1
-    else:
-        x = "hi"
-    print(x)             # x: i32 | str, the declared type
-```
+Like `global`, `nonlocal` only re-targets the assignment; it does not grant
+mutability (see [`[global.write]`](#global-write)).
 
 ### `[decl.use-before]` A name may not be used before its declaration { #decl-use-before }
 
@@ -323,16 +323,6 @@ class P:
         y: i32           # OK: still a field of P
 ```
 
-### `[scope.loop-fresh]` A block-local is fresh on each loop iteration { #scope-loop-fresh }
-
-```python
-def f() -> None:
-    for i in range(3):
-        var x: i32
-        if i == 0:
-            x = 1
-        print(x)         # i == 1: `x` is unassigned, not 1
-```
 
 ## Part 2 - Pythonic scoping
 
