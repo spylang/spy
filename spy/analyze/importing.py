@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Optional, Union
 import py.path
 
 from spy import ast
+from spy.analyze import scope2
 from spy.analyze.scope import ScopeAnalyzer
 from spy.astcompile import astcompile
 from spy.errors import SPyError
@@ -284,8 +285,15 @@ class ImportAnalyzer:
         parser = Parser.from_filename(str(spyfile))
         return parser.parse()
 
-    def analyze_one(self, modname: str, mod: ast.Module) -> ScopeAnalyzer:
-        scopes = ScopeAnalyzer(modname, mod)
+    def analyze_one(
+        self, modname: str, mod: ast.Module
+    ) -> ScopeAnalyzer | scope2.ScopeAnalyzer:
+        if mod.scoping_rules == "strict":
+            scopes: ScopeAnalyzer | scope2.ScopeAnalyzer = scope2.ScopeAnalyzer(
+                modname, mod
+            )
+        else:
+            scopes = ScopeAnalyzer(modname, mod)
         scopes.analyze()
         return scopes
 
