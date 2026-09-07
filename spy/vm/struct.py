@@ -216,6 +216,7 @@ class W_StructType(W_Type):
             return_type=ast.FQNConst(func_loc, B.w_bool.fqn),
             defaults=[],
             docstring=None,
+            scoping_rules="pythonic",
             body=[stmt],
             decorators=[],
         )
@@ -226,6 +227,7 @@ class W_StructType(W_Type):
             stage="parsed",
             filename="<generated>",
             docstring=None,
+            scoping_rules="pythonic",
             decls=[ast.GlobalFuncDef(func_loc, funcdef)],
         )
         analyzer = ScopeAnalyzer(self.fqn.modname, module)

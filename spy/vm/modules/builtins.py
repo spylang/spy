@@ -113,6 +113,7 @@ def w_print(vm: "SPyVM", *args_wam: W_MetaArg) -> W_OpSpec:
         return_type=ast.FQNConst(loc, TYPES.w_NoneType.fqn),
         defaults=[],
         docstring=None,
+        scoping_rules="pythonic",
         body=body,
         decorators=[],
     )
@@ -121,6 +122,7 @@ def w_print(vm: "SPyVM", *args_wam: W_MetaArg) -> W_OpSpec:
         stage="parsed",
         filename="<generated>",
         docstring=None,
+        scoping_rules="pythonic",
         decls=[ast.GlobalFuncDef(loc, funcdef)],
     )
     ScopeAnalyzer("_print", module).analyze()

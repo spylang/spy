@@ -66,6 +66,7 @@ LoweringStage = typing.Literal[
 ClassKind = typing.Literal["class", "struct"]
 FuncKind = typing.Literal["plain", "generic", "metafunc"]
 FuncParamKind = typing.Literal["simple", "var_positional"]
+ScopingRules = typing.Literal["pythonic", "strict"]
 
 
 @extend(py_ast.AST)
@@ -286,6 +287,7 @@ class Module(Node):
     stage: LoweringStage
     filename: str
     docstring: Optional[str]
+    scoping_rules: ScopingRules
     decls: list["Decl"]
     symtable: Any = field(repr=False, default=None)
 
@@ -792,6 +794,7 @@ class FuncDef(Stmt):
     return_type: "Expr"
     defaults: list[Expr]
     docstring: Optional[str]
+    scoping_rules: ScopingRules
     body: list["Stmt"]
     decorators: list["Expr"]
     symtable: Any = field(repr=False, default=None)
