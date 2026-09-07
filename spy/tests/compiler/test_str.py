@@ -408,13 +408,17 @@ class TestStr(CompilerTest):
         mod = self.compile(src)
         assert mod.foo("hello") == "hello"
 
-    def test_str_none(self):
+    def test_str_repr_none(self):
         src = """
-        def foo() -> str:
+        def none_str() -> str:
             return str(None)
+
+        def none_repr() -> str:
+            return repr(None)
         """
         mod = self.compile(src)
-        assert mod.foo() == "None"
+        assert mod.none_str() == "None"
+        assert mod.none_repr() == "None"
 
     def test_str_not_implemented(self):
         src = """

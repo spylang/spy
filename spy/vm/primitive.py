@@ -40,12 +40,21 @@ class W_NoneType(W_Object):
     def spy_unwrap(self, vm: "SPyVM") -> None:
         return None
 
-    @builtin_method("__str__", color="blue", kind="metafunc")
     @staticmethod
-    def w_STR(vm: "SPyVM", wam_self: "W_MetaArg") -> "W_OpSpec":
+    def _w_format(vm: "SPyVM") -> "W_OpSpec":
         from spy.vm.opspec import W_OpSpec
 
         return W_OpSpec.const(vm.wrap("None"))
+
+    @builtin_method("__str__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_STR(vm: "SPyVM", wam_self: "W_MetaArg") -> "W_OpSpec":
+        return W_NoneType._w_format(vm)
+
+    @builtin_method("__repr__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_REPR(vm: "SPyVM", wam_self: "W_MetaArg") -> "W_OpSpec":
+        return W_NoneType._w_format(vm)
 
 
 B.add("None", W_NoneType.__new__(W_NoneType))
