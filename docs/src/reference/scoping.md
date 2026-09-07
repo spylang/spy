@@ -182,6 +182,30 @@ def f(cond: bool) -> f64:
     return x
 ```
 
+### `[decl.use-before]` A name may not be used before its declaration { #decl-use-before }
+
+This keeps the meaning of a name constant within a block: the reference does
+not fall through to the outer `x`.
+
+```python
+def f(cond: bool) -> None:
+    var x: i32 = 1
+    if cond:
+        print(x)         # ERROR: `x` used before its declaration in this block
+        var x: str = "hi"
+```
+
+The same holds when the declaration comes later in an *enclosing* block:
+
+```python
+A = 1
+
+def main(cond: bool) -> None:
+    if cond:
+        print(A)         # ERROR: `A` is declared later in this function
+    A = 0
+```
+
 ### `[scope.block]` Blocks are scopes { #scope-block }
 
 The bodies of `if` / `elif` / `else` / `for` / `while` each introduce a scope.
@@ -213,6 +237,41 @@ def f(cond: bool) -> None:
     print(x)             # 42
 ```
 
+### `[scope.branch-local]` A branch declaration is branch-local { #scope-branch-local }
+
+Each branch is its own scope, so neither declaration survives the `if`:
+
+```python
+def f(cond: bool) -> None:
+    if cond:
+        var x: i32 = 1
+    else:
+        var x: i32 = 2
+    print(x)             # ERROR: `x` not in scope
+```
+
+Declare it before the `if` to share one binding:
+
+```python
+def f(cond: bool) -> None:
+    var x: i32
+    if cond:
+        x = 1
+    else:
+        x = 2
+    print(x)             # OK
+```
+
+
+```python
+def f() -> None:
+    var x: i32 = 1
+    for i in range(3):
+        var x: i32 = i * 10
+        print(x)         # 0, 10, 20
+    print(x)             # 1
+```
+
 
 ### `[scope.loop-target]` A loop target dies with its block { #scope-loop-target }
 
@@ -223,7 +282,6 @@ def f() -> None:
     print(i)             # ERROR: `i` is local to the `for` body
                          #        help: declare `var i: auto` before the loop
 ```
-
 
 The next loop may therefore reuse the name at a different type.
 
@@ -262,42 +320,6 @@ def f() -> None:
 An empty iterable leaves it unassigned, see
 [`[decl.initializer]`](#decl-initializer).
 
-
-### `[scope.branch-local]` A branch declaration is branch-local { #scope-branch-local }
-
-Each branch is its own scope, so neither declaration survives the `if`:
-
-```python
-def f(cond: bool) -> None:
-    if cond:
-        var x: i32 = 1
-    else:
-        var x: i32 = 2
-    print(x)             # ERROR: `x` not in scope
-```
-
-Declare it before the `if` to share one binding:
-
-```python
-def f(cond: bool) -> None:
-    var x: i32
-    if cond:
-        x = 1
-    else:
-        x = 2
-    print(x)             # OK
-```
-
-
-```python
-def f() -> None:
-    var x: i32 = 1
-    for i in range(3):
-        var x: i32 = i * 10
-        print(x)         # 0, 10, 20
-    print(x)             # 1
-```
-
 ### `[scope.loop-fresh]` A block-local is fresh on each loop iteration { #scope-loop-fresh }
 
 ```python
@@ -308,6 +330,8 @@ def f() -> None:
             x = 1
         print(x)         # when i == 1: `x` is unassigned
 ```
+
+
 
 
 ### `[name.resolution]` Names resolve outward, lexically { #name-resolution }
@@ -336,12 +360,14 @@ A function can read a module-level name freely, but assigning to it requires
 the `global` declaration, and the binding must be a `var`:
 
 ```python
+from __spy__ import strict_scoping
+
 var x: i32 = 42
 var y: i32 = 43
 
 def f() -> None:
     print(x)             # OK: read
-    y = 0                # ERROR: `y` is not declared; say `global x`
+    y = 0                # ERROR: `y` is not declared; say `global y`
 
 def g() -> None:
     global x
@@ -381,30 +407,6 @@ def outer() -> None:
 Like `global`, `nonlocal` only re-targets the assignment; it does not grant
 mutability (see [`[global.write]`](#global-write)).
 
-### `[decl.use-before]` A name may not be used before its declaration { #decl-use-before }
-
-This keeps the meaning of a name constant within a block: the reference does
-not fall through to the outer `x`.
-
-```python
-def f(cond: bool) -> None:
-    var x: i32 = 1
-    if cond:
-        print(x)         # ERROR: `x` used before its declaration in this block
-        var x: str = "hi"
-```
-
-The same holds when the declaration comes later in an *enclosing* block:
-
-```python
-A = 1
-
-def main(cond: bool) -> None:
-    if cond:
-        print(A)         # ERROR: `A` is declared later in this function
-    A = 0
-```
-
 ### `[class.flat-body]` Class bodies are not blocks { #class-flat-body }
 
 Field declarations bind in the class scope whatever their nesting.
@@ -423,7 +425,7 @@ class P:
 Sugar over strict scoping: every rule below has an explicit equivalent, and
 `from __spy__ import strict_scoping` removes it.
 
-### `[sugar.first-assign]` The first assignment declares { #sugar-first-assign }
+### `[py.first-assign]` The first assignment declares { #sugar-first-assign }
 
 ```python
 def f() -> None:
@@ -448,7 +450,7 @@ def f() -> None:
     print(a)             # 1
 ```
 
-### `[sugar.constness]` `var` / `const` is inferred from the number of assignments { #sugar-constness }
+### `[py.constness]` `var` / `const` is inferred from the number of assignments { #sugar-constness }
 
 Not to be confused with mutability of values: this is about whether the *name* is
 rebound, not whether the object it refers to can be mutated.  Assigned once → `const`;
@@ -473,7 +475,7 @@ def f() -> None:
     b = b + 1
 ```
 
-### `[sugar.constness-paths]` The count is per execution path { #sugar-constness-paths }
+### `[py.constness-paths]` The count is per execution path { #sugar-constness-paths }
 
 A statement sequence sums; an `if` chain takes the max over its branches.
 
@@ -516,7 +518,7 @@ def f(cond: bool) -> None:
         x = 1            # one on this path
 ```
 
-### `[sugar.walrus]` A walrus binds in the enclosing block { #sugar-walrus }
+### `[py.walrus]` A walrus binds in the enclosing block { #sugar-walrus }
 
 ```python
 def main() -> None:
@@ -533,7 +535,7 @@ def f() -> None:
 ```
 
 
-### `[sugar.blue-params]` Blue parameters are always `const` { #sugar-blue-params }
+### `[py.blue-params]` Blue parameters are always `const` { #sugar-blue-params }
 
 ```python
 @blue
@@ -541,7 +543,7 @@ def h(x: i32) -> None:
     x = x + 1            # ERROR: blue function arguments are const by default
 ```
 
-### `[sugar.global-const-by-default]` Module level is `const` by default { #sugar-global-const-by-default }
+### `[py.global-const-by-default]` Module level is `const` by default { #sugar-global-const-by-default }
 
 ```python
 A = 1                    # const
@@ -553,18 +555,18 @@ A = 1
 A = 2                    # ERROR: `A` already declared
 ```
 
-### `[sugar.augassign]` `AugAssign` needs an existing binding { #sugar-augassign }
+### `[py.augassign]` `AugAssign` needs an existing binding { #sugar-augassign }
 
 ```python
 def f() -> None:
     x += 1               # ERROR: name `x` is not defined
 ```
 
-### `[sugar.def-class]` A nested `def` or `class` is a binding like any other { #sugar-def-class }
+### `[py.def-class]` A nested `def` or `class` is a binding like any other { #sugar-def-class }
 
 There is no special case: it follows the same rules as other assignments, so
 it is block-local, and eligible for promotion
-([`[sugar.promotion]`](#sugar-promotion)).
+([`[py.promotion]`](#sugar-promotion)).
 
 ```python
 COND = True
@@ -586,7 +588,7 @@ def main() -> None:
 ```
 
 
-### `[sugar.promotion]` DWIM promotion { #sugar-promotion }
+### `[py.promotion]` DWIM promotion { #sugar-promotion }
 
 A name implicitly assigned in every branch of a complete `if` chain is
 promoted to the enclosing block. This must work, period, without the user
@@ -626,7 +628,7 @@ def f(n: i32) -> str:
     return s             # OK
 ```
 
-#### `[sugar.promotion-terminators]` Branches that cannot fall through are ignored { #sugar-promotion-terminators }
+#### `[py.promotion-terminators]` Branches that cannot fall through are ignored { #sugar-promotion-terminators }
 
 `return`, `raise`, `break` and `continue` end a branch, so it need not assign
 the name.
@@ -671,7 +673,7 @@ def f(cond: bool) -> i32:
     return x             # ERROR: `x` not in scope
 ```
 
-#### `[sugar.promotion-incomplete]` An incomplete chain does not promote { #sugar-promotion-incomplete }
+#### `[py.promotion-incomplete]` An incomplete chain does not promote { #sugar-promotion-incomplete }
 
 ```python
 def f(cond: bool) -> None:
@@ -680,7 +682,7 @@ def f(cond: bool) -> None:
     print(x)             # ERROR: `x` not in scope
 ```
 
-#### `[sugar.promotion-transitive]` Promotion targets the enclosing block, and is transitive { #sugar-promotion-transitive }
+#### `[py.promotion-transitive]` Promotion targets the enclosing block, and is transitive { #sugar-promotion-transitive }
 
 ```python
 def f(a: bool, b: bool) -> None:
@@ -705,7 +707,7 @@ def f(a: bool, b: bool) -> i32:
     return x             # OK: promoted twice
 ```
 
-#### `[sugar.promotion-opt-out]` Explicit declarations are never promoted { #sugar-promotion-opt-out }
+#### `[py.promotion-opt-out]` Explicit declarations are never promoted { #sugar-promotion-opt-out }
 
 This is how you opt out.
 
@@ -718,7 +720,7 @@ def f(cond: bool) -> None:
     print(x)             # ERROR: branch-local
 ```
 
-#### `[sugar.promotion-conflict]` A chain may not both declare and assign one name { #sugar-promotion-conflict }
+#### `[py.promotion-conflict]` A chain may not both declare and assign one name { #sugar-promotion-conflict }
 
 If one fall-through branch declares a name explicitly and another assigns it,
 that is an error: otherwise the code below would read like the promoting form
@@ -780,7 +782,7 @@ def f(cond: bool) -> i32:
     return x             # OK: the then branch cannot fall through
 ```
 
-#### `[sugar.promotion-loop]` Loop bodies never promote { #sugar-promotion-loop }
+#### `[py.promotion-loop]` Loop bodies never promote { #sugar-promotion-loop }
 
 A loop runs 0..N times, so a name assigned only inside it is never definitely
 assigned.
@@ -792,12 +794,12 @@ def f() -> None:
     print(total)         # ERROR: `total` not in scope
 ```
 
-#### `[sugar.promotion-types]` Every branch must assign the identical type { #sugar-promotion-types }
+#### `[py.promotion-types]` Every branch must assign the identical type { #sugar-promotion-types }
 
 Promotion requires every branch to assign the identical type; see
 [`[decl.auto-unification]`](#decl-auto-unification).
 
-#### `[sugar.promotion-blue]` A blue test collapses the chain { #sugar-promotion-blue }
+#### `[py.promotion-blue]` A blue test collapses the chain { #sugar-promotion-blue }
 
 Only the taken branch is compiled, so there is no second type to compare.
 
@@ -811,7 +813,7 @@ def f() -> None:
     print(x)             # OK
 ```
 
-#### `[sugar.promotion-const]` A promoted binding is `const` when every path assigns it once { #sugar-promotion-const }
+#### `[py.promotion-const]` A promoted binding is `const` when every path assigns it once { #sugar-promotion-const }
 
 So it stays blue under a blue test:
 
@@ -849,7 +851,7 @@ def f(cond: bool) -> None:
         print(TUP[m])    # 1
 ```
 
-#### `[sugar.promotion-unroll]` Promotion + blue-time loop unrolling { #sugar-promotion-unroll }
+#### `[py.promotion-unroll]` Promotion + blue-time loop unrolling { #sugar-promotion-unroll }
 
 `item` is promoted to the loop body block, never to the function, so each
 unrolled iteration gets its own binding with its own type.
@@ -878,7 +880,7 @@ def f() -> None:
     print(item$2)
 ```
 
-### `[sugar.shadow-write]` A bare assignment never targets an outer function or module { #sugar-shadow-write }
+### `[py.shadow-write]` A bare assignment never targets an outer function or module { #sugar-shadow-write }
 
 It binds locally even when the name is visible outside. Use `global` /
 `nonlocal` to reach outward, the same rule as Python.
@@ -916,7 +918,7 @@ def outer() -> None:
         n = 1            # mutates outer's n
 ```
 
-### `[sugar.shadow-write-caught]` The read-then-write mistake is caught by use-before-declaration { #sugar-shadow-write-caught }
+### `[py.shadow-write-caught]` The read-then-write mistake is caught by use-before-declaration { #sugar-shadow-write-caught }
 
 Forgetting `global` is the classic Python mistake. In its usual shape,
 [`[decl.use-before]`](#decl-use-before) turns it into a static error.
@@ -1020,7 +1022,7 @@ def f(cond: bool) -> None:
 
 Reject a bare assignment when the name is visible as a mutable `var` in an
 outer function or module scope, instead of silently making a local
-([`[sugar.shadow-write]`](#sugar-shadow-write)). Shadowing an outer `const`
+([`[py.shadow-write]`](#sugar-shadow-write)). Shadowing an outer `const`
 would stay silent, since there is no mutable binding to hit by accident.
 
 ```python
