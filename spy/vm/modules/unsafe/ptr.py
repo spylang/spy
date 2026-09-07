@@ -30,11 +30,9 @@ import fixedint
 
 from spy.errors import SPyError
 from spy.fqn import FQN
-from spy.location import Loc
 from spy.vm.b import B
 from spy.vm.builtin import builtin_method, builtin_property
 from spy.vm.bytes import W_Bytes
-from spy.vm.function import W_ASTFunc
 from spy.vm.irtag import IRTag
 from spy.vm.member import Member
 from spy.vm.modules.types import W_Loc
@@ -44,7 +42,7 @@ from spy.vm.struct import W_StructType
 from spy.vm.w import W_Func, W_Object, W_Str, W_Type
 
 from . import UNSAFE
-from .misc import sizeof
+from .misc import alignof, parse_optional_alignment, sizeof
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -54,23 +52,50 @@ MEMKIND = Literal["raw", "gc"]
 
 
 @UNSAFE.builtin_func(color="blue", kind="generic")
-def w_raw_ptr(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
+def w_raw_ptr(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
     """
-    The raw_ptr[T] generic type
+    The raw_ptr[T] / raw_ptr[T, N] generic type
     """
-    fqn = FQN("unsafe").join("raw_ptr", [w_T.fqn])  # unsafe::raw_ptr[i32]
-    w_ptrtype = W_PtrType.from_itemtype(fqn, "raw", w_T)
+    if len(args_w) == 0:
+        # raw_ptr[T] is just the common-case spelling of
+        # raw_ptr[T, alignof(T)]. Type identity across calls comes purely
+        # from the blue-call cache, which keys on (func, args_w). So we
+        # recurse through the 2-arg call, landing on the same cache entry
+        # and therefore the same W_PtrType object.
+        w_N = vm.wrap(alignof(w_T))
+        return vm.fast_call(w_raw_ptr, [w_T, w_N])
+    alignment = parse_optional_alignment(vm, w_T, args_w, "raw_ptr")
+    fqn = _ptr_fqn("raw_ptr", w_T, alignment)
+    w_ptrtype = W_PtrType.from_itemtype(fqn, "raw", w_T, alignment)
     return w_ptrtype
 
 
 @UNSAFE.builtin_func(color="blue", kind="generic")
-def w_gc_ptr(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
+def w_gc_ptr(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
     """
-    The gc_ptr[T] generic type
+    The gc_ptr[T] / gc_ptr[T, N] generic type
     """
-    fqn = FQN("unsafe").join("gc_ptr", [w_T.fqn])  # unsafe::gc_ptr[i32]
-    w_ptrtype = W_PtrType.from_itemtype(fqn, "gc", w_T)
+    if len(args_w) == 0:
+        # see the comment in w_raw_ptr above
+        w_N = vm.wrap(alignof(w_T))
+        return vm.fast_call(w_gc_ptr, [w_T, w_N])
+    alignment = parse_optional_alignment(vm, w_T, args_w, "gc_ptr")
+    fqn = _ptr_fqn("gc_ptr", w_T, alignment)
+    w_ptrtype = W_PtrType.from_itemtype(fqn, "gc", w_T, alignment)
     return w_ptrtype
+
+
+def _ptr_fqn(funcname: str, w_T: W_Type, alignment: int) -> FQN:
+    """
+    unsafe::{raw,gc}_ptr[T] when `alignment` is T's natural alignment
+    (the default) else unsafe::{raw,gc}_ptr[T, N], so that an explicit,
+    non-default alignment is part of the type's identity
+    (gc_ptr[T,N] and gc_ptr[T,M] for N != M are distinct types).
+    """
+    qualifiers: list = [w_T.fqn]
+    if alignment != alignof(w_T):
+        qualifiers.append(str(alignment))
+    return FQN("unsafe").join(funcname, qualifiers)
 
 
 @UNSAFE.builtin_func(color="blue", kind="generic")
@@ -167,10 +192,17 @@ class W_MemLocType(W_Type):
 
     memkind: MEMKIND
     w_itemT: Annotated[W_Type, Member("itemtype")]
+    alignment: int
     is_ready: bool
 
     @classmethod
-    def from_itemtype(cls, fqn: FQN, memkind: MEMKIND, w_itemT: W_Type) -> Self:
+    def from_itemtype(
+        cls,
+        fqn: FQN,
+        memkind: MEMKIND,
+        w_itemT: W_Type,
+        alignment: Optional[int] = None,
+    ) -> Self:
         if cls is W_PtrType:
             w_T = cls.from_pyclass(fqn, W_Ptr)
         elif cls is W_RefType:
@@ -179,6 +211,11 @@ class W_MemLocType(W_Type):
             assert False
         w_T.memkind = memkind
         w_T.w_itemT = w_itemT
+        if alignment is None:
+            from .misc import alignof
+
+            alignment = alignof(w_itemT)
+        w_T.alignment = alignment
         w_T.is_ready = False
         if isinstance(w_itemT, W_StructType):
             if w_itemT.is_defined():
@@ -471,6 +508,25 @@ class W_Ptr(W_MemLoc):
                 return B.w_True
 
             return W_OpSpec(w_ptr_to_bool)
+
+        elif (
+            isinstance(w_T, W_PtrType)
+            and w_T.memkind == w_ptrtype.memkind
+            and w_T.w_itemT is w_ptrtype.w_itemT
+            and w_T.alignment <= w_ptrtype.alignment
+        ):
+            # weakening conversion: gc_ptr[T,N] -> gc_ptr[T,M] is free whenever
+            # M <= N. The strengthening direction (M > N) is NOT handled here
+            # (needs align_cast).
+            TARGET = Annotated[W_Ptr, w_T]
+            funcname = f"weaken_align_to_{w_T.alignment}"
+            irtag = IRTag("ptr.weaken_align")
+
+            @vm.register_builtin_func(w_ptrtype.fqn, funcname, irtag=irtag)
+            def w_ptr_weaken_align(vm: "SPyVM", w_ptr: PTR) -> TARGET:
+                return W_Ptr(w_T, w_ptr.addr, w_ptr.length)  # type: ignore
+
+            return W_OpSpec(w_ptr_weaken_align)
 
         else:
             return W_OpSpec.NULL

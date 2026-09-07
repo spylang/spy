@@ -10,7 +10,7 @@ from spy.vm.struct import W_Struct, W_StructType
 from spy.vm.w import W_Object, W_Type
 
 from . import UNSAFE
-from .misc import sizeof
+from .misc import parse_optional_alignment, sizeof
 from .ptr import W_Ptr, W_PtrType, w_gc_ptr, w_raw_ptr
 
 if TYPE_CHECKING:
@@ -18,8 +18,10 @@ if TYPE_CHECKING:
 
 
 @UNSAFE.builtin_func(color="blue", kind="generic")
-def w_raw_alloc(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
-    w_ptrtype = vm.fast_call(w_raw_ptr, [w_T])  # unsafe::raw_ptr[i32]
+def w_raw_alloc(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
+    alignment = parse_optional_alignment(vm, w_T, args_w, "raw_alloc")
+    w_N = vm.wrap(alignment)
+    w_ptrtype = vm.fast_call(w_raw_ptr, [w_T, w_N])  # unsafe::raw_ptr[...]
     assert isinstance(w_ptrtype, W_PtrType)
     ITEMSIZE = sizeof(w_T)
 
@@ -38,8 +40,10 @@ def w_raw_alloc(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
 
 
 @UNSAFE.builtin_func(color="blue", kind="generic")
-def w_gc_alloc(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
-    w_ptrtype = vm.fast_call(w_gc_ptr, [w_T])  # unsafe::gc_ptr[i32]
+def w_gc_alloc(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
+    alignment = parse_optional_alignment(vm, w_T, args_w, "gc_alloc")
+    w_N = vm.wrap(alignment)
+    w_ptrtype = vm.fast_call(w_gc_ptr, [w_T, w_N])  # unsafe::gc_ptr[...]
     assert isinstance(w_ptrtype, W_PtrType)
     ITEMSIZE = sizeof(w_T)
 
