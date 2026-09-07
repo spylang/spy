@@ -612,9 +612,10 @@ def main() -> None:
 
 ### `[py.scope-lifting]` Automatic scope lifting { #py-scope-lifting }
 
-A name implicitly assigned in every branch of a complete `if` chain is lifted to the
-enclosing block. The basic idea is that something like this should work "out of the
-box":
+A name implicitly assigned anywhere inside an `if`/`elif`/`else` chain is
+lifted to the enclosing block - unconditionally, regardless of whether every
+branch assigns it and whether the chain has an `else` at all. The basic idea
+is that something like this should work "out of the box":
 
 ```python
 def f(x: i32) -> i32:
@@ -637,85 +638,10 @@ def f(x: i32) -> i32:
     return y
 ```
 
-`elif` chains lift the same way:
-
-```python
-def f(n: i32) -> str:
-    if n < 0:
-        s = "neg"
-    elif n == 0:
-        s = "zero"
-    else:
-        s = "pos"
-    return s             # OK
-```
-
-#### `[py.scope-lifting-terminators]` Branches that cannot fall through are ignored { #py-scope-lifting-terminators }
-
-`return`, `raise`, `break` and `continue` end a branch, so it need not assign
-the name.
-
-```python
-def f(cond: bool) -> i32:
-    if cond:
-        x = 1
-    else:
-        raise IndexError("nope")
-    return x             # OK
-```
-
-```python
-def f(cond: bool) -> i32:
-    if cond:
-        x = 1
-    else:
-        return 0
-    return x             # OK
-```
-
-```python
-def f() -> i32:
-    for i in range(10):
-        if i > 5:
-            x = i
-        else:
-            continue
-        return x         # OK
-    return -1
-```
-
-A call that never returns is not recognized as a terminator:
-
-```python
-def f(cond: bool) -> i32:
-    if cond:
-        x = 1
-    else:
-        fatal("nope")    # fatal() -> NoReturn
-    return x             # ERROR: `x` not in scope
-```
-
-#### `[py.scope-lifting-incomplete]` An incomplete chain does not lift { #py-scope-lifting-incomplete }
-
-```python
-def f(cond: bool) -> None:
-    if cond:
-        x = 1
-    print(x)             # ERROR: `x` not in scope
-```
-
-#### `[py.scope-lifting-transitive]` Scope lifting targets the enclosing block, and is transitive { #py-scope-lifting-transitive }
-
-```python
-def f(a: bool, b: bool) -> None:
-    if a:
-        if b:
-            x = 1
-        else:
-            x = 2
-        print(x)         # OK: lifted to the `if a:` block
-    print(x)             # ERROR: `x` not in scope here
-```
+`elif` chains lift the same way. Nesting is not special: each `if` applies
+the same rule, so a name lifted out of an inner chain is just an ordinary
+implicit assignment as far as the outer chain is concerned, and it lifts
+again if the outer chain also assigns it on every spelled-out branch:
 
 ```python
 def f(a: bool, b: bool) -> i32:
@@ -728,6 +654,32 @@ def f(a: bool, b: bool) -> i32:
         x = 3
     return x             # OK: lifted twice
 ```
+
+#### `[py.scope-lifting-partial]` Lifting does not check that every branch assigns { #py-scope-lifting-partial }
+
+At this stage, we opt for a very simple rule: implicit declarations made inside an `if`
+are always lifted.  Reading a name that turns out not to have been assigned on the
+branch actually taken carries the same risk as reading an uninitialized explicit
+declaration (see [`[decl.initializer]`](#decl-initializer)):
+
+```python
+def f(cond: bool) -> None:
+    if cond:
+        x = 1
+    print(x)             # OK: lifted; runtime error / UB if `cond` is False
+```
+
+Is equivalent to:
+```python
+def f(cond: bool) -> None:
+    cond: auto           # implicit lifting
+    if cond:
+        x = 1
+    print(x)
+```
+
+[`[future.definite-assignment]`](#future-definite-assignment) describes how
+this could eventually become a static error instead.
 
 #### `[py.scope-lifting-opt-out]` Explicit declarations are never lifted { #py-scope-lifting-opt-out }
 
@@ -742,60 +694,49 @@ def f(cond: bool) -> None:
     print(x)             # ERROR: branch-local
 ```
 
-#### `[py.scope-lifting-conflict]` A chain may not both declare and assign one name { #py-scope-lifting-conflict }
-
-If one fall-through branch declares a name explicitly and another assigns it,
-that is an error: otherwise the code below would read like the lifting form
-and behave like the opt-out. The error is reported on the chain itself,
-whether or not `x` is used afterwards.
+A chain may not mix spellings for the same name: if one branch declares it explicitly
+and another implicitly, that is an error:
 
 ```python
 def f(cond: bool) -> None:
     if cond:
         var x: i32 = 1   # ERROR: `x` is declared explicitly here...
     else:
-        x = 2            #        ...and assigned here
+        x = 2            #        ...and implicitly here
 ```
 
-It applies equally when the assignment reassigns an enclosing binding rather
-than declaring a new one, since the two are indistinguishable at a glance:
+A name lifted into a branch from a nested chain counts as implicit for this
+check, so it does not clash with a bare assignment in a sibling branch:
 
 ```python
-def f(cond: bool) -> None:
-    var x: i32 = 0
-    if cond:
-        var x: i32 = 1   # ERROR: shadows here...
+def f(a: bool, b: bool) -> None:
+    if a:
+        if b:
+            x = 1
+        else:
+            x = 2        # `x` lifted here, still counts as implicit
     else:
-        x = 2            #        ...reassigns the outer x here
+        x = 3            # OK: also implicit, no conflict
     print(x)
 ```
 
-Either spelling is fine as long as the chain is consistent:
-
+Name lifting never crosses loop boundaries:
 ```python
-def f(cond: bool) -> None:
-    if cond:
-        x = 1
-    else:
-        x = 2
-    print(x)             # OK: all implicit → lifted
+def f() -> None:
+    for i in range(10):
+        if i > 5:
+            x = 5
+    print(x)            # ERROR: `x` is not declared
 ```
-
-```python
-def f(cond: bool) -> None:
-    if cond:
-        var x: i32 = 1
-    else:
-        var x: i32 = 2   # OK: all explicit → both branch-local
-```
-
-A name lifted into a branch from a nested chain counts as implicit, so it
-does not clash with an implicit binding in a sibling branch.
 
 #### `[py.scope-lifting-loop]` Loop bodies never lift { #py-scope-lifting-loop }
 
-A loop runs 0..N times, so a name assigned only inside it is never definitely
-assigned.
+Unlike `if`, a loop body must stay its own scope even when a name is
+assigned on every iteration. [Blue-time
+unrolling](#py-scope-lifting-unroll) relies on each iteration getting its
+own fresh binding, potentially with its own type; lifting loop bodies the
+way `if` does would collapse that into a single binding and break
+unrolling.
 
 ```python
 def f() -> None:
@@ -956,7 +897,12 @@ made elsewhere in this page.
 
 ### `[future.definite-assignment]` Definite assignment { #future-definite-assignment }
 
-Makes the current dynamic "read from uninitialized local" check static.
+Makes the current dynamic "read from uninitialized local" check static, for
+both explicit declarations and lifted implicit ones. This is likely the
+first item from this section we implement, since it directly tightens
+[`[py.scope-lifting]`](#py-scope-lifting).
+
+For an explicit declaration:
 
 ```python
 def f(cond: bool) -> None:
@@ -964,6 +910,33 @@ def f(cond: bool) -> None:
     if cond:
         x = 1
     print(x)             # ERROR: `x` may be uninitialized
+```
+
+For a lifted name (see
+[`[py.scope-lifting-partial]`](#py-scope-lifting-partial)), the same
+analysis would reject the possibly-unassigned case statically instead of
+accepting it with a runtime/UB risk:
+
+```python
+def f(cond: bool) -> None:
+    if cond:
+        x = 1
+    print(x)             # under this rule: ERROR, `x` may be uninitialized
+```
+
+Once the analysis exists, it is natural to use it to make scope lifting
+*checked* rather than purely syntactic: `return`, `raise`, `break` and
+`continue` would end a branch, so it would not need to assign the name (a
+call that never returns would still not count, since `NoReturn` is not
+tracked):
+
+```python
+def f(cond: bool) -> i32:
+    if cond:
+        x = 1
+    else:
+        raise IndexError("nope")
+    return x             # OK: `x` is definitely assigned
 ```
 
 ### `[future.narrowing]` Type narrowing, read-side only { #future-narrowing }
