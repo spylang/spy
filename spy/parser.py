@@ -93,9 +93,9 @@ class Parser:
         return Parser(src, filename)
 
     def parse(self) -> spy.ast.Module:
-        py_mod = magic_py_parse(self.src, self.filename)
+        py_mod, src2 = magic_py_parse(self.src, self.filename)
         assert isinstance(py_mod, py_ast.Module)
-        py_mod.compute_all_locs(self.filename)
+        py_mod.compute_all_locs(self.filename, src2)
         parsed_mod = self.from_py_Module(py_mod)
         assert parsed_mod.stage == "parsed"
         parsed_mod.assert_valid_at("parsed")
@@ -105,9 +105,9 @@ class Parser:
         """
         Parse the source code assuming it contains a single stmt. Used by SPdb.
         """
-        py_mod = magic_py_parse(self.src, self.filename)
+        py_mod, src2 = magic_py_parse(self.src, self.filename)
         assert isinstance(py_mod, py_ast.Module)
-        py_mod.compute_all_locs(self.filename)
+        py_mod.compute_all_locs(self.filename, src2)
         if len(py_mod.body) > 1:
             self.error(
                 "expected exactly one statement",
@@ -1060,8 +1060,8 @@ class Parser:
                 py_node.loc,
             )
         src = textwrap.dedent(py_node.args[0].value).strip()
-        inner_mod = magic_py_parse(src, filename=self.filename)
-        inner_mod.compute_all_locs(self.filename)
+        inner_mod, src2 = magic_py_parse(src, filename=self.filename)
+        inner_mod.compute_all_locs(self.filename, src2)
         if not inner_mod.body:
             self.error(
                 "__block__ body is empty",

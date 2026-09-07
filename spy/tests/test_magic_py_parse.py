@@ -73,7 +73,7 @@ def test_magic_py_parse():
     z: i32 = 300
 
     """)
-    py_mod = magic_py_parse(src)
+    py_mod, _ = magic_py_parse(src)
     targets = [
         stmt.target.id
         for stmt in py_mod.body

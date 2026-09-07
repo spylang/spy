@@ -2262,3 +2262,19 @@ class TestParser:
         "This string will be ignored"
         """)
         assert mod.docstring == "The docstring"
+
+    def test_loc_with_unicode_chars(self):
+        # the python parser reports col start/end as offsets in the UTF-8 bytes, but our
+        # Loc wants char offsets in the str.
+        #
+        # This test checks that compute_all_locs does the right thing.
+        mod = self.parse("""
+        αβ = γδ
+        """)
+        # GlobalVarDef wraps the whole `αβ = γδ` assignment
+        decl = mod.decls[0]
+        assert decl.loc.get_src() == "αβ = γδ"
+        assert isinstance(decl, ast.GlobalVarDef)
+        assert decl.vardef.name.loc.get_src() == "αβ"
+        assert decl.vardef.value is not None
+        assert decl.vardef.value.loc.get_src() == "γδ"

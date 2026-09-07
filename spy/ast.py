@@ -85,10 +85,32 @@ class AST:
         raise ValueError(f"{self.__class__.__name__} does not have a location")
 
     @no_type_check
-    def compute_all_locs(self, filename: str) -> None:
+    def compute_all_locs(self, filename: str, src: str = "") -> None:
         """
         Compute .loc for itself and all its descendants.
+
+        src should be the preprocessed source (as passed to ast.parse). Python
+        reports col_offset/end_col_offset as UTF-8 byte offsets of that
+        source, so we need it to convert back to character offsets.
+
+        See test_parser::test_loc_with_unicode_chars.
         """
+        # Build a per-line byte->char offset converter from the preprocessed source.
+        # For lines that contain only ASCII the mapping is identity; for lines with
+        # multi-byte chars we decode the UTF-8 prefix to find the char position.
+        lines_bytes: list[bytes] = []
+        if src:
+            for line in src.splitlines(keepends=True):
+                lines_bytes.append(line.encode("utf-8"))
+
+        def byte_to_char(lineno: int, byte_col: int) -> int:
+            # lineno is 1-based; lines_bytes is 0-based
+            if not lines_bytes or lineno > len(lines_bytes):
+                return byte_col
+            lb = lines_bytes[lineno - 1]
+            # decode only the prefix up to byte_col to get the char count
+            return len(lb[:byte_col].decode("utf-8"))
+
         for py_node in py_ast.walk(self):  # type: ignore
             if hasattr(py_node, "lineno"):
                 assert py_node.end_lineno is not None
@@ -97,8 +119,8 @@ class AST:
                     filename=filename,
                     line_start=py_node.lineno,
                     line_end=py_node.end_lineno,
-                    col_start=py_node.col_offset,
-                    col_end=py_node.end_col_offset,
+                    col_start=byte_to_char(py_node.lineno, py_node.col_offset),
+                    col_end=byte_to_char(py_node.end_lineno, py_node.end_col_offset),
                 )
                 py_node._loc = loc
 
