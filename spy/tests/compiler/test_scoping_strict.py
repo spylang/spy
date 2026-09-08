@@ -21,6 +21,21 @@ class TestStrictScoping(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == 42
 
+    def test_decl_use_before(self):
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo() -> None:
+            x
+            var x: i32 = 1
+        """
+        errors = expect_errors(
+            "name `x` is not defined",
+            ("used before its declaration", "x"),
+            ("declared later here", "var x: i32 = 1"),
+        )
+        self.compile_raises(src, "foo", errors, error_reporting="eager")
+
     def test_decl_initializer(self):
         src = """
         from __spy__ import strict_scoping

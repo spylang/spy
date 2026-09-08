@@ -104,6 +104,21 @@ class TestScopeAnalyzer2:
             "i32": MatchSymbol("i32", "const", "explicit", level=2),
         }
 
+    def test_decl_use_before(self):
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo() -> None:
+            x
+            var x: i32 = 1
+        """
+        self.expect_errors(
+            src,
+            "name `x` is not defined",
+            ("used before its declaration", "x"),
+            ("declared later here", "var x: i32 = 1"),
+        )
+
     def test_decl_no_redeclare(self):
         """
         [decl.no-redeclare]: declaring the same name twice in the same scope is an error

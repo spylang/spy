@@ -39,6 +39,8 @@ class ScopeAnalyzer:
     inner_scopes: dict[
         ast.FuncDef | ast.GenericFuncDef | ast.ClassDef | ast.GenericClassDef, SymTable
     ]
+    seq: dict[ast.Node, int]  # unique sequential ID of every node
+    decl_node: dict[Symbol, ast.Node]  # which node declared a given Symbol?
 
     def __init__(self, modname: str, mod: ast.Module) -> None:
         self.mod = mod
@@ -46,6 +48,8 @@ class ScopeAnalyzer:
         self.mod_scope = SymTable(modname, "blue", "module")
         self.stack = []
         self.inner_scopes = {}
+        self.seq = {node: i for i, node in enumerate(mod.walk())}
+        self.decl_node = {}
         self.push_scope(self.builtins_scope)
         self.push_scope(self.mod_scope)
 
@@ -124,6 +128,7 @@ class ScopeAnalyzer:
 
     def define_name(
         self,
+        node: ast.Node,
         name: str,
         varkind: VarKind,
         varkind_origin: VarKindOrigin,
@@ -131,7 +136,7 @@ class ScopeAnalyzer:
         type_loc: Loc,
         *,
         impref: Optional[ImportRef] = None,
-    ) -> None:
+    ) -> Symbol:
         """
         Add a name definition to the current scope (level 0).
         """
@@ -163,13 +168,15 @@ class ScopeAnalyzer:
             level=0,
         )
         self.scope.add(new_sym)
+        self.decl_node[new_sym] = node
+        return new_sym
 
-    def capture_maybe(self, varname: str) -> None:
-        level, _, _ = self.lookup_ref(varname)
+    def capture_maybe(self, node: ast.Node, varname: str, use_loc: Loc) -> None:
+        level, _, sym = self.lookup_ref(varname)
         if level == -1:
             # name not found
             assert not self.scope.has_definition(varname)
-            sym = Symbol(
+            new_sym = Symbol(
                 varname,
                 "var",
                 "auto",
@@ -178,10 +185,21 @@ class ScopeAnalyzer:
                 loc=Loc.fake(),
                 type_loc=Loc.fake(),
             )
-            self.scope.add(sym)
+            self.scope.add(new_sym)
 
         elif level == 0:
-            # already in this symtable, nothing to do
+            assert sym is not None
+            if sym.is_local:
+                # [decl.use-before]: does the usage happen before the declaration?
+                seq = self.seq[node]
+                decl_node = self.decl_node[sym]
+                decl_seq = self.seq[decl_node]
+                if seq < decl_seq:
+                    msg = f"name `{varname}` is not defined"
+                    err = SPyError("W_NameError", msg)
+                    err.add("error", "used before its declaration", use_loc)
+                    err.add("note", "declared later here", sym.loc)
+                    raise err
             return
 
         else:
@@ -202,6 +220,7 @@ class ScopeAnalyzer:
 
     def declare_Import(self, imp: ast.Import) -> None:
         self.define_name(
+            imp,
             imp.asname,
             "const",
             "auto",
@@ -216,7 +235,7 @@ class ScopeAnalyzer:
     def declare_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # declare the func name in the outer scope
         protoloc = funcdef.prototype_loc
-        self.define_name(funcdef.name, "const", "funcdef", protoloc, protoloc)
+        self.define_name(funcdef, funcdef.name, "const", "funcdef", protoloc, protoloc)
 
         scope_color = funcdef.color
         if scope_color == "red":
@@ -232,6 +251,7 @@ class ScopeAnalyzer:
         self.inner_scopes[funcdef] = inner_scope
         for arg in funcdef.args:
             self.define_name(
+                arg,
                 arg.name,
                 argkind,
                 argkind_origin,
@@ -239,6 +259,7 @@ class ScopeAnalyzer:
                 arg.type.loc,
             )
         self.define_name(
+            funcdef.return_type,
             "@return",
             "var",
             "auto",
@@ -262,6 +283,7 @@ class ScopeAnalyzer:
             varkind = varkind_optional
             varkind_origin = "explicit"
         self.define_name(
+            vardef,
             varname,
             varkind,
             varkind_origin,
@@ -299,4 +321,4 @@ class ScopeAnalyzer:
         self.flatten_FuncDef(decl.funcdef)
 
     def flatten_Name(self, name: ast.Name) -> None:
-        self.capture_maybe(name.id)
+        self.capture_maybe(name, name.id, name.loc)
