@@ -177,9 +177,15 @@ spy_gc_alloc_pointerless_fn(size_t size) {
     }                                                                                  \
     static inline bool PTR##$to_bool(PTR p) {                                          \
         return p.p;                                                                    \
+    }                                                                                  \
+    static inline int32_t PTR##$to_addr(PTR p) {                                       \
+        /* NOTE: truncates to 32 bits. Only meaningful on wasm32-like                  \
+           targets where addresses actually fit in 32 bits. See the                    \
+           comment on W_MemLoc.addr in spy/vm/modules/unsafe/ptr.py. */                \
+        return (int32_t)(uintptr_t)p.p;                                                \
     }
 
-#define _SPY_PTR_FUNCTIONS_CHECKED(ALLOC_FUNC, PTR, T, ALIGNMENT)                     \
+#define _SPY_PTR_FUNCTIONS_CHECKED(ALLOC_FUNC, PTR, T, ALIGNMENT)                      \
     static inline PTR PTR##_from_addr(T *p) {                                          \
         return (PTR){p, 1};                                                            \
     }                                                                                  \
@@ -232,6 +238,12 @@ spy_gc_alloc_pointerless_fn(size_t size) {
     }                                                                                  \
     static inline bool PTR##$to_bool(PTR p) {                                          \
         return p.p;                                                                    \
+    }                                                                                  \
+    static inline int32_t PTR##$to_addr(PTR p) {                                       \
+        /* NOTE: truncates to 32 bits. Only meaningful on wasm32-like                  \
+           targets where addresses actually fit in 32 bits. See the                    \
+           comment on W_MemLoc.addr in spy/vm/modules/unsafe/ptr.py. */                \
+        return (int32_t)(uintptr_t)p.p;                                                \
     }
 
 /* gc_ptr[u8] is predeclared here, see also cstructwriter.py:emit_PtrType.

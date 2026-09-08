@@ -10,8 +10,6 @@ over-allocate, round the pointer up, and discard the base pointer.
 import pytest
 
 from spy.tests.support import CompilerTest
-from spy.tests.wasm_wrapper import WasmPtr
-from spy.vm.modules.unsafe.ptr import W_Ptr
 
 # Alignment value guaranteed to exceed SPY_BASE_ALIGNMENT on all targets
 # (16 on native-64, 8 on wasm).
@@ -24,30 +22,19 @@ def memkind(request):
 
 
 class TestOverAllocAlignment(CompilerTest):
-    def _get_addr(self, p: W_Ptr | WasmPtr) -> int:
-        """Extract the raw address from a returned pointer."""
-        if self.backend in ("interp", "doppler"):
-            assert isinstance(p, W_Ptr)
-            return p.addr
-        else:
-            assert isinstance(p, WasmPtr)
-            return p.addr
-
     def test_ptr_address_is_aligned(self, memkind):
         k = memkind
         mod = self.compile(
             """
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, ptr_to_addr
 
         def alloc() -> k_ptr[i32, {N}]:
-            return k_alloc[i32, {N}](4)
+            p = k_alloc[i32, {N}](4)
+            assert ptr_to_addr(p) % {N} == 0
+            return p
         """.format(k=k, N=OVER_ALIGNMENT)
         )
-        p = mod.alloc()
-        addr = self._get_addr(p)
-        assert addr % OVER_ALIGNMENT == 0, (
-            f"expected {OVER_ALIGNMENT}-byte aligned address, got {addr}"
-        )
+        mod.alloc()
 
     def test_over_alloc_roundtrip(self, memkind):
         k = memkind
@@ -107,10 +94,12 @@ class TestOverAllocAlignment(CompilerTest):
         # properly aligned (not just the first one)
         mod = self.compile(
             """
-        from unsafe import gc_alloc, gc_ptr
+        from unsafe import gc_alloc, gc_ptr, ptr_to_addr
 
         def alloc() -> gc_ptr[i32, {N}]:
-            return gc_alloc[i32, {N}](1)
+            p = gc_alloc[i32, {N}](1)
+            assert ptr_to_addr(p) % {N} == 0
+            return p
 
         def foo() -> i32:
             a = alloc()
@@ -123,11 +112,9 @@ class TestOverAllocAlignment(CompilerTest):
         """.format(N=OVER_ALIGNMENT)
         )
         assert mod.foo() == 6
-        # verify that each individual allocation is aligned
+        # a few more independent allocations, for extra confidence
         for _ in range(3):
-            p = mod.alloc()
-            addr = self._get_addr(p)
-            assert addr % OVER_ALIGNMENT == 0
+            mod.alloc()
 
     def test_over_alloc_f64(self):
         mod = self.compile(
@@ -146,14 +133,12 @@ class TestOverAllocAlignment(CompilerTest):
     def test_over_alloc_address_is_aligned_f64(self):
         mod = self.compile(
             """
-        from unsafe import gc_alloc, gc_ptr
+        from unsafe import gc_alloc, gc_ptr, ptr_to_addr
 
         def alloc() -> gc_ptr[f64, {N}]:
-            return gc_alloc[f64, {N}](2)
+            p = gc_alloc[f64, {N}](2)
+            assert ptr_to_addr(p) % {N} == 0
+            return p
         """.format(N=OVER_ALIGNMENT)
         )
-        p = mod.alloc()
-        addr = self._get_addr(p)
-        assert addr % OVER_ALIGNMENT == 0, (
-            f"expected {OVER_ALIGNMENT}-byte aligned address, got {addr}"
-        )
+        mod.alloc()

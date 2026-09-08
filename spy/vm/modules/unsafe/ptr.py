@@ -631,6 +631,26 @@ def w_ptr_setfield(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
 
 
 @UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_ptr_to_addr(vm: "SPyVM", wam_p: W_MetaArg) -> W_OpSpec:
+    """
+    Return the address that a raw_ptr/gc_ptr points to, as an i32.
+
+    NOTE: like W_MemLoc.addr, this only works correctly for wasm32-like
+    targets where addresses fit in 32 bits. It's mostly meant for tests,
+    debugging, and assertions (e.g. checking alignment) -- not as a
+    general "pointer as integer" escape hatch.
+    """
+    w_ptrtype = W_Ptr._get_memlocT(wam_p)
+    PTR = Annotated[W_Ptr, w_ptrtype]
+
+    @vm.register_builtin_func(w_ptrtype.fqn, "to_addr")
+    def w_ptr_to_addr_impl(vm: "SPyVM", w_ptr: PTR) -> W_I32:
+        return vm.wrap(w_ptr.addr)
+
+    return W_OpSpec(w_ptr_to_addr_impl, [wam_p])
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
 def w__str_to_StrObject(vm: "SPyVM", wam_s: W_MetaArg) -> W_OpSpec:
     """
     Convert an high-level `str` into low-level `gc_ptr[StrObject]`.
