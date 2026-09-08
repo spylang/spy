@@ -334,7 +334,7 @@ class Parser:
         #
         py_returns = py_funcdef.returns
         if py_returns:
-            return_type = self.from_py_expr(py_returns)
+            return_type = self.from_py_type_expr(py_returns)
         else:
             # we need to synthesize a reasonable Loc for the (missing) return type. See
             # also test_FuncDef_prototype_loc.
@@ -417,7 +417,7 @@ class Parser:
         self, color: spy.ast.Color, py_arg: py_ast.arg, kind: spy.ast.FuncParamKind
     ) -> spy.ast.FuncArg:
         if py_arg.annotation:
-            spy_type = self.from_py_expr(py_arg.annotation)
+            spy_type = self.from_py_type_expr(py_arg.annotation)
         else:
             spy_type = spy.ast.Auto(py_arg.loc)
         return spy.ast.FuncArg(
@@ -607,7 +607,7 @@ class Parser:
             loc=py_node.loc,
             kind=varkind,
             name=spy.ast.StrLiteral(py_node.target.loc, real_name),
-            type=self.from_py_expr(py_node.annotation),
+            type=self.from_py_type_expr(py_node.annotation),
             value=value,
         )
 
@@ -797,9 +797,16 @@ class Parser:
 
     from_py_expr_NotImplemented = unsupported
 
-    def from_py_expr_Name(self, py_node: py_ast.Name) -> spy.ast.Expr:
-        if py_node.id == "auto":
+    def from_py_type_expr(self, py_node: py_ast.expr) -> spy.ast.Expr:
+        """
+        Parse a type-annotation expression. Unlike from_py_expr, this treats
+        the bare name `auto` as ast.Auto rather than ast.Name.
+        """
+        if isinstance(py_node, py_ast.Name) and py_node.id == "auto":
             return spy.ast.Auto(py_node.loc)
+        return self.from_py_expr(py_node)
+
+    def from_py_expr_Name(self, py_node: py_ast.Name) -> spy.ast.Expr:
         return spy.ast.Name(py_node.loc, py_node.id)
 
     def from_py_expr_Constant(self, py_node: py_ast.Constant) -> spy.ast.Expr:
