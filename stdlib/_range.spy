@@ -16,6 +16,8 @@ class range:
             return range.__make__(a, b, 1)
 
         def impl3(a: int, b: int, c: int) -> range:
+            if c == 0:
+                raise ValueError("range() arg 3 must not be zero")
             return range.__make__(a, b, c)
 
         # we cannot do list(args_m), so we need to do it manually somehow :(
