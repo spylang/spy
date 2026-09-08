@@ -505,6 +505,12 @@ class NameError(Expr):
 class Auto(Expr):
     precedence = 100  # the highest
 
+    def as_typed_node(self) -> "Auto":
+        from spy.vm.b import B
+
+        assert self.w_T is None
+        return self.replace(w_T=B.w_type)
+
 
 @astnode
 class Literal(Expr):

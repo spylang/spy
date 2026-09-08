@@ -60,6 +60,34 @@ class TestStrictScoping(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == 42
 
+    def test_decl_auto(self):
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo() -> i32:
+            const x: auto = 42
+            return x
+
+        def bar() -> str:
+            const y = "hello"
+            return y
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 42
+        assert mod.bar() == "hello"
+
+    def test_decl_auto_no_initializer(self):
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo() -> i32:
+            var x: auto
+            x = 42
+            return x
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 42
+
     def test_NameError(self):
         src = """
         from __spy__ import strict_scoping

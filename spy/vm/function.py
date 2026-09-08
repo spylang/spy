@@ -34,7 +34,7 @@ class LocalVar:
     varname: str
     decl_loc: Loc
     color: Color
-    w_T: W_Type
+    w_T: Optional[W_Type]  # None means "auto, type not yet fixed"
     w_val: Optional[W_Object] = None
 
 

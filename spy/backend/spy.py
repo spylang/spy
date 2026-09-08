@@ -379,9 +379,11 @@ class SPyBackend:
         varname = vardef.name.value
         is_auto = isinstance(vardef.type, ast.Auto)
         if is_auto:
-            assert vardef.value
-            v = self.fmt_expr(vardef.value)
-            self.wl(f"{varname} = {v}")
+            if vardef.value is None:
+                self.wl(f"{varname}: auto")
+            else:
+                v = self.fmt_expr(vardef.value)
+                self.wl(f"{varname} = {v}")
         else:
             t = self.fmt_expr(vardef.type)
             if vardef.value:

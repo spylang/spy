@@ -88,7 +88,7 @@ class AbstractFrame:
         }  # fmt: skip
 
     def declare_local(
-        self, name: str, desired_color: Color, w_type: W_Type, loc: Loc
+        self, name: str, desired_color: Color, w_type: Optional[W_Type], loc: Loc
     ) -> None:
         if name in self.locals:
             # this is the same check that we already do in
@@ -102,7 +102,7 @@ class AbstractFrame:
             err.add("note", "this is the previous declaration", old_loc)
             raise err
 
-        if not isinstance(w_type, W_FuncType):
+        if w_type is not None and not isinstance(w_type, W_FuncType):
             self.vm.make_fqn_const(w_type)
 
         # determine the color of the local var:
@@ -136,12 +136,23 @@ class AbstractFrame:
 
     def store_local(self, name: str, w_value: W_Object) -> None:
         lv = self.locals[name]
+        if lv.w_T is None:
+            # deferred type inference, see exec_stmt_VarDef
+            lv.w_T = self.vm.dynamic_type(w_value)
         # sanity check
         if isinstance(w_value, W_Cell):
             assert self.vm.isinstance(w_value.get(), lv.w_T)
         else:
             assert self.vm.isinstance(w_value, lv.w_T)
         lv.w_val = w_value
+
+    def fix_deferred_inference_type(self, name: str, w_T: W_Type) -> None:
+        """
+        Fix the type of a local declared as `var x: auto` with no initializer.
+        Called on the first assignment to that variable.
+        Subclasses (DopplerFrame) may override to also patch the deferred VarDef node.
+        """
+        self.locals[name].w_T = w_T
 
     def load_local(self, name: str) -> W_Object:
         localvar = self.locals.get(name)
@@ -158,6 +169,10 @@ class AbstractFrame:
         if varname is None:
             return None  # no typecheck needed
         lv = self.locals[varname]
+        if lv.w_T is None:
+            assert False, "fixme"
+            ## # deferred type inference, type not yet fixed, no check needed
+            ## return None
         w_expT = lv.w_T
         wam_expT = W_MetaArg.from_w_obj(self.vm, lv.w_T, loc=lv.decl_loc)
         try:
@@ -482,7 +497,7 @@ class AbstractFrame:
         #   declaration    (not is_auto and not value):  [var] x: i32
         #   definition     (not is_auto and value):      [var] x: i32 = 0
         #   type inference (is_auto and value):          var   x      = 0
-        #   invalid        (is_auto and not value):      var   x
+        #   deferred inf.  (is_auto and not value):      var   x: auto
         #
         # Note that the "type inference" case is basically a simple Assign.
         varname = vardef.name.value
@@ -490,10 +505,13 @@ class AbstractFrame:
         is_auto = isinstance(vardef.type, ast.Auto)
 
         if vardef.value is None:
-            # declaration
-            assert not is_auto, "invalid VarDef"
-            w_T = self.eval_expr_type(vardef.type)
-            self.declare_local(varname, "red", w_T, vardef.loc)
+            if is_auto:
+                # deferred inference, type will be fixed on first assignment
+                # see also eval_expr_AssignExprLocal
+                self.declare_local(varname, "red", None, vardef.loc)
+            else:
+                w_T = self.eval_expr_type(vardef.type)
+                self.declare_local(varname, "red", w_T, vardef.loc)
             return
 
         if is_auto:
@@ -886,6 +904,11 @@ class AbstractFrame:
             wam = self.eval_expr(value)
             self.declare_local(varname, wam.color, wam.w_static_T, target.loc)
             lv = self.locals[varname]
+        elif lv.w_T is None:
+            # deferred type inference: var x: auto with no initializer
+            wam = self.eval_expr(value)
+            lv.color = wam.color if assign.sym.varkind == "const" else "red"
+            self.fix_deferred_inference_type(varname, wam.w_static_T)
         else:
             wam = self.eval_expr(value, varname=varname)
 

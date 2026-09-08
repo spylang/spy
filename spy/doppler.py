@@ -132,6 +132,9 @@ class DopplerFrame(ASTFrame):
         self._inline_counter = 0
         self._new_symbols: list["Symbol"] = []
         self._new_locals_types_w: dict[str, "W_Type"] = {}
+        # when we encounter a deferred inference VarDef, we don't know its actual type
+        # yet: we will discover it later on first assignment
+        self._deferred_auto_vardefs: dict[str, ast.VarDef] = {}
 
     # overridden
     @property
@@ -239,7 +242,16 @@ class DopplerFrame(ASTFrame):
             return []
 
         newname = vardef.name.as_typed_node()
-        if is_auto:
+        if is_auto and vardef.value is None:
+            # deferred inference: the type will be fixed later, see
+            # fix_deferred_inference_type.
+            newvardef = vardef.replace(
+                name=newname,
+                type=vardef.type.as_typed_node(),
+            )
+            self._deferred_auto_vardefs[varname] = newvardef
+            return [newvardef]
+        elif is_auto:
             # use the actual type computed during type inference
             w_T = self.locals[varname].w_T
             newtype = make_const(self.vm, vardef.type.loc, w_T)
@@ -251,6 +263,11 @@ class DopplerFrame(ASTFrame):
         else:
             newvalue = self.shifted_expr[vardef.value]
         return [vardef.replace(name=newname, type=newtype, value=newvalue)]
+
+    def fix_deferred_inference_type(self, name: str, w_T: "W_Type") -> None:
+        super().fix_deferred_inference_type(name, w_T)
+        vardef = self._deferred_auto_vardefs.pop(name)
+        vardef.type = make_const(self.vm, vardef.type.loc, w_T)
 
     def shift_stmt_AssignLocal(self, assign: ast.AssignLocal) -> list[ast.Stmt]:
         self.exec_stmt(assign)
