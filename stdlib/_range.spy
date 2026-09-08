@@ -34,6 +34,12 @@ class range:
         else:
             return OpSpec.NULL
 
+    def __repr__(self) -> str:
+        result = "range(" + str(self.start) + ", " + str(self.stop)
+        if self.step != 1:
+            result = result + ", " + str(self.step)
+        return result + ")"
+
     def __contains__(self, value: int) -> bool:
         if self.step > 0:
             if value < self.start or value >= self.stop:

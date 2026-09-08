@@ -16,6 +16,27 @@ class TestRange(CompilerTest):
         assert r.start == 0
         assert r.stop == 10
 
+    def test_repr_str(self):
+        mod = self.compile("""
+        from _range import range
+
+        def repr1() -> str:
+            return repr(range(1))
+
+        def repr2() -> str:
+            return repr(range(1, 2))
+
+        def repr3() -> str:
+            return repr(range(1, 2, 3))
+
+        def str3() -> str:
+            return str(range(1, 2, 3))
+        """)
+        assert mod.repr1() == "range(0, 1)"
+        assert mod.repr2() == "range(1, 2)"
+        assert mod.repr3() == "range(1, 2, 3)"
+        assert mod.str3() == "range(1, 2, 3)"
+
     def test_fastiter(self):
         src = """
         from _range import range, range_iterator
