@@ -14,6 +14,51 @@ void WASM_EXPORT(_spy_memmove)(void *dst, void *src, size_t n);
 void WASM_EXPORT(_spy_memset)(void *dst, int value, size_t n);
 int32_t WASM_EXPORT(_spy_memcmp)(void *a, void *b, size_t n);
 
+// Aligned allocation wrappers used by the interp (vm.ll.call) path.
+// The C backend's $alloc macro calls spy_alloc_aligned_impl directly.
+void *WASM_EXPORT(spy_raw_alloc_aligned)(size_t size, size_t alignment);
+void *WASM_EXPORT(spy_nogc_alloc_aligned)(size_t size, size_t alignment);
+
+// The base alignment that the underlying allocators (malloc, GC_MALLOC,
+// GC_MALLOC_ATOMIC) already guarantee.  When a ptr type requests an
+// alignment <= SPY_BASE_ALIGNMENT the $alloc fast path can skip the
+// over-allocation / pointer-adjustment dance entirely.
+//
+// On wasm32 / wasm64, linear-memory allocators return 8-byte-aligned
+// pointers.  On native 64-bit targets, malloc and GC_MALLOC guarantee
+// 16-byte alignment (alignof(max_align_t)).  We use the larger value so
+// that the fast path is taken whenever alignment <= 16, which covers
+// every natural SPy type alignment (the largest is 8 for f64/i64).
+#if defined(SPY_TARGET_NATIVE) && defined(__LP64__)
+#  define SPY_BASE_ALIGNMENT 16
+#else
+#  define SPY_BASE_ALIGNMENT 8
+#endif
+
+// Allocate `n` bytes with at least `alignment`-byte alignment, using the
+// given `alloc_func` (one of spy_raw_alloc, spy_nogc_alloc, or the
+// GC_MALLOC-based helpers).  When `alignment <= SPY_BASE_ALIGNMENT` the
+// allocator already satisfies the request, so we delegate directly with
+// no over-allocation, rounding, or base-pointer discarding.  Otherwise we
+// over-allocate by `alignment` bytes, round the raw pointer up to the
+// next aligned address, and return that.
+//
+// NOTE: this means the original base pointer is *lost* — the returned
+// pointer cannot be passed to free().  This is fine for SPy's GC-managed
+// and raw_alloc (never freed) allocators, but would be a problem for a
+// general-purpose allocator that needs to reclaim memory.  The over-
+// allocation "wastes" at most (alignment - 1) bytes.
+static inline void *
+spy_alloc_aligned_impl(size_t n, size_t alignment, void *(*alloc_func)(size_t)) {
+    if (alignment <= SPY_BASE_ALIGNMENT) {
+        // the allocator already guarantees this alignment.
+        return alloc_func(n);
+    }
+    char *raw = (char *)alloc_func(n + alignment);
+    uintptr_t a = ((uintptr_t)raw + alignment - 1) & ~(alignment - 1);
+    return (void *)a;
+}
+
 #ifdef SPY_GC_NONE
 #  define spy_gc_alloc(size) spy_nogc_alloc(size)
 #  define spy_gc_alloc_pointerless(size) spy_nogc_alloc(size)
@@ -33,6 +78,32 @@ spy_gc_alloc_pointerless_bdwgc(size_t size) {
 #  error "no GC selected"
 #endif
 
+// spy_gc_alloc and spy_gc_alloc_pointerless (defined just above) are
+// function-like MACROS, not real functions: they only expand when
+// immediately followed by "(...)". spy_alloc_aligned_impl needs an
+// addressable function pointer, so a bare "spy_gc_alloc" (with no call
+// parens) does NOT expand and fails to compile. These thin static-inline
+// wrappers give us addressable symbols that simply forward to the macros.
+static inline void *
+spy_gc_alloc_fn(size_t size) {
+    return spy_gc_alloc(size);
+}
+
+static inline void *
+spy_gc_alloc_pointerless_fn(size_t size) {
+    return spy_gc_alloc_pointerless(size);
+}
+
+// Map an ALLOC_FUNC token (as used by SPY_PTR_FUNCTIONS: raw_alloc,
+// gc_alloc, gc_alloc_pointerless) to the actual function symbol that can be
+// passed as a function pointer to spy_alloc_aligned_impl. raw_alloc is
+// already a real function (spy_raw_alloc), so it maps to itself; gc_alloc
+// and gc_alloc_pointerless are macros, so they map to the _fn wrappers
+// above instead.
+#define _SPY_ALLOC_FN_raw_alloc            spy_raw_alloc
+#define _SPY_ALLOC_FN_gc_alloc             spy_gc_alloc_fn
+#define _SPY_ALLOC_FN_gc_alloc_pointerless spy_gc_alloc_pointerless_fn
+
 /* Define the struct and accessor functions to represent a managed pointer to
    type T.
 
@@ -44,8 +115,8 @@ spy_gc_alloc_pointerless_bdwgc(size_t size) {
    #endif
    } Ptr_T;
 
-   SPY_PTR_FUNCTIONS(raw_alloc, Ptr_T, T) defines all the accessor functions such as
-   Ptr_T$alloc, Ptr_T$load, etc.
+   SPY_PTR_FUNCTIONS(raw_alloc, Ptr_T, T, ALIGNMENT) defines all the accessor
+   functions such as Ptr_T$alloc, Ptr_T$load, etc.
 
    In SPY_RELEASE mode, a managed pointer is just a wrapper around an
    unmanaged C pointer, but in SPY_DEBUG it also contains the length of the
@@ -57,6 +128,10 @@ spy_gc_alloc_pointerless_bdwgc(size_t size) {
      - "gc_alloc"              (GC_MALLOC: zeroed, scanned)
      - "gc_alloc_pointerless"  (GC_MALLOC_ATOMIC: not zeroed, not
                                 scanned; only for pointer-free T)
+
+   ALIGNMENT is the requested alignment in bytes for the allocated
+   block.  When it exceeds SPY_BASE_ALIGNMENT, $alloc over-allocates and
+   adjusts the pointer via spy_alloc_aligned_impl.
 */
 
 #ifdef SPY_DEBUG
@@ -65,7 +140,7 @@ spy_gc_alloc_pointerless_bdwgc(size_t size) {
 #  define SPY_PTR_FUNCTIONS _SPY_PTR_FUNCTIONS_UNCHECKED
 #endif
 
-#define _SPY_PTR_FUNCTIONS_UNCHECKED(ALLOC_FUNC, PTR, T)                               \
+#define _SPY_PTR_FUNCTIONS_UNCHECKED(ALLOC_FUNC, PTR, T, ALIGNMENT)                    \
     static inline PTR PTR##_from_addr(T *p) {                                          \
         return (PTR){p};                                                               \
     }                                                                                  \
@@ -78,7 +153,9 @@ spy_gc_alloc_pointerless_bdwgc(size_t size) {
         return (PTR){p};                                                               \
     }                                                                                  \
     static inline PTR PTR##$alloc(size_t n) {                                          \
-        return (PTR){(T*)spy_##ALLOC_FUNC(sizeof(T) * n)};                             \
+        T *p = (T*)spy_alloc_aligned_impl(                                             \
+            sizeof(T) * n, (ALIGNMENT), _SPY_ALLOC_FN_##ALLOC_FUNC);                   \
+        return (PTR){p};                                                               \
     }                                                                                  \
     static inline T PTR##$deref(PTR p) {                                               \
         return *(p.p);                                                                 \
@@ -102,7 +179,7 @@ spy_gc_alloc_pointerless_bdwgc(size_t size) {
         return p.p;                                                                    \
     }
 
-#define _SPY_PTR_FUNCTIONS_CHECKED(ALLOC_FUNC, PTR, T)                                 \
+#define _SPY_PTR_FUNCTIONS_CHECKED(ALLOC_FUNC, PTR, T, ALIGNMENT)                     \
     static inline PTR PTR##_from_addr(T *p) {                                          \
         return (PTR){p, 1};                                                            \
     }                                                                                  \
@@ -113,7 +190,9 @@ spy_gc_alloc_pointerless_bdwgc(size_t size) {
         return (PTR){p, length};                                                       \
     }                                                                                  \
     static inline PTR PTR##$alloc(size_t n) {                                          \
-        return (PTR){(T*)spy_##ALLOC_FUNC(sizeof(T) * n), (ptrdiff_t) n};              \
+        T *p = (T*)spy_alloc_aligned_impl(                                             \
+            sizeof(T) * n, (ALIGNMENT), _SPY_ALLOC_FN_##ALLOC_FUNC);                   \
+        return (PTR){p, (ptrdiff_t) n};                                                \
     }                                                                                  \
     static inline T PTR##$deref(PTR p) {                                               \
         return *(p.p);                                                                 \
@@ -164,7 +243,7 @@ typedef struct spy_unsafe$gc_ptr__builtins$u8 {
 #endif
 } spy_unsafe$gc_ptr__builtins$u8;
 
-SPY_PTR_FUNCTIONS(gc_alloc, spy_unsafe$gc_ptr__builtins$u8, uint8_t)
+SPY_PTR_FUNCTIONS(gc_alloc, spy_unsafe$gc_ptr__builtins$u8, uint8_t, 1)
 #define spy_unsafe$gc_ptr__builtins$u8$NULL ((spy_unsafe$gc_ptr__builtins$u8){0})
 
 // short alias for manual use
