@@ -8,19 +8,25 @@ ast.NameLocalDirect, ast.NameOuterDirect, etc.
 Moreover, do other easy desugaring like converting `for` loops into `while` loops, etc.
 """
 
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import spy.ast as ast
-from spy.analyze.symtable import SymTable
+from spy.analyze.symtable import Symbol, SymTable
 from spy.ast import LoweringStage
 from spy.errors import WIP, SPyError
 from spy.location import Loc
 from spy.util import magic_dispatch
 
+if TYPE_CHECKING:
+    from spy.analyze.scope2 import ScopeAnalyzer as ScopeAnalyzer2
 
-def astcompile(parsed_mod: ast.Module) -> ast.Module:
+
+def astcompile(
+    parsed_mod: ast.Module,
+    scopes: Optional["ScopeAnalyzer2"] = None,
+) -> ast.Module:
     assert parsed_mod.stage == "parsed"
-    compiled_mod = ASTCompiler(parsed_mod).compile_mod()
+    compiled_mod = ASTCompiler(parsed_mod, scopes=scopes).compile_mod()
     assert compiled_mod.stage == "astcompiled"
     compiled_mod.assert_valid_at("astcompiled")
     return compiled_mod
@@ -36,11 +42,25 @@ def astcompile_interactive(expr: ast.Expr, symtable: SymTable) -> ast.Expr:
     return compiler.compile_expr(expr)
 
 
+# TODO: we are in the middle of a migration between the old scope.py and the new
+# scope2.py. The old way relies on FuncDef.symtable, the new way on "scopes" (passed to
+# ASTCompiler). When the migration is done, we should remove the legacy code.
+
+
 class ASTCompiler:
-    def __init__(self, mod: Optional[ast.Module], *, interactive: bool = False) -> None:
+    def __init__(
+        self,
+        mod: Optional[ast.Module],
+        *,
+        interactive: bool = False,
+        scopes: Optional["ScopeAnalyzer2"] = None,
+    ) -> None:
         self.mod = mod
         self.interactive = interactive
         self.symtable_stack: list[SymTable] = []
+        # TODO: once scope.py is gone, scopes will always be present and the
+        # legacy .symtable path below can be removed entirely.
+        self.scopes = scopes
 
     def push_symtable(self, symtable: SymTable) -> None:
         self.symtable_stack.append(symtable)
@@ -157,7 +177,12 @@ class ASTCompiler:
         new_defaults = [self.compile_expr(d) for d in funcdef.defaults]
 
         # the statements of the function are evaluated in the inner scope
-        self.push_symtable(funcdef.symtable)
+        if self.scopes is not None:
+            inner_symtable = self.scopes.by_funcdef(funcdef)
+        else:
+            # TODO: kill me once scope.py is gone
+            inner_symtable = funcdef.symtable
+        self.push_symtable(inner_symtable)
         new_body = self.compile_body(funcdef.body)
         self.pop_symtable()
         return funcdef.replace(
@@ -167,6 +192,7 @@ class ASTCompiler:
             args=new_args,
             defaults=new_defaults,
             body=new_body,
+            symtable=inner_symtable,
         )
 
     # ===== Stmt handlers =====
@@ -564,7 +590,13 @@ class ASTCompiler:
 
     def compile_expr_Name(self, name: ast.Name) -> ast.Expr:
         varname = name.id
-        sym = self.symtable.lookup_maybe(varname)
+        # TODO: once scope.py is gone, always use scopes.node_to_sym and
+        # remove the fallback to symtable.lookup_maybe.
+        sym: Optional[Symbol] = None
+        if self.scopes is not None:
+            sym = self.scopes.node_to_sym.get(name)
+        if sym is None:
+            sym = self.symtable.lookup_maybe(varname)
         if sym is None:
             # sym can be None ONLY in interactive mode (i.e. an expression typed at
             # the SPdb prompt, compiled against the symtable of a live frame), else

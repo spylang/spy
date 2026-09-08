@@ -39,8 +39,14 @@ class ScopeAnalyzer:
     inner_scopes: dict[
         ast.FuncDef | ast.GenericFuncDef | ast.ClassDef | ast.GenericClassDef, SymTable
     ]
+
+    # these are needed for [decl.use-before]
     seq: dict[ast.Node, int]  # unique sequential ID of every node
     decl_node: dict[Symbol, ast.Node]  # which node declared a given Symbol?
+
+    # record the resolved symbol for each node which involves a name lookup
+    # (e.g. ast.Name). Populated during the flatten pass, used by ASTCompiler.
+    node_to_sym: dict[ast.Node, Symbol]
 
     def __init__(self, modname: str, mod: ast.Module) -> None:
         self.mod = mod
@@ -50,6 +56,7 @@ class ScopeAnalyzer:
         self.inner_scopes = {}
         self.seq = {node: i for i, node in enumerate(mod.walk())}
         self.decl_node = {}
+        self.node_to_sym = {}
         self.push_scope(self.builtins_scope)
         self.push_scope(self.mod_scope)
 
@@ -186,6 +193,7 @@ class ScopeAnalyzer:
                 type_loc=Loc.fake(),
             )
             self.scope.add(new_sym)
+            resolved_sym = new_sym
 
         elif level == 0:
             assert sym is not None
@@ -200,7 +208,7 @@ class ScopeAnalyzer:
                     err.add("error", "used before its declaration", use_loc)
                     err.add("note", "declared later here", sym.loc)
                     raise err
-            return
+            resolved_sym = sym
 
         else:
             # found in an outer scope: capture it
@@ -211,6 +219,9 @@ class ScopeAnalyzer:
             self.scope.add(new_sym)
             if sym.impref is not None:
                 self.mod_scope.implicit_imports.add(sym.impref.modname)
+            resolved_sym = new_sym
+
+        self.node_to_sym[node] = resolved_sym
 
     # ====
     # declare pass
@@ -315,7 +326,6 @@ class ScopeAnalyzer:
         for stmt in funcdef.body:
             self.flatten(stmt)
         self.pop_scope()
-        funcdef.symtable = inner_scope
 
     def flatten_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> None:
         self.flatten_FuncDef(decl.funcdef)

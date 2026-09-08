@@ -275,7 +275,8 @@ class ImportAnalyzer:
         parsed_mod = self.parse_one(spyfile)
         scopes = self.analyze_one(modname, parsed_mod)
         parsed_mod.symtable = scopes.by_module()
-        compiled_mod = astcompile(parsed_mod)
+        scopes2 = scopes if isinstance(scopes, scope2.ScopeAnalyzer) else None
+        compiled_mod = astcompile(parsed_mod, scopes=scopes2)
 
         if self.use_spyc:
             self._save_spyc(compiled_mod, spyc)

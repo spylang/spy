@@ -825,6 +825,8 @@ class FuncDef(Stmt):
     scoping_rules: ScopingRules
     body: list["Stmt"]
     decorators: list["Expr"]
+
+    # TODO: delete this as soon as we delete scope.py. See also astcompile.py
     symtable: Any = field(repr=False, default=None)
 
     def shortrepr(self) -> Optional[str]:
