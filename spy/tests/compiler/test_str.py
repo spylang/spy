@@ -420,13 +420,17 @@ class TestStr(CompilerTest):
         assert mod.none_str() == "None"
         assert mod.none_repr() == "None"
 
-    def test_str_not_implemented(self):
+    def test_str_repr_not_implemented(self):
         src = """
-        def foo() -> str:
+        def not_implemented_str() -> str:
             return str(NotImplemented)
+
+        def not_implemented_repr() -> str:
+            return repr(NotImplemented)
         """
         mod = self.compile(src)
-        assert mod.foo() == "NotImplemented"
+        assert mod.not_implemented_str() == "NotImplemented"
+        assert mod.not_implemented_repr() == "NotImplemented"
 
     def test_escaped_c_literal(self):
         # See https://github.com/spylang/spy/issues/255
