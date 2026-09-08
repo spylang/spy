@@ -17,6 +17,14 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
+# The base alignment that the interp-level allocators (spy_raw_alloc,
+# spy_nogc_alloc, which are just malloc) already guarantee.  This must
+# match the C-side SPY_BASE_ALIGNMENT in spy/libspy/include/spy/unsafe.h.
+# On wasm32/wasm64, malloc returns 8-byte-aligned pointers; on native
+# 16-byte alignment.
+SPY_BASE_ALIGNMENT_INTERP = 8
+
+
 @UNSAFE.builtin_func(color="blue", kind="generic")
 def w_raw_alloc(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
     if len(args_w) == 0:
@@ -39,6 +47,7 @@ def w_raw_alloc(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
         w_ptrtype = vm.fast_call(w_raw_ptr, [w_T, w_N])  # unsafe::raw_ptr[...]
     assert isinstance(w_ptrtype, W_PtrType)
     ITEMSIZE = sizeof(w_T)
+    ALIGNMENT = w_ptrtype.alignment
 
     # unsafe::raw_ptr[i32]::alloc
     #
@@ -48,7 +57,12 @@ def w_raw_alloc(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
     def w_fn(vm: "SPyVM", w_n: W_I32) -> Annotated[W_Ptr, w_ptrtype]:
         n = vm.unwrap_i32(w_n)
         size = ITEMSIZE * n
-        addr = vm.ll.call("spy_raw_alloc", size)
+        if ALIGNMENT <= SPY_BASE_ALIGNMENT_INTERP:
+            # the allocator already guarantees this alignment
+            addr = vm.ll.call("spy_raw_alloc", size)
+        else:
+            # over-allocate and round up, mirroring spy_alloc_aligned_impl
+            addr = vm.ll.call("spy_raw_alloc_aligned", size, ALIGNMENT)
         return W_Ptr(w_ptrtype, addr, n)  # type: ignore
 
     return w_fn
@@ -65,6 +79,7 @@ def w_gc_alloc(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
         w_ptrtype = vm.fast_call(w_gc_ptr, [w_T, w_N])  # unsafe::gc_ptr[...]
     assert isinstance(w_ptrtype, W_PtrType)
     ITEMSIZE = sizeof(w_T)
+    ALIGNMENT = w_ptrtype.alignment
 
     # unsafe::gc_ptr[i32]::alloc
     #
@@ -74,7 +89,12 @@ def w_gc_alloc(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
     def w_fn(vm: "SPyVM", w_n: W_I32) -> Annotated[W_Ptr, w_ptrtype]:
         n = vm.unwrap_i32(w_n)
         size = ITEMSIZE * n
-        addr = vm.ll.call("spy_nogc_alloc", size)
+        if ALIGNMENT <= SPY_BASE_ALIGNMENT_INTERP:
+            # the allocator already guarantees this alignment
+            addr = vm.ll.call("spy_nogc_alloc", size)
+        else:
+            # over-allocate and round up, mirroring spy_alloc_aligned_impl
+            addr = vm.ll.call("spy_nogc_alloc_aligned", size, ALIGNMENT)
         return W_Ptr(w_ptrtype, addr, n)  # type: ignore
 
     return w_fn

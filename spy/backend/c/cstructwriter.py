@@ -196,8 +196,9 @@ class CStructWriter:
                 # to scan it. See spy/libspy/include/spy/unsafe.h.
                 alloc_func = "gc_alloc_pointerless"
 
+        alignment = w_ptrtype.alignment
         self.tbh_ptrs_def.wb(f"""
-        SPY_PTR_FUNCTIONS({alloc_func}, {c_ptrtype}, {c_itemT});
+        SPY_PTR_FUNCTIONS({alloc_func}, {c_ptrtype}, {c_itemT}, {alignment});
         #define {c_ptrtype}$NULL (({c_ptrtype}){{0}})
         """)
         self.tbh_ptrs_def.wl()
