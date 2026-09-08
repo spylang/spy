@@ -1,5 +1,6 @@
 import pytest
 
+from spy.errors import SPyError
 from spy.tests.support import CompilerTest
 
 
@@ -36,6 +37,16 @@ class TestRange(CompilerTest):
         assert mod.repr2() == "range(1, 2)"
         assert mod.repr3() == "range(1, 2, 3)"
         assert mod.str3() == "range(1, 2, 3)"
+
+    def test_zero_step(self):
+        mod = self.compile("""
+        from _range import range
+
+        def make_range_with_zero_step() -> range:
+            return range(1, 2, 0)
+        """)
+        with SPyError.raises("W_ValueError", match=r"range\(\) arg 3 must not be zero"):
+            mod.make_range_with_zero_step()
 
     def test_fastiter(self):
         src = """
