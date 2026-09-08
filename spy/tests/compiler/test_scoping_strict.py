@@ -21,6 +21,18 @@ class TestStrictScoping(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == 42
 
+    def test_decl_use_before_ok_across_functions(self):
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo() -> i32:
+            return x
+
+        const x: i32 = 42
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 42
+
     def test_decl_use_before(self):
         src = """
         from __spy__ import strict_scoping
