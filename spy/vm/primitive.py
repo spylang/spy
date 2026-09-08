@@ -563,12 +563,21 @@ class W_NotImplementedType(W_Object):
         # create additional instances
         raise Exception("You cannot instantiate W_NotImplementedType")
 
-    @builtin_method("__str__", color="blue", kind="metafunc")
     @staticmethod
-    def w_STR(vm: "SPyVM", wam_self: "W_MetaArg") -> "W_OpSpec":
+    def _w_format(vm: "SPyVM") -> "W_OpSpec":
         from spy.vm.opspec import W_OpSpec
 
         return W_OpSpec.const(vm.wrap("NotImplemented"))
+
+    @builtin_method("__str__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_STR(vm: "SPyVM", wam_self: "W_MetaArg") -> "W_OpSpec":
+        return W_NotImplementedType._w_format(vm)
+
+    @builtin_method("__repr__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_REPR(vm: "SPyVM", wam_self: "W_MetaArg") -> "W_OpSpec":
+        return W_NotImplementedType._w_format(vm)
 
 
 B.add("NotImplemented", W_NotImplementedType.__new__(W_NotImplementedType))
