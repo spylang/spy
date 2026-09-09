@@ -151,9 +151,93 @@ class ScopeAnalyzer:
         """
         return self.symtable_stack[-1]
 
+    # ====
+    # bind pass
+
+    def bind(self, node: ast.Node) -> None:
+        return node.visit("bind", self)
+
+    def bind_Import(self, imp: ast.Import) -> None:
+        self.define_name(
+            imp,
+            imp.asname,
+            "const",
+            "auto",
+            imp.loc,
+            imp.loc,
+            impref=imp.ref,
+        )
+
+    def bind_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> None:
+        self.bind_FuncDef(decl.funcdef)
+
+    def bind_FuncDef(self, funcdef: ast.FuncDef) -> None:
+        # bind the func name in the outer scope
+        protoloc = funcdef.prototype_loc
+        self.define_name(funcdef, funcdef.name, "const", "funcdef", protoloc, protoloc)
+
+        scope_color = funcdef.color
+        if scope_color == "red":
+            argkind: VarKind = "var"
+            argkind_origin: VarKindOrigin = "red-param"
+        else:
+            assert False
+            ## argkind = "const"
+            ## argkind_origin = "blue-param"
+
+        inner_scope = self.new_Scope(funcdef.name, scope_color, "function")
+        self.push_scope(inner_scope)
+        self.scopes[funcdef] = inner_scope
+        for arg in funcdef.args:
+            self.define_name(
+                arg,
+                arg.name,
+                argkind,
+                argkind_origin,
+                arg.loc,
+                arg.type.loc,
+            )
+        self.define_name(
+            funcdef.return_type,
+            "@return",
+            "var",
+            "auto",
+            funcdef.return_type.loc,
+            funcdef.return_type.loc,
+        )
+        for stmt in funcdef.body:
+            self.bind(stmt)
+        self.pop_scope()
+
+    def bind_VarDef(self, vardef: ast.VarDef) -> None:
+        varname = vardef.name.value
+        varkind_optional = vardef.kind
+        if varkind_optional is None:
+            # bare `x: T` inside a function body - not valid in strict mode,
+            # but we still need to handle it gracefully during bind; the
+            # runtime/checker will reject it later.
+            varkind: VarKind = "const"
+            varkind_origin: VarKindOrigin = "auto"
+        else:
+            varkind = varkind_optional
+            varkind_origin = "explicit"
+        self.define_name(
+            vardef,
+            varname,
+            varkind,
+            varkind_origin,
+            vardef.loc,
+            vardef.type.loc,
+        )
+        if vardef.value is not None:
+            self.bind(vardef.value)
+
+    # ====
+    # resolve pass
+
     def lookup_ref(self, name: str) -> tuple[int, Optional[Scope], Optional[Symbol]]:
         """
-        Lookup a name reference, starting from the innermost scope outward.
+        Lookup a name in the scope_stack, starting from the innermost scope outward.
         """
         for level, scope in enumerate(reversed(self.scope_stack)):
             ## if level > 0 and scope.kind == "class":
@@ -263,90 +347,6 @@ class ScopeAnalyzer:
             resolved_sym = self.symtable.lookup(varname)
 
         self.node_to_sym[node] = resolved_sym
-
-    # ====
-    # bind pass
-
-    def bind(self, node: ast.Node) -> None:
-        return node.visit("bind", self)
-
-    def bind_Import(self, imp: ast.Import) -> None:
-        self.define_name(
-            imp,
-            imp.asname,
-            "const",
-            "auto",
-            imp.loc,
-            imp.loc,
-            impref=imp.ref,
-        )
-
-    def bind_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> None:
-        self.bind_FuncDef(decl.funcdef)
-
-    def bind_FuncDef(self, funcdef: ast.FuncDef) -> None:
-        # bind the func name in the outer scope
-        protoloc = funcdef.prototype_loc
-        self.define_name(funcdef, funcdef.name, "const", "funcdef", protoloc, protoloc)
-
-        scope_color = funcdef.color
-        if scope_color == "red":
-            argkind: VarKind = "var"
-            argkind_origin: VarKindOrigin = "red-param"
-        else:
-            assert False
-            ## argkind = "const"
-            ## argkind_origin = "blue-param"
-
-        inner_scope = self.new_Scope(funcdef.name, scope_color, "function")
-        self.push_scope(inner_scope)
-        self.scopes[funcdef] = inner_scope
-        for arg in funcdef.args:
-            self.define_name(
-                arg,
-                arg.name,
-                argkind,
-                argkind_origin,
-                arg.loc,
-                arg.type.loc,
-            )
-        self.define_name(
-            funcdef.return_type,
-            "@return",
-            "var",
-            "auto",
-            funcdef.return_type.loc,
-            funcdef.return_type.loc,
-        )
-        for stmt in funcdef.body:
-            self.bind(stmt)
-        self.pop_scope()
-
-    def bind_VarDef(self, vardef: ast.VarDef) -> None:
-        varname = vardef.name.value
-        varkind_optional = vardef.kind
-        if varkind_optional is None:
-            # bare `x: T` inside a function body - not valid in strict mode,
-            # but we still need to handle it gracefully during bind; the
-            # runtime/checker will reject it later.
-            varkind: VarKind = "const"
-            varkind_origin: VarKindOrigin = "auto"
-        else:
-            varkind = varkind_optional
-            varkind_origin = "explicit"
-        self.define_name(
-            vardef,
-            varname,
-            varkind,
-            varkind_origin,
-            vardef.loc,
-            vardef.type.loc,
-        )
-        if vardef.value is not None:
-            self.bind(vardef.value)
-
-    # ====
-    # resolve pass
 
     def resolve(self, node: ast.Node) -> None:
         return node.visit("resolve", self)
