@@ -166,6 +166,27 @@ class ScopeAnalyzer:
     # ====
     # bind pass
 
+    def lookup_ref(self, name: str) -> tuple[int, Optional[Scope], Optional[Symbol]]:
+        """
+        Lookup a name in the scope_stack, starting from the innermost scope outward.
+        """
+        for level, scope in enumerate(reversed(self.scope_stack)):
+            ## if level > 0 and scope.kind == "class":
+            ##     # jump over 'class' scopes
+            ##     continue
+            if sym := scope.lookup_maybe(name):
+                return level, scope, sym
+        return -1, None, None
+
+    def lookup_definition(self, name: str) -> tuple[int, Optional[Symbol]]:
+        """
+        Lookup a name definition, starting from the innermost scope outward.
+        """
+        for level, scope in enumerate(reversed(self.scope_stack)):
+            if sym := scope.lookup_definition_maybe(name):
+                return level, sym
+        return -1, None
+
     def create_new_local(
         self,
         node: ast.Node,
@@ -178,7 +199,7 @@ class ScopeAnalyzer:
         impref: Optional[ImportRef] = None,
     ) -> Symbol:
         """
-        Add a name definition to the current scope (level 0).
+        Add a name definition to the current scope and current symtable (level 0).
         """
         level, scope, sym = self.lookup_ref(name)
         if sym and name != "@return":
@@ -308,27 +329,6 @@ class ScopeAnalyzer:
 
     # ====
     # resolve pass
-
-    def lookup_ref(self, name: str) -> tuple[int, Optional[Scope], Optional[Symbol]]:
-        """
-        Lookup a name in the scope_stack, starting from the innermost scope outward.
-        """
-        for level, scope in enumerate(reversed(self.scope_stack)):
-            ## if level > 0 and scope.kind == "class":
-            ##     # jump over 'class' scopes
-            ##     continue
-            if sym := scope.lookup_maybe(name):
-                return level, scope, sym
-        return -1, None, None
-
-    def lookup_definition(self, name: str) -> tuple[int, Optional[Symbol]]:
-        """
-        Lookup a name definition, starting from the innermost scope outward.
-        """
-        for level, scope in enumerate(reversed(self.scope_stack)):
-            if sym := scope.lookup_definition_maybe(name):
-                return level, sym
-        return -1, None
 
     def capture_maybe(self, node: ast.Node, varname: str, use_loc: Loc) -> None:
         level, _, sym = self.lookup_ref(varname)
