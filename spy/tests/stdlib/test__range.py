@@ -62,6 +62,31 @@ class TestRange(CompilerTest):
         assert mod.range_len(5, 5, 1) == 0
         assert mod.range_len(-10, -1, 2) == 5
 
+    def test_getitem(self):
+        mod = self.compile("""
+        from _range import range
+
+        def getitem(start: int, stop: int, step: int, index: int) -> int:
+            return range(start, stop, step)[index]
+        """)
+
+        # Positive indices
+        assert mod.getitem(0, 10, 2, 0) == 0
+        assert mod.getitem(0, 10, 2, 3) == 6
+        assert mod.getitem(10, 0, -2, 2) == 6
+
+        # Negative indices
+        assert mod.getitem(0, 10, 2, -1) == 8
+        assert mod.getitem(10, 0, -2, -2) == 4
+
+        # Out of bounds
+        with SPyError.raises("W_IndexError"):
+            mod.getitem(0, 10, 2, 5)
+        with SPyError.raises("W_IndexError"):
+            mod.getitem(0, 10, 2, -6)
+        with SPyError.raises("W_IndexError"):
+            mod.getitem(0, 0, 1, 0)
+
     def test_fastiter(self):
         src = """
         from _range import range, range_iterator
