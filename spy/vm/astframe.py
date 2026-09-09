@@ -767,6 +767,12 @@ class AbstractFrame:
             name.loc,
         )
 
+    def eval_expr_UnboundLocalError(self, name: ast.UnboundLocalError) -> W_MetaArg:
+        err = SPyError("W_NameError", f"name `{name.id}` is not defined")
+        err.add("error", "used before its declaration", name.loc)
+        err.add("note", "declared later here", name.decl_loc)
+        raise err
+
     def eval_expr_NameInteractive(self, name: ast.NameInteractive) -> W_MetaArg:
         # NameInteractive is generated only during interactive sessions, like SPdb.  See
         # e.g. test_astcompile::test_NameInteractive and

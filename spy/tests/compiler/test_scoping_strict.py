@@ -46,7 +46,7 @@ class TestStrictScoping(CompilerTest):
             ("used before its declaration", "x"),
             ("declared later here", "var x: i32 = 1"),
         )
-        self.compile_raises(src, "foo", errors, error_reporting="eager")
+        self.compile_raises(src, "foo", errors)
 
     def test_decl_initializer(self):
         src = """

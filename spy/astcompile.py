@@ -616,5 +616,9 @@ class ASTCompiler:
             return ast.NameOuterCell(name.loc, sym, fqn=None)
         elif sym.storage == "NameError":
             return ast.NameError(name.loc, name.id)
+        elif sym.storage == "UnboundLocalError":
+            # sym.type_loc points to the declaration site
+            # XXX introduce sym.decl_loc
+            return ast.UnboundLocalError(name.loc, name.id, sym.type_loc)
         else:
             assert False, f"unexpected storage: {sym.storage!r}"

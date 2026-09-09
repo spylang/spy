@@ -498,6 +498,17 @@ class NameError(Expr):
     id: str
 
 
+@astnode(">= astcompiled")
+class UnboundLocalError(Expr):
+    """
+    Poison node for use-before-declaration errors ([decl.use-before]).
+    """
+
+    precedence = 100
+    id: str
+    decl_loc: "Loc"
+
+
 # === /Name family ===
 
 

@@ -333,6 +333,9 @@ class ScopeAnalyzer:
     # resolve pass
 
     def capture_maybe(self, node: ast.Node, varname: str, use_loc: Loc) -> None:
+        # NOTE: NameError and UnboundLocalError are just recorded here. Then astcompile
+        # either raise it eagerly or turn it into a lazy error.
+
         level, _, sym = self.lookup_name_in_scopes(varname)
 
         if level == -1:
@@ -353,16 +356,23 @@ class ScopeAnalyzer:
             # found in the local symtable
             assert sym is not None
             if sym.is_local:
-                # [decl.use-before]: does the usage happen before the declaration?
                 seq = self.seq[node]
                 decl_node = self.decl_node[sym]
                 decl_seq = self.seq[decl_node]
                 if seq < decl_seq:
-                    msg = f"name `{varname}` is not defined"
-                    err = SPyError("W_NameError", msg)
-                    err.add("error", "used before its declaration", use_loc)
-                    err.add("note", "declared later here", sym.loc)
-                    raise err
+                    # [decl.use-before]: the usage happen before the declaration
+                    resolved_sym = Symbol(
+                        varname,
+                        sym.varkind,
+                        sym.varkind_origin,
+                        "UnboundLocalError",
+                        level=0,
+                        loc=use_loc,
+                        type_loc=sym.loc,  # points to the declaration
+                    )
+                    self.node_to_sym[node] = resolved_sym
+                    return
+
             self.node_to_sym[node] = sym
             return
 

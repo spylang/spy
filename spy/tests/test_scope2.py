@@ -77,7 +77,7 @@ class TestScopeAnalyzer2:
         """
         [decl.forms]: var and const declarations inside a function
         """
-        scopes = self.analyze("""
+        src = """
         from __spy__ import strict_scoping
 
         def foo() -> None:
@@ -88,7 +88,8 @@ class TestScopeAnalyzer2:
             var e: auto = 44
             var f = 45
             var g: auto
-        """)
+        """
+        scopes = self.analyze(src)
         funcdef = self.mod.get_funcdef("foo")
         scope = scopes.by_funcdef(funcdef)
         assert scope._symbols == {
@@ -112,12 +113,12 @@ class TestScopeAnalyzer2:
             x
             var x: i32 = 1
         """
-        self.expect_errors(
-            src,
-            "name `x` is not defined",
-            ("used before its declaration", "x"),
-            ("declared later here", "var x: i32 = 1"),
-        )
+        scopes = self.analyze(src)
+        funcdef = self.mod.get_funcdef("foo")
+        # The use-before-declaration is recorded lazily in node_to_sym
+        name_node = funcdef.find(ast.Name, "x")
+        sym = scopes.node_to_sym[name_node]
+        assert sym.storage == "UnboundLocalError"
 
     def test_decl_no_redeclare(self):
         """
@@ -138,12 +139,13 @@ class TestScopeAnalyzer2:
         )
 
     def test_NameError(self):
-        scopes = self.analyze("""
+        src = """
         from __spy__ import strict_scoping
 
         def foo() -> None:
             nope
-        """)
+        """
+        scopes = self.analyze(src)
         funcdef = self.mod.get_funcdef("foo")
         symtable = scopes.by_funcdef(funcdef)
         assert symtable._symbols == {

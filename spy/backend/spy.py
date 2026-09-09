@@ -510,6 +510,11 @@ class SPyBackend:
             return f"NameError({name.id})"
         return name.id
 
+    def fmt_expr_UnboundLocalError(self, name: ast.UnboundLocalError) -> str:
+        if self.ast_format == "full":
+            return f"UnboundLocalError({name.id})"
+        return name.id
+
     def fmt_expr_NameImportRef(self, name: ast.NameImportRef) -> str:
         if self.ast_format == "full":
             return f"ImportRef({name.sym.name})"
