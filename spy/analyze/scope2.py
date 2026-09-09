@@ -120,17 +120,23 @@ class ScopeAnalyzer:
     def by_module(self) -> SymTable:
         return self.mod_symtable
 
-    def by_funcdef(self, funcdef: ast.FuncDef) -> SymTable:
-        return self.symtables[funcdef]
+    def get_symtable(self, node: ast.Node) -> SymTable:
+        return self.symtables[node]
 
-    def by_generic_funcdef(self, gfuncdef: ast.GenericFuncDef) -> SymTable:
-        return self.symtables[gfuncdef]
+    def get_scope(self, node: ast.Node, path: str) -> Scope:
+        """
+        Find a nested Scope by path relative to the scope of `node`.
 
-    def by_classdef(self, classdef: ast.ClassDef) -> SymTable:
-        return self.symtables[classdef]
-
-    def by_generic_classdef(self, gclassdef: ast.GenericClassDef) -> SymTable:
-        return self.symtables[gclassdef]
+        The path is a '::'-separated sequence of scope name components, e.g.
+        'if.then' or 'if.then::for::if.else'.  The scope's full name must end
+        with '<node_scope_name>::<path>'.
+        """
+        node_scope = self.scopes[node]
+        suffix = f"{node_scope.name}::{path}"
+        for scope in self.scopes.values():
+            if scope.name == suffix:
+                return scope
+        raise KeyError(f"scope not found: {suffix!r}")
 
     # =====
 

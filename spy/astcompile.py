@@ -178,7 +178,7 @@ class ASTCompiler:
 
         # the statements of the function are evaluated in the inner scope
         if self.scopes is not None:
-            inner_symtable = self.scopes.by_funcdef(funcdef)
+            inner_symtable = self.scopes.get_symtable(funcdef)
         else:
             # TODO: kill me once scope.py is gone
             inner_symtable = funcdef.symtable
