@@ -281,7 +281,7 @@ class ScopeAnalyzer:
         self.symtables[funcdef] = symtable
 
         for arg in funcdef.args:
-            sym = self.create_new_local(
+            self.create_new_local(
                 arg,
                 arg.name,
                 argkind,
@@ -289,7 +289,6 @@ class ScopeAnalyzer:
                 arg.loc,
                 arg.type.loc,
             )
-            symtable.add(sym)
 
         ret_sym = self.create_new_local(
             funcdef.return_type,
@@ -305,6 +304,21 @@ class ScopeAnalyzer:
 
         self.pop_symtable()
         self.pop_scope()
+
+    def bind_If(self, ifstmt: ast.If) -> None:
+        self.bind(ifstmt.test)
+        then_scope = self.new_Scope("if.then", self.scope.color, "block")
+        self.push_scope(then_scope)
+        for stmt in ifstmt.then_body:
+            self.bind(stmt)
+        self.pop_scope()
+        else_scope = self.new_Scope("if.else", self.scope.color, "block")
+        self.push_scope(else_scope)
+        for stmt in ifstmt.else_body:
+            self.bind(stmt)
+        self.pop_scope()
+        self.scopes[ifstmt, "then"] = then_scope
+        self.scopes[ifstmt, "else"] = else_scope
 
     def bind_VarDef(self, vardef: ast.VarDef) -> None:
         varname = vardef.name.value
@@ -414,6 +428,19 @@ class ScopeAnalyzer:
 
     def resolve_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> None:
         self.resolve_FuncDef(decl.funcdef)
+
+    def resolve_If(self, ifstmt: ast.If) -> None:
+        self.resolve(ifstmt.test)
+        then_scope = self.scopes[ifstmt, "then"]
+        self.push_scope(then_scope)
+        for stmt in ifstmt.then_body:
+            self.resolve(stmt)
+        self.pop_scope()
+        else_scope = self.scopes[ifstmt, "else"]
+        self.push_scope(else_scope)
+        for stmt in ifstmt.else_body:
+            self.resolve(stmt)
+        self.pop_scope()
 
     def resolve_Name(self, name: ast.Name) -> None:
         self.capture_maybe(name, name.id, name.loc)

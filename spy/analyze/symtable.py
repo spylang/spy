@@ -45,9 +45,9 @@ VarKindOrigin = Literal[
     "blue-param",    # parameters of blue functions are "const"
 ]  # fmt: skip
 
-# each ScopeKind corresponds to a different Frame for evaluation: ModFrame, ClassFrame,
-# ASTFrame
-ScopeKind = Literal["module", "class", "function"]
+# "module", "class", "function" each correspond to a different Frame for evaluation.
+# "block" is used for if/for/while bodies: analysis-only, never a runtime frame.
+ScopeKind = Literal["module", "class", "function", "block"]
 
 
 def maybe_blue(*colors: Color) -> Color:

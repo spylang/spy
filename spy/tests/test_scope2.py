@@ -155,3 +155,42 @@ class TestScopeAnalyzer2:
         assert scopes.node_to_sym[nope_node] == MatchSymbol(
             "nope", "var", "auto", storage="NameError", level=-1
         )
+
+    def test_scope_block_if(self):
+        # [scope.block]: a name declared inside an if body is not visible outside
+        scopes = self.analyze("""
+        from __spy__ import strict_scoping
+
+        def foo(cond: bool) -> None:
+            if cond:
+                const x: i32 = 1
+            x
+        """)
+        funcdef = self.mod.get_funcdef("foo")
+        ifstmt = funcdef.find(ast.If)
+
+        # then-scope: holds only the block-local declaration
+        then_scope = scopes.scopes[ifstmt, "then"]
+        assert then_scope._symbols == {
+            "x": MatchSymbol("x", "const", "explicit"),
+        }
+
+        # else-scope: empty (no declarations)
+        else_scope = scopes.scopes[ifstmt, "else"]
+        assert else_scope._symbols == {}
+
+        # runtime symtable: x is present as a slot (registered during bind),
+        # plus args, @return, and outer captures resolved during resolve
+        symtable = scopes.by_funcdef(funcdef)
+        assert symtable._symbols == {
+            "cond": MatchSymbol("cond", "var", "red-param"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+            "x": MatchSymbol("x", "const", "explicit"),
+            "i32": MatchSymbol("i32", "const", "explicit", level=3),
+        }
+
+        # the Name node for `x` outside the if resolves as NameError
+        x_node = funcdef.find(ast.Name, "x")
+        assert scopes.node_to_sym[x_node] == MatchSymbol(
+            "x", "var", "auto", storage="NameError", level=-1
+        )

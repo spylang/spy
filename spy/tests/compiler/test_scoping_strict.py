@@ -100,3 +100,18 @@ class TestStrictScoping(CompilerTest):
             ("not found in this scope", "nope"),
         )
         self.compile_raises(src, "foo", errors)
+
+    def test_scope_block_if(self):
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo() -> None:
+            if True:
+                const x: i32 = 1
+            x
+        """
+        errors = expect_errors(
+            "name `x` is not defined",
+            ("not found in this scope", "x"),
+        )
+        self.compile_raises(src, "foo", errors)
