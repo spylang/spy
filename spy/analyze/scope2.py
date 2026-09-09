@@ -26,6 +26,17 @@ from spy.location import Loc
 # beasts
 Scope = NewType("Scope", SymTable)
 
+# Key used to look up Scopes in ScopeAnalyzer.scopes.
+# The tuple case is for nodes with multiple blocks, like `(ast.If, "then")` and
+# `(ast.If, "else")`.
+ScopeKey = (
+    ast.FuncDef
+    | ast.GenericFuncDef
+    | ast.ClassDef
+    | ast.GenericClassDef
+    | tuple[ast.Node, str]
+)
+
 
 class ScopeAnalyzer:
     """
@@ -40,17 +51,17 @@ class ScopeAnalyzer:
          every Scope contains the names directly defined in it (sym.level == 0)
          and is read-only.
 
-      2. resolve: find the right Symbol associated to each node which needs a name
-         lookup (e.g. ast.Name), and fill node_to_sym.  Moreover, create a flat SymTable
-         for each FuncDef: walk all name uses and, for each one, find which Scope
-         contains the definition.  Two separate stacks are maintained:
+         During this pass we also create a SymTable for each FuncDef, and we fill it
+         with its locals.
 
-         - scope_stack: the lexical Scope stack, by re-pushing the Scopes created during
-           bind (and stored inside inner_scope)
+      2. resolve: visit all nodes which needs a name lookup (e.g. ast.Name), and lookup
+         the corresponding Symbol.
 
-         - symtable_stack: the runtime SymTable stack.  A fresh SymTable is pushed for
-           each FuncDef.  Every node which needs to do a name lookup finds a symbol in
-           the scope_stack and captures it into the current symtable.
+     Both passes maintain two separate stacks:
+     - scope_stack: one Scope per block
+     - symtable_stack: one SymTable per FuncDef.
+
+    When we visit a FuncDef node we push both a Scope and a SymTable.
     """
 
     mod: ast.Module
@@ -58,15 +69,8 @@ class ScopeAnalyzer:
     scope_stack: list[Scope]
     symtable_stack: list[SymTable]
 
-    # which scope corresponds to each block?
-    scopes: dict[
-        ast.FuncDef | ast.GenericFuncDef | ast.ClassDef | ast.GenericClassDef, Scope
-    ]
-
-    # which symtable corresponds to each FuncDef & friends?
-    symtables: dict[
-        ast.FuncDef | ast.GenericFuncDef | ast.ClassDef | ast.GenericClassDef, SymTable
-    ]
+    scopes: dict[ScopeKey, Scope]  # which scope corresponds to a given Node?
+    symtables: dict[ast.Node, SymTable]  # maps FuncDef/ClassDef/etc. to their SymTable
 
     decl_node: dict[Symbol, ast.Node]  # which node declared a given Symbol?
     seq: dict[ast.Node, int]  # unique seq ID of every node (used by [decl.use-before])
@@ -91,19 +95,21 @@ class ScopeAnalyzer:
         builtins_scope = Scope(SymTable.from_builtins())
         self.push_scope(builtins_scope)
         self.push_scope(Scope(self.mod_symtable))
+        # we don't need to push a symtables for builtins
+        self.push_symtable(self.mod_symtable)
 
         # ------- bind pass -------
-        assert len(self.scope_stack) == 2  # [builtins, module]
+        assert len(self.scope_stack) == 2  #    [builtins, module]
+        assert len(self.symtable_stack) == 1  # [module]
         for decl in self.mod.decls:
             self.bind(decl)
 
         # ------ resolve pass -----
-        assert len(self.scope_stack) == 2  # [builtins, module]
-        self.symtable_stack.append(self.mod_symtable)
+        assert len(self.scope_stack) == 2  #    [builtins, module]
+        assert len(self.symtable_stack) == 1  # [module]
         for decl in self.mod.decls:
             self.resolve(decl)
-        self.symtable_stack.pop()
-        assert len(self.symtable_stack) == 0
+        assert len(self.symtable_stack) == 1
         assert len(self.scope_stack) == 2
 
     def by_module(self) -> SymTable:
@@ -137,6 +143,12 @@ class ScopeAnalyzer:
     def pop_scope(self) -> Scope:
         return self.scope_stack.pop()
 
+    def push_symtable(self, symtable: SymTable) -> None:
+        self.symtable_stack.append(symtable)
+
+    def pop_symtable(self) -> SymTable:
+        return self.symtable_stack.pop()
+
     @property
     def scope(self) -> Scope:
         """
@@ -147,116 +159,14 @@ class ScopeAnalyzer:
     @property
     def symtable(self) -> SymTable:
         """
-        Return the current runtime SymTable (write target during resolve).
+        Return the currently active SymTable.
         """
         return self.symtable_stack[-1]
 
     # ====
     # bind pass
 
-    def bind(self, node: ast.Node) -> None:
-        return node.visit("bind", self)
-
-    def bind_Import(self, imp: ast.Import) -> None:
-        self.define_name(
-            imp,
-            imp.asname,
-            "const",
-            "auto",
-            imp.loc,
-            imp.loc,
-            impref=imp.ref,
-        )
-
-    def bind_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> None:
-        self.bind_FuncDef(decl.funcdef)
-
-    def bind_FuncDef(self, funcdef: ast.FuncDef) -> None:
-        # bind the func name in the outer scope
-        protoloc = funcdef.prototype_loc
-        self.define_name(funcdef, funcdef.name, "const", "funcdef", protoloc, protoloc)
-
-        scope_color = funcdef.color
-        if scope_color == "red":
-            argkind: VarKind = "var"
-            argkind_origin: VarKindOrigin = "red-param"
-        else:
-            assert False
-            ## argkind = "const"
-            ## argkind_origin = "blue-param"
-
-        inner_scope = self.new_Scope(funcdef.name, scope_color, "function")
-        self.push_scope(inner_scope)
-        self.scopes[funcdef] = inner_scope
-        for arg in funcdef.args:
-            self.define_name(
-                arg,
-                arg.name,
-                argkind,
-                argkind_origin,
-                arg.loc,
-                arg.type.loc,
-            )
-        self.define_name(
-            funcdef.return_type,
-            "@return",
-            "var",
-            "auto",
-            funcdef.return_type.loc,
-            funcdef.return_type.loc,
-        )
-        for stmt in funcdef.body:
-            self.bind(stmt)
-        self.pop_scope()
-
-    def bind_VarDef(self, vardef: ast.VarDef) -> None:
-        varname = vardef.name.value
-        varkind_optional = vardef.kind
-        if varkind_optional is None:
-            # bare `x: T` inside a function body - not valid in strict mode,
-            # but we still need to handle it gracefully during bind; the
-            # runtime/checker will reject it later.
-            varkind: VarKind = "const"
-            varkind_origin: VarKindOrigin = "auto"
-        else:
-            varkind = varkind_optional
-            varkind_origin = "explicit"
-        self.define_name(
-            vardef,
-            varname,
-            varkind,
-            varkind_origin,
-            vardef.loc,
-            vardef.type.loc,
-        )
-        if vardef.value is not None:
-            self.bind(vardef.value)
-
-    # ====
-    # resolve pass
-
-    def lookup_ref(self, name: str) -> tuple[int, Optional[Scope], Optional[Symbol]]:
-        """
-        Lookup a name in the scope_stack, starting from the innermost scope outward.
-        """
-        for level, scope in enumerate(reversed(self.scope_stack)):
-            ## if level > 0 and scope.kind == "class":
-            ##     # jump over 'class' scopes
-            ##     continue
-            if sym := scope.lookup_maybe(name):
-                return level, scope, sym
-        return -1, None, None
-
-    def lookup_definition(self, name: str) -> tuple[int, Optional[Symbol]]:
-        """
-        Lookup a name definition, starting from the innermost scope outward.
-        """
-        for level, scope in enumerate(reversed(self.scope_stack)):
-            if sym := scope.lookup_definition_maybe(name):
-                return level, sym
-        return -1, None
-
-    def define_name(
+    def create_new_local(
         self,
         node: ast.Node,
         name: str,
@@ -301,26 +211,144 @@ class ScopeAnalyzer:
         self.decl_node[new_sym] = node
         return new_sym
 
+    def bind(self, node: ast.Node) -> None:
+        return node.visit("bind", self)
+
+    def bind_Import(self, imp: ast.Import) -> None:
+        self.create_new_local(
+            imp,
+            imp.asname,
+            "const",
+            "auto",
+            imp.loc,
+            imp.loc,
+            impref=imp.ref,
+        )
+
+    def bind_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> None:
+        self.bind_FuncDef(decl.funcdef)
+
+    def bind_FuncDef(self, funcdef: ast.FuncDef) -> None:
+        # bind the func name in the outer scope
+        protoloc = funcdef.prototype_loc
+        self.create_new_local(
+            funcdef, funcdef.name, "const", "funcdef", protoloc, protoloc
+        )
+
+        scope_color = funcdef.color
+        if scope_color == "red":
+            argkind: VarKind = "var"
+            argkind_origin: VarKindOrigin = "red-param"
+        else:
+            assert False
+            ## argkind = "const"
+            ## argkind_origin = "blue-param"
+
+        inner_scope = self.new_Scope(funcdef.name, scope_color, "function")
+        symtable = SymTable(funcdef.name, scope_color, "function")
+        self.push_scope(inner_scope)
+        self.push_symtable(symtable)
+        self.scopes[funcdef] = inner_scope
+        self.symtables[funcdef] = symtable
+
+        for arg in funcdef.args:
+            sym = self.create_new_local(
+                arg,
+                arg.name,
+                argkind,
+                argkind_origin,
+                arg.loc,
+                arg.type.loc,
+            )
+            symtable.add(sym)
+
+        ret_sym = self.create_new_local(
+            funcdef.return_type,
+            "@return",
+            "var",
+            "auto",
+            funcdef.return_type.loc,
+            funcdef.return_type.loc,
+        )
+        symtable.add(ret_sym)
+
+        for stmt in funcdef.body:
+            self.bind(stmt)
+
+        self.pop_symtable()
+        self.pop_scope()
+
+    def bind_VarDef(self, vardef: ast.VarDef) -> None:
+        varname = vardef.name.value
+        varkind_optional = vardef.kind
+        if varkind_optional is None:
+            # bare `x: T` inside a function body - not valid in strict mode,
+            # but we still need to handle it gracefully during bind; the
+            # runtime/checker will reject it later.
+            varkind: VarKind = "const"
+            varkind_origin: VarKindOrigin = "auto"
+        else:
+            varkind = varkind_optional
+            varkind_origin = "explicit"
+        sym = self.create_new_local(
+            vardef,
+            varname,
+            varkind,
+            varkind_origin,
+            vardef.loc,
+            vardef.type.loc,
+        )
+        # XXX FIX THIS
+        # Register the local in the runtime SymTable as well.
+        # Skip if scope and symtable are the same object (module level).
+        if self.symtable is not self.scope:
+            self.symtable.add(sym)
+        if vardef.value is not None:
+            self.bind(vardef.value)
+
+    # ====
+    # resolve pass
+
+    def lookup_ref(self, name: str) -> tuple[int, Optional[Scope], Optional[Symbol]]:
+        """
+        Lookup a name in the scope_stack, starting from the innermost scope outward.
+        """
+        for level, scope in enumerate(reversed(self.scope_stack)):
+            ## if level > 0 and scope.kind == "class":
+            ##     # jump over 'class' scopes
+            ##     continue
+            if sym := scope.lookup_maybe(name):
+                return level, scope, sym
+        return -1, None, None
+
+    def lookup_definition(self, name: str) -> tuple[int, Optional[Symbol]]:
+        """
+        Lookup a name definition, starting from the innermost scope outward.
+        """
+        for level, scope in enumerate(reversed(self.scope_stack)):
+            if sym := scope.lookup_definition_maybe(name):
+                return level, sym
+        return -1, None
+
     def capture_maybe(self, node: ast.Node, varname: str, use_loc: Loc) -> None:
         level, _, sym = self.lookup_ref(varname)
-        # All writes (NameErrors, outer-scope captures) go to self.symtable,
-        # the current runtime SymTable.
+
         if level == -1:
-            # name not found
-            if self.symtable.lookup_maybe(varname) is None:
-                new_sym = Symbol(
-                    varname,
-                    "var",
-                    "auto",
-                    "NameError",
-                    level=-1,
-                    loc=Loc.fake(),
-                    type_loc=Loc.fake(),
-                )
-                self.symtable.add(new_sym)
-            resolved_sym = self.symtable.lookup(varname)
+            # name not found, let's record a special NameError symbol
+            resolved_sym = Symbol(
+                varname,
+                "var",
+                "auto",
+                "NameError",
+                level=-1,
+                loc=Loc.fake(),
+                type_loc=Loc.fake(),
+            )
+            self.node_to_sym[node] = resolved_sym
+            return
 
         elif level == 0:
+            # found in the local symtable
             assert sym is not None
             if sym.is_local:
                 # [decl.use-before]: does the usage happen before the declaration?
@@ -333,7 +361,8 @@ class ScopeAnalyzer:
                     err.add("error", "used before its declaration", use_loc)
                     err.add("note", "declared later here", sym.loc)
                     raise err
-            resolved_sym = sym
+            self.node_to_sym[node] = sym
+            return
 
         else:
             # found in an outer scope: capture into the runtime symtable
@@ -345,8 +374,8 @@ class ScopeAnalyzer:
             if sym.impref is not None:
                 self.mod_symtable.implicit_imports.add(sym.impref.modname)
             resolved_sym = self.symtable.lookup(varname)
-
-        self.node_to_sym[node] = resolved_sym
+            self.node_to_sym[node] = resolved_sym
+            return
 
     def resolve(self, node: ast.Node) -> None:
         return node.visit("resolve", self)
@@ -361,21 +390,14 @@ class ScopeAnalyzer:
         for default in funcdef.defaults:
             self.resolve(default)
 
-        # Build a fresh runtime SymTable for this function, pre-populated with
-        # the args and @return from the bind-pass Scope.
-        bind_scope = self.scopes[funcdef]
-        symtable = SymTable(bind_scope.name, bind_scope.color, bind_scope.kind)
-        for sym in bind_scope._symbols.values():
-            symtable.add(sym)
-        self.symtables[funcdef] = symtable
-
-        # Push the bind-pass Scope for name resolution and the fresh SymTable
-        # as the write target.
-        self.push_scope(bind_scope)
-        self.symtable_stack.append(symtable)
+        # activate scope/symtable for the function and resolve its body
+        scope = self.scopes[funcdef]
+        symtable = self.symtables[funcdef]
+        self.push_scope(scope)
+        self.push_symtable(symtable)
         for stmt in funcdef.body:
             self.resolve(stmt)
-        self.symtable_stack.pop()
+        self.pop_symtable()
         self.pop_scope()
 
     def resolve_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> None:

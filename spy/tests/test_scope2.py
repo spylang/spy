@@ -145,8 +145,11 @@ class TestScopeAnalyzer2:
             nope
         """)
         funcdef = self.mod.get_funcdef("foo")
-        scope = scopes.by_funcdef(funcdef)
-        assert scope._symbols == {
+        symtable = scopes.by_funcdef(funcdef)
+        assert symtable._symbols == {
             "@return": MatchSymbol("@return", "var", "auto"),
-            "nope": MatchSymbol("nope", "var", "auto", storage="NameError", level=-1),
         }
+        nope_node = funcdef.find(ast.Name, "nope")
+        assert scopes.node_to_sym[nope_node] == MatchSymbol(
+            "nope", "var", "auto", storage="NameError", level=-1
+        )
