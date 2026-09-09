@@ -78,6 +78,7 @@ class ScopeAnalyzer:
 
     def __init__(self, modname: str, mod: ast.Module) -> None:
         self.mod = mod
+        self.mod_scope = Scope(SymTable(modname, "blue", "module"))
         self.mod_symtable = SymTable(modname, "blue", "module")
         self.scope_stack = []
         self.symtable_stack = []
@@ -94,22 +95,26 @@ class ScopeAnalyzer:
     def analyze(self) -> None:
         builtins_scope = Scope(SymTable.from_builtins())
         self.push_scope(builtins_scope)
-        self.push_scope(Scope(self.mod_symtable))
-        # we don't need to push a symtables for builtins
+        self.push_scope(self.mod_scope)
+
+        # builtins_symtable is empty because it should never be reached at runtime. All
+        # the builtins lookups should be resolved at the scope level.
+        builtins_symtable = SymTable("builtins", "blue", "module")
+        self.push_symtable(builtins_symtable)
         self.push_symtable(self.mod_symtable)
 
         # ------- bind pass -------
-        assert len(self.scope_stack) == 2  #    [builtins, module]
-        assert len(self.symtable_stack) == 1  # [module]
+        assert len(self.scope_stack) == 2  # [builtins, module]
+        assert len(self.symtable_stack) == 2
         for decl in self.mod.decls:
             self.bind(decl)
 
         # ------ resolve pass -----
-        assert len(self.scope_stack) == 2  #    [builtins, module]
-        assert len(self.symtable_stack) == 1  # [module]
+        assert len(self.scope_stack) == 2  # [builtins, module]
+        assert len(self.symtable_stack) == 2
         for decl in self.mod.decls:
             self.resolve(decl)
-        assert len(self.symtable_stack) == 1
+        assert len(self.symtable_stack) == 2
         assert len(self.scope_stack) == 2
 
     def by_module(self) -> SymTable:
@@ -166,7 +171,9 @@ class ScopeAnalyzer:
     # ====
     # bind pass
 
-    def lookup_ref(self, name: str) -> tuple[int, Optional[Scope], Optional[Symbol]]:
+    def lookup_name_in_scopes(
+        self, name: str
+    ) -> tuple[int, Optional[Scope], Optional[Symbol]]:
         """
         Lookup a name in the scope_stack, starting from the innermost scope outward.
         """
@@ -201,7 +208,7 @@ class ScopeAnalyzer:
         """
         Add a name definition to the current scope and current symtable (level 0).
         """
-        level, scope, sym = self.lookup_ref(name)
+        level, scope, sym = self.lookup_name_in_scopes(name)
         if sym and name != "@return":
             assert scope is not None
             if level == 0:
@@ -229,6 +236,7 @@ class ScopeAnalyzer:
             level=0,
         )
         self.scope.add(new_sym)
+        self.symtable.add(new_sym)
         self.decl_node[new_sym] = node
         return new_sym
 
@@ -291,7 +299,6 @@ class ScopeAnalyzer:
             funcdef.return_type.loc,
             funcdef.return_type.loc,
         )
-        symtable.add(ret_sym)
 
         for stmt in funcdef.body:
             self.bind(stmt)
@@ -319,11 +326,6 @@ class ScopeAnalyzer:
             vardef.loc,
             vardef.type.loc,
         )
-        # XXX FIX THIS
-        # Register the local in the runtime SymTable as well.
-        # Skip if scope and symtable are the same object (module level).
-        if self.symtable is not self.scope:
-            self.symtable.add(sym)
         if vardef.value is not None:
             self.bind(vardef.value)
 
@@ -331,7 +333,7 @@ class ScopeAnalyzer:
     # resolve pass
 
     def capture_maybe(self, node: ast.Node, varname: str, use_loc: Loc) -> None:
-        level, _, sym = self.lookup_ref(varname)
+        level, _, sym = self.lookup_name_in_scopes(varname)
 
         if level == -1:
             # name not found, let's record a special NameError symbol
