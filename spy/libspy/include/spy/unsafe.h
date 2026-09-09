@@ -134,6 +134,34 @@ spy_gc_alloc_pointerless_fn(size_t size) {
    adjusts the pointer via spy_alloc_aligned_impl.
 */
 
+/* Unaligned access helpers.
+ *
+ * When a ptr type declares an alignment strictly less than the natural
+ * alignment of its item type T (e.g. gc_ptr[i32, 1], where
+ * alignof(i32) == 4), a plain typed dereference/store is undefined
+ * behavior. These helpers route the access through __builtin_memcpy,
+ * which compilers lower to the most efficient unaligned access for the
+ * target, whenever ALIGNMENT < alignof(T).
+ *
+ * ALIGNMENT and _Alignof(T) are compile-time constants, so the branch
+ * is folded away at compile time: there is zero runtime overhead in the
+ * (overwhelmingly common) case where the ptr is naturally aligned.
+ */
+#define _SPY_PTR_LOAD(T, ALIGNMENT, addr) \
+    ((ALIGNMENT) >= _Alignof(T) \
+        ? *(addr) \
+        : ({ T _tmp; __builtin_memcpy(&_tmp, (const char *)(addr), sizeof(T)); _tmp; }))
+
+#define _SPY_PTR_STORE(T, ALIGNMENT, addr, rval) \
+    do { \
+        if ((ALIGNMENT) >= _Alignof(T)) { \
+            *(addr) = (rval); \
+        } else { \
+            T _tmp = (rval); \
+            __builtin_memcpy((char *)(addr), &_tmp, sizeof(T)); \
+        } \
+    } while (0)
+
 #ifdef SPY_DEBUG
 #  define SPY_PTR_FUNCTIONS _SPY_PTR_FUNCTIONS_CHECKED
 #else
@@ -158,16 +186,16 @@ spy_gc_alloc_pointerless_fn(size_t size) {
         return (PTR){p};                                                               \
     }                                                                                  \
     static inline T PTR##$deref(PTR p) {                                               \
-        return *(p.p);                                                                 \
+        return _SPY_PTR_LOAD(T, ALIGNMENT, p.p);                                       \
     }                                                                                  \
     static inline T PTR##$getitem_byval(PTR p, ptrdiff_t i) {                          \
-        return p.p[i];                                                                 \
+        return _SPY_PTR_LOAD(T, ALIGNMENT, p.p + i);                                   \
     }                                                                                  \
     static inline PTR PTR##$getitem_byref(PTR p, ptrdiff_t i) {                        \
         return PTR##_from_addr(p.p + i);                                               \
     }                                                                                  \
     static inline void PTR##$store(PTR p, ptrdiff_t i, T v) {                          \
-        p.p[i] = v;                                                                    \
+        _SPY_PTR_STORE(T, ALIGNMENT, p.p + i, v);                                      \
     }                                                                                  \
     static inline bool PTR##$__eq__(PTR p0, PTR p1) {                                  \
         return p0.p == p1.p;                                                           \
@@ -201,7 +229,7 @@ spy_gc_alloc_pointerless_fn(size_t size) {
         return (PTR){p, (ptrdiff_t) n};                                                \
     }                                                                                  \
     static inline T PTR##$deref(PTR p) {                                               \
-        return *(p.p);                                                                 \
+        return _SPY_PTR_LOAD(T, ALIGNMENT, p.p);                                       \
     }                                                                                  \
     static inline T PTR##$getitem_byval(PTR p, ptrdiff_t i) {                          \
         if (p.p == NULL)                                                               \
@@ -210,7 +238,7 @@ spy_gc_alloc_pointerless_fn(size_t size) {
             );                                                                         \
         if (i < 0 || i >= p.length)                                                    \
             spy_panic("PanicError", "ptr_getitem out of bounds", __FILE__, __LINE__);  \
-        return p.p[i];                                                                 \
+        return _SPY_PTR_LOAD(T, ALIGNMENT, p.p + i);                                   \
     }                                                                                  \
     static inline PTR PTR##$getitem_byref(PTR p, ptrdiff_t i) {                        \
         if (p.p == NULL)                                                               \
@@ -228,7 +256,7 @@ spy_gc_alloc_pointerless_fn(size_t size) {
             );                                                                         \
         if (i < 0 || i >= p.length)                                                    \
             spy_panic("PanicError", "ptr_store out of bounds", __FILE__, __LINE__);    \
-        p.p[i] = v;                                                                    \
+        _SPY_PTR_STORE(T, ALIGNMENT, p.p + i, v);                                      \
     }                                                                                  \
     static inline bool PTR##$__eq__(PTR p0, PTR p1) {                                  \
         return p0.p == p1.p && p0.length == p1.length;                                 \

@@ -14,7 +14,9 @@ from spy.vm.b import TYPES, B
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.irtag import IRTag
 from spy.vm.modules.posix import W__FILE
-from spy.vm.modules.unsafe.ptr import W_Ptr
+from spy.vm.modules.unsafe.misc import alignof
+from spy.vm.modules.unsafe.ptr import W_Ptr, W_PtrType
+from spy.vm.struct import W_StructType
 
 if TYPE_CHECKING:
     from spy.backend.c.cmodwriter import CModuleWriter
@@ -651,11 +653,37 @@ class CFuncWriter:
         c_length = C.Call(f"{c_srctype}_get_length", [c_src])
         return C.Call(f"{c_targettype}_from_raw", [c_p, c_length])
 
+    def _is_under_aligned_field(self, w_ptr: object, attr: str) -> bool:
+        """
+        True if w_ptr is a W_PtrType pointing to a defined struct, and
+        `attr` names a field whose natural alignment exceeds the ptr's
+        declared alignment -- i.e. a plain typed access to it would be
+        undefined behavior and must instead go through the
+        $getfield_*_unaligned / $setfield_*_unaligned helpers emitted by
+        CStructWriter._emit_ptr_field_helpers.
+        """
+        if not isinstance(w_ptr, W_PtrType):
+            return False
+        w_itemT = w_ptr.w_itemT
+        if not isinstance(w_itemT, W_StructType) or not w_itemT.is_defined():
+            return False
+        for w_field in w_itemT.iterfields_w():
+            if w_field.name == attr:
+                return w_ptr.alignment < alignof(w_field.w_T)
+        return False
+
     def fmt_ptr_getfield(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         assert isinstance(call.args[1], ast.StrLiteral)
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value
         offset = call.args[2]  # ignored
+
+        w_ptr = call.args[0].w_T
+        if self._is_under_aligned_field(w_ptr, attr):
+            assert w_ptr is not None
+            c_ptrtype = self.ctx.w2c(w_ptr)
+            return C.Call(f"{c_ptrtype}$getfield_{attr}_unaligned", [c_ptr])
+
         c_field = C.PtrField(c_ptr, attr)
         if irtag.data["by"] == "byref":
             c_restype = self.ctx.c_restype_by_fqn(fqn)
@@ -668,8 +696,15 @@ class CFuncWriter:
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value
         offset = call.args[2]  # ignored
-        c_lval = C.PtrField(c_ptr, attr)
         c_rval = self.fmt_expr(call.args[3])
+
+        w_ptr = call.args[0].w_T
+        if self._is_under_aligned_field(w_ptr, attr):
+            assert w_ptr is not None
+            c_ptrtype = self.ctx.w2c(w_ptr)
+            return C.Call(f"{c_ptrtype}$setfield_{attr}_unaligned", [c_ptr, c_rval])
+
+        c_lval = C.PtrField(c_ptr, attr)
         return C.BinOp("=", c_lval, c_rval)
 
     def fmt_memop(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
