@@ -43,6 +43,16 @@ class range:
             result = result + ", " + str(self.step)
         return result + ")"
 
+    @blue.metafunc
+    def __convert_to__(m_expT, m_gotT, m_self):
+        if m_expT.blueval == bool:
+
+            def to_bool(self: range) -> bool:
+                return len(self) != 0
+
+            return OpSpec(to_bool, [m_self])
+        return OpSpec.NULL
+
     def __len__(self) -> i32:
         if self.step > 0:
             if self.start >= self.stop:
