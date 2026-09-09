@@ -8,6 +8,9 @@
 #endif
 #include <unistd.h>
 
+FILE *WASM_EXPORT(spy_posix$_get_stdin)(void);
+FILE *WASM_EXPORT(spy_posix$_get_stdout)(void);
+FILE *WASM_EXPORT(spy_posix$_get_stderr)(void);
 FILE *WASM_EXPORT(spy_posix$_fopen)(spy_StrObject *filename, spy_StrObject *mode);
 spy_StrObject *WASM_EXPORT(spy_posix$_fread)(FILE *f, int32_t size);
 spy_StrObject *WASM_EXPORT(spy_posix$__freadall_chunked)(FILE *f);

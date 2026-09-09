@@ -1,6 +1,7 @@
 from posix import (
-    _FILE, _FILE_NULL, _fopen, _fread, _freadall, _freadline,
-    _fwrite, _ftell, _fseek, _fflush, _fileno, _isatty, _fclose, SEEK_SET,
+    _FILE, _FILE_NULL, _get_stdin, _get_stdout, _get_stderr, _fopen, _fread,
+    _freadall, _freadline, _fwrite, _ftell, _fseek, _fflush, _fileno, _isatty,
+    _fclose, SEEK_SET,
 )
 from unsafe import gc_ptr, gc_alloc
 
@@ -126,3 +127,24 @@ class file_iterator:
 
 def open(filename: str, mode: str = "r") -> file:
     return file(filename, mode)
+
+
+def _wrap_fp(fp: _FILE, filename: str, mode: str) -> file:
+    # wrap an existing FILE* (e.g. stdin) into a `file` object
+    data = gc_alloc[_FileData](1)
+    data.fp = fp
+    data.filename = filename
+    data.mode = mode
+    return file.__make__(data)
+
+
+def get_stdin() -> file:
+    return _wrap_fp(_get_stdin(), "<stdin>", "r")
+
+
+def get_stdout() -> file:
+    return _wrap_fp(_get_stdout(), "<stdout>", "w")
+
+
+def get_stderr() -> file:
+    return _wrap_fp(_get_stderr(), "<stderr>", "w")

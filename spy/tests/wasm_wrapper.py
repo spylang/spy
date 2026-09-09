@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional
 
 import fixedint
 import py.path
@@ -31,11 +31,18 @@ class WasmModuleWrapper:
     modname: str
     ll: LLSPyInstance
 
-    def __init__(self, vm: SPyVM, modname: str, f: py.path.local) -> None:
+    def __init__(
+        self,
+        vm: SPyVM,
+        modname: str,
+        f: py.path.local,
+        *,
+        stdin_file: Optional[str] = None,
+    ) -> None:
         self.vm = vm
         self.modname = modname
         self.w_mod = vm.modules_w[modname]
-        self.ll = LLSPyInstance.from_file(f)
+        self.ll = LLSPyInstance.from_file(f, stdin_file=stdin_file)
 
     def __repr__(self) -> str:
         return f"<WasmModuleWrapper '{self.ll.llmod}'>"

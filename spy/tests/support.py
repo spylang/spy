@@ -122,6 +122,8 @@ class CompilerTest:
     vm: SPyVM
 
     OPT_LEVEL: Optional[int] = None
+    # if set, WASI instances created by the test read stdin from this file
+    wasi_stdin_file: Optional[str] = None
 
     @pytest.fixture(params=params_with_marks(ALL_BACKENDS))  # type: ignore
     def compiler_backend(self, request):
@@ -155,6 +157,26 @@ class CompilerTest:
         srcfile = self.tmpdir.join(filename)
         srcfile.write(src)
         return srcfile
+
+    def set_wasi_stdin(self, data: str) -> None:
+        """
+        Arrange for WASI stdin to read `data`. Must be called before compile().
+
+        For the interp/doppler backends this recreates self.vm with a WASI
+        config which reads stdin from a file; for the C backend the file is
+        used when the WasmModuleWrapper is created by compile().
+        """
+        from spy import libspy
+        from spy.libspy import LLSPyInstance
+
+        stdin_f = self.tmpdir.join("wasi_stdin.txt")
+        stdin_f.write(data)
+        self.wasi_stdin_file = str(stdin_f)
+        if self.backend != "C":
+            # recreate the VM so that its ll instance picks up the new stdin
+            ll = LLSPyInstance(libspy.get_LLMOD(), stdin_file=self.wasi_stdin_file)
+            self.vm = SPyVM(ll=ll)
+            self.vm.path.append(str(self.tmpdir))
 
     @property
     def error_reporting(self) -> str:
@@ -262,6 +284,10 @@ class CompilerTest:
         backend.cwrite()
         backend.write_build_script()
         outfile = backend.build()  # e.g. 'test.wasm' or 'test.mjs'
+        if WrapperClass is WasmModuleWrapper:
+            return WasmModuleWrapper(
+                self.vm, modname, outfile, stdin_file=self.wasi_stdin_file
+            )
         return WrapperClass(self.vm, modname, outfile)
 
     def dump_module(self, modname: str) -> None:

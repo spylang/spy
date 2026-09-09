@@ -36,6 +36,21 @@ spy_posix$_parse_mode(spy_StrObject *mode, char *out) {
 }
 
 FILE *
+spy_posix$_get_stdin(void) {
+    return stdin;
+}
+
+FILE *
+spy_posix$_get_stdout(void) {
+    return stdout;
+}
+
+FILE *
+spy_posix$_get_stderr(void) {
+    return stderr;
+}
+
+FILE *
 spy_posix$_fopen(spy_StrObject *filename, spy_StrObject *mode) {
     char cmode[3];
     if (!spy_posix$_parse_mode(mode, cmode)) {

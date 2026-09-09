@@ -242,3 +242,51 @@ class TestFile(CompilerTest):
 
         with SPyError.raises("W_ValueError", match="I/O operation on closed file"):
             mod.do_writelines_closed(str(f))
+
+    def test_get_stdout(self, capfd):
+        src = """
+        from _file import get_stdout
+
+        def foo() -> str:
+            out = get_stdout()
+            out.write('hello stdout')
+            out.flush()
+            return str(out)
+        """
+        mod = self.compile(src)
+        assert mod.foo() == "<spy open file '<stdout>', mode 'w'>"
+        out, err = capfd.readouterr()
+        assert out == "hello stdout"
+
+    def test_get_stderr(self, capfd):
+        src = """
+        from _file import get_stderr
+
+        def foo() -> str:
+            err = get_stderr()
+            err.write('hello stderr')
+            err.flush()
+            return str(err)
+        """
+        mod = self.compile(src)
+        assert mod.foo() == "<spy open file '<stderr>', mode 'w'>"
+        out, err = capfd.readouterr()
+        assert err == "hello stderr"
+
+    def test_get_stdin(self):
+        self.set_wasi_stdin("hello\nworld\n")
+        src = """
+        from _file import get_stdin
+
+        def foo() -> tuple[str, str, str]:
+            f = get_stdin()
+            a = f.readline()
+            b = f.readline()
+            return a, b, str(f)
+        """
+        mod = self.compile(src)
+        assert mod.foo() == (
+            "hello\n",
+            "world\n",
+            "<spy open file '<stdin>', mode 'r'>",
+        )
