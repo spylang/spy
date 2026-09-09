@@ -173,7 +173,7 @@ class TestScopeAnalyzer2:
         funcdef = self.mod.get_funcdef("foo")
 
         foo_scope = scopes.scopes[funcdef]
-        assert funcdef_scope._symbols == {
+        assert foo_scope._symbols == {
             "cond": MatchSymbol("cond", "var", "red-param"),
             "@return": MatchSymbol("@return", "var", "auto"),
         }
@@ -192,6 +192,7 @@ class TestScopeAnalyzer2:
             "cond": MatchSymbol("cond", "var", "red-param"),
             "@return": MatchSymbol("@return", "var", "auto"),
             "x": MatchSymbol("x", "const", "explicit"),
+            # XXX: level=3 is wrong. Captured closure names are broken, FIXME
             "i32": MatchSymbol("i32", "const", "explicit", level=3),
         }
 

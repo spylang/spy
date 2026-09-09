@@ -397,6 +397,10 @@ class ScopeAnalyzer:
             return
 
         else:
+            # XXX: level here is wrong: we want the *runtime* level (i.e., number of
+            # symtbles to hop). See also the XXX comment in test_scope_block_if. We will
+            # fix it later.
+
             # found in an outer scope: capture into the runtime symtable
             level, sym = self.lookup_definition(varname)  # type: ignore
             assert sym
