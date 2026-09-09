@@ -48,6 +48,20 @@ class TestRange(CompilerTest):
         with SPyError.raises("W_ValueError", match=r"range\(\) arg 3 must not be zero"):
             mod.make_range_with_zero_step()
 
+    def test_len(self):
+        mod = self.compile("""
+        from _range import range
+
+        def range_len(start: int, stop: int, step: int) -> int:
+            return len(range(start, stop, step))
+        """)
+        assert mod.range_len(0, 10, 3) == 4
+        assert mod.range_len(10, 0, -3) == 4
+        assert mod.range_len(10, 0, 3) == 0
+        assert mod.range_len(0, 10, -3) == 0
+        assert mod.range_len(5, 5, 1) == 0
+        assert mod.range_len(-10, -1, 2) == 5
+
     def test_fastiter(self):
         src = """
         from _range import range, range_iterator

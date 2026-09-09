@@ -42,6 +42,16 @@ class range:
             result = result + ", " + str(self.step)
         return result + ")"
 
+    def __len__(self) -> i32:
+        if self.step > 0:
+            if self.start >= self.stop:
+                return 0
+            return (self.stop - self.start - 1) // self.step + 1
+
+        if self.start <= self.stop:
+            return 0
+        return (self.start - self.stop - 1) // -self.step + 1
+
     def __contains__(self, value: int) -> bool:
         if self.step > 0:
             if value < self.start or value >= self.stop:
