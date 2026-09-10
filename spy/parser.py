@@ -193,7 +193,7 @@ class Parser:
         # Extract module docstring, then __spy__ pragmas
         docstring, py_body = self.get_docstring_maybe(py_mod.body)
         pragmas = self.get_spy_pragmas(py_body)
-        scoping_rules: ScopingRules = "pythonic"
+        scoping_rules: ScopingRules = "legacy"
         if "strict_scoping" in pragmas:
             scoping_rules = "strict"
 
@@ -355,7 +355,7 @@ class Parser:
 
         docstring, py_body = self.get_docstring_maybe(py_funcdef.body)
         pragmas = self.get_spy_pragmas(py_body)
-        scoping_rules: ScopingRules = "pythonic"
+        scoping_rules: ScopingRules = "legacy"
         if "strict_scoping" in pragmas:
             scoping_rules = "strict"
 
