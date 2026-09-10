@@ -77,6 +77,21 @@ class range:
             self.step * indices.step,
         )
 
+    def __eq__(self, other: range) -> bool:
+        length = len(self)
+        if length != len(other):
+            return False
+        if length == 0:
+            return True
+        if self.start != other.start:
+            return False
+        if length == 1:
+            return True
+        return self.step == other.step
+
+    def __ne__(self, other: range) -> bool:
+        return not self.__eq__(other)
+
     def __contains__(self, value: int) -> bool:
         if self.step > 0:
             if value < self.start or value >= self.stop:

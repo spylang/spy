@@ -149,6 +149,47 @@ class TestRange(CompilerTest):
         with SPyError.raises("W_ValueError", match="slice step cannot be zero"):
             mod.zero_step()
 
+    def test_equality(self):
+        mod = self.compile("""
+        from _range import range
+
+        def eq(
+            a_start: int, a_stop: int, a_step: int,
+            b_start: int, b_stop: int, b_step: int,
+        ) -> bool:
+            return range(a_start, a_stop, a_step) == range(b_start, b_stop, b_step)
+
+        def ne(
+            a_start: int, a_stop: int, a_step: int,
+            b_start: int, b_stop: int, b_step: int,
+        ) -> bool:
+            return range(a_start, a_stop, a_step) != range(b_start, b_stop, b_step)
+        """)
+
+        # Same definition
+        assert mod.eq(0, 10, 2, 0, 10, 2)
+        assert not mod.ne(0, 10, 2, 0, 10, 2)
+
+        # Different definitions, same sequence
+        assert mod.eq(0, 3, 2, 0, 4, 2)
+        assert not mod.ne(0, 3, 2, 0, 4, 2)
+
+        # Empty ranges
+        assert mod.eq(0, 0, 1, 10, 0, 1)
+        assert not mod.ne(0, 0, 1, 10, 0, 1)
+
+        # Singleton ranges
+        assert mod.eq(5, 6, 1, 5, 100, 200)
+        assert not mod.ne(5, 6, 1, 5, 100, 200)
+
+        # Unequal ranges
+        assert not mod.eq(0, 4, 2, 0, 5, 2)
+        assert mod.ne(0, 4, 2, 0, 5, 2)
+        assert not mod.eq(0, 10, 2, 1, 11, 2)
+        assert mod.ne(0, 10, 2, 1, 11, 2)
+        assert not mod.eq(0, 10, 2, 0, 10, 3)
+        assert mod.ne(0, 10, 2, 0, 10, 3)
+
     def test_fastiter(self):
         src = """
         from _range import range, range_iterator
