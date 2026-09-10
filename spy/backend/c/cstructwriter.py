@@ -214,4 +214,5 @@ class CStructWriter:
         self.tbh_ptrs_def.wb(f"""
         #define {c_reftype}_from_addr {c_ptrtype}_from_addr
         #define {c_reftype}$deref {c_ptrtype}$deref
+        #define {c_reftype}$debug_get_length {c_ptrtype}$debug_get_length
         """)

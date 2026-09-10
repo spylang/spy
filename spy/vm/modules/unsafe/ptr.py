@@ -475,6 +475,18 @@ class W_Ptr(W_MemLoc):
         else:
             return W_OpSpec.NULL
 
+    @builtin_method("_debug_get_length", color="blue", kind="metafunc")
+    @staticmethod
+    def w_DEBUG_GET_LENGTH(vm: "SPyVM", wam_self: W_MetaArg) -> W_OpSpec:
+        w_T = W_Ptr._get_memlocT(wam_self)
+        PTR = Annotated[W_Ptr, w_T]
+
+        @vm.register_builtin_func(w_T.fqn, "debug_get_length")
+        def w_debug_get_length(vm: "SPyVM", w_ptr: PTR) -> W_I32:
+            return vm.wrap(w_ptr.length)
+
+        return W_OpSpec(w_debug_get_length, [wam_self])
+
 
 class W_Ref(W_MemLoc):
     """
