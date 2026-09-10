@@ -921,10 +921,14 @@ class Return(Stmt):
 
 @astnode
 class VarDef(Stmt):
+    # VarDef is as both parsed and >=astcompiled
+    # at parsed stage, sym is None.
+    # at astcompiled state, sym is set to the resolved symbol it assigns to
     kind: Optional[VarKind]
     name: StrLiteral
     type: Expr
     value: Optional[Expr]
+    sym: Optional[Symbol] = None
 
 
 @astnode

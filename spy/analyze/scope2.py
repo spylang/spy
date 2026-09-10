@@ -78,6 +78,7 @@ class ScopeAnalyzer:
         self.mod = mod
         self.mod_scope = Scope(modname, "blue", "module")
         self.mod_symtable = SymTable(modname, "blue", "module")
+        self.mod_symtable.scoping_rules = "strict"  # KILL ME
         self.scope_stack = []
         self.symtable_stack = []
         self.scopes = {}
@@ -281,7 +282,7 @@ class ScopeAnalyzer:
             varkind,
             varkind_origin,
             storage,
-            slot_name=name,
+            slot_name=self.symtable.get_fresh_slot(name),
             loc=loc,
             type_loc=type_loc,
             impref=impref,
@@ -327,6 +328,7 @@ class ScopeAnalyzer:
 
         inner_scope = self.new_Scope(funcdef.name, scope_color, "function")
         symtable = SymTable(funcdef.name, scope_color, "function")
+        symtable.scoping_rules = "strict"  # KILL ME
         self.push_scope(inner_scope)
         self.push_symtable(symtable)
         self.scopes[funcdef] = inner_scope
@@ -398,6 +400,9 @@ class ScopeAnalyzer:
     # ====
     # resolve pass
 
+    def record_resolution(self, node: ast.Node, scope: Scope, sym: Symbol) -> None:
+        self._resolved_nodes[node] = (scope, sym)
+
     def resolve_and_record(self, node: ast.Node, varname: str, use_loc: Loc) -> None:
         # NOTE: NameError and UnboundLocalError are just recorded here. Then astcompile
         # either raise it eagerly or turn it into a lazy error.
@@ -416,7 +421,7 @@ class ScopeAnalyzer:
                 loc=Loc.fake(),
                 type_loc=Loc.fake(),
             )
-            self._resolved_nodes[node] = (self.scope, resolved_sym)
+            self.record_resolution(node, self.scope, resolved_sym)
             return
 
         elif level == 0:
@@ -438,10 +443,10 @@ class ScopeAnalyzer:
                         loc=use_loc,
                         type_loc=sym.loc,  # points to the declaration
                     )
-                    self._resolved_nodes[node] = (self.scope, resolved_sym)
+                    self.record_resolution(node, self.scope, resolved_sym)
                     return
 
-            self._resolved_nodes[node] = (self.scope, sym)
+            self.record_resolution(node, self.scope, sym)
             return
 
         else:
@@ -449,7 +454,7 @@ class ScopeAnalyzer:
             assert sym is not None
             if sym.impref is not None:
                 self.mod_symtable.implicit_imports.add(sym.impref.modname)
-            self._resolved_nodes[node] = (self.scope, sym.replace(level=level))
+            self.record_resolution(node, self.scope, sym.replace(level=level))
             return
 
     def resolve(self, node: ast.Node) -> None:
@@ -490,6 +495,33 @@ class ScopeAnalyzer:
         for stmt in ifstmt.else_body:
             self.resolve(stmt)
         self.pop_scope()
+
+    def resolve_VarDef(self, vardef: ast.VarDef) -> None:
+        # a VarDef must have a local symbol in the current scope, get it
+        sym = self.scope.lookup(vardef.name.value)
+        assert sym.level == 0
+        self.record_resolution(vardef, self.scope, sym)
+        self.resolve(vardef.type)
+        if vardef.value is not None:
+            self.resolve(vardef.value)
+
+    def resolve_Assign(self, assign: ast.Assign) -> None:
+        self.resolve(assign.value)
+        if isinstance(assign.target, ast.SingleTarget):
+            # record the target StrLiteral -> sym.  astcompile reuses this same
+            # StrLiteral node when it synthesizes the AssignExpr.
+            tgt = assign.target.name
+            self.resolve_and_record(tgt, tgt.value, tgt.loc)
+        else:
+            # UnpackTarget: not migrated yet
+            assert False, "TODO"
+            ## self.resolve(assign.target)
+
+    def resolve_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
+        # walrus `x := E`
+        self.resolve(assignexpr.value)
+        tgt = assignexpr.target
+        self.resolve_and_record(tgt, tgt.value, tgt.loc)
 
     def resolve_Name(self, name: ast.Name) -> None:
         self.resolve_and_record(name, name.id, name.loc)

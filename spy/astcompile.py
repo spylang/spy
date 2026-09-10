@@ -217,7 +217,15 @@ class ASTCompiler:
     def compile_stmt_VarDef(self, stmt: ast.VarDef) -> list[ast.Stmt]:
         new_type = self.compile_expr(stmt.type)
         new_value = self.compile_expr(stmt.value) if stmt.value is not None else None
-        return [stmt.replace(type=new_type, value=new_value)]
+        if self.sa is None:
+            # KILL ME: legacy scope.py path, leaves sym=None
+            return [stmt.replace(type=new_type, value=new_value)]
+
+        # scope2 resolves every VarDef to a Symbol; fill it in so that the
+        # runtime indexes the frame by sym.slot_name.
+        sym = self.sa.get_resolved_sym_maybe(stmt)
+        assert sym is not None
+        return [stmt.replace(type=new_type, value=new_value, sym=sym)]
 
     def compile_stmt_Assign(self, stmt: ast.Assign) -> list[ast.Stmt]:
         if isinstance(stmt.target, ast.SingleTarget):
@@ -564,7 +572,15 @@ class ASTCompiler:
 
     def compile_expr_AssignExpr(self, expr: ast.AssignExpr) -> ast.Expr:
         target = expr.target
-        sym = self.symtable.lookup(target.value)
+        sym = None
+
+        if self.sa is None:
+            # KILL ME: legacy scope.py logic
+            sym = self.symtable.lookup(target.value)
+        else:
+            # new logic (kill this comment when we kill the if)
+            sym = self.sa.get_resolved_sym(target)
+
         value = self.compile_expr(expr.value)
 
         if sym.varkind == "const" and sym.varkind_origin != "auto":

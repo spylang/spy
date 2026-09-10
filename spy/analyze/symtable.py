@@ -226,6 +226,9 @@ class Scope:
         assert sym.src_name not in self._symbols
         self._symbols[sym.src_name] = sym
 
+    def lookup(self, name: str) -> Symbol:
+        return self._symbols[name]
+
     def lookup_maybe(self, name: str) -> Optional[Symbol]:
         return self._symbols.get(name)
 
@@ -255,6 +258,10 @@ class SymTable:
     kind: ScopeKind
     _symbols: dict[str, Symbol]
     implicit_imports: set[str]
+    # KILL ME: temporary. Records which analyzer produced this SymTable, so that
+    # the runtime/backends can tell whether names are mangled (scope2) or not
+    # (legacy scope.py, where slot_name == src_name). Goes away with scope.py.
+    scoping_rules: str
 
     def __init__(self, name: str, color: Color, kind: ScopeKind) -> None:
         self.name = name
@@ -262,6 +269,8 @@ class SymTable:
         self.kind = kind
         self._symbols = {}
         self.implicit_imports = set()
+        # KILL ME: default to "legacy"; scope2 overrides it to "strict"
+        self.scoping_rules = "legacy"
 
     @classmethod
     def from_builtins(cls) -> "SymTable":
@@ -288,12 +297,32 @@ class SymTable:
         new_st = SymTable(self.name, self.color, self.kind)
         new_st._symbols = dict(self._symbols)
         new_st.implicit_imports = set(self.implicit_imports)
+        new_st.scoping_rules = self.scoping_rules  # KILL ME
         return new_st
 
     def add(self, sym: Symbol) -> None:
         # NOTE: we use slot_name as the key (compare and contrast with Scope.add)
         assert sym.slot_name not in self._symbols
         self._symbols[sym.slot_name] = sym
+
+    def get_fresh_slot(self, src_name: str) -> str:
+        """
+        Get a fresh, unique slot name for the given src_name, in the form `x$0`,
+        `x$1`, etc.
+
+        Names are mangled only inside function frames.  Module- and class-level
+        names must stay accessible by their source name (they are exposed as
+        module/class attributes and referenced by FQN), so they are not mangled.
+
+        `@`-names (e.g. `@return`, `@if`) are special: they are declared and
+        looked up literally at runtime, so they are never mangled.
+        """
+        if self.kind != "function" or src_name.startswith("@"):
+            return src_name
+        n = 0
+        while (slot_name := f"{src_name}${n}") in self._symbols:
+            n += 1
+        return slot_name
 
     def has_definition(self, name: str) -> bool:
         # KILL ME

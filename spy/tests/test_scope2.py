@@ -99,27 +99,30 @@ class TestScopeAnalyzer2:
         # decls is about lexical scope, symtable is about the runtime frame. In this
         # case foo doesn't contain any nested block so they are the same
 
+        # get_flattened_decls is keyed by src_name (it's a lexical/Scope view),
+        # but each symbol carries its mangled slot_name.
         decls = sa.get_flattened_decls(funcdef)
         assert decls == {
-            "a": MatchSymbol("a", "var", "explicit"),
-            "b": MatchSymbol("b", "const", "explicit"),
-            "c": MatchSymbol("c", "var", "explicit"),
-            "d": MatchSymbol("d", "const", "explicit"),
-            "e": MatchSymbol("e", "var", "explicit"),
-            "f": MatchSymbol("f", "var", "explicit"),
-            "g": MatchSymbol("g", "var", "explicit"),
+            "a": MatchSymbol("a", "var", "explicit", slot_name="a$0"),
+            "b": MatchSymbol("b", "const", "explicit", slot_name="b$0"),
+            "c": MatchSymbol("c", "var", "explicit", slot_name="c$0"),
+            "d": MatchSymbol("d", "const", "explicit", slot_name="d$0"),
+            "e": MatchSymbol("e", "var", "explicit", slot_name="e$0"),
+            "f": MatchSymbol("f", "var", "explicit", slot_name="f$0"),
+            "g": MatchSymbol("g", "var", "explicit", slot_name="g$0"),
             "@return": MatchSymbol("@return", "var", "auto"),
         }
 
+        # the symtable is the runtime frame: keyed by slot_name.
         symtable = sa.get_symtable(funcdef)
         assert symtable._symbols == {
-            "a": MatchSymbol("a", "var", "explicit"),
-            "b": MatchSymbol("b", "const", "explicit"),
-            "c": MatchSymbol("c", "var", "explicit"),
-            "d": MatchSymbol("d", "const", "explicit"),
-            "e": MatchSymbol("e", "var", "explicit"),
-            "f": MatchSymbol("f", "var", "explicit"),
-            "g": MatchSymbol("g", "var", "explicit"),
+            "a$0": MatchSymbol("a", "var", "explicit", slot_name="a$0"),
+            "b$0": MatchSymbol("b", "const", "explicit", slot_name="b$0"),
+            "c$0": MatchSymbol("c", "var", "explicit", slot_name="c$0"),
+            "d$0": MatchSymbol("d", "const", "explicit", slot_name="d$0"),
+            "e$0": MatchSymbol("e", "var", "explicit", slot_name="e$0"),
+            "f$0": MatchSymbol("f", "var", "explicit", slot_name="f$0"),
+            "g$0": MatchSymbol("g", "var", "explicit", slot_name="g$0"),
             "@return": MatchSymbol("@return", "var", "auto"),
         }
 
@@ -135,14 +138,14 @@ class TestScopeAnalyzer2:
         funcdef = self.mod.get_funcdef("foo")
         symtable = sa.get_symtable(funcdef)
         assert symtable._symbols == {
-            "x": MatchSymbol("x", "var", "explicit"),
+            "x$0": MatchSymbol("x", "var", "explicit", slot_name="x$0"),
             "@return": MatchSymbol("@return", "var", "auto"),
         }
 
         # The use-before-declaration is recorded lazily as an UnboundLocalError
         name_node = funcdef.find(ast.Name, "x")
         assert sa.get_resolved_sym(name_node) == MatchSymbol(
-            "x", "var", "explicit", storage="UnboundLocalError"
+            "x", "var", "explicit", slot_name="x$0", storage="UnboundLocalError"
         )
 
     def test_decl_no_redeclare(self):
@@ -194,19 +197,21 @@ class TestScopeAnalyzer2:
         """)
         funcdef = self.mod.get_funcdef("foo")
 
+        # get_flattened_decls is keyed by src_name (lexical view)
         decls = sa.get_flattened_decls(funcdef)
         assert decls == {
-            "cond": MatchSymbol("cond", "var", "red-param"),
+            "cond": MatchSymbol("cond", "var", "red-param", slot_name="cond$0"),
             "@return": MatchSymbol("@return", "var", "auto"),
-            "if.then::x": MatchSymbol("x", "const", "explicit"),
+            "if.then::x": MatchSymbol("x", "const", "explicit", slot_name="x$0"),
         }
 
-        # the runtime symtable contains all locals, including block-locals like x
+        # the runtime symtable contains all locals, including block-locals like x,
+        # keyed by slot_name
         symtable = sa.get_symtable(funcdef)
         assert symtable._symbols == {
-            "cond": MatchSymbol("cond", "var", "red-param"),
+            "cond$0": MatchSymbol("cond", "var", "red-param", slot_name="cond$0"),
             "@return": MatchSymbol("@return", "var", "auto"),
-            "x": MatchSymbol("x", "const", "explicit"),
+            "x$0": MatchSymbol("x", "const", "explicit", slot_name="x$0"),
         }
 
         # but the Name node for `x` is in foo_scope, so it's a NameError

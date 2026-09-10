@@ -316,7 +316,7 @@ class SPyBackend:
         self.wl(f"{node.expr.sym.slot_name} = <AssignConstError>")
 
     def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
-        varname = assign.expr.target.value
+        varname = assign.expr.sym.slot_name
         t = self.get_vartype_to_declare_maybe(varname)
         v = self.fmt_expr(assign.expr.value)
         if self.ast_format == "full":
@@ -376,7 +376,12 @@ class SPyBackend:
         self.wl(f"{t}[{args}] {node.op}= {v}")
 
     def emit_stmt_VarDef(self, vardef: ast.VarDef) -> None:
-        varname = vardef.name.value
+        if self.scope_stack[-1].scoping_rules == "legacy":
+            # KILL ME: legacy scope.py, where slot_name == src_name
+            varname = vardef.name.value
+        else:
+            assert vardef.sym is not None
+            varname = vardef.sym.slot_name
         is_auto = isinstance(vardef.type, ast.Auto)
         if is_auto:
             if vardef.value is None:

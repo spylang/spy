@@ -170,7 +170,12 @@ class CFuncWriter:
         # NOTE: the local variable declaration happens in emit_local_vars, here we just
         # assign the value
         if vardef.value:
-            target = vardef.name.value
+            if self.w_func.funcdef.symtable.scoping_rules == "legacy":
+                # KILL ME: legacy scope.py, where slot_name == src_name
+                target = vardef.name.value
+            else:
+                assert vardef.sym is not None
+                target = vardef.sym.slot_name
             v = self.fmt_expr(vardef.value)
             if vardef.value.w_T is TYPES.w_NoneType:
                 self.tbc.wl(f"/* {target} = */ {v};")
@@ -178,7 +183,7 @@ class CFuncWriter:
                 self.tbc.wl(f"{target} = {v};")
 
     def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
-        target = assign.expr.target.value
+        target = assign.expr.sym.slot_name
         v = self.fmt_expr(assign.expr.value)
         c_varname = C_Ident(target)
         if assign.expr.value.w_T is TYPES.w_NoneType:

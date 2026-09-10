@@ -500,8 +500,14 @@ class AbstractFrame:
         #   deferred inf.  (is_auto and not value):      var   x: auto
         #
         # Note that the "type inference" case is basically a simple Assign.
-        varname = vardef.name.value
-        sym = self.symtable.lookup(varname)
+        if self.symtable.scoping_rules == "legacy":
+            # KILL ME: legacy scope.py path (slot_name == src_name)
+            varname = vardef.name.value
+            sym = self.symtable.lookup(varname)
+        else:
+            assert vardef.sym is not None
+            sym = vardef.sym
+            varname = sym.slot_name
         is_auto = isinstance(vardef.type, ast.Auto)
 
         if vardef.value is None:
@@ -902,7 +908,7 @@ class AbstractFrame:
     def eval_expr_AssignExprLocal(self, assign: ast.AssignExprLocal) -> W_MetaArg:
         target = assign.target
         value = assign.value
-        varname = target.value
+        varname = assign.sym.slot_name
 
         lv = self.locals.get(varname)
         if lv is None:

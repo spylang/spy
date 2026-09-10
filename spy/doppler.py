@@ -231,12 +231,16 @@ class DopplerFrame(ASTFrame):
         return [stmt]
 
     def shift_stmt_VarDef(self, vardef: ast.VarDef) -> list[ast.Stmt]:
-        varname = vardef.name.value
+        # the frame is indexed by slot_name
+        if self.symtable.scoping_rules == "legacy":
+            # KILL ME: legacy scope.py, where slot_name == src_name
+            varname = vardef.name.value
+        else:
+            assert vardef.sym is not None
+            varname = vardef.sym.slot_name
         is_auto = isinstance(vardef.type, ast.Auto)
         self.exec_stmt_VarDef(vardef)
 
-        sym = self.symtable.lookup(varname)
-        assert sym.is_local
         if self.locals[varname].color == "blue":
             # redshift away assignments to blue locals
             return []
@@ -272,7 +276,7 @@ class DopplerFrame(ASTFrame):
     def shift_stmt_AssignLocal(self, assign: ast.AssignLocal) -> list[ast.Stmt]:
         self.exec_stmt(assign)
         expr = assign.expr
-        varname = expr.target.value
+        varname = expr.sym.slot_name
         lv = self.locals[varname]
         self.record_node_color(assign, lv.color)
         if lv.color == "blue":
