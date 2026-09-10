@@ -273,10 +273,10 @@ class ImportAnalyzer:
 
         # no cache found, parse it
         parsed_mod = self.parse_one(spyfile)
-        scopes = self.analyze_one(modname, parsed_mod)
-        parsed_mod.symtable = scopes.by_module()
-        scopes2 = scopes if isinstance(scopes, scope2.ScopeAnalyzer) else None
-        compiled_mod = astcompile(parsed_mod, scopes=scopes2)
+        sa = self.analyze_one(modname, parsed_mod)
+        parsed_mod.symtable = sa.by_module()
+        sa2 = sa if isinstance(sa, scope2.ScopeAnalyzer) else None
+        compiled_mod = astcompile(parsed_mod, scope_analyzer=sa2)
 
         if self.use_spyc:
             self._save_spyc(compiled_mod, spyc)
@@ -290,13 +290,13 @@ class ImportAnalyzer:
         self, modname: str, mod: ast.Module
     ) -> ScopeAnalyzer | scope2.ScopeAnalyzer:
         if mod.scoping_rules == "strict":
-            scopes: ScopeAnalyzer | scope2.ScopeAnalyzer = scope2.ScopeAnalyzer(
+            sa: ScopeAnalyzer | scope2.ScopeAnalyzer = scope2.ScopeAnalyzer(
                 modname, mod
             )
         else:
-            scopes = ScopeAnalyzer(modname, mod)
-        scopes.analyze()
-        return scopes
+            sa = ScopeAnalyzer(modname, mod)
+        sa.analyze()
+        return sa
 
     def get_import_list(self) -> list[str]:
         """
