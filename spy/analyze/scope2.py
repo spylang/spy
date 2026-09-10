@@ -182,23 +182,21 @@ class ScopeAnalyzer:
     ) -> tuple[int, Optional[Scope], Optional[Symbol]]:
         """
         Lookup a name in the scope_stack, starting from the innermost scope outward.
+
+        Return the level (frame depth): the number of symtable (function/module)
+        boundaries crossed to reach the defining scope.  Level 0 means the current
+        frame; level 1 means one frame up; etc.
         """
-        for level, scope in enumerate(reversed(self.scope_stack)):
-            ## if level > 0 and scope.kind == "class":
+        frame_depth = 0
+        for scope_level, scope in enumerate(reversed(self.scope_stack)):
+            ## if scope_level > 0 and scope.kind == "class":
             ##     # jump over 'class' scopes
             ##     continue
+            if scope_level > 0 and scope.kind in ("function", "module"):
+                frame_depth += 1
             if sym := scope.lookup_maybe(name):
-                return level, scope, sym
+                return frame_depth, scope, sym
         return -1, None, None
-
-    def lookup_definition(self, name: str) -> tuple[int, Optional[Symbol]]:
-        """
-        Lookup a name definition, starting from the innermost scope outward.
-        """
-        for level, scope in enumerate(reversed(self.scope_stack)):
-            if sym := scope.lookup_definition_maybe(name):
-                return level, sym
-        return -1, None
 
     def create_new_local(
         self,
@@ -214,15 +212,13 @@ class ScopeAnalyzer:
         """
         Add a name definition to the current scope and current symtable (level 0).
         """
-        level, scope, sym = self.lookup_name_in_scopes(name)
-        if sym and name != "@return":
-            assert scope is not None
-            if level == 0:
-                msg = f"variable `{name}` already declared"
-                err = SPyError("W_ScopeError", msg)
-                err.add("error", "this is the new declaration", loc)
-                err.add("note", "this is the previous declaration", sym.loc)
-                raise err
+        existing_sym = self.scope.lookup_maybe(name)
+        if existing_sym:
+            msg = f"variable `{name}` already declared"
+            err = SPyError("W_ScopeError", msg)
+            err.add("error", "this is the new declaration", loc)
+            err.add("note", "this is the previous declaration", existing_sym.loc)
+            raise err
 
         storage = "direct"
         ## storage: VarStorage
@@ -352,7 +348,7 @@ class ScopeAnalyzer:
     # ====
     # resolve pass
 
-    def capture_maybe(self, node: ast.Node, varname: str, use_loc: Loc) -> None:
+    def resolve_and_record(self, node: ast.Node, varname: str, use_loc: Loc) -> None:
         # NOTE: NameError and UnboundLocalError are just recorded here. Then astcompile
         # either raise it eagerly or turn it into a lazy error.
 
@@ -397,20 +393,11 @@ class ScopeAnalyzer:
             return
 
         else:
-            # XXX: level here is wrong: we want the *runtime* level (i.e., number of
-            # symtbles to hop). See also the XXX comment in test_scope_block_if. We will
-            # fix it later.
-
-            # found in an outer scope: capture into the runtime symtable
-            level, sym = self.lookup_definition(varname)  # type: ignore
-            assert sym
-            if self.symtable.lookup_maybe(varname) is None:
-                new_sym = sym.replace(level=level)
-                self.symtable.add(new_sym)
+            # found in an outer scope
+            assert sym is not None
             if sym.impref is not None:
                 self.mod_symtable.implicit_imports.add(sym.impref.modname)
-            resolved_sym = self.symtable.lookup(varname)
-            self.node_to_sym[node] = resolved_sym
+            self.node_to_sym[node] = sym.replace(level=level)
             return
 
     def resolve(self, node: ast.Node) -> None:
@@ -453,4 +440,4 @@ class ScopeAnalyzer:
         self.pop_scope()
 
     def resolve_Name(self, name: ast.Name) -> None:
-        self.capture_maybe(name, name.id, name.loc)
+        self.resolve_and_record(name, name.id, name.loc)

@@ -112,7 +112,7 @@ class Symbol:
     #   * 0: local variables inside the funcdef
     #   * 1: module-level scope
     #   * 2: builtins
-    level: int
+    level: int  # TODO: rename to frame_depth
     impref: Optional[ImportRef] = None
 
     def replace(self, **kwargs: Any) -> "Symbol":

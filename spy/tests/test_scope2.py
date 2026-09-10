@@ -101,8 +101,6 @@ class TestScopeAnalyzer2:
             "f": MatchSymbol("f", "var", "explicit"),
             "g": MatchSymbol("g", "var", "explicit"),
             "@return": MatchSymbol("@return", "var", "auto"),
-            # captured builtins
-            "i32": MatchSymbol("i32", "const", "explicit", level=2),
         }
 
     def test_decl_use_before(self):
@@ -185,15 +183,12 @@ class TestScopeAnalyzer2:
         else_scope = scopes.get_scope(funcdef, "if.else")
         assert else_scope._symbols == {}
 
-        # the *symtable* of foo contains all symbols, including the ones defined in
-        # innerr scopes (like x) and the ones captured from the outside
+        # the *symtable* of foo contains all locals, including block-locals like x
         symtable = scopes.get_symtable(funcdef)
         assert symtable._symbols == {
             "cond": MatchSymbol("cond", "var", "red-param"),
             "@return": MatchSymbol("@return", "var", "auto"),
             "x": MatchSymbol("x", "const", "explicit"),
-            # XXX: level=3 is wrong. Captured closure names are broken, FIXME
-            "i32": MatchSymbol("i32", "const", "explicit", level=3),
         }
 
         # but the Name node for `x` is in foo_scope, so it's a NameError
