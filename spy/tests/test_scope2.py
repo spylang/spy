@@ -135,9 +135,9 @@ class TestScopeAnalyzer2:
             "@return": MatchSymbol("@return", "var", "auto"),
         }
 
-        # The use-before-declaration is recorded lazily in node_to_sym
+        # The use-before-declaration is recorded lazily as an UnboundLocalError
         name_node = funcdef.find(ast.Name, "x")
-        assert sa.node_to_sym[name_node] == MatchSymbol(
+        assert sa.get_resolved_sym(name_node) == MatchSymbol(
             "x", "var", "explicit", storage="UnboundLocalError"
         )
 
@@ -174,7 +174,7 @@ class TestScopeAnalyzer2:
         }
 
         nope_node = funcdef.find(ast.Name, "nope")
-        assert sa.node_to_sym[nope_node] == MatchSymbol(
+        assert sa.get_resolved_sym(nope_node) == MatchSymbol(
             "nope", "var", "auto", storage="NameError", level=-1
         )
 
@@ -207,6 +207,34 @@ class TestScopeAnalyzer2:
 
         # but the Name node for `x` is in foo_scope, so it's a NameError
         x_node = funcdef.find(ast.Name, "x")
-        assert sa.node_to_sym[x_node] == MatchSymbol(
+        assert sa.get_resolved_sym(x_node) == MatchSymbol(
             "x", "var", "auto", storage="NameError", level=-1
         )
+
+    def test_captures(self):
+        src = """
+        from __spy__ import strict_scoping
+
+        const K: i32 = 42
+
+        def foo(cond: bool) -> i32:
+            var x: i32 = K
+            if cond:
+                var y: i32 = K
+            return x
+        """
+        sa = self.analyze(src)
+        funcdef = self.mod.get_funcdef("foo")
+
+        captures = sa.get_all_captures(funcdef)
+        # K lives in the module scope: level=1 (one frame hop).
+        # i32 is a builtin: level=2 (module hop + builtins hop).
+        # `bool` (the cond param type) is NOT captured: it resolves in the module
+        # scope, not inside foo, even though it lives syntactically under foo.
+        # Captures are keyed by the scope path of the use site.
+        assert captures == {
+            "K": MatchSymbol("K", "const", "explicit", level=1),
+            "i32": MatchSymbol("i32", "const", "explicit", level=2),
+            "if.then::K": MatchSymbol("K", "const", "explicit", level=1),
+            "if.then::i32": MatchSymbol("i32", "const", "explicit", level=2),
+        }

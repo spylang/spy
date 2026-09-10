@@ -590,11 +590,11 @@ class ASTCompiler:
 
     def compile_expr_Name(self, name: ast.Name) -> ast.Expr:
         varname = name.id
-        # TODO: once scope.py is gone, always use scopes.node_to_sym and
+        # TODO: once scope.py is gone, always use sa.get_resolved_sym and
         # remove the fallback to symtable.lookup_maybe.
         sym: Optional[Symbol] = None
         if self.sa is not None:
-            sym = self.sa.node_to_sym.get(name)
+            sym = self.sa.get_resolved_sym_maybe(name)
         if sym is None:
             sym = self.symtable.lookup_maybe(varname)
         if sym is None:

@@ -74,7 +74,8 @@ class ScopeAnalyzer:
 
     decl_node: dict[Symbol, ast.Node]  # which node declared a given Symbol?
     seq: dict[ast.Node, int]  # unique seq ID of every node (used by [decl.use-before])
-    node_to_sym: dict[ast.Node, Symbol]  # resolved Symbols
+
+    _resolved_nodes: dict[ast.Node, tuple[Scope, Symbol]]
 
     def __init__(self, modname: str, mod: ast.Module) -> None:
         self.mod = mod
@@ -86,7 +87,7 @@ class ScopeAnalyzer:
         self.symtables = {}
         self.seq = {node: i for i, node in enumerate(mod.walk())}
         self.decl_node = {}
-        self.node_to_sym = {}
+        self._resolved_nodes = {}
 
     # ===============
     # public API
@@ -122,6 +123,43 @@ class ScopeAnalyzer:
 
     def get_symtable(self, node: ast.Node) -> SymTable:
         return self.symtables[node]
+
+    def get_resolved_sym(self, node: ast.Node) -> Symbol:
+        """
+        Return the Symbol that `node` resolved to.
+        """
+        scope, sym = self._resolved_nodes[node]
+        return sym
+
+    def get_resolved_sym_maybe(self, node: ast.Node) -> Optional[Symbol]:
+        if node in self._resolved_nodes:
+            scope, sym = self._resolved_nodes[node]
+            return sym
+        return None
+
+    def get_resolved_scope(self, node: ast.Node) -> Scope:
+        """
+        Return the lexical Scope in which `node` was resolved.
+        """
+        scope, sym = self._resolved_nodes[node]
+        return scope
+
+    def get_all_captures(self, node: ast.Node) -> dict[str, Symbol]:
+        """
+        Return all outer-scope symbols (level > 0) captured by the frame rooted
+        at `node`, keyed by "<scope_path>::<name>".
+        """
+        root = self.scopes[node]
+        prefix = root.name
+        result: dict[str, Symbol] = {}
+        for scope, sym in self._resolved_nodes.values():
+            if sym.level <= 0:
+                continue
+            if scope.name == prefix or scope.name.startswith(prefix + "::"):
+                relpath = scope.name[len(prefix) :].removeprefix("::")
+                key = f"{relpath}::{sym.name}" if relpath else sym.name
+                result[key] = sym
+        return result
 
     def get_flattened_decls(self, node: ast.Node) -> dict[str, Symbol]:
         """
@@ -195,12 +233,19 @@ class ScopeAnalyzer:
         frame; level 1 means one frame up; etc.
         """
         frame_depth = 0
-        for scope_level, scope in enumerate(reversed(self.scope_stack)):
-            ## if scope_level > 0 and scope.kind == "class":
+        seen_own_frame = False
+        for scope in reversed(self.scope_stack):
+            ## if scope.kind == "class":
             ##     # jump over 'class' scopes
             ##     continue
-            if scope_level > 0 and scope.kind in ("function", "module"):
-                frame_depth += 1
+            if scope.kind in ("function", "module"):
+                if seen_own_frame:
+                    # crossing out of an enclosing frame: one more hop
+                    frame_depth += 1
+                else:
+                    # this is the frame we started in (innermost function/module);
+                    # block scopes below it don't count as hops
+                    seen_own_frame = True
             if sym := scope.lookup_maybe(name):
                 return frame_depth, scope, sym
         return -1, None, None
@@ -372,7 +417,7 @@ class ScopeAnalyzer:
                 loc=Loc.fake(),
                 type_loc=Loc.fake(),
             )
-            self.node_to_sym[node] = resolved_sym
+            self._resolved_nodes[node] = (self.scope, resolved_sym)
             return
 
         elif level == 0:
@@ -393,10 +438,10 @@ class ScopeAnalyzer:
                         loc=use_loc,
                         type_loc=sym.loc,  # points to the declaration
                     )
-                    self.node_to_sym[node] = resolved_sym
+                    self._resolved_nodes[node] = (self.scope, resolved_sym)
                     return
 
-            self.node_to_sym[node] = sym
+            self._resolved_nodes[node] = (self.scope, sym)
             return
 
         else:
@@ -404,7 +449,7 @@ class ScopeAnalyzer:
             assert sym is not None
             if sym.impref is not None:
                 self.mod_symtable.implicit_imports.add(sym.impref.modname)
-            self.node_to_sym[node] = sym.replace(level=level)
+            self._resolved_nodes[node] = (self.scope, sym.replace(level=level))
             return
 
     def resolve(self, node: ast.Node) -> None:
