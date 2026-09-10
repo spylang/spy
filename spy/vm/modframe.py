@@ -104,12 +104,12 @@ class ModFrame(AbstractFrame):
 
         # do the assignment
         if sym.storage == "direct":
-            self.store_local(sym.name, wam.w_val)
+            self.store_local(sym.slot_name, wam.w_val)
 
         elif sym.storage == "cell":
             w_cell = W_Cell(fqn, wam.w_val)
             self.vm.add_global(fqn, w_cell)
-            self.store_local(sym.name, w_cell)
+            self.store_local(sym.slot_name, w_cell)
 
         else:
             assert False
@@ -123,8 +123,8 @@ class ModFrame(AbstractFrame):
         if w_val is not None:
             # import successful
             w_T = self.vm.dynamic_type(w_val)
-            self.declare_local(sym.name, "blue", w_T, imp.loc)
-            self.store_local(sym.name, w_val)
+            self.declare_local(sym.slot_name, "blue", w_T, imp.loc)
+            self.store_local(sym.slot_name, w_val)
             return
 
         if imp.ref.modname not in self.vm.modules_w:

@@ -386,7 +386,7 @@ class CFuncWriter:
         assert False, "ast.Name nodes should not survive redshifting"
 
     def fmt_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> C.Expr:
-        varname = C_Ident(name.sym.name)
+        varname = C_Ident(name.sym.slot_name)
         if name.w_T is TYPES.w_NoneType:
             return C.Literal(f"/* {varname} */")
         else:

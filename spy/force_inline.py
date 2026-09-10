@@ -56,8 +56,10 @@ class AlphaRenamer:
         self.sym_map: dict[Symbol, Symbol] = {}
         for sym in funcdef.symtable._symbols.values():
             if sym.is_local:
-                new_name = f"{sym.name}{self.suffix}"
-                self.sym_map[sym] = sym.replace(name=new_name)
+                # alpha-rename the runtime slot to avoid collisions when inlining;
+                # the source name is unchanged.
+                new_slot_name = f"{sym.slot_name}{self.suffix}"
+                self.sym_map[sym] = sym.replace(slot_name=new_slot_name)
 
     def get_new_symbols(self) -> list[Symbol]:
         return list(self.sym_map.values())
@@ -219,7 +221,7 @@ def inline_call(
         param_name = funcdef_arg.name
         new_name = f"{param_name}{suffix}"
         new_locals_types_w[new_name] = func_param.w_T
-        param_sym = callee_symtable.lookup(param_name).replace(name=new_name)
+        param_sym = callee_symtable.lookup(param_name).replace(slot_name=new_name)
 
         param_assigns.append(
             ast.AssignLocal(

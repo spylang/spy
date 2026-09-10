@@ -585,7 +585,7 @@ class DopplerFrame(ASTFrame):
         # ASTFrame, but too bad.  See also shift_stmt_AssignCell.
         sym = name.sym
         outervars = self.closure[-sym.level]
-        w_cell = outervars[sym.name].w_val
+        w_cell = outervars[sym.slot_name].w_val
         assert isinstance(w_cell, W_Cell)
         return name.replace(w_T=wam.w_static_T, fqn=w_cell.fqn)
 
@@ -762,7 +762,7 @@ class DopplerFrame(ASTFrame):
         assert assignexpr.target_fqn is None, "already redshifted?"
         sym = assignexpr.sym
         outervars = self.closure[-sym.level]
-        w_cell = outervars[sym.name].w_val
+        w_cell = outervars[sym.slot_name].w_val
         assert isinstance(w_cell, W_Cell)
         return assignexpr.replace(
             target=new_target,

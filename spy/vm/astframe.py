@@ -820,10 +820,10 @@ class AbstractFrame:
         sym = node.sym
         target_loc = node.target_loc
         err = SPyError("W_TypeError", "invalid assignment target")
-        err.add("error", f"{sym.name} is const", target_loc)
+        err.add("error", f"{sym.src_name} is const", target_loc)
         err.add("note", f"const declared here ({sym.varkind_origin})", sym.loc)
         if sym.varkind_origin == "global-const":
-            msg = f"help: declare it as variable: `var {sym.name} ...`"
+            msg = f"help: declare it as variable: `var {sym.src_name} ...`"
             err.add("note", msg, sym.loc)
         elif sym.varkind_origin == "blue-param":
             msg = "blue function arguments are const by default"
@@ -851,20 +851,20 @@ class AbstractFrame:
 
     def eval_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> W_MetaArg:
         sym = name.sym
-        lv = self.locals[sym.name]
+        lv = self.locals[sym.slot_name]
         if lv.color == "red" and self.redshifting:
             w_val = None
         else:
-            w_val = self.load_local(sym.name)
+            w_val = self.load_local(sym.slot_name)
         return W_MetaArg(self.vm, lv.color, lv.w_T, w_val, name.loc, sym=sym)
 
     def eval_expr_NameLocalCell(self, name: ast.NameLocalCell) -> W_MetaArg:
         sym = name.sym
-        lv = self.locals[sym.name]
+        lv = self.locals[sym.slot_name]
         if lv.color == "red" and self.redshifting:
             w_val = None
         else:
-            w_cell = self.load_local(sym.name)
+            w_cell = self.load_local(sym.slot_name)
             assert isinstance(w_cell, W_Cell)
             w_val = w_cell.get()
         return W_MetaArg(self.vm, lv.color, lv.w_T, w_val, name.loc, sym=sym)
@@ -874,7 +874,7 @@ class AbstractFrame:
         sym = name.sym
         assert not sym.is_local
         outervars = self.closure[-sym.level]
-        w_val = outervars[sym.name].w_val
+        w_val = outervars[sym.slot_name].w_val
         assert w_val is not None
         w_T = self.vm.dynamic_type(w_val)
         return W_MetaArg(self.vm, color, w_T, w_val, name.loc, sym=sym)
@@ -887,7 +887,7 @@ class AbstractFrame:
             w_cell = self.vm.lookup_global(name.fqn)
         else:
             outervars = self.closure[-sym.level]
-            w_cell = outervars[sym.name].w_val
+            w_cell = outervars[sym.slot_name].w_val
         assert isinstance(w_cell, W_Cell)
         w_val = w_cell.get()
         w_T = self.vm.dynamic_type(w_val)
@@ -937,7 +937,7 @@ class AbstractFrame:
                 w_cell = self.vm.lookup_global(target_fqn)
             else:
                 outervars = self.closure[-sym.level]
-                w_cell = outervars[sym.name].w_val
+                w_cell = outervars[sym.slot_name].w_val
             assert isinstance(w_cell, W_Cell)
             w_cell.set(wam.w_val)
 

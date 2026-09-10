@@ -94,11 +94,28 @@ class ImportRef:
 
 @dataclass(frozen=True)
 class Symbol:
-    name: str
+    # ==== src_name vs slot_name ====
+    #
+    # - src_name is what is written in the source code, and what is displayed in
+    #   diagnostic messages. A Scope is a collection of symbols indexed by src_name
+    #
+    # - slot_name is used at runtime to identify a local variable in the running
+    #   ASTFrame. A SymTable is a collection of symbols indexed by slot_name.
+    #
+    # For example:
+    #     def foo() -> None:
+    #         const x = 0
+    #         if 1:
+    #             const x = 1
+    #
+    # Here we have two local vars: they both have src_name == "x", but their slot_names
+    # are e.g. "x$0" and "x$1".
+    src_name: str
     varkind: VarKind
     varkind_origin: VarKindOrigin
     storage: VarStorage
     _: KW_ONLY
+    slot_name: str
     loc: Loc  # where the symbol is defined, in the source code
     type_loc: Loc  # loc of the TYPE of the symbols
 
@@ -163,6 +180,7 @@ class Scope:
                 "const",
                 "explicit",
                 "direct",
+                slot_name=attr,
                 loc=loc or generic_loc,
                 type_loc=loc or generic_loc,
                 level=0,
@@ -204,8 +222,9 @@ class Scope:
         pp_symbols(repr(self), self._symbols, indent)
 
     def add(self, sym: Symbol) -> None:
-        assert sym.name not in self._symbols
-        self._symbols[sym.name] = sym
+        # NOTE: we use src_name as the key (compare and contrast with SymTable.add)
+        assert sym.src_name not in self._symbols
+        self._symbols[sym.src_name] = sym
 
     def lookup_maybe(self, name: str) -> Optional[Symbol]:
         return self._symbols.get(name)
@@ -272,8 +291,9 @@ class SymTable:
         return new_st
 
     def add(self, sym: Symbol) -> None:
-        assert sym.name not in self._symbols
-        self._symbols[sym.name] = sym
+        # NOTE: we use slot_name as the key (compare and contrast with Scope.add)
+        assert sym.slot_name not in self._symbols
+        self._symbols[sym.slot_name] = sym
 
     def has_definition(self, name: str) -> bool:
         # KILL ME
@@ -308,11 +328,11 @@ def pp_symbols(header: str, symbols: dict[str, Symbol], indent: str) -> None:
     #   3. name (@special names last)
     sorted_symbols = sorted(
         symbols.values(),
-        key=lambda sym: (sym.level, sym.varkind, sym.name.replace("@", "~")),
+        key=lambda sym: (sym.level, sym.varkind, sym.src_name.replace("@", "~")),
     )
     for sym in sorted_symbols:
         sym_color = "blue" if sym.varkind == "const" else "red"
-        sym_name = color.set(sym_color, f"{sym.name:10s}")
+        sym_name = color.set(sym_color, f"{sym.src_name:10s}")
         if sym.storage == "NameError":
             # special formatting
             print(f"{indent}    [ ] NameError  {sym_name}")

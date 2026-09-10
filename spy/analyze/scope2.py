@@ -154,7 +154,7 @@ class ScopeAnalyzer:
                 continue
             if scope.name == prefix or scope.name.startswith(prefix + "::"):
                 relpath = scope.name[len(prefix) :].removeprefix("::")
-                key = f"{relpath}::{sym.name}" if relpath else sym.name
+                key = f"{relpath}::{sym.slot_name}" if relpath else sym.slot_name
                 result[key] = sym
         return result
 
@@ -281,6 +281,7 @@ class ScopeAnalyzer:
             varkind,
             varkind_origin,
             storage,
+            slot_name=name,
             loc=loc,
             type_loc=type_loc,
             impref=impref,
@@ -410,6 +411,7 @@ class ScopeAnalyzer:
                 "var",
                 "auto",
                 "NameError",
+                slot_name=varname,
                 level=-1,
                 loc=Loc.fake(),
                 type_loc=Loc.fake(),
@@ -431,6 +433,7 @@ class ScopeAnalyzer:
                         sym.varkind,
                         sym.varkind_origin,
                         "UnboundLocalError",
+                        slot_name=sym.slot_name,
                         level=0,
                         loc=use_loc,
                         type_loc=sym.loc,  # points to the declaration

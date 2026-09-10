@@ -78,7 +78,7 @@ class W_EmptyListType(W_Object):
             if sym := wam_self.sym:
                 err.add(
                     "note",
-                    f"help: use an explicit type: `{sym.name}: list[T] = []`",
+                    f"help: use an explicit type: `{sym.src_name}: list[T] = []`",
                     sym.loc,
                 )
             raise err
