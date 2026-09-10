@@ -112,6 +112,16 @@ class range:
 
         return (value - self.start) % self.step == 0
 
+    def count(self, value: int) -> int:
+        if value in self:
+            return 1
+        return 0
+
+    def index(self, value: int) -> int:
+        if value in self:
+            return (value - self.start) // self.step
+        raise ValueError("range.index(x): x not in range")
+
     def __fastiter__(self) -> range_iterator:
         return range_iterator(self.start, self.stop, self.step)
 
