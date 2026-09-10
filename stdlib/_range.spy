@@ -52,6 +52,14 @@ class range:
             return 0
         return (self.start - self.stop - 1) // -self.step + 1
 
+    def __getitem__(self, index: int) -> int:
+        length = len(self)
+        if index < 0:
+            index = index + length
+        if index < 0 or index >= length:
+            raise IndexError
+        return self.start + index * self.step
+
     def __contains__(self, value: int) -> bool:
         if self.step > 0:
             if value < self.start or value >= self.stop:
