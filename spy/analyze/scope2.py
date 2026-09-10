@@ -1,9 +1,10 @@
-from typing import NewType, Optional
+from typing import Optional
 
 from spy import ast
 from spy.analyze.symtable import (
     Color,
     ImportRef,
+    Scope,
     ScopeKind,
     Symbol,
     SymTable,
@@ -21,10 +22,6 @@ from spy.location import Loc
 #
 #   - `SymTable` is a runtime concept: it's a flat per-function namespace, which
 #     contains its local variables
-#
-# For now Scope and SymTable share the same impl, but they are conceptually different
-# beasts
-Scope = NewType("Scope", SymTable)
 
 # Key used to look up Scopes in ScopeAnalyzer.scopes.
 # The tuple case is for nodes with multiple blocks, like `(ast.If, "then")` and
@@ -79,7 +76,7 @@ class ScopeAnalyzer:
 
     def __init__(self, modname: str, mod: ast.Module) -> None:
         self.mod = mod
-        self.mod_scope = Scope(SymTable(modname, "blue", "module"))
+        self.mod_scope = Scope(modname, "blue", "module")
         self.mod_symtable = SymTable(modname, "blue", "module")
         self.scope_stack = []
         self.symtable_stack = []
@@ -94,7 +91,7 @@ class ScopeAnalyzer:
     # ================
 
     def analyze(self) -> None:
-        builtins_scope = Scope(SymTable.from_builtins())
+        builtins_scope = Scope.from_builtins()
         self.push_scope(builtins_scope)
         self.push_scope(self.mod_scope)
 
@@ -191,7 +188,7 @@ class ScopeAnalyzer:
         """
         parent = self.scope_stack[-1].name
         fullname = f"{parent}::{name}"
-        return Scope(SymTable(fullname, color, kind))
+        return Scope(fullname, color, kind)
 
     def push_scope(self, scope: Scope) -> None:
         self.scope_stack.append(scope)
