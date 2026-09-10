@@ -1,0 +1,22 @@
+from _file import get_stdin, get_stdout
+
+
+def input(prompt: str = "") -> str:
+    """
+    Write `prompt` to standard out (and flush it), then read a line from
+    standard input. The trailing newline is stripped from the result.
+    Raise EOFError if standard input is exhausted before any character is read.
+    """
+    stdout = get_stdout()
+    stdout.write(prompt)
+    stdout.flush()
+    line = get_stdin().readline()
+    if line == "":
+        # this happens only at EOF
+        raise EOFError("EOF when reading a line")
+    # strip the trailing newline (and \r, to handle CRLF line endings)
+    if line[-1] == "\n":
+        line = line[0 : len(line) - 1]
+    if len(line) > 0 and line[-1] == "\r":
+        line = line[0 : len(line) - 1]
+    return line

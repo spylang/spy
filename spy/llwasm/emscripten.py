@@ -57,7 +57,10 @@ class LLWasmInstance(LLWasmInstanceBase):
         hostmods: list[HostModule] = [],
         *,
         instance: Optional[JsProxy] = None,
+        stdin_file: Optional[str] = None,
     ) -> None:
+        if stdin_file is not None:
+            raise NotImplementedError("stdin_file is not supported on emscripten")
         self.llmod = llmod
 
         if instance is None:
@@ -100,9 +103,15 @@ class LLWasmInstance(LLWasmInstanceBase):
         return llmod.instance_factory(adjustWasmImports=adjust_imports)
 
     @classmethod
-    def from_file(cls, f: py.path.local, hostmods: list[HostModule] = []) -> Self:
+    def from_file(
+        cls,
+        f: py.path.local,
+        hostmods: list[HostModule] = [],
+        *,
+        stdin_file: Optional[str] = None,
+    ) -> Self:
         llmod = LLWasmModule(str(f))
-        return cls(llmod, hostmods)
+        return cls(llmod, hostmods, stdin_file=stdin_file)
 
     def get_export(self, name: str) -> Any:
         return getattr(self.instance, "_" + name)
