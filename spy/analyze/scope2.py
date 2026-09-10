@@ -123,20 +123,27 @@ class ScopeAnalyzer:
     def get_symtable(self, node: ast.Node) -> SymTable:
         return self.symtables[node]
 
-    def get_scope(self, node: ast.Node, path: str) -> Scope:
+    def get_flattened_decls(self, node: ast.Node) -> dict[str, Symbol]:
         """
-        Find a nested Scope by path relative to the scope of `node`.
+        Return a flat dict of all symbols declared in the scope of `node` and
+        any nested scopes, keyed by their relative path.
 
-        The path is a '::'-separated sequence of scope name components, e.g.
-        'if.then' or 'if.then::for::if.else'.  The scope's full name must end
-        with '<node_scope_name>::<path>'.
+        Symbols in the root scope use just the name (e.g. "x"), while symbols
+        in nested scopes use a '::'-separated path (e.g. "if.then::x").
         """
-        node_scope = self.scopes[node]
-        suffix = f"{node_scope.name}::{path}"
+        root = self.scopes[node]
+        prefix = root.name
+        result: dict[str, Symbol] = {}
         for scope in self.scopes.values():
-            if scope.name == suffix:
-                return scope
-        raise KeyError(f"scope not found: {suffix!r}")
+            if scope.name == prefix or scope.name.startswith(prefix + "::"):
+                relpath = scope.name[len(prefix) :].removeprefix("::")
+                for name, sym in scope._symbols.items():
+                    if relpath:
+                        flattened_name = f"{relpath}::{name}"
+                    else:
+                        flattened_name = name
+                    result[flattened_name] = sym
+        return result
 
     # =====
 

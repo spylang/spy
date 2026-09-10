@@ -91,8 +91,24 @@ class TestScopeAnalyzer2:
         """
         sa = self.analyze(src)
         funcdef = self.mod.get_funcdef("foo")
-        scope = sa.get_symtable(funcdef)
-        assert scope._symbols == {
+
+        # decls is about lexical scope, symtable is about the runtime frame. In this
+        # case foo doesn't contain any nested block so they are the same
+
+        decls = sa.get_flattened_decls(funcdef)
+        assert decls == {
+            "a": MatchSymbol("a", "var", "explicit"),
+            "b": MatchSymbol("b", "const", "explicit"),
+            "c": MatchSymbol("c", "var", "explicit"),
+            "d": MatchSymbol("d", "const", "explicit"),
+            "e": MatchSymbol("e", "var", "explicit"),
+            "f": MatchSymbol("f", "var", "explicit"),
+            "g": MatchSymbol("g", "var", "explicit"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+        }
+
+        symtable = sa.get_symtable(funcdef)
+        assert symtable._symbols == {
             "a": MatchSymbol("a", "var", "explicit"),
             "b": MatchSymbol("b", "const", "explicit"),
             "c": MatchSymbol("c", "var", "explicit"),
@@ -113,10 +129,17 @@ class TestScopeAnalyzer2:
         """
         sa = self.analyze(src)
         funcdef = self.mod.get_funcdef("foo")
+        symtable = sa.get_symtable(funcdef)
+        assert symtable._symbols == {
+            "x": MatchSymbol("x", "var", "explicit"),
+            "@return": MatchSymbol("@return", "var", "auto"),
+        }
+
         # The use-before-declaration is recorded lazily in node_to_sym
         name_node = funcdef.find(ast.Name, "x")
-        sym = sa.node_to_sym[name_node]
-        assert sym.storage == "UnboundLocalError"
+        assert sa.node_to_sym[name_node] == MatchSymbol(
+            "x", "var", "explicit", storage="UnboundLocalError"
+        )
 
     def test_decl_no_redeclare(self):
         """
@@ -149,6 +172,7 @@ class TestScopeAnalyzer2:
         assert symtable._symbols == {
             "@return": MatchSymbol("@return", "var", "auto"),
         }
+
         nope_node = funcdef.find(ast.Name, "nope")
         assert sa.node_to_sym[nope_node] == MatchSymbol(
             "nope", "var", "auto", storage="NameError", level=-1
@@ -160,30 +184,20 @@ class TestScopeAnalyzer2:
         from __spy__ import strict_scoping
 
         def foo(cond: bool) -> None:
-            # <foo_scope>
             if cond:
-                # <then_scope>
                 const x: i32 = 1
-                # </then_scope>
             x
-            # </foo_scope>
         """)
         funcdef = self.mod.get_funcdef("foo")
 
-        foo_scope = sa.scopes[funcdef]
-        assert foo_scope._symbols == {
+        decls = sa.get_flattened_decls(funcdef)
+        assert decls == {
             "cond": MatchSymbol("cond", "var", "red-param"),
             "@return": MatchSymbol("@return", "var", "auto"),
+            "if.then::x": MatchSymbol("x", "const", "explicit"),
         }
 
-        then_scope = sa.get_scope(funcdef, "if.then")
-        assert then_scope._symbols == {
-            "x": MatchSymbol("x", "const", "explicit"),
-        }
-        else_scope = sa.get_scope(funcdef, "if.else")
-        assert else_scope._symbols == {}
-
-        # the *symtable* of foo contains all locals, including block-locals like x
+        # the runtime symtable contains all locals, including block-locals like x
         symtable = sa.get_symtable(funcdef)
         assert symtable._symbols == {
             "cond": MatchSymbol("cond", "var", "red-param"),
