@@ -16,7 +16,9 @@ if TYPE_CHECKING:
 UNSAFE = ModuleRegistry("unsafe")
 
 from . import (
+    cast,  # noqa: F401 -- side effects
     div,  # noqa: F401 -- side effects
     mem,  # noqa: F401 -- side effects
+    misc,  # noqa: F401 -- side effects
     ptr,  # noqa: F401 -- side effects
 )

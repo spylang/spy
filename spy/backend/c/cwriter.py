@@ -14,7 +14,9 @@ from spy.vm.b import TYPES, B
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.irtag import IRTag
 from spy.vm.modules.posix import W__FILE
-from spy.vm.modules.unsafe.ptr import W_Ptr
+from spy.vm.modules.unsafe.misc import alignof, sizeof
+from spy.vm.modules.unsafe.ptr import W_Ptr, W_PtrType
+from spy.vm.struct import W_StructType
 
 if TYPE_CHECKING:
     from spy.backend.c.cmodwriter import CModuleWriter
@@ -590,6 +592,15 @@ class CFuncWriter:
             # we handle ptr.deref explicitly for extra clarity
             return self.fmt_generic_call(fqn, call)
 
+        elif irtag.tag == "ptr.weaken_align":
+            return self.fmt_ptr_weaken_align(fqn, call)
+
+        elif irtag.tag == "unsafe.cast":
+            return self.fmt_cast(fqn, call)
+
+        elif irtag.tag == "unsafe.align_cast":
+            return self.fmt_align_cast(fqn, call, irtag)
+
         elif irtag.tag in ("ptr.getitem", "ptr.store"):
             # see unsafe/ptr.py::w_GETITEM and w_SETITEM there, we insert an
             # extra "w_loc" argument, which is not needed by the C backend
@@ -632,11 +643,114 @@ class CFuncWriter:
         name = irtag.data["name"]
         return C.Dot(c_struct, name)
 
+    def fmt_ptr_weaken_align(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        """
+        gc_ptr[T,N] -> gc_ptr[T,M] weakening conversion. Both types have
+        byte-identical C layout ({T *p; length}), so this is just a
+        relabeling.
+        """
+        assert len(call.args) == 1
+        w_srcT = call.args[0].w_T
+        assert w_srcT is not None
+        c_src = self.fmt_expr(call.args[0])
+        c_srctype = self.ctx.w2c(w_srcT)
+        c_targettype = self.ctx.c_restype_by_fqn(fqn)
+        c_p = C.Literal(f"({c_src}).p")
+        c_length = C.Call(f"{c_srctype}_get_length", [c_src])
+        return C.Call(f"{c_targettype}_from_raw", [c_p, c_length])
+
+    def fmt_cast(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        """
+        cast[DstItemT](ptr) -> ptr with a new item type, same address and alignment.
+        """
+        assert len(call.args) == 1
+        w_srcT = call.args[0].w_T
+        assert isinstance(w_srcT, W_PtrType)
+        c_src = self.fmt_expr(call.args[0])
+        c_srctype = self.ctx.w2c(w_srcT)
+        c_targettype = self.ctx.c_restype_by_fqn(fqn)
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_dstT = w_func.w_functype.w_restype
+        assert isinstance(w_dstT, W_PtrType)
+
+        src_size = sizeof(w_srcT.w_itemT)
+        dst_size = sizeof(w_dstT.w_itemT)
+
+        c_itemtype = self.ctx.w2c(w_dstT.w_itemT)
+        c_p = C.Literal(f"({c_itemtype} *)({c_src}).p")
+        c_old_length = C.Call(f"{c_srctype}_get_length", [c_src])
+        c_new_length = C.Literal(f"(({c_old_length}) * {src_size} / {dst_size})")
+        return C.Call(f"{c_targettype}_from_raw", [c_p, c_new_length])
+
+    def fmt_align_cast(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
+        """
+        align_cast[N](ptr) -> ptr with a new alignment, same address and
+        item type. N is baked into `fqn` (see fmt_cast above for why
+        `call.args` has just the ptr).
+
+        Weakening (N <= old_alignment) is just a relabeling, same as
+        ptr.weaken_align. Strengthening additionally needs a DEBUG-mode
+        runtime check; we emit it via a small static-inline helper
+        (spy_check_align, declared in unsafe.h) rather than an inline GCC
+        statement expression, so it composes normally with the rest of the
+        C AST and doesn't rely on a non-standard extension.
+        """
+        assert len(call.args) == 1
+        w_srcT = call.args[0].w_T
+        assert isinstance(w_srcT, W_PtrType)
+        c_src = self.fmt_expr(call.args[0])
+        c_srctype = self.ctx.w2c(w_srcT)
+        c_targettype = self.ctx.c_restype_by_fqn(fqn)
+
+        new_alignment = irtag.data["new_alignment"]
+        old_alignment = irtag.data["old_alignment"]
+
+        c_p = C.Literal(f"({c_src}).p")
+        c_length = C.Call(f"{c_srctype}_get_length", [c_src])
+
+        if new_alignment > old_alignment:
+            # spy_check_align(p, N) panics (in DEBUG builds) if `p` is not
+            # aligned to N; it's a no-op in RELEASE builds.
+            c_checked_p = C.Call(
+                "spy_check_align", [c_p, C.Literal(str(new_alignment))]
+            )
+            return C.Call(f"{c_targettype}_from_raw", [c_checked_p, c_length])
+        else:
+            return C.Call(f"{c_targettype}_from_raw", [c_p, c_length])
+
+    def _is_under_aligned_field(self, w_ptr: object, attr: str) -> bool:
+        """
+        True if w_ptr is a W_PtrType pointing to a defined struct, and
+        `attr` names a field whose natural alignment exceeds the ptr's
+        declared alignment -- i.e. a plain typed access to it would be
+        undefined behavior and must instead go through the
+        $getfield_*_unaligned / $setfield_*_unaligned helpers emitted by
+        CStructWriter._emit_ptr_field_helpers.
+        """
+        if not isinstance(w_ptr, W_PtrType):
+            return False
+        w_itemT = w_ptr.w_itemT
+        if not isinstance(w_itemT, W_StructType) or not w_itemT.is_defined():
+            return False
+        for w_field in w_itemT.iterfields_w():
+            if w_field.name == attr:
+                return w_ptr.alignment < alignof(w_field.w_T)
+        return False
+
     def fmt_ptr_getfield(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         assert isinstance(call.args[1], ast.StrLiteral)
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value
         offset = call.args[2]  # ignored
+
+        w_ptr = call.args[0].w_T
+        if self._is_under_aligned_field(w_ptr, attr):
+            assert w_ptr is not None
+            c_ptrtype = self.ctx.w2c(w_ptr)
+            return C.Call(f"{c_ptrtype}$getfield_{attr}_unaligned", [c_ptr])
+
         c_field = C.PtrField(c_ptr, attr)
         if irtag.data["by"] == "byref":
             c_restype = self.ctx.c_restype_by_fqn(fqn)
@@ -649,8 +763,15 @@ class CFuncWriter:
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value
         offset = call.args[2]  # ignored
-        c_lval = C.PtrField(c_ptr, attr)
         c_rval = self.fmt_expr(call.args[3])
+
+        w_ptr = call.args[0].w_T
+        if self._is_under_aligned_field(w_ptr, attr):
+            assert w_ptr is not None
+            c_ptrtype = self.ctx.w2c(w_ptr)
+            return C.Call(f"{c_ptrtype}$setfield_{attr}_unaligned", [c_ptr, c_rval])
+
+        c_lval = C.PtrField(c_ptr, attr)
         return C.BinOp("=", c_lval, c_rval)
 
     def fmt_memop(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
