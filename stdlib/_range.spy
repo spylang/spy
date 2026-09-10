@@ -1,4 +1,5 @@
 from operator import OpSpec, MetaArg
+from _slice import Slice
 
 
 @struct
@@ -52,13 +53,29 @@ class range:
             return 0
         return (self.start - self.stop - 1) // -self.step + 1
 
-    def __getitem__(self, index: int) -> int:
+    @blue.metafunc
+    def __getitem__(m_self, m_index: MetaArg):
+        if m_index.static_type == i32:
+            return OpSpec(range._getitem_int)
+        elif m_index.static_type == Slice:
+            return OpSpec(range._getitem_slice)
+        return OpSpec.NULL
+
+    def _getitem_int(self, index: int) -> int:
         length = len(self)
         if index < 0:
             index = index + length
         if index < 0 or index >= length:
             raise IndexError
         return self.start + index * self.step
+
+    def _getitem_slice(self, s: Slice) -> range:
+        indices = s.indices(len(self))
+        return range(
+            self.start + indices.start * self.step,
+            self.start + indices.stop * self.step,
+            self.step * indices.step,
+        )
 
     def __contains__(self, value: int) -> bool:
         if self.step > 0:

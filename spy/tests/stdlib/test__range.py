@@ -87,6 +87,68 @@ class TestRange(CompilerTest):
         with SPyError.raises("W_IndexError"):
             mod.getitem(0, 0, 1, 0)
 
+    def test_getitem_slice(self):
+        mod = self.compile("""
+        from _range import range
+
+        def first_two() -> range:
+            return range(10)[0:2]
+
+        def clipped_stop() -> range:
+            return range(1, 9, 3)[0:20]
+
+        def clipped_len() -> int:
+            return len(range(1, 9, 3)[0:20])
+
+        def empty() -> range:
+            return range(10)[20:30]
+
+        def empty_len() -> int:
+            return len(range(10)[20:30])
+        """)
+        result = mod.first_two()
+        assert (result.start, result.stop, result.step) == (0, 2, 1)
+        result = mod.clipped_stop()
+        assert (result.start, result.stop, result.step) == (1, 10, 3)
+        assert mod.clipped_len() == 3
+        result = mod.empty()
+        assert mod.empty_len() == 0
+
+    def test_getitem_slice_negative_indices_and_step(self):
+        mod = self.compile("""
+        from _range import range
+
+        def without_last() -> range:
+            return range(10)[0:-1]
+
+        def every_other_from_last() -> range:
+            return range(10)[-1:100:2]
+
+        def reverse_middle() -> range:
+            return range(10)[-1:-3:-1]
+
+        def reverse_descending_range() -> range:
+            return range(8, 0, -3)[::-1]
+        """)
+        result = mod.without_last()
+        assert (result.start, result.stop, result.step) == (0, 9, 1)
+        result = mod.every_other_from_last()
+        assert (result.start, result.stop, result.step) == (9, 10, 2)
+        result = mod.reverse_middle()
+        assert (result.start, result.stop, result.step) == (9, 7, -1)
+        result = mod.reverse_descending_range()
+        assert (result.start, result.stop, result.step) == (2, 11, 3)
+
+    def test_getitem_slice_zero_step(self):
+        mod = self.compile("""
+        from _range import range
+
+        def zero_step() -> range:
+            return range(10)[::0]
+        """)
+        with SPyError.raises("W_ValueError", match="slice step cannot be zero"):
+            mod.zero_step()
+
     def test_fastiter(self):
         src = """
         from _range import range, range_iterator
