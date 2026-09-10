@@ -17,7 +17,7 @@ from spy.location import Loc
 
 # SymTable and Scope are similar but conceptually different:
 #
-#   - `Scope` are created during the bind pass of ScopeAnalyzer, they are nested and
+#   - `Scope` are created during the collect pass of ScopeAnalyzer, they are nested and
 #     they correspond to a lexical scope (including e.g. blocks).
 #
 #   - `SymTable` is a runtime concept: it's a flat per-function namespace, which
@@ -43,7 +43,7 @@ class ScopeAnalyzer:
 
     The analyzer operates in two passes:
 
-      1. bind: walk all statements that introduce new names (VarDef, FuncDef,
+      1. collect: walk all statements that introduce new names (VarDef, FuncDef,
          Import, etc.) and add a Symbol to the current Scope.  After this pass,
          every Scope contains the names directly defined in it (sym.level == 0)
          and is read-only.
@@ -51,8 +51,8 @@ class ScopeAnalyzer:
          During this pass we also create a SymTable for each FuncDef, and we fill it
          with its locals.
 
-      2. resolve: visit all nodes which needs a name lookup (e.g. ast.Name), and lookup
-         the corresponding Symbol.
+      2. bind: visit all nodes which need a name lookup (e.g. ast.Name), and bind
+         each occurrence to the corresponding Symbol.
 
      Both passes maintain two separate stacks:
      - scope_stack: one Scope per block
@@ -102,17 +102,17 @@ class ScopeAnalyzer:
         self.push_symtable(builtins_symtable)
         self.push_symtable(self.mod_symtable)
 
-        # ------- bind pass -------
+        # ------- collect pass -------
+        assert len(self.scope_stack) == 2  # [builtins, module]
+        assert len(self.symtable_stack) == 2
+        for decl in self.mod.decls:
+            self.collect(decl)
+
+        # ------ bind pass -----
         assert len(self.scope_stack) == 2  # [builtins, module]
         assert len(self.symtable_stack) == 2
         for decl in self.mod.decls:
             self.bind(decl)
-
-        # ------ resolve pass -----
-        assert len(self.scope_stack) == 2  # [builtins, module]
-        assert len(self.symtable_stack) == 2
-        for decl in self.mod.decls:
-            self.resolve(decl)
         assert len(self.symtable_stack) == 2
         assert len(self.scope_stack) == 2
 
@@ -218,7 +218,7 @@ class ScopeAnalyzer:
         return self.symtable_stack[-1]
 
     # ====
-    # bind pass
+    # collect pass
 
     def lookup_name_in_scopes(
         self, name: str
@@ -293,10 +293,10 @@ class ScopeAnalyzer:
         self.decl_node[new_sym] = node
         return new_sym
 
-    def bind(self, node: ast.Node) -> None:
-        return node.visit("bind", self)
+    def collect(self, node: ast.Node) -> None:
+        return node.visit("collect", self)
 
-    def bind_Import(self, imp: ast.Import) -> None:
+    def collect_Import(self, imp: ast.Import) -> None:
         self.create_new_local(
             imp,
             imp.asname,
@@ -307,11 +307,11 @@ class ScopeAnalyzer:
             impref=imp.ref,
         )
 
-    def bind_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> None:
-        self.bind_FuncDef(decl.funcdef)
+    def collect_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> None:
+        self.collect_FuncDef(decl.funcdef)
 
-    def bind_FuncDef(self, funcdef: ast.FuncDef) -> None:
-        # bind the func name in the outer scope
+    def collect_FuncDef(self, funcdef: ast.FuncDef) -> None:
+        # collect the func name in the outer scope
         protoloc = funcdef.prototype_loc
         self.create_new_local(
             funcdef, funcdef.name, "const", "funcdef", protoloc, protoloc
@@ -354,32 +354,32 @@ class ScopeAnalyzer:
         )
 
         for stmt in funcdef.body:
-            self.bind(stmt)
+            self.collect(stmt)
 
         self.pop_symtable()
         self.pop_scope()
 
-    def bind_If(self, ifstmt: ast.If) -> None:
-        self.bind(ifstmt.test)
+    def collect_If(self, ifstmt: ast.If) -> None:
+        self.collect(ifstmt.test)
         then_scope = self.new_Scope("if.then", self.scope.color, "block")
         self.push_scope(then_scope)
         for stmt in ifstmt.then_body:
-            self.bind(stmt)
+            self.collect(stmt)
         self.pop_scope()
         else_scope = self.new_Scope("if.else", self.scope.color, "block")
         self.push_scope(else_scope)
         for stmt in ifstmt.else_body:
-            self.bind(stmt)
+            self.collect(stmt)
         self.pop_scope()
         self.scopes[ifstmt, "then"] = then_scope
         self.scopes[ifstmt, "else"] = else_scope
 
-    def bind_VarDef(self, vardef: ast.VarDef) -> None:
+    def collect_VarDef(self, vardef: ast.VarDef) -> None:
         varname = vardef.name.value
         varkind_optional = vardef.kind
         if varkind_optional is None:
             # bare `x: T` inside a function body - not valid in strict mode,
-            # but we still need to handle it gracefully during bind; the
+            # but we still need to handle it gracefully during collect; the
             # runtime/checker will reject it later.
             varkind: VarKind = "const"
             varkind_origin: VarKindOrigin = "auto"
@@ -395,15 +395,15 @@ class ScopeAnalyzer:
             vardef.type.loc,
         )
         if vardef.value is not None:
-            self.bind(vardef.value)
+            self.collect(vardef.value)
 
     # ====
-    # resolve pass
+    # bind pass
 
-    def record_resolution(self, node: ast.Node, scope: Scope, sym: Symbol) -> None:
+    def set_binding(self, node: ast.Node, scope: Scope, sym: Symbol) -> None:
         self._resolved_nodes[node] = (scope, sym)
 
-    def resolve_and_record(self, node: ast.Node, varname: str, use_loc: Loc) -> None:
+    def lookup_and_bind(self, node: ast.Node, varname: str, use_loc: Loc) -> None:
         # NOTE: NameError and UnboundLocalError are just recorded here. Then astcompile
         # either raise it eagerly or turn it into a lazy error.
 
@@ -421,7 +421,7 @@ class ScopeAnalyzer:
                 loc=Loc.fake(),
                 type_loc=Loc.fake(),
             )
-            self.record_resolution(node, self.scope, resolved_sym)
+            self.set_binding(node, self.scope, resolved_sym)
             return
 
         elif level == 0:
@@ -443,10 +443,10 @@ class ScopeAnalyzer:
                         loc=use_loc,
                         type_loc=sym.loc,  # points to the declaration
                     )
-                    self.record_resolution(node, self.scope, resolved_sym)
+                    self.set_binding(node, self.scope, resolved_sym)
                     return
 
-            self.record_resolution(node, self.scope, sym)
+            self.set_binding(node, self.scope, sym)
             return
 
         else:
@@ -454,74 +454,74 @@ class ScopeAnalyzer:
             assert sym is not None
             if sym.impref is not None:
                 self.mod_symtable.implicit_imports.add(sym.impref.modname)
-            self.record_resolution(node, self.scope, sym.replace(level=level))
+            self.set_binding(node, self.scope, sym.replace(level=level))
             return
 
-    def resolve(self, node: ast.Node) -> None:
-        return node.visit("resolve", self)
+    def bind(self, node: ast.Node) -> None:
+        return node.visit("bind", self)
 
-    def resolve_FuncDef(self, funcdef: ast.FuncDef) -> None:
+    def bind_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # decorators and argument types are evaluated in the outer scope
         for decorator in funcdef.decorators:
-            self.resolve(decorator)
-        self.resolve(funcdef.return_type)
+            self.bind(decorator)
+        self.bind(funcdef.return_type)
         for arg in funcdef.args:
-            self.resolve(arg)
+            self.bind(arg)
         for default in funcdef.defaults:
-            self.resolve(default)
+            self.bind(default)
 
-        # activate scope/symtable for the function and resolve its body
+        # activate scope/symtable for the function and bind its body
         scope = self.scopes[funcdef]
         symtable = self.symtables[funcdef]
         self.push_scope(scope)
         self.push_symtable(symtable)
         for stmt in funcdef.body:
-            self.resolve(stmt)
+            self.bind(stmt)
         self.pop_symtable()
         self.pop_scope()
 
-    def resolve_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> None:
-        self.resolve_FuncDef(decl.funcdef)
+    def bind_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> None:
+        self.bind_FuncDef(decl.funcdef)
 
-    def resolve_If(self, ifstmt: ast.If) -> None:
-        self.resolve(ifstmt.test)
+    def bind_If(self, ifstmt: ast.If) -> None:
+        self.bind(ifstmt.test)
         then_scope = self.scopes[ifstmt, "then"]
         self.push_scope(then_scope)
         for stmt in ifstmt.then_body:
-            self.resolve(stmt)
+            self.bind(stmt)
         self.pop_scope()
         else_scope = self.scopes[ifstmt, "else"]
         self.push_scope(else_scope)
         for stmt in ifstmt.else_body:
-            self.resolve(stmt)
+            self.bind(stmt)
         self.pop_scope()
 
-    def resolve_VarDef(self, vardef: ast.VarDef) -> None:
+    def bind_VarDef(self, vardef: ast.VarDef) -> None:
         # a VarDef must have a local symbol in the current scope, get it
         sym = self.scope.lookup(vardef.name.value)
         assert sym.level == 0
-        self.record_resolution(vardef, self.scope, sym)
-        self.resolve(vardef.type)
+        self.set_binding(vardef, self.scope, sym)
+        self.bind(vardef.type)
         if vardef.value is not None:
-            self.resolve(vardef.value)
+            self.bind(vardef.value)
 
-    def resolve_Assign(self, assign: ast.Assign) -> None:
-        self.resolve(assign.value)
+    def bind_Assign(self, assign: ast.Assign) -> None:
+        self.bind(assign.value)
         if isinstance(assign.target, ast.SingleTarget):
             # record the target StrLiteral -> sym.  astcompile reuses this same
             # StrLiteral node when it synthesizes the AssignExpr.
             tgt = assign.target.name
-            self.resolve_and_record(tgt, tgt.value, tgt.loc)
+            self.lookup_and_bind(tgt, tgt.value, tgt.loc)
         else:
             # UnpackTarget: not migrated yet
             assert False, "TODO"
-            ## self.resolve(assign.target)
+            ## self.bind(assign.target)
 
-    def resolve_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
+    def bind_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
         # walrus `x := E`
-        self.resolve(assignexpr.value)
+        self.bind(assignexpr.value)
         tgt = assignexpr.target
-        self.resolve_and_record(tgt, tgt.value, tgt.loc)
+        self.lookup_and_bind(tgt, tgt.value, tgt.loc)
 
-    def resolve_Name(self, name: ast.Name) -> None:
-        self.resolve_and_record(name, name.id, name.loc)
+    def bind_Name(self, name: ast.Name) -> None:
+        self.lookup_and_bind(name, name.id, name.loc)
