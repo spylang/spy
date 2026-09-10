@@ -678,7 +678,8 @@ class CFuncWriter:
         src_size = sizeof(w_srcT.w_itemT)
         dst_size = sizeof(w_dstT.w_itemT)
 
-        c_p = C.Literal(f"({c_src}).p")
+        c_itemtype = self.ctx.w2c(w_dstT.w_itemT)
+        c_p = C.Literal(f"({c_itemtype} *)({c_src}).p")
         c_old_length = C.Call(f"{c_srctype}_get_length", [c_src])
         c_new_length = C.Literal(f"(({c_old_length}) * {src_size} / {dst_size})")
         return C.Call(f"{c_targettype}_from_raw", [c_p, c_new_length])
