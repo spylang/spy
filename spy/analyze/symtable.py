@@ -158,13 +158,10 @@ class Scope:
     kind: ScopeKind
     _symbols: dict[str, Symbol]
 
-    # lexical tree navigation and frame ownership. These are set by
-    # ScopeAnalyzer right after construction (they cannot be passed to __init__
-    # because Scope.from_builtins and the module scope have no parent/symtable
-    # at creation time). Scope is analysis-only, so this is never serialized.
+    # maintain a tree of Scopes and associated SymTables. See ScopeAnalyzer.new_Scope
     parent: Optional["Scope"]
     children: list["Scope"]
-    symtable: Optional["SymTable"]  # the runtime frame this scope belongs to
+    symtable: Optional["SymTable"]
 
     def __init__(self, name: str, color: Color, kind: ScopeKind) -> None:
         self.name = name
@@ -188,6 +185,9 @@ class Scope:
         from spy.vm.function import W_BuiltinFunc
 
         scope = cls("builtins", "blue", "module")
+        # the builtins symtable is empty because it should never be reached at
+        # runtime: all builtins lookups are resolved at the scope level.
+        scope.symtable = SymTable("builtins", "blue", "module")
         generic_loc = Loc(
             filename="<builtins>", line_start=0, line_end=0, col_start=0, col_end=0
         )

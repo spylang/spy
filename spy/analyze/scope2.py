@@ -49,23 +49,19 @@ class ScopeAnalyzer:
          every Scope contains the names directly defined in it (sym.level == 0)
          and is read-only.
 
-         During this pass we also create a SymTable for each FuncDef, and we fill it
-         with its locals.
+         During this pass we also create a SymTable for each FuncDef and other nodes
+         with a runtime frame, and we fill it with its locals.
 
       2. bind: visit all nodes which need a name lookup (e.g. ast.Name), and bind
          each occurrence to the corresponding Symbol.
 
-     Both passes maintain two separate stacks:
-     - scope_stack: one Scope per block
-     - symtable_stack: one SymTable per FuncDef.
-
-    When we visit a FuncDef node we push both a Scope and a SymTable.
+     Both passes maintain a stack of lexical scopes (scope_stack), one entry per
+     block/function/module.  Each Scope points to the currently active `.symtable`.
     """
 
     mod: ast.Module
 
     scope_stack: list[Scope]
-    symtable_stack: list[SymTable]
 
     scopes: dict[ScopeKey, Scope]  # which scope corresponds to a given Node?
     symtables: dict[ast.Node, SymTable]  # maps FuncDef/ClassDef/etc. to their SymTable
@@ -80,8 +76,8 @@ class ScopeAnalyzer:
         self.mod_scope = Scope(modname, "blue", "module")
         self.mod_symtable = SymTable(modname, "blue", "module")
         self.mod_symtable.scoping_rules = "strict"  # KILL ME
+        self.mod_scope.symtable = self.mod_symtable
         self.scope_stack = []
-        self.symtable_stack = []
         self.scopes = {}
         self.symtables = {}
         self.seq = {node: i for i, node in enumerate(mod.walk())}
@@ -97,26 +93,15 @@ class ScopeAnalyzer:
         self.push_scope(builtins_scope)
         self.push_scope(self.mod_scope)
 
-        # builtins_symtable is empty because it should never be reached at runtime. All
-        # the builtins lookups should be resolved at the scope level.
-        builtins_symtable = SymTable("builtins", "blue", "module")
-        self.push_symtable(builtins_symtable)
-        self.push_symtable(self.mod_symtable)
-        builtins_scope.symtable = builtins_symtable
-        self.mod_scope.symtable = self.mod_symtable
-
         # ------- collect pass -------
         assert len(self.scope_stack) == 2  # [builtins, module]
-        assert len(self.symtable_stack) == 2
         for decl in self.mod.decls:
             self.collect(decl)
 
         # ------ bind pass -----
         assert len(self.scope_stack) == 2  # [builtins, module]
-        assert len(self.symtable_stack) == 2
         for decl in self.mod.decls:
             self.bind(decl)
-        assert len(self.symtable_stack) == 2
         assert len(self.scope_stack) == 2
 
     def pp(self) -> None:
@@ -286,12 +271,6 @@ class ScopeAnalyzer:
     def pop_scope(self) -> Scope:
         return self.scope_stack.pop()
 
-    def push_symtable(self, symtable: SymTable) -> None:
-        self.symtable_stack.append(symtable)
-
-    def pop_symtable(self) -> SymTable:
-        return self.symtable_stack.pop()
-
     @property
     def scope(self) -> Scope:
         """
@@ -304,7 +283,9 @@ class ScopeAnalyzer:
         """
         Return the currently active SymTable.
         """
-        return self.symtable_stack[-1]
+        symtable = self.scope.symtable
+        assert symtable is not None
+        return symtable
 
     # ====
     # collect pass
@@ -426,7 +407,6 @@ class ScopeAnalyzer:
             funcdef.name, scope_color, "function", symtable=symtable
         )
         self.push_scope(inner_scope)
-        self.push_symtable(symtable)
         self.scopes[funcdef] = inner_scope
         self.symtables[funcdef] = symtable
 
@@ -452,7 +432,6 @@ class ScopeAnalyzer:
         for stmt in funcdef.body:
             self.collect(stmt)
 
-        self.pop_symtable()
         self.pop_scope()
 
     def collect_If(self, ifstmt: ast.If) -> None:
@@ -566,14 +545,11 @@ class ScopeAnalyzer:
         for default in funcdef.defaults:
             self.bind(default)
 
-        # activate scope/symtable for the function and bind its body
+        # the body is evaluated in its own scope
         scope = self.scopes[funcdef]
-        symtable = self.symtables[funcdef]
         self.push_scope(scope)
-        self.push_symtable(symtable)
         for stmt in funcdef.body:
             self.bind(stmt)
-        self.pop_symtable()
         self.pop_scope()
 
     def bind_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> None:
