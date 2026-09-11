@@ -16,7 +16,7 @@ from spy.vm.modules.rawbuffer import RB
 from spy.vm.modules.unsafe.ptr import W_PtrType
 from spy.vm.object import W_Type
 from spy.vm.str import ll_str_new
-from spy.vm.struct import UnwrappedStruct, W_StructType
+from spy.vm.struct import SPyTuple, UnwrappedStruct, W_StructType
 from spy.vm.vm import SPyVM
 
 
@@ -189,9 +189,12 @@ class WasmFuncWrapper:
             return WasmPtr(addr, length)
         elif isinstance(w_T, W_StructType):
             # when you return struct-by-val from C, wasmtime automatically
-            # converts them into a list, flattening nested structs
-            assert isinstance(res, list)
-            pyres = unflatten_struct(self.ll, w_T, res)
+            # converts them into a list, flattening nested structs. However,
+            # for a struct with a single flat field, wasmtime returns a bare
+            # scalar instead of a one-element list.
+            if not isinstance(res, list):
+                res = [res]
+            pyres = unflatten_struct(self.vm, self.ll, w_T, res)
             if w_T.fqn == FQN(
                 "_list::list[i32]::_ListImpl"
             ):  # reading list[i32] for tests
@@ -308,7 +311,7 @@ class WasmFuncWrapper:
 
 
 def unflatten_struct(
-    ll: LLSPyInstance, w_T: W_StructType, flat_values: list[Any]
+    vm: SPyVM, ll: LLSPyInstance, w_T: W_StructType, flat_values: list[Any]
 ) -> UnwrappedStruct:
     """
     Unflatten a struct from a flat list of values.
@@ -354,6 +357,8 @@ def unflatten_struct(
                 content[w_field.name] = flat_values[idx]
                 idx += 1
 
+        if vm.is_tuple_type(w_T):
+            return SPyTuple(w_T.fqn, content), idx
         return UnwrappedStruct(w_T.fqn, content), idx
 
     result, consumed = unflatten(w_T, 0)
