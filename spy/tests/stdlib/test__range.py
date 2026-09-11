@@ -190,6 +190,20 @@ class TestRange(CompilerTest):
         assert not mod.eq(0, 10, 2, 0, 10, 3)
         assert mod.ne(0, 10, 2, 0, 10, 3)
 
+    def test_truth(self):
+        mod = self.compile("""
+        from _range import range
+
+        def is_truthy(start: int, stop: int, step: int) -> bool:
+            if range(start, stop, step):
+                return True
+            return False
+        """)
+        assert mod.is_truthy(0, 1, 1) is True
+        assert mod.is_truthy(10, 0, -3) is True
+        assert mod.is_truthy(0, 0, 1) is False
+        assert mod.is_truthy(10, 0, 3) is False
+
     def test_fastiter(self):
         src = """
         from _range import range, range_iterator
