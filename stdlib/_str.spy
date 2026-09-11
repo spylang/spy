@@ -418,6 +418,15 @@ class methods:
         return True
 
     @blue.metafunc
+    def strip(m_self, *args_m):
+        nargs = len(args_m)
+        if nargs == 0:
+            return OpSpec(_strip_whitespace)
+        elif nargs == 1:
+            return OpSpec(_strip_chars)
+        return OpSpec.NULL
+
+    @blue.metafunc
     def find(m_self, *args_m):
         # str.find(sub[, start[, end]]) -> i32
         nargs = len(args_m)
@@ -541,6 +550,62 @@ def _count_2(self: str, sub: str, start: i32) -> i32:
 
 def _count_3(self: str, sub: str, start: i32, end: i32) -> i32:
     return _str_count(self, sub, start, end)
+
+
+def _strip_whitespace(self: str) -> str:
+    ll = StrObject.from_str(self)
+    length = ll.length
+    start = 0
+    end = length
+    while start < end and _ll_isspace(ll.utf8[start]):
+        start = start + 1
+    while end > start and _ll_isspace(ll.utf8[end - 1]):
+        end = end - 1
+    new_len = end - start
+    if new_len == length:
+        return self
+    out = StrObject.alloc(new_len)
+    out.hash = 0
+    if new_len > 0:
+        ptr_copy_slice(out.utf8, 0, new_len, ll.utf8, start, end)
+    return StrObject.to_str(out)
+
+
+def _strip_chars(self: str, chars: str) -> str:
+    ll = StrObject.from_str(self)
+    llchars = StrObject.from_str(chars)
+    length = ll.length
+    chars_len = llchars.length
+    if chars_len == 0:
+        return self
+    start = 0
+    end = length
+    while start < end:
+        found = False
+        for i in range(chars_len):
+            if ll.utf8[start] == llchars.utf8[i]:
+                found = True
+                break
+        if not found:
+            break
+        start = start + 1
+    while end > start:
+        found = False
+        for j in range(chars_len):
+            if ll.utf8[end - 1] == llchars.utf8[j]:
+                found = True
+                break
+        if not found:
+            break
+        end = end - 1
+    new_len = end - start
+    if new_len == length:
+        return self
+    out = StrObject.alloc(new_len)
+    out.hash = 0
+    if new_len > 0:
+        ptr_copy_slice(out.utf8, 0, new_len, ll.utf8, start, end)
+    return StrObject.to_str(out)
 
 
 def _split_sep(self: str, sep: str) -> list[str]:
