@@ -14,7 +14,7 @@ from spy.analyze.symtable import (
 )
 from spy.errors import SPyError
 from spy.location import Loc
-from spy.textbuilder import TextBuilder
+from spy.textbuilder import ColorFormatter, TextBuilder
 
 # SymTable and Scope are similar but conceptually different:
 #
@@ -102,15 +102,16 @@ class ScopeAnalyzer:
         assert len(self.scope_stack) == 2
 
     def pp(self) -> None:
-        print(self.dump())
+        print(self.dump(use_colors=True))
 
-    def dump(self) -> str:
+    def dump(self, *, use_colors: bool = False) -> str:
         """
         Return a compact, human-readable dump of the computed symtables and the
         lexical scope nesting, including how each name resolves during the bind
         pass.
         """
-        b = TextBuilder(use_colors=True)
+        b = TextBuilder(use_colors=use_colors)
+        color = ColorFormatter(use_colors=use_colors)
 
         # Group the resolved occurrences (bind pass) by the scope they occurred in.
         uses_by_scope: dict[str, list[tuple[str, Symbol]]] = {}
@@ -126,7 +127,8 @@ class ScopeAnalyzer:
             b.wl(f"symtable {symtable.name} ({symtable.kind}):")
             with b.indent():
                 for slot_name, sym in symtable._symbols.items():
-                    b.wl(f"{slot_name}: {self._fmt_sym(sym)}")
+                    key = color.set(self._varkind_color(sym), slot_name)
+                    b.wl(f"{key}: {self._fmt_sym(sym)}")
 
         # `frames` are the enclosing runtime frames, innermost first: frames[0] is
         # the current frame, frames[1] the parent frame, etc.  A name resolved
@@ -140,7 +142,7 @@ class ScopeAnalyzer:
                     if src_name in seen:
                         continue
                     seen.add(src_name)
-                    b.wl(self._fmt_resolution(src_name, sym, frames))
+                    b.wl(self._fmt_resolution(src_name, sym, frames, color))
                 # descend only into scopes belonging to the same runtime frame;
                 # nested function scopes are dumped in their own symtable section.
                 for child in scope.children:
@@ -166,24 +168,29 @@ class ScopeAnalyzer:
                 dump_scope(owner, frames)
         return b.build()
 
+    def _varkind_color(self, sym: Symbol) -> str:
+        # match scope.py's pp_symbols: const is blue, var is red
+        return "blue" if sym.varkind == "const" else "red"
+
     def _fmt_sym(self, sym: Symbol) -> str:
         s = f'Symbol("{sym.src_name}", "{sym.varkind}", "{sym.varkind_origin}")'
         return s + self._fmt_impref(sym)
 
     def _fmt_resolution(
-        self, src_name: str, sym: Symbol, frames: list[SymTable]
+        self, src_name: str, sym: Symbol, frames: list[SymTable], color: ColorFormatter
     ) -> str:
+        name = color.set(self._varkind_color(sym), src_name)
         if sym.storage == "NameError":
-            return f"{src_name} -> NameError"
+            return f"{name} -> NameError"
         if sym.storage == "UnboundLocalError":
-            return f"{src_name} -> {sym.slot_name} (UnboundLocalError)"
+            return f"{name} -> {sym.slot_name} (UnboundLocalError)"
         if sym.level > 0:
             # the name is resolved in an outer frame: show which one, and how many
             # frame boundaries away it is
             frame = frames[sym.level]
-            s = f"{src_name} -> {sym.slot_name} @ {frame.name} (depth={sym.level})"
+            s = f"{name} -> {sym.slot_name} @ {frame.name} (depth={sym.level})"
         else:
-            s = f"{src_name} -> {sym.slot_name}"
+            s = f"{name} -> {sym.slot_name}"
         return s + self._fmt_impref(sym)
 
     def _enclosing_symtables(self, scope: Scope) -> list[SymTable]:
