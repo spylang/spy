@@ -130,3 +130,36 @@ class TestStrictScoping(CompilerTest):
         mod = self.compile(src)
         assert mod.foo(True) == "inner"
         assert mod.foo(False) == "outer"
+
+    def test_scope_branch_local(self):
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo() -> None:
+            if True:
+                var x: i32 = 1
+            else:
+                var x: i32 = 2
+            x
+        """
+        errors = expect_errors(
+            "name `x` is not defined",
+            ("not found in this scope", "x"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    def test_scope_branch_local_shared(self):
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo(cond: bool) -> i32:
+            var x: i32
+            if cond:
+                x = 1
+            else:
+                x = 2
+            return x
+        """
+        mod = self.compile(src)
+        assert mod.foo(True) == 1
+        assert mod.foo(False) == 2
