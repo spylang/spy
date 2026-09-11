@@ -201,8 +201,6 @@ class ScopeAnalyzer:
             return color.set("yellow", f"{src_name} -> {errname}")
         sym = res
         name = color.set(self._varkind_color(sym), src_name)
-        if sym.storage == "UnboundLocalError":
-            return f"{name} -> {sym.slot_name} (UnboundLocalError)"
         if sym.level > 0:
             # the name is resolved in an outer frame: show which one, and how many
             # frame boundaries away it is
@@ -572,8 +570,8 @@ class ScopeAnalyzer:
         return err
 
     def lookup_and_bind(self, node: ast.Node, varname: str, use_loc: Loc) -> None:
-        # NOTE: NameError and UnboundLocalError are just recorded here. Then astcompile
-        # either raise it eagerly or turn it into a lazy error.
+        # NOTE: a not-found / used-before name resolves to a lazy SPyError (stored
+        # in _resolved_nodes); astcompile turns it into an ast.PoisonExpr.
 
         level, _, sym = self.lookup_name_in_scopes(varname)
 
@@ -590,18 +588,12 @@ class ScopeAnalyzer:
                 decl_node = self.decl_node[sym]
                 decl_seq = self.seq[decl_node]
                 if seq < decl_seq:
-                    # [decl.use-before]: the usage happen before the declaration
-                    resolved_sym = Symbol(
-                        varname,
-                        sym.varkind,
-                        sym.varkind_origin,
-                        "UnboundLocalError",
-                        slot_name=sym.slot_name,
-                        level=0,
-                        loc=use_loc,
-                        type_loc=sym.loc,  # points to the declaration
-                    )
-                    self.set_binding(node, self.scope, resolved_sym)
+                    # [decl.use-before]: the use happens before the declaration;
+                    # the node resolves to a lazy error (no usable Symbol here)
+                    err = SPyError("W_NameError", f"name `{varname}` is not defined")
+                    err.add("error", "used before its declaration", use_loc)
+                    err.add("note", "declared later here", sym.loc)
+                    self.set_binding(node, self.scope, err)
                     return
 
             self.set_binding(node, self.scope, sym)

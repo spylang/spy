@@ -32,8 +32,9 @@ from spy.textbuilder import ColorFormatter
 #   - if a variable is assigned inside a loop, it's a "var"
 
 Color = Literal["red", "blue"]
-# KILL ME: "NameError" and "UnboundLocalError"
-VarStorage = Literal["direct", "cell", "NameError", "UnboundLocalError"]
+# KILL ME: "NameError" (only produced by legacy scope.py; scope2 resolves a
+# not-found name directly to an SPyError)
+VarStorage = Literal["direct", "cell", "NameError"]
 VarKind = Literal["var", "const"]
 VarKindOrigin = Literal[
     "auto",          # "x = 0" inside a function

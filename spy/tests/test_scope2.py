@@ -121,7 +121,8 @@ class TestScopeAnalyzer2:
         self.assert_dump("test::foo", expected)
 
     def test_decl_use_before(self):
-        # [decl.use-before]: the use is recorded lazily as an UnboundLocalError
+        # [decl.use-before]: the use resolves lazily to a NameError (used before
+        # its declaration)
         src = """
         from __spy__ import strict_scoping
 
@@ -136,7 +137,7 @@ class TestScopeAnalyzer2:
             x$0: Symbol("x", "var", "explicit")
 
             scope foo:
-                x -> x$0 (UnboundLocalError)
+                x -> NameError
                 i32 -> i32 @ builtins (depth=2) => <ImportRef builtins.i32>
         """
         self.assert_dump("test::foo", expected)

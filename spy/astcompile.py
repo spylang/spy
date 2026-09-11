@@ -664,9 +664,5 @@ class ASTCompiler:
             err = SPyError("W_NameError", f"name `{name.id}` is not defined")
             err.add("error", "not found in this scope", name.loc)
             return ast.PoisonExpr(name.loc, err)
-        elif sym.storage == "UnboundLocalError":
-            # sym.type_loc points to the declaration site
-            # XXX introduce sym.decl_loc
-            return ast.UnboundLocalError(name.loc, name.id, sym.type_loc)
         else:
             assert False, f"unexpected storage: {sym.storage!r}"
