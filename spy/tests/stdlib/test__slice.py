@@ -25,6 +25,38 @@ class TestSlice(CompilerTest):
         assert "_slice::Slice" in str(s.fqn)
         assert (sn.start_is_none, sn.stop_is_none, sn.step_is_none) == (1, 1, 1)
 
+    def test_variadic_constructor(self):
+        mod = self.compile("""
+        def make_stop() -> slice:
+            return slice(5)
+
+        def make_none() -> slice:
+            return slice(None)
+
+        def make_start_stop() -> slice:
+            return slice(1, 5)
+
+        def make_none_start() -> slice:
+            return slice(None, 5)
+
+        def make_none_stop() -> slice:
+            return slice(1, None)
+        """)
+
+        # One argument
+        s = mod.make_stop()
+        assert (s.start_is_none, s.stop, s.step_is_none) == (1, 5, 1)
+        s = mod.make_none()
+        assert (s.start_is_none, s.stop_is_none, s.step_is_none) == (1, 1, 1)
+
+        # Two arguments
+        s = mod.make_start_stop()
+        assert (s.start, s.stop, s.step_is_none) == (1, 5, 1)
+        s = mod.make_none_start()
+        assert (s.start_is_none, s.stop, s.step_is_none) == (1, 5, 1)
+        s = mod.make_none_stop()
+        assert (s.start, s.stop_is_none, s.step_is_none) == (1, 1, 1)
+
     def test__slice_indices(self):
         # This test is a bit of a workaround for the fact that we cannot easily
         # have SPy functions which accept either int or None; and we want to test a
