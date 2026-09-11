@@ -160,8 +160,7 @@ class TestStrictScoping(CompilerTest):
         errors = expect_errors(
             "name `i` is not defined",
             ("not found in this scope", "i"),
-            # TODO: [scope.loop-target] help message, tackled later:
-            # ("`i` is local to the `for` body; declare `var i: auto` before the loop", "i"),
+            ("help: declare `var i: auto` before the loop", "i"),
         )
         self.compile_raises(src, "foo", errors)
 

@@ -634,6 +634,10 @@ class ASTCompiler:
         # remove the fallback to symtable.lookup_maybe.
         sym: Optional[Symbol] = None
         if self.sa is not None:
+            # scope2: a name resolves either to a Symbol or to a lazy SPyError
+            err = self.sa.get_poison_error_maybe(name)
+            if err is not None:
+                return ast.PoisonExpr(name.loc, err)
             sym = self.sa.get_resolved_sym_maybe(name)
         if sym is None:
             sym = self.symtable.lookup_maybe(varname)
@@ -655,7 +659,11 @@ class ASTCompiler:
         elif sym.storage == "cell" and not sym.is_local:
             return ast.NameOuterCell(name.loc, sym, fqn=None)
         elif sym.storage == "NameError":
-            return ast.NameError(name.loc, name.id)
+            # KILL ME: legacy scope.py path (scope2 stores the SPyError directly,
+            # handled above via get_poison_error_maybe)
+            err = SPyError("W_NameError", f"name `{name.id}` is not defined")
+            err.add("error", "not found in this scope", name.loc)
+            return ast.PoisonExpr(name.loc, err)
         elif sym.storage == "UnboundLocalError":
             # sym.type_loc points to the declaration site
             # XXX introduce sym.decl_loc

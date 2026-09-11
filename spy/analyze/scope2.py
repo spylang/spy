@@ -29,6 +29,10 @@ from spy.textbuilder import ColorFormatter, TextBuilder
 # nodes with multiple blocks, like `(ast.If, "then")` and `(ast.If, "else")`.
 ScopeKey = ast.Node | tuple[ast.Node, str]
 
+# What a node resolves to during the bind pass: a real Symbol, or a lazy static
+# error (poison) that astcompile turns into an ast.PoisonExpr.
+Resolution = Symbol | SPyError
+
 
 class ScopeAnalyzer:
     """
@@ -58,7 +62,8 @@ class ScopeAnalyzer:
     scopes: dict[ScopeKey, Scope]  # which Scope corresponds to a given node?
     decl_node: dict[Symbol, ast.Node]  # which node declared a given Symbol?
     seq: dict[ast.Node, int]  # unique seq ID of every node (used by [decl.use-before])
-    _resolved_nodes: dict[ast.Node, tuple[Scope, Symbol]]
+    # A node resolves either to a Symbol or to a lazy SPyError
+    _resolved_nodes: dict[ast.Node, tuple[Scope, "Resolution"]]
 
     def __init__(self, modname: str, mod: ast.Module) -> None:
         self.mod = mod
@@ -117,9 +122,12 @@ class ScopeAnalyzer:
         color = ColorFormatter(use_colors=use_colors)
 
         # Group the resolved occurrences (bind pass) by the scope they occurred in.
-        uses_by_scope: dict[str, list[tuple[str, Symbol]]] = {}
-        for scope, sym in self._resolved_nodes.values():
-            uses_by_scope.setdefault(scope.name, []).append((sym.src_name, sym))
+        # For poison (SPyError) resolutions there is no Symbol, so the display name
+        # is taken from the node's source text.
+        uses_by_scope: dict[str, list[tuple[str, Resolution]]] = {}
+        for node, (scope, res) in self._resolved_nodes.items():
+            src_name = res.src_name if isinstance(res, Symbol) else node.loc.get_src()
+            uses_by_scope.setdefault(scope.name, []).append((src_name, res))
 
         def scope_is_empty(scope: Scope) -> bool:
             if uses_by_scope.get(scope.name):
@@ -141,11 +149,11 @@ class ScopeAnalyzer:
             with b.indent():
                 # names USED in this scope (resolved during the bind pass)
                 seen: set[str] = set()
-                for src_name, sym in uses_by_scope.get(scope.name, []):
+                for src_name, res in uses_by_scope.get(scope.name, []):
                     if src_name in seen:
                         continue
                     seen.add(src_name)
-                    b.wl(self._fmt_resolution(src_name, sym, frames, color))
+                    b.wl(self._fmt_resolution(src_name, res, frames, color))
                 # descend only into scopes belonging to the same runtime frame;
                 # nested function scopes are dumped in their own symtable section.
                 for child in scope.children:
@@ -182,11 +190,17 @@ class ScopeAnalyzer:
         return s + self._fmt_impref(sym)
 
     def _fmt_resolution(
-        self, src_name: str, sym: Symbol, frames: list[SymTable], color: ColorFormatter
+        self,
+        src_name: str,
+        res: "Resolution",
+        frames: list[SymTable],
+        color: ColorFormatter,
     ) -> str:
+        if isinstance(res, SPyError):
+            errname = res.etype.removeprefix("W_")
+            return color.set("yellow", f"{src_name} -> {errname}")
+        sym = res
         name = color.set(self._varkind_color(sym), src_name)
-        if sym.storage == "NameError":
-            return f"{name} -> NameError"
         if sym.storage == "UnboundLocalError":
             return f"{name} -> {sym.slot_name} (UnboundLocalError)"
         if sym.level > 0:
@@ -235,13 +249,22 @@ class ScopeAnalyzer:
         """
         Return the Symbol that `node` resolved to.
         """
-        scope, sym = self._resolved_nodes[node]
-        return sym
+        scope, res = self._resolved_nodes[node]
+        assert isinstance(res, Symbol)
+        return res
 
     def get_resolved_sym_maybe(self, node: ast.Node) -> Optional[Symbol]:
         if node in self._resolved_nodes:
-            scope, sym = self._resolved_nodes[node]
-            return sym
+            scope, res = self._resolved_nodes[node]
+            if isinstance(res, Symbol):
+                return res
+        return None
+
+    def get_poison_error_maybe(self, node: ast.Node) -> Optional[SPyError]:
+        if node in self._resolved_nodes:
+            scope, res = self._resolved_nodes[node]
+            if isinstance(res, SPyError):
+                return res
         return None
 
     def bind_synthetic_node(self, node: ast.Node, scope: Scope, sym: Symbol) -> None:
@@ -257,45 +280,6 @@ class ScopeAnalyzer:
         """
         scope, sym = self._resolved_nodes[node]
         return scope
-
-    def get_all_captures(self, node: ast.Node) -> dict[str, Symbol]:
-        """
-        Return all outer-scope symbols (level > 0) captured by the frame rooted
-        at `node`, keyed by "<scope_path>::<name>".
-        """
-        root = self.scopes[node]
-        prefix = root.name
-        result: dict[str, Symbol] = {}
-        for scope, sym in self._resolved_nodes.values():
-            if sym.level <= 0:
-                continue
-            if scope.name == prefix or scope.name.startswith(prefix + "::"):
-                relpath = scope.name[len(prefix) :].removeprefix("::")
-                key = f"{relpath}::{sym.slot_name}" if relpath else sym.slot_name
-                result[key] = sym
-        return result
-
-    def get_flattened_decls(self, node: ast.Node) -> dict[str, Symbol]:
-        """
-        Return a flat dict of all symbols declared in the scope of `node` and
-        any nested scopes, keyed by their relative path.
-
-        Symbols in the root scope use just the name (e.g. "x"), while symbols
-        in nested scopes use a '::'-separated path (e.g. "if.then::x").
-        """
-        root = self.scopes[node]
-        prefix = root.name
-        result: dict[str, Symbol] = {}
-        for scope in self.scopes.values():
-            if scope.name == prefix or scope.name.startswith(prefix + "::"):
-                relpath = scope.name[len(prefix) :].removeprefix("::")
-                for name, sym in scope._symbols.items():
-                    if relpath:
-                        flattened_name = f"{relpath}::{name}"
-                    else:
-                        flattened_name = name
-                    result[flattened_name] = sym
-        return result
 
     # =====
 
@@ -565,8 +549,27 @@ class ScopeAnalyzer:
     # ====
     # bind pass
 
-    def set_binding(self, node: ast.Node, scope: Scope, sym: Symbol) -> None:
-        self._resolved_nodes[node] = (scope, sym)
+    def set_binding(self, node: ast.Node, scope: Scope, res: "Resolution") -> None:
+        self._resolved_nodes[node] = (scope, res)
+
+    def find_loop_target_maybe(self, varname: str) -> Optional[Symbol]:
+        """
+        Find a loop-target Symbol named `varname` in the current frame, if any.
+        """
+        for sym in self.symtable._symbols.values():
+            if sym.src_name == varname and sym.varkind_origin == "loop-target":
+                return sym
+        return None
+
+    def make_NameError(self, varname: str, use_loc: Loc) -> SPyError:
+        err = SPyError("W_NameError", f"name `{varname}` is not defined")
+        err.add("error", "not found in this scope", use_loc)
+        # [scope.loop-target]: if `varname` is local to a `for` body in this frame,
+        # teach the user how to make it outlive the loop.
+        if (sym := self.find_loop_target_maybe(varname)) is not None:
+            msg = f"help: declare `var {varname}: auto` before the loop"
+            err.add("note", msg, sym.loc)
+        return err
 
     def lookup_and_bind(self, node: ast.Node, varname: str, use_loc: Loc) -> None:
         # NOTE: NameError and UnboundLocalError are just recorded here. Then astcompile
@@ -575,18 +578,8 @@ class ScopeAnalyzer:
         level, _, sym = self.lookup_name_in_scopes(varname)
 
         if level == -1:
-            # name not found, let's record a special NameError symbol
-            resolved_sym = Symbol(
-                varname,
-                "var",
-                "auto",
-                "NameError",
-                slot_name=varname,
-                level=-1,
-                loc=Loc.fake(),
-                type_loc=Loc.fake(),
-            )
-            self.set_binding(node, self.scope, resolved_sym)
+            # name not found: the node resolves to a lazy NameError (no Symbol)
+            self.set_binding(node, self.scope, self.make_NameError(varname, use_loc))
             return
 
         elif level == 0:

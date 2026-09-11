@@ -32,6 +32,7 @@ from spy.textbuilder import ColorFormatter
 #   - if a variable is assigned inside a loop, it's a "var"
 
 Color = Literal["red", "blue"]
+# KILL ME: "NameError" and "UnboundLocalError"
 VarStorage = Literal["direct", "cell", "NameError", "UnboundLocalError"]
 VarKind = Literal["var", "const"]
 VarKindOrigin = Literal[

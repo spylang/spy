@@ -24,6 +24,7 @@ from spy.location import Loc
 from spy.util import extend
 
 if TYPE_CHECKING:
+    from spy.errors import SPyError
     from spy.vm.object import W_Object, W_Type
     from spy.vm.vm import SPyVM
 
@@ -488,15 +489,19 @@ class NameInteractive(Expr):
 
 
 @astnode(">= astcompiled")
-class NameError(Expr):
+class PoisonExpr(Expr):
     """
-    Poison node needed to enable lazy NameErrors.
+    Poison node that carries a pre-built SPyError, to enable lazy static errors.
 
-    Produced by astcompiler when ast.Name refers to unknown IDs.
+    The error is constructed by ScopeAnalyzer (scope2), which has all the
+    diagnostic context (declaration sites, help messages, ...).  astcompile puts
+    it in the expression slot where the offending name/assignment was; the error
+    is only raised if/when the expression is actually evaluated (so a static
+    error in a never-called red function never fires).
     """
 
     precedence = 100
-    id: str
+    err: "SPyError"
 
 
 @astnode(">= astcompiled")

@@ -764,13 +764,8 @@ class AbstractFrame:
         assert w_value is not None
         return W_MetaArg.from_w_obj(self.vm, w_value)
 
-    def eval_expr_NameError(self, name: ast.NameError) -> W_MetaArg:
-        raise SPyError.simple(
-            "W_NameError",
-            f"name `{name.id}` is not defined",
-            "not found in this scope",
-            name.loc,
-        )
+    def eval_expr_PoisonExpr(self, node: ast.PoisonExpr) -> W_MetaArg:
+        raise node.err
 
     def eval_expr_UnboundLocalError(self, name: ast.UnboundLocalError) -> W_MetaArg:
         err = SPyError("W_NameError", f"name `{name.id}` is not defined")

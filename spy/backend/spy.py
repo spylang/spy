@@ -509,10 +509,11 @@ class SPyBackend:
     def fmt_expr_Name(self, name: ast.Name) -> str:
         return name.id
 
-    def fmt_expr_NameError(self, name: ast.NameError) -> str:
+    def fmt_expr_PoisonExpr(self, node: ast.PoisonExpr) -> str:
         if self.ast_format == "full":
-            return f"NameError({name.id})"
-        return name.id
+            return f"PoisonExpr({node.err.w_exc.message!r})"
+        # short mode: re-emit the original offending source text
+        return node.loc.get_src()
 
     def fmt_expr_UnboundLocalError(self, name: ast.UnboundLocalError) -> str:
         if self.ast_format == "full":

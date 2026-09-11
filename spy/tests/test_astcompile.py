@@ -103,11 +103,11 @@ class TestASTCompile:
     def test_name_lowered_to_nameerror(self):
         self.compile_src("""
         def foo() -> i32:
-            return undefined_name
+            return bla
         """)
         expected = """
         def foo() -> i32:
-            return NameError(undefined_name)
+            return PoisonExpr('name `bla` is not defined')
         """
         self.assert_dump(expected, ast_format="full")
 
