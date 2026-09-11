@@ -177,6 +177,35 @@ class TestStrictScoping(CompilerTest):
         mod = self.compile(src)
         assert mod.foo(4) == 6
 
+    def test_scope_loop_target_declare(self):
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo() -> i32:
+            var i: auto
+            for i in range(3):
+                pass
+            return i
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 2
+
+    def test_scope_loop_target_declare_type_mismatch(self):
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo() -> None:
+            var i: str
+            for i in range(10):
+                pass
+        """
+        errors = expect_errors(
+            "mismatched types",
+            ("expected `str`, got `i32`", "i"),
+            ("expected `str` because of type declaration", "str"),
+        )
+        self.compile_raises(src, "foo", errors)
+
     def test_scope_branch_local_shared(self):
         src = """
         from __spy__ import strict_scoping

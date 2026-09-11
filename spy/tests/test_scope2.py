@@ -237,6 +237,35 @@ class TestScopeAnalyzer2:
         """
         self.assert_dump("test::foo", expected)
 
+    def test_scope_loop_target_declare(self):
+        # [scope.loop-target-declare]: if a binding of the same name already
+        # exists in an enclosing block, the loop target reuses it (i$0) instead
+        # of creating a fresh block-local. So `i` is visible after the loop.
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo() -> None:
+            var i: auto
+            for i in range(3):
+                pass
+            i
+        """
+        self.analyze(src)
+        expected = """
+        symtable test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            i$0: Symbol("i", "var", "explicit")
+            _$iter$0: Symbol("_$iter", "var", "auto")
+
+            scope foo:
+                i -> i$0
+                range -> range @ builtins (depth=2) => <ImportRef _range.range>
+                _$iter -> _$iter$0
+                scope for.body:
+                    i -> i$0
+        """
+        self.assert_dump("test::foo", expected)
+
     def test_scope_shadow(self):
         # [scope.shadow]: an inner block may shadow an outer name. Inside if.then
         # `x` resolves to the block-local x$1; outside it resolves to x$0.

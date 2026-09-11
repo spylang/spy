@@ -507,15 +507,21 @@ class ScopeAnalyzer:
         self.create_new_local(forstmt, "_$iter", "var", "auto", iter_loc, iter_loc)
 
         # `[scope.loop-target]`: the target `i` is a block-local of the loop body.
+        # `[scope.loop-target-declare]`: unless a binding of the same name already
+        # exists in an enclosing scope, in which case the loop reuses it (the
+        # target is an ordinary assignment) so it outlives the loop.
         self.push_scope(body_scope)
-        self.create_new_local(
-            forstmt.target,
-            forstmt.target.value,
-            "var",
-            "loop-target",
-            forstmt.target.loc,
-            forstmt.iter.loc,
-        )
+        target = forstmt.target
+        level, _, _ = self.lookup_name_in_scopes(target.value)
+        if level == -1:
+            self.create_new_local(
+                target,
+                target.value,
+                "var",
+                "loop-target",
+                target.loc,
+                forstmt.iter.loc,
+            )
         for stmt in forstmt.body:
             self.collect(stmt)
         self.pop_scope()
