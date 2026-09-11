@@ -244,6 +244,13 @@ class ScopeAnalyzer:
             return sym
         return None
 
+    def bind_synthetic_node(self, node: ast.Node, scope: Scope, sym: Symbol) -> None:
+        """
+        This is exactly like set_binding, but it's a public API which can be used by
+        astcompiler to bind the node it synthethizes (e.g. when desugaring a For)
+        """
+        self.set_binding(node, scope, sym)
+
     def get_resolved_scope(self, node: ast.Node) -> Scope:
         """
         Return the lexical Scope in which `node` was resolved.
@@ -495,6 +502,43 @@ class ScopeAnalyzer:
         self.scopes[ifstmt, "then"] = then_scope
         self.scopes[ifstmt, "else"] = else_scope
 
+    def collect_For(self, forstmt: ast.For) -> None:
+        # ASTCompiler desugars:
+        #   for i in X:
+        #       body
+        # into:
+        #   $_iter = X.__fastiter__()
+        #   while $_iter.__continue_iteration__():
+        #       i = $_iter.__item__()
+        #       $_iter = $_iter.__next__()
+        #       body
+        #
+        # Note that there is a hidden $_iter variable. We bind it to the For node.
+
+        # The iterator (`X`) is evaluated in the enclosing scope.
+        self.collect(forstmt.iter)
+
+        # `[scope.block]`: the loop body is its own block scope.
+        body_scope = self.new_Scope("for.body", self.scope.color, "block")
+
+        iter_loc = forstmt.iter.loc
+        self.create_new_local(forstmt, "_$iter", "var", "auto", iter_loc, iter_loc)
+
+        # `[scope.loop-target]`: the target `i` is a block-local of the loop body.
+        self.push_scope(body_scope)
+        self.create_new_local(
+            forstmt.target,
+            forstmt.target.value,
+            "var",
+            "loop-target",
+            forstmt.target.loc,
+            forstmt.iter.loc,
+        )
+        for stmt in forstmt.body:
+            self.collect(stmt)
+        self.pop_scope()
+        self.scopes[forstmt, "body"] = body_scope
+
     def collect_VarDef(self, vardef: ast.VarDef) -> None:
         varname = vardef.name.value
         varkind_optional = vardef.kind
@@ -615,6 +659,19 @@ class ScopeAnalyzer:
         else_scope = self.scopes[ifstmt, "else"]
         self.push_scope(else_scope)
         for stmt in ifstmt.else_body:
+            self.bind(stmt)
+        self.pop_scope()
+
+    def bind_For(self, forstmt: ast.For) -> None:
+        self.bind(forstmt.iter)
+        # the hidden `_$iter` lives in the enclosing scope, as it is initialized outside
+        # the desugared `while`.
+        self.lookup_and_bind(forstmt, "_$iter", forstmt.iter.loc)
+        body_scope = self.scopes[forstmt, "body"]
+        self.push_scope(body_scope)
+        tgt = forstmt.target
+        self.lookup_and_bind(tgt, tgt.value, tgt.loc)
+        for stmt in forstmt.body:
             self.bind(stmt)
         self.pop_scope()
 

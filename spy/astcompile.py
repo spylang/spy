@@ -290,18 +290,32 @@ class ASTCompiler:
         #   for i in X:
         #       body
         # into:
-        #   it = X.__fastiter__()
-        #   while it.__continue_iteration__():
-        #       i = it.__item__()
-        #       it = it.__next__()
+        #   $_iter = X.__fastiter__()
+        #   while $_iter.__continue_iteration__():
+        #       i = $_iter.__item__()
+        #       $_iter = $_iter.__next__()
         #       body
         loc = stmt.loc
         # use non-colorize locs for synthetic nodes, to avoid painting over user nodes
         iter_loc = stmt.iter.loc.replace(colorize=False)
         target_loc = stmt.target.loc.replace(colorize=False)
-        iter_name = f"_$iter{stmt.seq}"
-        iter_target = ast.SingleTarget(iter_loc, ast.StrLiteral(iter_loc, iter_name))
-        iter_name_node = ast.Name(loc=iter_loc, id=iter_name)
+        if self.sa is not None:
+            # the hidden $_iter is bound to the `For`. Make sure that the synthetic
+            # nodes which reference it are bound to the same symbol
+            iter_sym = self.sa.get_resolved_sym(stmt)
+            iter_scope = self.sa.get_resolved_scope(stmt)
+            iter_strlit = ast.StrLiteral(iter_loc, iter_sym.src_name)
+            iter_name_node = ast.Name(loc=iter_loc, id=iter_sym.src_name)
+            self.sa.bind_synthetic_node(iter_strlit, iter_scope, iter_sym)
+            self.sa.bind_synthetic_node(iter_name_node, iter_scope, iter_sym)
+            iter_target = ast.SingleTarget(iter_loc, iter_strlit)
+        else:
+            # KILL ME: legacy scope.py path, resolves the iterator by src_name
+            iter_name = f"_$iter{stmt.seq}"
+            iter_target = ast.SingleTarget(
+                iter_loc, ast.StrLiteral(iter_loc, iter_name)
+            )
+            iter_name_node = ast.Name(loc=iter_loc, id=iter_name)
 
         init_iter = ast.Assign(
             loc=iter_loc,

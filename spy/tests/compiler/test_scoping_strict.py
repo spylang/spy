@@ -148,6 +148,36 @@ class TestStrictScoping(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
+    def test_scope_loop_target(self):
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo() -> None:
+            for i in range(10):
+                pass
+            i
+        """
+        errors = expect_errors(
+            "name `i` is not defined",
+            ("not found in this scope", "i"),
+            # TODO: [scope.loop-target] help message, tackled later:
+            # ("`i` is local to the `for` body; declare `var i: auto` before the loop", "i"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    def test_scope_loop_target_body(self):
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo(n: i32) -> i32:
+            var total: i32 = 0
+            for i in range(n):
+                total = total + i
+            return total
+        """
+        mod = self.compile(src)
+        assert mod.foo(4) == 6
+
     def test_scope_branch_local_shared(self):
         src = """
         from __spy__ import strict_scoping

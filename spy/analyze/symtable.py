@@ -43,6 +43,7 @@ VarKindOrigin = Literal[
     "class-field",   # class field declarations are always "var"
     "red-param",     # parameters of red functions are "var"
     "blue-param",    # parameters of blue functions are "const"
+    "loop-target",   # the "i" in "for i in ..." ([scope.loop-target])
 ]  # fmt: skip
 
 # "module", "class", "function" each correspond to a different Frame for evaluation.
