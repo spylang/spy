@@ -160,20 +160,29 @@ class Scope:
 
     _symbols: dict[str, Symbol]
 
-    # maintain a tree of Scopes and associated SymTables. See ScopeAnalyzer.new_Scope
+    # lexical tree links, wired at construction (see __init__): a scope appends
+    # itself to its parent's children.
     parent: Optional["Scope"]
     children: list["Scope"]
 
     def __init__(
-        self, name: str, color: Color, kind: ScopeKind, *, symtable: "SymTable"
+        self,
+        name: str,
+        color: Color,
+        kind: ScopeKind,
+        *,
+        symtable: "SymTable",
+        parent: Optional["Scope"],
     ) -> None:
         self.name = name
         self.color = color
         self.kind = kind
         self._symbols = {}
-        self.parent = None
-        self.children = []
         self.symtable = symtable
+        self.children = []
+        self.parent = parent
+        if parent is not None:
+            parent.children.append(self)
 
     @property
     def short_name(self) -> str:
@@ -190,7 +199,7 @@ class Scope:
         # the builtins symtable is empty because it should never be reached at
         # runtime: all builtins lookups are resolved at the scope level.
         symtable = SymTable("builtins", "blue", "module")
-        scope = cls("builtins", "blue", "module", symtable=symtable)
+        scope = cls("builtins", "blue", "module", symtable=symtable, parent=None)
         generic_loc = Loc(
             filename="<builtins>", line_start=0, line_end=0, col_start=0, col_end=0
         )

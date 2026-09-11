@@ -236,13 +236,13 @@ class TestScopeAnalyzer2:
         got = sa.dump()
         expected = textwrap.dedent("""\
         symtable test (module):
-            strict_scoping: Symbol("strict_scoping", "const", "auto")
+            strict_scoping: Symbol("strict_scoping", "const", "auto") => <ImportRef __spy__.strict_scoping>
             K: Symbol("K", "const", "explicit")
             foo: Symbol("foo", "const", "funcdef")
 
             scope test:
                 K -> K
-                i32 -> i32 @ level=1
+                i32 -> i32 @ builtins (depth=1) => <ImportRef builtins.i32>
 
         symtable test::foo (function):
             @return: Symbol("@return", "var", "auto")
@@ -253,9 +253,9 @@ class TestScopeAnalyzer2:
 
             scope foo:
                 x -> x$0
-                i32 -> i32 @ level=2
+                i32 -> i32 @ builtins (depth=2) => <ImportRef builtins.i32>
                 y -> y$0
-                K -> K @ level=1
+                K -> K @ test (depth=1)
                 scope if.then:
                     y -> y$1
                     z -> z$0

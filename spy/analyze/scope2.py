@@ -65,9 +65,17 @@ class ScopeAnalyzer:
         self.scope_stack = []
         self.scopes = {}
 
+        # build the [builtins, module] initial scope stack
+        self.builtins_scope = Scope.from_builtins()
         mod_symtable = SymTable(modname, "blue", "module")
         mod_symtable.scoping_rules = "strict"  # KILL ME
-        mod_scope = Scope(modname, "blue", "module", symtable=mod_symtable)
+        mod_scope = Scope(
+            modname,
+            "blue",
+            "module",
+            symtable=mod_symtable,
+            parent=self.builtins_scope,
+        )
 
         self.scopes[mod] = mod_scope
         self.seq = {node: i for i, node in enumerate(mod.walk())}
@@ -79,8 +87,7 @@ class ScopeAnalyzer:
     # ================
 
     def analyze(self) -> None:
-        builtins_scope = Scope.from_builtins()
-        self.push_scope(builtins_scope)
+        self.push_scope(self.builtins_scope)
         self.push_scope(self.mod_scope)
 
         # ------- collect pass -------
@@ -121,7 +128,10 @@ class ScopeAnalyzer:
                 for slot_name, sym in symtable._symbols.items():
                     b.wl(f"{slot_name}: {self._fmt_sym(sym)}")
 
-        def dump_scope(scope: Scope) -> None:
+        # `frames` are the enclosing runtime frames, innermost first: frames[0] is
+        # the current frame, frames[1] the parent frame, etc.  A name resolved
+        # with sym.level == N lives in frames[N].
+        def dump_scope(scope: Scope, frames: list[SymTable]) -> None:
             b.wl(f"scope {scope.short_name}:")
             with b.indent():
                 # names USED in this scope (resolved during the bind pass)
@@ -130,7 +140,7 @@ class ScopeAnalyzer:
                     if src_name in seen:
                         continue
                     seen.add(src_name)
-                    b.wl(self._fmt_resolution(src_name, sym))
+                    b.wl(self._fmt_resolution(src_name, sym, frames))
                 # descend only into scopes belonging to the same runtime frame;
                 # nested function scopes are dumped in their own symtable section.
                 for child in scope.children:
@@ -138,7 +148,7 @@ class ScopeAnalyzer:
                         continue
                     if child.kind == "block" and scope_is_empty(child):
                         continue
-                    dump_scope(child)
+                    dump_scope(child, frames)
 
         # frame-owning scopes (module + FuncDefs) in collection order; block
         # scopes are dumped recursively by dump_scope, not as top-level frames.
@@ -150,21 +160,50 @@ class ScopeAnalyzer:
                 b.wl()
             dump_symtable(owner.symtable)
             b.wl()
+            # the frame chain, innermost first: this owner then its enclosing frames
+            frames = self._enclosing_symtables(owner)
             with b.indent():
-                dump_scope(owner)
+                dump_scope(owner, frames)
         return b.build()
 
     def _fmt_sym(self, sym: Symbol) -> str:
-        return f'Symbol("{sym.src_name}", "{sym.varkind}", "{sym.varkind_origin}")'
+        s = f'Symbol("{sym.src_name}", "{sym.varkind}", "{sym.varkind_origin}")'
+        return s + self._fmt_impref(sym)
 
-    def _fmt_resolution(self, src_name: str, sym: Symbol) -> str:
+    def _fmt_resolution(
+        self, src_name: str, sym: Symbol, frames: list[SymTable]
+    ) -> str:
         if sym.storage == "NameError":
             return f"{src_name} -> NameError"
         if sym.storage == "UnboundLocalError":
             return f"{src_name} -> {sym.slot_name} (UnboundLocalError)"
         if sym.level > 0:
-            return f"{src_name} -> {sym.slot_name} @ level={sym.level}"
-        return f"{src_name} -> {sym.slot_name}"
+            # the name is resolved in an outer frame: show which one, and how many
+            # frame boundaries away it is
+            frame = frames[sym.level]
+            s = f"{src_name} -> {sym.slot_name} @ {frame.name} (depth={sym.level})"
+        else:
+            s = f"{src_name} -> {sym.slot_name}"
+        return s + self._fmt_impref(sym)
+
+    def _enclosing_symtables(self, scope: Scope) -> list[SymTable]:
+        """
+        The chain of runtime frames enclosing (and including) `scope`, innermost
+        first: the scope's own frame, then its parent frame, etc.  Block scopes
+        share their enclosing frame, so only function/module scopes are kept.
+        """
+        result = []
+        s: Optional[Scope] = scope
+        while s is not None:
+            if s.kind in ("function", "module"):
+                result.append(s.symtable)
+            s = s.parent
+        return result
+
+    def _fmt_impref(self, sym: Symbol) -> str:
+        if sym.impref is None:
+            return ""
+        return f" => {sym.impref}"
 
     @property
     def mod_scope(self) -> Scope:
@@ -259,10 +298,9 @@ class ScopeAnalyzer:
         parent = self.scope_stack[-1]
         if symtable is None:
             symtable = self.symtable
-        scope = Scope(f"{parent.name}::{name}", color, kind, symtable=symtable)
-        scope.parent = parent
-        parent.children.append(scope)
-        return scope
+        return Scope(
+            f"{parent.name}::{name}", color, kind, symtable=symtable, parent=parent
+        )
 
     def push_scope(self, scope: Scope) -> None:
         self.scope_stack.append(scope)
