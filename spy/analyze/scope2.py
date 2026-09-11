@@ -582,18 +582,22 @@ class ScopeAnalyzer:
         return node.visit("bind", self)
 
     def bind_FuncDef(self, funcdef: ast.FuncDef) -> None:
-        # decorators and argument types are evaluated in the outer scope
+        # NOTE: arg.type is evaluated in the OUTER scope, while arg in the INNER scope
+        #
+        # outer scope: decorators and argument types
         for decorator in funcdef.decorators:
             self.bind(decorator)
         self.bind(funcdef.return_type)
         for arg in funcdef.args:
-            self.bind(arg)
+            self.bind(arg.type)
         for default in funcdef.defaults:
             self.bind(default)
 
-        # the body is evaluated in its own scope
+        # inner scope: arguments and function body
         scope = self.scopes[funcdef]
         self.push_scope(scope)
+        for arg in funcdef.args:
+            self.lookup_and_bind(arg, arg.name, arg.loc)
         for stmt in funcdef.body:
             self.bind(stmt)
         self.pop_scope()

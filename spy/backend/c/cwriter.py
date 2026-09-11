@@ -82,7 +82,12 @@ class CFuncWriter:
         see e.g. a VarDef.
         """
         assert self.w_func.locals_types_w is not None
-        param_names = [arg.name for arg in self.w_func.funcdef.args]
+        funcdef = self.w_func.funcdef
+        if funcdef.symtable.scoping_rules == "legacy":
+            # KILL ME: legacy scope.py (slot_name == src_name)
+            param_names = [arg.name for arg in funcdef.args]
+        else:
+            param_names = [arg.sym.slot_name for arg in funcdef.args if arg.sym]
         for varname, w_T in self.w_func.locals_types_w.items():
             c_type = self.ctx.w2c(w_T)
             if (

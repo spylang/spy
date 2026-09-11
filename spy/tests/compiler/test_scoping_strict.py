@@ -115,3 +115,18 @@ class TestStrictScoping(CompilerTest):
             ("not found in this scope", "x"),
         )
         self.compile_raises(src, "foo", errors)
+
+    def test_scope_shadow(self):
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo(cond: bool) -> str:
+            const x: str = "outer"
+            if cond:
+                const x: str = "inner"
+                return x
+            return x
+        """
+        mod = self.compile(src)
+        assert mod.foo(True) == "inner"
+        assert mod.foo(False) == "outer"

@@ -208,3 +208,34 @@ class TestScopeAnalyzer2:
                     K -> K @ test (depth=1)
         """
         self.assert_dump("test::foo", expected)
+
+    def test_scope_shadow(self):
+        # [scope.shadow]: an inner block may shadow an outer name. Inside if.then
+        # `x` resolves to the block-local x$1; outside it resolves to x$0.
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo(cond: bool) -> str:
+            const x: str = "outer"
+            if cond:
+                const x: str = "inner"
+                return x
+            return x
+        """
+        self.analyze(src)
+        expected = """
+        symtable test::foo (function):
+            cond$0: Symbol("cond", "var", "red-param")
+            @return: Symbol("@return", "var", "auto")
+            x$0: Symbol("x", "const", "explicit")
+            x$1: Symbol("x", "const", "explicit")
+
+            scope foo:
+                cond -> cond$0
+                x -> x$0
+                str -> str @ builtins (depth=2) => <ImportRef builtins.str>
+                scope if.then:
+                    x -> x$1
+                    str -> str @ builtins (depth=2) => <ImportRef builtins.str>
+        """
+        self.assert_dump("test::foo", expected)

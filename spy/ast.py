@@ -819,6 +819,7 @@ class FuncArg(Node):
     name: str
     type: "Expr"
     kind: FuncParamKind
+    sym: Optional[Symbol] = None  # None when "parsed", present when ">= astcompiled"
 
     def shortrepr(self) -> Optional[str]:
         return f"{self.name} {self.kind}"
@@ -921,14 +922,11 @@ class Return(Stmt):
 
 @astnode
 class VarDef(Stmt):
-    # VarDef is as both parsed and >=astcompiled
-    # at parsed stage, sym is None.
-    # at astcompiled state, sym is set to the resolved symbol it assigns to
     kind: Optional[VarKind]
     name: StrLiteral
     type: Expr
     value: Optional[Expr]
-    sym: Optional[Symbol] = None
+    sym: Optional[Symbol] = None  # None when "parsed", present when ">= astcompiled"
 
 
 @astnode

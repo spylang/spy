@@ -1334,14 +1334,19 @@ class ASTFrame(AbstractFrame):
         assert w_ft.is_argcount_ok(len(funcdef.args))
         for i, param in enumerate(w_ft.params):
             arg = funcdef.args[i]
+            if self.symtable.scoping_rules == "legacy":
+                slot_name = arg.name  # KILL ME: legacy scope.py (slot == src_name)
+            else:
+                assert arg.sym is not None
+                slot_name = arg.sym.slot_name
             if param.kind == "simple":
-                self.declare_local(arg.name, color, param.w_T, arg.loc)
+                self.declare_local(slot_name, color, param.w_T, arg.loc)
 
             elif param.kind == "var_positional":
                 # XXX: we don't have typed tuples, for now we just use a
                 # generic untyped tuple as the type.
                 assert i == len(funcdef.args) - 1
-                self.declare_local(arg.name, color, SPY.w_interp_tuple, arg.loc)
+                self.declare_local(slot_name, color, SPY.w_interp_tuple, arg.loc)
 
             else:
                 assert False
@@ -1353,17 +1358,21 @@ class ASTFrame(AbstractFrame):
         w_ft = self.w_func.w_functype
 
         for i, param in enumerate(w_ft.params):
+            arg = self.funcdef.args[i]
+            if self.symtable.scoping_rules == "legacy":
+                slot_name = arg.name  # KILL ME: legacy scope.py (slot == src_name)
+            else:
+                assert arg.sym is not None
+                slot_name = arg.sym.slot_name
             if param.kind == "simple":
-                arg = self.funcdef.args[i]
                 w_arg = args_w[i]
-                self.store_local(arg.name, w_arg)
+                self.store_local(slot_name, w_arg)
 
             elif param.kind == "var_positional":
                 assert i == len(self.funcdef.args) - 1
-                arg = self.funcdef.args[i]
                 items_w = args_w[i:]
                 w_varargs = W_InterpTuple(list(items_w))
-                self.store_local(arg.name, w_varargs)
+                self.store_local(slot_name, w_varargs)
 
             else:
                 assert False

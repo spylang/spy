@@ -171,9 +171,19 @@ class ASTCompiler:
         # decorators, arg types, return type and defaults are evaluated in the outer scope
         new_decorators = [self.compile_expr(d) for d in funcdef.decorators]
         new_return_type = self.compile_expr(funcdef.return_type)
-        new_args = [
-            arg.replace(type=self.compile_expr(arg.type)) for arg in funcdef.args
-        ]
+        if self.sa is not None:
+            new_args = [
+                arg.replace(
+                    type=self.compile_expr(arg.type),
+                    sym=self.sa.get_resolved_sym(arg),
+                )
+                for arg in funcdef.args
+            ]
+        else:
+            # KILL ME: legacy scope.py path, leaves sym=None
+            new_args = [
+                arg.replace(type=self.compile_expr(arg.type)) for arg in funcdef.args
+            ]
         new_defaults = [self.compile_expr(d) for d in funcdef.defaults]
 
         # the statements of the function are evaluated in the inner scope
