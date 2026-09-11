@@ -156,21 +156,24 @@ class Scope:
     name: str
     color: Color
     kind: ScopeKind
+    symtable: "SymTable"
+
     _symbols: dict[str, Symbol]
 
     # maintain a tree of Scopes and associated SymTables. See ScopeAnalyzer.new_Scope
     parent: Optional["Scope"]
     children: list["Scope"]
-    symtable: Optional["SymTable"]
 
-    def __init__(self, name: str, color: Color, kind: ScopeKind) -> None:
+    def __init__(
+        self, name: str, color: Color, kind: ScopeKind, *, symtable: "SymTable"
+    ) -> None:
         self.name = name
         self.color = color
         self.kind = kind
         self._symbols = {}
         self.parent = None
         self.children = []
-        self.symtable = None
+        self.symtable = symtable
 
     @property
     def short_name(self) -> str:
@@ -184,10 +187,10 @@ class Scope:
         from spy.vm.b import BUILTINS
         from spy.vm.function import W_BuiltinFunc
 
-        scope = cls("builtins", "blue", "module")
         # the builtins symtable is empty because it should never be reached at
         # runtime: all builtins lookups are resolved at the scope level.
-        scope.symtable = SymTable("builtins", "blue", "module")
+        symtable = SymTable("builtins", "blue", "module")
+        scope = cls("builtins", "blue", "module", symtable=symtable)
         generic_loc = Loc(
             filename="<builtins>", line_start=0, line_end=0, col_start=0, col_end=0
         )

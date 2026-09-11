@@ -65,10 +65,9 @@ class ScopeAnalyzer:
         self.scope_stack = []
         self.scopes = {}
 
-        mod_scope = Scope(modname, "blue", "module")
         mod_symtable = SymTable(modname, "blue", "module")
         mod_symtable.scoping_rules = "strict"  # KILL ME
-        mod_scope.symtable = mod_symtable
+        mod_scope = Scope(modname, "blue", "module", symtable=mod_symtable)
 
         self.scopes[mod] = mod_scope
         self.seq = {node: i for i, node in enumerate(mod.walk())}
@@ -147,7 +146,6 @@ class ScopeAnalyzer:
 
         # for each runtime frame, dump its symtable and its lexical scopes
         for i, owner in enumerate(owners):
-            assert owner.symtable is not None
             if i > 0:
                 b.wl()
             dump_symtable(owner.symtable)
@@ -180,9 +178,7 @@ class ScopeAnalyzer:
         return self.get_symtable(self.mod)
 
     def get_symtable(self, node: ast.Node) -> SymTable:
-        symtable = self.scopes[node].symtable
-        assert symtable is not None
-        return symtable
+        return self.scopes[node].symtable
 
     def get_resolved_sym(self, node: ast.Node) -> Symbol:
         """
@@ -261,10 +257,11 @@ class ScopeAnalyzer:
         pass their own freshly-created symtable.
         """
         parent = self.scope_stack[-1]
-        scope = Scope(f"{parent.name}::{name}", color, kind)
+        if symtable is None:
+            symtable = self.symtable
+        scope = Scope(f"{parent.name}::{name}", color, kind, symtable=symtable)
         scope.parent = parent
         parent.children.append(scope)
-        scope.symtable = symtable if symtable is not None else self.symtable
         return scope
 
     def push_scope(self, scope: Scope) -> None:
@@ -283,11 +280,9 @@ class ScopeAnalyzer:
     @property
     def symtable(self) -> SymTable:
         """
-        Return the currently active SymTable.
+        Return the currently active SymTable
         """
-        symtable = self.scope.symtable
-        assert symtable is not None
-        return symtable
+        return self.scope.symtable
 
     # ====
     # collect pass
