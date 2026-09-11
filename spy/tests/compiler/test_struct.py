@@ -8,7 +8,7 @@ from spy.vm.b import B
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.object import W_Type
 from spy.vm.registry import ModuleRegistry
-from spy.vm.struct import UnwrappedStruct
+from spy.vm.struct import SPyTuple, UnwrappedStruct
 
 
 def test_UnwrappedStruct():
@@ -20,6 +20,21 @@ def test_UnwrappedStruct():
     assert us1 != us3
     assert us1 != us4
     assert us1 == (1, 2)
+
+
+def test_SPyTuple():
+    tup = SPyTuple(FQN("_tuple::tuple[i32, i32]::_tup"), {"_item0": 4, "_item1": 8})
+    assert tup == (4, 8)
+    assert len(tup) == 2
+    assert tup[0] == 4
+    assert tup[1] == 8
+    assert list(tup) == [4, 8]
+    a, b = tup
+    assert (a, b) == (4, 8)
+    assert repr(tup) == "SPyTuple([4, 8])"
+    # attribute access is still available, like any other UnwrappedStruct
+    assert tup._item0 == 4
+    assert tup._item1 == 8
 
 
 class TestStructOnStack(CompilerTest):
