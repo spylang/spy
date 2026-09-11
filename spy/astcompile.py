@@ -251,8 +251,9 @@ class ASTCompiler:
                 assign = ast.AssignLocal(stmt.loc, expr)
             elif isinstance(expr, ast.AssignExprCell):
                 assign = ast.AssignCell(stmt.loc, expr)
-            elif isinstance(expr, ast.AssignExprConstError):
-                assign = ast.AssignConstError(stmt.loc, expr)
+            elif isinstance(expr, ast.PoisonExpr):
+                # assignment to a const: the poison sits in statement position
+                assign = ast.StmtExpr(stmt.loc, expr)
             else:
                 assert False, "unknown AssignExpr node"
             return [assign]
@@ -608,8 +609,17 @@ class ASTCompiler:
         value = self.compile_expr(expr.value)
 
         if sym.varkind == "const" and sym.varkind_origin != "auto":
-            # this is an error, let's insert the appropriate poison node
-            return ast.AssignExprConstError(expr.loc, sym, target.loc)
+            # assignment to a const: resolve to a lazy poison error
+            err = SPyError("W_TypeError", "invalid assignment target")
+            err.add("error", f"{sym.src_name} is const", target.loc)
+            err.add("note", f"const declared here ({sym.varkind_origin})", sym.loc)
+            if sym.varkind_origin == "global-const":
+                msg = f"help: declare it as variable: `var {sym.src_name} ...`"
+                err.add("note", msg, sym.loc)
+            elif sym.varkind_origin == "blue-param":
+                msg = "blue function arguments are const by default"
+                err.add("note", msg, sym.loc)
+            return ast.PoisonExpr(expr.loc, err)
 
         if sym.storage == "direct":
             assert sym.is_local

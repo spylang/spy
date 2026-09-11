@@ -301,10 +301,6 @@ class DopplerFrame(ASTFrame):
         newvalue = self.shifted_expr[unpack.value]
         return [unpack.replace(targets=newtargets, value=newvalue)]
 
-    def shift_stmt_AssignConstError(self, node: ast.AssignConstError) -> list[ast.Stmt]:
-        self.exec_stmt(node)
-        assert False, "unreachable"
-
     def shift_stmt_SetAttr(self, node: ast.SetAttr) -> list[ast.Stmt]:
         self.exec_stmt(node)
         w_opimpl = self.opimpl[node]

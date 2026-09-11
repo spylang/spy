@@ -787,19 +787,6 @@ class AssignExprCell(Expr):
     value: Expr
 
 
-@astnode(">= astcompiled")
-class AssignExprConstError(Expr):
-    """
-    Poison node for assignment to a const target.
-
-    Produced by astcompiler instead of raising eagerly.
-    """
-
-    precedence = 0
-    sym: Symbol
-    target_loc: Loc
-
-
 # ====== Stmt hierarchy ======
 
 
@@ -982,11 +969,6 @@ class AugAssign(Stmt):
 
     def shortrepr(self) -> Optional[str]:
         return self.op
-
-
-@astnode(">= astcompiled")
-class AssignConstError(Stmt):
-    expr: AssignExprConstError
 
 
 @astnode(">= astcompiled")

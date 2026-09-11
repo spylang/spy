@@ -552,9 +552,6 @@ class AbstractFrame:
     def exec_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
         self.eval_expr(assign.expr)
 
-    def exec_stmt_AssignConstError(self, assign: ast.AssignConstError) -> None:
-        self.eval_expr(assign.expr)
-
     def exec_stmt_AssignUnpack(self, assign: ast.AssignUnpack) -> None:
         wam_tup = self.eval_expr(assign.value)
         w_T = wam_tup.w_static_T
@@ -807,22 +804,6 @@ class AbstractFrame:
             "not found in this scope",
             name.loc,
         )
-
-    def eval_expr_AssignExprConstError(
-        self, node: ast.AssignExprConstError
-    ) -> W_MetaArg:
-        sym = node.sym
-        target_loc = node.target_loc
-        err = SPyError("W_TypeError", "invalid assignment target")
-        err.add("error", f"{sym.src_name} is const", target_loc)
-        err.add("note", f"const declared here ({sym.varkind_origin})", sym.loc)
-        if sym.varkind_origin == "global-const":
-            msg = f"help: declare it as variable: `var {sym.src_name} ...`"
-            err.add("note", msg, sym.loc)
-        elif sym.varkind_origin == "blue-param":
-            msg = "blue function arguments are const by default"
-            err.add("note", msg, sym.loc)
-        raise err
 
     def eval_expr_NameImportRef(self, name: ast.NameImportRef) -> W_MetaArg:
         # this is correct as long as we import 'const', but if we import 'var', then it
