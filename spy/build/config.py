@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 import sys
@@ -126,9 +127,19 @@ class CompilerConfig:
                 self.ldflags += ["-L", f"{gc_prefix}/lib", "-lgc"]
             else:
                 self.ldflags += ["-lgc"]
-                # On macOS, Homebrew installs bdw-gc outside the default
-                # compiler search paths
-                if sys.platform == "darwin" and shutil.which("brew"):
+                conda_prefix = os.environ.get("CONDA_PREFIX")
+                if conda_prefix and os.path.exists(
+                    os.path.join(conda_prefix, "include", "gc.h")
+                ):
+                    # bdw-gc installed in a conda environment
+                    self.cflags += ["-I", f"{conda_prefix}/include"]
+                    self.ldflags += ["-L", f"{conda_prefix}/lib"]
+                    # conda-forge libgc has an @rpath install name: without an
+                    # rpath entry the executable won't find it at runtime
+                    self.ldflags += [f"-Wl,-rpath,{conda_prefix}/lib"]
+                elif sys.platform == "darwin" and shutil.which("brew"):
+                    # On macOS, Homebrew installs bdw-gc outside the default
+                    # compiler search paths
                     prefix = subprocess.run(
                         ["brew", "--prefix", "bdw-gc"],
                         capture_output=True,
