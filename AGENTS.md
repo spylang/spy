@@ -149,6 +149,29 @@ def foo():
   unless it's necessary. Prefer adding tests to the existing class. The general rule is
   one `Test*` class per `test_*.py` file.
 
+- do NOT pass triple-quoted strings directly as function arguments. Assign them to a
+  named variable first (typically `src` and `expected`) and pass the variable. This
+  keeps the call site readable. E.g. with the dump/expected/print_diff pattern (see
+  `assert_dump` in test_scope2.py, `assert_dump` in test_parser.py, etc.):
+  ```
+  # this is BAD:
+  self.assert_dump("""
+  ...src...
+  """, """
+  ...expected...
+  """)
+
+  # this is GOOD:
+  src = """
+  ...
+  """
+  self.analyze(src)
+  expected = """
+  ...
+  """
+  self.assert_dump(expected)
+  ```
+
 
 ## When to write unit tests
 
