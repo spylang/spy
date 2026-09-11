@@ -220,6 +220,49 @@ class TestScopeAnalyzer2:
             "x", "var", "auto", storage="NameError", level=-1
         )
 
+    def test_dump(self):
+        sa = self.analyze("""
+        from __spy__ import strict_scoping
+
+        const K: i32 = 42
+
+        def foo() -> i32:
+            const x: i32 = 1
+            const y: i32 = 1
+            if K:
+                const y = 10
+                const z = x + y
+        """)
+        got = sa.dump()
+        expected = textwrap.dedent("""\
+        symtable test (module):
+            strict_scoping: Symbol("strict_scoping", "const", "auto")
+            K: Symbol("K", "const", "explicit")
+            foo: Symbol("foo", "const", "funcdef")
+
+            scope test:
+                K -> K
+                i32 -> i32 @ level=1
+
+        symtable test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            x$0: Symbol("x", "const", "explicit")
+            y$0: Symbol("y", "const", "explicit")
+            y$1: Symbol("y", "const", "explicit")
+            z$0: Symbol("z", "const", "explicit")
+
+            scope foo:
+                x -> x$0
+                i32 -> i32 @ level=2
+                y -> y$0
+                K -> K @ level=1
+                scope if.then:
+                    y -> y$1
+                    z -> z$0
+                    x -> x$0
+        """)
+        assert got == expected
+
     def test_captures(self):
         src = """
         from __spy__ import strict_scoping

@@ -14,6 +14,7 @@ from spy.analyze.symtable import (
 )
 from spy.errors import SPyError
 from spy.location import Loc
+from spy.textbuilder import TextBuilder
 
 # SymTable and Scope are similar but conceptually different:
 #
@@ -101,6 +102,8 @@ class ScopeAnalyzer:
         builtins_symtable = SymTable("builtins", "blue", "module")
         self.push_symtable(builtins_symtable)
         self.push_symtable(self.mod_symtable)
+        builtins_scope.symtable = builtins_symtable
+        self.mod_scope.symtable = self.mod_symtable
 
         # ------- collect pass -------
         assert len(self.scope_stack) == 2  # [builtins, module]
@@ -115,6 +118,78 @@ class ScopeAnalyzer:
             self.bind(decl)
         assert len(self.symtable_stack) == 2
         assert len(self.scope_stack) == 2
+
+    def pp(self) -> None:
+        print(self.dump())
+
+    def dump(self) -> str:
+        """
+        Return a compact, human-readable dump of the computed symtables and the
+        lexical scope nesting, including how each name resolves during the bind
+        pass.
+        """
+        b = TextBuilder(use_colors=True)
+
+        # Group the resolved occurrences (bind pass) by the scope they occurred in.
+        uses_by_scope: dict[str, list[tuple[str, Symbol]]] = {}
+        for scope, sym in self._resolved_nodes.values():
+            uses_by_scope.setdefault(scope.name, []).append((sym.src_name, sym))
+
+        def scope_is_empty(scope: Scope) -> bool:
+            if uses_by_scope.get(scope.name):
+                return False
+            return all(scope_is_empty(child) for child in scope.children)
+
+        def dump_symtable(symtable: SymTable) -> None:
+            b.wl(f"symtable {symtable.name} ({symtable.kind}):")
+            with b.indent():
+                for slot_name, sym in symtable._symbols.items():
+                    b.wl(f"{slot_name}: {self._fmt_sym(sym)}")
+
+        def dump_scope(scope: Scope) -> None:
+            b.wl(f"scope {scope.short_name}:")
+            with b.indent():
+                # names USED in this scope (resolved during the bind pass)
+                seen: set[str] = set()
+                for src_name, sym in uses_by_scope.get(scope.name, []):
+                    if src_name in seen:
+                        continue
+                    seen.add(src_name)
+                    b.wl(self._fmt_resolution(src_name, sym))
+                # descend only into scopes belonging to the same runtime frame;
+                # nested function scopes are dumped in their own symtable section.
+                for child in scope.children:
+                    if child.symtable is not scope.symtable:
+                        continue
+                    if child.kind == "block" and scope_is_empty(child):
+                        continue
+                    dump_scope(child)
+
+        # one (symtable, owning_scope) pair per runtime frame: module, then FuncDefs
+        frames = [(self.mod_symtable, self.mod_scope)]
+        frames += [(st, self.scopes[node]) for node, st in self.symtables.items()]
+
+        # for each runtime frame, dump it and dump the associated lexical scopes
+        for i, (symtable, owner) in enumerate(frames):
+            if i > 0:
+                b.wl()
+            dump_symtable(symtable)
+            b.wl()
+            with b.indent():
+                dump_scope(owner)
+        return b.build()
+
+    def _fmt_sym(self, sym: Symbol) -> str:
+        return f'Symbol("{sym.src_name}", "{sym.varkind}", "{sym.varkind_origin}")'
+
+    def _fmt_resolution(self, src_name: str, sym: Symbol) -> str:
+        if sym.storage == "NameError":
+            return f"{src_name} -> NameError"
+        if sym.storage == "UnboundLocalError":
+            return f"{src_name} -> {sym.slot_name} (UnboundLocalError)"
+        if sym.level > 0:
+            return f"{src_name} -> {sym.slot_name} @ level={sym.level}"
+        return f"{src_name} -> {sym.slot_name}"
 
     def by_module(self) -> SymTable:
         return self.mod_symtable
@@ -183,13 +258,27 @@ class ScopeAnalyzer:
 
     # =====
 
-    def new_Scope(self, name: str, color: Color, kind: ScopeKind) -> Scope:
+    def new_Scope(
+        self,
+        name: str,
+        color: Color,
+        kind: ScopeKind,
+        *,
+        symtable: Optional[SymTable] = None,
+    ) -> Scope:
         """
-        Create a new Scope whose name is derived from the current scope.
+        Create a new Scope nested inside the current one.
+
+        `symtable` is the runtime frame the scope belongs to; it defaults to the
+        enclosing frame (the right choice for block scopes).  Function scopes
+        pass their own freshly-created symtable.
         """
-        parent = self.scope_stack[-1].name
-        fullname = f"{parent}::{name}"
-        return Scope(fullname, color, kind)
+        parent = self.scope_stack[-1]
+        scope = Scope(f"{parent.name}::{name}", color, kind)
+        scope.parent = parent
+        parent.children.append(scope)
+        scope.symtable = symtable if symtable is not None else self.symtable
+        return scope
 
     def push_scope(self, scope: Scope) -> None:
         self.scope_stack.append(scope)
@@ -326,9 +415,16 @@ class ScopeAnalyzer:
             ## argkind = "const"
             ## argkind_origin = "blue-param"
 
-        inner_scope = self.new_Scope(funcdef.name, scope_color, "function")
-        symtable = SymTable(funcdef.name, scope_color, "function")
+        # the symtable name is derived from the ENCLOSING FRAME (symtable), not
+        # the lexical scope: block scopes must not appear in it. E.g. a function
+        # defined inside an `if` inside `foo` is `test::foo::inner`, not
+        # `test::foo::if.then::inner`.
+        symtable_name = f"{self.symtable.name}::{funcdef.name}"
+        symtable = SymTable(symtable_name, scope_color, "function")
         symtable.scoping_rules = "strict"  # KILL ME
+        inner_scope = self.new_Scope(
+            funcdef.name, scope_color, "function", symtable=symtable
+        )
         self.push_scope(inner_scope)
         self.push_symtable(symtable)
         self.scopes[funcdef] = inner_scope

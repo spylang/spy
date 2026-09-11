@@ -158,11 +158,29 @@ class Scope:
     kind: ScopeKind
     _symbols: dict[str, Symbol]
 
+    # lexical tree navigation and frame ownership. These are set by
+    # ScopeAnalyzer right after construction (they cannot be passed to __init__
+    # because Scope.from_builtins and the module scope have no parent/symtable
+    # at creation time). Scope is analysis-only, so this is never serialized.
+    parent: Optional["Scope"]
+    children: list["Scope"]
+    symtable: Optional["SymTable"]  # the runtime frame this scope belongs to
+
     def __init__(self, name: str, color: Color, kind: ScopeKind) -> None:
         self.name = name
         self.color = color
         self.kind = kind
         self._symbols = {}
+        self.parent = None
+        self.children = []
+        self.symtable = None
+
+    @property
+    def short_name(self) -> str:
+        """
+        The last component of the (possibly '::'-separated) scope name.
+        """
+        return self.name.rsplit("::", 1)[-1]
 
     @classmethod
     def from_builtins(cls) -> "Scope":
