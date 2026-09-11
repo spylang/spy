@@ -380,7 +380,6 @@ class SPyBackend:
             # KILL ME: legacy scope.py, where slot_name == src_name
             varname = vardef.name.value
         else:
-            assert vardef.sym is not None
             varname = vardef.sym.slot_name
         is_auto = isinstance(vardef.type, ast.Auto)
         if is_auto:

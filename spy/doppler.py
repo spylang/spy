@@ -236,7 +236,6 @@ class DopplerFrame(ASTFrame):
             # KILL ME: legacy scope.py, where slot_name == src_name
             varname = vardef.name.value
         else:
-            assert vardef.sym is not None
             varname = vardef.sym.slot_name
         is_auto = isinstance(vardef.type, ast.Auto)
         self.exec_stmt_VarDef(vardef)

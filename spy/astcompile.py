@@ -175,7 +175,7 @@ class ASTCompiler:
             new_args = [
                 arg.replace(
                     type=self.compile_expr(arg.type),
-                    sym=self.sa.get_resolved_sym(arg),
+                    _sym=self.sa.get_resolved_sym(arg),
                 )
                 for arg in funcdef.args
             ]
@@ -235,7 +235,7 @@ class ASTCompiler:
         # runtime indexes the frame by sym.slot_name.
         sym = self.sa.get_resolved_sym_maybe(stmt)
         assert sym is not None
-        return [stmt.replace(type=new_type, value=new_value, sym=sym)]
+        return [stmt.replace(type=new_type, value=new_value, _sym=sym)]
 
     def compile_stmt_Assign(self, stmt: ast.Assign) -> list[ast.Stmt]:
         if isinstance(stmt.target, ast.SingleTarget):

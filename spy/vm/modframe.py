@@ -84,8 +84,8 @@ class ModFrame(AbstractFrame):
 
     def exec_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
-        if vardef.sym is not None:
-            sym = vardef.sym
+        if vardef._sym is not None:
+            sym = vardef._sym
         else:
             # KILL ME: legacy scope.py path
             sym = self.symtable.lookup(vardef.name.value)

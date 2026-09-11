@@ -505,7 +505,6 @@ class AbstractFrame:
             varname = vardef.name.value
             sym = self.symtable.lookup(varname)
         else:
-            assert vardef.sym is not None
             sym = vardef.sym
             varname = sym.slot_name
         is_auto = isinstance(vardef.type, ast.Auto)
@@ -1337,7 +1336,6 @@ class ASTFrame(AbstractFrame):
             if self.symtable.scoping_rules == "legacy":
                 slot_name = arg.name  # KILL ME: legacy scope.py (slot == src_name)
             else:
-                assert arg.sym is not None
                 slot_name = arg.sym.slot_name
             if param.kind == "simple":
                 self.declare_local(slot_name, color, param.w_T, arg.loc)
@@ -1362,7 +1360,6 @@ class ASTFrame(AbstractFrame):
             if self.symtable.scoping_rules == "legacy":
                 slot_name = arg.name  # KILL ME: legacy scope.py (slot == src_name)
             else:
-                assert arg.sym is not None
                 slot_name = arg.sym.slot_name
             if param.kind == "simple":
                 w_arg = args_w[i]

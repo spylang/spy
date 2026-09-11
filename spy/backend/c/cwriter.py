@@ -87,7 +87,7 @@ class CFuncWriter:
             # KILL ME: legacy scope.py (slot_name == src_name)
             param_names = [arg.name for arg in funcdef.args]
         else:
-            param_names = [arg.sym.slot_name for arg in funcdef.args if arg.sym]
+            param_names = [arg.sym.slot_name for arg in funcdef.args]
         for varname, w_T in self.w_func.locals_types_w.items():
             c_type = self.ctx.w2c(w_T)
             if (
@@ -179,7 +179,6 @@ class CFuncWriter:
                 # KILL ME: legacy scope.py, where slot_name == src_name
                 target = vardef.name.value
             else:
-                assert vardef.sym is not None
                 target = vardef.sym.slot_name
             v = self.fmt_expr(vardef.value)
             if vardef.value.w_T is TYPES.w_NoneType:

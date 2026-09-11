@@ -177,7 +177,6 @@ class Context:
                     # KILL ME: legacy scope.py (slot_name == src_name)
                     slot_name = arg.name
                 else:
-                    assert arg.sym is not None
                     slot_name = arg.sym.slot_name
                 c_params.append(C_FuncParam(C_Ident(slot_name), c_type))
             elif param.kind == "var_positional":

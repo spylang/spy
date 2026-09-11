@@ -819,7 +819,12 @@ class FuncArg(Node):
     name: str
     type: "Expr"
     kind: FuncParamKind
-    sym: Optional[Symbol] = None  # None when "parsed", present when ">= astcompiled"
+    _sym: Optional[Symbol] = None  # None when "parsed", present when ">= astcompiled"
+
+    @property
+    def sym(self) -> Symbol:
+        assert self._sym is not None
+        return self._sym
 
     def shortrepr(self) -> Optional[str]:
         return f"{self.name} {self.kind}"
@@ -926,7 +931,12 @@ class VarDef(Stmt):
     name: StrLiteral
     type: Expr
     value: Optional[Expr]
-    sym: Optional[Symbol] = None  # None when "parsed", present when ">= astcompiled"
+    _sym: Optional[Symbol] = None  # None when "parsed", present when ">= astcompiled"
+
+    @property
+    def sym(self) -> Symbol:
+        assert self._sym is not None
+        return self._sym
 
 
 @astnode
