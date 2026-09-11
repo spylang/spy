@@ -24,16 +24,10 @@ from spy.textbuilder import TextBuilder
 #   - `SymTable` is a runtime concept: it's a flat per-function namespace, which
 #     contains its local variables
 
-# Key used to look up Scopes in ScopeAnalyzer.scopes.
-# The tuple case is for nodes with multiple blocks, like `(ast.If, "then")` and
-# `(ast.If, "else")`.
-ScopeKey = (
-    ast.FuncDef
-    | ast.GenericFuncDef
-    | ast.ClassDef
-    | ast.GenericClassDef
-    | tuple[ast.Node, str]
-)
+# Key used to look up Scopes in ScopeAnalyzer.scopes
+# Usually a single node (ast.Module, ast.FuncDef, ...); the tuple case is for
+# nodes with multiple blocks, like `(ast.If, "then")` and `(ast.If, "else")`.
+ScopeKey = ast.Node | tuple[ast.Node, str]
 
 
 class ScopeAnalyzer:
@@ -60,26 +54,23 @@ class ScopeAnalyzer:
     """
 
     mod: ast.Module
-
     scope_stack: list[Scope]
-
-    scopes: dict[ScopeKey, Scope]  # which scope corresponds to a given Node?
-    symtables: dict[ast.Node, SymTable]  # maps FuncDef/ClassDef/etc. to their SymTable
-
+    scopes: dict[ScopeKey, Scope]  # which Scope corresponds to a given node?
     decl_node: dict[Symbol, ast.Node]  # which node declared a given Symbol?
     seq: dict[ast.Node, int]  # unique seq ID of every node (used by [decl.use-before])
-
     _resolved_nodes: dict[ast.Node, tuple[Scope, Symbol]]
 
     def __init__(self, modname: str, mod: ast.Module) -> None:
         self.mod = mod
-        self.mod_scope = Scope(modname, "blue", "module")
-        self.mod_symtable = SymTable(modname, "blue", "module")
-        self.mod_symtable.scoping_rules = "strict"  # KILL ME
-        self.mod_scope.symtable = self.mod_symtable
         self.scope_stack = []
         self.scopes = {}
-        self.symtables = {}
+
+        mod_scope = Scope(modname, "blue", "module")
+        mod_symtable = SymTable(modname, "blue", "module")
+        mod_symtable.scoping_rules = "strict"  # KILL ME
+        mod_scope.symtable = mod_symtable
+
+        self.scopes[mod] = mod_scope
         self.seq = {node: i for i, node in enumerate(mod.walk())}
         self.decl_node = {}
         self._resolved_nodes = {}
@@ -150,15 +141,16 @@ class ScopeAnalyzer:
                         continue
                     dump_scope(child)
 
-        # one (symtable, owning_scope) pair per runtime frame: module, then FuncDefs
-        frames = [(self.mod_symtable, self.mod_scope)]
-        frames += [(st, self.scopes[node]) for node, st in self.symtables.items()]
+        # frame-owning scopes (module + FuncDefs) in collection order; block
+        # scopes are dumped recursively by dump_scope, not as top-level frames.
+        owners = [s for s in self.scopes.values() if s.kind in ("module", "function")]
 
-        # for each runtime frame, dump it and dump the associated lexical scopes
-        for i, (symtable, owner) in enumerate(frames):
+        # for each runtime frame, dump its symtable and its lexical scopes
+        for i, owner in enumerate(owners):
+            assert owner.symtable is not None
             if i > 0:
                 b.wl()
-            dump_symtable(symtable)
+            dump_symtable(owner.symtable)
             b.wl()
             with b.indent():
                 dump_scope(owner)
@@ -176,11 +168,21 @@ class ScopeAnalyzer:
             return f"{src_name} -> {sym.slot_name} @ level={sym.level}"
         return f"{src_name} -> {sym.slot_name}"
 
+    @property
+    def mod_scope(self) -> Scope:
+        return self.scopes[self.mod]
+
+    @property
+    def mod_symtable(self) -> SymTable:
+        return self.by_module()
+
     def by_module(self) -> SymTable:
-        return self.mod_symtable
+        return self.get_symtable(self.mod)
 
     def get_symtable(self, node: ast.Node) -> SymTable:
-        return self.symtables[node]
+        symtable = self.scopes[node].symtable
+        assert symtable is not None
+        return symtable
 
     def get_resolved_sym(self, node: ast.Node) -> Symbol:
         """
@@ -408,7 +410,6 @@ class ScopeAnalyzer:
         )
         self.push_scope(inner_scope)
         self.scopes[funcdef] = inner_scope
-        self.symtables[funcdef] = symtable
 
         for arg in funcdef.args:
             self.create_new_local(
