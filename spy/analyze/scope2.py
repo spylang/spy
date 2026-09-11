@@ -104,11 +104,14 @@ class ScopeAnalyzer:
     def pp(self) -> None:
         print(self.dump(use_colors=True))
 
-    def dump(self, *, use_colors: bool = False) -> str:
+    def dump(self, *symtable_names: str, use_colors: bool = False) -> str:
         """
         Return a compact, human-readable dump of the computed symtables and the
         lexical scope nesting, including how each name resolves during the bind
         pass.
+
+        If `symtable_names` is given, dump only the listed frames (by symtable
+        name, e.g. "test::foo"); otherwise dump all of them.
         """
         b = TextBuilder(use_colors=use_colors)
         color = ColorFormatter(use_colors=use_colors)
@@ -155,6 +158,8 @@ class ScopeAnalyzer:
         # frame-owning scopes (module + FuncDefs) in collection order; block
         # scopes are dumped recursively by dump_scope, not as top-level frames.
         owners = [s for s in self.scopes.values() if s.kind in ("module", "function")]
+        if symtable_names:
+            owners = [s for s in owners if s.symtable.name in symtable_names]
 
         # for each runtime frame, dump its symtable and its lexical scopes
         for i, owner in enumerate(owners):
