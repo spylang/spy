@@ -400,6 +400,31 @@ class methods:
 
         return OpSpec.NULL
 
+    def join(self: str, items: list[str]) -> str:
+        n = len(items)
+        if n == 0:
+            return ""
+        ll_sep = StrObject.from_str(self)
+        sep_len = ll_sep.length
+
+        total_len: i32 = (n - 1) * sep_len
+        for i in range(n):
+            total_len = total_len + len(items[i])
+
+        out = StrObject.alloc(total_len)
+        out.hash = 0
+        pos: i32 = 0
+        for j in range(n):
+            if j > 0 and sep_len > 0:
+                ptr_copy_slice(out.utf8, pos, pos + sep_len, ll_sep.utf8, 0, sep_len)
+                pos = pos + sep_len
+            item = items[j]
+            ll_item = StrObject.from_str(item)
+            item_len = ll_item.length
+            if item_len > 0:
+                ptr_copy_slice(out.utf8, pos, pos + item_len, ll_item.utf8, 0, item_len)
+                pos = pos + item_len
+        return StrObject.to_str(out)
 
     def isspace(self: str) -> bool:
         """

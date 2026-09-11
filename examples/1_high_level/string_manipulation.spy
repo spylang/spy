@@ -1,0 +1,6 @@
+def foo(s: str) -> None:
+    print(" ".join(s.split()))
+
+
+def main() -> None:
+    foo("hello world from spy")

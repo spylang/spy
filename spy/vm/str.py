@@ -49,6 +49,7 @@ class W_Str(W_Object):
         "replace": FQN("_str::methods::replace"),
         "__contains__": FQN("_str::methods::__contains__"),
         "split": FQN("_str::methods::split"),
+        "join": FQN("_str::methods::join"),
         "isspace": FQN("_str::methods::isspace"),
         "find": FQN("_str::methods::find"),
         "count": FQN("_str::methods::count"),
