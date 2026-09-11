@@ -204,6 +204,37 @@ class TestRange(CompilerTest):
         assert mod.is_truthy(0, 0, 1) is False
         assert mod.is_truthy(10, 0, 3) is False
 
+    def test_count_index(self):
+        mod = self.compile("""
+        from _range import range
+
+        def count(start: int, stop: int, step: int, value: int) -> int:
+            return range(start, stop, step).count(value)
+
+        def index(start: int, stop: int, step: int, value: int) -> int:
+            return range(start, stop, step).index(value)
+        """)
+
+        # Count
+        assert mod.count(0, 3, 1, -1) == 0
+        assert mod.count(0, 3, 1, 0) == 1
+        assert mod.count(0, 3, 1, 2) == 1
+        assert mod.count(0, 3, 1, 3) == 0
+        assert mod.count(1, 10, 3, 4) == 1
+        assert mod.count(1, -10, -3, -5) == 1
+
+        # Index
+        assert mod.index(0, 2, 1, 0) == 0
+        assert mod.index(0, 2, 1, 1) == 1
+        assert mod.index(-2, 3, 1, 0) == 2
+        assert mod.index(1, 10, 3, 4) == 1
+        assert mod.index(1, -10, -3, -5) == 2
+
+        with SPyError.raises(
+            "W_ValueError", match=r"range\.index\(x\): x not in range"
+        ):
+            mod.index(0, 2, 1, 2)
+
     def test_fastiter(self):
         src = """
         from _range import range, range_iterator
