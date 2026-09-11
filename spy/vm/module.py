@@ -75,7 +75,14 @@ class W_Module(W_Object):
             return W_OpSpec.NULL
 
         if isinstance(w_func, W_Func):
-            return W_OpSpec(w_func, list(args_wam))
+            wam_func = W_MetaArg.from_w_obj(vm, w_func, color="blue")
+            kind = w_func.w_functype.kind
+            if kind == "plain":
+                return W_Func.op_CALL(vm, wam_func, *args_wam)
+            elif kind == "metafunc":
+                return W_Func.op_METACALL(vm, wam_func, *args_wam)
+            else:
+                return W_OpSpec.NULL
         else:
             raise WIP("trying to call a non-function (we should emit a better error)")
 
