@@ -2107,6 +2107,37 @@ class TestParser:
         """
         self.assert_dump(while_stmt, expected)
 
+    def test_Global(self):
+        mod = self.parse("""
+        def foo() -> None:
+            global x, y
+        """)
+        stmt = mod.get_funcdef("foo").body[0]
+        expected = """
+        Global(
+            names=[
+                'x',
+                'y',
+            ],
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    def test_Nonlocal(self):
+        mod = self.parse("""
+        def foo() -> None:
+            nonlocal a
+        """)
+        stmt = mod.get_funcdef("foo").body[0]
+        expected = """
+        Nonlocal(
+            names=[
+                'a',
+            ],
+        )
+        """
+        self.assert_dump(stmt, expected)
+
     def test_Break_in_For(self):
         mod = self.parse("""
         def foo() -> None:

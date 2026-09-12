@@ -790,6 +790,12 @@ class Parser:
     def from_py_stmt_Continue(self, py_node: py_ast.Continue) -> spy.ast.Continue:
         return spy.ast.Continue(py_node.loc)
 
+    def from_py_stmt_Global(self, py_node: py_ast.Global) -> spy.ast.Global:
+        return spy.ast.Global(py_node.loc, list(py_node.names))
+
+    def from_py_stmt_Nonlocal(self, py_node: py_ast.Nonlocal) -> spy.ast.Nonlocal:
+        return spy.ast.Nonlocal(py_node.loc, list(py_node.names))
+
     # ====== spy.ast.Expr ======
 
     def from_py_expr(self, py_node: py_ast.expr) -> spy.ast.Expr:

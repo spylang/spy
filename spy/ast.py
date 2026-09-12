@@ -1068,6 +1068,16 @@ class Continue(Stmt):
     pass
 
 
+@astnode
+class Global(Stmt):
+    names: list[str]
+
+
+@astnode
+class Nonlocal(Stmt):
+    names: list[str]
+
+
 @astnode(">= astcompiled")
 class Const(Expr):
     """
