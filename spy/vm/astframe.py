@@ -660,7 +660,7 @@ class AbstractFrame:
         assert isinstance(wam_assert.w_val, W_Bool)
 
         if self.vm.is_False(wam_assert.w_val):
-            plain_msg = "assertion failed"
+            plain_msg = "assert " + assert_node.source
 
             if assert_node.msg is not None:
                 wam_msg = self.eval_expr(assert_node.msg)

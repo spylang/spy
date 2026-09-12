@@ -1457,6 +1457,51 @@ class TestParser:
         self.assert_dump(body[0], expected0)
         self.assert_dump(body[1], expected1)
 
+    def test_Assert(self):
+        mod = self.parse("""
+        def check(actual: i32, expected: i32) -> None:
+            assert actual == expected
+            assert actual == expected, "custom message"
+        """)
+        plain, custom = mod.get_funcdef("check").body
+        assert isinstance(plain, ast.Assert)
+        assert isinstance(custom, ast.Assert)
+
+        self.assert_dump(
+            plain,
+            """
+            Assert(
+                test=CmpOp(
+                    op='==',
+                    left=Name(id='actual'),
+                    right=Name(id='expected'),
+                ),
+                msg=None,
+                source='actual == expected',
+            )
+            """,
+        )
+        self.assert_dump(
+            custom,
+            """
+            Assert(
+                test=CmpOp(
+                    op='==',
+                    left=Name(id='actual'),
+                    right=Name(id='expected'),
+                ),
+                msg=StrLiteral(value='custom message'),
+                source='actual == expected',
+            )
+            """,
+        )
+        assert plain.test.loc.get_src() == "actual == expected"
+        assert custom.test.loc.get_src() == "actual == expected"
+        assert plain.source == "actual == expected"
+        assert custom.source == "actual == expected"
+        assert custom.msg is not None
+        assert custom.msg.loc.get_src() == '"custom message"'
+
     def test_Raise(self):
         mod = self.parse("""
         def foo() -> None:

@@ -24,6 +24,32 @@ class TestAssert(CompilerTest):
         with SPyError.raises("W_AssertionError"):
             mod.test()
 
+    def test_assert_reports_original_expression(self):
+        mod = self.compile(
+            """
+            def check_simple(actual: i32, expected: i32) -> None:
+                assert actual == expected
+
+            def check_redshifted(x: i32, expected: i32) -> None:
+                assert x + 2 * 3 == expected
+
+            def check_string(actual: str) -> None:
+                assert actual == "expected"
+            """
+        )
+
+        with SPyError.raises("W_AssertionError") as excinfo:
+            mod.check_simple(41, 42)
+        assert excinfo.value.w_exc.message == "assert actual == expected"
+
+        with SPyError.raises("W_AssertionError") as excinfo:
+            mod.check_redshifted(1, 8)
+        assert excinfo.value.w_exc.message == "assert x + 2 * 3 == expected"
+
+        with SPyError.raises("W_AssertionError") as excinfo:
+            mod.check_string("actual")
+        assert excinfo.value.w_exc.message == 'assert actual == "expected"'
+
     def test_assert_with_message(self):
         mod = self.compile(
             """

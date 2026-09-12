@@ -261,8 +261,10 @@ class CFuncWriter:
                     f'"{assert_node.loc.filename}", {assert_node.loc.line_start});'
                 )
             else:
+                message = f"assert {assert_node.source}".encode("utf-8")
+                message_literal = C.Literal.from_bytes(message)
                 self.tbc.wl(
-                    f'spy_panic("AssertionError", "assertion failed", '
+                    f'spy_panic("AssertionError", {message_literal}, '
                     f'"{assert_node.loc.filename}", {assert_node.loc.line_start});'
                 )
 

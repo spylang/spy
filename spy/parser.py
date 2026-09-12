@@ -732,7 +732,9 @@ class Parser:
     def from_py_stmt_Assert(self, py_node: py_ast.Assert) -> spy.ast.Assert:
         test = self.from_py_expr(py_node.test)
         msg = self.from_py_expr(py_node.msg) if py_node.msg else None
-        return spy.ast.Assert(py_node.loc, test, msg)
+        source = py_ast.get_source_segment(self.src, py_node.test)
+        assert source is not None, "parsed assert expression has no source location"
+        return spy.ast.Assert(py_node.loc, test, msg, source)
 
     def from_py_stmt_Break(self, py_node: py_ast.Break) -> spy.ast.Break:
         return spy.ast.Break(py_node.loc)

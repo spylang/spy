@@ -1023,6 +1023,7 @@ class Raise(Stmt):
 class Assert(Stmt):
     test: Expr
     msg: Optional[Expr]
+    source: str
 
 
 @astnode
