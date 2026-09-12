@@ -507,6 +507,9 @@ class AbstractFrame:
         else:
             sym = vardef.sym
             varname = sym.slot_name
+            # [scope.loop-fresh]: if we have a VarDef inside a loop, it needs to be
+            # reinitialized at each iteration
+            self.locals.pop(varname, None)
         is_auto = isinstance(vardef.type, ast.Auto)
 
         if vardef.value is None:

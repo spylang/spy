@@ -2,6 +2,7 @@ from spy.errors import SPyError
 from spy.tests.support import (
     CompilerTest,
     expect_errors,
+    only_interp,
 )
 
 
@@ -205,6 +206,44 @@ class TestStrictScoping(CompilerTest):
             ("expected `str` because of type declaration", "str"),
         )
         self.compile_raises(src, "foo", errors)
+
+    @only_interp
+    def test_scope_loop_fresh(self):
+        # [scope.loop-fresh]: a block-local is fresh (unassigned) on each loop
+        # iteration; `x` is assigned only when i == 0, so reading it when i == 1
+        # is a read from an uninitialized local. Only interp catches this; in
+        # compiled mode reading an uninitialized local is UB (see
+        # [decl.initializer]).
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo() -> None:
+            for i in range(3):
+                var x: i32
+                if i == 0:
+                    x = 1
+                x
+        """
+        mod = self.compile(src)
+        with SPyError.raises("W_Exception", match="read from uninitialized local"):
+            mod.foo()
+
+    def test_scope_loop_fresh_reassigned(self):
+        # [scope.loop-fresh]: the block-local `x` is redeclared fresh on each
+        # iteration and assigned every time, so the loop runs without a
+        # re-declaration error.
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo() -> i32:
+            var total: i32 = 0
+            for i in range(4):
+                var x: i32 = i * 2
+                total = total + x
+            return total
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 0 + 2 + 4 + 6
 
     def test_scope_branch_local_shared(self):
         src = """
