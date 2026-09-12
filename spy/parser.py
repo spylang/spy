@@ -157,7 +157,7 @@ class Parser:
         processed as normal imports later - the same behaviour as Python's
         `from __future__ import ...`.
         """
-        KNOWN_PRAGMAS = ("strict_scoping",)
+        KNOWN_PRAGMAS = ("strict_scoping", "pythonic_scoping")
         pragma_zone = True
         result: set[str] = set()
 
@@ -196,6 +196,8 @@ class Parser:
         scoping_rules: ScopingRules = "legacy"
         if "strict_scoping" in pragmas:
             scoping_rules = "strict"
+        elif "pythonic_scoping" in pragmas:
+            scoping_rules = "pythonic"
 
         mod = spy.ast.Module(
             loc=loc,
@@ -358,6 +360,8 @@ class Parser:
         scoping_rules: ScopingRules = "legacy"
         if "strict_scoping" in pragmas:
             scoping_rules = "strict"
+        elif "pythonic_scoping" in pragmas:
+            scoping_rules = "pythonic"
 
         # by doing this "saved_seq" dance, we ensure that nested functions "continue"
         # the numbering from the their parent, but sibling functions reset the

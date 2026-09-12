@@ -1710,6 +1710,21 @@ class TestParser:
             ("move this to the top", "from __spy__ import strict_scoping"),
         )
 
+    def test_pythonic_scoping_module(self):
+        mod = self.parse("""
+        from __spy__ import pythonic_scoping
+        x = 42
+        """)
+        assert mod.scoping_rules == "pythonic"
+
+    def test_pythonic_scoping_function(self):
+        mod = self.parse("""
+        def foo() -> None:
+            from __spy__ import pythonic_scoping
+        """)
+        funcdef = mod.get_funcdef("foo")
+        assert funcdef.scoping_rules == "pythonic"
+
     def test_walk(self):
         def isclass(x: Any, name: str) -> bool:
             return x.__class__.__name__ == name
