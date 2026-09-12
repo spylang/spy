@@ -266,6 +266,31 @@ class TestScopeAnalyzer2:
         """
         self.assert_dump("test::foo", expected)
 
+    def test_name_class_skip(self):
+        # [name.class-skip]: class scopes are skipped by method bodies. A bare
+        # reference to a field name inside a method resolves to NameError (the
+        # user must write `self.x`).
+        src = """
+        from __spy__ import strict_scoping
+
+        @struct
+        class P:
+            x: i32
+            def get(self: P) -> i32:
+                return x
+        """
+        self.analyze(src)
+        expected = """
+        symtable test::P::get (function):
+            self$0: Symbol("self", "var", "red-param")
+            @return: Symbol("@return", "var", "auto")
+
+            scope get:
+                self -> self$0
+                x -> NameError
+        """
+        self.assert_dump("test::P::get", expected)
+
     def test_scope_shadow(self):
         # [scope.shadow]: an inner block may shadow an outer name. Inside if.then
         # `x` resolves to the block-local x$1; outside it resolves to x$0.

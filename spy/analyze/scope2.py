@@ -339,9 +339,9 @@ class ScopeAnalyzer:
         frame_depth = 0
         seen_own_frame = False
         for scope in reversed(self.scope_stack):
-            ## if scope.kind == "class":
-            ##     # jump over 'class' scopes
-            ##     continue
+            if scope.kind == "class":
+                # [name.class-skip]: jump over 'class' scopes
+                continue
             if scope.kind in ("function", "module"):
                 if seen_own_frame:
                     # crossing out of an enclosing frame: one more hop
@@ -415,6 +415,27 @@ class ScopeAnalyzer:
 
     def collect_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> None:
         self.collect_FuncDef(decl.funcdef)
+
+    def collect_GlobalClassDef(self, decl: ast.GlobalClassDef) -> None:
+        self.collect_ClassDef(decl.classdef)
+
+    def collect_ClassDef(self, classdef: ast.ClassDef) -> None:
+        # collect the class name in the outer scope
+        self.create_new_local(
+            classdef, classdef.name, "const", "classdef", classdef.loc, classdef.loc
+        )
+
+        # the class body is its own frame (a "class" scope with its own symtable);
+        # methods defined inside become nested funcdefs `test::P::get`.
+        symtable_name = f"{self.symtable.name}::{classdef.name}"
+        symtable = SymTable(symtable_name, "blue", "class")
+        symtable.scoping_rules = "strict"  # KILL ME
+        inner_scope = self.new_Scope(classdef.name, "blue", "class", symtable=symtable)
+        self.push_scope(inner_scope)
+        self.scopes[classdef] = inner_scope
+        for stmt in classdef.body:
+            self.collect(stmt)
+        self.pop_scope()
 
     def collect_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # collect the func name in the outer scope
@@ -639,6 +660,16 @@ class ScopeAnalyzer:
 
     def bind_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> None:
         self.bind_FuncDef(decl.funcdef)
+
+    def bind_GlobalClassDef(self, decl: ast.GlobalClassDef) -> None:
+        self.bind_ClassDef(decl.classdef)
+
+    def bind_ClassDef(self, classdef: ast.ClassDef) -> None:
+        scope = self.scopes[classdef]
+        self.push_scope(scope)
+        for stmt in classdef.body:
+            self.bind(stmt)
+        self.pop_scope()
 
     def bind_If(self, ifstmt: ast.If) -> None:
         self.bind(ifstmt.test)
