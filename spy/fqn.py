@@ -205,9 +205,14 @@ class FQN:
     def fullname(self) -> str:
         return self._fullname(human=False)
 
-    def _human_render(self) -> str:
+    def _human_render(self, parent: Optional["FQN"] = None) -> str:
         """
         Render a FQN to string, special casing builtins::, def, etc.
+
+        If `parent` is given and `self` starts with `parent`'s parts, that common
+        prefix is stripped from the rendered output. The match is on the
+        structured NSPart tuples, not on the rendered string, so it can never
+        misfire on a merely-similar-looking name.
         """
         is_def = (
             len(self.parts) == 2
@@ -225,7 +230,7 @@ class FQN:
                 d = "@blue.generic def"
             else:
                 d = "@blue.metafunc def"
-            quals = [q._human_render() for q in p1.qualifiers]
+            quals = [q._human_render(parent) for q in p1.qualifiers]
             p = ", ".join(quals[:-1])
             r = quals[-1]
             if r == "types::NoneType":
@@ -240,19 +245,22 @@ class FQN:
         if is_varargs_param:
             p1 = self.parts[1]
             assert len(p1.qualifiers) == 1
-            return f"*{p1.qualifiers[0]._human_render()}"
+            return f"*{p1.qualifiers[0]._human_render(parent)}"
 
         parts = self.parts
         if str(parts[0]) == "builtins":
             parts = parts[1:]
+        elif parent is not None and parent.parts:
+            pparts = parent.parts
+            if len(parts) > len(pparts) and parts[: len(pparts)] == pparts:
+                parts = parts[len(pparts) :]
 
         rendered = []
         for part in parts:
             name = part.name
             if part.qualifiers:
-                name = (
-                    f"{name}[{', '.join(q._human_render() for q in part.qualifiers)}]"
-                )
+                quals_str = ", ".join(q._human_render(parent) for q in part.qualifiers)
+                name = f"{name}[{quals_str}]"
             if part.suffix:
                 name += f"#{part.suffix}"
             rendered.append(name)
@@ -323,13 +331,18 @@ class FQN:
         """
         return self._human_render()
 
-    def human_name(self, vm: Any) -> str:
+    def human_name(self, vm: Any, parent: Optional["FQN"] = None) -> str:
         """
         Render the FQN for end-user display, honoring vm.fqn_human_aliases.
         If no VM is available, use debug_human_name instead.
+
+        If `parent` is given, it is stripped from the output wherever it
+        appears as a genuine namespace prefix (see _human_render).
         """
         human_fqn = self._resolve_aliases(vm, frozenset())
-        return human_fqn._human_render()
+        if parent is not None:
+            parent = parent._resolve_aliases(vm, frozenset())
+        return human_fqn._human_render(parent)
 
     def human_symbol_name(self, vm: Any) -> str:
         human_fqn = self._resolve_aliases(vm, frozenset())

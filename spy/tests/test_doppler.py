@@ -115,7 +115,7 @@ class TestDoppler:
             return x + 1
 
         def foo() -> i32:
-            return `test::inc`(5)
+            return inc(5)
         """
         self.redshift(src)
         self.assert_dump(expected)
@@ -172,7 +172,7 @@ class TestDoppler:
 
         def foo() -> i32:
             x: i32 = 0
-            y: i32 = `test::inc`(x := 1)
+            y: i32 = inc(x := 1)
             return x + y
         """)
 
@@ -194,8 +194,8 @@ class TestDoppler:
 
         def main() -> None:
             x: i32 = 0
-            `test::foo`(x := 1)
-            `test::foo`(2)
+            foo(x := 1)
+            foo(2)
             `_print::println[i32]`(x)
             `_print::println[str]`('2')
         """)
@@ -213,9 +213,9 @@ class TestDoppler:
         """)
         self.assert_dump("""
         def foo() -> i32:
-            return `test::make_fn::fn`(21)
+            return `make_fn::fn`(21)
 
-        def `test::make_fn::fn`(x: i32) -> i32:
+        def `make_fn::fn`(x: i32) -> i32:
             return x * 2
         """)
 
@@ -236,14 +236,14 @@ class TestDoppler:
         """)
         self.assert_dump("""
         def main() -> None:
-            `test::make_foo::foo`()
+            `make_foo::foo`()
 
-        def `test::make_foo::fn`() -> None:
+        def `make_foo::fn`() -> None:
             `_print::println[str]`('fn')
 
-        def `test::make_foo::foo`() -> None:
-            `test::make_foo::fn`()
-            `test::make_foo::fn`()
+        def `make_foo::foo`() -> None:
+            `make_foo::fn`()
+            `make_foo::fn`()
         """)
 
     def test_binops(self):
@@ -312,13 +312,13 @@ class TestDoppler:
         """)
         self.assert_dump("""
         def foo() -> None:
-            x: i32 = `test::add[i32]::impl`(1, 2)
-            y: str = `test::add[str]::impl`('a', 'b')
+            x: i32 = `add[i32]::impl`(1, 2)
+            y: str = `add[str]::impl`('a', 'b')
 
-        def `test::add[i32]::impl`(x: i32, y: i32) -> i32:
+        def `add[i32]::impl`(x: i32, y: i32) -> i32:
             return x + y
 
-        def `test::add[str]::impl`(x: str, y: str) -> str:
+        def `add[str]::impl`(x: str, y: str) -> str:
             return `_str::methods::__add__`(x, y)
         """)
 
@@ -330,7 +330,7 @@ class TestDoppler:
         """)
         self.assert_dump("""
         def foo() -> None:
-            `test::x` = 1
+            x = 1
         """)
 
     def test_format_prebuilt_exception(self):
@@ -538,7 +538,7 @@ class TestDoppler:
             pass
 
         def foo(x: i32) -> f64:
-            `test::bar`(`operator::i32_to_f64`(x))
+            bar(`operator::i32_to_f64`(x))
             flag: bool = `operator::i32_to_bool`(x)
             if `operator::i32_to_bool`(x):
                 pass
@@ -564,7 +564,7 @@ class TestDoppler:
             pass
 
         def foo() -> f64:
-            `test::bar`(42.0)
+            bar(42.0)
             flag: bool = True
             if True:
                 pass
