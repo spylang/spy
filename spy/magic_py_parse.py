@@ -46,14 +46,18 @@ from spy.vendored import untokenize
 SPY_DECL_RE = re.compile(r"\b(var|const)·+([A-Za-z_][A-Za-z0-9_]*)\b")
 
 
-def magic_py_parse(src: str, filename: str = "<string>") -> py_ast.Module:
+def magic_py_parse(src: str, filename: str = "<string>") -> tuple[py_ast.Module, str]:
     """
     Like ast.parse, but supports the new "var" and "const" syntax. See the module
     docstring for more info.
+
+    Returns a tuple of (ast.Module, preprocessed_src). The preprocessed source
+    is needed by compute_all_locs to convert Python's UTF-8 byte col_offsets
+    back to character offsets.
     """
     src2 = preprocess(src, filename)
     try:
-        return py_ast.parse(src2, filename=filename)
+        return py_ast.parse(src2, filename=filename), src2
     except SyntaxError as e:
         lineno = e.lineno or 1
         loc = Loc(filename, lineno, lineno, 0, -1)

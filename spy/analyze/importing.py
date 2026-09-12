@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Optional, Union
 import py.path
 
 from spy import ast
+from spy.analyze import scope2
 from spy.analyze.scope import ScopeAnalyzer
 from spy.astcompile import astcompile
 from spy.errors import SPyError
@@ -23,7 +24,7 @@ if TYPE_CHECKING:
 MODULE = Union[ast.Module, "W_Module", None]
 
 # Cache version: increment this when ast.Module or SymTable structure changes
-SPYC_VERSION = 9
+SPYC_VERSION = 11
 
 
 @dataclass
@@ -272,9 +273,10 @@ class ImportAnalyzer:
 
         # no cache found, parse it
         parsed_mod = self.parse_one(spyfile)
-        scopes = self.analyze_one(modname, parsed_mod)
-        parsed_mod.symtable = scopes.by_module()
-        compiled_mod = astcompile(parsed_mod)
+        sa = self.analyze_one(modname, parsed_mod)
+        parsed_mod.symtable = sa.by_module()
+        sa2 = sa if isinstance(sa, scope2.ScopeAnalyzer) else None
+        compiled_mod = astcompile(parsed_mod, scope_analyzer=sa2)
 
         if self.use_spyc:
             self._save_spyc(compiled_mod, spyc)
@@ -284,10 +286,17 @@ class ImportAnalyzer:
         parser = Parser.from_filename(str(spyfile))
         return parser.parse()
 
-    def analyze_one(self, modname: str, mod: ast.Module) -> ScopeAnalyzer:
-        scopes = ScopeAnalyzer(modname, mod)
-        scopes.analyze()
-        return scopes
+    def analyze_one(
+        self, modname: str, mod: ast.Module
+    ) -> ScopeAnalyzer | scope2.ScopeAnalyzer:
+        if mod.scoping_rules == "strict":
+            sa: ScopeAnalyzer | scope2.ScopeAnalyzer = scope2.ScopeAnalyzer(
+                modname, mod
+            )
+        else:
+            sa = ScopeAnalyzer(modname, mod)
+        sa.analyze()
+        return sa
 
     def get_import_list(self) -> list[str]:
         """

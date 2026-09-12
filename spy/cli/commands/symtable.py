@@ -14,5 +14,5 @@ async def symtable(args: Base_Args_With_Filename) -> None:
     importer = ImportAnalyzer(vm, modname, use_spyc=not args.no_spyc)
 
     parsed_mod = importer.parse_one(filename)
-    scopes = importer.analyze_one(modname, parsed_mod)
-    scopes.pp()
+    sa = importer.analyze_one(modname, parsed_mod)
+    sa.pp()

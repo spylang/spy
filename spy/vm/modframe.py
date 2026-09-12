@@ -84,9 +84,15 @@ class ModFrame(AbstractFrame):
 
     def exec_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
-        varname = vardef.name.value
+        if vardef.sym is not None:
+            sym = vardef.sym
+        else:
+            # KILL ME: legacy scope.py path
+            sym = self.symtable.lookup(vardef.name.value)
+        # module-level names are not mangled, so slot_name == src_name and can be
+        # used both as the runtime slot and as the module attribute / FQN name.
+        varname = sym.slot_name
         fqn = self.ns.join(varname)
-        sym = self.symtable.lookup(varname)
         assert sym.level == 0, "module assign to name declared outside?"
 
         # evaluate the right side of the vardef
@@ -104,12 +110,12 @@ class ModFrame(AbstractFrame):
 
         # do the assignment
         if sym.storage == "direct":
-            self.store_local(sym.name, wam.w_val)
+            self.store_local(sym.slot_name, wam.w_val)
 
         elif sym.storage == "cell":
             w_cell = W_Cell(fqn, wam.w_val)
             self.vm.add_global(fqn, w_cell)
-            self.store_local(sym.name, w_cell)
+            self.store_local(sym.slot_name, w_cell)
 
         else:
             assert False
@@ -123,8 +129,8 @@ class ModFrame(AbstractFrame):
         if w_val is not None:
             # import successful
             w_T = self.vm.dynamic_type(w_val)
-            self.declare_local(sym.name, "blue", w_T, imp.loc)
-            self.store_local(sym.name, w_val)
+            self.declare_local(sym.slot_name, "blue", w_T, imp.loc)
+            self.store_local(sym.slot_name, w_val)
             return
 
         if imp.ref.modname not in self.vm.modules_w:

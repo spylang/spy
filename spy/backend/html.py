@@ -36,7 +36,7 @@ _SPYAST_JS = ROOT / ".." / "playground" / "spyast" / "spyast.js"
 
 def _label_str(val: Any) -> str:
     if isinstance(val, Symbol):
-        return val.name
+        return val.slot_name
     if isinstance(val, str):
         return repr(val)
     return str(val)

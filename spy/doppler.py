@@ -132,6 +132,9 @@ class DopplerFrame(ASTFrame):
         self._inline_counter = 0
         self._new_symbols: list["Symbol"] = []
         self._new_locals_types_w: dict[str, "W_Type"] = {}
+        # when we encounter a deferred inference VarDef, we don't know its actual type
+        # yet: we will discover it later on first assignment
+        self._deferred_auto_vardefs: dict[str, ast.VarDef] = {}
 
     # overridden
     @property
@@ -228,18 +231,31 @@ class DopplerFrame(ASTFrame):
         return [stmt]
 
     def shift_stmt_VarDef(self, vardef: ast.VarDef) -> list[ast.Stmt]:
-        varname = vardef.name.value
+        # the frame is indexed by slot_name
+        if self.symtable.scoping_rules == "legacy":
+            # KILL ME: legacy scope.py, where slot_name == src_name
+            varname = vardef.name.value
+        else:
+            assert vardef.sym is not None
+            varname = vardef.sym.slot_name
         is_auto = isinstance(vardef.type, ast.Auto)
         self.exec_stmt_VarDef(vardef)
 
-        sym = self.symtable.lookup(varname)
-        assert sym.is_local
         if self.locals[varname].color == "blue":
             # redshift away assignments to blue locals
             return []
 
         newname = vardef.name.as_typed_node()
-        if is_auto:
+        if is_auto and vardef.value is None:
+            # deferred inference: the type will be fixed later, see
+            # fix_deferred_inference_type.
+            newvardef = vardef.replace(
+                name=newname,
+                type=vardef.type.as_typed_node(),
+            )
+            self._deferred_auto_vardefs[varname] = newvardef
+            return [newvardef]
+        elif is_auto:
             # use the actual type computed during type inference
             w_T = self.locals[varname].w_T
             newtype = make_const(self.vm, vardef.type.loc, w_T)
@@ -252,10 +268,15 @@ class DopplerFrame(ASTFrame):
             newvalue = self.shifted_expr[vardef.value]
         return [vardef.replace(name=newname, type=newtype, value=newvalue)]
 
+    def fix_deferred_inference_type(self, name: str, w_T: "W_Type") -> None:
+        super().fix_deferred_inference_type(name, w_T)
+        vardef = self._deferred_auto_vardefs.pop(name)
+        vardef.type = make_const(self.vm, vardef.type.loc, w_T)
+
     def shift_stmt_AssignLocal(self, assign: ast.AssignLocal) -> list[ast.Stmt]:
         self.exec_stmt(assign)
         expr = assign.expr
-        varname = expr.target.value
+        varname = expr.sym.slot_name
         lv = self.locals[varname]
         self.record_node_color(assign, lv.color)
         if lv.color == "blue":
@@ -568,7 +589,7 @@ class DopplerFrame(ASTFrame):
         # ASTFrame, but too bad.  See also shift_stmt_AssignCell.
         sym = name.sym
         outervars = self.closure[-sym.level]
-        w_cell = outervars[sym.name].w_val
+        w_cell = outervars[sym.slot_name].w_val
         assert isinstance(w_cell, W_Cell)
         return name.replace(w_T=wam.w_static_T, fqn=w_cell.fqn)
 
@@ -745,7 +766,7 @@ class DopplerFrame(ASTFrame):
         assert assignexpr.target_fqn is None, "already redshifted?"
         sym = assignexpr.sym
         outervars = self.closure[-sym.level]
-        w_cell = outervars[sym.name].w_val
+        w_cell = outervars[sym.slot_name].w_val
         assert isinstance(w_cell, W_Cell)
         return assignexpr.replace(
             target=new_target,

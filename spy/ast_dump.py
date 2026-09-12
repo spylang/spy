@@ -89,7 +89,7 @@ class Dumper(TextBuilder):
         self._dump_node(node, name, fields, text_color="turquoise")
 
     def dump_Symbol(self, sym: Symbol) -> None:
-        self.write(f"Symbol({sym.name!r}, {sym.varkind!r}, {sym.storage!r})")
+        self.write(f"Symbol({sym.slot_name!r}, {sym.varkind!r}, {sym.storage!r})")
 
     def _dump_node(
         self, node: Any, name: str, fields: list[str], text_color: Optional[str]
@@ -119,8 +119,8 @@ class Dumper(TextBuilder):
             self.writeline("")
         with self.indent():
             for field, value in zip(fields, values):
-                # print the w_T only if it's not None
-                if field == "w_T" and value is None:
+                # print w_T and sym only if they are not None
+                if field in ("w_T", "sym") and value is None:
                     continue
                 is_last = field is fields[-1]
                 self.write(f"{field}=")

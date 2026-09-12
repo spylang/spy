@@ -188,7 +188,16 @@ class Linearizer:
         name = f"$v{self.tmp_counter}"
         self.tmp_counter += 1
         self.new_locals[name] = w_T
-        sym = Symbol(name, "var", "auto", "direct", loc=loc, type_loc=loc, level=0)
+        sym = Symbol(
+            name,
+            "var",
+            "auto",
+            "direct",
+            slot_name=name,
+            loc=loc,
+            type_loc=loc,
+            level=0,
+        )
         self.new_symbols.append(sym)
         return name, sym
 

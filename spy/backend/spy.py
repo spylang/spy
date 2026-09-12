@@ -313,10 +313,10 @@ class SPyBackend:
             self.wl(f"{targets} = {v}")
 
     def emit_stmt_AssignConstError(self, node: ast.AssignConstError) -> None:
-        self.wl(f"{node.expr.sym.name} = <AssignConstError>")
+        self.wl(f"{node.expr.sym.slot_name} = <AssignConstError>")
 
     def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
-        varname = assign.expr.target.value
+        varname = assign.expr.sym.slot_name
         t = self.get_vartype_to_declare_maybe(varname)
         v = self.fmt_expr(assign.expr.value)
         if self.ast_format == "full":
@@ -335,7 +335,7 @@ class SPyBackend:
         varname = (
             self.fmt_fqn(assign.expr.target_fqn)
             if assign.expr.target_fqn is not None
-            else assign.expr.sym.name
+            else assign.expr.sym.slot_name
         )
         v = self.fmt_expr(assign.expr.value)
         if self.ast_format == "full":
@@ -376,12 +376,19 @@ class SPyBackend:
         self.wl(f"{t}[{args}] {node.op}= {v}")
 
     def emit_stmt_VarDef(self, vardef: ast.VarDef) -> None:
-        varname = vardef.name.value
+        if self.scope_stack[-1].scoping_rules == "legacy":
+            # KILL ME: legacy scope.py, where slot_name == src_name
+            varname = vardef.name.value
+        else:
+            assert vardef.sym is not None
+            varname = vardef.sym.slot_name
         is_auto = isinstance(vardef.type, ast.Auto)
         if is_auto:
-            assert vardef.value
-            v = self.fmt_expr(vardef.value)
-            self.wl(f"{varname} = {v}")
+            if vardef.value is None:
+                self.wl(f"{varname}: auto")
+            else:
+                v = self.fmt_expr(vardef.value)
+                self.wl(f"{varname} = {v}")
         else:
             t = self.fmt_expr(vardef.type)
             if vardef.value:
@@ -508,31 +515,36 @@ class SPyBackend:
             return f"NameError({name.id})"
         return name.id
 
+    def fmt_expr_UnboundLocalError(self, name: ast.UnboundLocalError) -> str:
+        if self.ast_format == "full":
+            return f"UnboundLocalError({name.id})"
+        return name.id
+
     def fmt_expr_NameImportRef(self, name: ast.NameImportRef) -> str:
         if self.ast_format == "full":
-            return f"ImportRef({name.sym.name})"
-        return name.sym.name
+            return f"ImportRef({name.sym.slot_name})"
+        return name.sym.slot_name
 
     def fmt_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> str:
         if self.ast_format == "full":
-            return f"LocalDirect({name.sym.name})"
-        return name.sym.name
+            return f"LocalDirect({name.sym.slot_name})"
+        return name.sym.slot_name
 
     def fmt_expr_NameLocalCell(self, name: ast.NameLocalCell) -> str:
         if self.ast_format == "full":
-            return f"LocalCell({name.sym.name})"
-        return name.sym.name
+            return f"LocalCell({name.sym.slot_name})"
+        return name.sym.slot_name
 
     def fmt_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> str:
         if self.ast_format == "full":
-            return f"OuterDirect({name.sym.name})"
-        return name.sym.name
+            return f"OuterDirect({name.sym.slot_name})"
+        return name.sym.slot_name
 
     def fmt_expr_NameOuterCell(self, name: ast.NameOuterCell) -> str:
         if name.fqn is not None:
             varname = self.fmt_fqn(name.fqn)
         else:
-            varname = name.sym.name
+            varname = name.sym.slot_name
         if self.ast_format == "full":
             return f"OuterCell({varname})"
         return varname
@@ -603,7 +615,7 @@ class SPyBackend:
         )
 
     def fmt_expr_AssignExprConstError(self, node: ast.AssignExprConstError) -> str:
-        return f"{node.sym.name} := <AssignExprConstError>"
+        return f"{node.sym.slot_name} := <AssignExprConstError>"
 
     def fmt_expr_AssignExprLocal(self, assignexpr: ast.AssignExprLocal) -> str:
         return self._fmt_assignexpr(
@@ -614,7 +626,7 @@ class SPyBackend:
         target = (
             self.fmt_fqn(assignexpr.target_fqn)
             if assignexpr.target_fqn is not None
-            else assignexpr.sym.name
+            else assignexpr.sym.slot_name
         )
         return self._fmt_assignexpr(target, assignexpr.value, assignexpr.precedence)
 

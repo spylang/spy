@@ -298,7 +298,7 @@ class SPyVM:
             if sym.impref is None or sym.impref.attr is None:
                 continue
             real_fqn = FQN([sym.impref.modname, sym.impref.attr])
-            display_fqn = FQN(sym.name)
+            display_fqn = FQN(sym.src_name)
             if real_fqn != display_fqn:
                 self.fqn_human_aliases[real_fqn] = display_fqn
 

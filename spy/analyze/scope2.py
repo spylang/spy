@@ -1,0 +1,527 @@
+from typing import Optional
+
+from spy import ast
+from spy.analyze.symtable import (
+    Color,
+    ImportRef,
+    Scope,
+    ScopeKind,
+    Symbol,
+    SymTable,
+    VarKind,
+    VarKindOrigin,
+    VarStorage,
+)
+from spy.errors import SPyError
+from spy.location import Loc
+
+# SymTable and Scope are similar but conceptually different:
+#
+#   - `Scope` are created during the collect pass of ScopeAnalyzer, they are nested and
+#     they correspond to a lexical scope (including e.g. blocks).
+#
+#   - `SymTable` is a runtime concept: it's a flat per-function namespace, which
+#     contains its local variables
+
+# Key used to look up Scopes in ScopeAnalyzer.scopes.
+# The tuple case is for nodes with multiple blocks, like `(ast.If, "then")` and
+# `(ast.If, "else")`.
+ScopeKey = (
+    ast.FuncDef
+    | ast.GenericFuncDef
+    | ast.ClassDef
+    | ast.GenericClassDef
+    | tuple[ast.Node, str]
+)
+
+
+class ScopeAnalyzer:
+    """
+    Visit the given AST Module and determine the scope of each name.
+
+    See docs/src/reference/scoping.md for the full scoping rules.
+
+    The analyzer operates in two passes:
+
+      1. collect: walk all statements that introduce new names (VarDef, FuncDef,
+         Import, etc.) and add a Symbol to the current Scope.  After this pass,
+         every Scope contains the names directly defined in it (sym.level == 0)
+         and is read-only.
+
+         During this pass we also create a SymTable for each FuncDef, and we fill it
+         with its locals.
+
+      2. bind: visit all nodes which need a name lookup (e.g. ast.Name), and bind
+         each occurrence to the corresponding Symbol.
+
+     Both passes maintain two separate stacks:
+     - scope_stack: one Scope per block
+     - symtable_stack: one SymTable per FuncDef.
+
+    When we visit a FuncDef node we push both a Scope and a SymTable.
+    """
+
+    mod: ast.Module
+
+    scope_stack: list[Scope]
+    symtable_stack: list[SymTable]
+
+    scopes: dict[ScopeKey, Scope]  # which scope corresponds to a given Node?
+    symtables: dict[ast.Node, SymTable]  # maps FuncDef/ClassDef/etc. to their SymTable
+
+    decl_node: dict[Symbol, ast.Node]  # which node declared a given Symbol?
+    seq: dict[ast.Node, int]  # unique seq ID of every node (used by [decl.use-before])
+
+    _resolved_nodes: dict[ast.Node, tuple[Scope, Symbol]]
+
+    def __init__(self, modname: str, mod: ast.Module) -> None:
+        self.mod = mod
+        self.mod_scope = Scope(modname, "blue", "module")
+        self.mod_symtable = SymTable(modname, "blue", "module")
+        self.mod_symtable.scoping_rules = "strict"  # KILL ME
+        self.scope_stack = []
+        self.symtable_stack = []
+        self.scopes = {}
+        self.symtables = {}
+        self.seq = {node: i for i, node in enumerate(mod.walk())}
+        self.decl_node = {}
+        self._resolved_nodes = {}
+
+    # ===============
+    # public API
+    # ================
+
+    def analyze(self) -> None:
+        builtins_scope = Scope.from_builtins()
+        self.push_scope(builtins_scope)
+        self.push_scope(self.mod_scope)
+
+        # builtins_symtable is empty because it should never be reached at runtime. All
+        # the builtins lookups should be resolved at the scope level.
+        builtins_symtable = SymTable("builtins", "blue", "module")
+        self.push_symtable(builtins_symtable)
+        self.push_symtable(self.mod_symtable)
+
+        # ------- collect pass -------
+        assert len(self.scope_stack) == 2  # [builtins, module]
+        assert len(self.symtable_stack) == 2
+        for decl in self.mod.decls:
+            self.collect(decl)
+
+        # ------ bind pass -----
+        assert len(self.scope_stack) == 2  # [builtins, module]
+        assert len(self.symtable_stack) == 2
+        for decl in self.mod.decls:
+            self.bind(decl)
+        assert len(self.symtable_stack) == 2
+        assert len(self.scope_stack) == 2
+
+    def by_module(self) -> SymTable:
+        return self.mod_symtable
+
+    def get_symtable(self, node: ast.Node) -> SymTable:
+        return self.symtables[node]
+
+    def get_resolved_sym(self, node: ast.Node) -> Symbol:
+        """
+        Return the Symbol that `node` resolved to.
+        """
+        scope, sym = self._resolved_nodes[node]
+        return sym
+
+    def get_resolved_sym_maybe(self, node: ast.Node) -> Optional[Symbol]:
+        if node in self._resolved_nodes:
+            scope, sym = self._resolved_nodes[node]
+            return sym
+        return None
+
+    def get_resolved_scope(self, node: ast.Node) -> Scope:
+        """
+        Return the lexical Scope in which `node` was resolved.
+        """
+        scope, sym = self._resolved_nodes[node]
+        return scope
+
+    def get_all_captures(self, node: ast.Node) -> dict[str, Symbol]:
+        """
+        Return all outer-scope symbols (level > 0) captured by the frame rooted
+        at `node`, keyed by "<scope_path>::<name>".
+        """
+        root = self.scopes[node]
+        prefix = root.name
+        result: dict[str, Symbol] = {}
+        for scope, sym in self._resolved_nodes.values():
+            if sym.level <= 0:
+                continue
+            if scope.name == prefix or scope.name.startswith(prefix + "::"):
+                relpath = scope.name[len(prefix) :].removeprefix("::")
+                key = f"{relpath}::{sym.slot_name}" if relpath else sym.slot_name
+                result[key] = sym
+        return result
+
+    def get_flattened_decls(self, node: ast.Node) -> dict[str, Symbol]:
+        """
+        Return a flat dict of all symbols declared in the scope of `node` and
+        any nested scopes, keyed by their relative path.
+
+        Symbols in the root scope use just the name (e.g. "x"), while symbols
+        in nested scopes use a '::'-separated path (e.g. "if.then::x").
+        """
+        root = self.scopes[node]
+        prefix = root.name
+        result: dict[str, Symbol] = {}
+        for scope in self.scopes.values():
+            if scope.name == prefix or scope.name.startswith(prefix + "::"):
+                relpath = scope.name[len(prefix) :].removeprefix("::")
+                for name, sym in scope._symbols.items():
+                    if relpath:
+                        flattened_name = f"{relpath}::{name}"
+                    else:
+                        flattened_name = name
+                    result[flattened_name] = sym
+        return result
+
+    # =====
+
+    def new_Scope(self, name: str, color: Color, kind: ScopeKind) -> Scope:
+        """
+        Create a new Scope whose name is derived from the current scope.
+        """
+        parent = self.scope_stack[-1].name
+        fullname = f"{parent}::{name}"
+        return Scope(fullname, color, kind)
+
+    def push_scope(self, scope: Scope) -> None:
+        self.scope_stack.append(scope)
+
+    def pop_scope(self) -> Scope:
+        return self.scope_stack.pop()
+
+    def push_symtable(self, symtable: SymTable) -> None:
+        self.symtable_stack.append(symtable)
+
+    def pop_symtable(self) -> SymTable:
+        return self.symtable_stack.pop()
+
+    @property
+    def scope(self) -> Scope:
+        """
+        Return the currently active lexical scope.
+        """
+        return self.scope_stack[-1]
+
+    @property
+    def symtable(self) -> SymTable:
+        """
+        Return the currently active SymTable.
+        """
+        return self.symtable_stack[-1]
+
+    # ====
+    # collect pass
+
+    def lookup_name_in_scopes(
+        self, name: str
+    ) -> tuple[int, Optional[Scope], Optional[Symbol]]:
+        """
+        Lookup a name in the scope_stack, starting from the innermost scope outward.
+
+        Return the level (frame depth): the number of symtable (function/module)
+        boundaries crossed to reach the defining scope.  Level 0 means the current
+        frame; level 1 means one frame up; etc.
+        """
+        frame_depth = 0
+        seen_own_frame = False
+        for scope in reversed(self.scope_stack):
+            ## if scope.kind == "class":
+            ##     # jump over 'class' scopes
+            ##     continue
+            if scope.kind in ("function", "module"):
+                if seen_own_frame:
+                    # crossing out of an enclosing frame: one more hop
+                    frame_depth += 1
+                else:
+                    # this is the frame we started in (innermost function/module);
+                    # block scopes below it don't count as hops
+                    seen_own_frame = True
+            if sym := scope.lookup_maybe(name):
+                return frame_depth, scope, sym
+        return -1, None, None
+
+    def create_new_local(
+        self,
+        node: ast.Node,
+        name: str,
+        varkind: VarKind,
+        varkind_origin: VarKindOrigin,
+        loc: Loc,
+        type_loc: Loc,
+        *,
+        impref: Optional[ImportRef] = None,
+    ) -> Symbol:
+        """
+        Add a name definition to the current scope and current symtable (level 0).
+        """
+        existing_sym = self.scope.lookup_maybe(name)
+        if existing_sym:
+            msg = f"variable `{name}` already declared"
+            err = SPyError("W_ScopeError", msg)
+            err.add("error", "this is the new declaration", loc)
+            err.add("note", "this is the previous declaration", existing_sym.loc)
+            raise err
+
+        storage = "direct"
+        ## storage: VarStorage
+        ## if self.scope is self.mod_symtable and varkind == "var":
+        ##     storage = "cell"
+        ## else:
+        ##     storage = "direct"
+
+        new_sym = Symbol(
+            name,
+            varkind,
+            varkind_origin,
+            storage,
+            slot_name=self.symtable.get_fresh_slot(name),
+            loc=loc,
+            type_loc=type_loc,
+            impref=impref,
+            level=0,
+        )
+        self.scope.add(new_sym)
+        self.symtable.add(new_sym)
+        self.decl_node[new_sym] = node
+        return new_sym
+
+    def collect(self, node: ast.Node) -> None:
+        return node.visit("collect", self)
+
+    def collect_Import(self, imp: ast.Import) -> None:
+        self.create_new_local(
+            imp,
+            imp.asname,
+            "const",
+            "auto",
+            imp.loc,
+            imp.loc,
+            impref=imp.ref,
+        )
+
+    def collect_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> None:
+        self.collect_FuncDef(decl.funcdef)
+
+    def collect_FuncDef(self, funcdef: ast.FuncDef) -> None:
+        # collect the func name in the outer scope
+        protoloc = funcdef.prototype_loc
+        self.create_new_local(
+            funcdef, funcdef.name, "const", "funcdef", protoloc, protoloc
+        )
+
+        scope_color = funcdef.color
+        if scope_color == "red":
+            argkind: VarKind = "var"
+            argkind_origin: VarKindOrigin = "red-param"
+        else:
+            assert False
+            ## argkind = "const"
+            ## argkind_origin = "blue-param"
+
+        inner_scope = self.new_Scope(funcdef.name, scope_color, "function")
+        symtable = SymTable(funcdef.name, scope_color, "function")
+        symtable.scoping_rules = "strict"  # KILL ME
+        self.push_scope(inner_scope)
+        self.push_symtable(symtable)
+        self.scopes[funcdef] = inner_scope
+        self.symtables[funcdef] = symtable
+
+        for arg in funcdef.args:
+            self.create_new_local(
+                arg,
+                arg.name,
+                argkind,
+                argkind_origin,
+                arg.loc,
+                arg.type.loc,
+            )
+
+        ret_sym = self.create_new_local(
+            funcdef.return_type,
+            "@return",
+            "var",
+            "auto",
+            funcdef.return_type.loc,
+            funcdef.return_type.loc,
+        )
+
+        for stmt in funcdef.body:
+            self.collect(stmt)
+
+        self.pop_symtable()
+        self.pop_scope()
+
+    def collect_If(self, ifstmt: ast.If) -> None:
+        self.collect(ifstmt.test)
+        then_scope = self.new_Scope("if.then", self.scope.color, "block")
+        self.push_scope(then_scope)
+        for stmt in ifstmt.then_body:
+            self.collect(stmt)
+        self.pop_scope()
+        else_scope = self.new_Scope("if.else", self.scope.color, "block")
+        self.push_scope(else_scope)
+        for stmt in ifstmt.else_body:
+            self.collect(stmt)
+        self.pop_scope()
+        self.scopes[ifstmt, "then"] = then_scope
+        self.scopes[ifstmt, "else"] = else_scope
+
+    def collect_VarDef(self, vardef: ast.VarDef) -> None:
+        varname = vardef.name.value
+        varkind_optional = vardef.kind
+        if varkind_optional is None:
+            # bare `x: T` inside a function body - not valid in strict mode,
+            # but we still need to handle it gracefully during collect; the
+            # runtime/checker will reject it later.
+            varkind: VarKind = "const"
+            varkind_origin: VarKindOrigin = "auto"
+        else:
+            varkind = varkind_optional
+            varkind_origin = "explicit"
+        sym = self.create_new_local(
+            vardef,
+            varname,
+            varkind,
+            varkind_origin,
+            vardef.loc,
+            vardef.type.loc,
+        )
+        if vardef.value is not None:
+            self.collect(vardef.value)
+
+    # ====
+    # bind pass
+
+    def set_binding(self, node: ast.Node, scope: Scope, sym: Symbol) -> None:
+        self._resolved_nodes[node] = (scope, sym)
+
+    def lookup_and_bind(self, node: ast.Node, varname: str, use_loc: Loc) -> None:
+        # NOTE: NameError and UnboundLocalError are just recorded here. Then astcompile
+        # either raise it eagerly or turn it into a lazy error.
+
+        level, _, sym = self.lookup_name_in_scopes(varname)
+
+        if level == -1:
+            # name not found, let's record a special NameError symbol
+            resolved_sym = Symbol(
+                varname,
+                "var",
+                "auto",
+                "NameError",
+                slot_name=varname,
+                level=-1,
+                loc=Loc.fake(),
+                type_loc=Loc.fake(),
+            )
+            self.set_binding(node, self.scope, resolved_sym)
+            return
+
+        elif level == 0:
+            # found in the local symtable
+            assert sym is not None
+            if sym.is_local:
+                seq = self.seq[node]
+                decl_node = self.decl_node[sym]
+                decl_seq = self.seq[decl_node]
+                if seq < decl_seq:
+                    # [decl.use-before]: the usage happen before the declaration
+                    resolved_sym = Symbol(
+                        varname,
+                        sym.varkind,
+                        sym.varkind_origin,
+                        "UnboundLocalError",
+                        slot_name=sym.slot_name,
+                        level=0,
+                        loc=use_loc,
+                        type_loc=sym.loc,  # points to the declaration
+                    )
+                    self.set_binding(node, self.scope, resolved_sym)
+                    return
+
+            self.set_binding(node, self.scope, sym)
+            return
+
+        else:
+            # found in an outer scope
+            assert sym is not None
+            if sym.impref is not None:
+                self.mod_symtable.implicit_imports.add(sym.impref.modname)
+            self.set_binding(node, self.scope, sym.replace(level=level))
+            return
+
+    def bind(self, node: ast.Node) -> None:
+        return node.visit("bind", self)
+
+    def bind_FuncDef(self, funcdef: ast.FuncDef) -> None:
+        # decorators and argument types are evaluated in the outer scope
+        for decorator in funcdef.decorators:
+            self.bind(decorator)
+        self.bind(funcdef.return_type)
+        for arg in funcdef.args:
+            self.bind(arg)
+        for default in funcdef.defaults:
+            self.bind(default)
+
+        # activate scope/symtable for the function and bind its body
+        scope = self.scopes[funcdef]
+        symtable = self.symtables[funcdef]
+        self.push_scope(scope)
+        self.push_symtable(symtable)
+        for stmt in funcdef.body:
+            self.bind(stmt)
+        self.pop_symtable()
+        self.pop_scope()
+
+    def bind_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> None:
+        self.bind_FuncDef(decl.funcdef)
+
+    def bind_If(self, ifstmt: ast.If) -> None:
+        self.bind(ifstmt.test)
+        then_scope = self.scopes[ifstmt, "then"]
+        self.push_scope(then_scope)
+        for stmt in ifstmt.then_body:
+            self.bind(stmt)
+        self.pop_scope()
+        else_scope = self.scopes[ifstmt, "else"]
+        self.push_scope(else_scope)
+        for stmt in ifstmt.else_body:
+            self.bind(stmt)
+        self.pop_scope()
+
+    def bind_VarDef(self, vardef: ast.VarDef) -> None:
+        # a VarDef must have a local symbol in the current scope, get it
+        sym = self.scope.lookup(vardef.name.value)
+        assert sym.level == 0
+        self.set_binding(vardef, self.scope, sym)
+        self.bind(vardef.type)
+        if vardef.value is not None:
+            self.bind(vardef.value)
+
+    def bind_Assign(self, assign: ast.Assign) -> None:
+        self.bind(assign.value)
+        if isinstance(assign.target, ast.SingleTarget):
+            # record the target StrLiteral -> sym.  astcompile reuses this same
+            # StrLiteral node when it synthesizes the AssignExpr.
+            tgt = assign.target.name
+            self.lookup_and_bind(tgt, tgt.value, tgt.loc)
+        else:
+            # UnpackTarget: not migrated yet
+            assert False, "TODO"
+            ## self.bind(assign.target)
+
+    def bind_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
+        # walrus `x := E`
+        self.bind(assignexpr.value)
+        tgt = assignexpr.target
+        self.lookup_and_bind(tgt, tgt.value, tgt.loc)
+
+    def bind_Name(self, name: ast.Name) -> None:
+        self.lookup_and_bind(name, name.id, name.loc)

@@ -32,11 +32,14 @@ class MatchSymbol:
         varkind: VarKind,
         varkind_origin: VarKindOrigin,
         *,
+        slot_name: Any = MISSING,
         level: int = 0,
         impref: Any = MISSING,
         storage: VarStorage = "direct",
     ):
-        self.name = name
+        self.src_name = name
+        # slot_name defaults to src_name (the common case)
+        self.slot_name = name if slot_name is MISSING else slot_name
         self.varkind = varkind
         self.varkind_origin = varkind_origin
         self.level = level
@@ -47,7 +50,8 @@ class MatchSymbol:
         if not isinstance(sym, Symbol):
             return NotImplemented
         return (
-            self.name == sym.name
+            self.src_name == sym.src_name
+            and self.slot_name == sym.slot_name
             and self.varkind == sym.varkind
             and self.varkind_origin == sym.varkind_origin
             and self.level == sym.level

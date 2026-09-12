@@ -63,6 +63,7 @@ nav:
     - reference/spy_module.md
     - reference/cli.md
     - reference/environment.md
+    - reference/scoping.md
   - Unsorted notes:
       - Low-level memory model: llmem.md
   - AI-generated docs:
