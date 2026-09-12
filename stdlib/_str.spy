@@ -571,6 +571,20 @@ def _strip_whitespace(self: str) -> str:
     return StrObject.to_str(out)
 
 
+def _ll_char_in_chars(
+    mask: u64, llchars: gc_ptr[StrObject], chars_len: i32, ch: u8
+) -> bool:
+    if (mask & (u64(i64(1)) << (u64(i64(ch)) & u64(i64(63))))) == u64(i64(0)):
+        # `ch` is not in `chars`
+        return False
+    # bloom filter can have false positives
+    # confirm with a linear scan
+    for i in range(chars_len):
+        if ch == llchars.utf8[i]:
+            return True
+    return False
+
+
 def _strip_chars(self: str, chars: str) -> str:
     ll = StrObject.from_str(self)
     llchars = StrObject.from_str(chars)
@@ -578,24 +592,18 @@ def _strip_chars(self: str, chars: str) -> str:
     chars_len = llchars.length
     if chars_len == 0:
         return self
+    # bloom filter over `chars`, mirrors CPython's _PyUnicode_XStrip
+    mask: u64 = u64(i64(0))
+    for i in range(chars_len):
+        mask = mask | (u64(i64(1)) << (u64(i64(llchars.utf8[i])) & u64(i64(63))))
     start = 0
     end = length
     while start < end:
-        found = False
-        for i in range(chars_len):
-            if ll.utf8[start] == llchars.utf8[i]:
-                found = True
-                break
-        if not found:
+        if not _ll_char_in_chars(mask, llchars, chars_len, ll.utf8[start]):
             break
         start = start + 1
     while end > start:
-        found = False
-        for j in range(chars_len):
-            if ll.utf8[end - 1] == llchars.utf8[j]:
-                found = True
-                break
-        if not found:
+        if not _ll_char_in_chars(mask, llchars, chars_len, ll.utf8[end - 1]):
             break
         end = end - 1
     new_len = end - start

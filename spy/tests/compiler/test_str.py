@@ -511,6 +511,22 @@ class TestStr(CompilerTest):
         assert mod.strip_chars("hello", "xyz") == "hello"
         assert mod.strip_chars("aaaa", "a") == ""
 
+    def test_strip_chars_bloom(self):
+        src = """
+        def strip_chars(s: str, chars: str) -> str:
+            return s.strip(chars)
+        """
+        mod = self.compile(src)
+        # false positives must be rejected by the linear scan
+        assert mod.strip_chars("!!a!!", "!") == "a"
+        assert mod.strip_chars("a!a", "!") == "a!a"
+        assert mod.strip_chars("!!ab!!", "!") == "ab"
+        # a very long chars set test case
+        big_chars = "".join(chr(i) for i in range(128) if chr(i) not in "hello")
+        assert mod.strip_chars("xxhello" + big_chars, "xx" + big_chars) == "hello"
+        assert mod.strip_chars(big_chars + "hello" + big_chars, big_chars) == "hello"
+        assert mod.strip_chars("hello", big_chars) == "hello"
+
     def test_str_replace(self):
         mod = self.compile("""
         def foo(s: str, old: str, new: str) -> str:
