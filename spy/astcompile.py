@@ -604,6 +604,8 @@ class ASTCompiler:
             sym = self.symtable.lookup(target.value)
         else:
             # new logic (kill this comment when we kill the if)
+            if (err := self.sa.get_poison_error_maybe(target)) is not None:
+                return ast.PoisonExpr(expr.loc, err)
             sym = self.sa.get_resolved_sym(target)
 
         value = self.compile_expr(expr.value)

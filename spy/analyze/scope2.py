@@ -419,6 +419,22 @@ class ScopeAnalyzer:
     def collect_GlobalClassDef(self, decl: ast.GlobalClassDef) -> None:
         self.collect_ClassDef(decl.classdef)
 
+    def collect_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
+        vardef = decl.vardef
+        varname = vardef.name.value
+        if vardef.kind is None:
+            # bare `x: T` at module level is an implicit const
+            varkind: VarKind = "const"
+            varkind_origin: VarKindOrigin = "global-const"
+        else:
+            varkind = vardef.kind
+            varkind_origin = "explicit"
+        self.create_new_local(
+            decl, varname, varkind, varkind_origin, decl.loc, vardef.type.loc
+        )
+        if vardef.value is not None:
+            self.collect(vardef.value)
+
     def collect_ClassDef(self, classdef: ast.ClassDef) -> None:
         # collect the class name in the outer scope
         self.create_new_local(
@@ -634,6 +650,28 @@ class ScopeAnalyzer:
             self.set_binding(node, self.scope, sym.replace(level=level))
             return
 
+    def lookup_and_bind_target(
+        self, node: ast.Node, varname: str, use_loc: Loc
+    ) -> None:
+        """
+        Bind an assignment target.
+
+        Like lookup_and_bind, but a target that resolves to a module-level binding is
+        rejected unless there is an explicit `global` declaration [global.write]
+        """
+        level, scope, sym = self.lookup_name_in_scopes(varname)
+        if level > 0 and scope is not None and scope.kind == "module":
+            assert sym is not None
+            err = SPyError(
+                "W_ScopeError", f"`{varname}` is not declared in the local scope"
+            )
+            err.add("error", f"assignment to global `{varname}`", use_loc)
+            err.add("note", f"`{varname}` is declared here", sym.loc)
+            err.add("note", f"help: say `global {varname}`", use_loc)
+            self.set_binding(node, self.scope, err)
+            return
+        self.lookup_and_bind(node, varname, use_loc)
+
     def bind(self, node: ast.Node) -> None:
         return node.visit("bind", self)
 
@@ -712,7 +750,7 @@ class ScopeAnalyzer:
             # record the target StrLiteral -> sym.  astcompile reuses this same
             # StrLiteral node when it synthesizes the AssignExpr.
             tgt = assign.target.name
-            self.lookup_and_bind(tgt, tgt.value, tgt.loc)
+            self.lookup_and_bind_target(tgt, tgt.value, tgt.loc)
         else:
             # UnpackTarget: not migrated yet
             assert False, "TODO"
@@ -722,7 +760,7 @@ class ScopeAnalyzer:
         # walrus `x := E`
         self.bind(assignexpr.value)
         tgt = assignexpr.target
-        self.lookup_and_bind(tgt, tgt.value, tgt.loc)
+        self.lookup_and_bind_target(tgt, tgt.value, tgt.loc)
 
     def bind_Name(self, name: ast.Name) -> None:
         self.lookup_and_bind(name, name.id, name.loc)

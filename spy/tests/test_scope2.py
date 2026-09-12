@@ -291,6 +291,31 @@ class TestScopeAnalyzer2:
         """
         self.assert_dump("test::P::get", expected)
 
+    def test_global_write(self):
+        # [global.write]: a function can READ a module-level name freely, but
+        # ASSIGNING to it without a `global` declaration is an error.
+        src = """
+        from __spy__ import strict_scoping
+
+        var x: i32 = 42
+        var y: i32 = 43
+
+        def f() -> None:
+            print(x)
+            y = 0
+        """
+        self.analyze(src)
+        expected = """
+        symtable test::f (function):
+            @return: Symbol("@return", "var", "auto")
+
+            scope f:
+                print -> print @ builtins (depth=2) => <ImportRef builtins.print>
+                x -> x @ test (depth=1)
+                y -> ScopeError
+        """
+        self.assert_dump("test::f", expected)
+
     def test_scope_shadow(self):
         # [scope.shadow]: an inner block may shadow an outer name. Inside if.then
         # `x` resolves to the block-local x$1; outside it resolves to x$0.

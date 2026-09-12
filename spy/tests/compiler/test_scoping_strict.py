@@ -274,3 +274,35 @@ class TestStrictScoping(CompilerTest):
         mod = self.compile(src)
         assert mod.foo(True) == 1
         assert mod.foo(False) == 2
+
+    def test_global_read(self):
+        # [global.write]: reading a module-level `var` from a function is fine.
+        src = """
+        from __spy__ import strict_scoping
+
+        var x: i32 = 42
+
+        def f() -> i32:
+            return x
+        """
+        mod = self.compile(src)
+        assert mod.f() == 42
+
+    def test_global_write(self):
+        # [global.write]: assigning to a module-level binding without `global`
+        # is an error.
+        src = """
+        from __spy__ import strict_scoping
+
+        var y: i32 = 43
+
+        def f() -> None:
+            y = 0
+        """
+        errors = expect_errors(
+            "`y` is not declared in the local scope",
+            ("assignment to global `y`", "y"),
+            ("`y` is declared here", "var y: i32 = 43"),
+            ("help: say `global y`", "y"),
+        )
+        self.compile_raises(src, "f", errors)
