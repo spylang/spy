@@ -102,6 +102,20 @@ class TestStrictScoping(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
+    def test_name_resolution(self):
+        # [name.resolution]: a name resolves outward, lexically
+        src = """
+        from __spy__ import strict_scoping
+
+        const K: i32 = 40
+
+        def read_ok() -> i32:
+            const x: i32 = 2
+            return K + x
+        """
+        mod = self.compile(src)
+        assert mod.read_ok() == 42
+
     def test_scope_block_if(self):
         src = """
         from __spy__ import strict_scoping
