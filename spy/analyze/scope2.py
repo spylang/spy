@@ -612,6 +612,35 @@ class ScopeAnalyzer:
         if vardef.value is not None:
             self.collect(vardef.value)
 
+    def collect_Assign(self, assign: ast.Assign) -> None:
+        if self.mod.scoping_rules == "pythonic":
+            # [py.implicit-decl]: in pythonic_scoping, an assignment might be an
+            # implicit declaration
+            if isinstance(assign.target, ast.SingleTarget):
+                self.collect_implicit_target(assign.target.name)
+            else:
+                assert False, "TODO: unpack targets"
+        self.collect(assign.value)
+
+    def collect_implicit_target(self, target: ast.StrLiteral) -> None:
+        varname = target.value
+        sym = self.scope.lookup_maybe(varname)
+        if sym is None:
+            # first assignment: implicit `const` declaration
+            self.create_new_local(
+                target, varname, "const", "auto", target.loc, target.loc
+            )
+        elif sym.varkind == "const" and sym.varkind_origin == "auto":
+            # [py.constness]: a second assignment promotes an implicit const to var
+            self.promote_const_to_var(sym)
+
+    def promote_const_to_var(self, sym: Symbol) -> None:
+        assert sym.varkind == "const"
+        new_sym = sym.replace(varkind="var")
+        self.scope._symbols[sym.src_name] = new_sym
+        self.symtable._symbols[sym.slot_name] = new_sym
+        self.decl_node[new_sym] = self.decl_node.pop(sym)
+
     def collect_Global(self, glob: ast.Global) -> None:
         # [global.write]: record that we saw a `global x`. See lookup_name_in_scopes.
         for name in glob.names:

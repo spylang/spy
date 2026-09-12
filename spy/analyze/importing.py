@@ -289,7 +289,7 @@ class ImportAnalyzer:
     def analyze_one(
         self, modname: str, mod: ast.Module
     ) -> ScopeAnalyzer | scope2.ScopeAnalyzer:
-        if mod.scoping_rules == "strict":
+        if mod.scoping_rules in ("strict", "pythonic"):
             sa: ScopeAnalyzer | scope2.ScopeAnalyzer = scope2.ScopeAnalyzer(
                 modname, mod
             )

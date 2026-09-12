@@ -489,3 +489,28 @@ class TestScopeAnalyzer2:
         self.assert_dump("test::foo", expected)
 
     # ======= pythonic scoping tests =======
+
+    def test_py_implicit_decl(self):
+        # [py.implicit-decl] + [py.constness]: a bare assignment implicitly
+        # declares the name on first assignment; assigned once -> const,
+        # assigned more than once -> var.
+        src = """
+        from __spy__ import pythonic_scoping
+
+        def foo() -> None:
+            a = 1
+            b = 1
+            b = b + 1
+        """
+        self.analyze(src)
+        expected = """
+        symtable test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            a$0: Symbol("a", "const", "auto")
+            b$0: Symbol("b", "var", "auto")
+
+            scope foo:
+                a -> a$0
+                b -> b$0
+        """
+        self.assert_dump("test::foo", expected)

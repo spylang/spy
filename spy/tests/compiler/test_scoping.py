@@ -331,6 +331,17 @@ class TestScoping(CompilerTest):
 
     # ======= pythonic scoping tests =======
 
-    def test_py_something(self):
-        # just a placeholder
-        pass
+    def test_py_implicit_decl(self):
+        # [py.implicit-decl] + [py.constness]: `a` is an implicit const, `b` is
+        # implicitly declared then reassigned (var). Both work end-to-end.
+        src = """
+        from __spy__ import pythonic_scoping
+
+        def foo() -> i32:
+            a = 10
+            b = 30
+            b = b + 2
+            return a + b
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 42
