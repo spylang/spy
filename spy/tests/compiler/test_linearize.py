@@ -72,9 +72,9 @@ class TestLinearize(CompilerTest):
         if self.backend == "linearize":
             expected = """
             def foo() -> i32:
-                $v0: i32 = `test::f1`()
-                $v1: i32 = `test::f2`()
-                return `test::sub`($v0, $v1)
+                $v0: i32 = f1()
+                $v1: i32 = f2()
+                return sub($v0, $v1)
             """
             self.assert_linearize("foo", expected)
 
@@ -92,7 +92,7 @@ class TestLinearize(CompilerTest):
         if self.backend == "linearize":
             expected = """
             def foo(x: i32) -> i32:
-                return `test::add`(x + 1, x + 2)
+                return add(x + 1, x + 2)
             """
             self.assert_linearize("foo", expected)
 
@@ -122,8 +122,8 @@ class TestLinearize(CompilerTest):
             expected = """
             def foo(a: i32, c: i32, d: i32) -> i32:
                 $v0: i32 = a
-                $v1: i32 = `test::g`()
-                return `test::bar`($v0, 1 + $v1, c, d)
+                $v1: i32 = g()
+                return bar($v0, 1 + $v1, c, d)
             """
             self.assert_linearize("foo", expected)
 
@@ -147,7 +147,7 @@ class TestLinearize(CompilerTest):
         if self.backend == "linearize":
             expected = """
             def foo(a: i32) -> i32:
-                return `test::foo4`(a, 100, `test::V`, a)
+                return foo4(a, 100, V, a)
             """
             self.assert_linearize("foo", expected)
 
@@ -170,7 +170,7 @@ class TestLinearize(CompilerTest):
             expected = """
             def foo(x: bool) -> i32:
                 if x:
-                    return `test::g`()
+                    return g()
                 else:
                     return 0
             """
@@ -193,7 +193,7 @@ class TestLinearize(CompilerTest):
             expected = """
             def foo() -> i32:
                 x: i32 = 0
-                x = `test::g`()
+                x = g()
                 return x
             """
             self.assert_linearize("foo", expected)
@@ -231,7 +231,7 @@ class TestLinearize(CompilerTest):
             expected_f1 = """
             def f1(x: bool) -> bool:
                 if x:
-                    y: bool = `test::side_effect`()
+                    y: bool = side_effect()
                     $v0: bool = y
                 else:
                     $v0 = x
@@ -240,7 +240,7 @@ class TestLinearize(CompilerTest):
             self.assert_linearize("f1", expected_f1)
             expected_f2 = """
             def f2(x: bool) -> bool:
-                return x and `test::side_effect`()
+                return x and side_effect()
             """
             self.assert_linearize("f2", expected_f2)
 
@@ -270,7 +270,7 @@ class TestLinearize(CompilerTest):
                 if x:
                     $v0: bool = x
                 else:
-                    y: bool = `test::side_effect`()
+                    y: bool = side_effect()
                     $v0 = y
                 return $v0
             """
@@ -350,11 +350,11 @@ class TestLinearize(CompilerTest):
             expected = """
             def foo() -> i32:
                 while True:
-                    $v0: i32 = `test::tick`()
+                    $v0: i32 = tick()
                     if `operator::bool_not`($v0 < 3):
                         break
-                    `_print::println[i32]`(`test::N`)
-                return `test::N`
+                    `_print::println[i32]`(N)
+                return N
             """
             self.assert_linearize("foo", expected)
 
@@ -380,9 +380,9 @@ class TestLinearize(CompilerTest):
             expected = """
             def foo(x: i32) -> i32:
                 $v0: i32 = x
-                $v1: i32 = `test::g`()
+                $v1: i32 = g()
                 $v2: i32 = x := $v1
-                return `test::foo3`($v0, $v2, x)
+                return foo3($v0, $v2, x)
             """
             self.assert_linearize("foo", expected)
 
@@ -405,10 +405,10 @@ class TestLinearize(CompilerTest):
         if self.backend == "linearize":
             expected = """
             def foo() -> i32:
-                $v0: i32 = `test::V`
-                $v1: i32 = `test::g`()
-                $v2: i32 = `test::V` := $v1
-                return `test::foo3`($v0, $v2, `test::V`)
+                $v0: i32 = V
+                $v1: i32 = g()
+                $v2: i32 = V := $v1
+                return foo3($v0, $v2, V)
             """
             self.assert_linearize("foo", expected)
 
@@ -495,11 +495,11 @@ class TestLinearize(CompilerTest):
         if self.backend == "linearize":
             expected = """
             def foo() -> i32:
-                a: i32 = `test::f`()
+                a: i32 = f()
                 $v0: i32 = a
-                b: i32 = `test::g`()
+                b: i32 = g()
                 $v1: i32 = b
-                return `test::add`($v0, $v1)
+                return add($v0, $v1)
             """
             self.assert_linearize("foo", expected)
 
