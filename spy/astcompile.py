@@ -224,6 +224,13 @@ class ASTCompiler:
     def compile_stmt_Continue(self, stmt: ast.Continue) -> list[ast.Stmt]:
         return [stmt]
 
+    def compile_stmt_Global(self, stmt: ast.Global) -> list[ast.Stmt]:
+        # `global x` has effect only at ScopeAnalyzer time, no runtime effect.
+        return []
+
+    def compile_stmt_Nonlocal(self, stmt: ast.Nonlocal) -> list[ast.Stmt]:
+        raise WIP("`nonlocal` is not implemented yet")
+
     def compile_stmt_VarDef(self, stmt: ast.VarDef) -> list[ast.Stmt]:
         new_type = self.compile_expr(stmt.type)
         new_value = self.compile_expr(stmt.value) if stmt.value is not None else None

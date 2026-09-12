@@ -300,9 +300,29 @@ class TestStrictScoping(CompilerTest):
             y = 0
         """
         errors = expect_errors(
-            "`y` is not declared in the local scope",
-            ("assignment to global `y`", "y"),
+            "`y` cannot be re-assigned without a `global` declaration",
+            ("`y` is a global", "y"),
+            ("help: add `global y` earlier", "y"),
             ("`y` is declared here", "var y: i32 = 43"),
-            ("help: say `global y`", "y"),
         )
         self.compile_raises(src, "f", errors)
+
+    def test_global_write_declared(self):
+        # [global.write]: with an explicit `global x`, a function can mutate the
+        # module-level `x`.
+        src = """
+        from __spy__ import strict_scoping
+
+        var x: i32 = 42
+
+        def get_x() -> i32:
+            return x
+
+        def set_x(newval: i32) -> None:
+            global x
+            x = newval
+        """
+        mod = self.compile(src)
+        assert mod.get_x() == 42
+        mod.set_x(100)
+        assert mod.get_x() == 100

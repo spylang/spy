@@ -34,7 +34,11 @@ from spy.textbuilder import ColorFormatter
 Color = Literal["red", "blue"]
 # KILL ME: "NameError" (only produced by legacy scope.py; scope2 resolves a
 # not-found name directly to an SPyError)
-VarStorage = Literal["direct", "cell", "NameError"]
+#
+# "decl-global" (and later "decl-nonlocal") marks an analysis-only marker Symbol
+# placed in a Scope by a `global x` declaration.  It never appears in a SymTable
+# and is never bound to a node at runtime (see scope2.collect_Global).
+VarStorage = Literal["direct", "cell", "NameError", "decl-global"]
 VarKind = Literal["var", "const"]
 VarKindOrigin = Literal[
     "auto",          # "x = 0" inside a function

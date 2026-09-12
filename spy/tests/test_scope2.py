@@ -316,6 +316,116 @@ class TestScopeAnalyzer2:
         """
         self.assert_dump("test::f", expected)
 
+    def test_global_write_declared(self):
+        # [global.write]: with an explicit `global y`, assigning to the
+        # module-level `y` is allowed; the target resolves to the global. The
+        # `global y` declaration is shown in the scope dump.
+        src = """
+        from __spy__ import strict_scoping
+
+        var y: i32 = 43
+
+        def f() -> None:
+            global y
+            y = 0
+        """
+        self.analyze(src)
+        expected = """
+        symtable test (module):
+            strict_scoping: Symbol("strict_scoping", "const", "auto") => <ImportRef __spy__.strict_scoping>
+            y: Symbol("y", "var", "explicit") [cell]
+            f: Symbol("f", "const", "funcdef")
+
+            scope test:
+                y -> y
+                i32 -> i32 @ builtins (depth=1) => <ImportRef builtins.i32>
+
+        symtable test::f (function):
+            @return: Symbol("@return", "var", "auto")
+
+            scope f:
+                global y
+                y -> y @ test (depth=1)
+        """
+        self.assert_dump(expected)
+
+    def test_global_read_is_noop(self):
+        # a `global y` followed by a READ resolves outward to the module `y`,
+        # exactly as if the `global` were not there.
+        src = """
+        from __spy__ import strict_scoping
+
+        var y: i32 = 43
+
+        def f() -> i32:
+            global y
+            return y
+        """
+        self.analyze(src)
+        expected = """
+        symtable test::f (function):
+            @return: Symbol("@return", "var", "auto")
+
+            scope f:
+                global y
+                y -> y @ test (depth=1)
+        """
+        self.assert_dump("test::f", expected)
+
+    def test_global_is_per_scope(self):
+        # `global` is a per-scope property: a `global y` in the `else` branch
+        # does not conflict with a branch-local `var y` in the `then` branch.
+        # In `then`, `y` is the block-local y$0; in `else`, the write resolves
+        # to the module `y`.
+        src = """
+        from __spy__ import strict_scoping
+
+        var y: i32 = 0
+
+        def foo(cond: bool) -> None:
+            if cond:
+                var y: i32 = 1
+            else:
+                global y
+                y = 2
+        """
+        self.analyze(src)
+        expected = """
+        symtable test::foo (function):
+            cond$0: Symbol("cond", "var", "red-param")
+            @return: Symbol("@return", "var", "auto")
+            y$0: Symbol("y", "var", "explicit")
+
+            scope foo:
+                cond -> cond$0
+                scope if.then:
+                    y -> y$0
+                    i32 -> i32 @ builtins (depth=2) => <ImportRef builtins.i32>
+                scope if.else:
+                    global y
+                    y -> y @ test (depth=1)
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_global_define_conflict(self):
+        # rule 1: declaring `global y` and then defining a local `y` in the SAME
+        # scope is an error.
+        src = """
+        from __spy__ import strict_scoping
+
+        var y: i32 = 0
+
+        def foo() -> None:
+            global y
+            var y: i32 = 1
+        """
+        self.expect_errors(
+            src,
+            "variable `y` is already declared as global",
+            ("this is the new declaration", "var y: i32 = 1"),
+            ("`y` was declared global here", "global y"),
+        )
+
     def test_scope_shadow(self):
         # [scope.shadow]: an inner block may shadow an outer name. Inside if.then
         # `x` resolves to the block-local x$1; outside it resolves to x$0.

@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Optional
 
 from spy import ast
@@ -32,6 +33,22 @@ ScopeKey = ast.Node | tuple[ast.Node, str]
 # What a node resolves to during the bind pass: a real Symbol, or a lazy static
 # error (poison) that astcompile turns into an ast.PoisonExpr.
 Resolution = Symbol | SPyError
+
+
+@dataclass(frozen=True)
+class LookupResult:
+    """
+    The result of ScopeAnalyzer.lookup_name_in_scopes.
+    """
+
+    level: int  # # frame depth (i.e, number of symtables crossed); -1 if not found.
+    scope: Optional[Scope]
+    sym: Optional[Symbol]
+    has_global_decl: bool  # was there a `global x` declaration in a scope?
+
+    @property
+    def found(self) -> bool:
+        return self.level != -1
 
 
 class ScopeAnalyzer:
@@ -147,6 +164,10 @@ class ScopeAnalyzer:
         def dump_scope(scope: Scope, frames: list[SymTable]) -> None:
             b.wl(f"scope {scope.short_name}:")
             with b.indent():
+                # `global x` declarations in this scope
+                for sym in scope._symbols.values():
+                    if sym.storage == "decl-global":
+                        b.wl(color.set("red", f"global {sym.src_name}"))
                 # names USED in this scope (resolved during the bind pass)
                 seen: set[str] = set()
                 for src_name, res in uses_by_scope.get(scope.name, []):
@@ -187,6 +208,8 @@ class ScopeAnalyzer:
 
     def _fmt_sym(self, sym: Symbol) -> str:
         s = f'Symbol("{sym.src_name}", "{sym.varkind}", "{sym.varkind_origin}")'
+        if sym.storage == "cell":
+            s += " [cell]"
         return s + self._fmt_impref(sym)
 
     def _fmt_resolution(
@@ -326,18 +349,13 @@ class ScopeAnalyzer:
     # ====
     # collect pass
 
-    def lookup_name_in_scopes(
-        self, name: str
-    ) -> tuple[int, Optional[Scope], Optional[Symbol]]:
+    def lookup_name_in_scopes(self, name: str) -> LookupResult:
         """
-        Lookup a name in the scope_stack, starting from the innermost scope outward.
-
-        Return the level (frame depth): the number of symtable (function/module)
-        boundaries crossed to reach the defining scope.  Level 0 means the current
-        frame; level 1 means one frame up; etc.
+        Lookup a name in the scope_stack, from the innermost scope outward.
         """
         frame_depth = 0
         seen_own_frame = False
+        has_global_decl = False
         for scope in reversed(self.scope_stack):
             if scope.kind == "class":
                 # [name.class-skip]: jump over 'class' scopes
@@ -351,8 +369,12 @@ class ScopeAnalyzer:
                     # block scopes below it don't count as hops
                     seen_own_frame = True
             if sym := scope.lookup_maybe(name):
-                return frame_depth, scope, sym
-        return -1, None, None
+                if sym.storage == "decl-global":
+                    # `global name`: record it and keep walking
+                    has_global_decl = True
+                    continue
+                return LookupResult(frame_depth, scope, sym, has_global_decl)
+        return LookupResult(-1, None, None, has_global_decl)
 
     def create_new_local(
         self,
@@ -370,18 +392,24 @@ class ScopeAnalyzer:
         """
         existing_sym = self.scope.lookup_maybe(name)
         if existing_sym:
+            if existing_sym.storage == "decl-global":
+                # rule 1: `global x` then a local decl of `x` in the same scope
+                msg = f"variable `{name}` is already declared as global"
+                err = SPyError("W_ScopeError", msg)
+                err.add("error", "this is the new declaration", loc)
+                err.add("note", f"`{name}` was declared global here", existing_sym.loc)
+                raise err
             msg = f"variable `{name}` already declared"
             err = SPyError("W_ScopeError", msg)
             err.add("error", "this is the new declaration", loc)
             err.add("note", "this is the previous declaration", existing_sym.loc)
             raise err
 
-        storage = "direct"
-        ## storage: VarStorage
-        ## if self.scope is self.mod_symtable and varkind == "var":
-        ##     storage = "cell"
-        ## else:
-        ##     storage = "direct"
+        storage: VarStorage
+        if self.scope.kind == "module" and varkind == "var":
+            storage = "cell"
+        else:
+            storage = "direct"
 
         new_sym = Symbol(
             name,
@@ -549,8 +577,8 @@ class ScopeAnalyzer:
         # target is an ordinary assignment) so it outlives the loop.
         self.push_scope(body_scope)
         target = forstmt.target
-        level, _, _ = self.lookup_name_in_scopes(target.value)
-        if level == -1:
+        res = self.lookup_name_in_scopes(target.value)
+        if not res.found:
             self.create_new_local(
                 target,
                 target.value,
@@ -587,6 +615,29 @@ class ScopeAnalyzer:
         if vardef.value is not None:
             self.collect(vardef.value)
 
+    def collect_Global(self, glob: ast.Global) -> None:
+        # [global.write]: record that we saw a `global x`. See lookup_name_in_scopes.
+        for name in glob.names:
+            existing = self.scope.lookup_maybe(name)
+            if existing is not None:
+                # a `global x` cannot coexist with a local `x` in the same scope
+                msg = f"variable `{name}` is already declared"
+                err = SPyError("W_ScopeError", msg)
+                err.add("error", "this is the new declaration", glob.loc)
+                err.add("note", "this is the previous declaration", existing.loc)
+                raise err
+            marker = Symbol(
+                name,
+                "var",
+                "explicit",
+                "decl-global",
+                slot_name=name,
+                loc=glob.loc,
+                type_loc=glob.loc,
+                level=0,
+            )
+            self.scope.add(marker)
+
     # ====
     # bind pass
 
@@ -616,9 +667,10 @@ class ScopeAnalyzer:
         # NOTE: a not-found / used-before name resolves to a lazy SPyError (stored
         # in _resolved_nodes); astcompile turns it into an ast.PoisonExpr.
 
-        level, _, sym = self.lookup_name_in_scopes(varname)
+        res = self.lookup_name_in_scopes(varname)
+        level, sym = res.level, res.sym
 
-        if level == -1:
+        if not res.found:
             # name not found: the node resolves to a lazy NameError (no Symbol)
             self.set_binding(node, self.scope, self.make_NameError(varname, use_loc))
             return
@@ -659,15 +711,20 @@ class ScopeAnalyzer:
         Like lookup_and_bind, but a target that resolves to a module-level binding is
         rejected unless there is an explicit `global` declaration [global.write]
         """
-        level, scope, sym = self.lookup_name_in_scopes(varname)
-        if level > 0 and scope is not None and scope.kind == "module":
+        res = self.lookup_name_in_scopes(varname)
+        sym = res.sym
+        if (
+            res.level > 0
+            and res.scope is not None
+            and res.scope.kind == "module"
+            and not res.has_global_decl
+        ):
             assert sym is not None
-            err = SPyError(
-                "W_ScopeError", f"`{varname}` is not declared in the local scope"
-            )
-            err.add("error", f"assignment to global `{varname}`", use_loc)
+            msg = f"`{varname}` cannot be re-assigned without a `global` declaration"
+            err = SPyError("W_ScopeError", msg)
+            err.add("error", f"`{varname}` is a global", use_loc)
+            err.add("note", f"help: add `global {varname}` earlier", use_loc)
             err.add("note", f"`{varname}` is declared here", sym.loc)
-            err.add("note", f"help: say `global {varname}`", use_loc)
             self.set_binding(node, self.scope, err)
             return
         self.lookup_and_bind(node, varname, use_loc)

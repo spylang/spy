@@ -371,30 +371,31 @@ A function can read a module-level name freely, but assigning to it requires
 the `global` declaration, and the binding must be a `var`:
 
 ```python
-from __spy__ import strict_scoping
-
 var x: i32 = 42
 var y: i32 = 43
 
 def f() -> None:
     print(x)             # OK: read
-    y = 0                # ERROR: `y` is not declared; say `global y`
+    y = 0                # ERROR: `y` cannot be re-assigned without a `global` declaration
 
 def g() -> None:
     global x
     x = 0                # OK: mutates the global
 ```
 
-`global` only re-targets the assignment; it does not grant mutability, so a
-`const` global cannot be modified:
+`global` is per-scope, not per-function: it covers its own scope and nested
+blocks, so a `global` in one branch does not affect a sibling branch.
 
 ```python
-const A = 1
-
-def main() -> None:
-    global A
-    A = 0                # ERROR: `A` is a const (help: declare it `var A`)
+def foo(cond: bool) -> None:
+    if cond:
+        var x: i32 = 1   # a block-local `x`, unrelated to the global
+    else:
+        global x
+        x = 2            # OK: mutates the global
 ```
+
+Declaring `global x` and `var x` or `const x` in the same scope is an error.
 
 ### `[closure.nonlocal]` Closures read outer names freely; writing needs `nonlocal` { #closure-nonlocal }
 
