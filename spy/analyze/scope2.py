@@ -186,7 +186,9 @@ class ScopeAnalyzer:
 
         # frame-owning scopes (module + FuncDefs) in collection order; block
         # scopes are dumped recursively by dump_scope, not as top-level frames.
-        owners = [s for s in self.scopes.values() if s.kind in ("module", "function")]
+        owners = [
+            s for s in self.scopes.values() if s.kind in ("module", "function", "class")
+        ]
         if symtable_names:
             owners = [s for s in owners if s.symtable.name in symtable_names]
 
@@ -242,7 +244,7 @@ class ScopeAnalyzer:
         result = []
         s: Optional[Scope] = scope
         while s is not None:
-            if s.kind in ("function", "module"):
+            if s.kind in ("function", "module", "class"):
                 result.append(s.symtable)
             s = s.parent
         return result
@@ -353,27 +355,22 @@ class ScopeAnalyzer:
         """
         Lookup a name in the scope_stack, from the innermost scope outward.
         """
+        # frame_depth counts how many runtime frame boundaries we cross. It is used to
+        # index inside frame.closure; frame_depth==0 means "local frame".
         frame_depth = 0
-        seen_own_frame = False
         has_global_decl = False
         for scope in reversed(self.scope_stack):
-            if scope.kind == "class":
-                # [name.class-skip]: jump over 'class' scopes
-                continue
-            if scope.kind in ("function", "module"):
-                if seen_own_frame:
-                    # crossing out of an enclosing frame: one more hop
-                    frame_depth += 1
-                else:
-                    # this is the frame we started in (innermost function/module);
-                    # block scopes below it don't count as hops
-                    seen_own_frame = True
+            if scope.kind == "class" and frame_depth > 0:
+                continue  # jump over class scopes
             if sym := scope.lookup_maybe(name):
                 if sym.storage == "decl-global":
                     # `global name`: record it and keep walking
                     has_global_decl = True
-                    continue
-                return LookupResult(frame_depth, scope, sym, has_global_decl)
+                else:
+                    return LookupResult(frame_depth, scope, sym, has_global_decl)
+            if scope.kind in ("function", "module", "class"):
+                # we are leaving a runtime frame
+                frame_depth += 1
         return LookupResult(-1, None, None, has_global_decl)
 
     def create_new_local(

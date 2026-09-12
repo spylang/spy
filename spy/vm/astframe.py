@@ -311,6 +311,15 @@ class AbstractFrame:
         # create the w_func
         fqn = self.ns.join(funcdef.name)
         # XXX we should capture only the names actually used in the inner func
+        if self.symtable.kind == "class" and self.symtable.scoping_rules == "strict":
+            # FIXME
+            # scope2.ScopeAnalyzer correctly does not count classframes as nested
+            # levels. The correct fix i probably to NOT store classframes.locals in the
+            # closure
+            assert False, (
+                "strict-scoping method closures: do not insert the class frame; "
+                "build closure as self.closure (see comment above)"
+            )
         closure = self.closure + (self.locals,)
 
         # this is just a cosmetic nicety. In presence of decorators, "mod.foo"

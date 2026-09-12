@@ -291,6 +291,35 @@ class TestScopeAnalyzer2:
         """
         self.assert_dump("test::P::get", expected)
 
+    def test_class_flat_body(self):
+        # [class.flat-body]: fields declared inside `if` still counts
+        src = """
+        from __spy__ import strict_scoping
+
+        const COND: bool = True
+
+        @struct
+        class P:
+            x: i32
+            if COND:
+                y: i32
+        """
+        self.analyze(src)
+        expected = """
+        symtable test::P (class):
+            x: Symbol("x", "const", "auto")
+            y: Symbol("y", "const", "auto")
+
+            scope P:
+                x -> x
+                i32 -> i32 @ builtins (depth=2) => <ImportRef builtins.i32>
+                COND -> COND @ test (depth=1)
+                scope if.then:
+                    y -> y
+                    i32 -> i32 @ builtins (depth=2) => <ImportRef builtins.i32>
+        """
+        self.assert_dump("test::P", expected)
+
     def test_global_write(self):
         # [global.write]: a function can READ a module-level name freely, but
         # ASSIGNING to it without a `global` declaration is an error.
