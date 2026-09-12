@@ -514,3 +514,40 @@ class TestScopeAnalyzer2:
                 b -> b$0
         """
         self.assert_dump("test::foo", expected)
+
+    def test_py_augassign_needs_binding(self):
+        # [py.augassign]: augassign does not implicitly declare
+        src = """
+        from __spy__ import pythonic_scoping
+
+        def foo() -> None:
+            x += 1
+        """
+        self.analyze(src)
+        expected = """
+        symtable test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+
+            scope foo:
+                x -> NameError
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_py_augassign_promotes_to_var(self):
+        src = """
+        from __spy__ import pythonic_scoping
+
+        def foo() -> None:
+            x = 0
+            x += 1
+        """
+        self.analyze(src)
+        expected = """
+        symtable test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            x$0: Symbol("x", "var", "auto")
+
+            scope foo:
+                x -> x$0
+        """
+        self.assert_dump("test::foo", expected)

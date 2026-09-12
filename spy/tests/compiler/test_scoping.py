@@ -345,3 +345,16 @@ class TestScoping(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == 42
+
+    def test_py_augassign(self):
+        # [py.augassign]: `x += 1` reads and writes an existing binding.
+        src = """
+        from __spy__ import pythonic_scoping
+
+        def foo() -> i32:
+            x = 10
+            x += 5
+            return x
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 15

@@ -374,13 +374,19 @@ class ASTCompiler:
         # use non-colorize locs for synthetic nodes, to avoid painting over user nodes
         binop_loc = stmt.loc.replace(colorize=False)
         target_loc = stmt.target.loc.replace(colorize=False)
+        read_name = ast.Name(loc=target_loc, id=stmt.target.value)
+        if self.sa is not None:
+            # we must bind the synthetic node
+            scope = self.sa.get_resolved_scope(stmt.target)
+            res = self.sa.get_resolution(stmt.target)
+            self.sa.bind_synthetic_node(read_name, scope, res)
         desugared = ast.Assign(
             loc=stmt.loc,
             target=ast.SingleTarget(target_loc, stmt.target),
             value=ast.BinOp(
                 loc=binop_loc,
                 op=stmt.op,
-                left=ast.Name(loc=target_loc, id=stmt.target.value),
+                left=read_name,
                 right=stmt.value,
             ),
         )

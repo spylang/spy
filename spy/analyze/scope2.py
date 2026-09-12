@@ -268,11 +268,18 @@ class ScopeAnalyzer:
     def get_symtable(self, node: ast.Node) -> SymTable:
         return self.scopes[node].symtable
 
+    def get_resolution(self, node: ast.Node) -> "Resolution":
+        """
+        Return what `node` resolved to: a real Symbol or a lazy poison (SPyError).
+        """
+        scope, res = self._resolved_nodes[node]
+        return res
+
     def get_resolved_sym(self, node: ast.Node) -> Symbol:
         """
         Return the Symbol that `node` resolved to.
         """
-        scope, res = self._resolved_nodes[node]
+        res = self.get_resolution(node)
         assert isinstance(res, Symbol)
         return res
 
@@ -290,12 +297,14 @@ class ScopeAnalyzer:
                 return res
         return None
 
-    def bind_synthetic_node(self, node: ast.Node, scope: Scope, sym: Symbol) -> None:
+    def bind_synthetic_node(
+        self, node: ast.Node, scope: Scope, res: "Resolution"
+    ) -> None:
         """
         This is exactly like set_binding, but it's a public API which can be used by
         astcompiler to bind the node it synthethizes (e.g. when desugaring a For)
         """
-        self.set_binding(node, scope, sym)
+        self.set_binding(node, scope, res)
 
     def get_resolved_scope(self, node: ast.Node) -> Scope:
         """
@@ -641,6 +650,19 @@ class ScopeAnalyzer:
         self.symtable._symbols[sym.slot_name] = new_sym
         self.decl_node[new_sym] = self.decl_node.pop(sym)
 
+    def collect_AugAssign(self, node: ast.AugAssign) -> None:
+        # [py.augassign]: an AugAssign does NOT implicitly declare, but counts as a
+        # re-assignment
+        if self.mod.scoping_rules == "pythonic":
+            sym = self.scope.lookup_maybe(node.target.value)
+            if (
+                sym is not None
+                and sym.varkind == "const"
+                and sym.varkind_origin == "auto"
+            ):
+                self.promote_const_to_var(sym)
+        self.collect(node.value)
+
     def collect_Global(self, glob: ast.Global) -> None:
         # [global.write]: record that we saw a `global x`. See lookup_name_in_scopes.
         for name in glob.names:
@@ -838,6 +860,12 @@ class ScopeAnalyzer:
             # UnpackTarget: not migrated yet
             assert False, "TODO"
             ## self.bind(assign.target)
+
+    def bind_AugAssign(self, node: ast.AugAssign) -> None:
+        # [py.augassign]: the target is both read and written
+        self.bind(node.value)
+        tgt = node.target
+        self.lookup_and_bind_target(tgt, tgt.value, tgt.loc)
 
     def bind_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
         # walrus `x := E`
