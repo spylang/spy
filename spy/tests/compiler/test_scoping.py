@@ -6,12 +6,14 @@ from spy.tests.support import (
 )
 
 
-class TestStrictScoping(CompilerTest):
+class TestScoping(CompilerTest):
     """
     These tests are loosely based on the snippets in docs/src/reference/scoping.md
     """
 
-    def test_decl_forms(self):
+    # ======= strict scoping tests =======
+
+    def test_strict_decl_forms(self):
         src = """
         from __spy__ import strict_scoping
 
@@ -22,7 +24,7 @@ class TestStrictScoping(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == 42
 
-    def test_decl_use_before_ok_across_functions(self):
+    def test_strict_decl_use_before_ok_across_functions(self):
         src = """
         from __spy__ import strict_scoping
 
@@ -34,7 +36,7 @@ class TestStrictScoping(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == 42
 
-    def test_decl_use_before(self):
+    def test_strict_decl_use_before(self):
         src = """
         from __spy__ import strict_scoping
 
@@ -49,7 +51,7 @@ class TestStrictScoping(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    def test_decl_initializer(self):
+    def test_strict_decl_initializer(self):
         src = """
         from __spy__ import strict_scoping
 
@@ -61,7 +63,7 @@ class TestStrictScoping(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == 42
 
-    def test_decl_auto(self):
+    def test_strict_decl_auto(self):
         src = """
         from __spy__ import strict_scoping
 
@@ -77,7 +79,7 @@ class TestStrictScoping(CompilerTest):
         assert mod.foo() == 42
         assert mod.bar() == "hello"
 
-    def test_decl_auto_no_initializer(self):
+    def test_strict_decl_auto_no_initializer(self):
         src = """
         from __spy__ import strict_scoping
 
@@ -89,7 +91,7 @@ class TestStrictScoping(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == 42
 
-    def test_NameError(self):
+    def test_strict_NameError(self):
         src = """
         from __spy__ import strict_scoping
 
@@ -102,7 +104,7 @@ class TestStrictScoping(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    def test_name_resolution(self):
+    def test_strict_name_resolution(self):
         # [name.resolution]: a name resolves outward, lexically
         src = """
         from __spy__ import strict_scoping
@@ -116,7 +118,7 @@ class TestStrictScoping(CompilerTest):
         mod = self.compile(src)
         assert mod.read_ok() == 42
 
-    def test_scope_block_if(self):
+    def test_strict_scope_block_if(self):
         src = """
         from __spy__ import strict_scoping
 
@@ -131,7 +133,7 @@ class TestStrictScoping(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    def test_scope_shadow(self):
+    def test_strict_scope_shadow(self):
         src = """
         from __spy__ import strict_scoping
 
@@ -146,7 +148,7 @@ class TestStrictScoping(CompilerTest):
         assert mod.foo(True) == "inner"
         assert mod.foo(False) == "outer"
 
-    def test_scope_branch_local(self):
+    def test_strict_scope_branch_local(self):
         src = """
         from __spy__ import strict_scoping
 
@@ -163,7 +165,7 @@ class TestStrictScoping(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    def test_scope_loop_target(self):
+    def test_strict_scope_loop_target(self):
         src = """
         from __spy__ import strict_scoping
 
@@ -179,7 +181,7 @@ class TestStrictScoping(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    def test_scope_loop_target_body(self):
+    def test_strict_scope_loop_target_body(self):
         src = """
         from __spy__ import strict_scoping
 
@@ -192,7 +194,7 @@ class TestStrictScoping(CompilerTest):
         mod = self.compile(src)
         assert mod.foo(4) == 6
 
-    def test_scope_loop_target_declare(self):
+    def test_strict_scope_loop_target_declare(self):
         src = """
         from __spy__ import strict_scoping
 
@@ -205,7 +207,7 @@ class TestStrictScoping(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == 2
 
-    def test_scope_loop_target_declare_type_mismatch(self):
+    def test_strict_scope_loop_target_declare_type_mismatch(self):
         src = """
         from __spy__ import strict_scoping
 
@@ -222,7 +224,7 @@ class TestStrictScoping(CompilerTest):
         self.compile_raises(src, "foo", errors)
 
     @only_interp
-    def test_scope_loop_fresh(self):
+    def test_strict_scope_loop_fresh(self):
         # [scope.loop-fresh]: a block-local is fresh (unassigned) on each loop
         # iteration; `x` is assigned only when i == 0, so reading it when i == 1
         # is a read from an uninitialized local. Only interp catches this; in
@@ -242,7 +244,7 @@ class TestStrictScoping(CompilerTest):
         with SPyError.raises("W_Exception", match="read from uninitialized local"):
             mod.foo()
 
-    def test_scope_loop_fresh_reassigned(self):
+    def test_strict_scope_loop_fresh_reassigned(self):
         # [scope.loop-fresh]: the block-local `x` is redeclared fresh on each
         # iteration and assigned every time, so the loop runs without a
         # re-declaration error.
@@ -259,7 +261,7 @@ class TestStrictScoping(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == 0 + 2 + 4 + 6
 
-    def test_scope_branch_local_shared(self):
+    def test_strict_scope_branch_local_shared(self):
         src = """
         from __spy__ import strict_scoping
 
@@ -275,7 +277,7 @@ class TestStrictScoping(CompilerTest):
         assert mod.foo(True) == 1
         assert mod.foo(False) == 2
 
-    def test_global_read(self):
+    def test_strict_global_read(self):
         # [global.write]: reading a module-level `var` from a function is fine.
         src = """
         from __spy__ import strict_scoping
@@ -288,7 +290,7 @@ class TestStrictScoping(CompilerTest):
         mod = self.compile(src)
         assert mod.f() == 42
 
-    def test_global_write(self):
+    def test_strict_global_write(self):
         # [global.write]: assigning to a module-level binding without `global`
         # is an error.
         src = """
@@ -307,7 +309,7 @@ class TestStrictScoping(CompilerTest):
         )
         self.compile_raises(src, "f", errors)
 
-    def test_global_write_declared(self):
+    def test_strict_global_write_declared(self):
         # [global.write]: with an explicit `global x`, a function can mutate the
         # module-level `x`.
         src = """
@@ -326,3 +328,9 @@ class TestStrictScoping(CompilerTest):
         assert mod.get_x() == 42
         mod.set_x(100)
         assert mod.get_x() == 100
+
+    # ======= pythonic scoping tests =======
+
+    def test_py_something(self):
+        # just a placeholder
+        pass

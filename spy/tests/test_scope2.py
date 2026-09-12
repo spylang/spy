@@ -82,6 +82,8 @@ class TestScopeAnalyzer2:
         """
         self.assert_dump(expected)
 
+    # ======= strict scoping tests =======
+
     def test_decl_forms(self):
         # [decl.forms]: var and const declarations inside a function
         src = """
@@ -485,3 +487,5 @@ class TestScopeAnalyzer2:
                     str -> str @ builtins (depth=2) => <ImportRef builtins.str>
         """
         self.assert_dump("test::foo", expected)
+
+    # ======= pythonic scoping tests =======
