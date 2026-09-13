@@ -403,11 +403,19 @@ class ScopeAnalyzer:
         type_loc: Loc,
         *,
         impref: Optional[ImportRef] = None,
+        scope: Optional[Scope] = None,
     ) -> Symbol:
         """
-        Add a name definition to the current scope and current symtable (level 0).
+        Add a name definition to the given scope and its symtable (level 0).
+
+        By default, `scope` is `self.scope`. It differs only in case of implicit
+        declarations which happens inside `if` blocks, which are lifted to their
+        encloding scope, see [py.scope-lifting].
         """
-        existing_sym = self.scope.lookup_maybe(name)
+        if scope is None:
+            scope = self.scope
+        symtable = scope.symtable
+        existing_sym = scope.lookup_maybe(name)
         if existing_sym:
             if existing_sym.storage == "decl-global":
                 # rule 1: `global x` then a local decl of `x` in the same scope
@@ -423,7 +431,7 @@ class ScopeAnalyzer:
             raise err
 
         storage: VarStorage
-        if self.scope.kind == "module" and varkind == "var":
+        if scope.kind == "module" and varkind == "var":
             storage = "cell"
         else:
             storage = "direct"
@@ -433,14 +441,14 @@ class ScopeAnalyzer:
             varkind,
             varkind_origin,
             storage,
-            slot_name=self.symtable.get_fresh_slot(name),
+            slot_name=symtable.get_fresh_slot(name),
             loc=loc,
             type_loc=type_loc,
             impref=impref,
             level=0,
         )
-        self.scope.add(new_sym)
-        self.symtable.add(new_sym)
+        scope.add(new_sym)
+        symtable.add(new_sym)
         self.valid_from[new_sym] = self.cur_seq  # remember when it was created
         return new_sym
 
@@ -659,23 +667,37 @@ class ScopeAnalyzer:
             else:
                 assert False, "TODO: unpack targets"
 
+    def implicit_target_scope(self) -> Scope:
+        """
+        [py.scope-lifting]: the scope an implicit declaration binds into:
+        `if` blocks are skipped.
+        """
+        scope = self.scope
+        while scope.kind == "block" and scope.short_name.startswith("if."):
+            assert scope.parent is not None
+            scope = scope.parent
+        return scope
+
     def collect_implicit_target(self, target: ast.StrLiteral) -> None:
         varname = target.value
-        sym = self.scope.lookup_maybe(varname)
+        scope = self.implicit_target_scope()
+        sym = scope.lookup_maybe(varname)
         if sym is None:
             # first assignment: implicit `const` declaration
             self.create_new_local(
-                target, varname, "const", "auto", target.loc, target.loc
+                target, varname, "const", "auto", target.loc, target.loc, scope=scope
             )
         elif sym.varkind == "const" and sym.varkind_origin == "auto":
             # [py.constness]: a second assignment promotes an implicit const to var
-            self.promote_const_to_var(sym)
+            self.promote_const_to_var(scope, sym)
 
-    def promote_const_to_var(self, sym: Symbol) -> None:
+    def promote_const_to_var(self, scope: Scope, sym: Symbol) -> None:
+        # `scope` is the scope that owns `sym` (may be an outer block for a lifted
+        # binding, not necessarily self.scope).
         assert sym.varkind == "const"
         new_sym = sym.replace(varkind="var")
-        self.scope._symbols[sym.src_name] = new_sym
-        self.symtable._symbols[sym.slot_name] = new_sym
+        scope._symbols[sym.src_name] = new_sym
+        scope.symtable._symbols[sym.slot_name] = new_sym
         self.valid_from[new_sym] = self.valid_from.pop(sym)
 
     def collect_AugAssign(self, node: ast.AugAssign) -> None:
@@ -688,7 +710,7 @@ class ScopeAnalyzer:
                 and sym.varkind == "const"
                 and sym.varkind_origin == "auto"
             ):
-                self.promote_const_to_var(sym)
+                self.promote_const_to_var(self.scope, sym)
         self.collect(node.value)
 
     def collect_Global(self, glob: ast.Global) -> None:

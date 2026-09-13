@@ -575,3 +575,70 @@ class TestScopeAnalyzer2:
                 COUNT -> NameError
         """
         self.assert_dump("test::foo", expected)
+
+    def test_py_scope_lifting(self):
+        # [py.scope-lifting]: an implicit assignment inside an if/else chain is
+        # lifted to the enclosing block.
+        src = """
+        from __spy__ import pythonic_scoping
+
+        def foo(a: bool, b: bool) -> i32:
+            if a:
+                if b:
+                    x = 1
+                else:
+                    x = 2
+            else:
+                x = 3
+            return x
+        """
+        self.analyze(src)
+        expected = """
+        symtable test::foo (function):
+            a$0: Symbol("a", "var", "red-param")
+            b$0: Symbol("b", "var", "red-param")
+            @return: Symbol("@return", "var", "auto")
+            x$0: Symbol("x", "var", "auto")
+
+            scope foo:
+                a -> a$0
+                b -> b$0
+                x -> x$0
+                scope if.then:
+                    b -> b$0
+                    scope if.then:
+                        x -> x$0
+                    scope if.else:
+                        x -> x$0
+                scope if.else:
+                    x -> x$0
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_py_scope_lifting_loop(self):
+        # [py.scope-lifting-loop]: a loop body never lifts.
+        src = """
+        from __spy__ import pythonic_scoping
+
+        def foo() -> None:
+            for i in range(10):
+                total = i
+            total
+        """
+        self.analyze(src)
+        expected = """
+        symtable test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            _$iter$0: Symbol("_$iter", "var", "auto")
+            i$0: Symbol("i", "var", "loop-target")
+            total$0: Symbol("total", "const", "auto")
+
+            scope foo:
+                range -> range @ builtins (depth=2) => <ImportRef _range.range>
+                _$iter -> _$iter$0
+                total -> NameError
+                scope for.body:
+                    i -> i$0
+                    total -> total$0
+        """
+        self.assert_dump("test::foo", expected)

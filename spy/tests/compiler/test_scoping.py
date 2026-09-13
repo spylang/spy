@@ -393,3 +393,34 @@ class TestScoping(CompilerTest):
             ("declared later here", "COUNT"),
         )
         self.compile_raises(src, "bump", errors)
+
+    def test_py_scope_lifting(self):
+        # [py.scope-lifting]: `y` is lifted to the function scope
+        src = """
+        from __spy__ import pythonic_scoping
+
+        def foo(x: i32) -> i32:
+            if x < 0:
+                y = -x
+            else:
+                y = x
+            return y
+        """
+        mod = self.compile(src)
+        assert mod.foo(-5) == 5
+        assert mod.foo(3) == 3
+
+    def test_py_scope_lifting_loop(self):
+        # [py.scope-lifting-loop]: a loop body never lifts
+        src = """
+        from __spy__ import pythonic_scoping
+
+        def foo() -> i32:
+            for i in range(10):
+                total = i
+            return total
+        """
+        errors = expect_errors(
+            "name `total` is not defined",
+        )
+        self.compile_raises(src, "foo", errors)
