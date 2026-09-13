@@ -51,6 +51,22 @@ class TestScoping(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
+    def test_strict_decl_use_before_in_own_initializer(self):
+        src = """
+        from __spy__ import strict_scoping
+
+        const X: i32 = 0
+
+        def foo() -> None:
+            var X: i32 = X + 1
+        """
+        errors = expect_errors(
+            "name `X` is not defined",
+            ("used before its declaration", "X"),
+            ("declared later here", "var X: i32 = X + 1"),
+        )
+        self.compile_raises(src, "foo", errors)
+
     def test_strict_decl_initializer(self):
         src = """
         from __spy__ import strict_scoping

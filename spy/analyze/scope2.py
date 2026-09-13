@@ -77,8 +77,18 @@ class ScopeAnalyzer:
     mod: ast.Module
     scope_stack: list[Scope]
     scopes: dict[ScopeKey, Scope]  # which Scope corresponds to a given node?
-    decl_node: dict[Symbol, ast.Node]  # which node declared a given Symbol?
-    seq: dict[ast.Node, int]  # unique seq ID of every node (used by [decl.use-before])
+
+    # == Collect and declaration sequence ==
+    #
+    # To detect "use before declaration", we must memoize in which order we collected
+    # the nodes and when a certain declaration start to be visible: self.collect()
+    # assign a monotoic "seq" number to all visited nodes, and create_new_local stores
+    # the "current seq" to remember when it was created. Then later, the bind step
+    # checks that the usage happens after the declaration.
+    seq: dict[ast.Node, int]  # seq number for each node
+    cur_seq: int
+    valid_from: dict[Symbol, int]  # seq number after Sym is valid
+
     # A node resolves either to a Symbol or to a lazy SPyError
     _resolved_nodes: dict[ast.Node, tuple[Scope, "Resolution"]]
 
@@ -100,8 +110,9 @@ class ScopeAnalyzer:
         )
 
         self.scopes[mod] = mod_scope
-        self.seq = {node: i for i, node in enumerate(mod.walk())}
-        self.decl_node = {}
+        self.seq = {}
+        self.valid_from = {}
+        self.cur_seq = 0
         self._resolved_nodes = {}
 
     # ===============
@@ -430,11 +441,19 @@ class ScopeAnalyzer:
         )
         self.scope.add(new_sym)
         self.symtable.add(new_sym)
-        self.decl_node[new_sym] = node
+        self.valid_from[new_sym] = self.cur_seq  # remember when it was created
         return new_sym
 
     def collect(self, node: ast.Node) -> None:
-        return node.visit("collect", self)
+        # like ast.Node.visit(), but keeps track of seq numbers
+        self.seq[node] = self.cur_seq = len(self.seq)
+        methname = f"collect_{node.__class__.__name__}"
+        meth = getattr(self, methname, None)
+        if meth is not None:
+            meth(node)
+        else:
+            for child in node.get_children():
+                self.collect(child)
 
     def collect_Import(self, imp: ast.Import) -> None:
         self.create_new_local(
@@ -463,11 +482,15 @@ class ScopeAnalyzer:
         else:
             varkind = vardef.kind
             varkind_origin = "explicit"
+
+        # FIRST we collect the initializer, THEN we create the var. E.g. in:
+        #     var x = x + 1
+        # the "x" on the right triggers [decl.use-before]
+        if vardef.value is not None:
+            self.collect(vardef.value)
         self.create_new_local(
             decl, varname, varkind, varkind_origin, decl.loc, vardef.type.loc
         )
-        if vardef.value is not None:
-            self.collect(vardef.value)
 
     def collect_ClassDef(self, classdef: ast.ClassDef) -> None:
         # collect the class name in the outer scope
@@ -568,14 +591,14 @@ class ScopeAnalyzer:
         #
         # Note that there is a hidden $_iter variable. We bind it to the For node.
 
+        iter_loc = forstmt.iter.loc
+        self.create_new_local(forstmt, "_$iter", "var", "auto", iter_loc, iter_loc)
+
         # The iterator (`X`) is evaluated in the enclosing scope.
         self.collect(forstmt.iter)
 
         # `[scope.block]`: the loop body is its own block scope.
         body_scope = self.new_Scope("for.body", self.scope.color, "block")
-
-        iter_loc = forstmt.iter.loc
-        self.create_new_local(forstmt, "_$iter", "var", "auto", iter_loc, iter_loc)
 
         # `[scope.loop-target]`: the target `i` is a block-local of the loop body.
         # `[scope.loop-target-declare]`: unless a binding of the same name already
@@ -610,7 +633,13 @@ class ScopeAnalyzer:
         else:
             varkind = varkind_optional
             varkind_origin = "explicit"
-        sym = self.create_new_local(
+
+        # collect the initializer BEFORE declaring the name. E.g.:
+        #     var x = x + 1
+        # triggers [decl.use-before]
+        if vardef.value is not None:
+            self.collect(vardef.value)
+        self.create_new_local(
             vardef,
             varname,
             varkind,
@@ -618,8 +647,6 @@ class ScopeAnalyzer:
             vardef.loc,
             vardef.type.loc,
         )
-        if vardef.value is not None:
-            self.collect(vardef.value)
 
     def collect_Assign(self, assign: ast.Assign) -> None:
         if self.mod.scoping_rules == "pythonic":
@@ -648,7 +675,7 @@ class ScopeAnalyzer:
         new_sym = sym.replace(varkind="var")
         self.scope._symbols[sym.src_name] = new_sym
         self.symtable._symbols[sym.slot_name] = new_sym
-        self.decl_node[new_sym] = self.decl_node.pop(sym)
+        self.valid_from[new_sym] = self.valid_from.pop(sym)
 
     def collect_AugAssign(self, node: ast.AugAssign) -> None:
         # [py.augassign]: an AugAssign does NOT implicitly declare, but counts as a
@@ -726,12 +753,10 @@ class ScopeAnalyzer:
         elif level == 0:
             # found in the local symtable
             assert sym is not None
-            if sym.is_local:
+            if sym.is_local and node in self.seq:
                 seq = self.seq[node]
-                decl_node = self.decl_node[sym]
-                decl_seq = self.seq[decl_node]
-                if seq < decl_seq:
-                    # [decl.use-before]: the use happens before the declaration;
+                if seq < self.valid_from[sym]:
+                    # [decl.use-before]: the use happens before the name becomes valid;
                     # the node resolves to a lazy error (no usable Symbol here)
                     err = SPyError("W_NameError", f"name `{varname}` is not defined")
                     err.add("error", "used before its declaration", use_loc)
