@@ -551,3 +551,27 @@ class TestScopeAnalyzer2:
                 x -> x$0
         """
         self.assert_dump("test::foo", expected)
+
+    def test_py_shadow_write_caught(self):
+        # [py.shadow-write-caught]: a bare `COUNT = COUNT + 1` implicitly declares a
+        # new local COUNT; the RHS read happens before that declaration, so it is
+        # caught by [decl.use-before] (the read resolves to a NameError, NOT to the
+        # module-level COUNT).
+        src = """
+        from __spy__ import pythonic_scoping
+
+        var COUNT: i32 = 0
+
+        def foo() -> None:
+            COUNT = COUNT + 1
+        """
+        self.analyze(src)
+        expected = """
+        symtable test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            COUNT$0: Symbol("COUNT", "const", "auto")
+
+            scope foo:
+                COUNT -> NameError
+        """
+        self.assert_dump("test::foo", expected)

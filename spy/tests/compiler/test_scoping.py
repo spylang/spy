@@ -374,3 +374,22 @@ class TestScoping(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == 15
+
+    def test_py_shadow_write_caught(self):
+        # [py.shadow-write-caught]: a bare `COUNT = COUNT + 1` implicitly declares a
+        # new local COUNT; the RHS read happens before that declaration, so it is
+        # caught by [decl.use-before].
+        src = """
+        from __spy__ import pythonic_scoping
+
+        var COUNT: i32 = 0
+
+        def bump() -> None:
+            COUNT = COUNT + 1
+        """
+        errors = expect_errors(
+            "name `COUNT` is not defined",
+            ("used before its declaration", "COUNT"),
+            ("declared later here", "COUNT"),
+        )
+        self.compile_raises(src, "bump", errors)
