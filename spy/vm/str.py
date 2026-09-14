@@ -58,6 +58,10 @@ class W_Str(W_Object):
         "__getitem__": FQN("_str::methods::__getitem__"),
         "__add__": FQN("_str::methods::__add__"),
         "__mul__": FQN("_str::methods::__mul__"),
+        "__lt__": FQN("_str::methods::__lt__"),
+        "__le__": FQN("_str::methods::__le__"),
+        "__gt__": FQN("_str::methods::__gt__"),
+        "__ge__": FQN("_str::methods::__ge__"),
     }
 
     vm: "SPyVM"

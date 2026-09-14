@@ -234,11 +234,45 @@ class TestStr(CompilerTest):
 
         def ne(a: str, b: str) -> bool:
             return a != b
+
+        def lt(a: str, b: str) -> bool:
+            return a < b
+
+        def le(a: str, b: str) -> bool:
+            return a <= b
+
+        def gt(a: str, b: str) -> bool:
+            return a > b
+
+        def ge(a: str, b: str) -> bool:
+            return a >= b
         """)
         assert mod.eq("aaa", "aaa")
         assert not mod.eq("aaa", "bbb")
         assert mod.ne("aaa", "bbb")
         assert not mod.ne("aaa", "aaa")
+        # less than
+        assert mod.lt("aaa", "bbb")
+        assert not mod.lt("bbb", "aaa")
+        assert not mod.lt("aaa", "aaa")
+        assert mod.lt("aaa", "aaaa")
+        assert mod.lt("", "a")
+        # less than or equal
+        assert mod.le("aaa", "bbb")
+        assert mod.le("aaa", "aaa")
+        assert not mod.le("bbb", "aaa")
+        assert mod.le("aaa", "aaaa")
+        # greater than
+        assert mod.gt("bbb", "aaa")
+        assert not mod.gt("aaa", "bbb")
+        assert not mod.gt("aaa", "aaa")
+        assert mod.gt("aaaa", "aaa")
+        assert mod.gt("a", "")
+        # greater than or equal
+        assert mod.ge("bbb", "aaa")
+        assert mod.ge("aaa", "aaa")
+        assert not mod.ge("aaa", "bbb")
+        assert mod.ge("aaaa", "aaa")
 
     def test_len(self):
         src = """

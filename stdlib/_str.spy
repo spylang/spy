@@ -186,6 +186,18 @@ class methods:
             ptr_copy_slice(out.utf8, i * l, (i + 1) * l, ll.utf8, 0, l)
         return StrObject.to_str(out)
 
+    def __lt__(self: str, other: str) -> bool:
+        return _str_cmp(self, other) < 0
+
+    def __le__(self: str, other: str) -> bool:
+        return _str_cmp(self, other) <= 0
+
+    def __gt__(self: str, other: str) -> bool:
+        return _str_cmp(self, other) > 0
+
+    def __ge__(self: str, other: str) -> bool:
+        return _str_cmp(self, other) >= 0
+
     def encode(self: str, encoding: str) -> bytes:
         # we don't support circular imports and function-level imports. This is a hacky
         # workaround for 'from _bytes import BytesObject'
@@ -465,6 +477,20 @@ class methods:
             return OpSpec(_count_3)
         return OpSpec.NULL
 
+def _str_cmp(a: str, b: str) -> i32:
+    # lexicographic comparison of the UTF-8 representations. Byte-wise order
+    # matches code-point order for UTF-8.
+    lla = StrObject.from_str(a)
+    llb = StrObject.from_str(b)
+    n = lla.length
+    if llb.length < n:
+        n = llb.length
+    res: i32 = 0
+    if n > 0:
+        res = ptr_cmp_slice(lla.utf8, 0, n, llb.utf8, 0, n)
+    if res != 0:
+        return res
+    return lla.length - llb.length
 
 def _ll_isspace(ch: u8) -> bool:
     """

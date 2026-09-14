@@ -44,6 +44,21 @@ class BytesObject:
         return _BytesObject_to_bytes(ll)
 
 
+def _bytes_cmp(a: bytes, b: bytes) -> i32:
+    # lexicographic comparison
+    lla = BytesObject.from_bytes(a)
+    llb = BytesObject.from_bytes(b)
+    n = lla.length
+    if llb.length < n:
+        n = llb.length
+    res: i32 = 0
+    if n > 0:
+        res = memcmp(lla.data, llb.data, n)
+    if res != 0:
+        return res
+    return lla.length - llb.length
+
+
 @struct
 class methods:
     # each method defined here MUST have a corresponding entry in
@@ -70,6 +85,18 @@ class methods:
 
     def __ne__(self: bytes, other: bytes) -> bool:
         return not self.__eq__(other)
+
+    def __lt__(self: bytes, other: bytes) -> bool:
+        return _bytes_cmp(self, other) < 0
+
+    def __le__(self: bytes, other: bytes) -> bool:
+        return _bytes_cmp(self, other) <= 0
+
+    def __gt__(self: bytes, other: bytes) -> bool:
+        return _bytes_cmp(self, other) > 0
+
+    def __ge__(self: bytes, other: bytes) -> bool:
+        return _bytes_cmp(self, other) >= 0
 
     def __add__(self: bytes, other: bytes) -> bytes:
         a = BytesObject.from_bytes(self)
