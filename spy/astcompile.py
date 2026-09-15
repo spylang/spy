@@ -195,6 +195,11 @@ class ASTCompiler:
         self.push_symtable(inner_symtable)
         new_body = self.compile_body(funcdef.body)
         self.pop_symtable()
+        if self.sa is not None:
+            new_sym = self.sa.get_resolved_sym(funcdef)
+        else:
+            # KILL ME: legacy scope.py path leaves _sym=None
+            new_sym = None
         return funcdef.replace(
             stage="astcompiled",
             decorators=new_decorators,
@@ -203,6 +208,7 @@ class ASTCompiler:
             defaults=new_defaults,
             body=new_body,
             symtable=inner_symtable,
+            _sym=new_sym,
         )
 
     # ===== Stmt handlers =====

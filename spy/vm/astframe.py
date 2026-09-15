@@ -365,8 +365,13 @@ class AbstractFrame:
                 w_func = wam_inner.w_blueval
 
         w_T = self.vm.dynamic_type(w_func)
-        self.declare_local(funcdef.name, "blue", w_T, funcdef.prototype_loc)
-        self.store_local(funcdef.name, w_func)
+        if self.symtable.scoping_rules == "legacy":
+            # KILL ME: legacy scope.py, where slot_name == src_name
+            slot_name = funcdef.name
+        else:
+            slot_name = funcdef.sym.slot_name
+        self.declare_local(slot_name, "blue", w_T, funcdef.prototype_loc)
+        self.store_local(slot_name, w_func)
 
     def exec_stmt_GenericFuncDef(self, gfuncdef: ast.GenericFuncDef) -> None:
         """

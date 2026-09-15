@@ -62,6 +62,7 @@ class TestScopeAnalyzer2:
             scope test:
                 K -> K
                 i32 -> i32 @ builtins (depth=1) => <ImportRef builtins.i32>
+                foo -> foo
 
         symtable test::foo (function):
             @return: Symbol("@return", "var", "auto")
@@ -370,6 +371,7 @@ class TestScopeAnalyzer2:
             scope test:
                 y -> y
                 i32 -> i32 @ builtins (depth=1) => <ImportRef builtins.i32>
+                f -> f
 
         symtable test::f (function):
             @return: Symbol("@return", "var", "auto")
@@ -518,6 +520,38 @@ class TestScopeAnalyzer2:
                     x -> x$0
                 scope if.else:
                     y -> y$0
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_def(self):
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo() -> None:
+            if True:
+                # aaa is local to this block
+                aaa: auto
+                def aaa() -> None: pass
+            else:
+                # bbb is implicitly lifted out of the if/else
+                def bbb() -> None: pass
+            aaa
+            bbb
+        """
+        self.analyze(src)
+        expected = """
+        symtable test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            aaa$0: Symbol("aaa", "var", "auto")
+            bbb$0: Symbol("bbb", "const", "funcdef")
+
+            scope foo:
+                aaa -> NameError
+                bbb -> bbb$0
+                scope if.then:
+                    aaa -> aaa$0
+                scope if.else:
+                    bbb -> bbb$0
         """
         self.assert_dump("test::foo", expected)
 

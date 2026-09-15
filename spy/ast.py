@@ -825,8 +825,15 @@ class FuncDef(Stmt):
     body: list["Stmt"]
     decorators: list["Expr"]
 
+    _sym: Optional[Symbol] = None  # None when "parsed', present when ">= astcompiled"
+
     # TODO: delete this as soon as we delete scope.py. See also astcompile.py
     symtable: Any = field(repr=False, default=None)
+
+    @property
+    def sym(self) -> Symbol:
+        assert self._sym is not None
+        return self._sym
 
     def shortrepr(self) -> Optional[str]:
         return f"{self.color} {self.name}"

@@ -490,3 +490,19 @@ class TestScoping(CompilerTest):
             ("this is the previous declaration", "A = 1"),
         )
         self.compile_raises(src, "foo", errors, error_reporting="eager")
+
+    @only_interp
+    def test_py_def_nested(self):
+        # A nested `def` binds a local. scope2 mangles its slot name (g$0), so the
+        # runtime must index the frame by slot_name. `@only_interp`: doppler cannot
+        # redshift a nested def in a red function (pre-existing limitation).
+        src = """
+        from __spy__ import pythonic_scoping
+
+        def main() -> i32:
+            def g() -> i32:
+                return 42
+            return g()
+        """
+        mod = self.compile(src)
+        assert mod.main() == 42

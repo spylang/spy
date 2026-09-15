@@ -519,11 +519,9 @@ class ScopeAnalyzer:
         self.pop_scope()
 
     def collect_FuncDef(self, funcdef: ast.FuncDef) -> None:
-        # collect the func name in the outer scope
+        # A `def` is an implicit declaration
         protoloc = funcdef.prototype_loc
-        self.create_new_local(
-            funcdef, funcdef.name, "const", "funcdef", protoloc, protoloc
-        )
+        self.assign_or_declare_maybe(funcdef, funcdef.name, "funcdef", protoloc)
 
         scope_color = funcdef.color
         if scope_color == "red":
@@ -663,7 +661,8 @@ class ScopeAnalyzer:
             # [py.implicit-decl]: in pythonic_scoping, an assignment might be an
             # implicit declaration
             if isinstance(assign.target, ast.SingleTarget):
-                self.collect_implicit_target(assign.target.name)
+                tgt = assign.target.name
+                self.assign_or_declare_maybe(tgt, tgt.value, "auto", tgt.loc)
             else:
                 assert False, "TODO: unpack targets"
 
@@ -671,7 +670,8 @@ class ScopeAnalyzer:
         # [py.walrus]: a walrus `x := E` implicitly declares `x`.
         self.collect(assignexpr.value)
         if self.mod.scoping_rules == "pythonic":
-            self.collect_implicit_target(assignexpr.target)
+            tgt = assignexpr.target
+            self.assign_or_declare_maybe(tgt, tgt.value, "auto", tgt.loc)
 
     def implicit_target_scope(self) -> Scope:
         """
@@ -684,20 +684,26 @@ class ScopeAnalyzer:
             scope = scope.parent
         return scope
 
-    def collect_implicit_target(self, target: ast.StrLiteral) -> None:
-        varname = target.value
+    def assign_or_declare_maybe(
+        self,
+        node: ast.Node,
+        varname: str,
+        varkind_origin: VarKindOrigin,
+        loc: Loc,
+    ) -> None:
+        # Reassign an existing name, or implicitly declare
         res = self.lookup_name_in_scopes(varname)
         if res.found and res.level == 0:
-            # assignment to an existing name in the current func: just assign
+            # the name is already present in the current frame: reassign it
             assert res.scope is not None and res.sym is not None
             if res.sym.varkind == "const" and res.sym.varkind_origin == "auto":
-                # [py.constness]: a second assignment promotes an implicit const to var
+                # [py.constness]: a second assignment makes an implicit const a var
                 self.promote_const_to_var(res.scope, res.sym)
         else:
-            # first assignment: implicit `const` declaration
+            # first assignment: make an implicit `const` declaration
             scope = self.implicit_target_scope()
             self.create_new_local(
-                target, varname, "const", "auto", target.loc, target.loc, scope=scope
+                node, varname, "const", varkind_origin, loc, loc, scope=scope
             )
 
     def promote_const_to_var(self, scope: Scope, sym: Symbol) -> None:
@@ -838,8 +844,11 @@ class ScopeAnalyzer:
         return node.visit("bind", self)
 
     def bind_FuncDef(self, funcdef: ast.FuncDef) -> None:
-        # NOTE: arg.type is evaluated in the OUTER scope, while arg in the INNER scope
+        # NOTE: evaluate arg.type in the OUTER scope, arg in the INNER scope.
         #
+        # The funcdef NAME is bound to the outer scope.
+        self.lookup_and_bind(funcdef, funcdef.name, funcdef.prototype_loc)
+
         # outer scope: decorators and argument types
         for decorator in funcdef.decorators:
             self.bind(decorator)
