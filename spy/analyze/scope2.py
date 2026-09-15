@@ -667,6 +667,12 @@ class ScopeAnalyzer:
             else:
                 assert False, "TODO: unpack targets"
 
+    def collect_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
+        # [py.walrus]: a walrus `x := E` implicitly declares `x`.
+        self.collect(assignexpr.value)
+        if self.mod.scoping_rules == "pythonic":
+            self.collect_implicit_target(assignexpr.target)
+
     def implicit_target_scope(self) -> Scope:
         """
         [py.scope-lifting]: the scope an implicit declaration binds into:

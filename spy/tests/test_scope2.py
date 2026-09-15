@@ -642,3 +642,26 @@ class TestScopeAnalyzer2:
                     total -> total$0
         """
         self.assert_dump("test::foo", expected)
+
+    def test_py_walrus(self):
+        # [py.walrus]: a walrus in an `if` test binds in the ENCLOSING block
+        src = """
+        from __spy__ import pythonic_scoping
+
+        def foo() -> None:
+            if (x := 5) > 0:
+                x
+            x
+        """
+        self.analyze(src)
+        expected = """
+        symtable test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            x$0: Symbol("x", "const", "auto")
+
+            scope foo:
+                x -> x$0
+                scope if.then:
+                    x -> x$0
+        """
+        self.assert_dump("test::foo", expected)

@@ -424,3 +424,16 @@ class TestScoping(CompilerTest):
             "name `total` is not defined",
         )
         self.compile_raises(src, "foo", errors)
+
+    def test_py_walrus(self):
+        # [py.walrus]: a walrus in an `if` test binds in the ENCLOSING block
+        src = """
+        from __spy__ import pythonic_scoping
+
+        def foo() -> i32:
+            if (x := 5) > 0:
+                x = x + 1
+            return x
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 6

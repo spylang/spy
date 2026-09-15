@@ -392,7 +392,7 @@ class CFuncWriter:
             )
 
     def fmt_expr_Name(self, name: ast.Name) -> C.Expr:
-        assert False, "ast.Name nodes should not survive redshifting"
+        assert False, "ast.Name nodes should not survive astcompile"
 
     def fmt_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> C.Expr:
         varname = C_Ident(name.sym.slot_name)
@@ -411,10 +411,10 @@ class CFuncWriter:
         assert False, "unexpected NameOuterDirect"
 
     def fmt_expr_AssignExpr(self, assignexpr: ast.AssignExpr) -> C.Expr:
-        return self._fmt_assignexpr(assignexpr.target.value, assignexpr.value)
+        assert False, "ast.AssignExpr nodes should not survive astcompile"
 
     def fmt_expr_AssignExprLocal(self, assignexpr: ast.AssignExprLocal) -> C.Expr:
-        return self._fmt_assignexpr(assignexpr.target.value, assignexpr.value)
+        return self._fmt_assignexpr(assignexpr.sym.slot_name, assignexpr.value)
 
     def fmt_expr_AssignExprCell(self, assignexpr: ast.AssignExprCell) -> C.Expr:
         assert assignexpr.target_fqn is not None, "fqn is set during redshift"
