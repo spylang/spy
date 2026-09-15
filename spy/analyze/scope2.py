@@ -530,9 +530,9 @@ class ScopeAnalyzer:
             argkind: VarKind = "var"
             argkind_origin: VarKindOrigin = "red-param"
         else:
-            assert False
-            ## argkind = "const"
-            ## argkind_origin = "blue-param"
+            # [py.blue-params]: blue function arguments are const.
+            argkind = "const"
+            argkind_origin = "blue-param"
 
         # the symtable name is derived from the ENCLOSING FRAME (symtable), not
         # the lexical scope: block scopes must not appear in it. E.g. a function

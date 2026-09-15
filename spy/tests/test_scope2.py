@@ -665,3 +665,23 @@ class TestScopeAnalyzer2:
                     x -> x$0
         """
         self.assert_dump("test::foo", expected)
+
+    def test_py_blue_params(self):
+        # [py.blue-params]: blue function arguments are const.
+        src = """
+        from __spy__ import pythonic_scoping
+
+        @blue
+        def foo(x: i32) -> i32:
+            return x
+        """
+        self.analyze(src)
+        expected = """
+        symtable test::foo (function):
+            x$0: Symbol("x", "const", "blue-param")
+            @return: Symbol("@return", "var", "auto")
+
+            scope foo:
+                x -> x$0
+        """
+        self.assert_dump("test::foo", expected)

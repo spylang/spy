@@ -437,3 +437,24 @@ class TestScoping(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == 6
+
+    def test_py_blue_params(self):
+        # [py.blue-params]: blue function arguments are const.
+        src = """
+        from __spy__ import pythonic_scoping
+
+        @blue
+        def inc(x: i32) -> i32:
+            x = x + 1
+            return x
+
+        def foo() -> i32:
+            return inc(5)
+        """
+        errors = expect_errors(
+            "invalid assignment target",
+            ("x is const", "x"),
+            ("const declared here (blue-param)", "x: i32"),
+            ("blue function arguments are const by default", "x: i32"),
+        )
+        self.compile_raises(src, "foo", errors)
