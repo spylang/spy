@@ -488,6 +488,39 @@ class TestScopeAnalyzer2:
         """
         self.assert_dump("test::foo", expected)
 
+    def test_no_implicit_decl_if_explicit_is_present(self):
+        src = """
+        from __spy__ import pythonic_scoping
+
+        def foo(cond: bool) -> None:
+            if cond:
+                x: auto
+                x = 42
+            else:
+                y = 1
+            x
+            y
+        """
+        self.analyze(src)
+        # NOTE: `x$0` is `var` because [py.constness-paths] is deferred
+        expected = """
+        symtable test::foo (function):
+            cond$0: Symbol("cond", "var", "red-param")
+            @return: Symbol("@return", "var", "auto")
+            x$0: Symbol("x", "var", "auto")
+            y$0: Symbol("y", "const", "auto")
+
+            scope foo:
+                cond -> cond$0
+                x -> NameError
+                y -> y$0
+                scope if.then:
+                    x -> x$0
+                scope if.else:
+                    y -> y$0
+        """
+        self.assert_dump("test::foo", expected)
+
     # ======= pythonic scoping tests =======
 
     def test_py_implicit_decl(self):

@@ -686,16 +686,19 @@ class ScopeAnalyzer:
 
     def collect_implicit_target(self, target: ast.StrLiteral) -> None:
         varname = target.value
-        scope = self.implicit_target_scope()
-        sym = scope.lookup_maybe(varname)
-        if sym is None:
+        res = self.lookup_name_in_scopes(varname)
+        if res.found and res.level == 0:
+            # assignment to an existing name in the current func: just assign
+            assert res.scope is not None and res.sym is not None
+            if res.sym.varkind == "const" and res.sym.varkind_origin == "auto":
+                # [py.constness]: a second assignment promotes an implicit const to var
+                self.promote_const_to_var(res.scope, res.sym)
+        else:
             # first assignment: implicit `const` declaration
+            scope = self.implicit_target_scope()
             self.create_new_local(
                 target, varname, "const", "auto", target.loc, target.loc, scope=scope
             )
-        elif sym.varkind == "const" and sym.varkind_origin == "auto":
-            # [py.constness]: a second assignment promotes an implicit const to var
-            self.promote_const_to_var(scope, sym)
 
     def promote_const_to_var(self, scope: Scope, sym: Symbol) -> None:
         # `scope` is the scope that owns `sym` (may be an outer block for a lifted

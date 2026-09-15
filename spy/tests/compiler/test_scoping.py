@@ -438,6 +438,23 @@ class TestScoping(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == 6
 
+    def test_py_no_implicit_decl_if_explicit_is_present(self):
+        # `x = 42` creates an implicit decl ONLY if there isn't already an explicit one
+        src = """
+        from __spy__ import pythonic_scoping
+
+        def foo() -> None:
+            if True:
+                x: auto
+                x = 42
+            print(x)
+        """
+        errors = expect_errors(
+            "name `x` is not defined",
+            ("not found in this scope", "x"),
+        )
+        self.compile_raises(src, "foo", errors)
+
     def test_py_blue_params(self):
         # [py.blue-params]: blue function arguments are const.
         src = """
