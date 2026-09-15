@@ -458,3 +458,18 @@ class TestScoping(CompilerTest):
             ("blue function arguments are const by default", "x: i32"),
         )
         self.compile_raises(src, "foo", errors)
+
+    def test_py_global_const_by_default(self):
+        # [py.global-const-by-default]
+        src = """
+        from __spy__ import pythonic_scoping
+
+        A = 1
+        A = 2
+        """
+        errors = expect_errors(
+            "variable `A` already declared",
+            ("this is the new declaration", "A = 2"),
+            ("this is the previous declaration", "A = 1"),
+        )
+        self.compile_raises(src, "foo", errors, error_reporting="eager")
