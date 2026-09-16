@@ -85,6 +85,7 @@ class Parser:
         self.filename = filename
         self.for_loop_seq = 0
         self.augassign_seq = 0
+        self.scoping_rules_stack: list[spy.ast.ScopingRules] = ["pythonic"]
 
     @classmethod
     def from_filename(cls, filename: str) -> "Parser":
@@ -193,11 +194,7 @@ class Parser:
         # Extract module docstring, then __spy__ pragmas
         docstring, py_body = self.get_docstring_maybe(py_mod.body)
         pragmas = self.get_spy_pragmas(py_body)
-        scoping_rules: ScopingRules = "legacy"
-        if "strict_scoping" in pragmas:
-            scoping_rules = "strict"
-        elif "pythonic_scoping" in pragmas:
-            scoping_rules = "pythonic"
+        scoping_rules = self.get_scoping_rules(pragmas)
 
         mod = spy.ast.Module(
             loc=loc,
@@ -208,6 +205,7 @@ class Parser:
             scoping_rules=scoping_rules,
         )
 
+        self.scoping_rules_stack.append(scoping_rules)
         for py_stmt in py_body:
             if isinstance(py_stmt, py_ast.FunctionDef):
                 funcdef = self.from_py_stmt_FunctionDef(py_stmt)
@@ -252,7 +250,16 @@ class Parser:
                     "only function and variable definitions are allowed at global scope"
                 )
                 self.error(msg, "this is not allowed here", py_stmt.loc)
+        self.scoping_rules_stack.pop()
         return mod
+
+    def get_scoping_rules(self, pragmas: set[str]) -> spy.ast.ScopingRules:
+        if "strict_scoping" in pragmas:
+            return "strict"
+        elif "pythonic_scoping" in pragmas:
+            return "pythonic"
+        else:
+            return self.scoping_rules_stack[-1]
 
     def from_py_stmt_FunctionDef(
         self, py_funcdef: py_ast.FunctionDef
@@ -357,18 +364,16 @@ class Parser:
 
         docstring, py_body = self.get_docstring_maybe(py_funcdef.body)
         pragmas = self.get_spy_pragmas(py_body)
-        scoping_rules: ScopingRules = "legacy"
-        if "strict_scoping" in pragmas:
-            scoping_rules = "strict"
-        elif "pythonic_scoping" in pragmas:
-            scoping_rules = "pythonic"
+        scoping_rules = self.get_scoping_rules(pragmas)
 
         # by doing this "saved_seq" dance, we ensure that nested functions "continue"
         # the numbering from the their parent, but sibling functions reset the
         # numbering. See test_scope::test_for_loop_nested_funcs
         saved_for_loop_seq = self.for_loop_seq
         saved_augassign_seq = self.augassign_seq
+        self.scoping_rules_stack.append(scoping_rules)
         body = self.from_py_body(py_body)
+        self.scoping_rules_stack.pop()
         self.for_loop_seq = saved_for_loop_seq
         self.augassign_seq = saved_augassign_seq
 

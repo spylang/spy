@@ -54,7 +54,7 @@ class TestParser:
             stage='parsed',
             filename='{tmpdir}/test.spy',
             docstring=None,
-            scoping_rules='legacy',
+            scoping_rules='pythonic',
             decls=[
                 GlobalFuncDef(
                     funcdef=FuncDef(
@@ -66,7 +66,7 @@ class TestParser:
                         return_type=Literal(value=None),
                         defaults=[],
                         docstring=None,
-                        scoping_rules='legacy',
+                        scoping_rules='pythonic',
                         body=[
                             Pass(),
                         ],
@@ -89,7 +89,7 @@ class TestParser:
             stage='parsed',
             filename='{tmpdir}/test.spy',
             docstring=None,
-            scoping_rules='legacy',
+            scoping_rules='pythonic',
             decls=[
                 GlobalFuncDef(
                     funcdef=FuncDef(
@@ -112,7 +112,7 @@ class TestParser:
                         return_type=Literal(value=None),
                         defaults=[],
                         docstring=None,
-                        scoping_rules='legacy',
+                        scoping_rules='pythonic',
                         body=[
                             Pass(),
                         ],
@@ -153,7 +153,7 @@ class TestParser:
                 Literal(value=42),
             ],
             docstring=None,
-            scoping_rules='legacy',
+            scoping_rules='pythonic',
             body=[
                 Pass(),
             ],
@@ -212,7 +212,7 @@ class TestParser:
             return_type=Literal(value=None),
             defaults=[],
             docstring=None,
-            scoping_rules='legacy',
+            scoping_rules='pythonic',
             body=[
                 Pass(),
             ],
@@ -242,7 +242,7 @@ class TestParser:
             return_type=Literal(value=None),
             defaults=[],
             docstring=None,
-            scoping_rules='legacy',
+            scoping_rules='pythonic',
             body=[
                 Pass(),
             ],
@@ -282,7 +282,7 @@ class TestParser:
             return_type=Name(id='i32'),
             defaults=[],
             docstring=None,
-            scoping_rules='legacy',
+            scoping_rules='pythonic',
             body=[
                 Return(
                     value=Literal(value=42),
@@ -312,7 +312,7 @@ class TestParser:
             return_type=Name(id='i32'),
             defaults=[],
             docstring=None,
-            scoping_rules='legacy',
+            scoping_rules='pythonic',
             body=[
                 Return(
                     value=Literal(value=42),
@@ -340,7 +340,7 @@ class TestParser:
             return_type=Name(id='i32'),
             defaults=[],
             docstring='hello',
-            scoping_rules='legacy',
+            scoping_rules='pythonic',
             body=[
                 Return(
                     value=Literal(value=42),
@@ -368,7 +368,7 @@ class TestParser:
             return_type=Name(id='i32'),
             defaults=[],
             docstring=None,
-            scoping_rules='legacy',
+            scoping_rules='pythonic',
             body=[
                 Return(
                     value=Literal(value=42),
@@ -396,7 +396,7 @@ class TestParser:
             return_type=Name(id='i32'),
             defaults=[],
             docstring=None,
-            scoping_rules='legacy',
+            scoping_rules='pythonic',
             body=[
                 Return(
                     value=Literal(value=42),
@@ -443,7 +443,7 @@ class TestParser:
                 return_type=Name(id='T'),
                 defaults=[],
                 docstring=None,
-                scoping_rules='legacy',
+                scoping_rules='pythonic',
                 body=[
                     Return(
                         value=Name(id='x'),
@@ -506,7 +506,7 @@ class TestParser:
             return_type=Name(id='i32'),
             defaults=[],
             docstring=None,
-            scoping_rules='legacy',
+            scoping_rules='pythonic',
             body=[
                 Return(
                     value=Literal(value=42),
@@ -732,7 +732,7 @@ class TestParser:
             stage='parsed',
             filename='{self.tmpdir}/test.spy',
             docstring=None,
-            scoping_rules='legacy',
+            scoping_rules='pythonic',
             decls=[
                 GlobalVarDef(
                     vardef=VarDef(
@@ -781,7 +781,7 @@ class TestParser:
             stage='parsed',
             filename='{self.tmpdir}/test.spy',
             docstring=None,
-            scoping_rules='legacy',
+            scoping_rules='pythonic',
             decls=[
                 GlobalVarDef(
                     vardef=VarDef(
@@ -1055,7 +1055,7 @@ class TestParser:
             return_type=Literal(value=None),
             defaults=[],
             docstring=None,
-            scoping_rules='legacy',
+            scoping_rules='pythonic',
             body=[
                 StmtExpr(
                     value=Literal(value=-100),
@@ -1096,7 +1096,7 @@ class TestParser:
             return_type=Literal(value=None),
             defaults=[],
             docstring=None,
-            scoping_rules='legacy',
+            scoping_rules='pythonic',
             body=[
                 StmtExpr(
                     value=Literal(value=42),
@@ -1143,7 +1143,7 @@ class TestParser:
             return_type=Literal(value=None),
             defaults=[],
             docstring=None,
-            scoping_rules='legacy',
+            scoping_rules='pythonic',
             body=[
                 StmtExpr(
                     value=Literal(value=1.5),
@@ -1577,7 +1577,7 @@ class TestParser:
             stage='parsed',
             filename='{tmpdir}/test.spy',
             docstring=None,
-            scoping_rules='legacy',
+            scoping_rules='pythonic',
             decls=[
                 Import(ref=<ImportRef testmod.a>, asname='a'),
                 Import(ref=<ImportRef testmod.b>, asname='b2'),
@@ -1598,7 +1598,7 @@ class TestParser:
             stage='parsed',
             filename='{tmpdir}/test.spy',
             docstring=None,
-            scoping_rules='legacy',
+            scoping_rules='pythonic',
             decls=[
                 Import(ref=<ImportRef aaa>, asname='aaa'),
                 Import(ref=<ImportRef bbb>, asname='BBB'),
@@ -1620,7 +1620,7 @@ class TestParser:
             stage='parsed',
             filename='{tmpdir}/test.spy',
             docstring='hello',
-            scoping_rules='legacy',
+            scoping_rules='pythonic',
             decls=[
                 GlobalVarDef(
                     vardef=VarDef(
@@ -1677,13 +1677,30 @@ class TestParser:
         assert funcdef.scoping_rules == "strict"
         assert funcdef.docstring == "func docstring"
 
-    def test_strict_scoping_function_default_legacy(self):
+    def test_scoping_inheritance(self):
+        # no pragma anywhere -> pythonic (the default); a funcdef inherits the
+        # enclosing scoping unless it has its own pragma; the inherited value
+        # propagates to nested funcdefs.
         mod = self.parse("""
-        def foo() -> None:
+        from __spy__ import strict_scoping
+
+        def a() -> None:
             x = 42
+
+        def b() -> None:
+            from __spy__ import pythonic_scoping
+
+            def c() -> None:
+                x = 42
         """)
-        funcdef = mod.get_funcdef("foo")
-        assert funcdef.scoping_rules == "legacy"
+        a = mod.get_funcdef("a")
+        b = mod.get_funcdef("b")
+        c = b.body[1]
+        assert isinstance(c, ast.FuncDef)
+        assert mod.scoping_rules == "strict"
+        assert a.scoping_rules == "strict"  # inherited from module
+        assert b.scoping_rules == "pythonic"  # own pragma
+        assert c.scoping_rules == "pythonic"  # inherited from b
 
     def test_strict_scoping_module_too_late_error(self):
         src = """
@@ -1817,7 +1834,7 @@ class TestParser:
             stage='parsed',
             filename='{tmpdir}/test.spy',
             docstring=None,
-            scoping_rules='legacy',
+            scoping_rules='pythonic',
             decls=[
                 GlobalFuncDef(
                     funcdef=FuncDef(
@@ -1829,7 +1846,7 @@ class TestParser:
                         return_type=Auto(),
                         defaults=[],
                         docstring=None,
-                        scoping_rules='legacy',
+                        scoping_rules='pythonic',
                         body=[
                             FuncDef(
                                 stage='parsed',
@@ -1840,7 +1857,7 @@ class TestParser:
                                 return_type=Literal(value=None),
                                 defaults=[],
                                 docstring=None,
-                                scoping_rules='legacy',
+                                scoping_rules='pythonic',
                                 body=[
                                     Pass(),
                                 ],
@@ -2040,7 +2057,7 @@ class TestParser:
                     return_type=Literal(value=None),
                     defaults=[],
                     docstring=None,
-                    scoping_rules='legacy',
+                    scoping_rules='pythonic',
                     body=[
                         Pass(),
                     ],
@@ -2079,7 +2096,7 @@ class TestParser:
             return_type=Literal(value=None),
             defaults=[],
             docstring=None,
-            scoping_rules='legacy',
+            scoping_rules='pythonic',
             body=[
                 Pass(),
             ],
