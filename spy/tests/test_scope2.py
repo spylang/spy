@@ -492,8 +492,6 @@ class TestScopeAnalyzer2:
 
     def test_no_implicit_decl_if_explicit_is_present(self):
         src = """
-        from __spy__ import pythonic_scoping
-
         def foo(cond: bool) -> None:
             if cond:
                 x: auto
@@ -559,8 +557,6 @@ class TestScopeAnalyzer2:
         # [py.scope-lifting-mixing-error]: `x` is declared FIRST EXPLICITLY in one
         # branch THEN IMPLICITLY lifted in the other
         src = """
-        from __spy__ import pythonic_scoping
-
         def foo(cond: bool) -> None:
             if cond:
                 const x = 1
@@ -578,8 +574,6 @@ class TestScopeAnalyzer2:
         # [py.scope-lifting-mixing-error]: `x` is FIRST IMPLICITLY lifted in one branch
         # THEN EXPLICITLY declared in the other
         src = """
-        from __spy__ import pythonic_scoping
-
         def foo(cond: bool) -> None:
             if cond:
                 x = 1
@@ -599,8 +593,6 @@ class TestScopeAnalyzer2:
         # lift target), so it is visible in the rest of the loop body but NOT after
         # the loop.
         src = """
-        from __spy__ import pythonic_scoping
-
         def foo() -> None:
             for i in range(10):
                 if i > 5:
@@ -634,8 +626,6 @@ class TestScopeAnalyzer2:
         # implicit decl directly in the lift target scope does not clash with a
         # nested explicit decl: the inner one is an ordinary block-local shadow.
         src = """
-        from __spy__ import pythonic_scoping
-
         def foo(cond: bool) -> None:
             x = 3
             if cond:
@@ -664,8 +654,6 @@ class TestScopeAnalyzer2:
         # declares the name on first assignment; assigned once -> const,
         # assigned more than once -> var.
         src = """
-        from __spy__ import pythonic_scoping
-
         def foo() -> None:
             a = 1
             b = 1
@@ -687,8 +675,6 @@ class TestScopeAnalyzer2:
     def test_py_augassign_needs_binding(self):
         # [py.augassign]: augassign does not implicitly declare
         src = """
-        from __spy__ import pythonic_scoping
-
         def foo() -> None:
             x += 1
         """
@@ -704,8 +690,6 @@ class TestScopeAnalyzer2:
 
     def test_py_augassign_promotes_to_var(self):
         src = """
-        from __spy__ import pythonic_scoping
-
         def foo() -> None:
             x = 0
             x += 1
@@ -727,8 +711,6 @@ class TestScopeAnalyzer2:
         # caught by [decl.use-before] (the read resolves to a NameError, NOT to the
         # module-level COUNT).
         src = """
-        from __spy__ import pythonic_scoping
-
         var COUNT: i32 = 0
 
         def foo() -> None:
@@ -749,8 +731,6 @@ class TestScopeAnalyzer2:
         # [py.scope-lifting]: an implicit assignment inside an if/else chain is
         # lifted to the enclosing block.
         src = """
-        from __spy__ import pythonic_scoping
-
         def foo(a: bool, b: bool) -> i32:
             if a:
                 if b:
@@ -787,8 +767,6 @@ class TestScopeAnalyzer2:
     def test_py_scope_lifting_loop(self):
         # [py.scope-lifting-loop]: a loop body never lifts.
         src = """
-        from __spy__ import pythonic_scoping
-
         def foo() -> None:
             for i in range(10):
                 total = i
@@ -815,8 +793,6 @@ class TestScopeAnalyzer2:
     def test_py_walrus(self):
         # [py.walrus]: a walrus in an `if` test binds in the ENCLOSING block
         src = """
-        from __spy__ import pythonic_scoping
-
         def foo() -> None:
             if (x := 5) > 0:
                 x
@@ -838,8 +814,6 @@ class TestScopeAnalyzer2:
     def test_py_blue_params(self):
         # [py.blue-params]: blue function arguments are const.
         src = """
-        from __spy__ import pythonic_scoping
-
         @blue
         def foo(x: i32) -> i32:
             return x

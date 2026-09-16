@@ -351,8 +351,6 @@ class TestScoping(CompilerTest):
         # [py.implicit-decl] + [py.constness]: `a` is an implicit const, `b` is
         # implicitly declared then reassigned (var). Both work end-to-end.
         src = """
-        from __spy__ import pythonic_scoping
-
         def foo() -> i32:
             a = 10
             b = 30
@@ -365,8 +363,6 @@ class TestScoping(CompilerTest):
     def test_py_augassign(self):
         # [py.augassign]: `x += 1` reads and writes an existing binding.
         src = """
-        from __spy__ import pythonic_scoping
-
         def foo() -> i32:
             x = 10
             x += 5
@@ -380,8 +376,6 @@ class TestScoping(CompilerTest):
         # new local COUNT; the RHS read happens before that declaration, so it is
         # caught by [decl.use-before].
         src = """
-        from __spy__ import pythonic_scoping
-
         var COUNT: i32 = 0
 
         def bump() -> None:
@@ -397,8 +391,6 @@ class TestScoping(CompilerTest):
     def test_py_scope_lifting(self):
         # [py.scope-lifting]: `y` is lifted to the function scope
         src = """
-        from __spy__ import pythonic_scoping
-
         def foo(x: i32) -> i32:
             if x < 0:
                 y = -x
@@ -413,8 +405,6 @@ class TestScoping(CompilerTest):
     def test_py_scope_lifting_loop(self):
         # [py.scope-lifting-loop]: a loop body never lifts
         src = """
-        from __spy__ import pythonic_scoping
-
         def foo() -> i32:
             for i in range(10):
                 total = i
@@ -428,8 +418,6 @@ class TestScoping(CompilerTest):
     def test_py_walrus(self):
         # [py.walrus]: a walrus in an `if` test binds in the ENCLOSING block
         src = """
-        from __spy__ import pythonic_scoping
-
         def foo() -> i32:
             if (x := 5) > 0:
                 x = x + 1
@@ -441,8 +429,6 @@ class TestScoping(CompilerTest):
     def test_py_no_implicit_decl_if_explicit_is_present(self):
         # `x = 42` creates an implicit decl ONLY if there isn't already an explicit one
         src = """
-        from __spy__ import pythonic_scoping
-
         def foo() -> None:
             if True:
                 x: auto
@@ -458,8 +444,6 @@ class TestScoping(CompilerTest):
     def test_py_blue_params(self):
         # [py.blue-params]: blue function arguments are const.
         src = """
-        from __spy__ import pythonic_scoping
-
         @blue
         def inc(x: i32) -> i32:
             x = x + 1
@@ -479,8 +463,6 @@ class TestScoping(CompilerTest):
     def test_py_global_const_by_default(self):
         # [py.global-const-by-default]
         src = """
-        from __spy__ import pythonic_scoping
-
         A = 1
         A = 2
         """
@@ -497,8 +479,6 @@ class TestScoping(CompilerTest):
         # runtime must index the frame by slot_name. `@only_interp`: doppler cannot
         # redshift a nested def in a red function (pre-existing limitation).
         src = """
-        from __spy__ import pythonic_scoping
-
         def main() -> i32:
             def g() -> i32:
                 return 42
@@ -511,8 +491,6 @@ class TestScoping(CompilerTest):
         # [py.scope-lifting-mixing-error]: a name may not be both explicitly declared
         # and implicitly lifted inside the same lift target.
         src = """
-        from __spy__ import pythonic_scoping
-
         def foo(cond: bool) -> None:
             if cond:
                 var x: i32 = 1
