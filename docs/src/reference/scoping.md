@@ -613,10 +613,13 @@ def main() -> None:
 
 ### `[py.scope-lifting]` Automatic scope lifting { #py-scope-lifting }
 
-A name implicitly assigned anywhere inside an `if`/`elif`/`else` chain is
-lifted to the enclosing block - unconditionally, regardless of whether every
-branch assigns it and whether the chain has an `else` at all. The basic idea
-is that something like this should work "out of the box":
+An implicit declaration defines a name in the nearest "lift target" scope.
+Lift targets include:
+
+  - the function scope
+  - any loop
+
+The basic idea of this rule is that something like this should work "out of the box":
 
 ```python
 def f(x: i32) -> i32:
@@ -625,35 +628,36 @@ def f(x: i32) -> i32:
     else:
         y = x
     return y             # OK: lifted
+
+def g() -> i32:
+    try:
+        y = bar()
+    except ValueError:
+        y = 0
+    return y             # OK: lifted
+
+def h() -> str:
+    with open(fname) as f:
+        data = f.read()
+    return data          # OK: lifted
 ```
 
-Explicit equivalent:
+Names are never implicitly lifted outside a loop:
 
 ```python
-def f(x: i32) -> i32:
-    var y: i32
-    if x < 0:
-        y = -x
-    else:
-        y = x
-    return y
+def f() -> i32:
+    for i in range(N):
+        x = 10
+    return x  # NameError; help: define `var x` before the loop
 ```
 
-`elif` chains lift the same way. Nesting is not special: each `if` applies
-the same rule, so a name lifted out of an inner chain is just an ordinary
-implicit assignment as far as the outer chain is concerned, and it lifts
-again if the outer chain also assigns it on every spelled-out branch:
-
 ```python
-def f(a: bool, b: bool) -> i32:
-    if a:
-        if b:
-            x = 1
-        else:
-            x = 2
-    else:
-        x = 3
-    return x             # OK: lifted twice
+def f() -> i32:
+    for i in range(N):
+        if True:
+            x = 10
+        x # OK: x is lifted up to the `for` scope
+    return x  # NameError; help: define `var x` before the loop
 ```
 
 #### `[py.scope-lifting-partial]` Lifting does not check that every branch assigns { #py-scope-lifting-partial }
@@ -695,110 +699,85 @@ def f(cond: bool) -> None:
     print(x)             # ERROR: branch-local
 ```
 
-A chain may not mix spellings for the same name: if one branch declares it explicitly
-and another implicitly, that is an error:
+#### `[py.scope-lifting-mixing-error]` Mixing an implicit and an explicit declaration is an error { #py-scope-lifting-mixing-error }
+
+A single name may not be both implicitly lifted and explicitly declared inside
+the same lift target. If an implicit assignment lifts a name to a lift target
+scope, and some inner block declares the same name explicitly, that is an error:
 
 ```python
 def f(cond: bool) -> None:
     if cond:
         var x: i32 = 1   # ERROR: `x` is declared explicitly here...
     else:
-        x = 2            #        ...and implicitly here
+        x = 2            #        ...and implicitly lifted here
 ```
 
-A name lifted into a branch from a nested chain counts as implicit for this
-check, so it does not clash with a bare assignment in a sibling branch:
+Here `x = 2` lifts to the function scope, but `var x` declares a block-local
+`x` in the `if` branch. The two spellings for `x` would name different things,
+so we reject it to avoid confusion.
+
+Nesting and depth do not matter: the explicit declaration clashes wherever it
+sits below the lift target which owns the lifted name. These two forms are the
+same to the user and both are errors:
 
 ```python
 def f(a: bool, b: bool) -> None:
     if a:
         if b:
-            x = 1
-        else:
-            x = 2        # `x` lifted here, still counts as implicit
+            const x = 2  # ERROR: `x` is declared explicitly here...
     else:
-        x = 3            # OK: also implicit, no conflict
-    print(x)
+        x = 3            #        ...and implicitly lifted here
 ```
 
-Name lifting never crosses loop boundaries:
 ```python
-def f() -> None:
-    for i in range(10):
-        if i > 5:
-            x = 5
-    print(x)            # ERROR: `x` is not declared
-```
-
-#### `[py.scope-lifting-loop]` Loop bodies never lift { #py-scope-lifting-loop }
-
-Unlike `if`, a loop body must stay its own scope even when a name is
-assigned on every iteration. [Blue-time
-unrolling](#py-scope-lifting-unroll) relies on each iteration getting its
-own fresh binding, potentially with its own type; lifting loop bodies the
-way `if` does would collapse that into a single binding and break
-unrolling.
-
-```python
-def f() -> None:
-    for i in range(10):
-        total = i
-    print(total)         # ERROR: `total` not in scope
-```
-
-#### `[py.scope-lifting-blue]` A blue test collapses the chain { #py-scope-lifting-blue }
-
-Only the taken branch is compiled, so there is no second type to compare.
-
-```python
-@blue
-def f() -> None:
-    if SOME_BLUE_FLAG:
-        x = 1            # x: i32
+def f(a: bool, b: bool) -> None:
+    if a:
+        x = 3            #        ...and implicitly lifted here
     else:
-        x = "hi"         # not compiled
-    print(x)             # OK
+        if b:
+            const x = 2  # ERROR: `x` is declared explicitly here...
 ```
 
-#### `[py.scope-lifting-const]` A lifted binding is `const` when every path assigns it once { #py-scope-lifting-const }
-
-So it stays blue under a blue test:
-
-```python
-TUP = 1, 2.5, "hello"
-COND = True
-
-@blue
-def f() -> None:
-    if COND:
-        n = 0
-    else:
-        n = 1
-    print(TUP[n])        # OK: const → blue
-```
-
-Under a red test the value depends on which branch ran, so it is red:
+The reverse never happens: if the explicit declaration is the outer one, the
+inner assignment resolves to it and is an ordinary re-assignment, not an
+implicit declaration, so there is nothing to lift and nothing to clash:
 
 ```python
 def f(cond: bool) -> None:
+    var x: i32 = 0       # explicit, in the function scope
     if cond:
-        n = 0
-    else:
-        n = 1
-    print(TUP[n])        # ERROR: tuple index must be blue
+        x = 1            # OK: re-assigns the outer `x`
 ```
 
-This applies only to lifted bindings: an ordinary block-local inside a
-red-tested branch is still blue.
+The clash is confined to a single lift target. An explicit declaration inside
+a nested loop belongs to that loop, not to the outer scope, so it does not
+clash with a name lifted to the outer scope:
+
+```python
+def f() -> None:
+    x = 1                # lifted to the function scope
+    for i in range(N):
+        const x = 2      # OK: a separate `x`, owned by the loop
+```
+
+The error is specifically about *lifting*, not about implicit declarations in
+general. A plain implicit declaration made directly in the lift target scope
+does not clash with an explicit declaration in an inner block: the inner one is
+an ordinary block-local which shadows it (see [`[scope.shadow]`](#scope-shadow)):
 
 ```python
 def f(cond: bool) -> None:
+    x = 3                # implicit, directly in the function scope (not lifted)
     if cond:
-        m = 0            # const → blue
-        print(TUP[m])    # 1
+        const x = 2      # OK: a block-local `x` which shadows the outer one
 ```
+
 
 #### `[py.scope-lifting-unroll]` Scope lifting + blue-time loop unrolling { #py-scope-lifting-unroll }
+
+This behavior is not a special rule and directly derives from the rules above, but it's
+explicitly noted because it's an important case.
 
 `item` is lifted to the loop body block, never to the function, so each
 unrolled iteration gets its own binding with its own type.
@@ -820,11 +799,11 @@ Roughly, after redshifting:
 ```python
 def f() -> None:
     item$0 = 1
-    print(item$0)
+    print_i32(item$0)
     item$1 = 2.5
-    print(item$1)
+    print_f64(item$1)
     item$2 = "hello"
-    print(item$2)
+    print_str(item$2)
 ```
 
 ### `[py.shadow-write]` A bare assignment never targets an outer function or module { #py-shadow-write }

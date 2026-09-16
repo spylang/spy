@@ -38,8 +38,18 @@ Color = Literal["red", "blue"]
 # "decl-global" (and later "decl-nonlocal") marks an analysis-only marker Symbol
 # placed in a Scope by a `global x` declaration.  It never appears in a SymTable
 # and is never bound to a node at runtime (see scope2.collect_Global).
-VarStorage = Literal["direct", "cell", "NameError", "decl-global"]
+#
+# "decl-cannot-lift" marks an explicit decl below a lift target, so a later lift
+# of the same name into the target is rejected ([py.scope-lifting-mixing-error]).
+VarStorage = Literal["direct", "cell", "NameError", "decl-global", "decl-cannot-lift"]
 VarKind = Literal["var", "const"]
+
+# how the name entered the scope
+DeclOrigin = Literal[
+    "explicit",  # var/const, params, funcdef, etc.
+    "implicit",  # bare assignment, bound directly in its lift target
+    "implicit-lifted",  # bare assignment, lifted through transparent blocks
+]
 VarKindOrigin = Literal[
     "auto",          # "x = 0" inside a function
     "global-const",  # "x = 0" at module level
@@ -122,6 +132,7 @@ class Symbol:
     varkind_origin: VarKindOrigin
     storage: VarStorage
     _: KW_ONLY
+    decl_origin: DeclOrigin = "explicit"
     slot_name: str
     loc: Loc  # where the symbol is defined, in the source code
     type_loc: Loc  # loc of the TYPE of the symbols
@@ -197,6 +208,17 @@ class Scope:
         The last component of the (possibly '::'-separated) scope name.
         """
         return self.name.rsplit("::", 1)[-1]
+
+    @property
+    def is_lift_target(self) -> bool:
+        """
+        [py.scope-lifting]: an implicit declaration lifts up to the nearest lift
+        target. A lift target is a frame owner (function/module/class) or a loop
+        body. Every other block (if/else, and later try/with) is transparent.
+        """
+        if self.kind != "block":
+            return True  # a frame owner
+        return self.short_name in ("for.body", "while.body")
 
     @classmethod
     def from_builtins(cls) -> "Scope":

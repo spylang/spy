@@ -4,6 +4,7 @@ from typing import Optional
 from spy import ast
 from spy.analyze.symtable import (
     Color,
+    DeclOrigin,
     ImportRef,
     Scope,
     ScopeKind,
@@ -175,7 +176,7 @@ class ScopeAnalyzer:
         def dump_scope(scope: Scope, frames: list[SymTable]) -> None:
             b.wl(f"scope {scope.short_name}:")
             with b.indent():
-                # `global x` declarations in this scope
+                # scope modifiers like `global x`
                 for sym in scope._symbols.values():
                     if sym.storage == "decl-global":
                         b.wl(color.set("red", f"global {sym.src_name}"))
@@ -386,6 +387,9 @@ class ScopeAnalyzer:
                 if sym.storage == "decl-global":
                     # `global name`: record it and keep walking
                     has_global_decl = True
+                elif sym.storage == "decl-cannot-lift":
+                    # a lift-blocking marker, not a real binding: keep walking
+                    pass
                 else:
                     return LookupResult(frame_depth, scope, sym, has_global_decl)
             if scope.kind in ("function", "module", "class"):
@@ -397,6 +401,7 @@ class ScopeAnalyzer:
         self,
         node: ast.Node,
         name: str,
+        decl_origin: DeclOrigin,
         varkind: VarKind,
         varkind_origin: VarKindOrigin,
         loc: Loc,
@@ -441,6 +446,7 @@ class ScopeAnalyzer:
             varkind,
             varkind_origin,
             storage,
+            decl_origin=decl_origin,
             slot_name=symtable.get_fresh_slot(name),
             loc=loc,
             type_loc=type_loc,
@@ -467,6 +473,7 @@ class ScopeAnalyzer:
         self.create_new_local(
             imp,
             imp.asname,
+            "explicit",
             "const",
             "auto",
             imp.loc,
@@ -483,6 +490,7 @@ class ScopeAnalyzer:
     def collect_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
         varname = vardef.name.value
+        decl_origin: DeclOrigin = "explicit"
         if vardef.kind is None:
             # bare `x: T` at module level is an implicit const
             varkind: VarKind = "const"
@@ -497,13 +505,25 @@ class ScopeAnalyzer:
         if vardef.value is not None:
             self.collect(vardef.value)
         self.create_new_local(
-            decl, varname, varkind, varkind_origin, decl.loc, vardef.type.loc
+            decl,
+            varname,
+            decl_origin,
+            varkind,
+            varkind_origin,
+            decl.loc,
+            vardef.type.loc,
         )
 
     def collect_ClassDef(self, classdef: ast.ClassDef) -> None:
         # collect the class name in the outer scope
         self.create_new_local(
-            classdef, classdef.name, "const", "classdef", classdef.loc, classdef.loc
+            classdef,
+            classdef.name,
+            "explicit",
+            "const",
+            "classdef",
+            classdef.loc,
+            classdef.loc,
         )
 
         # the class body is its own frame (a "class" scope with its own symtable);
@@ -549,6 +569,7 @@ class ScopeAnalyzer:
             self.create_new_local(
                 arg,
                 arg.name,
+                "explicit",
                 argkind,
                 argkind_origin,
                 arg.loc,
@@ -558,6 +579,7 @@ class ScopeAnalyzer:
         ret_sym = self.create_new_local(
             funcdef.return_type,
             "@return",
+            "explicit",
             "var",
             "auto",
             funcdef.return_type.loc,
@@ -598,7 +620,9 @@ class ScopeAnalyzer:
         # Note that there is a hidden $_iter variable. We bind it to the For node.
 
         iter_loc = forstmt.iter.loc
-        self.create_new_local(forstmt, "_$iter", "var", "auto", iter_loc, iter_loc)
+        self.create_new_local(
+            forstmt, "_$iter", "explicit", "var", "auto", iter_loc, iter_loc
+        )
 
         # The iterator (`X`) is evaluated in the enclosing scope.
         self.collect(forstmt.iter)
@@ -617,6 +641,7 @@ class ScopeAnalyzer:
             self.create_new_local(
                 target,
                 target.value,
+                "explicit",
                 "var",
                 "loop-target",
                 target.loc,
@@ -629,6 +654,7 @@ class ScopeAnalyzer:
 
     def collect_VarDef(self, vardef: ast.VarDef) -> None:
         varname = vardef.name.value
+        decl_origin: DeclOrigin = "explicit"
         varkind_optional = vardef.kind
         if varkind_optional is None:
             # bare `x: T` inside a function body - not valid in strict mode,
@@ -645,9 +671,51 @@ class ScopeAnalyzer:
         # triggers [decl.use-before]
         if vardef.value is not None:
             self.collect(vardef.value)
+
+        # [py.scope-lifting-mixing-error]: it is an error to mix implicit and explicit
+        # declaration. E.g.:
+        #     if cond:
+        #         const x = 1
+        #         y = 1
+        #     else:
+        #         x = 2
+        #         const y = 2
+        #
+        # To detect the mixing, we do two things:
+        #
+        #   1. if the explicit decl shadows an `implicit-lifted` symbol, then it's an
+        #      error. This catches the `y` case above.
+        #
+        #   2. if we encounter an explicit decl, we also put a `decl-cannot-lift` marker
+        #      in the lift_target scope: this will cause an error if later we try to
+        #      lift a symbol there. This catches the `x` case above.
+        #
+        lift_target = self.get_lift_target()
+        if lift_target is not self.scope:
+            # we might need to do actual lifting
+            sym = lift_target.lookup_maybe(varname)
+            if sym is None:
+                # (2): place the decl-cannot-lift marker in the lift_target_scope
+                marker = Symbol(
+                    varname,
+                    "const",
+                    "explicit",
+                    "decl-cannot-lift",
+                    slot_name=varname,
+                    loc=vardef.loc,
+                    type_loc=vardef.type.loc,
+                    level=0,
+                )
+                lift_target.add(marker)
+            else:
+                if sym.decl_origin == "implicit-lifted":
+                    # (1): we detected the shadowing
+                    self.report_mixed_declarations(varname, vardef.loc, sym.loc)
+
         self.create_new_local(
             vardef,
             varname,
+            decl_origin,
             varkind,
             varkind_origin,
             vardef.loc,
@@ -662,7 +730,7 @@ class ScopeAnalyzer:
             # implicit declaration
             if isinstance(assign.target, ast.SingleTarget):
                 tgt = assign.target.name
-                self.assign_or_declare_maybe(tgt, tgt.value, "auto", tgt.loc)
+                self.assign_or_declare_maybe(tgt, tgt.value, "auto", assign.loc)
             else:
                 assert False, "TODO: unpack targets"
 
@@ -673,13 +741,13 @@ class ScopeAnalyzer:
             tgt = assignexpr.target
             self.assign_or_declare_maybe(tgt, tgt.value, "auto", tgt.loc)
 
-    def implicit_target_scope(self) -> Scope:
+    def get_lift_target(self) -> Scope:
         """
-        [py.scope-lifting]: the scope an implicit declaration binds into:
-        `if` blocks are skipped.
+        [py.scope-lifting]: find the nearest lift target at or above the current
+        scope.  Implicit declarations bind here.
         """
         scope = self.scope
-        while scope.kind == "block" and scope.short_name.startswith("if."):
+        while not scope.is_lift_target:
             assert scope.parent is not None
             scope = scope.parent
         return scope
@@ -700,11 +768,39 @@ class ScopeAnalyzer:
                 # [py.constness]: a second assignment makes an implicit const a var
                 self.promote_const_to_var(res.scope, res.sym)
         else:
-            # first assignment: make an implicit `const` declaration
-            scope = self.implicit_target_scope()
+            # first assignment: this is an implicit declaration. The declaration happens
+            # in the lift_target scope, UNLESS we find an `decl-cannot-lift` marker, see
+            # also XXX
+            lift_target = self.get_lift_target()
+            decl_origin: DeclOrigin
+            if lift_target is self.scope:
+                # just a normal implicit declaration, no lifting is happening
+                decl_origin = "implicit"
+            else:
+                # here we are lifting, check that we can
+                decl_origin = "implicit-lifted"
+                marker = lift_target.lookup_maybe(varname)
+                if marker is not None and marker.storage == "decl-cannot-lift":
+                    self.report_mixed_declarations(varname, marker.loc, loc)
+
             self.create_new_local(
-                node, varname, "const", varkind_origin, loc, loc, scope=scope
+                node,
+                varname,
+                decl_origin,
+                "const",
+                varkind_origin,
+                loc,
+                loc,
+                scope=lift_target,
             )
+
+    def report_mixed_declarations(self, name: str, exp_loc: Loc, imp_loc: Loc) -> None:
+        # [py.scope-lifting-mixing-error]
+        msg = f"Cannot mix implicit and explicit declarations for `{name}`"
+        err = SPyError("W_ScopeError", msg)
+        err.add("error", f"this is an explicit declaration", exp_loc)
+        err.add("error", f"this is an implicitly lifted declaration", imp_loc)
+        raise err
 
     def promote_const_to_var(self, scope: Scope, sym: Symbol) -> None:
         # `scope` is the scope that owns `sym` (may be an outer block for a lifted

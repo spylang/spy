@@ -555,6 +555,108 @@ class TestScopeAnalyzer2:
         """
         self.assert_dump("test::foo", expected)
 
+    def test_py_scope_lifting_mixing_error_expl_then_impl(self):
+        # [py.scope-lifting-mixing-error]: `x` is declared FIRST EXPLICITLY in one
+        # branch THEN IMPLICITLY lifted in the other
+        src = """
+        from __spy__ import pythonic_scoping
+
+        def foo(cond: bool) -> None:
+            if cond:
+                const x = 1
+            else:
+                x = 2
+        """
+        self.expect_errors(
+            src,
+            "Cannot mix implicit and explicit declarations for `x`",
+            ("this is an explicit declaration", "const x = 1"),
+            ("this is an implicitly lifted declaration", "x = 2"),
+        )
+
+    def test_py_scope_lifting_mixing_error_impl_then_expl(self):
+        # [py.scope-lifting-mixing-error]: `x` is FIRST IMPLICITLY lifted in one branch
+        # THEN EXPLICITLY declared in the other
+        src = """
+        from __spy__ import pythonic_scoping
+
+        def foo(cond: bool) -> None:
+            if cond:
+                x = 1
+            else:
+                const x = 2
+        """
+        self.expect_errors(
+            src,
+            "Cannot mix implicit and explicit declarations for `x`",
+            ("this is an explicit declaration", "const x = 2"),
+            ("this is an implicitly lifted declaration", "x = 1"),
+        )
+
+    def test_py_scope_lifting_stops_at_loop(self):
+        # [py.scope-lifting]: lifting stops at a loop boundary. `x` is assigned in an
+        # `if` inside the loop body; it lifts only up to the `for.body` (the nearest
+        # lift target), so it is visible in the rest of the loop body but NOT after
+        # the loop.
+        src = """
+        from __spy__ import pythonic_scoping
+
+        def foo() -> None:
+            for i in range(10):
+                if i > 5:
+                    x = i
+                x
+            x
+        """
+        self.analyze(src)
+        expected = """
+        symtable test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            _$iter$0: Symbol("_$iter", "var", "auto")
+            i$0: Symbol("i", "var", "loop-target")
+            x$0: Symbol("x", "const", "auto")
+
+            scope foo:
+                range -> range @ builtins (depth=2) => <ImportRef _range.range>
+                _$iter -> _$iter$0
+                x -> NameError
+                scope for.body:
+                    i -> i$0
+                    x -> x$0
+                    scope if.then:
+                        i -> i$0
+                        x -> x$0
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_py_scope_lifting_no_mixing_when_not_lifted(self):
+        # [py.scope-lifting-mixing-error]: the error is about LIFTING. A plain
+        # implicit decl directly in the lift target scope does not clash with a
+        # nested explicit decl: the inner one is an ordinary block-local shadow.
+        src = """
+        from __spy__ import pythonic_scoping
+
+        def foo(cond: bool) -> None:
+            x = 3
+            if cond:
+                const x = 2
+        """
+        self.analyze(src)
+        expected = """
+        symtable test::foo (function):
+            cond$0: Symbol("cond", "var", "red-param")
+            @return: Symbol("@return", "var", "auto")
+            x$0: Symbol("x", "const", "auto")
+            x$1: Symbol("x", "const", "explicit")
+
+            scope foo:
+                cond -> cond$0
+                x -> x$0
+                scope if.then:
+                    x -> x$1
+        """
+        self.assert_dump("test::foo", expected)
+
     # ======= pythonic scoping tests =======
 
     def test_py_implicit_decl(self):
