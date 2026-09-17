@@ -331,7 +331,7 @@ class methods:
             result_len = orig_len + (orig_len + 1) * new_len
             res = StrObject.alloc(result_len)
             res.hash = 0
-            pos: i32 = 0
+            pos = 0
             for i in range(orig_len):
                 if new_len > 0:
                     ptr_copy_slice(
