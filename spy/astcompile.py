@@ -155,15 +155,7 @@ class ASTCompiler:
         return decl.replace(vardef=new_vardef[0])
 
     def compile_decl_GlobalClassDef(self, decl: ast.GlobalClassDef) -> ast.Decl:
-        classdef = decl.classdef
-        if self.sa is not None:
-            inner_symtable = self.sa.get_symtable(classdef)
-        else:
-            inner_symtable = classdef.symtable  # KILL ME
-        self.push_symtable(inner_symtable)
-        new_body = self.compile_body(classdef.body)
-        self.pop_symtable()
-        new_classdef = classdef.replace(body=new_body, symtable=inner_symtable)
+        new_classdef = self.compile_classdef(decl.classdef)
         return decl.replace(classdef=new_classdef)
 
     def compile_decl_Import(self, decl: ast.Import) -> ast.Decl:
@@ -302,10 +294,20 @@ class ASTCompiler:
         return [ast.AssignLocal(stmt.loc, assign_expr)]
 
     def compile_stmt_ClassDef(self, stmt: ast.ClassDef) -> list[ast.Stmt]:
-        self.push_symtable(stmt.symtable)
-        new_body = self.compile_body(stmt.body)
+        return [self.compile_classdef(stmt)]
+
+    def compile_classdef(self, classdef: ast.ClassDef) -> ast.ClassDef:
+        if self.sa is not None:
+            inner_symtable = self.sa.get_symtable(classdef)
+            new_sym = self.sa.get_resolved_sym(classdef)
+        else:
+            # KILL ME: legacy scope.py path, leaves _sym=None
+            inner_symtable = classdef.symtable
+            new_sym = None
+        self.push_symtable(inner_symtable)
+        new_body = self.compile_body(classdef.body)
         self.pop_symtable()
-        return [stmt.replace(body=new_body)]
+        return classdef.replace(body=new_body, symtable=inner_symtable, _sym=new_sym)
 
     def compile_stmt_FuncDef(self, stmt: ast.FuncDef) -> list[ast.Stmt]:
         return [self.compile_funcdef(stmt)]

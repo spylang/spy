@@ -432,13 +432,19 @@ class AbstractFrame:
         """
         Create a forward-declaration for the given classdef
         """
+        # the FQN uses the src name; the local slot uses the (maybe mangled) slot_name
         fqn = self.ns.join(classdef.name)
         fqn = self.vm.get_unique_FQN(fqn)
         pyclass = self.metaclass_for_classdef(classdef)
         w_typedecl = pyclass.declare(fqn)
         w_meta_type = self.vm.dynamic_type(w_typedecl)
-        self.declare_local(classdef.name, "blue", w_meta_type, classdef.loc)
-        self.store_local(classdef.name, w_typedecl)
+        if self.symtable.scoping_rules == "legacy":
+            # KILL ME: legacy scope.py path (slot_name == src_name)
+            slot_name = classdef.name
+        else:
+            slot_name = classdef.sym.slot_name
+        self.declare_local(slot_name, "blue", w_meta_type, classdef.loc)
+        self.store_local(slot_name, w_typedecl)
         self.vm.add_global(fqn, w_typedecl)
 
     def exec_stmt_ClassDef(self, classdef: ast.ClassDef) -> None:
@@ -446,7 +452,12 @@ class AbstractFrame:
 
         # we are DEFINING a type which has already been declared by
         # fwdecl_ClassDef. Look it up
-        w_T = self.load_local(classdef.name)
+        if self.symtable.scoping_rules == "legacy":
+            # KILL ME: legacy scope.py path (slot_name == src_name)
+            slot_name = classdef.name
+        else:
+            slot_name = classdef.sym.slot_name
+        w_T = self.load_local(slot_name)
         assert isinstance(w_T, W_Type)
         assert w_T.fqn.parts[-1].name == classdef.name  # sanity check
         assert not w_T.is_defined()

@@ -966,6 +966,8 @@ class ScopeAnalyzer:
         self.bind_ClassDef(decl.classdef)
 
     def bind_ClassDef(self, classdef: ast.ClassDef) -> None:
+        # the classdef NAME is bound in the outer scope, the body in the inner scope
+        self.lookup_and_bind(classdef, classdef.name, classdef.loc)
         scope = self.scopes[classdef]
         self.push_scope(scope)
         for stmt in classdef.body:
