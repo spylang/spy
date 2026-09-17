@@ -145,6 +145,33 @@ class TestScopeAnalyzer2:
         """
         self.assert_dump("test::foo", expected)
 
+    def test_decl_use_before_class_forward(self):
+        # [decl.use-before]: a `class` implicitly insers a forward-declaration at the
+        # start of its enclosing scope
+        src = """
+        from __spy__ import strict_scoping
+        from unsafe import raw_ptr
+
+        def foo() -> None:
+            const p = raw_ptr[S]
+            @struct
+            class S:
+                pass
+        """
+        self.analyze(src)
+        expected = """
+        symtable test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            p$0: Symbol("p", "const", "explicit")
+            S$0: Symbol("S", "const", "classdef")
+
+            scope foo:
+                p -> p$0
+                raw_ptr -> raw_ptr @ test (depth=1) => <ImportRef unsafe.raw_ptr>
+                S -> S$0
+        """
+        self.assert_dump("test::foo", expected)
+
     def test_decl_no_redeclare(self):
         """
         [decl.no-redeclare]: declaring the same name twice in the same scope is an error

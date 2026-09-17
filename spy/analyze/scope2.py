@@ -409,6 +409,7 @@ class ScopeAnalyzer:
         *,
         impref: Optional[ImportRef] = None,
         scope: Optional[Scope] = None,
+        valid_from: Optional[int] = None,
     ) -> Symbol:
         """
         Add a name definition to the given scope and its symtable (level 0).
@@ -416,6 +417,11 @@ class ScopeAnalyzer:
         By default, `scope` is `self.scope`. It differs only in case of implicit
         declarations which happens inside `if` blocks, which are lifted to their
         encloding scope, see [py.scope-lifting].
+
+        `valid_from` controls when the name starts to be visible for the
+        [decl.use-before] check; by default it's the current seq (the textual
+        position). `valid_from=0` means "always valid", i.e. visible from the
+        beginning of the scope.
         """
         if scope is None:
             scope = self.scope
@@ -455,7 +461,9 @@ class ScopeAnalyzer:
         )
         scope.add(new_sym)
         symtable.add(new_sym)
-        self.valid_from[new_sym] = self.cur_seq  # remember when it was created
+        if valid_from is None:
+            valid_from = self.cur_seq  # remember when it was created
+        self.valid_from[new_sym] = valid_from
         return new_sym
 
     def collect(self, node: ast.Node) -> None:
@@ -515,7 +523,8 @@ class ScopeAnalyzer:
         )
 
     def collect_ClassDef(self, classdef: ast.ClassDef) -> None:
-        # collect the class name in the outer scope
+        # collect the class name in the outer scope. Note that the name if valid_from=0,
+        # because it's an implicit forward declaration.
         self.create_new_local(
             classdef,
             classdef.name,
@@ -524,6 +533,7 @@ class ScopeAnalyzer:
             "classdef",
             classdef.loc,
             classdef.loc,
+            valid_from=0,
         )
 
         # the class body is its own frame (a "class" scope with its own symtable);
