@@ -208,6 +208,7 @@ def inline_call(
     w_callee must already be at stage == "redshifted".
     """
     assert w_callee.stage == "redshifted"
+    # XXX: maybe we could use SymTable.get_fresh_slot instead?
     suffix = f"${inline_counter}"
 
     assert w_callee.locals_types_w is not None
@@ -218,10 +219,10 @@ def inline_call(
     callee_symtable = w_callee.funcdef.symtable
     param_assigns: list[ast.Stmt] = []
     for i, (func_param, funcdef_arg) in enumerate(zip(functype.params, funcdef_args)):
-        param_name = funcdef_arg.name
-        new_name = f"{param_name}{suffix}"
+        slot_name = funcdef_arg.sym.slot_name
+        new_name = f"{slot_name}{suffix}"
         new_locals_types_w[new_name] = func_param.w_T
-        param_sym = callee_symtable.lookup(param_name).replace(slot_name=new_name)
+        param_sym = callee_symtable.lookup(slot_name).replace(slot_name=new_name)
 
         param_assigns.append(
             ast.AssignLocal(
