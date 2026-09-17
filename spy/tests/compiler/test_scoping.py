@@ -384,7 +384,7 @@ class TestScoping(CompilerTest):
         errors = expect_errors(
             "name `COUNT` is not defined",
             ("used before its declaration", "COUNT"),
-            ("declared later here", "COUNT = COUNT + 1"),
+            ("declared later here", "COUNT"),
         )
         self.compile_raises(src, "bump", errors)
 
@@ -488,8 +488,8 @@ class TestScoping(CompilerTest):
         assert mod.main() == 42
 
     def test_py_scope_lifting_mixing_error(self):
-        # [py.scope-lifting-mixing-error]: a name may not be both explicitly declared
-        # and implicitly lifted inside the same lift target.
+        # [py.scope-lifting-mixing-error]: a name may not be both explicitly and
+        # implicitly declared inside the same lift target.
         src = """
         def foo(cond: bool) -> None:
             if cond:
@@ -500,6 +500,6 @@ class TestScoping(CompilerTest):
         errors = expect_errors(
             "Cannot mix implicit and explicit declarations for `x`",
             ("this is an explicit declaration", "var x: i32 = 1"),
-            ("this is an implicitly lifted declaration", "x = 2"),
+            ("this is an implicit declaration", "x"),
         )
         self.compile_raises(src, "foo", errors, error_reporting="eager")

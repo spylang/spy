@@ -761,16 +761,26 @@ def f() -> None:
         const x = 2      # OK: a separate `x`, owned by the loop
 ```
 
-The error is specifically about *lifting*, not about implicit declarations in
-general. A plain implicit declaration made directly in the lift target scope
-does not clash with an explicit declaration in an inner block: the inner one is
-an ordinary block-local which shadows it (see [`[scope.shadow]`](#scope-shadow)):
+The clash does not depend on whether the implicit declaration was lifted: it is
+about mixing an implicit and an explicit declaration for the same name in the
+same lift target. An implicit declaration made directly in the lift target scope
+still clashes with an explicit declaration in an inner block below it:
 
 ```python
 def f(cond: bool) -> None:
-    x = 3                # implicit, directly in the function scope (not lifted)
+    x = 3                # implicit, directly in the function scope
     if cond:
-        const x = 2      # OK: a block-local `x` which shadows the outer one
+        const x = 2      # ERROR: mixes with the implicit `x` above
+```
+
+Two *explicit* declarations, on the other hand, do not mix: they are ordinary
+block-local shadows (see [`[scope.shadow]`](#scope-shadow)):
+
+```python
+def f(cond: bool) -> None:
+    if cond:
+        const x = 2      # OK: a block-local `x`...
+    const x = 3          #     ...shadowed by a separate function-level `x`
 ```
 
 

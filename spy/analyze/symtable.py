@@ -40,16 +40,16 @@ Color = Literal["red", "blue"]
 # placed in a Scope by a `global x` declaration.  It never appears in a SymTable
 # and is never bound to a node at runtime (see scope2.collect_Global).
 #
-# "decl-cannot-lift" marks an explicit decl below a lift target, so a later lift
-# of the same name into the target is rejected ([py.scope-lifting-mixing-error]).
+# "decl-cannot-lift" marks an explicit decl below a lift target, so a later
+# implicit declaration of the same name in the target is rejected
+# ([py.scope-lifting-mixing-error]).
 VarStorage = Literal["direct", "cell", "NameError", "decl-global", "decl-cannot-lift"]
 VarKind = Literal["var", "const"]
 
 # how the name entered the scope
 DeclOrigin = Literal[
     "explicit",  # var/const, params, funcdef, etc.
-    "implicit",  # bare assignment, bound directly in its lift target
-    "implicit-lifted",  # bare assignment, lifted through transparent blocks
+    "implicit",  # bare assignment
 ]
 VarKindOrigin = Literal[
     "auto",          # "x = 0" inside a function

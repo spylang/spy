@@ -436,10 +436,10 @@ class ScopeAnalyzer:
                 err.add("note", f"`{name}` was declared global here", existing_sym.loc)
                 raise err
             if existing_sym.storage == "decl-cannot-lift":
-                # a `decl-cannot-lift` marker is not a real binding: it was placed
-                # by an explicit decl in a nested block only to catch a LATER
-                # implicit-LIFTED decl. A non-lifted decl made directly here is
-                # fine (it just shadows the block-local); replace the marker.
+                # we found a decl-cannot-lift: this is not a real symbol, its only goal
+                # is to prevent to place an implicit decl in this scope. We can safely
+                # replace it with OUR own symbol, which will also prevent new implicit
+                # decl in this scope.
                 scope.remove(name)
                 existing_sym = None
         if existing_sym:
@@ -733,8 +733,8 @@ class ScopeAnalyzer:
         if vardef.value is not None:
             self.collect(vardef.value)
 
-        # [py.scope-lifting-mixing-error]: it is an error to mix implicit and explicit
-        # declaration. E.g.:
+        # [py.scope-lifting-mixing-error]: it is an error to mix an implicit and an
+        # explicit declaration for the same name:
         #     if cond:
         #         const x = 1
         #         y = 1
@@ -742,21 +742,22 @@ class ScopeAnalyzer:
         #         x = 2
         #         const y = 2
         #
-        # To detect the mixing, we do two things:
+        # In this example, "const x = 1" would shadow the implicitly lifted "x = 2", and
+        # "const y = 2" would shadow the implicitly lifted "y = 1".
         #
-        #   1. if the explicit decl shadows an `implicit-lifted` symbol, then it's an
+        # To detect the mixing, we do two things:
+        #   1. if the explicit decl shadows an `implicit` symbol, then it's an
         #      error. This catches the `y` case above.
         #
         #   2. if we encounter an explicit decl, we also put a `decl-cannot-lift` marker
         #      in the lift_target scope: this will cause an error if later we try to
         #      lift a symbol there. This catches the `x` case above.
-        #
         lift_target = self.get_lift_target()
         if lift_target is not self.scope:
             # we might need to do actual lifting
             sym = lift_target.lookup_maybe(varname)
             if sym is None:
-                # (2): place the decl-cannot-lift marker in the lift_target_scope
+                # (2): place the decl-cannot-lift marker in the lift_target scope
                 marker = Symbol(
                     varname,
                     "const",
@@ -768,10 +769,9 @@ class ScopeAnalyzer:
                     level=0,
                 )
                 lift_target.add(marker)
-            else:
-                if sym.decl_origin == "implicit-lifted":
-                    # (1): we detected the shadowing
-                    self.report_mixed_declarations(varname, vardef.loc, sym.loc)
+            elif sym.decl_origin == "implicit":
+                # (1): we detected the mixing
+                self.report_mixed_declarations(varname, vardef.loc, sym.loc)
 
         self.create_new_local(
             vardef,
@@ -851,23 +851,16 @@ class ScopeAnalyzer:
         else:
             # first assignment: this is an implicit declaration. The declaration happens
             # in the lift_target scope, UNLESS we find an `decl-cannot-lift` marker, see
-            # also XXX
+            # also collect_VarDef
             lift_target = self.get_lift_target()
-            decl_origin: DeclOrigin
-            if lift_target is self.scope:
-                # just a normal implicit declaration, no lifting is happening
-                decl_origin = "implicit"
-            else:
-                # here we are lifting, check that we can
-                decl_origin = "implicit-lifted"
-                marker = lift_target.lookup_maybe(varname)
-                if marker is not None and marker.storage == "decl-cannot-lift":
-                    self.report_mixed_declarations(varname, marker.loc, loc)
+            marker = lift_target.lookup_maybe(varname)
+            if marker is not None and marker.storage == "decl-cannot-lift":
+                self.report_mixed_declarations(varname, marker.loc, loc)
 
             self.create_new_local(
                 node,
                 varname,
-                decl_origin,
+                "implicit",
                 "const",
                 varkind_origin,
                 loc,
@@ -880,7 +873,7 @@ class ScopeAnalyzer:
         msg = f"Cannot mix implicit and explicit declarations for `{name}`"
         err = SPyError("W_ScopeError", msg)
         err.add("error", f"this is an explicit declaration", exp_loc)
-        err.add("error", f"this is an implicitly lifted declaration", imp_loc)
+        err.add("error", f"this is an implicit declaration", imp_loc)
         raise err
 
     def promote_const_to_var(self, scope: Scope, sym: Symbol) -> None:
