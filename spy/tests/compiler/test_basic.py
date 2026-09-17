@@ -254,6 +254,7 @@ class TestBasic(CompilerTest):
         src = """
         x: i32 = 42
         def set_x() -> None:
+            global x
             x = 100
         """
         errors = expect_errors(
@@ -322,6 +323,7 @@ class TestBasic(CompilerTest):
         var counter: i32 = 0
 
         def bump() -> i32:
+            global counter
             return (counter := counter + 1)
 
         def current() -> i32:
@@ -336,6 +338,7 @@ class TestBasic(CompilerTest):
         var calls: i32 = 0
 
         def bump() -> i32:
+            global calls
             calls = calls + 1
             return calls
 
@@ -372,11 +375,13 @@ class TestBasic(CompilerTest):
         mod = self.compile("""
         var x: i32 = 0
         def foo() -> None:
+            global x
             x = 1
             return
             x = 2
 
         def bar() -> None:
+            global x
             x = 3
             return None
             x = 4
@@ -390,9 +395,11 @@ class TestBasic(CompilerTest):
         mod = self.compile("""
         var x: i32 = 0
         def implicit_return_void() -> None:
+            global x
             x = 1
 
         def implicit_return_i32() -> i32:
+            global x
             x = 3
             # ideally, we should detect this case at compile time.
             # For now, it is a runtime error.
@@ -580,6 +587,7 @@ class TestBasic(CompilerTest):
         mod = self.compile("""
         var x: i32 = 0
         def inc() -> None:
+            global x
             x = x + 1
 
         def foo() -> None:
@@ -744,14 +752,17 @@ class TestBasic(CompilerTest):
         var counter: i32 = 0
 
         def bump_true() -> bool:
+            global counter
             counter = counter + 1
             return True
 
         def bump_false() -> bool:
+            global counter
             counter = counter + 1
             return False
 
         def reset_counter() -> None:
+            global counter
             counter = 0
 
         def and_all_false() -> bool:
@@ -782,16 +793,19 @@ class TestBasic(CompilerTest):
         var c: i32 = 0
 
         def reset() -> None:
+            global a, b, c
             a = 0
             b = 0
             c = 0
 
         def if_then(x: i32) -> None:
+            global a, b, c
             if x == 0:
                 a = 100
             c = 300
 
         def if_then_else(x: i32) -> None:
+            global a, b, c
             if x == 0:
                 a = 100
             else:
@@ -886,6 +900,7 @@ class TestBasic(CompilerTest):
             return count
 
         def idx() -> i32:
+            global count
             count = count + 1
             return 0
 
