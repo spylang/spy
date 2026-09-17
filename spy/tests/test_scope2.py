@@ -830,6 +830,31 @@ class TestScopeAnalyzer2:
         """
         self.assert_dump("test::foo", expected)
 
+    def test_py_unpack_targets(self):
+        # [py.implicit-decl]: an unpack assignment implicitly declares each target.
+        src = """
+        def make() -> None:
+            pass
+
+        def foo() -> None:
+            a, b, c = make()
+        """
+        self.analyze(src)
+        expected = """
+        symtable test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            a$0: Symbol("a", "const", "auto")
+            b$0: Symbol("b", "const", "auto")
+            c$0: Symbol("c", "const", "auto")
+
+            scope foo:
+                make -> make @ test (depth=1)
+                a -> a$0
+                b -> b$0
+                c -> c$0
+        """
+        self.assert_dump("test::foo", expected)
+
     def test_py_blue_params(self):
         # [py.blue-params]: blue function arguments are const.
         src = """

@@ -271,10 +271,15 @@ class ASTCompiler:
             # TODO: support nested unpack targets (e.g. (a, (b, c)) = ...)
             targets = []
             for t in stmt.target.targets:
-                if isinstance(t, ast.SingleTarget):
-                    targets.append(t.name)
-                else:
+                if not isinstance(t, ast.SingleTarget):
                     raise WIP("nested unpack targets are not supported yet")
+                name = t.name
+                if self.sa is not None:
+                    sym = self.sa.get_resolved_sym(name)
+                    name = ast.StrLiteral(name.loc, sym.slot_name)
+                else:
+                    assert False  # KILL ME
+                targets.append(name)
             return [
                 ast.AssignUnpack(
                     loc=stmt.loc,

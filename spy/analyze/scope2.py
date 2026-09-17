@@ -721,11 +721,8 @@ class ScopeAnalyzer:
         if self.mod.scoping_rules == "pythonic":
             # [py.implicit-decl]: in pythonic_scoping, an assignment might be an
             # implicit declaration
-            if isinstance(assign.target, ast.SingleTarget):
-                tgt = assign.target.name
+            for tgt in assign.target.flatten():
                 self.assign_or_declare_maybe(tgt, tgt.value, "auto", assign.loc)
-            else:
-                assert False, "TODO: unpack targets"
 
     def collect_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
         # [py.walrus]: a walrus `x := E` implicitly declares `x`.
@@ -1008,15 +1005,8 @@ class ScopeAnalyzer:
 
     def bind_Assign(self, assign: ast.Assign) -> None:
         self.bind(assign.value)
-        if isinstance(assign.target, ast.SingleTarget):
-            # record the target StrLiteral -> sym.  astcompile reuses this same
-            # StrLiteral node when it synthesizes the AssignExpr.
-            tgt = assign.target.name
+        for tgt in assign.target.flatten():
             self.lookup_and_bind_target(tgt, tgt.value, tgt.loc)
-        else:
-            # UnpackTarget: not migrated yet
-            assert False, "TODO"
-            ## self.bind(assign.target)
 
     def bind_AugAssign(self, node: ast.AugAssign) -> None:
         # [py.augassign]: the target is both read and written
