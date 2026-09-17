@@ -761,6 +761,9 @@ class ScopeAnalyzer:
     ) -> None:
         # Reassign an existing name, or implicitly declare
         res = self.lookup_name_in_scopes(varname)
+        if res.has_global_decl:
+            # [global.write]: if there is `global x`, it's NOT an implicit decl
+            return
         if res.found and res.level == 0:
             # the name is already present in the current frame: reassign it
             assert res.scope is not None and res.sym is not None

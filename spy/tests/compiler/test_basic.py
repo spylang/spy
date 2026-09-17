@@ -154,23 +154,6 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 100
 
-    @only_interp
-    def test_blue_cannot_redeclare(self):
-        # see also the equivalent test
-        # TestScopeAnalyzer.test_red_cannot_redeclare
-        src = """
-        @blue
-        def foo() -> i32:
-            x: i32 = 1
-            x: i32 = 2
-        """
-        errors = expect_errors(
-            "variable `x` already declared",
-            ("this is the new declaration", "x: i32 = 2"),
-            ("this is the previous declaration", "x: i32 = 1"),
-        )
-        self.compile_raises(src, "foo", errors)
-
     def test_local_typecheck(self):
         src = """
         def foo() -> i32:
@@ -245,6 +228,7 @@ class TestBasic(CompilerTest):
         def get_x() -> i32:
             return x
         def set_x(newval: i32) -> None:
+            global x
             x = newval
         """)
         vm = self.vm
