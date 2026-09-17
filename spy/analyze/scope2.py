@@ -715,6 +715,26 @@ class ScopeAnalyzer:
             vardef.type.loc,
         )
 
+    def collect_children(self, node: ast.Node) -> None:
+        for child in node.get_children():
+            self.collect(child)
+
+    def collect_List(self, lst: ast.List) -> None:
+        self.mod_symtable.implicit_imports.add("_list")
+        self.collect_children(lst)
+
+    def collect_Tuple(self, tup: ast.Tuple) -> None:
+        self.mod_symtable.implicit_imports.add("_tuple")
+        self.collect_children(tup)
+
+    def collect_Dict(self, d: ast.Dict) -> None:
+        self.mod_symtable.implicit_imports.add("_dict")
+        self.collect_children(d)
+
+    def collect_Slice(self, slc: ast.Slice) -> None:
+        self.mod_symtable.implicit_imports.add("_slice")
+        self.collect_children(slc)
+
     def collect_Assign(self, assign: ast.Assign) -> None:
         # FIRST collect the value, THEN (maybe) declare the target, like in VarDef.
         self.collect(assign.value)

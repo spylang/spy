@@ -872,3 +872,21 @@ class TestScopeAnalyzer2:
                 x -> x$0
         """
         self.assert_dump("test::foo", expected)
+
+    def test_implicit_imports(self):
+        src = """
+        def foo(x: dynamic) -> None:
+            [1, 2, 3]
+            tup = 1, 2, 3
+            d = {10: 20, 30: 50}
+            x[1:2]
+        """
+        self.analyze(src)
+        # `builtins` is also implicitly imported (via the `dynamic` annotation)
+        assert self.sa.by_module().implicit_imports == {
+            "_list",
+            "_tuple",
+            "_dict",
+            "_slice",
+            "builtins",
+        }
