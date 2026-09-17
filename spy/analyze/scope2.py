@@ -495,6 +495,66 @@ class ScopeAnalyzer:
     def collect_GlobalClassDef(self, decl: ast.GlobalClassDef) -> None:
         self.collect_ClassDef(decl.classdef)
 
+    def collect_GlobalGenericFuncDef(self, decl: ast.GlobalGenericFuncDef) -> None:
+        self.collect_GenericFuncDef(decl.funcdef)
+
+    def collect_GlobalGenericClassDef(self, decl: ast.GlobalGenericClassDef) -> None:
+        self.collect_GenericClassDef(decl.classdef)
+
+    def collect_GenericFuncDef(self, gfuncdef: ast.GenericFuncDef) -> None:
+        self._collect_generic(gfuncdef, gfuncdef.name, gfuncdef.args, gfuncdef.inner)
+
+    def collect_GenericClassDef(self, gclassdef: ast.GenericClassDef) -> None:
+        self._collect_generic(
+            gclassdef, gclassdef.name, gclassdef.args, gclassdef.inner
+        )
+
+    def _collect_generic(
+        self,
+        node: ast.Node,
+        name: str,
+        args: list[ast.FuncArg],
+        inner: ast.Stmt,
+    ) -> None:
+        # A GenericFuncDef/GenericClassDef is essentially a blue function:
+        # def add[T](x: T, y: T) -> T:
+        #     ...
+        #
+        # is equivalent to:
+        # @blue
+        # def add(T):
+        #     def __impl(x: T, y: T) -> T:
+        #         ...
+        #     return __impl
+        #
+        # For scope analysis, we need to:
+        #     1. collect/bind the name "add" in the outer scope
+        #     2. push a scope/symtable for the blue function
+        #     3. collect/bind the generic arguments ("T")
+        #     4. collect/bind the inner funcdef/classdef
+
+        # (1) collect the name of the generic function/class
+        loc = inner.loc
+        self.create_new_local(node, name, "explicit", "const", "funcdef", loc, loc)
+
+        # (2) push the blue scope/symtable; see also collect_FuncDef
+        symtable_name = f"{self.symtable.name}::{name}"
+        symtable = SymTable(symtable_name, "blue", "function")
+        symtable.scoping_rules = "strict"  # KILL ME
+        inner_scope = self.new_Scope(name, "blue", "function", symtable=symtable)
+        self.push_scope(inner_scope)
+        self.scopes[node] = inner_scope
+
+        # (3) collect the generic arguments
+        for arg in args:
+            self.create_new_local(
+                arg, arg.name, "explicit", "const", "blue-param", arg.loc, arg.type.loc
+            )
+
+        # (4) collect the inner funcdef/classdef
+        self.collect(inner)
+        self.pop_scope()
+
     def collect_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
         varname = vardef.name.value
@@ -989,6 +1049,45 @@ class ScopeAnalyzer:
         self.push_scope(scope)
         for stmt in classdef.body:
             self.bind(stmt)
+        self.pop_scope()
+
+    def bind_GlobalGenericFuncDef(self, decl: ast.GlobalGenericFuncDef) -> None:
+        self.bind_GenericFuncDef(decl.funcdef)
+
+    def bind_GlobalGenericClassDef(self, decl: ast.GlobalGenericClassDef) -> None:
+        self.bind_GenericClassDef(decl.classdef)
+
+    def bind_GenericFuncDef(self, gfuncdef: ast.GenericFuncDef) -> None:
+        self._bind_generic(gfuncdef, gfuncdef.name, gfuncdef.args, gfuncdef.inner)
+
+    def bind_GenericClassDef(self, gclassdef: ast.GenericClassDef) -> None:
+        self._bind_generic(gclassdef, gclassdef.name, gclassdef.args, gclassdef.inner)
+
+    def _bind_generic(
+        self,
+        node: ast.Node,
+        name: str,
+        args: list[ast.FuncArg],
+        inner: ast.Stmt,
+    ) -> None:
+        # See the big comment in _collect_generic for a general overview of the steps
+
+        # (1) bind the name of the generic in the outer scope
+        self.lookup_and_bind(node, name, inner.loc)
+
+        # bind arg types (still in the outer scope)
+        for arg in args:
+            self.bind(arg.type)
+
+        # (2) push a scope for the blue function
+        scope = self.scopes[node]
+        self.push_scope(scope)
+        for arg in args:
+            # (3) bind the generic arguments ("T")
+            self.lookup_and_bind(arg, arg.name, arg.loc)
+
+        # (4) bind the inner funcdef/classdef
+        self.bind(inner)
         self.pop_scope()
 
     def bind_If(self, ifstmt: ast.If) -> None:

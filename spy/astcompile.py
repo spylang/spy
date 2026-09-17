@@ -124,29 +124,105 @@ class ASTCompiler:
         self, decl: ast.GlobalGenericFuncDef
     ) -> ast.Decl:
         gfuncdef = decl.funcdef
-        self.push_symtable(gfuncdef.symtable)
-        new_inner = self.compile_funcdef(gfuncdef.inner)
-        self.pop_symtable()
-        new_gfuncdef = gfuncdef.replace(inner=new_inner)
-        return decl.replace(funcdef=new_gfuncdef)
+        if self.sa is None:
+            # KILL ME: legacy scope.py path. Leave the GenericFuncDef node as-is;
+            # the runtime `exec_stmt_GenericFuncDef` does the desugaring.
+            self.push_symtable(gfuncdef.symtable)
+            new_inner = self.compile_funcdef(gfuncdef.inner)
+            self.pop_symtable()
+            new_gfuncdef = gfuncdef.replace(inner=new_inner)
+            return decl.replace(funcdef=new_gfuncdef)
+
+        # scope2 path: desugar into a `FuncDef(kind="generic")` here, so the
+        # GenericFuncDef node never reaches the runtime (like for/augassign).
+        outer_funcdef = self._desugar_generic(
+            gfuncdef, gfuncdef.name, gfuncdef.args, gfuncdef.inner
+        )
+        return ast.GlobalFuncDef(decl.loc, outer_funcdef)
 
     def compile_decl_GlobalGenericClassDef(
         self, decl: ast.GlobalGenericClassDef
     ) -> ast.Decl:
-        # GenericClassDef is basically _function_ which returns a class. So when
-        # evaluating the body we need to push:
-        #     gclassdef.symtable which contains e.g. 'T'
-        #     inner.symtable which contains the body of the class
         gclassdef = decl.classdef
-        inner = gclassdef.inner
-        self.push_symtable(gclassdef.symtable)
-        self.push_symtable(inner.symtable)
-        new_body = self.compile_body(inner.body)
+        if self.sa is None:
+            # KILL ME: legacy scope.py path (runtime does the desugaring).
+            inner = gclassdef.inner
+            self.push_symtable(gclassdef.symtable)
+            self.push_symtable(inner.symtable)
+            new_body = self.compile_body(inner.body)
+            self.pop_symtable()
+            self.pop_symtable()
+            new_inner = inner.replace(body=new_body)
+            new_gclassdef = gclassdef.replace(inner=new_inner)
+            return decl.replace(classdef=new_gclassdef)
+
+        # scope2 path: desugar into a `FuncDef(kind="generic")` here.
+        outer_funcdef = self._desugar_generic(
+            gclassdef, gclassdef.name, gclassdef.args, gclassdef.inner
+        )
+        return ast.GlobalFuncDef(decl.loc, outer_funcdef)
+
+    def _desugar_generic(
+        self,
+        node: ast.Node,
+        name: str,
+        args: list[ast.FuncArg],
+        inner: ast.Stmt,
+    ) -> ast.FuncDef:
+        # desugar:
+        #   def add[T](x: T, y: T) -> T:
+        #       ...
+        #
+        # into:
+        #   @blue
+        #   def add(T):
+        #       def __impl(x: T, y: T) -> T:
+        #           ...
+        #       return __impl
+        #
+        # (same for class[T])
+
+        assert self.sa is not None
+        assert self.mod is not None
+        loc = inner.loc
+        # the generic args and body are compiled in the outer generic frame
+        outer_symtable = self.sa.get_symtable(node)
+        self.push_symtable(outer_symtable)
+        new_args = [
+            arg.replace(
+                type=self.compile_expr(arg.type),
+                _sym=self.sa.get_resolved_sym(arg),
+            )
+            for arg in args
+        ]
+
+        # compile the inner def/class as the first body statement...
+        new_inner = self.compile_stmt(inner)
+        assert len(new_inner) == 1
+        # synthesize `return <inner>`
+        inner_sym = self.sa.get_resolved_sym(inner)
+        return_stmt = ast.Return(
+            loc=loc,
+            value=ast.NameLocalDirect(loc=loc, sym=inner_sym),
+        )
         self.pop_symtable()
-        self.pop_symtable()
-        new_inner = inner.replace(body=new_body)
-        new_gclassdef = gclassdef.replace(inner=new_inner)
-        return decl.replace(classdef=new_gclassdef)
+
+        return ast.FuncDef(
+            loc=loc,
+            stage="astcompiled",
+            color="blue",
+            kind="generic",
+            name=name,
+            args=new_args,
+            return_type=ast.Auto(loc),
+            defaults=[],
+            docstring=None,
+            scoping_rules=self.mod.scoping_rules,
+            body=new_inner + [return_stmt],
+            decorators=[],
+            symtable=outer_symtable,
+            _sym=self.sa.get_resolved_sym(node),
+        )
 
     def compile_decl_GlobalVarDef(self, decl: ast.GlobalVarDef) -> ast.Decl:
         new_vardef = self.compile_stmt_VarDef(decl.vardef)
