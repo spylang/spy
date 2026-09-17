@@ -385,6 +385,8 @@ class TestScoping(CompilerTest):
             "name `COUNT` is not defined",
             ("used before its declaration", "COUNT"),
             ("declared later here", "COUNT"),
+            ("help: shadowing this `COUNT`", "var COUNT: i32 = 0"),
+            ("help: add `global COUNT` earlier", "COUNT"),
         )
         self.compile_raises(src, "bump", errors)
 

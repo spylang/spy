@@ -969,6 +969,13 @@ class ScopeAnalyzer:
                     err = SPyError("W_NameError", f"name `{varname}` is not defined")
                     err.add("error", "used before its declaration", use_loc)
                     err.add("note", "declared later here", sym.loc)
+                    # a common cause is a bare assignment `x = ...` which implicitly
+                    # declares a local that shadows a module-level global; hint at it.
+                    glob = self.mod_scope.lookup_maybe(varname)
+                    if glob is not None and glob is not sym:
+                        err.add("note", f"help: shadowing this `{varname}`", glob.loc)
+                        msg = f"help: add `global {varname}` earlier"
+                        err.add("note", msg, use_loc)
                     self.set_binding(node, self.scope, err)
                     return
 
