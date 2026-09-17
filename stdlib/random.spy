@@ -1,0 +1,18 @@
+from _random import _get_global_random
+
+
+def seed(value: u32 = 0) -> None:
+    """Initialize the global random generator with a seed."""
+    _get_global_random(value, True)
+
+
+def random() -> f64:
+    """Return a random float in [0.0, 1.0)."""
+    return _get_global_random().random()
+
+
+def uniform(a: f64, b: f64) -> f64:
+    """Return a random float in [a, b)."""
+    if a > b:
+        raise ValueError("a must be <= b")
+    return a + (b - a) * random()

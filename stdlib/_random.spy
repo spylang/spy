@@ -1,0 +1,94 @@
+"""
+Random number generation with a Mersenne Twister (MT19937) PRNG.
+
+Stolen from https://github.com/pypy/pypy/blob/main/rpython/rlib/rrandom.py
+(and CPython's _randommodule.c).
+"""
+
+from unsafe import gc_ptr, gc_alloc
+
+# ---- Constants for MT19937 ----
+N: i32 = 624
+M: i32 = 397
+MATRIX_A = u32(0x9908B0DF)
+UPPER_MASK = u32(0x80000000)
+LOWER_MASK = u32(0x7FFFFFFF)
+MASK_32 = u32(0xFFFFFFFF)
+TEMPERING_MASK_A = u32(0x9D2C5680)
+TEMPERING_MASK_B = u32(0xEFC60000)
+MAGIC_CONSTANT_A = u32(1812433253)
+MAGIC_CONSTANT_B = u32(19650218)
+MAGIC_CONSTANT_C = u32(1664525)
+MAGIC_CONSTANT_D = u32(1566083941)
+
+
+@struct
+class RandomLowLevel:
+    state: list[u32]
+    index: i32
+
+
+@struct
+class Random:
+    __ll__: gc_ptr[RandomLowLevel]
+
+    @staticmethod
+    def init_genrand_state(seed: u32 = 0) -> list[u32]:
+        state: list[u32] = [u32(0)] * N
+        state[0] = seed & MASK_32
+        for mti in range(1, N):
+            state[mti] = (
+                (MAGIC_CONSTANT_A * (state[mti - 1] ^ (state[mti - 1] >> 30)))
+                + u32(mti)
+            ) & MASK_32
+        return state
+
+    def _conditionally_apply(self, val: u32, y: u32) -> u32:
+        if y & u32(1):
+            return val ^ MATRIX_A
+        return val
+
+    def genrand32(self) -> u32:
+        state = self.__ll__.state
+        if self.__ll__.index >= N:
+            for kk in range(N - M):
+                y = (state[kk] & UPPER_MASK) | (state[kk + 1] & LOWER_MASK)
+                state[kk] = self._conditionally_apply(state[kk + M] ^ (y >> 1), y)
+            for kk_ in range(N - M, N - 1):
+                y = (state[kk_] & UPPER_MASK) | (state[kk_ + 1] & LOWER_MASK)
+                state[kk_] = self._conditionally_apply(
+                    state[kk_ + (M - N)] ^ (y >> 1), y
+                )
+            y = (state[N - 1] & UPPER_MASK) | (state[0] & LOWER_MASK)
+            state[N - 1] = self._conditionally_apply(state[M - 1] ^ (y >> 1), y)
+            self.__ll__.index = 0
+
+        y = state[self.__ll__.index]
+        self.__ll__.index += 1
+        y ^= y >> 11
+        y ^= (y << 7) & TEMPERING_MASK_A
+        y ^= (y << 15) & TEMPERING_MASK_B
+        y ^= y >> 18
+        return y
+
+    def random(self) -> f64:
+        """Return a random f64 in [0.0, 1.0)"""
+        a = self.genrand32() >> 5
+        b = self.genrand32() >> 6
+        return (a * 67108864.0 + b) * (1.0 / 9007199254740992.0)
+
+
+var _ptr_global_random = gc_ptr[Random].NULL
+
+
+def _get_global_random(value: u32 = 0, reset: bool = False) -> Random:
+    if _ptr_global_random == gc_ptr[Random].NULL:
+        reset = True
+        _ptr_global_random = gc_alloc[Random](1)
+        ll = gc_alloc[RandomLowLevel](1)
+        _ptr_global_random[0].__ll__ = ll
+    if reset:
+        ll = _ptr_global_random[0].__ll__
+        ll.index = N
+        ll.state = Random.init_genrand_state(value)
+    return _ptr_global_random[0]
