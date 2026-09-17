@@ -7,7 +7,7 @@ The first half is in vm/b.py. See its docstring for more details.
 from typing import TYPE_CHECKING
 
 from spy import ast
-from spy.analyze.scope import ScopeAnalyzer
+from spy.analyze.scope2 import ScopeAnalyzer
 from spy.astcompile import astcompile
 from spy.errors import SPyError
 from spy.fqn import FQN
@@ -113,7 +113,7 @@ def w_print(vm: "SPyVM", *args_wam: W_MetaArg) -> W_OpSpec:
         return_type=ast.FQNConst(loc, TYPES.w_NoneType.fqn),
         defaults=[],
         docstring=None,
-        scoping_rules="legacy",
+        scoping_rules="pythonic",
         body=body,
         decorators=[],
     )
@@ -122,11 +122,12 @@ def w_print(vm: "SPyVM", *args_wam: W_MetaArg) -> W_OpSpec:
         stage="parsed",
         filename="<generated>",
         docstring=None,
-        scoping_rules="legacy",
+        scoping_rules="pythonic",
         decls=[ast.GlobalFuncDef(loc, funcdef)],
     )
-    ScopeAnalyzer("_print", module).analyze()
-    module = astcompile(module)
+    sa = ScopeAnalyzer("_print", module)
+    sa.analyze()
+    module = astcompile(module, sa)
     funcdef = module.get_funcdef("print")
     w_functype = W_FuncType.new(params, w_restype=TYPES.w_NoneType)
     w_func = W_ASTFunc(
