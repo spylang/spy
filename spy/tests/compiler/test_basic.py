@@ -1693,6 +1693,7 @@ class TestBasic(CompilerTest):
         var N: i32 = 0
 
         def bar() -> None:
+            global N
             N = N + 1
 
         def foo() -> i32:
