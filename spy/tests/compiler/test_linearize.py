@@ -330,6 +330,7 @@ class TestLinearize(CompilerTest):
         var N: i32 = 0
 
         def tick() -> i32:
+            global N
             N = N + 1
             return N
 
@@ -397,6 +398,7 @@ class TestLinearize(CompilerTest):
             return a * 100 + b * 10 + c
 
         def foo() -> i32:
+            global V
             return foo3(V, (V := g()), V)
         """
         mod = self.compile(src)
