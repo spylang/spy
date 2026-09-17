@@ -3,6 +3,7 @@
 # ================================================================
 
 import pprint
+import re
 from dataclasses import KW_ONLY, dataclass, replace
 from typing import Any, Literal, Optional
 
@@ -364,6 +365,25 @@ class SymTable:
         assert sym.slot_name not in self._symbols
         self._symbols[sym.slot_name] = sym
 
+    def make_temp_symbol(self, base: str, loc: Loc) -> Symbol:
+        """
+        Allocate and register a hidden compiler temporary (e.g. `_$iter`) in this
+        frame, returning its Symbol.  It's a "var/auto/direct".
+        """
+        slot_name = self.get_fresh_slot(base)
+        sym = Symbol(
+            base,
+            "var",
+            "auto",
+            "direct",
+            slot_name=slot_name,
+            loc=loc,
+            type_loc=loc,
+            level=0,
+        )
+        self.add(sym)
+        return sym
+
     def get_fresh_slot(self, src_name: str) -> str:
         """
         Get a fresh, unique slot name for the given src_name, in the form `x$0`,
@@ -375,11 +395,18 @@ class SymTable:
 
         `@`-names (e.g. `@return`, `@if`) are special: they are declared and
         looked up literally at runtime, so they are never mangled.
+
+        If `src_name` is already uniquely indexed with a `$NUM` suffix (e.g. `_$iter$0`)
+        we avoid double-suffixing (`_$iter$0$0`) and compute a fresh `<base>$n` instead.
         """
         if self.kind != "function" or src_name.startswith("@"):
             return src_name
+        base = src_name
+        m = re.fullmatch(r"(.*)\$\d+", src_name)
+        if m:
+            base = m.group(1)
         n = 0
-        while (slot_name := f"{src_name}${n}") in self._symbols:
+        while (slot_name := f"{base}${n}") in self._symbols:
             n += 1
         return slot_name
 

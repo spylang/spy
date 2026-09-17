@@ -214,8 +214,8 @@ class TestScopeAnalyzer2:
         self.assert_dump("test::foo", expected)
 
     def test_scope_loop_target(self):
-        # [scope.loop-target]: the for target `i` (and the hidden iterator) are
-        # block-local to the loop body; `i` resolves to NameError after the loop.
+        # [scope.loop-target]: the for target `i` is block-local to the loop body;
+        # `i` resolves to NameError after the loop.
         src = """
         from __spy__ import strict_scoping
 
@@ -228,12 +228,10 @@ class TestScopeAnalyzer2:
         expected = """
         symtable test::foo (function):
             @return: Symbol("@return", "var", "auto")
-            _$iter$0: Symbol("_$iter", "var", "auto")
             i$0: Symbol("i", "var", "loop-target")
 
             scope foo:
                 range -> range @ builtins (depth=2) => <ImportRef _range.range>
-                _$iter -> _$iter$0
                 i -> NameError
                 scope for.body:
                     i -> i$0
@@ -258,12 +256,10 @@ class TestScopeAnalyzer2:
         symtable test::foo (function):
             @return: Symbol("@return", "var", "auto")
             i$0: Symbol("i", "var", "explicit")
-            _$iter$0: Symbol("_$iter", "var", "auto")
 
             scope foo:
                 i -> i$0
                 range -> range @ builtins (depth=2) => <ImportRef _range.range>
-                _$iter -> _$iter$0
                 scope for.body:
                     i -> i$0
         """
@@ -604,13 +600,11 @@ class TestScopeAnalyzer2:
         expected = """
         symtable test::foo (function):
             @return: Symbol("@return", "var", "auto")
-            _$iter$0: Symbol("_$iter", "var", "auto")
             i$0: Symbol("i", "var", "loop-target")
             x$0: Symbol("x", "const", "auto")
 
             scope foo:
                 range -> range @ builtins (depth=2) => <ImportRef _range.range>
-                _$iter -> _$iter$0
                 x -> NameError
                 scope for.body:
                     i -> i$0
@@ -776,13 +770,11 @@ class TestScopeAnalyzer2:
         expected = """
         symtable test::foo (function):
             @return: Symbol("@return", "var", "auto")
-            _$iter$0: Symbol("_$iter", "var", "auto")
             i$0: Symbol("i", "var", "loop-target")
             total$0: Symbol("total", "const", "auto")
 
             scope foo:
                 range -> range @ builtins (depth=2) => <ImportRef _range.range>
-                _$iter -> _$iter$0
                 total -> NameError
                 scope for.body:
                     i -> i$0

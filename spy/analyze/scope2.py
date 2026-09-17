@@ -607,23 +607,6 @@ class ScopeAnalyzer:
         self.scopes[ifstmt, "else"] = else_scope
 
     def collect_For(self, forstmt: ast.For) -> None:
-        # ASTCompiler desugars:
-        #   for i in X:
-        #       body
-        # into:
-        #   $_iter = X.__fastiter__()
-        #   while $_iter.__continue_iteration__():
-        #       i = $_iter.__item__()
-        #       $_iter = $_iter.__next__()
-        #       body
-        #
-        # Note that there is a hidden $_iter variable. We bind it to the For node.
-
-        iter_loc = forstmt.iter.loc
-        self.create_new_local(
-            forstmt, "_$iter", "explicit", "var", "auto", iter_loc, iter_loc
-        )
-
         # The iterator (`X`) is evaluated in the enclosing scope.
         self.collect(forstmt.iter)
 
@@ -994,9 +977,6 @@ class ScopeAnalyzer:
 
     def bind_For(self, forstmt: ast.For) -> None:
         self.bind(forstmt.iter)
-        # the hidden `_$iter` lives in the enclosing scope, as it is initialized outside
-        # the desugared `while`.
-        self.lookup_and_bind(forstmt, "_$iter", forstmt.iter.loc)
         body_scope = self.scopes[forstmt, "body"]
         self.push_scope(body_scope)
         tgt = forstmt.target

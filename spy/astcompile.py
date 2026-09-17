@@ -290,6 +290,13 @@ class ASTCompiler:
         else:
             assert False
 
+    def compile_stmt_AssignTemp(self, stmt: ast.AssignTemp) -> list[ast.Stmt]:
+        # a write to a hidden compiler temp; lower directly to AssignLocal, no lookup.
+        value = self.compile_expr(stmt.value)
+        target = ast.StrLiteral(stmt.loc, stmt.sym.slot_name)
+        assign_expr = ast.AssignExprLocal(stmt.loc, target, stmt.sym, value)
+        return [ast.AssignLocal(stmt.loc, assign_expr)]
+
     def compile_stmt_ClassDef(self, stmt: ast.ClassDef) -> list[ast.Stmt]:
         self.push_symtable(stmt.symtable)
         new_body = self.compile_body(stmt.body)
@@ -313,27 +320,14 @@ class ASTCompiler:
         # use non-colorize locs for synthetic nodes, to avoid painting over user nodes
         iter_loc = stmt.iter.loc.replace(colorize=False)
         target_loc = stmt.target.loc.replace(colorize=False)
-        if self.sa is not None:
-            # the hidden $_iter is bound to the `For`. Make sure that the synthetic
-            # nodes which reference it are bound to the same symbol
-            iter_sym = self.sa.get_resolved_sym(stmt)
-            iter_scope = self.sa.get_resolved_scope(stmt)
-            iter_strlit = ast.StrLiteral(iter_loc, iter_sym.src_name)
-            iter_name_node = ast.Name(loc=iter_loc, id=iter_sym.src_name)
-            self.sa.bind_synthetic_node(iter_strlit, iter_scope, iter_sym)
-            self.sa.bind_synthetic_node(iter_name_node, iter_scope, iter_sym)
-            iter_target = ast.SingleTarget(iter_loc, iter_strlit)
-        else:
-            # KILL ME: legacy scope.py path, resolves the iterator by src_name
-            iter_name = f"_$iter{stmt.seq}"
-            iter_target = ast.SingleTarget(
-                iter_loc, ast.StrLiteral(iter_loc, iter_name)
-            )
-            iter_name_node = ast.Name(loc=iter_loc, id=iter_name)
+        iter_sym = self.symtable.make_temp_symbol("_$iter", iter_loc)  # e.g. _$iter$0
 
-        init_iter = ast.Assign(
+        def iter_read() -> ast.Expr:
+            return
+
+        init_iter = ast.AssignTemp(
             loc=iter_loc,
-            target=iter_target,
+            sym=iter_sym,
             value=ast.CallMethod(
                 loc=iter_loc,
                 target=stmt.iter,
@@ -346,17 +340,17 @@ class ASTCompiler:
             target=ast.SingleTarget(target_loc, stmt.target),
             value=ast.CallMethod(
                 loc=target_loc,
-                target=iter_name_node,
+                target=ast.NameTemp(iter_loc, iter_sym),
                 method=ast.StrLiteral(target_loc, "__item__"),
                 args=[],
             ),
         )
-        advance_iter = ast.Assign(
+        advance_iter = ast.AssignTemp(
             loc=iter_loc,
-            target=iter_target,
+            sym=iter_sym,
             value=ast.CallMethod(
                 loc=iter_loc,
-                target=iter_name_node,
+                target=ast.NameTemp(iter_loc, iter_sym),
                 method=ast.StrLiteral(iter_loc, "__next__"),
                 args=[],
             ),
@@ -365,7 +359,7 @@ class ASTCompiler:
             loc=loc,
             test=ast.CallMethod(
                 loc=iter_loc,
-                target=iter_name_node,
+                target=ast.NameTemp(iter_loc, iter_sym),
                 method=ast.StrLiteral(iter_loc, "__continue_iteration__"),
                 args=[],
             ),
@@ -658,6 +652,10 @@ class ASTCompiler:
 
         else:
             assert False, f"unexpected storage: {sym.storage!r}"
+
+    def compile_expr_NameTemp(self, name: ast.NameTemp) -> ast.Expr:
+        # a hidden compiler temp carries its own Symbol; lower directly, no lookup.
+        return ast.NameLocalDirect(name.loc, name.sym)
 
     def compile_expr_Name(self, name: ast.Name) -> ast.Expr:
         varname = name.id

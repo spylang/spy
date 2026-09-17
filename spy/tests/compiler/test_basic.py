@@ -1490,6 +1490,21 @@ class TestBasic(CompilerTest):
         mod = self.compile(src)
         assert mod.factorial(4) == 2 * 3 * 4
 
+    def test_two_for_loops(self):
+        # two sibling `for` loops in the same frame must each get their own hidden
+        # iterator temp; they must not clobber each other.
+        src = """
+        def foo() -> i32:
+            total = 0
+            for i in range(3):
+                total = total + i
+            for i in range(3):
+                total = total + i * 10
+            return total
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 3 + 30
+
     def test_break_in_while(self):
         src = """
         def foo() -> i32:
