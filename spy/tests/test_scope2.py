@@ -590,7 +590,7 @@ class TestScopeAnalyzer2:
             src,
             "Cannot mix implicit and explicit declarations for `x`",
             ("this is an explicit declaration", "const x = 1"),
-            ("this is an implicitly lifted declaration", "x = 2"),
+            ("this is an implicitly lifted declaration", "x"),
         )
 
     def test_py_scope_lifting_mixing_error_impl_then_expl(self):
@@ -607,7 +607,7 @@ class TestScopeAnalyzer2:
             src,
             "Cannot mix implicit and explicit declarations for `x`",
             ("this is an explicit declaration", "const x = 2"),
-            ("this is an implicitly lifted declaration", "x = 1"),
+            ("this is an implicitly lifted declaration", "x"),
         )
 
     def test_py_scope_lifting_stops_at_loop(self):

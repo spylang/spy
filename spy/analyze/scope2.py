@@ -722,7 +722,7 @@ class ScopeAnalyzer:
             # [py.implicit-decl]: in pythonic_scoping, an assignment might be an
             # implicit declaration
             for tgt in assign.target.flatten():
-                self.assign_or_declare_maybe(tgt, tgt.value, "auto", assign.loc)
+                self.assign_or_declare_maybe(tgt, tgt.value, "auto", tgt.loc)
 
     def collect_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
         # [py.walrus]: a walrus `x := E` implicitly declares `x`.
