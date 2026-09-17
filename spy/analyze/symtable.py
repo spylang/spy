@@ -286,6 +286,9 @@ class Scope:
         assert sym.src_name not in self._symbols
         self._symbols[sym.src_name] = sym
 
+    def remove(self, name: str) -> None:
+        del self._symbols[name]
+
     def lookup(self, name: str) -> Symbol:
         return self._symbols[name]
 

@@ -668,6 +668,34 @@ class TestScopeAnalyzer2:
         """
         self.assert_dump("test::foo", expected)
 
+    def test_py_scope_lifting_no_mixing_explicit_first(self):
+        # [py.scope-lifting-mixing-error]: the "const x = 0" place a decl-cannot-lift
+        # marker in the `foo` scope. The "const x = 1" detects the marker and overwrites
+        # it.
+        src = """
+        def foo(cond: bool) -> i32:
+            if cond:
+                const x = 0
+                return x
+            const x = 1
+            return x
+        """
+        self.analyze(src)
+        expected = """
+        symtable test::foo (function):
+            cond$0: Symbol("cond", "var", "red-param")
+            @return: Symbol("@return", "var", "auto")
+            x$0: Symbol("x", "const", "explicit")
+            x$1: Symbol("x", "const", "explicit")
+
+            scope foo:
+                cond -> cond$0
+                x -> x$1
+                scope if.then:
+                    x -> x$0
+        """
+        self.assert_dump("test::foo", expected)
+
     # ======= pythonic scoping tests =======
 
     def test_py_implicit_decl(self):

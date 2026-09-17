@@ -435,6 +435,14 @@ class ScopeAnalyzer:
                 err.add("error", "this is the new declaration", loc)
                 err.add("note", f"`{name}` was declared global here", existing_sym.loc)
                 raise err
+            if existing_sym.storage == "decl-cannot-lift":
+                # a `decl-cannot-lift` marker is not a real binding: it was placed
+                # by an explicit decl in a nested block only to catch a LATER
+                # implicit-LIFTED decl. A non-lifted decl made directly here is
+                # fine (it just shadows the block-local); replace the marker.
+                scope.remove(name)
+                existing_sym = None
+        if existing_sym:
             msg = f"variable `{name}` already declared"
             err = SPyError("W_ScopeError", msg)
             err.add("error", "this is the new declaration", loc)
