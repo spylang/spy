@@ -806,6 +806,8 @@ class ScopeAnalyzer:
     def collect_Assign(self, assign: ast.Assign) -> None:
         # FIRST collect the value, THEN (maybe) declare the target, like in VarDef.
         self.collect(assign.value)
+        if isinstance(assign.target, ast.UnpackTarget):
+            self.mod_symtable.implicit_imports.add("_tuple")
         if self.mod.scoping_rules == "pythonic":
             # [py.implicit-decl]: in pythonic_scoping, an assignment might be an
             # implicit declaration
