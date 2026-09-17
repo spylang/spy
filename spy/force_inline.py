@@ -88,7 +88,12 @@ class AlphaRenamer:
         old_name = stmt.name.value
         new_name_node = stmt.name.replace(value=f"{old_name}{self.suffix}")
         new_value = self.rename_expr(stmt.value) if stmt.value is not None else None
-        return stmt.replace(name=new_name_node, value=new_value)
+        # the runtime slot is taken from _sym.slot_name, so rename the sym too
+        return stmt.replace(
+            name=new_name_node,
+            value=new_value,
+            _sym=self.rename_sym(stmt.sym),
+        )
 
     def rename_stmt_AssignLocal(self, stmt: ast.AssignLocal) -> ast.Stmt:
         return stmt.replace(expr=self.rename_expr(stmt.expr))
