@@ -393,25 +393,28 @@ class ASTCompiler:
         return self.compile_stmt(desugared)
 
     def compile_stmt_AugSetAttr(self, stmt: ast.AugSetAttr) -> list[ast.Stmt]:
+        # we have:
+        #   obj.attr OP= v
+        #
+        # we want to evaluate `obj` only once. We desugar into:
+        #   _$t = obj
+        #   _$t.attr = _$t.attr OP v
         target_loc = stmt.target.loc.replace(colorize=False)
         value_loc = stmt.loc.replace(colorize=False)
-        target_name = f"_$aug_target{stmt.seq}"
-        target = ast.SingleTarget(
-            target_loc,
-            ast.StrLiteral(target_loc, target_name),
-        )
+        target_sym = self.symtable.make_temp_symbol("_$t", target_loc)
+
         desugared: list[ast.Stmt] = [
-            ast.Assign(loc=target_loc, target=target, value=stmt.target),
+            ast.AssignTemp(loc=target_loc, sym=target_sym, value=stmt.target),
             ast.SetAttr(
                 loc=stmt.loc,
-                target=ast.Name(loc=target_loc, id=target_name),
+                target=ast.NameTemp(target_loc, target_sym),
                 attr=stmt.attr,
                 value=ast.BinOp(
                     loc=value_loc,
                     op=stmt.op,
                     left=ast.GetAttr(
                         loc=target_loc,
-                        value=ast.Name(loc=target_loc, id=target_name),
+                        value=ast.NameTemp(target_loc, target_sym),
                         attr=stmt.attr,
                     ),
                     right=stmt.value,
@@ -421,47 +424,43 @@ class ASTCompiler:
         return self.compile_body(desugared)
 
     def compile_stmt_AugSetItem(self, stmt: ast.AugSetItem) -> list[ast.Stmt]:
+        # we have:
+        #   obj[arg0, arg1, ...] OP= v
+        #
+        # we want to evaluate `obj` and each `arg` only once. We desugar into:
+        #   _$t = obj
+        #   _$a0 = arg0
+        #   _$a1 = arg1
+        #   _$t[_$a0, _$a1, ...] = _$t[_$a0, _$a1, ...] OP v
         target_loc = stmt.target.loc.replace(colorize=False)
         value_loc = stmt.loc.replace(colorize=False)
-        target_name = f"_$aug_target{stmt.seq}"
-        target = ast.SingleTarget(
-            target_loc,
-            ast.StrLiteral(target_loc, target_name),
-        )
-        desugared: list[ast.Stmt] = [
-            ast.Assign(loc=target_loc, target=target, value=stmt.target)
-        ]
-        arg_names = []
-        for i, arg in enumerate(stmt.args):
-            arg_loc = arg.loc.replace(colorize=False)
-            arg_name = f"_$aug_arg{stmt.seq}_{i}"
-            arg_names.append((arg_name, arg_loc))
-            desugared.append(
-                ast.Assign(
-                    loc=arg_loc,
-                    target=ast.SingleTarget(
-                        arg_loc,
-                        ast.StrLiteral(arg_loc, arg_name),
-                    ),
-                    value=arg,
-                )
-            )
+        target_sym = self.symtable.make_temp_symbol("_$t", target_loc)
 
-        def make_args() -> list[ast.Expr]:
-            return [ast.Name(loc=loc, id=name) for name, loc in arg_names]
+        desugared: list[ast.Stmt] = [
+            ast.AssignTemp(loc=target_loc, sym=target_sym, value=stmt.target)
+        ]
+        arg_syms = []
+        for arg in stmt.args:
+            arg_loc = arg.loc.replace(colorize=False)
+            arg_sym = self.symtable.make_temp_symbol("_$a", arg_loc)
+            arg_syms.append((arg_sym, arg_loc))
+            desugared.append(ast.AssignTemp(loc=arg_loc, sym=arg_sym, value=arg))
+
+        lhs_args = [ast.NameTemp(loc, sym) for sym, loc in arg_syms]
+        rhs_args = [ast.NameTemp(loc, sym) for sym, loc in arg_syms]
 
         desugared.append(
             ast.SetItem(
                 loc=stmt.loc,
-                target=ast.Name(loc=target_loc, id=target_name),
-                args=make_args(),
+                target=ast.NameTemp(target_loc, target_sym),
+                args=lhs_args,
                 value=ast.BinOp(
                     loc=value_loc,
                     op=stmt.op,
                     left=ast.GetItem(
                         loc=target_loc,
-                        value=ast.Name(loc=target_loc, id=target_name),
-                        args=make_args(),
+                        value=ast.NameTemp(target_loc, target_sym),
+                        args=rhs_args,
                     ),
                     right=stmt.value,
                 ),

@@ -216,9 +216,9 @@ class TestASTCompile:
         """)
         expected = """
         def foo(items: dynamic, idx: i32, val: i32) -> None:
-            _$aug_target0 = items
-            _$aug_arg0_0 = idx
-            _$aug_target0[_$aug_arg0_0] = _$aug_target0[_$aug_arg0_0] + val
+            _$t$0 = items$0
+            _$a$0 = idx$0
+            _$t$0[_$a$0] = _$t$0[_$a$0] + val$0
         """
         self.assert_dump(expected)
 
@@ -229,8 +229,8 @@ class TestASTCompile:
         """)
         expected = """
         def foo(obj: dynamic, val: i32) -> None:
-            _$aug_target0 = obj
-            _$aug_target0.x = _$aug_target0.x + val
+            _$t$0 = obj$0
+            _$t$0.x = _$t$0.x + val$0
         """
         self.assert_dump(expected)
 
