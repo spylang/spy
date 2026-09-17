@@ -75,6 +75,9 @@ MM.register("<=", "u32", "u32", OP.w_u32_le)
 MM.register(">" , "u32", "u32", OP.w_u32_gt)
 MM.register(">=", "u32", "u32", OP.w_u32_ge)
 
+MM.register(">>", "u32", "i32", OP.w_u32_rshift)
+MM.register("<<", "u32", "i32", OP.w_u32_lshift)
+
 # i64 ops
 MM.register("+",  "i64", "i64", OP.w_i64_add)
 MM.register("-",  "i64", "i64", OP.w_i64_sub)

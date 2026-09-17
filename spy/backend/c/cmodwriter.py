@@ -268,7 +268,7 @@ class CModuleWriter:
                 self.tbh_globals.wl(f"extern {c_type} {fqn.c_name};")
                 self.tbc_globals.wl(f"{c_type} {fqn.c_name} = {{0}};")
             else:
-                raise WIP("var type `{w_T}` not supported")
+                raise WIP(f"var type `{w_T}` not supported")
 
         else:
             raise NotImplementedError("WIP")
