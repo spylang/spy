@@ -41,6 +41,7 @@ class TestForceInline(CompilerTest):
         var calls: i32 = 0
 
         def bump() -> i32:
+            global calls
             calls = calls + 1
             return calls
 
@@ -79,6 +80,7 @@ class TestForceInline(CompilerTest):
 
         @force_inline
         def inc(x: i32) -> None:
+            global calls
             calls = calls + x
 
         def foo() -> i32:
@@ -273,6 +275,7 @@ class TestForceInline(CompilerTest):
 
         @force_inline
         def bump_and_get() -> i32:
+            global counter
             counter = counter + 1
             return counter
 
@@ -374,10 +377,12 @@ class TestForceInline(CompilerTest):
         var count: i32 = 0
 
         def bump() -> None:
+            global count
             count = count + 1
 
         @force_inline
         def bar(x: None) -> None:
+            global count
             count = count + 20
 
         def foo() -> i32:
