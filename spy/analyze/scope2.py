@@ -889,13 +889,15 @@ class ScopeAnalyzer:
         # [py.augassign]: an AugAssign does NOT implicitly declare, but counts as a
         # re-assignment
         if self.mod.scoping_rules == "pythonic":
-            sym = self.scope.lookup_maybe(node.target.value)
+            res = self.lookup_name_in_scopes(node.target.value)
             if (
-                sym is not None
-                and sym.varkind == "const"
-                and sym.varkind_origin == "auto"
+                res.found
+                and res.sym is not None
+                and res.scope is not None
+                and res.sym.varkind == "const"
+                and res.sym.varkind_origin == "auto"
             ):
-                self.promote_const_to_var(self.scope, sym)
+                self.promote_const_to_var(res.scope, res.sym)
         self.collect(node.value)
 
     def collect_Global(self, glob: ast.Global) -> None:
