@@ -5,6 +5,7 @@ Stolen from https://github.com/pypy/pypy/blob/main/rpython/rlib/rrandom.py
 (and CPython's _randommodule.c).
 """
 
+from array import array, zeros
 from unsafe import gc_ptr, gc_alloc
 
 # ---- Constants for MT19937 ----
@@ -24,7 +25,7 @@ MAGIC_CONSTANT_D = u32(1566083941)
 
 @struct
 class RandomLowLevel:
-    state: list[u32]
+    state: array[u32, 1]
     index: i32
 
 
@@ -33,8 +34,8 @@ class Random:
     __ll__: gc_ptr[RandomLowLevel]
 
     @staticmethod
-    def init_genrand_state(seed: u32 = 0) -> list[u32]:
-        state: list[u32] = [u32(0)] * N
+    def init_genrand_state(seed: u32 = 0) -> array[u32, 1]:
+        state = zeros[u32](N)
         state[0] = seed & MASK_32
         for mti in range(1, N):
             state[mti] = (
