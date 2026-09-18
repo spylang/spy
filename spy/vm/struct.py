@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Annotated, Any, Iterable, Optional
 
 from spy import ast
-from spy.analyze.scope import ScopeAnalyzer
+from spy.analyze.scope2 import ScopeAnalyzer
 from spy.astcompile import astcompile
 from spy.errors import WIP, SPyError
 from spy.fqn import FQN
@@ -216,7 +216,7 @@ class W_StructType(W_Type):
             return_type=ast.FQNConst(func_loc, B.w_bool.fqn),
             defaults=[],
             docstring=None,
-            scoping_rules="legacy",
+            scoping_rules="strict",
             body=[stmt],
             decorators=[],
         )
@@ -227,12 +227,12 @@ class W_StructType(W_Type):
             stage="parsed",
             filename="<generated>",
             docstring=None,
-            scoping_rules="legacy",
+            scoping_rules="strict",
             decls=[ast.GlobalFuncDef(func_loc, funcdef)],
         )
         analyzer = ScopeAnalyzer(self.fqn.modname, module)
         analyzer.analyze()
-        module = astcompile(module)
+        module = astcompile(module, scope_analyzer=analyzer)
         funcdef = module.get_funcdef(name)
 
         # create the actual W_ASTFunc object

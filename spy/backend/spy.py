@@ -9,7 +9,7 @@ else:
     from fixedint import FixedInt
 
 from spy import ast
-from spy.analyze.scope import SymTable
+from spy.analyze.symtable import SymTable
 from spy.fqn import FQN
 from spy.parser import Parser
 from spy.textbuilder import TextBuilder

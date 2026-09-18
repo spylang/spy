@@ -1,7 +1,6 @@
 from typing import TYPE_CHECKING
 
 from spy import ast
-from spy.analyze.scope import ScopeAnalyzer
 from spy.analyze.symtable import Color, SymTable
 from spy.errors import SPyError
 from spy.fqn import FQN
@@ -23,7 +22,6 @@ class ModFrame(AbstractFrame):
     vm: "SPyVM"
     modname: str
     mod: ast.Module
-    scopes: ScopeAnalyzer
 
     def __init__(
         self,

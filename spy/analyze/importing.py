@@ -8,7 +8,6 @@ import py.path
 
 from spy import ast
 from spy.analyze import scope2
-from spy.analyze.scope import ScopeAnalyzer
 from spy.astcompile import astcompile
 from spy.errors import SPyError
 from spy.fqn import FQN
@@ -275,8 +274,7 @@ class ImportAnalyzer:
         parsed_mod = self.parse_one(spyfile)
         sa = self.analyze_one(modname, parsed_mod)
         parsed_mod.symtable = sa.by_module()
-        sa2 = sa if isinstance(sa, scope2.ScopeAnalyzer) else None
-        compiled_mod = astcompile(parsed_mod, scope_analyzer=sa2)
+        compiled_mod = astcompile(parsed_mod, scope_analyzer=sa)
 
         if self.use_spyc:
             self._save_spyc(compiled_mod, spyc)
@@ -286,15 +284,9 @@ class ImportAnalyzer:
         parser = Parser.from_filename(str(spyfile))
         return parser.parse()
 
-    def analyze_one(
-        self, modname: str, mod: ast.Module
-    ) -> ScopeAnalyzer | scope2.ScopeAnalyzer:
-        if mod.scoping_rules in ("strict", "pythonic"):
-            sa: ScopeAnalyzer | scope2.ScopeAnalyzer = scope2.ScopeAnalyzer(
-                modname, mod
-            )
-        else:
-            sa = ScopeAnalyzer(modname, mod)
+    def analyze_one(self, modname: str, mod: ast.Module) -> scope2.ScopeAnalyzer:
+        assert mod.scoping_rules in ("strict", "pythonic")
+        sa = scope2.ScopeAnalyzer(modname, mod)
         sa.analyze()
         return sa
 
