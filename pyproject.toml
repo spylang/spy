@@ -10,22 +10,22 @@ dependencies = [
     "build~=1.3",
     "click==8.1.8",
     "fixedint==0.2.0",
-    "ninja==1.11.1.4; sys_platform != 'emscripten'",
+    "ninja==1.13.2; sys_platform != 'emscripten'",
     "py==1.11.0",
     "typer==0.15.1",
     "pexpect==4.9.0; sys_platform != 'emscripten'",
-    "wasmtime==8.0.1; sys_platform != 'emscripten'",
+    "wasmtime==48.0.0; sys_platform != 'emscripten'",
     "ziglang==0.13.0; sys_platform != 'emscripten'",
 ]
 
 [dependency-groups]
 dev = [
     "pdbpp>=0.11.7",
-    "pytest==8.3.4",
+    "pytest==9.1.1",
     "pytest-xdist==3.8.0",
     "ruff~=0.14.0",
     "mypy==1.15.0",
-    "types-pexpect==4.9.0.20250516; sys_platform != 'emscripten'",
+    "types-pexpect==4.9.0.20260518; sys_platform != 'emscripten'",
     # the following are needed for "tests/compiler/test_cffi.py"
     "cffi",
     "setuptools",
@@ -35,8 +35,8 @@ dev = [
     # provides the `pyodide` command (used to create the pyodide venv, see
     # pyodide/README.md); 0.35.x is the first version which fixes the marker
     # evaluation bug, see https://github.com/pyodide/pyodide/issues/5491
-    "pyodide-build==0.35.1; sys_platform != 'emscripten'",
-    "pre-commit==4.3.0",
+    "pyodide-build==0.39.0; sys_platform != 'emscripten'",
+    "pre-commit==4.6.2",
     "rodney>=0.4.0",
 ]
 
