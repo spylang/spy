@@ -47,6 +47,9 @@ markdown_extensions:
       toc_depth: 3
   - def_list
 
+hooks:
+  - generate_reference.py
+
 plugins:
   - mkdocs-typer2
 
