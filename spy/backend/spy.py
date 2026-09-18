@@ -85,8 +85,8 @@ class SPyBackend:
             ):
                 aliases.append((attr, w_obj))
         for attr, w_obj in aliases:
-            fqn_str = w_obj.fqn.human_name(self.vm)
-            self.out.wl(f"{attr} = `{fqn_str}`")
+            fqn_str = self.fmt_fqn(w_obj.fqn)
+            self.out.wl(f"{attr} = {fqn_str}")
         if aliases:
             self.out.wl()
 
@@ -153,7 +153,7 @@ class SPyBackend:
         if isinstance(w_obj, W_Type) and issubclass(w_obj.pyclass, W_InterpList):
             # this is a ugly special case for now, we need to find a better
             # solution
-            return w_obj.fqn.human_name(self.vm)
+            return self.fmt_fqn(w_obj.fqn)
         #
         # this assumes that w_obj has a valid FQN
         fqn = self.vm.reverse_lookup_global(w_obj)
@@ -164,7 +164,11 @@ class SPyBackend:
         if self.fqn_format == "full":
             name = str(fqn)
         elif self.fqn_format == "short":
-            name = fqn.human_name(self.vm)  # don't show builtins::
+            # don't show builtins::, and don't repeat the current module
+            # name for FQNs nested inside it (at any depth, including
+            # inside generic qualifiers)
+            parent = FQN(self.modname) if self.modname else None
+            name = fqn.human_name(self.vm, parent=parent)
         else:
             assert False
         #
