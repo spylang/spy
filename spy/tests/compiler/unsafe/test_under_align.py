@@ -14,7 +14,7 @@ class TestUnderAligned(CompilerTest):
 
     def test_under_aligned_roundtrip(self, memkind):
         k = memkind
-        mod = self.compile(f"""
+        src = f"""
             from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr
             def foo[T]() -> T:
                 p: k_ptr[T, 1] = k_alloc[T, 1](3)
@@ -23,12 +23,13 @@ class TestUnderAligned(CompilerTest):
 
             foo_i32 = foo[i32]
             foo_f64 = foo[f64]
-            """)
+            """
+        mod = self.compile(src)
         assert mod.foo_i32() == 60
         assert mod.foo_f64() == 60.0
 
     def test_weaken_to_under_aligned(self):
-        mod = self.compile("""
+        src = """
             from unsafe import gc_alloc, gc_ptr
             def foo[T]() -> T:
                 p_aligned: gc_ptr[T] = gc_alloc[T](2)
@@ -38,12 +39,13 @@ class TestUnderAligned(CompilerTest):
 
             foo_i32 = foo[i32]
             foo_f64 = foo[f64]
-            """)
+            """
+        mod = self.compile(src)
         assert mod.foo_i32() == 106
         assert mod.foo_f64() == 106.0
 
     def test_struct_field_roundtrip(self):
-        mod = self.compile("""
+        src = """
             from unsafe import gc_alloc, gc_ptr
             @struct
             class Point:
@@ -54,11 +56,12 @@ class TestUnderAligned(CompilerTest):
                 p[0].x = 1; p[0].y = 2
                 p[1].x = 3; p[1].y = 4
                 return p[0].x + 10*p[0].y + 100*p[1].x + 1000*p[1].y
-            """)
+            """
+        mod = self.compile(src)
         assert mod.foo() == 4321
 
     def test_struct_field_weakening(self):
-        mod = self.compile("""
+        src = """
             from unsafe import gc_alloc, gc_ptr
             @struct
             class Point:
@@ -69,5 +72,6 @@ class TestUnderAligned(CompilerTest):
                 p1: gc_ptr[Point, 1] = p32
                 p1[0].x = 100; p1[0].y = 200
                 return p1[0].x + p1[0].y
-            """)
+            """
+        mod = self.compile(src)
         assert mod.foo() == 300
