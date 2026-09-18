@@ -721,7 +721,7 @@ class TestUnsafePtr(CompilerTest):
         assert mod.get_byte("hello", 4) == ord("o")
 
     def test_ptr_index_all_dtypes(self):
-        mod = self.compile("""
+        src = """
             from unsafe import gc_alloc, gc_ptr
 
             def rt[T](v: T) -> T:
@@ -737,7 +737,8 @@ class TestUnsafePtr(CompilerTest):
             rt_u64 = rt[u64]
             rt_f32 = rt[f32]
             rt_f64 = rt[f64]
-            """)
+            """
+        mod = self.compile(src)
         assert mod.rt_i8(-(2**7)) == -(2**7)
         assert mod.rt_u8(2**8 - 1) == 2**8 - 1
         assert mod.rt_i32(-(2**31)) == -(2**31)
@@ -863,29 +864,31 @@ class TestUnsafePtr(CompilerTest):
             )
 
     def test_explicit_alignment_roundtrip(self):
-        mod = self.compile("""
+        src = """
             from unsafe import gc_alloc, gc_ptr
 
             def foo() -> i32:
                 p: gc_ptr[i32, 8] = gc_alloc[i32, 8](1)
                 p[0] = 42
                 return p[0]
-            """)
+            """
+        mod = self.compile(src)
         assert mod.foo() == 42
 
     def test_default_equals_explicit_alignof(self):
-        mod = self.compile("""
+        src = """
             from unsafe import gc_alloc, gc_ptr
 
             def foo() -> i32:
                 p: gc_ptr[i32] = gc_alloc[i32, 4](1)
                 p[0] = 7
                 return p[0]
-            """)
+            """
+        mod = self.compile(src)
         assert mod.foo() == 7
 
     def test_weakening_is_implicit(self):
-        mod = self.compile("""
+        src = """
             from unsafe import gc_alloc, gc_ptr
 
             def foo() -> i32:
@@ -894,7 +897,8 @@ class TestUnsafePtr(CompilerTest):
                 p8: gc_ptr[i32, 8] = p16
                 p8[0] = 123
                 return p8[0]
-            """)
+            """
+        mod = self.compile(src)
         assert mod.foo() == 123
 
     def test_strengthening_is_a_type_error(self):

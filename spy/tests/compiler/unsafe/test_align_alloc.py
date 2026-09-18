@@ -24,8 +24,7 @@ def memkind(request):
 class TestOverAllocAlignment(CompilerTest):
     def test_ptr_address_is_aligned(self, memkind):
         k = memkind
-        mod = self.compile(
-            """
+        src = """
         from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, ptr_to_addr
 
         def alloc() -> k_ptr[i32, {N}]:
@@ -33,13 +32,12 @@ class TestOverAllocAlignment(CompilerTest):
             assert ptr_to_addr(p) % {N} == 0
             return p
         """.format(k=k, N=OVER_ALIGNMENT)
-        )
+        mod = self.compile(src)
         mod.alloc()
 
     def test_over_alloc_roundtrip(self, memkind):
         k = memkind
-        mod = self.compile(
-            """
+        src = """
         from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr
 
         def foo() -> i32:
@@ -49,13 +47,12 @@ class TestOverAllocAlignment(CompilerTest):
             p[2] = 30
             return p[0] + p[1] + p[2]
         """.format(k=k, N=OVER_ALIGNMENT)
-        )
+        mod = self.compile(src)
         assert mod.foo() == 60
 
     def test_over_alloc_struct(self, memkind):
         k = memkind
-        mod = self.compile(
-            """
+        src = """
         from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr
 
         @struct
@@ -71,12 +68,11 @@ class TestOverAllocAlignment(CompilerTest):
             p[1].y = 4
             return p[0].x + 10*p[0].y + 100*p[1].x + 1000*p[1].y
         """.format(k=k, N=OVER_ALIGNMENT)
-        )
+        mod = self.compile(src)
         assert mod.foo() == 4321
 
     def test_over_alloc_weakening(self):
-        mod = self.compile(
-            """
+        src = """
         from unsafe import gc_alloc, gc_ptr
 
         def foo() -> i32:
@@ -86,14 +82,13 @@ class TestOverAllocAlignment(CompilerTest):
             p8[0] = 99
             return p8[0]
         """.format(N=OVER_ALIGNMENT)
-        )
+        mod = self.compile(src)
         assert mod.foo() == 99
 
     def test_over_alloc_multiple_are_aligned(self):
         # Multiple independent over-aligned allocations should all be
         # properly aligned (not just the first one)
-        mod = self.compile(
-            """
+        src = """
         from unsafe import gc_alloc, gc_ptr, ptr_to_addr
 
         def alloc() -> gc_ptr[i32, {N}]:
@@ -110,15 +105,14 @@ class TestOverAllocAlignment(CompilerTest):
             c[0] = 3
             return a[0] + b[0] + c[0]
         """.format(N=OVER_ALIGNMENT)
-        )
+        mod = self.compile(src)
         assert mod.foo() == 6
         # a few more independent allocations, for extra confidence
         for _ in range(3):
             mod.alloc()
 
     def test_over_alloc_f64(self):
-        mod = self.compile(
-            """
+        src = """
         from unsafe import gc_alloc, gc_ptr
 
         def foo() -> f64:
@@ -127,12 +121,11 @@ class TestOverAllocAlignment(CompilerTest):
             p[1] = 2.5
             return p[0] + p[1]
         """.format(N=OVER_ALIGNMENT)
-        )
+        mod = self.compile(src)
         assert mod.foo() == 4.0
 
     def test_over_alloc_address_is_aligned_f64(self):
-        mod = self.compile(
-            """
+        src = """
         from unsafe import gc_alloc, gc_ptr, ptr_to_addr
 
         def alloc() -> gc_ptr[f64, {N}]:
@@ -140,5 +133,5 @@ class TestOverAllocAlignment(CompilerTest):
             assert ptr_to_addr(p) % {N} == 0
             return p
         """.format(N=OVER_ALIGNMENT)
-        )
+        mod = self.compile(src)
         mod.alloc()
