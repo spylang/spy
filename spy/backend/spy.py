@@ -373,11 +373,7 @@ class SPyBackend:
         self.wl(f"{t}[{args}] {node.op}= {v}")
 
     def emit_stmt_VarDef(self, vardef: ast.VarDef) -> None:
-        if self.scope_stack[-1].scoping_rules == "legacy":
-            # KILL ME: legacy scope.py, where slot_name == src_name
-            varname = vardef.name.value
-        else:
-            varname = vardef.sym.slot_name
+        varname = vardef.sym.slot_name
         is_auto = isinstance(vardef.type, ast.Auto)
         if is_auto:
             if vardef.value is None:

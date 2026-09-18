@@ -82,11 +82,7 @@ class ModFrame(AbstractFrame):
 
     def exec_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
-        if vardef._sym is not None:
-            sym = vardef._sym
-        else:
-            # KILL ME: legacy scope.py path
-            sym = self.symtable.lookup(vardef.name.value)
+        sym = vardef.sym
         # module-level names are not mangled, so slot_name == src_name and can be
         # used both as the runtime slot and as the module attribute / FQN name.
         varname = sym.slot_name

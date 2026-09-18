@@ -83,11 +83,7 @@ class CFuncWriter:
         """
         assert self.w_func.locals_types_w is not None
         funcdef = self.w_func.funcdef
-        if funcdef.symtable.scoping_rules == "legacy":
-            # KILL ME: legacy scope.py (slot_name == src_name)
-            param_names = [arg.name for arg in funcdef.args]
-        else:
-            param_names = [arg.sym.slot_name for arg in funcdef.args]
+        param_names = [arg.sym.slot_name for arg in funcdef.args]
         for varname, w_T in self.w_func.locals_types_w.items():
             c_type = self.ctx.w2c(w_T)
             if (
@@ -175,11 +171,7 @@ class CFuncWriter:
         # NOTE: the local variable declaration happens in emit_local_vars, here we just
         # assign the value
         if vardef.value:
-            if self.w_func.funcdef.symtable.scoping_rules == "legacy":
-                # KILL ME: legacy scope.py, where slot_name == src_name
-                target = vardef.name.value
-            else:
-                target = vardef.sym.slot_name
+            target = vardef.sym.slot_name
             v = self.fmt_expr(vardef.value)
             if vardef.value.w_T is TYPES.w_NoneType:
                 self.tbc.wl(f"/* {target} = */ {v};")

@@ -72,6 +72,9 @@ class AbstractFrame:
         self.loc = loc
         self.symtable = symtable
         self.closure = closure
+        # TODO: once the scope2 migration is done, we know all the slots in advance
+        # (from the symtable), so we could pre-initialize self.locals with the right
+        # slots instead of populating it lazily via declare_local.
         self.locals = {}
         self.special_calls = {}
 
@@ -311,14 +314,12 @@ class AbstractFrame:
         # create the w_func
         fqn = self.ns.join(funcdef.name)
         # XXX we should capture only the names actually used in the inner func
-        if self.symtable.kind == "class" and self.symtable.scoping_rules != "legacy":
+        if self.symtable.kind == "class":
             # [name.class-skip]: symbols in the class frame cannot be captured by inner
             # methods, do we don't need to save it in the closure.  See also
             # ScopeAnalyzer.lookup_name_in_scopes.
             closure = self.closure
         else:
-            # KILL ME: legacy scope.py counts the class frame as a level, so it
-            # must be inserted into the closure.
             closure = self.closure + (self.locals,)
 
         # this is just a cosmetic nicety. In presence of decorators, "mod.foo"
@@ -364,11 +365,7 @@ class AbstractFrame:
                 w_func = wam_inner.w_blueval
 
         w_T = self.vm.dynamic_type(w_func)
-        if self.symtable.scoping_rules == "legacy":
-            # KILL ME: legacy scope.py, where slot_name == src_name
-            slot_name = funcdef.name
-        else:
-            slot_name = funcdef.sym.slot_name
+        slot_name = funcdef.sym.slot_name
         self.declare_local(slot_name, "blue", w_T, funcdef.prototype_loc)
         self.store_local(slot_name, w_func)
 
@@ -407,7 +404,7 @@ class AbstractFrame:
             return_type=ast.Auto(loc),
             defaults=[],
             docstring=None,
-            scoping_rules="legacy",
+            scoping_rules="strict",
             body=[gfuncdef.inner, return_stmt],
             decorators=[],
             symtable=gfuncdef.symtable,
@@ -437,11 +434,7 @@ class AbstractFrame:
         pyclass = self.metaclass_for_classdef(classdef)
         w_typedecl = pyclass.declare(fqn)
         w_meta_type = self.vm.dynamic_type(w_typedecl)
-        if self.symtable.scoping_rules == "legacy":
-            # KILL ME: legacy scope.py path (slot_name == src_name)
-            slot_name = classdef.name
-        else:
-            slot_name = classdef.sym.slot_name
+        slot_name = classdef.sym.slot_name
         self.declare_local(slot_name, "blue", w_meta_type, classdef.loc)
         self.store_local(slot_name, w_typedecl)
         self.vm.add_global(fqn, w_typedecl)
@@ -451,11 +444,7 @@ class AbstractFrame:
 
         # we are DEFINING a type which has already been declared by
         # fwdecl_ClassDef. Look it up
-        if self.symtable.scoping_rules == "legacy":
-            # KILL ME: legacy scope.py path (slot_name == src_name)
-            slot_name = classdef.name
-        else:
-            slot_name = classdef.sym.slot_name
+        slot_name = classdef.sym.slot_name
         w_T = self.load_local(slot_name)
         assert isinstance(w_T, W_Type)
         assert w_T.fqn.parts[-1].name == classdef.name  # sanity check
@@ -508,7 +497,7 @@ class AbstractFrame:
             return_type=ast.Auto(loc),
             defaults=[],
             docstring=None,
-            scoping_rules="legacy",
+            scoping_rules="strict",
             body=[gclassdef.inner, return_stmt],
             decorators=[],
             symtable=gclassdef.symtable,
@@ -524,16 +513,11 @@ class AbstractFrame:
         #   deferred inf.  (is_auto and not value):      var   x: auto
         #
         # Note that the "type inference" case is basically a simple Assign.
-        if self.symtable.scoping_rules == "legacy":
-            # KILL ME: legacy scope.py path (slot_name == src_name)
-            varname = vardef.name.value
-            sym = self.symtable.lookup(varname)
-        else:
-            sym = vardef.sym
-            varname = sym.slot_name
-            # [scope.loop-fresh]: if we have a VarDef inside a loop, it needs to be
-            # reinitialized at each iteration
-            self.locals.pop(varname, None)
+        sym = vardef.sym
+        varname = sym.slot_name
+        # [scope.loop-fresh]: if we have a VarDef inside a loop, it needs to be
+        # reinitialized at each iteration
+        self.locals.pop(varname, None)
         is_auto = isinstance(vardef.type, ast.Auto)
 
         if vardef.value is None:
@@ -1330,10 +1314,7 @@ class ASTFrame(AbstractFrame):
         assert w_ft.is_argcount_ok(len(funcdef.args))
         for i, param in enumerate(w_ft.params):
             arg = funcdef.args[i]
-            if self.symtable.scoping_rules == "legacy":
-                slot_name = arg.name  # KILL ME: legacy scope.py (slot == src_name)
-            else:
-                slot_name = arg.sym.slot_name
+            slot_name = arg.sym.slot_name
             if param.kind == "simple":
                 self.declare_local(slot_name, color, param.w_T, arg.loc)
 
@@ -1354,10 +1335,7 @@ class ASTFrame(AbstractFrame):
 
         for i, param in enumerate(w_ft.params):
             arg = self.funcdef.args[i]
-            if self.symtable.scoping_rules == "legacy":
-                slot_name = arg.name  # KILL ME: legacy scope.py (slot == src_name)
-            else:
-                slot_name = arg.sym.slot_name
+            slot_name = arg.sym.slot_name
             if param.kind == "simple":
                 w_arg = args_w[i]
                 self.store_local(slot_name, w_arg)

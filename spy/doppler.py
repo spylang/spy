@@ -232,11 +232,7 @@ class DopplerFrame(ASTFrame):
 
     def shift_stmt_VarDef(self, vardef: ast.VarDef) -> list[ast.Stmt]:
         # the frame is indexed by slot_name
-        if self.symtable.scoping_rules == "legacy":
-            # KILL ME: legacy scope.py, where slot_name == src_name
-            varname = vardef.name.value
-        else:
-            varname = vardef.sym.slot_name
+        varname = vardef.sym.slot_name
         is_auto = isinstance(vardef.type, ast.Auto)
         self.exec_stmt_VarDef(vardef)
 

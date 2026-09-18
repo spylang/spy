@@ -173,11 +173,7 @@ class Context:
             c_type = self.w2c(param.w_T)
             if param.kind == "simple":
                 arg = funcdef.args[i]
-                if funcdef.symtable.scoping_rules == "legacy":
-                    # KILL ME: legacy scope.py (slot_name == src_name)
-                    slot_name = arg.name
-                else:
-                    slot_name = arg.sym.slot_name
+                slot_name = arg.sym.slot_name
                 c_params.append(C_FuncParam(C_Ident(slot_name), c_type))
             elif param.kind == "var_positional":
                 assert i == len(funcdef.args) - 1
