@@ -62,6 +62,8 @@ class AbstractFrame:
     symtable: SymTable
     locals: dict[str, LocalVar]
     special_calls: dict[ast.Call, str]
+    # stack of currently-entered Blocks; used by spdb to interactively resolve names
+    block_stack: list[ast.Block]
 
     def __init__(
         self, vm: "SPyVM", ns: FQN, loc: Loc, symtable: SymTable, closure: CLOSURE
@@ -77,6 +79,7 @@ class AbstractFrame:
         # slots instead of populating it lazily via declare_local.
         self.locals = {}
         self.special_calls = {}
+        self.block_stack = []
 
     # overridden by DopplerFrame
     @property
@@ -166,6 +169,14 @@ class AbstractFrame:
 
     def exec_stmt(self, stmt: ast.Stmt) -> None:
         return magic_dispatch(self, "exec_stmt", stmt)
+
+    def exec_stmt_Block(self, block: ast.Block) -> None:
+        self.block_stack.append(block)
+        try:
+            for stmt in block.body:
+                self.exec_stmt(stmt)
+        finally:
+            self.block_stack.pop()
 
     def typecheck_maybe(
         self, wam: W_MetaArg, varname: Optional[str]
@@ -407,7 +418,10 @@ class AbstractFrame:
             defaults=[],
             docstring=None,
             scoping_rules="strict",
-            body=[gfuncdef.inner, return_stmt],
+            body=ast.Block(
+                loc=loc,
+                body=[gfuncdef.inner, return_stmt],
+            ),
             decorators=[],
             symtable=gfuncdef.symtable,
         )
@@ -500,7 +514,10 @@ class AbstractFrame:
             defaults=[],
             docstring=None,
             scoping_rules="strict",
-            body=[gclassdef.inner, return_stmt],
+            body=ast.Block(
+                loc=loc,
+                body=[gclassdef.inner, return_stmt],
+            ),
             decorators=[],
             symtable=gclassdef.symtable,
         )
@@ -665,11 +682,9 @@ class AbstractFrame:
         wam_cond = self.eval_expr(if_node.test, varname="@if")
         assert isinstance(wam_cond.w_val, W_Bool)
         if self.vm.is_True(wam_cond.w_val):
-            for stmt in if_node.then_body:
-                self.exec_stmt(stmt)
+            self.exec_stmt(if_node.then)
         else:
-            for stmt in if_node.else_body:
-                self.exec_stmt(stmt)
+            self.exec_stmt(if_node.else_)
 
     def exec_stmt_While(self, while_node: ast.While) -> None:
         while True:
@@ -678,8 +693,7 @@ class AbstractFrame:
             if self.vm.is_False(wam_cond.w_val):
                 break
             try:
-                for stmt in while_node.body:
-                    self.exec_stmt(stmt)
+                self.exec_stmt(while_node.body)
             except Break:
                 break
             except Continue:
@@ -1290,12 +1304,11 @@ class ASTFrame(AbstractFrame):
             # Is the forward declaration of "S" available or not?  For now, we
             # just ignore the problem and support only classdef done at the
             # outermost level.
-            for stmt in self.funcdef.body:
+            for stmt in self.funcdef.body.body:
                 if isinstance(stmt, ast.ClassDef):
                     self.fwdecl_ClassDef(stmt)
 
-            for stmt in self.funcdef.body:
-                self.exec_stmt(stmt)
+            self.exec_stmt(self.funcdef.body)
             #
             # we reached the end of the function. If it's void, we can return
             # None, else it's an error.

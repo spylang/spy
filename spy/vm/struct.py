@@ -217,7 +217,7 @@ class W_StructType(W_Type):
             defaults=[],
             docstring=None,
             scoping_rules="strict",
-            body=[stmt],
+            body=ast.Block(func_loc, [stmt]),
             decorators=[],
         )
 

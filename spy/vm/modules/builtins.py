@@ -114,7 +114,7 @@ def w_print(vm: "SPyVM", *args_wam: W_MetaArg) -> W_OpSpec:
         defaults=[],
         docstring=None,
         scoping_rules="pythonic",
-        body=body,
+        body=ast.Block(loc=loc, body=body),
         decorators=[],
     )
     module = ast.Module(

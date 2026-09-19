@@ -61,7 +61,7 @@ def make_w_func(
         defaults=[],
         docstring=None,
         scoping_rules="pythonic",
-        body=[],
+        body=ast.Block(loc=loc, body=[]),
         decorators=[],
     )
     return W_ASTFunc(
