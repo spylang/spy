@@ -129,9 +129,8 @@ class DopplerFrame(ASTFrame):
         self.opimpl = {}
         assert error_mode != "warn"
         self.error_mode = error_mode
-        self._inline_counter = 0
-        self._new_symbols: list["Symbol"] = []
         self._new_locals_types_w: dict[str, "W_Type"] = {}
+        self._new_symtable = w_func.funcdef.symtable.copy()
         # when we encounter a deferred inference VarDef, we don't know its actual type
         # yet: we will discover it later on first assignment
         self._deferred_auto_vardefs: dict[str, ast.VarDef] = {}
@@ -155,13 +154,10 @@ class DopplerFrame(ASTFrame):
         for stmt in funcdef.body:
             new_body += self.shift_stmt(stmt)
 
-        new_symtable = funcdef.symtable.copy()
-        for sym in self._new_symbols:
-            new_symtable.add(sym)
         new_funcdef = funcdef.replace(
             stage="redshifted",
             body=new_body,
-            symtable=new_symtable,
+            symtable=self._new_symtable,
         )
         #
         new_fqn = self.w_func.fqn
@@ -511,10 +507,7 @@ class DopplerFrame(ASTFrame):
             w_callee = w_callee.get_most_lowered_version()
         assert w_callee.stage == "redshifted"
 
-        n = self._inline_counter
-        self._inline_counter += 1
-        result = inline_call(self.vm, op, w_callee, real_args, n)
-        self._new_symbols.extend(result.new_symbols)
+        result = inline_call(self.vm, op, self._new_symtable, w_callee, real_args)
         self._new_locals_types_w.update(result.new_locals_types_w)
         return result.block
 

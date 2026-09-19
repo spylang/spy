@@ -5,7 +5,7 @@ Helpers for @force_inline: validation and inlining mechanics.
 from typing import TYPE_CHECKING
 
 from spy import ast
-from spy.analyze.symtable import Symbol
+from spy.analyze.symtable import Symbol, SymTable
 from spy.doppler import make_const
 from spy.errors import SPyError
 from spy.util import magic_dispatch
@@ -46,26 +46,30 @@ def validate_force_inline(w_func: W_ASTFunc) -> None:
 
 class AlphaRenamer:
     """
-    Deep-copy a redshifted function body, renaming every callee-local Symbol
-    by appending suffix (e.g. "$0") to its name.
+    Deep-copy a redshifted function body, renaming every callee-local Symbol to a
+    fresh slot allocated in the CALLER's SymTable (via get_fresh_slot).
     """
 
-    def __init__(self, funcdef: ast.FuncDef, suffix: str) -> None:
+    def __init__(self, funcdef: ast.FuncDef, caller_symtable: SymTable) -> None:
         self.funcdef = funcdef
-        self.suffix = suffix
-        self.sym_map: dict[Symbol, Symbol] = {}
+        self.renamed_syms: dict[Symbol, Symbol] = {}
+        self.renamed_slots: dict[str, str] = {}
         for sym in funcdef.symtable._symbols.values():
-            if sym.is_local:
-                # alpha-rename the runtime slot to avoid collisions when inlining;
-                # the source name is unchanged.
-                new_slot_name = f"{sym.slot_name}{self.suffix}"
-                self.sym_map[sym] = sym.replace(slot_name=new_slot_name)
-
-    def get_new_symbols(self) -> list[Symbol]:
-        return list(self.sym_map.values())
-
-    def rename_sym(self, old_sym: Symbol) -> Symbol:
-        return self.sym_map[old_sym]
+            if not sym.is_local:
+                continue
+            if sym.src_name.startswith("@"):
+                # @-names (@return, @if, ...) are declared/looked up literally at
+                # runtime and never mangled; leave them untouched (don't reserve a
+                # caller slot, they don't collide).
+                self.renamed_syms[sym] = sym
+                self.renamed_slots[sym.slot_name] = sym.slot_name
+                continue
+            # alpha-rename the callee locals into the caller symtable
+            new_slot_name = caller_symtable.get_fresh_slot(sym.src_name)
+            new_sym = sym.replace(slot_name=new_slot_name)
+            self.renamed_syms[sym] = new_sym
+            self.renamed_slots[sym.slot_name] = new_slot_name
+            caller_symtable.add(new_sym)
 
     def rename_body(self) -> list[ast.Stmt]:
         return self._rename_stmts(self.funcdef.body)
@@ -85,14 +89,14 @@ class AlphaRenamer:
         return stmt.replace(value=self.rename_expr(stmt.value))
 
     def rename_stmt_VarDef(self, stmt: ast.VarDef) -> ast.Stmt:
-        old_name = stmt.name.value
-        new_name_node = stmt.name.replace(value=f"{old_name}{self.suffix}")
+        new_sym = self.renamed_syms[stmt.sym]
+        new_name_node = stmt.name.replace(value=new_sym.slot_name)
         new_value = self.rename_expr(stmt.value) if stmt.value is not None else None
         # the runtime slot is taken from _sym.slot_name, so rename the sym too
         return stmt.replace(
             name=new_name_node,
             value=new_value,
-            _sym=self.rename_sym(stmt.sym),
+            _sym=new_sym,
         )
 
     def rename_stmt_AssignLocal(self, stmt: ast.AssignLocal) -> ast.Stmt:
@@ -132,7 +136,7 @@ class AlphaRenamer:
     # ---- expressions ----
 
     def rename_expr_NameLocalDirect(self, expr: ast.NameLocalDirect) -> ast.Expr:
-        return expr.replace(sym=self.rename_sym(expr.sym))
+        return expr.replace(sym=self.renamed_syms[expr.sym])
 
     def rename_expr_NameOuterCell(self, expr: ast.NameOuterCell) -> ast.Expr:
         return expr
@@ -171,10 +175,11 @@ class AlphaRenamer:
         return expr.replace(items=[self.rename_expr(i) for i in expr.items])
 
     def rename_expr_AssignExprLocal(self, expr: ast.AssignExprLocal) -> ast.Expr:
-        new_target = expr.target.replace(value=f"{expr.target.value}{self.suffix}")
+        new_sym = self.renamed_syms[expr.sym]
+        new_target = expr.target.replace(value=new_sym.slot_name)
         return expr.replace(
             target=new_target,
-            sym=self.rename_sym(expr.sym),
+            sym=new_sym,
             value=self.rename_expr(expr.value),
         )
 
@@ -187,54 +192,54 @@ class AlphaRenamer:
 
 class InlineResult:
     block: ast.BlockExpr
-    new_symbols: list[Symbol]
     new_locals_types_w: "dict[str, W_Type]"
 
     def __init__(
         self,
         block: ast.BlockExpr,
-        new_symbols: list[Symbol],
         new_locals_types_w: "dict[str, W_Type]",
     ) -> None:
         self.block = block
-        self.new_symbols = new_symbols
         self.new_locals_types_w = new_locals_types_w
 
 
 def inline_call(
     vm: "SPyVM",
-    op: ast.Node,
+    caller_op: ast.Node,
+    caller_symtable: SymTable,
     w_callee: W_ASTFunc,
     real_args: list[ast.Expr],
-    inline_counter: int,
 ) -> InlineResult:
     """
     Build a BlockExpr that inlines the callee at the call site.
     w_callee must already be at stage == "redshifted".
+
+    Variables used by the callee are alpha-renamed and placed into caller_symtable.
     """
     assert w_callee.stage == "redshifted"
-    # XXX: maybe we could use SymTable.get_fresh_slot instead?
-    suffix = f"${inline_counter}"
 
     assert w_callee.locals_types_w is not None
     new_locals_types_w: dict[str, "W_Type"] = {}
 
     functype = w_callee.w_functype
     funcdef_args = w_callee.funcdef.args
-    callee_symtable = w_callee.funcdef.symtable
+
+    renamer = AlphaRenamer(w_callee.funcdef, caller_symtable)
+    renamed_slots = renamer.renamed_slots
+
     param_assigns: list[ast.Stmt] = []
     for i, (func_param, funcdef_arg) in enumerate(zip(functype.params, funcdef_args)):
-        slot_name = funcdef_arg.sym.slot_name
-        new_name = f"{slot_name}{suffix}"
-        new_locals_types_w[new_name] = func_param.w_T
-        param_sym = callee_symtable.lookup(slot_name).replace(slot_name=new_name)
+        old_slot_name = funcdef_arg.sym.slot_name
+        new_slot_name = renamed_slots[old_slot_name]
+        new_locals_types_w[new_slot_name] = func_param.w_T
+        param_sym = renamer.renamed_syms[funcdef_arg.sym]
 
         param_assigns.append(
             ast.AssignLocal(
-                loc=op.loc,
+                loc=caller_op.loc,
                 expr=ast.AssignExprLocal(
-                    loc=op.loc,
-                    target=ast.StrLiteral(op.loc, new_name).as_typed_node(),
+                    loc=caller_op.loc,
+                    target=ast.StrLiteral(caller_op.loc, new_slot_name).as_typed_node(),
                     sym=param_sym,
                     value=real_args[i],
                     w_T=func_param.w_T,
@@ -242,14 +247,13 @@ def inline_call(
             )
         )
 
-    for old_name, w_T in w_callee.locals_types_w.items():
-        if old_name.startswith("@"):
+    for old_slot_name, w_T in w_callee.locals_types_w.items():
+        if old_slot_name.startswith("@"):
             continue  # skip @return and other internal names
-        new_name = f"{old_name}{suffix}"
-        if new_name not in new_locals_types_w:
-            new_locals_types_w[new_name] = w_T
+        new_slot_name = renamed_slots[old_slot_name]
+        if new_slot_name not in new_locals_types_w:
+            new_locals_types_w[new_slot_name] = w_T
 
-    renamer = AlphaRenamer(w_callee.funcdef, suffix)
     renamed_body = renamer.rename_body()
 
     last_stmt = renamed_body[-1] if renamed_body else None
@@ -258,13 +262,13 @@ def inline_call(
         result_value = last_stmt.value
     else:
         stmts_before_return = renamed_body
-        result_value = ast.Const(op.loc, B.w_None, w_T=TYPES.w_NoneType)
+        result_value = ast.Const(caller_op.loc, B.w_None, w_T=TYPES.w_NoneType)
 
     body = [*param_assigns, *stmts_before_return]
     block = ast.BlockExpr(
-        loc=op.loc,
+        loc=caller_op.loc,
         body=body,
         value=result_value,
         w_T=w_callee.w_functype.w_restype,
     )
-    return InlineResult(block, renamer.get_new_symbols(), new_locals_types_w)
+    return InlineResult(block, new_locals_types_w)
