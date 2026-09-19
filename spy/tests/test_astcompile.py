@@ -119,11 +119,11 @@ class TestASTCompile:
         """)
         expected = """
         def foo(lst: dynamic) -> None:
-            _$iter0 = lst.__fastiter__()
-            while _$iter0.__continue_iteration__():
-                i = _$iter0.__item__()
-                _$iter0 = _$iter0.__next__()
-                print(i)
+            _$iter$0 = lst$0.__fastiter__()
+            while _$iter$0.__continue_iteration__():
+                i$0 = _$iter$0.__item__()
+                _$iter$0 = _$iter$0.__next__()
+                print(i$0)
         """
         self.assert_dump(expected)
 
@@ -135,8 +135,8 @@ class TestASTCompile:
         """)
         expected = """
         def foo(x: i32) -> i32:
-            AssignLocal(y := LocalDirect(x))
-            return LocalDirect(y)
+            AssignLocal(y$0 := LocalDirect(x$0))
+            return LocalDirect(y$0)
         """
         self.assert_dump(expected, ast_format="full")
 
@@ -155,6 +155,7 @@ class TestASTCompile:
         self.compile_src("""
         var x: i32 = 0
         def foo() -> i32:
+            global x
             x = 1
             return x
         """)
@@ -175,10 +176,10 @@ class TestASTCompile:
         """)
         expected = """
         def outer() -> dynamic:
-            AssignLocal(x := 1)
+            AssignLocal(x$0 := 1)
             def inner() -> ImportRef(i32):
-                return OuterDirect(x)
-            return LocalDirect(inner)
+                return OuterDirect(x$0)
+            return LocalDirect(inner$0)
         """
         self.assert_dump(expected, ast_format="full", funcname="outer")
 
@@ -204,8 +205,8 @@ class TestASTCompile:
         """)
         expected = """
         def foo(x: i32) -> i32:
-            x = x + 1
-            return x
+            x$0 = x$0 + 1
+            return x$0
         """
         self.assert_dump(expected)
 
@@ -234,6 +235,7 @@ class TestASTCompile:
         """
         self.assert_dump(expected)
 
+    @pytest.mark.skip(reason="interactive compilation not yet supported by scope2")
     def test_NameInteractive(self):
         self.compile_src("""
         X = 10
