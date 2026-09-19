@@ -105,11 +105,14 @@ class ASTCompiler:
             )
         return magic_dispatch(self, "compile_stmt", stmt)
 
-    def compile_body(self, body: list[ast.Stmt]) -> list[ast.Stmt]:
+    def compile_stmts(self, body: list[ast.Stmt]) -> list[ast.Stmt]:
         result = []
         for stmt in body:
             result.extend(self.compile_stmt(stmt))
         return result
+
+    def compile_block(self, block: ast.Block) -> ast.Block:
+        return block.replace(body=self.compile_stmts(block.body))
 
     def compile_expr(self, expr: ast.Expr) -> ast.Expr:
         return magic_dispatch(self, "compile_expr", expr)
@@ -149,7 +152,7 @@ class ASTCompiler:
             inner = gclassdef.inner
             self.push_symtable(gclassdef.symtable)
             self.push_symtable(inner.symtable)
-            new_body = self.compile_body(inner.body)
+            new_body = self.compile_block(inner.body)
             self.pop_symtable()
             self.pop_symtable()
             new_inner = inner.replace(body=new_body)
@@ -207,6 +210,9 @@ class ASTCompiler:
         )
         self.pop_symtable()
 
+        body = ast.Block(
+            loc=loc, body=new_inner + [return_stmt], scope=self.sa.scopes[node]
+        )
         return ast.FuncDef(
             loc=loc,
             stage="astcompiled",
@@ -218,7 +224,7 @@ class ASTCompiler:
             defaults=[],
             docstring=None,
             scoping_rules=self.mod.scoping_rules,
-            body=new_inner + [return_stmt],
+            body=body,
             decorators=[],
             symtable=outer_symtable,
             _sym=self.sa.get_resolved_sym(node),
@@ -265,7 +271,7 @@ class ASTCompiler:
             # TODO: kill me once scope.py is gone
             inner_symtable = funcdef.symtable
         self.push_symtable(inner_symtable)
-        new_body = self.compile_body(funcdef.body)
+        new_body = self.compile_block(funcdef.body)
         self.pop_symtable()
         if self.sa is not None:
             new_sym = self.sa.get_resolved_sym(funcdef)
@@ -386,7 +392,7 @@ class ASTCompiler:
             inner_symtable = classdef.symtable
             new_sym = None
         self.push_symtable(inner_symtable)
-        new_body = self.compile_body(classdef.body)
+        new_body = self.compile_block(classdef.body)
         self.pop_symtable()
         return classdef.replace(body=new_body, symtable=inner_symtable, _sym=new_sym)
 
@@ -439,6 +445,7 @@ class ASTCompiler:
                 args=[],
             ),
         )
+        # NOTE: the synthesized `while` gets its .scope from for.body.scope
         while_loop = ast.While(
             loc=loc,
             test=ast.CallMethod(
@@ -447,7 +454,9 @@ class ASTCompiler:
                 method=ast.StrLiteral(iter_loc, "__continue_iteration__"),
                 args=[],
             ),
-            body=[assign_item, advance_iter] + stmt.body,
+            body=stmt.body.replace(
+                body=[assign_item, advance_iter] + stmt.body.body,
+            ),
         )
         compiled_init = self.compile_stmt(init_iter)
         compiled_while = self.compile_stmt(while_loop)
@@ -505,7 +514,7 @@ class ASTCompiler:
                 ),
             ),
         ]
-        return self.compile_body(desugared)
+        return self.compile_stmts(desugared)
 
     def compile_stmt_AugSetItem(self, stmt: ast.AugSetItem) -> list[ast.Stmt]:
         # we have:
@@ -550,7 +559,7 @@ class ASTCompiler:
                 ),
             )
         )
-        return self.compile_body(desugared)
+        return self.compile_stmts(desugared)
 
     def compile_stmt_SetItem(self, stmt: ast.SetItem) -> list[ast.Stmt]:
         return [
@@ -576,7 +585,7 @@ class ASTCompiler:
         return [
             stmt.replace(
                 test=self.compile_expr(stmt.test),
-                body=self.compile_body(stmt.body),
+                body=self.compile_block(stmt.body),
             )
         ]
 
@@ -593,8 +602,8 @@ class ASTCompiler:
         return [
             stmt.replace(
                 test=self.compile_expr(stmt.test),
-                then_body=self.compile_body(stmt.then_body),
-                else_body=self.compile_body(stmt.else_body),
+                then=self.compile_block(stmt.then),
+                else_=self.compile_block(stmt.else_),
             )
         ]
 
@@ -687,7 +696,7 @@ class ASTCompiler:
 
     def compile_expr_BlockExpr(self, expr: ast.BlockExpr) -> ast.Expr:
         return expr.replace(
-            body=self.compile_body(expr.body),
+            body=self.compile_stmts(expr.body),
             value=self.compile_expr(expr.value),
         )
 
