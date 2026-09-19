@@ -108,12 +108,15 @@ def get_linker(
     return linker
 
 
-def get_wasi_config() -> wt.WasiConfig:
+def get_wasi_config(stdin_file: Optional[str] = None) -> wt.WasiConfig:
     wasi_config = wt.WasiConfig()
     # eventually, we want to support argv, with either:
     #    wasi_config.argv = [...]
     #    wasi_config.inherit_argv()
-    wasi_config.inherit_stdin()
+    if stdin_file is not None:
+        wasi_config.stdin_file = stdin_file
+    else:
+        wasi_config.inherit_stdin()
     wasi_config.inherit_stdout()
     wasi_config.inherit_stderr()
     wasi_config.preopen_dir("/", "/")
@@ -132,11 +135,15 @@ class LLWasmInstance(LLWasmInstanceBase):
         hostmods: list[HostModule] = [],
         *,
         instance: Optional[wt.Instance] = None,
+        stdin_file: Optional[str] = None,
     ) -> None:
         self.llmod = llmod
         self.store = wt.Store(get_engine())
         linker = get_linker(
-            self.store, self.llmod, wasi_config=get_wasi_config(), hostmods=hostmods
+            self.store,
+            self.llmod,
+            wasi_config=get_wasi_config(stdin_file),
+            hostmods=hostmods,
         )
         if instance is None:
             self.instance = linker.instantiate(self.store, self.llmod.mod)
@@ -162,9 +169,15 @@ class LLWasmInstance(LLWasmInstanceBase):
         return cls(llmod, hostmods)
 
     @classmethod
-    def from_file(cls, f: py.path.local, hostmods: list[HostModule] = []) -> Self:
+    def from_file(
+        cls,
+        f: py.path.local,
+        hostmods: list[HostModule] = [],
+        *,
+        stdin_file: Optional[str] = None,
+    ) -> Self:
         llmod = LLWasmModule(str(f))
-        return cls(llmod, hostmods)
+        return cls(llmod, hostmods, stdin_file=stdin_file)
 
     def get_export(self, name: str) -> Any:
         exports = self.instance.exports(self.store)

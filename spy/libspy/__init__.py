@@ -150,10 +150,11 @@ class LLSPyInstance(LLWasmInstance):
         hostmods: list[HostModule] = [],
         *,
         instance: Any = None,
+        stdin_file: Optional[str] = None,
     ) -> None:
         self.libspy = LibSPyHost()
         hostmods = [self.libspy] + hostmods
-        super().__init__(llmod, hostmods, instance=instance)
+        super().__init__(llmod, hostmods, instance=instance, stdin_file=stdin_file)
         layout = self.call("_spy_StrObject_layout")
         self.str_layout = StrLayout(*layout)
         blayout = self.call("_spy_BytesObject_layout")

@@ -79,6 +79,24 @@ POSIX.add("_FILE_NULL", W__FILE(0))
 
 
 @POSIX.builtin_func
+def w__get_stdin(vm: "SPyVM") -> W__FILE:
+    h = vm.ll.call("spy_posix$_get_stdin")
+    return W__FILE(h)
+
+
+@POSIX.builtin_func
+def w__get_stdout(vm: "SPyVM") -> W__FILE:
+    h = vm.ll.call("spy_posix$_get_stdout")
+    return W__FILE(h)
+
+
+@POSIX.builtin_func
+def w__get_stderr(vm: "SPyVM") -> W__FILE:
+    h = vm.ll.call("spy_posix$_get_stderr")
+    return W__FILE(h)
+
+
+@POSIX.builtin_func
 def w__fopen(vm: "SPyVM", w_filename: W_Str, w_mode: W_Str) -> W__FILE:
     h = vm.ll.call("spy_posix$_fopen", w_filename.ptr, w_mode.ptr)
     return W__FILE(h)

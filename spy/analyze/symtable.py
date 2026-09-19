@@ -193,6 +193,7 @@ class SymTable:
         add_sym("abs", ImportRef("_builtins", "abs"))
         add_sym("min", ImportRef("_builtins", "min"))
         add_sym("max", ImportRef("_builtins", "max"))
+        add_sym("input", ImportRef("_input", "input"))
         add_sym("range", ImportRef("_range", "range"))
         add_sym("list", ImportRef("_list", "list"))
         add_sym("tuple", ImportRef("_tuple", "tuple"))

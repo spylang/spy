@@ -1,6 +1,6 @@
 import struct
 import weakref
-from typing import Any, Literal, Self
+from typing import Any, Literal, Optional, Self
 
 import py.path
 
@@ -46,7 +46,13 @@ class LLWasmInstanceBase:
         raise NotImplementedError
 
     @classmethod
-    def from_file(cls, f: py.path.local, hostmods: list[HostModule] = []) -> Self:
+    def from_file(
+        cls,
+        f: py.path.local,
+        hostmods: list[HostModule] = [],
+        *,
+        stdin_file: Optional[str] = None,
+    ) -> Self:
         raise NotImplementedError
 
     def call(self, name: str, *args: Any) -> Any:
