@@ -100,9 +100,9 @@ class TestSPyBackend(CompilerTest):
         """)
         self.assert_dump("""
         def foo() -> None:
-            a = 1 + 2 * 3
-            b = 1 + 2 * 3
-            c = (1 + 2) * 3
+            a$0 = 1 + 2 * 3
+            b$0 = 1 + 2 * 3
+            c$0 = (1 + 2) * 3
         """)
 
     def test_expr_associativity(self):
@@ -117,12 +117,12 @@ class TestSPyBackend(CompilerTest):
         """)
         self.assert_dump("""
         def foo(a: i32, b: i32, c: i32) -> None:
-            x = a - (b - c)
-            xf = a - b - c
-            y = a - b - c
-            z = a - (b + c)
-            w = a // (b // c)
-            v = (a ** b) ** c
+            x$0 = a$0 - (b$0 - c$0)
+            xf$0 = a$0 - b$0 - c$0
+            y$0 = a$0 - b$0 - c$0
+            z$0 = a$0 - (b$0 + c$0)
+            w$0 = a$0 // (b$0 // c$0)
+            v$0 = (a$0 ** b$0) ** c$0
         """)
 
     def test_bool_ops(self):
@@ -141,16 +141,16 @@ class TestSPyBackend(CompilerTest):
         """)
         self.assert_dump("""
         def foo(a: bool, b: bool, c: bool) -> bool:
-            return a and b or c
+            return a$0 and b$0 or c$0
 
         def bar(a: bool, b: bool, c: bool) -> bool:
-            return a or b and c
+            return a$0 or b$0 and c$0
 
         def baz(a: bool, b: bool, c: bool) -> bool:
-            return a or b or c
+            return a$0 or b$0 or c$0
 
         def qux(a: bool, b: bool, c: bool) -> bool:
-            return a and b and c
+            return a$0 and b$0 and c$0
         """)
 
     def test_assignexpr_expr(self):
@@ -203,8 +203,8 @@ class TestSPyBackend(CompilerTest):
         """)
         self.assert_dump("""
         def foo() -> None:
-            x: i32 = 1
-            y: f64 = 2.0
+            x$0: i32 = 1
+            y$0: f64 = 2.0
         """)
 
     def test_implicit_declaration(self):
@@ -216,8 +216,8 @@ class TestSPyBackend(CompilerTest):
         """)
         self.assert_dump("""
         def foo() -> None:
-            x: i32 = 1
-            y: f64 = 2.0
+            x$0: i32 = 1
+            y$0: f64 = 2.0
         """)
 
     def test_dont_dump_blue_func(self):
@@ -258,10 +258,10 @@ class TestSPyBackend(CompilerTest):
         add_f64 = `test::add[f64]`
 
         def `test::add[i32]`(x: i32, y: i32) -> i32:
-            return x + y
+            return x$0 + y$0
 
         def `test::add[f64]`(x: f64, y: f64) -> f64:
-            return x + y
+            return x$0 + y$0
 
         def foo() -> None:
             add_i32(1, 2)
@@ -294,8 +294,15 @@ class TestSPyBackend(CompilerTest):
         def foo() -> i32:
             return add(x, y)
         """
+        expected = """
+        def add(x: i32, y: i32) -> i32:
+            return x$0 + y$0
+
+        def foo() -> i32:
+            return add(x, y)
+        """
         self.compile(src)
-        self.assert_dump(src)
+        self.assert_dump(expected)
 
     def test_callmethod(self):
         src = """
@@ -390,8 +397,12 @@ class TestSPyBackend(CompilerTest):
         def foo() -> None:
             a, b, c = x
         """
+        expected = """
+        def foo() -> None:
+            a$0, b$0, c$0 = x
+        """
         self.compile(src)
-        self.assert_dump(src)
+        self.assert_dump(expected)
 
     def test_aug_assign(self):
         src = """
@@ -401,8 +412,8 @@ class TestSPyBackend(CompilerTest):
         """
         expected = """
         def foo() -> None:
-            x = 0
-            x = x + 1
+            x$0 = 0
+            x$0 = x$0 + 1
         """
         self.compile(src)
         self.assert_dump(expected)
@@ -453,8 +464,12 @@ class TestSPyBackend(CompilerTest):
         def foo() -> None:
             x = {10: 50, 60: 40}
         """
+        expected = """
+        def foo() -> None:
+            x$0 = {10: 50, 60: 40}
+        """
         self.compile(src)
-        self.assert_dump(src)
+        self.assert_dump(expected)
 
     def test_blockexpr(self):
         self.compile("""
@@ -466,7 +481,7 @@ class TestSPyBackend(CompilerTest):
         """)
         self.assert_dump("""
         def foo() -> i32:
-            return __block__(x: i32 = 1; x)
+            return __block__(x$0: i32 = 1; x$0)
         """)
 
     def test_typed_consts(self):
@@ -485,12 +500,12 @@ class TestSPyBackend(CompilerTest):
         self.compile(src)
         self.assert_dump("""
         def foo() -> None:
-            a: i8 = i8(1)
-            b: u8 = u8(1)
-            c: i32 = 1
-            d: u32 = u32(1)
-            e: i64 = i64(1)
-            f: u64 = u64(1)
-            g: f32 = f32(1.0)
-            h: f64 = 1.0
+            a$0: i8 = i8(1)
+            b$0: u8 = u8(1)
+            c$0: i32 = 1
+            d$0: u32 = u32(1)
+            e$0: i64 = i64(1)
+            f$0: u64 = u64(1)
+            g$0: f32 = f32(1.0)
+            h$0: f64 = 1.0
         """)

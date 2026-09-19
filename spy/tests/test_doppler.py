@@ -181,7 +181,7 @@ class TestDoppler:
 
         def foo() -> i32:
             x$0: i32 = 0
-            y$0: i32 = `test::inc`(x := 1)
+            y$0: i32 = `test::inc`(x$0 := 1)
             return x$0 + y$0
         """)
 
@@ -203,7 +203,7 @@ class TestDoppler:
 
         def main() -> None:
             x$0: i32 = 0
-            `test::foo`(x := 1)
+            `test::foo`(x$0 := 1)
             `test::foo`(2)
             `_print::println[i32]`(x$0)
             `_print::println[str]`('2')
