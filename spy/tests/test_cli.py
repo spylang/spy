@@ -202,8 +202,8 @@ class TestMain:
         _, stdout = self.run("redshift", "--linearize", f)
         expected = textwrap.dedent("""
         def foo(a: i32) -> i32:
-            x: i32 = a
-            return x
+            x$0: i32 = a$0
+            return x$0
         """)
         assert stdout.strip() == expected.strip()
 
@@ -406,7 +406,7 @@ class TestMain:
 
     def test_symtable(self):
         _, stdout = self.run("symtable", self.main_spy)
-        assert "<SymTable 'main::main'" in stdout
+        assert "symtable main::main (function):" in stdout
 
     def test_imports(self):
         _, stdout = self.run("imports", self.main_spy)
