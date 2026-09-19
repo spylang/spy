@@ -604,7 +604,7 @@ class SPyBackend:
 
     def fmt_expr_AssignExprLocal(self, assignexpr: ast.AssignExprLocal) -> str:
         return self._fmt_assignexpr(
-            assignexpr.target.value, assignexpr.value, assignexpr.precedence
+            assignexpr.sym.slot_name, assignexpr.value, assignexpr.precedence
         )
 
     def fmt_expr_AssignExprCell(self, assignexpr: ast.AssignExprCell) -> str:

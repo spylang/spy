@@ -160,7 +160,7 @@ class TestSPyBackend(CompilerTest):
         """)
         self.assert_dump("""
         def foo() -> i32:
-            return x := 1
+            return x$0 := 1
         """)
 
     def test_binop(self):
