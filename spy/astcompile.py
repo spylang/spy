@@ -409,9 +409,6 @@ class ASTCompiler:
         target_loc = stmt.target.loc.replace(colorize=False)
         iter_sym = self.symtable.make_temp_symbol("_$iter", iter_loc)  # e.g. _$iter$0
 
-        def iter_read() -> ast.Expr:
-            return
-
         init_iter = ast.AssignTemp(
             loc=iter_loc,
             sym=iter_sym,
@@ -533,8 +530,8 @@ class ASTCompiler:
             arg_syms.append((arg_sym, arg_loc))
             desugared.append(ast.AssignTemp(loc=arg_loc, sym=arg_sym, value=arg))
 
-        lhs_args = [ast.NameTemp(loc, sym) for sym, loc in arg_syms]
-        rhs_args = [ast.NameTemp(loc, sym) for sym, loc in arg_syms]
+        lhs_args: list[ast.Expr] = [ast.NameTemp(loc, sym) for sym, loc in arg_syms]
+        rhs_args: list[ast.Expr] = [ast.NameTemp(loc, sym) for sym, loc in arg_syms]
 
         desugared.append(
             ast.SetItem(

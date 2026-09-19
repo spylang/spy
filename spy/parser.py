@@ -7,7 +7,7 @@ import re
 import textwrap
 from ctypes import c_float as float32
 from types import NoneType
-from typing import NoReturn, Optional
+from typing import NoReturn, Optional, cast
 
 import fixedint
 from fixedint.base import FixedInt
@@ -545,7 +545,7 @@ class Parser:
                 body.append(vardef)
             elif isinstance(py_stmt, py_ast.ImportFrom):
                 importstmts = self.from_py_ImportFrom(py_stmt)
-                body += importstmts
+                body += importstmts  # type: ignore
             else:
                 stmt = self.from_py_stmt(py_stmt)
                 body.append(stmt)

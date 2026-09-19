@@ -55,6 +55,7 @@ class ClassFrame(AbstractFrame):
                 continue
             if lv.w_val is None:
                 # locals declared but not assigned
+                assert lv.w_T is not None
                 body.fields_w[name] = W_Field(name, lv.w_T, lv.decl_loc)
             else:
                 body.dict_w[name] = lv.w_val

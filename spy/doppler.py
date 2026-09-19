@@ -240,6 +240,7 @@ class DopplerFrame(ASTFrame):
         if is_auto and vardef.value is None:
             # deferred inference: the type will be fixed later, see
             # fix_deferred_inference_type.
+            assert isinstance(vardef.type, ast.Auto)
             newvardef = vardef.replace(
                 name=newname,
                 type=vardef.type.as_typed_node(),
@@ -249,6 +250,7 @@ class DopplerFrame(ASTFrame):
         elif is_auto:
             # use the actual type computed during type inference
             w_T = self.locals[varname].w_T
+            assert w_T is not None
             newtype = make_const(self.vm, vardef.type.loc, w_T)
         else:
             newtype = self.shifted_expr[vardef.type]
@@ -426,6 +428,7 @@ class DopplerFrame(ASTFrame):
                 new_expr = make_const(self.vm, expr.loc, wam.w_val)
             else:
                 # add a residual call to the convert function
+                assert lv.w_T is not None
                 expT = make_const(self.vm, lv.decl_loc, lv.w_T)
                 gotT = make_const(self.vm, wam.loc, wam.w_static_T)
                 new_expr = self.shift_opimpl(

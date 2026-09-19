@@ -87,7 +87,7 @@ class AST:
         raise ValueError(f"{self.__class__.__name__} does not have a location")
 
     @no_type_check
-    def compute_all_locs(self, filename: str, src: str = "") -> None:
+    def compute_all_locs(self, filename: str, src: str) -> None:
         """
         Compute .loc for itself and all its descendants.
 
@@ -101,9 +101,8 @@ class AST:
         # For lines that contain only ASCII the mapping is identity; for lines with
         # multi-byte chars we decode the UTF-8 prefix to find the char position.
         lines_bytes: list[bytes] = []
-        if src:
-            for line in src.splitlines(keepends=True):
-                lines_bytes.append(line.encode("utf-8"))
+        for line in src.splitlines(keepends=True):
+            lines_bytes.append(line.encode("utf-8"))
 
         def byte_to_char(lineno: int, byte_col: int) -> int:
             # lineno is 1-based; lines_bytes is 0-based

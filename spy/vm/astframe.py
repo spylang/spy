@@ -84,11 +84,12 @@ class AbstractFrame:
         return False
 
     def get_locals_types_w(self) -> dict[str, W_Type]:
-        return {
-            name: lv.w_T
-            for name, lv in self.locals.items()
-            if lv.color == "red"
-        }  # fmt: skip
+        res = {}
+        for name, lv in self.locals.items():
+            if lv.color == "red":
+                assert lv.w_T is not None
+                res[name] = lv.w_T
+        return res
 
     def declare_local(
         self, name: str, desired_color: Color, w_type: Optional[W_Type], loc: Loc
@@ -219,6 +220,7 @@ class AbstractFrame:
             # apply the conversion
             assert varname is not None
             lv = self.locals[varname]
+            assert lv.w_T is not None
             wam_expT = W_MetaArg.from_w_obj(self.vm, lv.w_T, loc=lv.decl_loc)
             wam_gotT = W_MetaArg.from_w_obj(self.vm, wam.w_static_T, loc=wam.loc)
             wam_val = self.vm.eval_opimpl(
@@ -793,6 +795,7 @@ class AbstractFrame:
             else:
                 w_val = lv.w_val
             assert w_val is not None
+            assert lv.w_T is not None
             return W_MetaArg(self.vm, lv.color, lv.w_T, w_val, name.loc)
 
         # name not found. Let's try the builtins
@@ -842,6 +845,7 @@ class AbstractFrame:
             w_val = None
         else:
             w_val = self.load_local(sym.slot_name)
+        assert lv.w_T is not None
         return W_MetaArg(self.vm, lv.color, lv.w_T, w_val, name.loc, sym=sym)
 
     def eval_expr_NameLocalCell(self, name: ast.NameLocalCell) -> W_MetaArg:
@@ -853,6 +857,7 @@ class AbstractFrame:
             w_cell = self.load_local(sym.slot_name)
             assert isinstance(w_cell, W_Cell)
             w_val = w_cell.get()
+        assert lv.w_T is not None
         return W_MetaArg(self.vm, lv.color, lv.w_T, w_val, name.loc, sym=sym)
 
     def eval_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> W_MetaArg:
