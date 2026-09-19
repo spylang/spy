@@ -108,7 +108,7 @@ class Linearizer:
 
     def linearize(self) -> W_ASTFunc:
         funcdef = self.w_func.funcdef
-        new_body = self.rewrite_body(funcdef.body)
+        new_body = self.rewrite_block(funcdef.body)
         new_symtable = self._copy_symtable(funcdef.symtable)
         new_funcdef = funcdef.replace(
             stage="linearized", body=new_body, symtable=new_symtable
@@ -209,6 +209,9 @@ class Linearizer:
             new_body += hoisted + new_stmts
         return new_body
 
+    def rewrite_block(self, block: ast.Block) -> ast.Block:
+        return block.replace(body=self.rewrite_body(block.body))
+
     def rewrite_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
         to_spill = self.mark_to_spill([ret.value])
         new_value = self.rewrite_expr(ret.value, to_spill)
@@ -281,7 +284,7 @@ class Linearizer:
             to_spill = self.mark_to_spill([while_node.test])
             new_test = self.rewrite_expr(while_node.test, to_spill)
 
-        new_body = self.rewrite_body(while_node.body)
+        new_body = self.rewrite_block(while_node.body)
 
         if not test_hoisted:
             return [while_node.replace(test=new_test, body=new_body)]
@@ -297,21 +300,23 @@ class Linearizer:
         break_if = ast.If(
             loc=loc,
             test=not_test,
-            then_body=[ast.Break(loc=loc)],
-            else_body=[],
+            then=ast.Block(
+                loc=loc,
+                body=[ast.Break(loc=loc)],
+            ),
+            else_=ast.Block(loc=loc, body=[]),
         )
-        return [
-            while_node.replace(
-                test=true_const, body=test_hoisted + [break_if] + new_body
-            )
-        ]
+        new_while_body = new_body.replace(
+            body=test_hoisted + [break_if] + new_body.body
+        )
+        return [while_node.replace(test=true_const, body=new_while_body)]
 
     def rewrite_stmt_If(self, if_node: ast.If) -> list[ast.Stmt]:
         to_spill = self.mark_to_spill([if_node.test])
         new_test = self.rewrite_expr(if_node.test, to_spill)
-        new_then = self.rewrite_body(if_node.then_body)
-        new_else = self.rewrite_body(if_node.else_body)
-        return [if_node.replace(test=new_test, then_body=new_then, else_body=new_else)]
+        new_then = self.rewrite_block(if_node.then)
+        new_else = self.rewrite_block(if_node.else_)
+        return [if_node.replace(test=new_test, then=new_then, else_=new_else)]
 
     # ==== pass 1: mark ====
     #
@@ -456,7 +461,10 @@ class Linearizer:
             else_body = rhs_hoisted + [assign_rhs]
 
         if_stmt = ast.If(
-            loc=loc, test=new_left, then_body=then_body, else_body=else_body
+            loc=loc,
+            test=new_left,
+            then=ast.Block(loc=loc, body=then_body),
+            else_=ast.Block(loc=loc, body=else_body),
         )
         self.hoisted.append(if_stmt)
         return ast.NameLocalDirect(loc=loc, sym=sym, w_T=op.w_T)

@@ -130,7 +130,7 @@ class SPyBackend:
         self.scope_stack.append(w_func.funcdef.symtable)
         self.wl(f"def {name}({params}) -> {ret}:")
         with self.out.indent():
-            for stmt in w_func.funcdef.body:
+            for stmt in w_func.funcdef.body.body:
                 self.emit_stmt(stmt)
         self.scope_stack.pop()
 
@@ -264,7 +264,7 @@ class SPyBackend:
         self.scope_stack.append(funcdef.symtable)
         self.wl(f"def {name}({params}) -> {ret}:")
         with self.out.indent():
-            for stmt in funcdef.body:
+            for stmt in funcdef.body.body:
                 self.emit_stmt(stmt)
         self.scope_stack.pop()
 
@@ -275,7 +275,7 @@ class SPyBackend:
         self.wl("@struct")
         self.wl(f"class {name}:")
         with self.out.indent():
-            for stmt in classdef.body:
+            for stmt in classdef.body.body:
                 self.emit_stmt(stmt)
         self.scope_stack.pop()
 
@@ -398,7 +398,7 @@ class SPyBackend:
         test = self.fmt_expr(while_node.test)
         self.wl(f"while {test}:")
         with self.out.indent():
-            for stmt in while_node.body:
+            for stmt in while_node.body.body:
                 self.emit_stmt(stmt)
 
     def emit_stmt_For(self, for_node: ast.For) -> None:
@@ -406,19 +406,19 @@ class SPyBackend:
         iter_expr = self.fmt_expr(for_node.iter)
         self.wl(f"for {target} in {iter_expr}:")
         with self.out.indent():
-            for stmt in for_node.body:
+            for stmt in for_node.body.body:
                 self.emit_stmt(stmt)
 
     def emit_stmt_If(self, if_node: ast.If) -> None:
         test = self.fmt_expr(if_node.test)
         self.wl(f"if {test}:")
         with self.out.indent():
-            for stmt in if_node.then_body:
+            for stmt in if_node.then.body:
                 self.emit_stmt(stmt)
-        if if_node.else_body:
+        if if_node.else_.body:
             self.wl("else:")
             with self.out.indent():
-                for stmt in if_node.else_body:
+                for stmt in if_node.else_.body:
                     self.emit_stmt(stmt)
 
     def emit_stmt_Raise(self, raise_node: ast.Raise) -> None:

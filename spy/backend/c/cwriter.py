@@ -61,7 +61,7 @@ class CFuncWriter:
         self.tbc.wl(c_func.decl() + " {")
         with self.tbc.indent():
             self.emit_local_vars()
-            for stmt in self.w_func.funcdef.body:
+            for stmt in self.w_func.funcdef.body.body:
                 self.emit_stmt(stmt)
 
             if self.w_func.w_functype.w_restype is not TYPES.w_NoneType:
@@ -231,13 +231,13 @@ class CFuncWriter:
         test = self.fmt_expr(if_node.test)
         self.tbc.wl(f"if ({test})" + "{")
         with self.tbc.indent():
-            for stmt in if_node.then_body:
+            for stmt in if_node.then.body:
                 self.emit_stmt(stmt)
         #
-        if if_node.else_body:
+        if if_node.else_.body:
             self.tbc.wl("} else {")
             with self.tbc.indent():
-                for stmt in if_node.else_body:
+                for stmt in if_node.else_.body:
                     self.emit_stmt(stmt)
         #
         self.tbc.wl("}")
@@ -246,7 +246,7 @@ class CFuncWriter:
         test = self.fmt_expr(while_node.test)
         self.tbc.wl(f"while ({test}) " + "{")
         with self.tbc.indent():
-            for stmt in while_node.body:
+            for stmt in while_node.body.body:
                 self.emit_stmt(stmt)
         self.tbc.wl("}")
 

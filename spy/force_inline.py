@@ -19,8 +19,8 @@ if TYPE_CHECKING:
 
 
 def validate_force_inline(w_func: W_ASTFunc) -> None:
-    body = w_func.funcdef.body
-    last_stmt = body[-1] if body else None
+    stmts = w_func.funcdef.body.body
+    last_stmt = stmts[-1] if stmts else None
     returns_none = w_func.w_functype.w_restype is TYPES.w_NoneType
     if not returns_none and not isinstance(last_stmt, ast.Return):
         err = SPyError(
@@ -72,10 +72,13 @@ class AlphaRenamer:
             caller_symtable.add(new_sym)
 
     def rename_body(self) -> list[ast.Stmt]:
-        return self._rename_stmts(self.funcdef.body)
+        return self._rename_stmts(self.funcdef.body.body)
 
     def _rename_stmts(self, stmts: list[ast.Stmt]) -> list[ast.Stmt]:
         return [self.rename_stmt(s) for s in stmts]
+
+    def _rename_block(self, block: ast.Block) -> ast.Block:
+        return block.replace(body=self._rename_stmts(block.body))
 
     def rename_stmt(self, stmt: ast.Stmt) -> ast.Stmt:
         return magic_dispatch(self, "rename_stmt", stmt)
@@ -111,14 +114,14 @@ class AlphaRenamer:
     def rename_stmt_If(self, stmt: ast.If) -> ast.Stmt:
         return stmt.replace(
             test=self.rename_expr(stmt.test),
-            then_body=self._rename_stmts(stmt.then_body),
-            else_body=self._rename_stmts(stmt.else_body),
+            then=self._rename_block(stmt.then),
+            else_=self._rename_block(stmt.else_),
         )
 
     def rename_stmt_While(self, stmt: ast.While) -> ast.Stmt:
         return stmt.replace(
             test=self.rename_expr(stmt.test),
-            body=self._rename_stmts(stmt.body),
+            body=self._rename_block(stmt.body),
         )
 
     def rename_stmt_Pass(self, stmt: ast.Pass) -> ast.Stmt:
