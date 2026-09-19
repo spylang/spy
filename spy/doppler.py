@@ -145,14 +145,12 @@ class DopplerFrame(ASTFrame):
         self.w_func.stage = "redshifting"
         self.declare_arguments()
         funcdef = self.w_func.funcdef
-        new_body = []
         # fwdecl of types
-        for stmt in funcdef.body:
+        for stmt in funcdef.body.body:
             if isinstance(stmt, ast.ClassDef):
                 self.fwdecl_ClassDef(stmt)
 
-        for stmt in funcdef.body:
-            new_body += self.shift_stmt(stmt)
+        new_body = self.shift_block(funcdef.body)
 
         new_funcdef = funcdef.replace(
             stage="redshifted",
@@ -323,15 +321,18 @@ class DopplerFrame(ASTFrame):
             newbody += self.shift_stmt(stmt)
         return newbody
 
+    def shift_block(self, block: ast.Block) -> ast.Block:
+        return block.replace(body=self.shift_body(block.body))
+
     def shift_stmt_If(self, if_node: ast.If) -> list[ast.Stmt]:
         newtest = self.eval_and_shift(if_node.test, varname="@if")
-        newthen = self.shift_body(if_node.then_body)
-        newelse = self.shift_body(if_node.else_body)
-        return [if_node.replace(test=newtest, then_body=newthen, else_body=newelse)]
+        newthen = self.shift_block(if_node.then)
+        newelse = self.shift_block(if_node.else_)
+        return [if_node.replace(test=newtest, then=newthen, else_=newelse)]
 
     def shift_stmt_While(self, while_node: ast.While) -> list[ast.Stmt]:
         newtest = self.eval_and_shift(while_node.test, varname="@while")
-        newbody = self.shift_body(while_node.body)
+        newbody = self.shift_block(while_node.body)
         return [while_node.replace(test=newtest, body=newbody)]
 
     def shift_stmt_Raise(self, raise_node: ast.Raise) -> list[ast.Stmt]:
