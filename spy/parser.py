@@ -372,7 +372,7 @@ class Parser:
         saved_for_loop_seq = self.for_loop_seq
         saved_augassign_seq = self.augassign_seq
         self.scoping_rules_stack.append(scoping_rules)
-        body = self.from_py_body(py_body)
+        body = self.from_py_body_block(py_funcdef.loc, py_body)
         self.scoping_rules_stack.pop()
         self.for_loop_seq = saved_for_loop_seq
         self.augassign_seq = saved_augassign_seq
@@ -491,16 +491,17 @@ class Parser:
 
         # collect statements inside a "class:" block.
         # validation is delegated to ClassFrame
-        body: list[spy.ast.Stmt] = []
+        stmts: list[spy.ast.Stmt] = []
         for py_stmt in py_class_body:
             if isinstance(py_stmt, py_ast.AnnAssign):
-                body.append(self.from_py_AnnAssign(py_stmt))
+                stmts.append(self.from_py_AnnAssign(py_stmt))
             else:
-                body.append(self.from_py_stmt(py_stmt))
+                stmts.append(self.from_py_stmt(py_stmt))
 
         # loc points to the 'class X' line, body_loc to the whole class body
         body_loc = py_classdef.loc
         loc = body_loc.replace(line_end=body_loc.line_start, col_end=-1)
+        body = spy.ast.Block(loc=body_loc, body=stmts)
         return spy.ast.ClassDef(
             loc=loc,
             body_loc=body_loc,
@@ -550,6 +551,12 @@ class Parser:
                 stmt = self.from_py_stmt(py_stmt)
                 body.append(stmt)
         return body
+
+    def from_py_body_block(self, loc: Loc, py_body: list[py_ast.stmt]) -> spy.ast.Block:
+        """
+        Like from_py_body, but wrap the resulting statements in an ast.Block.
+        """
+        return spy.ast.Block(loc=loc, body=self.from_py_body(py_body))
 
     def from_py_stmt(self, py_node: py_ast.stmt) -> spy.ast.Stmt:
         return magic_dispatch(self, "from_py_stmt", py_node)
@@ -740,8 +747,8 @@ class Parser:
         return spy.ast.If(
             loc=py_node.loc,
             test=self.from_py_expr(py_node.test),
-            then_body=self.from_py_body(py_node.body),
-            else_body=self.from_py_body(py_node.orelse),
+            then=self.from_py_body_block(py_node.loc, py_node.body),
+            else_=self.from_py_body_block(py_node.loc, py_node.orelse),
         )
 
     def from_py_stmt_While(self, py_node: py_ast.While) -> spy.ast.While:
@@ -750,7 +757,7 @@ class Parser:
         return spy.ast.While(
             loc=py_node.loc,
             test=self.from_py_expr(py_node.test),
-            body=self.from_py_body(py_node.body),
+            body=self.from_py_body_block(py_node.loc, py_node.body),
         )
 
     def from_py_stmt_For(self, py_node: py_ast.For) -> spy.ast.For:
@@ -775,7 +782,7 @@ class Parser:
             seq=seq,
             target=spy.ast.StrLiteral(py_node.target.loc, py_node.target.id),
             iter=self.from_py_expr(py_node.iter),
-            body=self.from_py_body(py_node.body),
+            body=self.from_py_body_block(py_node.loc, py_node.body),
         )
 
     def from_py_stmt_Raise(self, py_node: py_ast.Raise) -> spy.ast.Raise:

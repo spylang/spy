@@ -57,11 +57,16 @@ class Dumper(TextBuilder):
             "body_loc",
             "target_locs",
             "loc_asname",
+            "scope",
         )
         self.vm = vm
 
     def dump_anything(self, obj: Any) -> None:
-        if isinstance(obj, spy.ast.Node):
+        if isinstance(obj, spy.ast.Block):
+            # we don't show the Block node in dumps, to simplify the output. A block is
+            # rendered as a statement list
+            self.dump_list(obj.body)
+        elif isinstance(obj, spy.ast.Node):
             self.dump_spy_node(obj)
         elif isinstance(obj, py_ast.AST):
             self.dump_py_node(obj)

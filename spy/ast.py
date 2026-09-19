@@ -803,6 +803,15 @@ class Stmt(Node):
 
 
 @astnode
+class Block(Node):
+    body: list["Stmt"]
+    # the scope as computed by ScopeAnalyzer: this is not necessary for runtime
+    # execution, but it basically serves the role of "debug info" for interactive name
+    # resolution (e.g. for spdb)
+    scope: Any = field(repr=False, default=None, compare=False)
+
+
+@astnode
 class FuncArg(Node):
     name: str
     type: "Expr"
@@ -829,7 +838,7 @@ class FuncDef(Stmt):
     defaults: list[Expr]
     docstring: Optional[str]
     scoping_rules: ScopingRules
-    body: list["Stmt"]
+    body: Block
     decorators: list["Expr"]
 
     _sym: Optional[Symbol] = None  # None when "parsed', present when ">= astcompiled"
@@ -881,7 +890,7 @@ class ClassDef(Stmt):
     name: str
     kind: ClassKind
     docstring: Optional[str]
-    body: list["Stmt"]
+    body: Block
 
     _sym: Optional[Symbol] = None  # None when "parsed", present when ">= astcompiled"
 
@@ -1056,18 +1065,18 @@ class AugSetItem(Stmt):
 @astnode
 class If(Stmt):
     test: Expr
-    then_body: list[Stmt]
-    else_body: list[Stmt]
+    then: Block
+    else_: Block
 
     @property
     def has_else(self) -> bool:
-        return len(self.else_body) > 0
+        return len(self.else_.body) > 0
 
 
 @astnode
 class While(Stmt):
     test: Expr
-    body: list[Stmt]
+    body: Block
 
 
 @astnode("parsed")
@@ -1075,7 +1084,7 @@ class For(Stmt):
     seq: int  # unique id within a funcdef
     target: StrLiteral
     iter: Expr
-    body: list[Stmt]
+    body: Block
 
 
 @astnode
