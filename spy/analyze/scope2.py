@@ -612,7 +612,8 @@ class ScopeAnalyzer:
         inner_scope = self.new_Scope(classdef.name, "blue", "class", symtable=symtable)
         self.push_scope(inner_scope)
         self.scopes[classdef] = inner_scope
-        for stmt in classdef.body:
+        classdef.body.scope = inner_scope
+        for stmt in classdef.body.body:
             self.collect(stmt)
         self.pop_scope()
 
@@ -642,6 +643,7 @@ class ScopeAnalyzer:
         )
         self.push_scope(inner_scope)
         self.scopes[funcdef] = inner_scope
+        funcdef.body.scope = inner_scope
 
         for arg in funcdef.args:
             self.create_new_local(
@@ -664,7 +666,7 @@ class ScopeAnalyzer:
             funcdef.return_type.loc,
         )
 
-        for stmt in funcdef.body:
+        for stmt in funcdef.body.body:
             self.collect(stmt)
 
         self.pop_scope()
@@ -673,12 +675,14 @@ class ScopeAnalyzer:
         self.collect(ifstmt.test)
         then_scope = self.new_Scope("if.then", self.scope.color, "block")
         self.push_scope(then_scope)
-        for stmt in ifstmt.then_body:
+        ifstmt.then.scope = then_scope
+        for stmt in ifstmt.then.body:
             self.collect(stmt)
         self.pop_scope()
         else_scope = self.new_Scope("if.else", self.scope.color, "block")
         self.push_scope(else_scope)
-        for stmt in ifstmt.else_body:
+        ifstmt.else_.scope = else_scope
+        for stmt in ifstmt.else_.body:
             self.collect(stmt)
         self.pop_scope()
         self.scopes[ifstmt, "then"] = then_scope
@@ -696,6 +700,7 @@ class ScopeAnalyzer:
         # exists in an enclosing scope, in which case the loop reuses it (the
         # target is an ordinary assignment) so it outlives the loop.
         self.push_scope(body_scope)
+        forstmt.body.scope = body_scope
         target = forstmt.target
         res = self.lookup_name_in_scopes(target.value)
         if not res.found:
@@ -708,7 +713,7 @@ class ScopeAnalyzer:
                 target.loc,
                 forstmt.iter.loc,
             )
-        for stmt in forstmt.body:
+        for stmt in forstmt.body.body:
             self.collect(stmt)
         self.pop_scope()
         self.scopes[forstmt, "body"] = body_scope
@@ -1044,7 +1049,7 @@ class ScopeAnalyzer:
         self.push_scope(scope)
         for arg in funcdef.args:
             self.lookup_and_bind(arg, arg.name, arg.loc)
-        for stmt in funcdef.body:
+        for stmt in funcdef.body.body:
             self.bind(stmt)
         self.pop_scope()
 
@@ -1059,7 +1064,7 @@ class ScopeAnalyzer:
         self.lookup_and_bind(classdef, classdef.name, classdef.loc)
         scope = self.scopes[classdef]
         self.push_scope(scope)
-        for stmt in classdef.body:
+        for stmt in classdef.body.body:
             self.bind(stmt)
         self.pop_scope()
 
@@ -1106,12 +1111,12 @@ class ScopeAnalyzer:
         self.bind(ifstmt.test)
         then_scope = self.scopes[ifstmt, "then"]
         self.push_scope(then_scope)
-        for stmt in ifstmt.then_body:
+        for stmt in ifstmt.then.body:
             self.bind(stmt)
         self.pop_scope()
         else_scope = self.scopes[ifstmt, "else"]
         self.push_scope(else_scope)
-        for stmt in ifstmt.else_body:
+        for stmt in ifstmt.else_.body:
             self.bind(stmt)
         self.pop_scope()
 
@@ -1121,7 +1126,7 @@ class ScopeAnalyzer:
         self.push_scope(body_scope)
         tgt = forstmt.target
         self.lookup_and_bind(tgt, tgt.value, tgt.loc)
-        for stmt in forstmt.body:
+        for stmt in forstmt.body.body:
             self.bind(stmt)
         self.pop_scope()
 
