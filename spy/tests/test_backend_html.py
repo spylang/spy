@@ -144,7 +144,8 @@ class TestHTMLBackend:
                     return_type: <Name: void> (expr, amber)
                         id: <'void'> (leaf, emerald)
                     scoping_rules: <'pythonic'> (leaf, emerald)
-                    body[0]: <Pass> (stmt, default)
+                    body: <Block> (stmt, default)
+                        body[0]: <Pass> (stmt, default)
                     _sym: <None> (leaf, emerald)
         """
         self.assert_dump(d, expected)
@@ -170,13 +171,14 @@ class TestHTMLBackend:
             return_type: <Name: i32> (expr, amber)
                 id: <'i32'> (leaf, emerald)
             scoping_rules: <'pythonic'> (leaf, emerald)
-            body[0]: <Return> (stmt, default)
-                value: <BinOp: +> (expr, amber)
-                    op: <'+'> (leaf, emerald)
-                    left: <Name: x> (expr, amber)
-                        id: <'x'> (leaf, emerald)
-                    right: <Literal: 1> (expr, amber)
-                        value: <1> (leaf, emerald)
+            body: <Block> (stmt, default)
+                body[0]: <Return> (stmt, default)
+                    value: <BinOp: +> (expr, amber)
+                        op: <'+'> (leaf, emerald)
+                        left: <Name: x> (expr, amber)
+                            id: <'x'> (leaf, emerald)
+                        right: <Literal: 1> (expr, amber)
+                            value: <1> (leaf, emerald)
             _sym: <None> (leaf, emerald)
         """
         self.assert_dump(funcdef, expected)
@@ -207,17 +209,20 @@ class TestHTMLBackend:
                 | i32
                 id: <'i32'> (leaf, emerald)
             scoping_rules: <'pythonic'> (leaf, emerald)
-            body[0]: <Return> (stmt, default)
-                | return x + 1
-                value: <BinOp: +> (expr, amber)
-                    | x + 1
-                    op: <'+'> (leaf, emerald)
-                    left: <Name: x> (expr, amber)
-                        | x
-                        id: <'x'> (leaf, emerald)
-                    right: <Literal: 1> (expr, amber)
-                        | 1
-                        value: <1> (leaf, emerald)
+            body: <Block> (stmt, default)
+                | def foo(x: i32) -> i32:
+                |     return x + 1
+                body[0]: <Return> (stmt, default)
+                    | return x + 1
+                    value: <BinOp: +> (expr, amber)
+                        | x + 1
+                        op: <'+'> (leaf, emerald)
+                        left: <Name: x> (expr, amber)
+                            | x
+                            id: <'x'> (leaf, emerald)
+                        right: <Literal: 1> (expr, amber)
+                            | 1
+                            value: <1> (leaf, emerald)
             _sym: <None> (leaf, emerald)
         """
         self.assert_dump(funcdef, expected, show_src=True)

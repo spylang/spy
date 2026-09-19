@@ -170,7 +170,11 @@ class AbstractFrame:
     def exec_stmt(self, stmt: ast.Stmt) -> None:
         return magic_dispatch(self, "exec_stmt", stmt)
 
-    def exec_stmt_Block(self, block: ast.Block) -> None:
+    def exec_Block(self, block: ast.Block) -> None:
+        # Entering a Block is the single, centralized place where we push/pop the
+        # runtime block stack. Every body (funcdef/if/while/for) routes through
+        # here, so the push/pop cannot be forgotten and survives
+        # Break/Continue/Return/exceptions (finally).
         self.block_stack.append(block)
         try:
             for stmt in block.body:
@@ -682,9 +686,9 @@ class AbstractFrame:
         wam_cond = self.eval_expr(if_node.test, varname="@if")
         assert isinstance(wam_cond.w_val, W_Bool)
         if self.vm.is_True(wam_cond.w_val):
-            self.exec_stmt(if_node.then)
+            self.exec_Block(if_node.then)
         else:
-            self.exec_stmt(if_node.else_)
+            self.exec_Block(if_node.else_)
 
     def exec_stmt_While(self, while_node: ast.While) -> None:
         while True:
@@ -693,7 +697,7 @@ class AbstractFrame:
             if self.vm.is_False(wam_cond.w_val):
                 break
             try:
-                self.exec_stmt(while_node.body)
+                self.exec_Block(while_node.body)
             except Break:
                 break
             except Continue:
@@ -1308,7 +1312,7 @@ class ASTFrame(AbstractFrame):
                 if isinstance(stmt, ast.ClassDef):
                     self.fwdecl_ClassDef(stmt)
 
-            self.exec_stmt(self.funcdef.body)
+            self.exec_Block(self.funcdef.body)
             #
             # we reached the end of the function. If it's void, we can return
             # None, else it's an error.

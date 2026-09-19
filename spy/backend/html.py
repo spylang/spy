@@ -25,6 +25,7 @@ FIELDS_TO_IGNORE = frozenset(
         "w_T",
         "docstring",
         "seq",
+        "scope",
     }
 )
 

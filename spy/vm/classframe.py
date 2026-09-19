@@ -41,7 +41,7 @@ class ClassFrame(AbstractFrame):
         assert isinstance(w_str_type_dict, W_Type)
         self.declare_local("__extra_fields__", "red", w_str_type_dict, Loc.fake())
 
-        self.exec_stmt(self.classdef.body)
+        self.exec_Block(self.classdef.body)
 
         body = ClassBody(self.classdef.loc, fields_w={}, dict_w={})
         for name, lv in self.locals.items():
@@ -70,7 +70,6 @@ class ClassFrame(AbstractFrame):
             ast.If,
             ast.Pass,
             ast.FuncDef,
-            ast.Block,
         )
         T = type(stmt)
         assert T in allowed, f"unsupported node in ClassDef: {T.__name__}"
