@@ -672,6 +672,19 @@ class ScopeAnalyzer:
         self.pop_scope()
         self.scopes[forstmt, "body"] = body_scope
 
+    def collect_While(self, whilestmt: ast.While) -> None:
+        # The condition is evaluated in the enclosing scope.
+        self.collect(whilestmt.test)
+        # `[scope.block]`: the loop body is its own block scope (a lift target, so
+        # implicit declarations inside the loop outlive one iteration).
+        body_scope = self.new_Scope("while.body", self.scope.color, "block")
+        self.push_scope(body_scope)
+        whilestmt.body.scope = body_scope
+        for stmt in whilestmt.body.body:
+            self.collect(stmt)
+        self.pop_scope()
+        self.scopes[whilestmt, "body"] = body_scope
+
     def collect_VarDef(self, vardef: ast.VarDef) -> None:
         varname = vardef.name.value
         decl_origin: DeclOrigin = "explicit"
@@ -1081,6 +1094,14 @@ class ScopeAnalyzer:
         tgt = forstmt.target
         self.lookup_and_bind(tgt, tgt.value, tgt.loc)
         for stmt in forstmt.body.body:
+            self.bind(stmt)
+        self.pop_scope()
+
+    def bind_While(self, whilestmt: ast.While) -> None:
+        self.bind(whilestmt.test)
+        body_scope = self.scopes[whilestmt, "body"]
+        self.push_scope(body_scope)
+        for stmt in whilestmt.body.body:
             self.bind(stmt)
         self.pop_scope()
 

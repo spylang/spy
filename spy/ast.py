@@ -281,6 +281,8 @@ class Node:
             if valid_states is not None and state not in valid_states:
                 cls = node.__class__.__name__
                 raise Exception(f"Node `ast.{cls}` is not valid at state '{state}'")
+            if state != "parsed" and isinstance(node, Block) and node.scope is None:
+                raise Exception(f"Block.scope is None at state '{state}'")
 
     def visit(self, prefix: str, visitor: Any, *args: Any) -> None:
         """
@@ -791,7 +793,8 @@ class Block(Node):
     body: list["Stmt"]
     # the scope as computed by ScopeAnalyzer: this is not necessary for runtime
     # execution, but it basically serves the role of "debug info" for interactive name
-    # resolution (e.g. for spdb)
+    # resolution (e.g. for spdb). It can be None only at "parsed" stage, else it must be
+    # a Scope.
     scope: Any = field(repr=False, default=None, compare=False)
 
 
