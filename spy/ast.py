@@ -67,8 +67,7 @@ LoweringStage = typing.Literal[
 ClassKind = typing.Literal["class", "struct"]
 FuncKind = typing.Literal["plain", "generic", "metafunc"]
 FuncParamKind = typing.Literal["simple", "var_positional"]
-# TODO: KILL "legacy"
-ScopingRules = typing.Literal["legacy", "strict", "pythonic"]
+ScopingRules = typing.Literal["strict", "pythonic"]
 
 
 @extend(py_ast.AST)
@@ -878,9 +877,7 @@ class ClassDef(Stmt):
     body: Block
 
     _sym: Optional[Symbol] = None  # None when "parsed", present when ">= astcompiled"
-
-    # TODO: delete this as soon as we delete scope.py. See also astcompile.py
-    symtable: Any = field(repr=False, default=None)  # KILL ME (and other .symtable?)
+    symtable: Any = field(repr=False, default=None)
 
     @property
     def sym(self) -> Symbol:
