@@ -334,7 +334,7 @@ class AbstractFrame:
         if self.symtable.kind == "class":
             # [name.class-skip]: symbols in the class frame cannot be captured by inner
             # methods, do we don't need to save it in the closure.  See also
-            # ScopeAnalyzer.lookup_name_in_scopes.
+            # Scope.lookup.
             closure = self.closure
         else:
             closure = self.closure + (self.locals,)

@@ -796,37 +796,14 @@ class ASTCompiler:
         """
         Resolve a name against self.interactive_scope. This is used by interactive
         compilation for e.g. spdb.
-
-        The logic mirrors ScopeAnalyzer.lookup_name_in_scopes, but walks `scope.parent`
-        instead of the analysis-time scope_stack (they are equivalent: `parent` is
-        set to the enclosing scope at construction time).
-
-        Note that we also need to recompute and set frame_depth: this is equivalent to
-        what happens in ScopeAnalyzer.lookup_and_bind.
         """
         assert self.interactive_scope is not None
-        frame_depth = 0
-        scope: Optional[Scope] = self.interactive_scope
-        while scope is not None:
-            if scope.kind == "class" and frame_depth > 0:
-                # [name.class-skip]: skip class frames
-                scope = scope.parent
-                continue
-            sym = scope.lookup_maybe(name.id)
-            if sym is not None:
-                if sym.storage == "decl-global":
-                    pass  # just a marker, keep walking
-                elif sym.storage == "decl-cannot-lift":
-                    pass  # just a marker, keep walking
-                else:
-                    # found it!
-                    return self._emit_name_node(
-                        name.loc, sym.replace(level=frame_depth)
-                    )
-            if scope.kind in ("function", "module", "class"):
-                # we are leaving a runtime frame
-                frame_depth += 1
-            scope = scope.parent
+        res = self.interactive_scope.lookup(name.id)
+        if res.found:
+            assert res.sym is not None
+            # this is the equivalent of what we do in ScopeAnalyzer.lookup_and_bind
+            new_sym = res.sym.replace(level=res.level)
+            return self._emit_name_node(name.loc, new_sym)
 
         # not found
         err = SPyError("W_NameError", f"name `{name.id}` is not defined")

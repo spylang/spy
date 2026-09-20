@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from typing import Optional
 
 from spy import ast
@@ -34,22 +33,6 @@ ScopeKey = ast.Node | tuple[ast.Node, str]
 # What a node resolves to during the bind pass: a real Symbol, or a lazy static
 # error (poison) that astcompile turns into an ast.PoisonExpr.
 Resolution = Symbol | SPyError
-
-
-@dataclass(frozen=True)
-class LookupResult:
-    """
-    The result of ScopeAnalyzer.lookup_name_in_scopes.
-    """
-
-    level: int  # # frame depth (i.e, number of symtables crossed); -1 if not found.
-    scope: Optional[Scope]
-    sym: Optional[Symbol]
-    has_global_decl: bool  # was there a `global x` declaration in a scope?
-
-    @property
-    def found(self) -> bool:
-        return self.level != -1
 
 
 class ScopeAnalyzer:
@@ -177,7 +160,7 @@ class ScopeAnalyzer:
             b.wl(f"scope {scope.short_name}:")
             with b.indent():
                 # scope modifiers like `global x`
-                for sym in scope._symbols.values():
+                for sym in scope.symbols.values():
                     if sym.storage == "decl-global":
                         b.wl(color.set("red", f"global {sym.src_name}"))
                 # names USED in this scope (resolved during the bind pass)
@@ -372,31 +355,6 @@ class ScopeAnalyzer:
     # ====
     # collect pass
 
-    def lookup_name_in_scopes(self, name: str) -> LookupResult:
-        """
-        Lookup a name in the scope_stack, from the innermost scope outward.
-        """
-        # frame_depth counts how many runtime frame boundaries we cross. It is used to
-        # index inside frame.closure; frame_depth==0 means "local frame".
-        frame_depth = 0
-        has_global_decl = False
-        for scope in reversed(self.scope_stack):
-            if scope.kind == "class" and frame_depth > 0:
-                continue  # jump over class scopes
-            if sym := scope.lookup_maybe(name):
-                if sym.storage == "decl-global":
-                    # `global name`: record it and keep walking
-                    has_global_decl = True
-                elif sym.storage == "decl-cannot-lift":
-                    # a lift-blocking marker, not a real binding: keep walking
-                    pass
-                else:
-                    return LookupResult(frame_depth, scope, sym, has_global_decl)
-            if scope.kind in ("function", "module", "class"):
-                # we are leaving a runtime frame
-                frame_depth += 1
-        return LookupResult(-1, None, None, has_global_decl)
-
     def create_new_local(
         self,
         node: ast.Node,
@@ -426,7 +384,7 @@ class ScopeAnalyzer:
         if scope is None:
             scope = self.scope
         symtable = scope.symtable
-        existing_sym = scope.lookup_maybe(name)
+        existing_sym = scope.symbols.get(name)
         if existing_sym:
             if existing_sym.storage == "decl-global":
                 # rule 1: `global x` then a local decl of `x` in the same scope
@@ -702,7 +660,7 @@ class ScopeAnalyzer:
         self.push_scope(body_scope)
         forstmt.body.scope = body_scope
         target = forstmt.target
-        res = self.lookup_name_in_scopes(target.value)
+        res = self.scope.lookup(target.value)
         if not res.found:
             self.create_new_local(
                 target,
@@ -760,7 +718,7 @@ class ScopeAnalyzer:
         lift_target = self.get_lift_target()
         if lift_target is not self.scope:
             # we might need to do actual lifting
-            sym = lift_target.lookup_maybe(varname)
+            sym = lift_target.symbols.get(varname)
             if sym is None:
                 # (2): place the decl-cannot-lift marker in the lift_target scope
                 marker = Symbol(
@@ -845,7 +803,7 @@ class ScopeAnalyzer:
         loc: Loc,
     ) -> None:
         # Reassign an existing name, or implicitly declare
-        res = self.lookup_name_in_scopes(varname)
+        res = self.scope.lookup(varname)
         if res.has_global_decl:
             # [global.write]: if there is `global x`, it's NOT an implicit decl
             return
@@ -860,7 +818,7 @@ class ScopeAnalyzer:
             # in the lift_target scope, UNLESS we find an `decl-cannot-lift` marker, see
             # also collect_VarDef
             lift_target = self.get_lift_target()
-            marker = lift_target.lookup_maybe(varname)
+            marker = lift_target.symbols.get(varname)
             if marker is not None and marker.storage == "decl-cannot-lift":
                 self.report_mixed_declarations(varname, marker.loc, loc)
 
@@ -888,7 +846,7 @@ class ScopeAnalyzer:
         # binding, not necessarily self.scope).
         assert sym.varkind == "const"
         new_sym = sym.replace(varkind="var")
-        scope._symbols[sym.src_name] = new_sym
+        scope.symbols[sym.src_name] = new_sym
         scope.symtable._symbols[sym.slot_name] = new_sym
         self.valid_from[new_sym] = self.valid_from.pop(sym)
 
@@ -896,7 +854,7 @@ class ScopeAnalyzer:
         # [py.augassign]: an AugAssign does NOT implicitly declare, but counts as a
         # re-assignment
         if self.mod.scoping_rules == "pythonic":
-            res = self.lookup_name_in_scopes(node.target.value)
+            res = self.scope.lookup(node.target.value)
             if (
                 res.found
                 and res.sym is not None
@@ -908,9 +866,9 @@ class ScopeAnalyzer:
         self.collect(node.value)
 
     def collect_Global(self, glob: ast.Global) -> None:
-        # [global.write]: record that we saw a `global x`. See lookup_name_in_scopes.
+        # [global.write]: record that we saw a `global x`. See Scope.lookup.
         for name in glob.names:
-            existing = self.scope.lookup_maybe(name)
+            existing = self.scope.symbols.get(name)
             if existing is not None:
                 # a `global x` cannot coexist with a local `x` in the same scope
                 msg = f"variable `{name}` is already declared"
@@ -959,7 +917,7 @@ class ScopeAnalyzer:
         # NOTE: a not-found / used-before name resolves to a lazy SPyError (stored
         # in _resolved_nodes); astcompile turns it into an ast.PoisonExpr.
 
-        res = self.lookup_name_in_scopes(varname)
+        res = self.scope.lookup(varname)
         level, sym = res.level, res.sym
 
         if not res.found:
@@ -980,7 +938,7 @@ class ScopeAnalyzer:
                     err.add("note", "declared later here", sym.loc)
                     # a common cause is a bare assignment `x = ...` which implicitly
                     # declares a local that shadows a module-level global; hint at it.
-                    glob = self.mod_scope.lookup_maybe(varname)
+                    glob = self.mod_scope.symbols.get(varname)
                     if glob is not None and glob is not sym:
                         err.add("note", f"help: shadowing this `{varname}`", glob.loc)
                         msg = f"help: add `global {varname}` earlier"
@@ -1008,7 +966,7 @@ class ScopeAnalyzer:
         Like lookup_and_bind, but a target that resolves to a module-level binding is
         rejected unless there is an explicit `global` declaration [global.write]
         """
-        res = self.lookup_name_in_scopes(varname)
+        res = self.scope.lookup(varname)
         sym = res.sym
         if (
             res.level > 0
@@ -1132,7 +1090,7 @@ class ScopeAnalyzer:
 
     def bind_VarDef(self, vardef: ast.VarDef) -> None:
         # a VarDef must have a local symbol in the current scope, get it
-        sym = self.scope.lookup(vardef.name.value)
+        sym = self.scope.symbols[vardef.name.value]
         assert sym.level == 0
         self.set_binding(vardef, self.scope, sym)
         self.bind(vardef.type)

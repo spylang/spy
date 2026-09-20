@@ -162,6 +162,22 @@ class Symbol:
         pprint.pprint(self)
 
 
+@dataclass(frozen=True)
+class LookupResult:
+    """
+    The result of Scope.lookup.
+    """
+
+    level: int  # frame depth (i.e, number of symtables crossed); -1 if not found.
+    scope: Optional["Scope"]
+    sym: Optional[Symbol]
+    has_global_decl: bool  # was there a `global x` declaration in a scope?
+
+    @property
+    def found(self) -> bool:
+        return self.level != -1
+
+
 class Scope:
     """
     A lexical scope, as seen by the ScopeAnalyzer (scope2.py) during the bind
@@ -176,8 +192,7 @@ class Scope:
     color: Color
     kind: ScopeKind
     symtable: "SymTable"
-
-    _symbols: dict[str, Symbol]
+    symbols: dict[str, Symbol]  # names declared in this scope
 
     # lexical tree links, wired at construction (see __init__): a scope appends
     # itself to its parent's children.
@@ -196,7 +211,7 @@ class Scope:
         self.name = name
         self.color = color
         self.kind = kind
-        self._symbols = {}
+        self.symbols = {}
         self.symtable = symtable
         self.children = []
         self.parent = parent
@@ -279,21 +294,45 @@ class Scope:
         return self.name.count("::")
 
     def pp(self, indent: str = "") -> None:
-        pp_symbols(repr(self), self._symbols, indent)
+        pp_symbols(repr(self), self.symbols, indent)
 
     def add(self, sym: Symbol) -> None:
         # NOTE: we use src_name as the key (compare and contrast with SymTable.add)
-        assert sym.src_name not in self._symbols
-        self._symbols[sym.src_name] = sym
+        assert sym.src_name not in self.symbols
+        self.symbols[sym.src_name] = sym
 
     def remove(self, name: str) -> None:
-        del self._symbols[name]
+        del self.symbols[name]
 
-    def lookup(self, name: str) -> Symbol:
-        return self._symbols[name]
-
-    def lookup_maybe(self, name: str) -> Optional[Symbol]:
-        return self._symbols.get(name)
+    def lookup(self, name: str) -> LookupResult:
+        """
+        Resolve `name` using the full scoping rules: start from this scope and walk
+        outward along the `parent` chain.
+        """
+        # frame_depth counts how many runtime frame boundaries we cross. It is used
+        # to index inside frame.closure; frame_depth==0 means "local frame".
+        frame_depth = 0
+        has_global_decl = False
+        scope: Optional[Scope] = self
+        while scope is not None:
+            if scope.kind == "class" and frame_depth > 0:
+                # [name.class-skip]: jump over class scopes
+                scope = scope.parent
+                continue
+            sym = scope.symbols.get(name)
+            if sym is not None:
+                if sym.storage == "decl-global":
+                    # `global name`: record it and keep walking
+                    has_global_decl = True
+                elif sym.storage == "decl-cannot-lift":
+                    pass  # just a marker, keep walking
+                else:
+                    return LookupResult(frame_depth, scope, sym, has_global_decl)
+            if scope.kind in ("function", "module", "class"):
+                # we are leaving a runtime frame
+                frame_depth += 1
+            scope = scope.parent
+        return LookupResult(-1, None, None, has_global_decl)
 
 
 class SymTable:
@@ -340,7 +379,7 @@ class SymTable:
         # XXX: we should consider killing this once scope.py is gone
         builtins_scope = Scope.from_builtins()
         symtable = cls(builtins_scope.name, builtins_scope.color, builtins_scope.kind)
-        symtable._symbols = dict(builtins_scope._symbols)
+        symtable._symbols = dict(builtins_scope.symbols)
         return symtable
 
     def __repr__(self) -> str:
