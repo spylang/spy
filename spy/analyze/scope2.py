@@ -84,7 +84,6 @@ class ScopeAnalyzer:
         # build the [builtins, module] initial scope stack
         self.builtins_scope = Scope.from_builtins()
         mod_symtable = SymTable(modname, "blue", "module")
-        mod_symtable.scoping_rules = "strict"  # KILL ME
         mod_scope = Scope(
             modname,
             "blue",
@@ -506,7 +505,6 @@ class ScopeAnalyzer:
         # (2) push the blue scope/symtable; see also collect_FuncDef
         symtable_name = f"{self.symtable.name}::{name}"
         symtable = SymTable(symtable_name, "blue", "function")
-        symtable.scoping_rules = "strict"  # KILL ME
         inner_scope = self.new_Scope(name, "blue", "function", symtable=symtable)
         self.push_scope(inner_scope)
         self.scopes[node] = inner_scope
@@ -566,7 +564,6 @@ class ScopeAnalyzer:
         # methods defined inside become nested funcdefs `test::P::get`.
         symtable_name = f"{self.symtable.name}::{classdef.name}"
         symtable = SymTable(symtable_name, "blue", "class")
-        symtable.scoping_rules = "strict"  # KILL ME
         inner_scope = self.new_Scope(classdef.name, "blue", "class", symtable=symtable)
         self.push_scope(inner_scope)
         self.scopes[classdef] = inner_scope
@@ -595,7 +592,6 @@ class ScopeAnalyzer:
         # `test::foo::if.then::inner`.
         symtable_name = f"{self.symtable.name}::{funcdef.name}"
         symtable = SymTable(symtable_name, scope_color, "function")
-        symtable.scoping_rules = "strict"  # KILL ME
         inner_scope = self.new_Scope(
             funcdef.name, scope_color, "function", symtable=symtable
         )

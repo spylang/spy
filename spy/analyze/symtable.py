@@ -33,9 +33,6 @@ from spy.textbuilder import ColorFormatter
 #   - if a variable is assigned inside a loop, it's a "var"
 
 Color = Literal["red", "blue"]
-# KILL ME: "NameError" (only produced by legacy scope.py; scope2 resolves a
-# not-found name directly to an SPyError)
-#
 # "decl-global" (and later "decl-nonlocal") marks an analysis-only marker Symbol
 # placed in a Scope by a `global x` declaration.  It never appears in a SymTable
 # and is never bound to a node at runtime (see scope2.collect_Global).
@@ -43,7 +40,7 @@ Color = Literal["red", "blue"]
 # "decl-cannot-lift" marks an explicit decl below a lift target, so a later
 # implicit declaration of the same name in the target is rejected
 # ([py.scope-lifting-mixing-error]).
-VarStorage = Literal["direct", "cell", "NameError", "decl-global", "decl-cannot-lift"]
+VarStorage = Literal["direct", "cell", "decl-global", "decl-cannot-lift"]
 VarKind = Literal["var", "const"]
 
 # how the name entered the scope
@@ -286,13 +283,6 @@ class Scope:
     def __repr__(self) -> str:
         return f"<Scope '{self.name}' ({self.color}, {self.kind})>"
 
-    @property
-    def depth(self) -> int:
-        """
-        Return the nesting depth of this scope (number of '::' separators).
-        """
-        return self.name.count("::")
-
     def pp(self, indent: str = "") -> None:
         pp_symbols(repr(self), self.symbols, indent)
 
@@ -348,11 +338,6 @@ class SymTable:
       - frames associated to blue functions are BLUE
 
       - frames associated to modules, classdefs, etc. are also BLUE
-
-    NOTE: the legacy scope.py analyzer uses SymTable ALSO as its lexical scope
-    (it predates the Scope class).  A few methods/fields below exist only to
-    serve scope.py and should be removed once scope.py is gone; they are marked
-    with "KILL ME".
     """
 
     name: str  # just for debugging
@@ -360,10 +345,6 @@ class SymTable:
     kind: ScopeKind
     _symbols: dict[str, Symbol]
     implicit_imports: set[str]
-    # KILL ME: temporary. Records which analyzer produced this SymTable, so that
-    # the runtime/backends can tell whether names are mangled (scope2) or not
-    # (legacy scope.py, where slot_name == src_name). Goes away with scope.py.
-    scoping_rules: str
 
     def __init__(self, name: str, color: Color, kind: ScopeKind) -> None:
         self.name = name
@@ -371,12 +352,9 @@ class SymTable:
         self.kind = kind
         self._symbols = {}
         self.implicit_imports = set()
-        # KILL ME: default to "legacy"; scope2 overrides it to "strict"
-        self.scoping_rules = "legacy"
 
     @classmethod
     def from_builtins(cls) -> "SymTable":
-        # XXX: we should consider killing this once scope.py is gone
         builtins_scope = Scope.from_builtins()
         symtable = cls(builtins_scope.name, builtins_scope.color, builtins_scope.kind)
         symtable._symbols = dict(builtins_scope.symbols)
@@ -385,13 +363,6 @@ class SymTable:
     def __repr__(self) -> str:
         return f"<SymTable '{self.name}' ({self.color}, {self.kind})>"
 
-    @property
-    def depth(self) -> int:
-        """
-        KILL ME: Return the nesting depth (number of '::' separators).
-        """
-        return self.name.count("::")
-
     def pp(self, indent: str = "") -> None:
         pp_symbols(repr(self), self._symbols, indent)
 
@@ -399,7 +370,6 @@ class SymTable:
         new_st = SymTable(self.name, self.color, self.kind)
         new_st._symbols = dict(self._symbols)
         new_st.implicit_imports = set(self.implicit_imports)
-        new_st.scoping_rules = self.scoping_rules  # KILL ME
         return new_st
 
     def add(self, sym: Symbol) -> None:
@@ -452,25 +422,11 @@ class SymTable:
             n += 1
         return slot_name
 
-    def has_definition(self, name: str) -> bool:
-        # KILL ME
-        return name in self._symbols and self._symbols[name].is_local
-
     def lookup(self, name: str) -> Symbol:
         return self._symbols[name]
 
     def lookup_maybe(self, name: str) -> Optional[Symbol]:
         return self._symbols.get(name)
-
-    def lookup_definition_maybe(self, name: str) -> Optional[Symbol]:
-        """
-        KILL ME: Like lookup_maybe, but find the symbol ONLY if it's a
-        definition (i.e., if it's a local name).
-        """
-        sym = self._symbols.get(name)
-        if sym and sym.is_local:
-            return sym
-        return None
 
 
 def pp_symbols(header: str, symbols: dict[str, Symbol], indent: str) -> None:
@@ -490,11 +446,6 @@ def pp_symbols(header: str, symbols: dict[str, Symbol], indent: str) -> None:
     for sym in sorted_symbols:
         sym_color = "blue" if sym.varkind == "const" else "red"
         sym_name = color.set(sym_color, f"{sym.src_name:10s}")
-        if sym.storage == "NameError":
-            # special formatting
-            print(f"{indent}    [ ] NameError  {sym_name}")
-            continue
-
         impref = ""
         if sym.impref:
             impref = f" => {sym.impref}"
