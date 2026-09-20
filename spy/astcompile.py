@@ -42,11 +42,6 @@ def astcompile_interactive(expr: ast.Expr, scope: Scope) -> ast.Expr:
     return compiler.compile_expr(expr)
 
 
-# TODO: we are in the middle of a migration between the old scope.py and the new
-# scope2.py. The old way relies on FuncDef.symtable, the new way on "sa" (passed to
-# ASTCompiler). When the migration is done, we should remove the legacy code.
-
-
 class ASTCompiler:
     def __init__(
         self,
@@ -64,8 +59,6 @@ class ASTCompiler:
         self.symtable_stack: list[SymTable] = []
         self.sa = scope_analyzer
         self.interactive_scope = interactive_scope
-        # TODO: once scope.py is gone, sa will always be present and the
-        # legacy .symtable path below can be removed entirely.
 
     def push_symtable(self, symtable: SymTable) -> None:
         self.symtable_stack.append(symtable)
@@ -132,17 +125,8 @@ class ASTCompiler:
         self, decl: ast.GlobalGenericFuncDef
     ) -> ast.Decl:
         gfuncdef = decl.funcdef
-        if self.sa is None:
-            # KILL ME: legacy scope.py path. Leave the GenericFuncDef node as-is;
-            # the runtime `exec_stmt_GenericFuncDef` does the desugaring.
-            self.push_symtable(gfuncdef.symtable)
-            new_inner = self.compile_funcdef(gfuncdef.inner)
-            self.pop_symtable()
-            new_gfuncdef = gfuncdef.replace(inner=new_inner)
-            return decl.replace(funcdef=new_gfuncdef)
-
-        # scope2 path: desugar into a `FuncDef(kind="generic")` here, so the
-        # GenericFuncDef node never reaches the runtime (like for/augassign).
+        # desugar into a `FuncDef(kind="generic")` here, so the GenericFuncDef node
+        # never reaches the runtime (like for/augassign).
         outer_funcdef = self._desugar_generic(
             gfuncdef, gfuncdef.name, gfuncdef.args, gfuncdef.inner
         )
@@ -152,19 +136,7 @@ class ASTCompiler:
         self, decl: ast.GlobalGenericClassDef
     ) -> ast.Decl:
         gclassdef = decl.classdef
-        if self.sa is None:
-            # KILL ME: legacy scope.py path (runtime does the desugaring).
-            inner = gclassdef.inner
-            self.push_symtable(gclassdef.symtable)
-            self.push_symtable(inner.symtable)
-            new_body = self.compile_block(inner.body)
-            self.pop_symtable()
-            self.pop_symtable()
-            new_inner = inner.replace(body=new_body)
-            new_gclassdef = gclassdef.replace(inner=new_inner)
-            return decl.replace(classdef=new_gclassdef)
-
-        # scope2 path: desugar into a `FuncDef(kind="generic")` here.
+        # desugar into a `FuncDef(kind="generic")` here.
         outer_funcdef = self._desugar_generic(
             gclassdef, gclassdef.name, gclassdef.args, gclassdef.inner
         )
@@ -251,38 +223,25 @@ class ASTCompiler:
     # ===== FuncDef =====
 
     def compile_funcdef(self, funcdef: ast.FuncDef) -> ast.FuncDef:
+        assert self.sa is not None
         # decorators, arg types, return type and defaults are evaluated in the outer scope
         new_decorators = [self.compile_expr(d) for d in funcdef.decorators]
         new_return_type = self.compile_expr(funcdef.return_type)
-        if self.sa is not None:
-            new_args = [
-                arg.replace(
-                    type=self.compile_expr(arg.type),
-                    _sym=self.sa.get_resolved_sym(arg),
-                )
-                for arg in funcdef.args
-            ]
-        else:
-            # KILL ME: legacy scope.py path, leaves sym=None
-            new_args = [
-                arg.replace(type=self.compile_expr(arg.type)) for arg in funcdef.args
-            ]
+        new_args = [
+            arg.replace(
+                type=self.compile_expr(arg.type),
+                _sym=self.sa.get_resolved_sym(arg),
+            )
+            for arg in funcdef.args
+        ]
         new_defaults = [self.compile_expr(d) for d in funcdef.defaults]
 
         # the statements of the function are evaluated in the inner scope
-        if self.sa is not None:
-            inner_symtable = self.sa.get_symtable(funcdef)
-        else:
-            # TODO: kill me once scope.py is gone
-            inner_symtable = funcdef.symtable
+        inner_symtable = self.sa.get_symtable(funcdef)
         self.push_symtable(inner_symtable)
         new_body = self.compile_block(funcdef.body)
         self.pop_symtable()
-        if self.sa is not None:
-            new_sym = self.sa.get_resolved_sym(funcdef)
-        else:
-            # KILL ME: legacy scope.py path leaves _sym=None
-            new_sym = None
+        new_sym = self.sa.get_resolved_sym(funcdef)
         return funcdef.replace(
             stage="astcompiled",
             decorators=new_decorators,
@@ -321,12 +280,9 @@ class ASTCompiler:
         raise WIP("`nonlocal` is not implemented yet")
 
     def compile_stmt_VarDef(self, stmt: ast.VarDef) -> list[ast.Stmt]:
+        assert self.sa is not None
         new_type = self.compile_expr(stmt.type)
         new_value = self.compile_expr(stmt.value) if stmt.value is not None else None
-        if self.sa is None:
-            # KILL ME: legacy scope.py path, leaves sym=None
-            return [stmt.replace(type=new_type, value=new_value)]
-
         # scope2 resolves every VarDef to a Symbol; fill it in so that the
         # runtime indexes the frame by sym.slot_name.
         sym = self.sa.get_resolved_sym_maybe(stmt)
@@ -361,11 +317,9 @@ class ASTCompiler:
                 if not isinstance(t, ast.SingleTarget):
                     raise WIP("nested unpack targets are not supported yet")
                 name = t.name
-                if self.sa is not None:
-                    sym = self.sa.get_resolved_sym(name)
-                    name = ast.StrLiteral(name.loc, sym.slot_name)
-                else:
-                    assert False  # KILL ME
+                assert self.sa is not None
+                sym = self.sa.get_resolved_sym(name)
+                name = ast.StrLiteral(name.loc, sym.slot_name)
                 targets.append(name)
             return [
                 ast.AssignUnpack(
@@ -389,13 +343,9 @@ class ASTCompiler:
         return [self.compile_classdef(stmt)]
 
     def compile_classdef(self, classdef: ast.ClassDef) -> ast.ClassDef:
-        if self.sa is not None:
-            inner_symtable = self.sa.get_symtable(classdef)
-            new_sym = self.sa.get_resolved_sym(classdef)
-        else:
-            # KILL ME: legacy scope.py path, leaves _sym=None
-            inner_symtable = classdef.symtable
-            new_sym = None
+        assert self.sa is not None
+        inner_symtable = self.sa.get_symtable(classdef)
+        new_sym = self.sa.get_resolved_sym(classdef)
         self.push_symtable(inner_symtable)
         new_body = self.compile_block(classdef.body)
         self.pop_symtable()
@@ -473,11 +423,11 @@ class ASTCompiler:
         binop_loc = stmt.loc.replace(colorize=False)
         target_loc = stmt.target.loc.replace(colorize=False)
         read_name = ast.Name(loc=target_loc, id=stmt.target.value)
-        if self.sa is not None:
-            # we must bind the synthetic node
-            scope = self.sa.get_resolved_scope(stmt.target)
-            res = self.sa.get_resolution(stmt.target)
-            self.sa.bind_synthetic_node(read_name, scope, res)
+        assert self.sa is not None
+        # we must bind the synthetic node
+        scope = self.sa.get_resolved_scope(stmt.target)
+        res = self.sa.get_resolution(stmt.target)
+        self.sa.bind_synthetic_node(read_name, scope, res)
         desugared = ast.Assign(
             loc=stmt.loc,
             target=ast.SingleTarget(target_loc, stmt.target),
@@ -707,16 +657,10 @@ class ASTCompiler:
 
     def compile_expr_AssignExpr(self, expr: ast.AssignExpr) -> ast.Expr:
         target = expr.target
-        sym = None
-
-        if self.sa is None:
-            # KILL ME: legacy scope.py logic
-            sym = self.symtable.lookup(target.value)
-        else:
-            # new logic (kill this comment when we kill the if)
-            if (err := self.sa.get_poison_error_maybe(target)) is not None:
-                return ast.PoisonExpr(expr.loc, err)
-            sym = self.sa.get_resolved_sym(target)
+        assert self.sa is not None
+        if (err := self.sa.get_poison_error_maybe(target)) is not None:
+            return ast.PoisonExpr(expr.loc, err)
+        sym = self.sa.get_resolved_sym(target)
 
         value = self.compile_expr(expr.value)
 
@@ -755,20 +699,14 @@ class ASTCompiler:
         return ast.NameLocalDirect(name.loc, name.sym)
 
     def compile_expr_Name(self, name: ast.Name) -> ast.Expr:
-        varname = name.id
         if self.interactive_scope is not None:
             return self._resolve_interactive(name)
-        # TODO: once scope.py is gone, always use sa.get_resolved_sym and
-        # remove the fallback to symtable.lookup_maybe.
-        sym: Optional[Symbol] = None
-        if self.sa is not None:
-            # scope2: a name resolves either to a Symbol or to a lazy SPyError
-            err = self.sa.get_poison_error_maybe(name)
-            if err is not None:
-                return ast.PoisonExpr(name.loc, err)
-            sym = self.sa.get_resolved_sym_maybe(name)
-        if sym is None:
-            sym = self.symtable.lookup_maybe(varname)
+        assert self.sa is not None
+        # scope2: a name resolves either to a Symbol or to a lazy SPyError
+        err = self.sa.get_poison_error_maybe(name)
+        if err is not None:
+            return ast.PoisonExpr(name.loc, err)
+        sym = self.sa.get_resolved_sym_maybe(name)
         assert sym is not None, "sym not found"
         return self._emit_name_node(name.loc, sym)
 
@@ -783,12 +721,6 @@ class ASTCompiler:
             return ast.NameLocalCell(loc, sym)
         elif sym.storage == "cell" and not sym.is_local:
             return ast.NameOuterCell(loc, sym, fqn=None)
-        elif sym.storage == "NameError":
-            # KILL ME: legacy scope.py path (scope2 stores the SPyError directly,
-            # handled above via get_poison_error_maybe)
-            err = SPyError("W_NameError", f"name `{sym.src_name}` is not defined")
-            err.add("error", "not found in this scope", loc)
-            return ast.PoisonExpr(loc, err)
         else:
             assert False, f"unexpected storage: {sym.storage!r}"
 
