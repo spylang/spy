@@ -109,7 +109,6 @@ class FakeTerminal:
         return self.buf.getvalue()
 
 
-@pytest.mark.xfail(reason="FIXME")
 @only_interp
 @pytest.mark.usefixtures("initspdb")
 class TestSPdb(CompilerTest):
@@ -290,7 +289,7 @@ class TestSPdb(CompilerTest):
         mod = self.compile(src)
         mod.foo(42, session)
 
-    def test_NameInteractive(self):
+    def test_outer_and_builtin_lookup(self):
         src = """
         from _test import spdb_interact
 
@@ -320,6 +319,41 @@ class TestSPdb(CompilerTest):
         """
         mod = self.compile(src)
         mod.foo(42, session)
+
+    def test_shadowing(self):
+        # `x` points to two different locals: `x$0` inside the `if`, `x$1` outside.
+        src = """
+        from _test import spdb_interact
+
+        def foo(session1: str, session2: str) -> None:
+            if True:
+                x: int = 20
+                spdb_interact(session1)
+            x: int = 10
+            spdb_interact(session2)
+        """
+        session1 = f"""
+        --- entering applevel debugger ---
+           [0] test::foo at {self.filename}:7
+            |         spdb_interact(session1)
+            |         |_____________________|
+        (spdb) x
+        type: i32
+        20
+        (spdb) continue
+        """
+        session2 = f"""
+        --- entering applevel debugger ---
+           [0] test::foo at {self.filename}:9
+            |     spdb_interact(session2)
+            |     |_____________________|
+        (spdb) x
+        type: i32
+        10
+        (spdb) continue
+        """
+        mod = self.compile(src)
+        mod.foo(session1, session2)
 
     def test_ParseError(self):
         src = """

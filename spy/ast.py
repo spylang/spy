@@ -481,21 +481,6 @@ class NameImportRef(Expr):
 
 
 @astnode(">= astcompiled")
-class NameInteractive(Expr):
-    """
-    A Name lookup which is resolved dynamically.
-
-    This is generated only by astcompile_interactive, when the name is not found in the
-    surrounding symtable.  It's mostly meant to be used by SPdb.
-
-    See e.g. test_astcompile::test_NameInteractive and test_spdb::test_NameInteractive
-    """
-
-    precedence = 100
-    id: str
-
-
-@astnode(">= astcompiled")
 class PoisonExpr(Expr):
     """
     Poison node that carries a pre-built SPyError, to enable lazy static errors.

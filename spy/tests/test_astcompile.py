@@ -43,16 +43,18 @@ class TestASTCompile:
     def compile_interactive(self, src: str) -> ast.Expr:
         """
         Parse a single expression and astcompile it in interactive mode against the
-        symtable of `test::foo`. This is meant to be similar to what SPdb does when
-        evaluating interactive exprs.
+        lexical scope of `test::foo`'s body. This is meant to be similar to what
+        SPdb does when evaluating interactive exprs.
         """
         fqn = FQN("test::foo")
         w_foo = self.vm.globals_w[fqn]
         assert isinstance(w_foo, W_ASTFunc)
+        scope = w_foo.funcdef.body.scope
+        assert scope is not None
         parser = Parser(src, "<test>")
         stmt = parser.parse_single_stmt()
         assert isinstance(stmt, ast.StmtExpr)
-        return astcompile_interactive(stmt.value, w_foo.funcdef.symtable)
+        return astcompile_interactive(stmt.value, scope)
 
     def assert_dump(
         self,
@@ -235,24 +237,33 @@ class TestASTCompile:
         """
         self.assert_dump(expected)
 
-    @pytest.mark.skip(reason="interactive compilation not yet supported by scope2")
-    def test_NameInteractive(self):
+    def test_interactive_name_resolution(self):
         self.compile_src("""
         X = 10
 
         def foo() -> None:
             Y = 20
         """)
+        # X is an outer module-level const, resolved by walking the scope tree
         expr_X = self.compile_interactive("X")
         expected = """
-        NameInteractive(id='X')
+        NameOuterDirect(
+            sym=Symbol('X', 'const', 'direct'),
+        )
         """
         assert_node_dump(expr_X, expected)
 
         expr_Y = self.compile_interactive("Y")
         expected = """
         NameLocalDirect(
-            sym=Symbol('Y', 'const', 'direct'),
+            sym=Symbol('Y$0', 'const', 'direct'),
         )
         """
         assert_node_dump(expr_Y, expected)
+
+        # an undefined name resolves to a lazy PoisonExpr
+        expr_Z = self.compile_interactive("Z")
+        expected = """
+        PoisonExpr(err=SPyError('name `Z` is not defined'))
+        """
+        assert_node_dump(expr_Z, expected)

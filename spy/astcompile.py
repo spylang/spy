@@ -11,7 +11,7 @@ Moreover, do other easy desugaring like converting `for` loops into `while` loop
 from typing import TYPE_CHECKING, Optional
 
 import spy.ast as ast
-from spy.analyze.symtable import Symbol, SymTable
+from spy.analyze.symtable import Scope, Symbol, SymTable
 from spy.ast import LoweringStage
 from spy.errors import WIP, SPyError
 from spy.location import Loc
@@ -32,13 +32,13 @@ def astcompile(
     return compiled_mod
 
 
-def astcompile_interactive(expr: ast.Expr, symtable: SymTable) -> ast.Expr:
+def astcompile_interactive(expr: ast.Expr, scope: Scope) -> ast.Expr:
     """
-    Compile a single expression against the given symtable, in interactive
-    mode. This is meant to be used by SPdb.
+    Compile a single expression in interactive mode.  The names are looked up in the
+    given scope and its parents.  This is meant to be used by SPdb.
     """
-    compiler = ASTCompiler(None, interactive=True)
-    compiler.push_symtable(symtable)
+    compiler = ASTCompiler(None, interactive_scope=scope)
+    compiler.push_symtable(scope.symtable)
     return compiler.compile_expr(expr)
 
 
@@ -52,15 +52,20 @@ class ASTCompiler:
         self,
         mod: Optional[ast.Module],
         *,
-        interactive: bool = False,
         scope_analyzer: Optional["ScopeAnalyzer2"] = None,
+        interactive_scope: Optional[Scope] = None,
     ) -> None:
+        # we support two compilation modes:
+        #   - AOT, the default: we pass mod and scope_analyzer, names are resolved using
+        #     scope_analyzer
+        #   - interactive, for spdb: we pass interactive_scope and we use it for
+        #     resolving names
         self.mod = mod
-        self.interactive = interactive
         self.symtable_stack: list[SymTable] = []
+        self.sa = scope_analyzer
+        self.interactive_scope = interactive_scope
         # TODO: once scope.py is gone, sa will always be present and the
         # legacy .symtable path below can be removed entirely.
-        self.sa = scope_analyzer
 
     def push_symtable(self, symtable: SymTable) -> None:
         self.symtable_stack.append(symtable)
@@ -751,6 +756,8 @@ class ASTCompiler:
 
     def compile_expr_Name(self, name: ast.Name) -> ast.Expr:
         varname = name.id
+        if self.interactive_scope is not None:
+            return self._resolve_interactive(name)
         # TODO: once scope.py is gone, always use sa.get_resolved_sym and
         # remove the fallback to symtable.lookup_maybe.
         sym: Optional[Symbol] = None
@@ -762,28 +769,66 @@ class ASTCompiler:
             sym = self.sa.get_resolved_sym_maybe(name)
         if sym is None:
             sym = self.symtable.lookup_maybe(varname)
-        if sym is None:
-            # sym can be None ONLY in interactive mode (i.e. an expression typed at
-            # the SPdb prompt, compiled against the symtable of a live frame), else
-            # it means that there is a bug in symtable.
-            assert self.interactive, "sym not found"
-            return ast.NameInteractive(name.loc, name.id)
+        assert sym is not None, "sym not found"
+        return self._emit_name_node(name.loc, sym)
 
+    def _emit_name_node(self, loc: Loc, sym: Symbol) -> ast.Expr:
         if sym.impref is not None:
-            return ast.NameImportRef(name.loc, sym)
+            return ast.NameImportRef(loc, sym)
         elif sym.storage == "direct" and sym.is_local:
-            return ast.NameLocalDirect(name.loc, sym)
+            return ast.NameLocalDirect(loc, sym)
         elif sym.storage == "direct":
-            return ast.NameOuterDirect(name.loc, sym)
+            return ast.NameOuterDirect(loc, sym)
         elif sym.storage == "cell" and sym.is_local:
-            return ast.NameLocalCell(name.loc, sym)
+            return ast.NameLocalCell(loc, sym)
         elif sym.storage == "cell" and not sym.is_local:
-            return ast.NameOuterCell(name.loc, sym, fqn=None)
+            return ast.NameOuterCell(loc, sym, fqn=None)
         elif sym.storage == "NameError":
             # KILL ME: legacy scope.py path (scope2 stores the SPyError directly,
             # handled above via get_poison_error_maybe)
-            err = SPyError("W_NameError", f"name `{name.id}` is not defined")
-            err.add("error", "not found in this scope", name.loc)
-            return ast.PoisonExpr(name.loc, err)
+            err = SPyError("W_NameError", f"name `{sym.src_name}` is not defined")
+            err.add("error", "not found in this scope", loc)
+            return ast.PoisonExpr(loc, err)
         else:
             assert False, f"unexpected storage: {sym.storage!r}"
+
+    def _resolve_interactive(self, name: ast.Name) -> ast.Expr:
+        """
+        Resolve a name against self.interactive_scope. This is used by interactive
+        compilation for e.g. spdb.
+
+        The logic mirrors ScopeAnalyzer.lookup_name_in_scopes, but walks `scope.parent`
+        instead of the analysis-time scope_stack (they are equivalent: `parent` is
+        set to the enclosing scope at construction time).
+
+        Note that we also need to recompute and set frame_depth: this is equivalent to
+        what happens in ScopeAnalyzer.lookup_and_bind.
+        """
+        assert self.interactive_scope is not None
+        frame_depth = 0
+        scope: Optional[Scope] = self.interactive_scope
+        while scope is not None:
+            if scope.kind == "class" and frame_depth > 0:
+                # [name.class-skip]: skip class frames
+                scope = scope.parent
+                continue
+            sym = scope.lookup_maybe(name.id)
+            if sym is not None:
+                if sym.storage == "decl-global":
+                    pass  # just a marker, keep walking
+                elif sym.storage == "decl-cannot-lift":
+                    pass  # just a marker, keep walking
+                else:
+                    # found it!
+                    return self._emit_name_node(
+                        name.loc, sym.replace(level=frame_depth)
+                    )
+            if scope.kind in ("function", "module", "class"):
+                # we are leaving a runtime frame
+                frame_depth += 1
+            scope = scope.parent
+
+        # not found
+        err = SPyError("W_NameError", f"name `{name.id}` is not defined")
+        err.add("error", "not found in this scope", name.loc)
+        return ast.PoisonExpr(name.loc, err)
