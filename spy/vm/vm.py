@@ -113,6 +113,10 @@ class SPyVM:
 
     ll: LLSPyInstance
     globals_w: dict[FQN, W_Object]
+    # Reverse index for reverse_lookup_global(), kept in sync by
+    # _set_global(). Relies on W_Object using identity-based __hash__/__eq__
+    # at the interp level (see _storage_sanity_check in object.py).
+    _fqn_by_obj: dict[W_Object, FQN]
     irtags: dict[FQN, IRTag]
     modules_w: dict[str, W_Module]
     # Maps a real FQN to a display FQN used only for human-readable rendering.
@@ -153,6 +157,7 @@ class SPyVM:
             self.ll = ll
 
         self.globals_w = {}
+        self._fqn_by_obj = {}
         self.irtags = {}
         self.modules_w = {}
         self.fqn_human_aliases = {}
@@ -200,6 +205,18 @@ class SPyVM:
         w_mod = self.modules_w[modname]
         return w_mod
 
+    def _set_global(self, fqn: FQN, w_value: W_Object) -> None:
+        """
+        The only place that should write into self.globals_w: keeps
+        _fqn_by_obj in sync so reverse_lookup_global() stays O(1).
+
+        setdefault() preserves the "first FQN registered wins" semantics
+        of the old linear-scan implementation, in case the same object is
+        ever registered under more than one FQN.
+        """
+        self.globals_w[fqn] = w_value
+        self._fqn_by_obj.setdefault(w_value, fqn)
+
     def redshift(self, error_mode: ErrorMode) -> None:
         """
         Perform a redshift on all W_ASTFunc.
@@ -230,7 +247,7 @@ class SPyVM:
             assert w_func.stage == "astcompiled"
             w_newfunc = redshift(self, w_func, error_mode)
             assert w_newfunc.stage == "redshifted"
-            self.globals_w[fqn] = w_newfunc
+            self._set_global(fqn, w_newfunc)
 
     def linearize_all(self) -> None:
         """
@@ -238,13 +255,13 @@ class SPyVM:
         """
         for fqn, w_obj in list(self.globals_w.items()):
             if isinstance(w_obj, W_ASTFunc) and w_obj.stage == "redshifted":
-                self.globals_w[fqn] = linearize(self, w_obj)
+                self._set_global(fqn, linearize(self, w_obj))
 
     def register_module(self, w_mod: W_Module) -> None:
         assert w_mod.name not in self.modules_w
         assert w_mod.fqn not in self.globals_w
         self.modules_w[w_mod.name] = w_mod
-        self.globals_w[w_mod.fqn] = w_mod
+        self._set_global(w_mod.fqn, w_mod)
 
     def make_module(self, reg: ModuleRegistry) -> None:
         w_mod = W_Module(reg.fqn.modname, None)
@@ -335,7 +352,7 @@ class SPyVM:
         assert fqn.modname in self.modules_w
         w_existing = self.globals_w.get(fqn)
         if w_existing is None:
-            self.globals_w[fqn] = w_value
+            self._set_global(fqn, w_value)
         else:
             raise ValueError(f"'{fqn}' already exists")
         self.irtags[fqn] = irtag
@@ -356,12 +373,7 @@ class SPyVM:
         return self.irtags.get(fqn, IRTag.Empty)
 
     def reverse_lookup_global(self, w_val: W_Object) -> Optional[FQN]:
-        # XXX we should maintain a reverse-lookup table instead of doing a
-        # linear search
-        for fqn, w_obj in self.globals_w.items():
-            if w_val == w_obj:
-                return fqn
-        return None
+        return self._fqn_by_obj.get(w_val)
 
     def fqns_by_modname(self, modname: str) -> Iterable[tuple[FQN, W_Object]]:
         for fqn, w_obj in self.globals_w.items():
@@ -530,7 +542,7 @@ class SPyVM:
         return fqn
 
     def store_global(self, fqn: FQN, w_value: W_Object) -> None:
-        self.globals_w[fqn] = w_value
+        self._set_global(fqn, w_value)
 
     def dynamic_type(self, w_obj: W_Object) -> W_Type:
         assert isinstance(w_obj, W_Object)
