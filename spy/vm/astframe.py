@@ -188,10 +188,7 @@ class AbstractFrame:
         if varname is None:
             return None  # no typecheck needed
         lv = self.locals[varname]
-        if lv.w_T is None:
-            assert False, "fixme"
-            ## # deferred type inference, type not yet fixed, no check needed
-            ## return None
+        assert lv.w_T is not None
         w_expT = lv.w_T
         wam_expT = W_MetaArg.from_w_obj(self.vm, lv.w_T, loc=lv.decl_loc)
         try:
