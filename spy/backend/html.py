@@ -31,7 +31,7 @@ FIELDS_TO_IGNORE = frozenset(
 )
 
 # Nodes that start expanded.
-EXPAND_BY_DEFAULT = frozenset({"Module", "FuncDef", "GlobalFuncDef"})
+EXPAND_BY_DEFAULT = frozenset({"Module", "FuncDef", "GlobalFuncDef", "Block"})
 
 _SPYAST_JS = ROOT / ".." / "playground" / "spyast" / "spyast.js"
 
