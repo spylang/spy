@@ -81,6 +81,7 @@ class ASTCompiler:
             stage="astcompiled",
             decls=new_decls,
             _frameinfo=mod_frameinfo,
+            _implicit_imports=set(self.sa.implicit_imports),
         )
 
     def compile_decl(self, decl: ast.Decl) -> ast.Decl:

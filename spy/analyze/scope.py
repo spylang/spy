@@ -76,6 +76,9 @@ class ScopeAnalyzer:
     # A node resolves either to a Symbol or to a lazy SPyError
     _resolved_nodes: dict[ast.Node, tuple[Scope, "Resolution"]]
 
+    # modules implicitly imported by `mod` (e.g. `_list` for a list literal)
+    implicit_imports: set[str]
+
     def __init__(self, modname: str, mod: ast.Module) -> None:
         self.mod = mod
         self.scope_stack = []
@@ -97,6 +100,7 @@ class ScopeAnalyzer:
         self.valid_from = {}
         self.cur_seq = 0
         self._resolved_nodes = {}
+        self.implicit_imports = set()
 
     # ===============
     # public API
@@ -757,26 +761,26 @@ class ScopeAnalyzer:
             self.collect(child)
 
     def collect_List(self, lst: ast.List) -> None:
-        self.mod_frameinfo.implicit_imports.add("_list")
+        self.implicit_imports.add("_list")
         self.collect_children(lst)
 
     def collect_Tuple(self, tup: ast.Tuple) -> None:
-        self.mod_frameinfo.implicit_imports.add("_tuple")
+        self.implicit_imports.add("_tuple")
         self.collect_children(tup)
 
     def collect_Dict(self, d: ast.Dict) -> None:
-        self.mod_frameinfo.implicit_imports.add("_dict")
+        self.implicit_imports.add("_dict")
         self.collect_children(d)
 
     def collect_Slice(self, slc: ast.Slice) -> None:
-        self.mod_frameinfo.implicit_imports.add("_slice")
+        self.implicit_imports.add("_slice")
         self.collect_children(slc)
 
     def collect_Assign(self, assign: ast.Assign) -> None:
         # FIRST collect the value, THEN (maybe) declare the target, like in VarDef.
         self.collect(assign.value)
         if isinstance(assign.target, ast.UnpackTarget):
-            self.mod_frameinfo.implicit_imports.add("_tuple")
+            self.implicit_imports.add("_tuple")
         if self.mod.scoping_rules == "pythonic":
             # [py.implicit-decl]: in pythonic_scoping, an assignment might be an
             # implicit declaration
@@ -959,7 +963,7 @@ class ScopeAnalyzer:
             # found in an outer scope
             assert sym is not None
             if sym.impref is not None:
-                self.mod_frameinfo.implicit_imports.add(sym.impref.modname)
+                self.implicit_imports.add(sym.impref.modname)
             self.set_binding(node, self.scope, sym.replace(frame_depth=frame_depth))
             return
 

@@ -586,7 +586,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         # `builtins` is also implicitly imported (via the `dynamic` annotation)
-        assert self.sa.by_module().implicit_imports == {
+        assert self.sa.implicit_imports == {
             "_list",
             "_tuple",
             "_dict",

@@ -289,6 +289,10 @@ class Node:
                 if hasattr(node, "_frameinfo") and node._frameinfo is None:
                     cls = node.__class__.__name__
                     raise Exception(f"{cls}.frameinfo is None at state '{state}'")
+                if isinstance(node, Module) and node._implicit_imports is None:
+                    raise Exception(
+                        f"Module.implicit_imports is None at state '{state}'"
+                    )
 
     def visit(self, prefix: str, visitor: Any, *args: Any) -> None:
         """
@@ -321,11 +325,19 @@ class Module(Node):
     decls: list["Decl"]
     # None when "parsed', present when ">= astcompiled"
     _frameinfo: Optional[FrameInfo] = field(repr=False, default=None)
+    _implicit_imports: Optional[set[str]] = field(repr=False, default=None)
 
     @property
     def frameinfo(self) -> FrameInfo:
         assert self._frameinfo is not None, "frameinfo not set (still at parsed stage?)"
         return self._frameinfo
+
+    @property
+    def implicit_imports(self) -> set[str]:
+        assert self._implicit_imports is not None, (
+            "implicit_imports not set (still at parsed stage?)"
+        )
+        return self._implicit_imports
 
     def get_funcdef(self, name: str) -> "FuncDef":
         """

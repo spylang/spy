@@ -124,13 +124,20 @@ class Dumper(TextBuilder):
             self.writeline("")
         with self.indent():
             for field, value in zip(fields, values):
-                # print w_T, sym and frameinfo only if they are not None
-                if field in ("w_T", "_sym", "_frameinfo") and value is None:
+                # print w_T, sym, frameinfo and implicit_imports only if not None
+                if (
+                    field in ("w_T", "_sym", "_frameinfo", "_implicit_imports")
+                    and value is None
+                ):
                     continue
                 is_last = field is fields[-1]
-                # `_sym`/`_frameinfo` are private fields exposed via the `.sym` /
-                # `.frameinfo` properties; dump them under the public name.
-                label = {"_sym": "sym", "_frameinfo": "frameinfo"}.get(field, field)
+                # `_sym`/`_frameinfo`/`_implicit_imports` are private fields exposed
+                # via public properties; dump them under the public name.
+                label = {
+                    "_sym": "sym",
+                    "_frameinfo": "frameinfo",
+                    "_implicit_imports": "implicit_imports",
+                }.get(field, field)
                 self.write(f"{label}=")
                 self.dump_anything(value)
                 if multiline:

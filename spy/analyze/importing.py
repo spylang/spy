@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 MODULE = Union[ast.Module, "W_Module", None]
 
 # Cache version: increment this when ast.Module or FrameInfo structure changes
-SPYC_VERSION = 22
+SPYC_VERSION = 23
 
 
 @dataclass
@@ -244,7 +244,7 @@ class ImportAnalyzer:
                 self.mods[modname] = mod
 
                 # record implicit imports
-                for imp_modname in mod.frameinfo.implicit_imports:
+                for imp_modname in mod.implicit_imports:
                     self.record_import(modname, imp_modname, node=None)
 
                 # record explicit imports

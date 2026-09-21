@@ -344,14 +344,12 @@ class FrameInfo:
     color: Color
     kind: ScopeKind
     _symbols: dict[str, Symbol]
-    implicit_imports: set[str]
 
     def __init__(self, name: str, color: Color, kind: ScopeKind) -> None:
         self.name = name
         self.color = color
         self.kind = kind
         self._symbols = {}
-        self.implicit_imports = set()
 
     @classmethod
     def from_builtins(cls) -> "FrameInfo":
@@ -369,7 +367,6 @@ class FrameInfo:
     def copy(self) -> "FrameInfo":
         new_st = FrameInfo(self.name, self.color, self.kind)
         new_st._symbols = dict(self._symbols)
-        new_st.implicit_imports = set(self.implicit_imports)
         return new_st
 
     def add(self, sym: Symbol) -> None:
