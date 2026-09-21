@@ -124,13 +124,13 @@ class Dumper(TextBuilder):
             self.writeline("")
         with self.indent():
             for field, value in zip(fields, values):
-                # print w_T and sym only if they are not None
-                if field in ("w_T", "_sym") and value is None:
+                # print w_T, sym and symtable only if they are not None
+                if field in ("w_T", "_sym", "_symtable") and value is None:
                     continue
                 is_last = field is fields[-1]
-                # `_sym` is a private field exposed via the `.sym` property; dump
-                # it as `sym=` so the output matches the public API.
-                label = "sym" if field == "_sym" else field
+                # `_sym`/`_symtable` are private fields exposed via the `.sym` /
+                # `.symtable` properties; dump them under the public name.
+                label = {"_sym": "sym", "_symtable": "symtable"}.get(field, field)
                 self.write(f"{label}=")
                 self.dump_anything(value)
                 if multiline:

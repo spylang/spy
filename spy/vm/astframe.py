@@ -402,7 +402,6 @@ class AbstractFrame:
                 return __impl
         """
         loc = gfuncdef.loc
-        assert gfuncdef.symtable is not None
 
         # build synthetic return: return __impl
         impl_symbol = gfuncdef.symtable.lookup("__impl")
@@ -427,7 +426,7 @@ class AbstractFrame:
                 body=[gfuncdef.inner, return_stmt],
             ),
             decorators=[],
-            symtable=gfuncdef.symtable,
+            _symtable=gfuncdef.symtable,
         )
 
         self.exec_stmt_FuncDef(outer_funcdef)
@@ -498,7 +497,6 @@ class AbstractFrame:
                 return Self
         """
         loc = gclassdef.loc
-        assert gclassdef.symtable is not None
 
         # build synthetic return: return Self
         impl_symbol = gclassdef.symtable.lookup("Self")
@@ -523,7 +521,7 @@ class AbstractFrame:
                 body=[gclassdef.inner, return_stmt],
             ),
             decorators=[],
-            symtable=gclassdef.symtable,
+            _symtable=gclassdef.symtable,
         )
 
         self.exec_stmt_FuncDef(outer_funcdef)

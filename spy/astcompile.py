@@ -72,12 +72,15 @@ class ASTCompiler:
 
     def compile_mod(self) -> ast.Module:
         assert self.mod is not None
-        self.push_symtable(self.mod.symtable)
+        assert self.sa is not None
+        mod_symtable = self.sa.by_module()
+        self.push_symtable(mod_symtable)
         new_decls = [self.compile_decl(decl) for decl in self.mod.decls]
         self.pop_symtable()
         return self.mod.replace(
             stage="astcompiled",
             decls=new_decls,
+            _symtable=mod_symtable,
         )
 
     def compile_decl(self, decl: ast.Decl) -> ast.Decl:
@@ -203,7 +206,7 @@ class ASTCompiler:
             scoping_rules=self.mod.scoping_rules,
             body=body,
             decorators=[],
-            symtable=outer_symtable,
+            _symtable=outer_symtable,
             _sym=self.sa.get_resolved_sym(node),
         )
 
@@ -249,7 +252,7 @@ class ASTCompiler:
             args=new_args,
             defaults=new_defaults,
             body=new_body,
-            symtable=inner_symtable,
+            _symtable=inner_symtable,
             _sym=new_sym,
         )
 
@@ -349,7 +352,7 @@ class ASTCompiler:
         self.push_symtable(inner_symtable)
         new_body = self.compile_block(classdef.body)
         self.pop_symtable()
-        return classdef.replace(body=new_body, symtable=inner_symtable, _sym=new_sym)
+        return classdef.replace(body=new_body, _symtable=inner_symtable, _sym=new_sym)
 
     def compile_stmt_FuncDef(self, stmt: ast.FuncDef) -> list[ast.Stmt]:
         return [self.compile_funcdef(stmt)]

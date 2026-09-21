@@ -21,7 +21,7 @@ FIELDS_TO_IGNORE = frozenset(
         "body_loc",
         "target_locs",
         "loc_asname",
-        "symtable",
+        "_symtable",
         "w_T",
         "docstring",
         "seq",

@@ -65,7 +65,7 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING, Iterator, Optional
 
 from spy import ast
-from spy.analyze.symtable import Symbol, SymTable
+from spy.analyze.symtable import Scope, Symbol, SymTable
 from spy.location import Loc
 from spy.util import magic_dispatch
 from spy.vm.b import B
@@ -97,6 +97,9 @@ class Linearizer:
     # append to this list when they need to hoist stmts out of an
     # expression (either from a BlockExpr body, or from spilling)
     hoisted: list[ast.Stmt]
+    # the scope of the Block currently being rewritten; compiler-internal Blocks
+    # synthesized here (break_if, short-circuit if) reuse it
+    cur_scope: Optional[Scope]
 
     def __init__(self, vm: "SPyVM", w_func: W_ASTFunc) -> None:
         self.vm = vm
@@ -105,14 +108,16 @@ class Linearizer:
         self.new_symbols: list[Symbol] = []
         self.tmp_counter = 0
         self.hoisted = []
+        self.cur_scope = None
 
     def linearize(self) -> W_ASTFunc:
         funcdef = self.w_func.funcdef
         new_body = self.rewrite_block(funcdef.body)
         new_symtable = self._copy_symtable(funcdef.symtable)
         new_funcdef = funcdef.replace(
-            stage="linearized", body=new_body, symtable=new_symtable
+            stage="linearized", body=new_body, _symtable=new_symtable
         )
+        new_funcdef.assert_valid_at("linearized")
 
         assert self.w_func.locals_types_w is not None
         new_locals_types_w = dict(self.w_func.locals_types_w)
@@ -210,7 +215,12 @@ class Linearizer:
         return new_body
 
     def rewrite_block(self, block: ast.Block) -> ast.Block:
-        return block.replace(body=self.rewrite_body(block.body))
+        outer_scope = self.cur_scope
+        self.cur_scope = block.scope
+        try:
+            return block.replace(body=self.rewrite_body(block.body))
+        finally:
+            self.cur_scope = outer_scope
 
     def rewrite_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
         to_spill = self.mark_to_spill([ret.value])
@@ -303,8 +313,9 @@ class Linearizer:
             then=ast.Block(
                 loc=loc,
                 body=[ast.Break(loc=loc)],
+                scope=new_body.scope,
             ),
-            else_=ast.Block(loc=loc, body=[]),
+            else_=ast.Block(loc=loc, body=[], scope=new_body.scope),
         )
         new_while_body = new_body.replace(
             body=test_hoisted + [break_if] + new_body.body
@@ -463,8 +474,8 @@ class Linearizer:
         if_stmt = ast.If(
             loc=loc,
             test=new_left,
-            then=ast.Block(loc=loc, body=then_body),
-            else_=ast.Block(loc=loc, body=else_body),
+            then=ast.Block(loc=loc, body=then_body, scope=self.cur_scope),
+            else_=ast.Block(loc=loc, body=else_body, scope=self.cur_scope),
         )
         self.hoisted.append(if_stmt)
         return ast.NameLocalDirect(loc=loc, sym=sym, w_T=op.w_T)

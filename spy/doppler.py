@@ -155,8 +155,9 @@ class DopplerFrame(ASTFrame):
         new_funcdef = funcdef.replace(
             stage="redshifted",
             body=new_body,
-            symtable=self._new_symtable,
+            _symtable=self._new_symtable,
         )
+        new_funcdef.assert_valid_at("redshifted")
         #
         new_fqn = self.w_func.fqn
         # all the non-local lookups are redshifted into constants, so the

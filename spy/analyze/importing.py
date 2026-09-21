@@ -244,7 +244,6 @@ class ImportAnalyzer:
                 self.mods[modname] = mod
 
                 # record implicit imports
-                assert mod.symtable is not None
                 for imp_modname in mod.symtable.implicit_imports:
                     self.record_import(modname, imp_modname, node=None)
 
@@ -273,7 +272,6 @@ class ImportAnalyzer:
         # no cache found, parse it
         parsed_mod = self.parse_one(spyfile)
         sa = self.analyze_one(modname, parsed_mod)
-        parsed_mod.symtable = sa.by_module()
         compiled_mod = astcompile(parsed_mod, scope_analyzer=sa)
 
         if self.use_spyc:
@@ -353,7 +351,6 @@ class ImportAnalyzer:
         raise err
 
     def import_one(self, modname: str, mod: ast.Module) -> None:
-        assert mod.symtable is not None
         fqn = FQN(modname)
         modframe = ModFrame(self.vm, fqn, mod)
         w_mod = modframe.run()

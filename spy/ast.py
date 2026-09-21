@@ -18,7 +18,7 @@ from typing import (
     no_type_check,
 )
 
-from spy.analyze.symtable import Color, ImportRef, Symbol, VarKind
+from spy.analyze.symtable import Color, ImportRef, Scope, Symbol, SymTable, VarKind
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.util import extend
@@ -281,8 +281,14 @@ class Node:
             if valid_states is not None and state not in valid_states:
                 cls = node.__class__.__name__
                 raise Exception(f"Node `ast.{cls}` is not valid at state '{state}'")
-            if state != "parsed" and isinstance(node, Block) and node.scope is None:
-                raise Exception(f"Block.scope is None at state '{state}'")
+
+            # in ">parsed" state, .scope and .symtable must be not-None
+            if state != "parsed":
+                if isinstance(node, Block) and node.scope is None:
+                    raise Exception(f"Block.scope is None at state '{state}'")
+                if hasattr(node, "_symtable") and node._symtable is None:
+                    cls = node.__class__.__name__
+                    raise Exception(f"{cls}.symtable is None at state '{state}'")
 
     def visit(self, prefix: str, visitor: Any, *args: Any) -> None:
         """
@@ -313,7 +319,13 @@ class Module(Node):
     docstring: Optional[str]
     scoping_rules: ScopingRules
     decls: list["Decl"]
-    symtable: Any = field(repr=False, default=None)
+    # None when "parsed', present when ">= astcompiled"
+    _symtable: Optional[SymTable] = field(repr=False, default=None)
+
+    @property
+    def symtable(self) -> SymTable:
+        assert self._symtable is not None, "symtable not set (still at parsed stage?)"
+        return self._symtable
 
     def get_funcdef(self, name: str) -> "FuncDef":
         """
@@ -791,11 +803,11 @@ class Stmt(Node):
 @astnode
 class Block(Node):
     body: list["Stmt"]
-    # the scope as computed by ScopeAnalyzer: this is not necessary for runtime
-    # execution, but it basically serves the role of "debug info" for interactive name
-    # resolution (e.g. for spdb). It can be None only at "parsed" stage, else it must be
-    # a Scope.
-    scope: Any = field(repr=False, default=None, compare=False)
+
+    # the scope as computed by ScopeAnalyzer: this basically serves the role of "debug
+    # info" for interactive name resolution (e.g. for spdb).
+    # None when "parsed', present when ">= astcompiled"
+    scope: Optional[Scope] = field(repr=False, default=None, compare=False)
 
 
 @astnode
@@ -828,10 +840,14 @@ class FuncDef(Stmt):
     body: Block
     decorators: list["Expr"]
 
-    _sym: Optional[Symbol] = None  # None when "parsed', present when ">= astcompiled"
+    # None when "parsed', present when ">= astcompiled"
+    _sym: Optional[Symbol] = None
+    _symtable: Optional[SymTable] = field(repr=False, default=None)
 
-    # TODO: delete this as soon as we delete scope.py. See also astcompile.py
-    symtable: Any = field(repr=False, default=None)
+    @property
+    def symtable(self) -> SymTable:
+        assert self._symtable is not None, "symtable not set (still at parsed stage?)"
+        return self._symtable
 
     @property
     def sym(self) -> Symbol:
@@ -865,7 +881,12 @@ class GenericFuncDef(Stmt):
     name: str
     args: list[FuncArg]
     inner: FuncDef
-    symtable: Any = field(repr=False, default=None)
+    _symtable: Optional[SymTable] = field(repr=False, default=None)
+
+    @property
+    def symtable(self) -> SymTable:
+        assert self._symtable is not None, "symtable not set (still at parsed stage?)"
+        return self._symtable
 
     def shortrepr(self) -> Optional[str]:
         return self.name
@@ -880,7 +901,12 @@ class ClassDef(Stmt):
     body: Block
 
     _sym: Optional[Symbol] = None  # None when "parsed", present when ">= astcompiled"
-    symtable: Any = field(repr=False, default=None)
+    _symtable: Optional[SymTable] = field(repr=False, default=None)
+
+    @property
+    def symtable(self) -> SymTable:
+        assert self._symtable is not None, "symtable not set (still at parsed stage?)"
+        return self._symtable
 
     @property
     def sym(self) -> Symbol:
@@ -907,7 +933,12 @@ class GenericClassDef(Stmt):
     name: str
     args: list[FuncArg]
     inner: ClassDef
-    symtable: Any = field(repr=False, default=None)
+    _symtable: Optional[SymTable] = field(repr=False, default=None)
+
+    @property
+    def symtable(self) -> SymTable:
+        assert self._symtable is not None, "symtable not set (still at parsed stage?)"
+        return self._symtable
 
     def shortrepr(self) -> Optional[str]:
         return self.name

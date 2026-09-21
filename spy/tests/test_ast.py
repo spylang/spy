@@ -1,6 +1,9 @@
+from typing import cast
+
 import pytest
 
 from spy import ast
+from spy.analyze.symtable import Scope
 from spy.ast import _parse_stage_spec, astnode
 from spy.location import Loc
 
@@ -56,11 +59,12 @@ def test_assert_valid_no_spec_is_always_valid():
 
 def test_assert_valid_recurses_into_children():
     inner = FakeStmt(loc=Loc.fake())
+    dummy_scope = cast(Scope, object())
     outer = ast.If(
         loc=Loc.fake(),
         test=ast.Auto(loc=Loc.fake()),
-        then=ast.Block(loc=Loc.fake(), body=[inner]),
-        else_=ast.Block(loc=Loc.fake(), body=[]),
+        then=ast.Block(loc=Loc.fake(), body=[inner], scope=dummy_scope),
+        else_=ast.Block(loc=Loc.fake(), body=[], scope=dummy_scope),
     )
     with pytest.raises(Exception, match="FakeStmt.*not valid at state 'astcompiled'"):
         outer.assert_valid_at("astcompiled")
