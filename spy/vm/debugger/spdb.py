@@ -21,7 +21,7 @@ from spy.vm.astframe import AbstractFrame, ASTFrame
 from spy.vm.b import BUILTINS
 from spy.vm.classframe import ClassFrame
 from spy.vm.debugger.longlist import print_longlist
-from spy.vm.exc import FrameInfo, W_Traceback
+from spy.vm.exc import TBEntry, W_Traceback
 from spy.vm.modframe import ModFrame
 from spy.vm.modules.operator import OP
 from spy.vm.opspec import W_MetaArg
@@ -112,7 +112,7 @@ class SPdb(cmd.Cmd):
             self.curindex = i
             self.print_frame_info(i)
 
-    def get_curframe(self) -> FrameInfo:
+    def get_curframe(self) -> TBEntry:
         return self.w_tb.entries[self.curindex]
 
     def print_frame_info(self, i: int) -> None:

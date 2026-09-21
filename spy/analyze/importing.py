@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Optional, Union
 import py.path
 
 from spy import ast
-from spy.analyze import scope2
+from spy.analyze import scope
 from spy.astcompile import astcompile
 from spy.errors import SPyError
 from spy.fqn import FQN
@@ -282,9 +282,9 @@ class ImportAnalyzer:
         parser = Parser.from_filename(str(spyfile))
         return parser.parse()
 
-    def analyze_one(self, modname: str, mod: ast.Module) -> scope2.ScopeAnalyzer:
+    def analyze_one(self, modname: str, mod: ast.Module) -> scope.ScopeAnalyzer:
         assert mod.scoping_rules in ("strict", "pythonic")
-        sa = scope2.ScopeAnalyzer(modname, mod)
+        sa = scope.ScopeAnalyzer(modname, mod)
         sa.analyze()
         return sa
 

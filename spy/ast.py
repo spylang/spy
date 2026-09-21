@@ -498,7 +498,7 @@ class PoisonExpr(Expr):
     """
     Poison node that carries a pre-built SPyError, to enable lazy static errors.
 
-    The error is constructed by ScopeAnalyzer (scope2), which has all the
+    The error is constructed by ScopeAnalyzer (scope.py), which has all the
     diagnostic context (declaration sites, help messages, ...).  astcompile puts
     it in the expression slot where the offending name/assignment was; the error
     is only raised if/when the expression is actually evaluated (so a static

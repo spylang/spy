@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING, Annotated, Any, Iterable, Optional
 
 from spy import ast
-from spy.analyze.scope2 import ScopeAnalyzer
+from spy.analyze.scope import ScopeAnalyzer
 from spy.astcompile import astcompile
 from spy.errors import WIP, SPyError
 from spy.fqn import FQN

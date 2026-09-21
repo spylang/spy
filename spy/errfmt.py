@@ -6,7 +6,7 @@ from spy.location import Loc
 from spy.textbuilder import ColorFormatter, TextBuilder
 
 if TYPE_CHECKING:
-    from spy.vm.exc import FrameInfo, W_Exception, W_Traceback
+    from spy.vm.exc import TBEntry, W_Exception, W_Traceback
 
 Level = Literal["error", "note", "panic"]
 
@@ -57,7 +57,7 @@ class ErrorFormatter:
         self.out.wl()
 
     def emit_frameinfo(
-        self, f: "FrameInfo", *, index: Optional[int] = None, is_current: bool = False
+        self, f: "TBEntry", *, index: Optional[int] = None, is_current: bool = False
     ) -> None:
         """
         This is used by emit_traceback, but also by spdb.do_where.

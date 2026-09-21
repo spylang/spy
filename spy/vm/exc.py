@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 FrameKind = Literal["astframe", "modframe", "classframe", "dopplerframe"]
 
 
-class FrameInfo:
+class TBEntry:
     def __init__(self, spyframe: "AbstractFrame") -> None:
         self.spyframe = spyframe
         self.loc = spyframe.loc
@@ -48,9 +48,9 @@ class W_Traceback(W_Object):
     similar to CPython 'traceback.StackSummary' class.
     """
 
-    entries: list[FrameInfo]
+    entries: list[TBEntry]
 
-    def __init__(self, entries: list[FrameInfo]) -> None:
+    def __init__(self, entries: list[TBEntry]) -> None:
         self.entries = entries
 
     def __repr__(self) -> str:
@@ -126,7 +126,7 @@ class W_Traceback(W_Object):
             ):
                 # found an applevel frame
                 spyframe = frame.f_locals["self"]
-                entries.append(FrameInfo(spyframe))
+                entries.append(TBEntry(spyframe))
 
             elif frame.f_code in (
                 ASTFrame.eval_expr.__code__,

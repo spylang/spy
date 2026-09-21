@@ -2,7 +2,7 @@ import textwrap
 
 import pytest
 
-from spy.analyze.scope2 import ScopeAnalyzer
+from spy.analyze.scope import ScopeAnalyzer
 from spy.parser import Parser
 from spy.tests.support import MatchAnnotation, expect_errors
 from spy.util import print_diff

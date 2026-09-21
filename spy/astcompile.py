@@ -18,12 +18,12 @@ from spy.location import Loc
 from spy.util import magic_dispatch
 
 if TYPE_CHECKING:
-    from spy.analyze.scope2 import ScopeAnalyzer as ScopeAnalyzer2
+    from spy.analyze.scope import ScopeAnalyzer
 
 
 def astcompile(
     parsed_mod: ast.Module,
-    scope_analyzer: Optional["ScopeAnalyzer2"] = None,
+    scope_analyzer: Optional["ScopeAnalyzer"] = None,
 ) -> ast.Module:
     assert parsed_mod.stage == "parsed"
     compiled_mod = ASTCompiler(parsed_mod, scope_analyzer=scope_analyzer).compile_mod()
@@ -47,7 +47,7 @@ class ASTCompiler:
         self,
         mod: Optional[ast.Module],
         *,
-        scope_analyzer: Optional["ScopeAnalyzer2"] = None,
+        scope_analyzer: Optional["ScopeAnalyzer"] = None,
         interactive_scope: Optional[Scope] = None,
     ) -> None:
         # we support two compilation modes:
@@ -286,7 +286,7 @@ class ASTCompiler:
         assert self.sa is not None
         new_type = self.compile_expr(stmt.type)
         new_value = self.compile_expr(stmt.value) if stmt.value is not None else None
-        # scope2 resolves every VarDef to a Symbol; fill it in so that the
+        # scope resolves every VarDef to a Symbol; fill it in so that the
         # runtime indexes the frame by sym.slot_name.
         sym = self.sa.get_resolved_sym_maybe(stmt)
         assert sym is not None
@@ -705,7 +705,7 @@ class ASTCompiler:
         if self.interactive_scope is not None:
             return self._resolve_interactive(name)
         assert self.sa is not None
-        # scope2: a name resolves either to a Symbol or to a lazy SPyError
+        # a name resolves either to a Symbol or to a lazy SPyError
         err = self.sa.get_poison_error_maybe(name)
         if err is not None:
             return ast.PoisonExpr(name.loc, err)

@@ -35,7 +35,7 @@ from spy.textbuilder import ColorFormatter
 Color = Literal["red", "blue"]
 # "decl-global" (and later "decl-nonlocal") marks an analysis-only marker Symbol
 # placed in a Scope by a `global x` declaration.  It never appears in a SymTable
-# and is never bound to a node at runtime (see scope2.collect_Global).
+# and is never bound to a node at runtime (see scope.collect_Global).
 #
 # "decl-cannot-lift" marks an explicit decl below a lift target, so a later
 # implicit declaration of the same name in the target is rejected
@@ -177,7 +177,7 @@ class LookupResult:
 
 class Scope:
     """
-    A lexical scope, as seen by the ScopeAnalyzer (scope2.py) during the bind
+    A lexical scope, as seen by the ScopeAnalyzer (scope.py) during the bind
     and resolve passes.  Scopes are nested and correspond to a lexical region
     (function, module, block).
 

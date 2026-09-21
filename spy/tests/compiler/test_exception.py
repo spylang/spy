@@ -8,7 +8,7 @@ from spy.tests.support import (
     only_interp,
     skip_backends,
 )
-from spy.vm.exc import FrameInfo
+from spy.vm.exc import TBEntry
 
 
 class MatchFrame:
@@ -18,7 +18,7 @@ class MatchFrame:
         self.src = src
 
     def __eq__(self, info: object) -> bool:
-        if not isinstance(info, FrameInfo):
+        if not isinstance(info, TBEntry):
             return NotImplemented
         return (
             self.kind == info.kind

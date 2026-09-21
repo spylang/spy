@@ -74,7 +74,7 @@ class AbstractFrame:
         self.loc = loc
         self.symtable = symtable
         self.closure = closure
-        # TODO: once the scope2 migration is done, we know all the slots in advance
+        # TODO: once the scope migration is done, we know all the slots in advance
         # (from the symtable), so we could pre-initialize self.locals with the right
         # slots instead of populating it lazily via declare_local.
         self.locals = {}

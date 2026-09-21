@@ -477,7 +477,7 @@ class TestScoping(CompilerTest):
 
     @only_interp
     def test_py_def_nested(self):
-        # A nested `def` binds a local. scope2 mangles its slot name (g$0), so the
+        # A nested `def` binds a local. scope mangles its slot name (g$0), so the
         # runtime must index the frame by slot_name. `@only_interp`: doppler cannot
         # redshift a nested def in a red function (pre-existing limitation).
         src = """

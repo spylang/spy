@@ -7,7 +7,7 @@ The first half is in vm/b.py. See its docstring for more details.
 from typing import TYPE_CHECKING
 
 from spy import ast
-from spy.analyze.scope2 import ScopeAnalyzer
+from spy.analyze.scope import ScopeAnalyzer
 from spy.astcompile import astcompile
 from spy.errors import SPyError
 from spy.fqn import FQN
