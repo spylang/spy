@@ -1,7 +1,7 @@
 """
 astcompile pass
 
-The main job of this pass is to resolve names and symbols using the symtable collected
+The main job of this pass is to resolve names and symbols using the frameinfo collected
 by ScopeAnalyzer.  In particular rewrites generic ast.Name into more specific
 ast.NameLocalDirect, ast.NameOuterDirect, etc.
 
@@ -11,7 +11,7 @@ Moreover, do other easy desugaring like converting `for` loops into `while` loop
 from typing import TYPE_CHECKING, Optional
 
 import spy.ast as ast
-from spy.analyze.symtable import Scope, Symbol, SymTable
+from spy.analyze.symtable import FrameInfo, Scope, Symbol
 from spy.ast import LoweringStage
 from spy.errors import WIP, SPyError
 from spy.location import Loc
@@ -38,7 +38,7 @@ def astcompile_interactive(expr: ast.Expr, scope: Scope) -> ast.Expr:
     given scope and its parents.  This is meant to be used by SPdb.
     """
     compiler = ASTCompiler(None, interactive_scope=scope)
-    compiler.push_symtable(scope.symtable)
+    compiler.push_frameinfo(scope.frameinfo)
     return compiler.compile_expr(expr)
 
 
@@ -56,31 +56,31 @@ class ASTCompiler:
         #   - interactive, for spdb: we pass interactive_scope and we use it for
         #     resolving names
         self.mod = mod
-        self.symtable_stack: list[SymTable] = []
+        self.frameinfo_stack: list[FrameInfo] = []
         self.sa = scope_analyzer
         self.interactive_scope = interactive_scope
 
-    def push_symtable(self, symtable: SymTable) -> None:
-        self.symtable_stack.append(symtable)
+    def push_frameinfo(self, frameinfo: FrameInfo) -> None:
+        self.frameinfo_stack.append(frameinfo)
 
-    def pop_symtable(self) -> SymTable:
-        return self.symtable_stack.pop()
+    def pop_frameinfo(self) -> FrameInfo:
+        return self.frameinfo_stack.pop()
 
     @property
-    def symtable(self) -> SymTable:
-        return self.symtable_stack[-1]
+    def frameinfo(self) -> FrameInfo:
+        return self.frameinfo_stack[-1]
 
     def compile_mod(self) -> ast.Module:
         assert self.mod is not None
         assert self.sa is not None
-        mod_symtable = self.sa.by_module()
-        self.push_symtable(mod_symtable)
+        mod_frameinfo = self.sa.by_module()
+        self.push_frameinfo(mod_frameinfo)
         new_decls = [self.compile_decl(decl) for decl in self.mod.decls]
-        self.pop_symtable()
+        self.pop_frameinfo()
         return self.mod.replace(
             stage="astcompiled",
             decls=new_decls,
-            _symtable=mod_symtable,
+            _frameinfo=mod_frameinfo,
         )
 
     def compile_decl(self, decl: ast.Decl) -> ast.Decl:
@@ -88,7 +88,7 @@ class ASTCompiler:
 
     def compile_stmt(self, stmt: ast.Stmt) -> list[ast.Stmt]:
         # if we are in a ClassDef, only a few stmts are actually allowed
-        in_classdef = self.symtable.kind == "class"
+        in_classdef = self.frameinfo.kind == "class"
         allowed = (
             ast.VarDef,
             ast.Assign,
@@ -169,8 +169,8 @@ class ASTCompiler:
         assert self.mod is not None
         loc = inner.loc
         # the generic args and body are compiled in the outer generic frame
-        outer_symtable = self.sa.get_symtable(node)
-        self.push_symtable(outer_symtable)
+        outer_frameinfo = self.sa.get_frameinfo(node)
+        self.push_frameinfo(outer_frameinfo)
         new_args = [
             arg.replace(
                 type=self.compile_expr(arg.type),
@@ -188,7 +188,7 @@ class ASTCompiler:
             loc=loc,
             value=ast.NameLocalDirect(loc=loc, sym=inner_sym),
         )
-        self.pop_symtable()
+        self.pop_frameinfo()
 
         body = ast.Block(
             loc=loc, body=new_inner + [return_stmt], scope=self.sa.scopes[node]
@@ -206,7 +206,7 @@ class ASTCompiler:
             scoping_rules=self.mod.scoping_rules,
             body=body,
             decorators=[],
-            _symtable=outer_symtable,
+            _frameinfo=outer_frameinfo,
             _sym=self.sa.get_resolved_sym(node),
         )
 
@@ -240,10 +240,10 @@ class ASTCompiler:
         new_defaults = [self.compile_expr(d) for d in funcdef.defaults]
 
         # the statements of the function are evaluated in the inner scope
-        inner_symtable = self.sa.get_symtable(funcdef)
-        self.push_symtable(inner_symtable)
+        inner_frameinfo = self.sa.get_frameinfo(funcdef)
+        self.push_frameinfo(inner_frameinfo)
         new_body = self.compile_block(funcdef.body)
-        self.pop_symtable()
+        self.pop_frameinfo()
         new_sym = self.sa.get_resolved_sym(funcdef)
         return funcdef.replace(
             stage="astcompiled",
@@ -252,7 +252,7 @@ class ASTCompiler:
             args=new_args,
             defaults=new_defaults,
             body=new_body,
-            _symtable=inner_symtable,
+            _frameinfo=inner_frameinfo,
             _sym=new_sym,
         )
 
@@ -347,12 +347,12 @@ class ASTCompiler:
 
     def compile_classdef(self, classdef: ast.ClassDef) -> ast.ClassDef:
         assert self.sa is not None
-        inner_symtable = self.sa.get_symtable(classdef)
+        inner_frameinfo = self.sa.get_frameinfo(classdef)
         new_sym = self.sa.get_resolved_sym(classdef)
-        self.push_symtable(inner_symtable)
+        self.push_frameinfo(inner_frameinfo)
         new_body = self.compile_block(classdef.body)
-        self.pop_symtable()
-        return classdef.replace(body=new_body, _symtable=inner_symtable, _sym=new_sym)
+        self.pop_frameinfo()
+        return classdef.replace(body=new_body, _frameinfo=inner_frameinfo, _sym=new_sym)
 
     def compile_stmt_FuncDef(self, stmt: ast.FuncDef) -> list[ast.Stmt]:
         return [self.compile_funcdef(stmt)]
@@ -371,7 +371,7 @@ class ASTCompiler:
         # use non-colorize locs for synthetic nodes, to avoid painting over user nodes
         iter_loc = stmt.iter.loc.replace(colorize=False)
         target_loc = stmt.target.loc.replace(colorize=False)
-        iter_sym = self.symtable.make_temp_symbol("_$iter", iter_loc)  # e.g. _$iter$0
+        iter_sym = self.frameinfo.make_temp_symbol("_$iter", iter_loc)  # e.g. _$iter$0
 
         init_iter = ast.AssignTemp(
             loc=iter_loc,
@@ -452,7 +452,7 @@ class ASTCompiler:
         #   _$t.attr = _$t.attr OP v
         target_loc = stmt.target.loc.replace(colorize=False)
         value_loc = stmt.loc.replace(colorize=False)
-        target_sym = self.symtable.make_temp_symbol("_$t", target_loc)
+        target_sym = self.frameinfo.make_temp_symbol("_$t", target_loc)
 
         desugared: list[ast.Stmt] = [
             ast.AssignTemp(loc=target_loc, sym=target_sym, value=stmt.target),
@@ -485,7 +485,7 @@ class ASTCompiler:
         #   _$t[_$a0, _$a1, ...] = _$t[_$a0, _$a1, ...] OP v
         target_loc = stmt.target.loc.replace(colorize=False)
         value_loc = stmt.loc.replace(colorize=False)
-        target_sym = self.symtable.make_temp_symbol("_$t", target_loc)
+        target_sym = self.frameinfo.make_temp_symbol("_$t", target_loc)
 
         desugared: list[ast.Stmt] = [
             ast.AssignTemp(loc=target_loc, sym=target_sym, value=stmt.target)
@@ -493,7 +493,7 @@ class ASTCompiler:
         arg_syms = []
         for arg in stmt.args:
             arg_loc = arg.loc.replace(colorize=False)
-            arg_sym = self.symtable.make_temp_symbol("_$a", arg_loc)
+            arg_sym = self.frameinfo.make_temp_symbol("_$a", arg_loc)
             arg_syms.append((arg_sym, arg_loc))
             desugared.append(ast.AssignTemp(loc=arg_loc, sym=arg_sym, value=arg))
 

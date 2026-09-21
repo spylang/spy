@@ -22,8 +22,8 @@ if TYPE_CHECKING:
 
 MODULE = Union[ast.Module, "W_Module", None]
 
-# Cache version: increment this when ast.Module or SymTable structure changes
-SPYC_VERSION = 21
+# Cache version: increment this when ast.Module or FrameInfo structure changes
+SPYC_VERSION = 22
 
 
 @dataclass
@@ -244,7 +244,7 @@ class ImportAnalyzer:
                 self.mods[modname] = mod
 
                 # record implicit imports
-                for imp_modname in mod.symtable.implicit_imports:
+                for imp_modname in mod.frameinfo.implicit_imports:
                     self.record_import(modname, imp_modname, node=None)
 
                 # record explicit imports

@@ -29,11 +29,11 @@ class TestScopeAnalyzer2:
             self.analyze(src)
 
     def assert_dump(self, *args: str):
-        # the symtable names to dump come first, `expected` is the last arg:
+        # the frame names to dump come first, `expected` is the last arg:
         #   assert_dump(expected)
         #   assert_dump("test::foo", "test::bar", expected)
-        *symtable_names, expected = args
-        got = self.sa.dump(*symtable_names).strip()
+        *frame_names, expected = args
+        got = self.sa.dump(*frame_names).strip()
         expected = textwrap.dedent(expected).strip()
         if got != expected:
             print_diff(expected, got, "expected", "got")
@@ -54,7 +54,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test (module):
+        frameinfo test (module):
             strict_scoping: Symbol("strict_scoping", "const", "auto") => <ImportRef __spy__.strict_scoping>
             K: Symbol("K", "const", "explicit")
             foo: Symbol("foo", "const", "funcdef")
@@ -64,7 +64,7 @@ class TestScopeAnalyzer2:
                 i32 -> i32 @ builtins (depth=1) => <ImportRef builtins.i32>
                 foo -> foo
 
-        symtable test::foo (function):
+        frameinfo test::foo (function):
             @return: Symbol("@return", "var", "auto")
             x$0: Symbol("x", "const", "explicit")
             y$0: Symbol("y", "const", "explicit")
@@ -101,7 +101,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::foo (function):
+        frameinfo test::foo (function):
             @return: Symbol("@return", "var", "auto")
             a$0: Symbol("a", "var", "explicit")
             b$0: Symbol("b", "const", "explicit")
@@ -135,7 +135,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::foo (function):
+        frameinfo test::foo (function):
             @return: Symbol("@return", "var", "auto")
             x$0: Symbol("x", "var", "explicit")
 
@@ -160,7 +160,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::foo (function):
+        frameinfo test::foo (function):
             @return: Symbol("@return", "var", "auto")
             p$0: Symbol("p", "const", "explicit")
             S$0: Symbol("S", "const", "classdef")
@@ -199,7 +199,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::foo (function):
+        frameinfo test::foo (function):
             @return: Symbol("@return", "var", "auto")
 
             scope foo:
@@ -209,7 +209,7 @@ class TestScopeAnalyzer2:
 
     def test_scope_block_if(self):
         # [scope.block]: a name declared inside an if body is not visible
-        # outside. The block-local `x` lives in the function symtable (x$0), is
+        # outside. The block-local `x` lives in the function frameinfo (x$0), is
         # visible as `x -> x$0` inside if.then, but resolves to NameError in the
         # enclosing `foo` scope. Names used inside the block still capture from
         # outer frames (K -> K @ test), showing captures propagate through blocks.
@@ -225,7 +225,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::foo (function):
+        frameinfo test::foo (function):
             cond$0: Symbol("cond", "var", "red-param")
             @return: Symbol("@return", "var", "auto")
             x$0: Symbol("x", "const", "explicit")
@@ -253,7 +253,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::foo (function):
+        frameinfo test::foo (function):
             @return: Symbol("@return", "var", "auto")
             i$0: Symbol("i", "var", "loop-target")
 
@@ -280,7 +280,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::foo (function):
+        frameinfo test::foo (function):
             @return: Symbol("@return", "var", "auto")
             i$0: Symbol("i", "var", "explicit")
 
@@ -307,7 +307,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::P::get (function):
+        frameinfo test::P::get (function):
             self$0: Symbol("self", "var", "red-param")
             @return: Symbol("@return", "var", "auto")
 
@@ -332,7 +332,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::P (class):
+        frameinfo test::P (class):
             x: Symbol("x", "const", "auto")
             y: Symbol("y", "const", "auto")
 
@@ -361,7 +361,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::f (function):
+        frameinfo test::f (function):
             @return: Symbol("@return", "var", "auto")
 
             scope f:
@@ -386,7 +386,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test (module):
+        frameinfo test (module):
             strict_scoping: Symbol("strict_scoping", "const", "auto") => <ImportRef __spy__.strict_scoping>
             y: Symbol("y", "var", "explicit") [cell]
             f: Symbol("f", "const", "funcdef")
@@ -396,7 +396,7 @@ class TestScopeAnalyzer2:
                 i32 -> i32 @ builtins (depth=1) => <ImportRef builtins.i32>
                 f -> f
 
-        symtable test::f (function):
+        frameinfo test::f (function):
             @return: Symbol("@return", "var", "auto")
 
             scope f:
@@ -419,7 +419,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::f (function):
+        frameinfo test::f (function):
             @return: Symbol("@return", "var", "auto")
 
             scope f:
@@ -447,7 +447,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::foo (function):
+        frameinfo test::foo (function):
             cond$0: Symbol("cond", "var", "red-param")
             @return: Symbol("@return", "var", "auto")
             y$0: Symbol("y", "var", "explicit")
@@ -497,7 +497,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::foo (function):
+        frameinfo test::foo (function):
             cond$0: Symbol("cond", "var", "red-param")
             @return: Symbol("@return", "var", "auto")
             x$0: Symbol("x", "const", "explicit")
@@ -527,7 +527,7 @@ class TestScopeAnalyzer2:
         self.analyze(src)
         # NOTE: `x$0` is `var` because [py.constness-paths] is deferred
         expected = """
-        symtable test::foo (function):
+        frameinfo test::foo (function):
             cond$0: Symbol("cond", "var", "red-param")
             @return: Symbol("@return", "var", "auto")
             x$0: Symbol("x", "var", "auto")
@@ -561,7 +561,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::foo (function):
+        frameinfo test::foo (function):
             @return: Symbol("@return", "var", "auto")
             aaa$0: Symbol("aaa", "var", "auto")
             bbb$0: Symbol("bbb", "const", "funcdef")
@@ -608,7 +608,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::foo (function):
+        frameinfo test::foo (function):
             @return: Symbol("@return", "var", "auto")
             a$0: Symbol("a", "const", "auto")
             b$0: Symbol("b", "var", "auto")
@@ -627,7 +627,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::foo (function):
+        frameinfo test::foo (function):
             @return: Symbol("@return", "var", "auto")
 
             scope foo:
@@ -643,7 +643,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::foo (function):
+        frameinfo test::foo (function):
             @return: Symbol("@return", "var", "auto")
             x$0: Symbol("x", "var", "auto")
 
@@ -665,7 +665,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::foo (function):
+        frameinfo test::foo (function):
             @return: Symbol("@return", "var", "auto")
             COUNT$0: Symbol("COUNT", "const", "auto")
 
@@ -690,7 +690,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::foo (function):
+        frameinfo test::foo (function):
             a$0: Symbol("a", "var", "red-param")
             b$0: Symbol("b", "var", "red-param")
             @return: Symbol("@return", "var", "auto")
@@ -721,7 +721,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::foo (function):
+        frameinfo test::foo (function):
             @return: Symbol("@return", "var", "auto")
             i$0: Symbol("i", "var", "loop-target")
             total$0: Symbol("total", "const", "auto")
@@ -745,7 +745,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::foo (function):
+        frameinfo test::foo (function):
             @return: Symbol("@return", "var", "auto")
             x$0: Symbol("x", "const", "auto")
 
@@ -767,7 +767,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::foo (function):
+        frameinfo test::foo (function):
             @return: Symbol("@return", "var", "auto")
             a$0: Symbol("a", "const", "auto")
             b$0: Symbol("b", "const", "auto")
@@ -790,7 +790,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::foo (function):
+        frameinfo test::foo (function):
             x$0: Symbol("x", "const", "blue-param")
             @return: Symbol("@return", "var", "auto")
 
@@ -882,7 +882,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::foo (function):
+        frameinfo test::foo (function):
             @return: Symbol("@return", "var", "auto")
             i$0: Symbol("i", "var", "loop-target")
             x$0: Symbol("x", "const", "auto")
@@ -913,7 +913,7 @@ class TestScopeAnalyzer2:
         """
         self.analyze(src)
         expected = """
-        symtable test::foo (function):
+        frameinfo test::foo (function):
             cond$0: Symbol("cond", "var", "red-param")
             @return: Symbol("@return", "var", "auto")
             x$0: Symbol("x", "const", "explicit")

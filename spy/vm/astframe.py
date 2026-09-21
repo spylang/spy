@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Never, Optional, Sequence
 from fixedint import Int8, Int32, Int64, UInt8, UInt32, UInt64
 
 from spy import ast
-from spy.analyze.symtable import Color, Symbol, SymTable, maybe_blue
+from spy.analyze.symtable import Color, FrameInfo, Symbol, maybe_blue
 from spy.errors import WIP, SPyError
 from spy.fqn import FQN
 from spy.location import Loc
@@ -59,23 +59,23 @@ class AbstractFrame:
     ns: FQN
     loc: Loc
     closure: CLOSURE
-    symtable: SymTable
+    frameinfo: FrameInfo
     locals: dict[str, LocalVar]
     special_calls: dict[ast.Call, str]
     # stack of currently-entered Blocks; used by spdb to interactively resolve names
     block_stack: list[ast.Block]
 
     def __init__(
-        self, vm: "SPyVM", ns: FQN, loc: Loc, symtable: SymTable, closure: CLOSURE
+        self, vm: "SPyVM", ns: FQN, loc: Loc, frameinfo: FrameInfo, closure: CLOSURE
     ) -> None:
         assert type(self) is not AbstractFrame, "abstract class"
         self.vm = vm
         self.ns = ns
         self.loc = loc
-        self.symtable = symtable
+        self.frameinfo = frameinfo
         self.closure = closure
         # TODO: once the scope migration is done, we know all the slots in advance
-        # (from the symtable), so we could pre-initialize self.locals with the right
+        # (from the frameinfo), so we could pre-initialize self.locals with the right
         # slots instead of populating it lazily via declare_local.
         self.locals = {}
         self.special_calls = {}
@@ -126,7 +126,7 @@ class AbstractFrame:
             # special case '@if', '@while', etc.
             color: Color = "red"
         else:
-            sym = self.symtable.lookup(name)
+            sym = self.frameinfo.lookup(name)
             assert sym.is_local
             if sym.varkind == "const" and desired_color == "blue":
                 color = "blue"
@@ -206,12 +206,12 @@ class AbstractFrame:
             elif varname == "@return":
                 exp = w_expT.fqn.human_name(self.vm)
                 msg = f"expected `{exp}` because of return type"
-                loc = self.symtable.lookup(varname).type_loc
+                loc = self.frameinfo.lookup(varname).type_loc
                 err.add("note", msg, loc=loc)
             else:
                 exp = w_expT.fqn.human_name(self.vm)
                 msg = f"expected `{exp}` because of type declaration"
-                loc = self.symtable.lookup(varname).type_loc
+                loc = self.frameinfo.lookup(varname).type_loc
                 err.add("note", msg, loc=loc)
 
             raise
@@ -277,7 +277,7 @@ class AbstractFrame:
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # if we are defining a function inside a class, it's a method
-        is_method = self.symtable.kind == "class"
+        is_method = self.frameinfo.kind == "class"
 
         # evaluate the functype
         params = []
@@ -331,7 +331,7 @@ class AbstractFrame:
         # create the w_func
         fqn = self.ns.join(funcdef.name)
         # XXX we should capture only the names actually used in the inner func
-        if self.symtable.kind == "class":
+        if self.frameinfo.kind == "class":
             # [name.class-skip]: symbols in the class frame cannot be captured by inner
             # methods, do we don't need to save it in the closure.  See also
             # Scope.lookup.
@@ -404,7 +404,7 @@ class AbstractFrame:
         loc = gfuncdef.loc
 
         # build synthetic return: return __impl
-        impl_symbol = gfuncdef.symtable.lookup("__impl")
+        impl_symbol = gfuncdef.frameinfo.lookup("__impl")
         return_stmt = ast.Return(
             loc=loc,
             value=ast.NameLocalDirect(loc=loc, sym=impl_symbol),
@@ -426,7 +426,7 @@ class AbstractFrame:
                 body=[gfuncdef.inner, return_stmt],
             ),
             decorators=[],
-            _symtable=gfuncdef.symtable,
+            _frameinfo=gfuncdef.frameinfo,
         )
 
         self.exec_stmt_FuncDef(outer_funcdef)
@@ -499,7 +499,7 @@ class AbstractFrame:
         loc = gclassdef.loc
 
         # build synthetic return: return Self
-        impl_symbol = gclassdef.symtable.lookup("Self")
+        impl_symbol = gclassdef.frameinfo.lookup("Self")
         return_stmt = ast.Return(
             loc=loc,
             value=ast.NameLocalDirect(loc=loc, sym=impl_symbol),
@@ -521,7 +521,7 @@ class AbstractFrame:
                 body=[gclassdef.inner, return_stmt],
             ),
             decorators=[],
-            _symtable=gclassdef.symtable,
+            _frameinfo=gclassdef.frameinfo,
         )
 
         self.exec_stmt_FuncDef(outer_funcdef)
@@ -632,7 +632,7 @@ class AbstractFrame:
             assign_expr = ast.AssignExprLocal(
                 loc=target.loc,
                 target=target,
-                sym=self.symtable.lookup(target.value),
+                sym=self.frameinfo.lookup(target.value),
                 value=getitem,
             )
             self.eval_expr_AssignExprLocal(assign_expr)
@@ -1225,11 +1225,11 @@ class ASTFrame(AbstractFrame):
         # if w_func was lowered, automatically use the most lowered version
         w_func = w_func.get_most_lowered_version()
         assert isinstance(w_func, W_ASTFunc)
-        assert w_func.funcdef.symtable.kind == "function"
+        assert w_func.funcdef.frameinfo.kind == "function"
         assert w_func.funcdef.stage in ("astcompiled", "redshifted", "linearized")
         ns = w_func.compute_inner_ns(args_w or [])
         super().__init__(
-            vm, ns, w_func.funcdef.loc, w_func.funcdef.symtable, w_func.closure
+            vm, ns, w_func.funcdef.loc, w_func.funcdef.frameinfo, w_func.closure
         )
         self.w_func = w_func
         self.funcdef = w_func.funcdef

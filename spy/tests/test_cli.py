@@ -405,8 +405,10 @@ class TestMain:
         )
 
     def test_symtable(self):
+        # FIXME! the CLI command is still called "symtable" (user-facing name unchanged),
+        # even though it now dumps FrameInfo objects
         _, stdout = self.run("symtable", self.main_spy)
-        assert "symtable main::main (function):" in stdout
+        assert "frameinfo main::main (function):" in stdout
 
     def test_imports(self):
         _, stdout = self.run("imports", self.main_spy)

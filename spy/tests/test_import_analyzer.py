@@ -133,8 +133,8 @@ class TestImportAnalyzer:
         analyzer.astcompile_all()
         mod = analyzer.mods["main"]
         assert isinstance(mod, ast.Module)
-        assert mod.symtable is not None
-        assert mod.symtable.name == "main"
+        assert mod.frameinfo is not None
+        assert mod.frameinfo.name == "main"
 
     def test_vm_path(self):
         # we write mod1 in an unrelated dir, which is the added to vm.path
@@ -217,29 +217,29 @@ class TestImportAnalyzer:
         assert "b" in analyzer2.cached_mods
         assert "main" in analyzer2.cached_mods
 
-    def test_cache_preserves_symtable(self):
+    def test_cache_preserves_frameinfo(self):
         src = "x: i32 = 42"
         self.write("mod1.spy", src, mtime_delta=-1)
 
         # First import with analysis
         analyzer1 = ImportAnalyzer(self.vm, "mod1")
         analyzer1.astcompile_all()
-        analyzer1.import_all()  # This sets symtable and saves cache
-        symtable1 = analyzer1.getmod("mod1").symtable
+        analyzer1.import_all()  # This sets frameinfo and saves cache
+        frameinfo1 = analyzer1.getmod("mod1").frameinfo
 
-        assert symtable1 is not None
+        assert frameinfo1 is not None
 
-        # Second import with fresh VM should load from cache with symtable
+        # Second import with fresh VM should load from cache with frameinfo
         vm2 = SPyVM()
         vm2.path = [str(self.tmpdir)]
         analyzer2 = ImportAnalyzer(vm2, "mod1")
         analyzer2.astcompile_all()
         assert "mod1" in analyzer2.cached_mods
 
-        # The cached module should already have symtable
+        # The cached module should already have frameinfo
         mod2 = analyzer2.getmod("mod1")
-        assert mod2.symtable is not None
-        assert mod2.symtable.name == "mod1"
+        assert mod2.frameinfo is not None
+        assert mod2.frameinfo.name == "mod1"
 
     def test_cache_version_mismatch(self, monkeypatch):
         src = "x: i32 = 42"

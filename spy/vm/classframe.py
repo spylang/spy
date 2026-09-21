@@ -25,8 +25,8 @@ class ClassFrame(AbstractFrame):
     def __init__(
         self, vm: "SPyVM", classdef: ast.ClassDef, ns: FQN, closure: CLOSURE
     ) -> None:
-        assert classdef.symtable.kind == "class"
-        super().__init__(vm, ns, classdef.loc, classdef.symtable, closure)
+        assert classdef.frameinfo.kind == "class"
+        super().__init__(vm, ns, classdef.loc, classdef.frameinfo, closure)
         self.classdef = classdef
 
     def __repr__(self) -> str:

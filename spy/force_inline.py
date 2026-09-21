@@ -5,7 +5,7 @@ Helpers for @force_inline: validation and inlining mechanics.
 from typing import TYPE_CHECKING
 
 from spy import ast
-from spy.analyze.symtable import Symbol, SymTable
+from spy.analyze.symtable import FrameInfo, Symbol
 from spy.doppler import make_const
 from spy.errors import SPyError
 from spy.util import magic_dispatch
@@ -47,14 +47,14 @@ def validate_force_inline(w_func: W_ASTFunc) -> None:
 class AlphaRenamer:
     """
     Deep-copy a redshifted function body, renaming every callee-local Symbol to a
-    fresh slot allocated in the CALLER's SymTable (via get_fresh_slot).
+    fresh slot allocated in the CALLER's FrameInfo (via get_fresh_slot).
     """
 
-    def __init__(self, funcdef: ast.FuncDef, caller_symtable: SymTable) -> None:
+    def __init__(self, funcdef: ast.FuncDef, caller_frameinfo: FrameInfo) -> None:
         self.funcdef = funcdef
         self.renamed_syms: dict[Symbol, Symbol] = {}
         self.renamed_slots: dict[str, str] = {}
-        for sym in funcdef.symtable._symbols.values():
+        for sym in funcdef.frameinfo._symbols.values():
             if not sym.is_local:
                 continue
             if sym.src_name.startswith("@"):
@@ -64,12 +64,12 @@ class AlphaRenamer:
                 self.renamed_syms[sym] = sym
                 self.renamed_slots[sym.slot_name] = sym.slot_name
                 continue
-            # alpha-rename the callee locals into the caller symtable
-            new_slot_name = caller_symtable.get_fresh_slot(sym.src_name)
+            # alpha-rename the callee locals into the caller frameinfo
+            new_slot_name = caller_frameinfo.get_fresh_slot(sym.src_name)
             new_sym = sym.replace(slot_name=new_slot_name)
             self.renamed_syms[sym] = new_sym
             self.renamed_slots[sym.slot_name] = new_slot_name
-            caller_symtable.add(new_sym)
+            caller_frameinfo.add(new_sym)
 
     def rename_body(self) -> list[ast.Stmt]:
         return self._rename_stmts(self.funcdef.body.body)
@@ -209,7 +209,7 @@ class InlineResult:
 def inline_call(
     vm: "SPyVM",
     caller_op: ast.Node,
-    caller_symtable: SymTable,
+    caller_frameinfo: FrameInfo,
     w_callee: W_ASTFunc,
     real_args: list[ast.Expr],
 ) -> InlineResult:
@@ -217,7 +217,7 @@ def inline_call(
     Build a BlockExpr that inlines the callee at the call site.
     w_callee must already be at stage == "redshifted".
 
-    Variables used by the callee are alpha-renamed and placed into caller_symtable.
+    Variables used by the callee are alpha-renamed and placed into caller_frameinfo.
     """
     assert w_callee.stage == "redshifted"
 
@@ -227,7 +227,7 @@ def inline_call(
     functype = w_callee.w_functype
     funcdef_args = w_callee.funcdef.args
 
-    renamer = AlphaRenamer(w_callee.funcdef, caller_symtable)
+    renamer = AlphaRenamer(w_callee.funcdef, caller_frameinfo)
     renamed_slots = renamer.renamed_slots
 
     param_assigns: list[ast.Stmt] = []

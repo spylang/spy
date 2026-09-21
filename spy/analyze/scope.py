@@ -4,11 +4,11 @@ from spy import ast
 from spy.analyze.symtable import (
     Color,
     DeclOrigin,
+    FrameInfo,
     ImportRef,
     Scope,
     ScopeKind,
     Symbol,
-    SymTable,
     VarKind,
     VarKindOrigin,
     VarStorage,
@@ -17,12 +17,12 @@ from spy.errors import SPyError
 from spy.location import Loc
 from spy.textbuilder import ColorFormatter, TextBuilder
 
-# SymTable and Scope are similar but conceptually different:
+# FrameInfo and Scope are similar but conceptually different:
 #
 #   - `Scope` are created during the collect pass of ScopeAnalyzer, they are nested and
 #     they correspond to a lexical scope (including e.g. blocks).
 #
-#   - `SymTable` is a runtime concept: it's a flat per-function namespace, which
+#   - `FrameInfo` is a runtime concept: it's a flat per-function namespace, which
 #     contains its local variables
 
 # Key used to look up Scopes in ScopeAnalyzer.scopes
@@ -48,14 +48,14 @@ class ScopeAnalyzer:
          every Scope contains the names directly defined in it (sym.frame_depth == 0)
          and is read-only.
 
-         During this pass we also create a SymTable for each FuncDef and other nodes
+         During this pass we also create a FrameInfo for each FuncDef and other nodes
          with a runtime frame, and we fill it with its locals.
 
       2. bind: visit all nodes which need a name lookup (e.g. ast.Name), and bind
          each occurrence to the corresponding Symbol.
 
      Both passes maintain a stack of lexical scopes (scope_stack), one entry per
-     block/function/module.  Each Scope points to the currently active `.symtable`.
+     block/function/module.  Each Scope points to the currently active `.frameinfo`.
     """
 
     mod: ast.Module
@@ -83,12 +83,12 @@ class ScopeAnalyzer:
 
         # build the [builtins, module] initial scope stack
         self.builtins_scope = Scope.from_builtins()
-        mod_symtable = SymTable(modname, "blue", "module")
+        mod_frameinfo = FrameInfo(modname, "blue", "module")
         mod_scope = Scope(
             modname,
             "blue",
             "module",
-            symtable=mod_symtable,
+            frameinfo=mod_frameinfo,
             parent=self.builtins_scope,
         )
 
@@ -120,13 +120,13 @@ class ScopeAnalyzer:
     def pp(self) -> None:
         print(self.dump(use_colors=True))
 
-    def dump(self, *symtable_names: str, use_colors: bool = False) -> str:
+    def dump(self, *frame_names: str, use_colors: bool = False) -> str:
         """
-        Return a compact, human-readable dump of the computed symtables and the
+        Return a compact, human-readable dump of the computed frameinfos and the
         lexical scope nesting, including how each name resolves during the bind
         pass.
 
-        If `symtable_names` is given, dump only the listed frames (by symtable
+        If `frame_names` is given, dump only the listed frames (by frameinfo
         name, e.g. "test::foo"); otherwise dump all of them.
         """
         b = TextBuilder(use_colors=use_colors)
@@ -145,17 +145,17 @@ class ScopeAnalyzer:
                 return False
             return all(scope_is_empty(child) for child in scope.children)
 
-        def dump_symtable(symtable: SymTable) -> None:
-            b.wl(f"symtable {symtable.name} ({symtable.kind}):")
+        def dump_frameinfo(frameinfo: FrameInfo) -> None:
+            b.wl(f"frameinfo {frameinfo.name} ({frameinfo.kind}):")
             with b.indent():
-                for slot_name, sym in symtable._symbols.items():
+                for slot_name, sym in frameinfo._symbols.items():
                     key = color.set(self._varkind_color(sym), slot_name)
                     b.wl(f"{key}: {self._fmt_sym(sym)}")
 
         # `frames` are the enclosing runtime frames, innermost first: frames[0] is
         # the current frame, frames[1] the parent frame, etc.  A name resolved
         # with sym.frame_depth == N lives in frames[N].
-        def dump_scope(scope: Scope, frames: list[SymTable]) -> None:
+        def dump_scope(scope: Scope, frames: list[FrameInfo]) -> None:
             b.wl(f"scope {scope.short_name}:")
             with b.indent():
                 # scope modifiers like `global x`
@@ -170,9 +170,9 @@ class ScopeAnalyzer:
                     seen.add(src_name)
                     b.wl(self._fmt_resolution(src_name, res, frames, color))
                 # descend only into scopes belonging to the same runtime frame;
-                # nested function scopes are dumped in their own symtable section.
+                # nested function scopes are dumped in their own frameinfo section.
                 for child in scope.children:
-                    if child.symtable is not scope.symtable:
+                    if child.frameinfo is not scope.frameinfo:
                         continue
                     if child.kind == "block" and scope_is_empty(child):
                         continue
@@ -183,17 +183,17 @@ class ScopeAnalyzer:
         owners = [
             s for s in self.scopes.values() if s.kind in ("module", "function", "class")
         ]
-        if symtable_names:
-            owners = [s for s in owners if s.symtable.name in symtable_names]
+        if frame_names:
+            owners = [s for s in owners if s.frameinfo.name in frame_names]
 
-        # for each runtime frame, dump its symtable and its lexical scopes
+        # for each runtime frame, dump its frameinfo and its lexical scopes
         for i, owner in enumerate(owners):
             if i > 0:
                 b.wl()
-            dump_symtable(owner.symtable)
+            dump_frameinfo(owner.frameinfo)
             b.wl()
             # the frame chain, innermost first: this owner then its enclosing frames
-            frames = self._enclosing_symtables(owner)
+            frames = self._enclosing_frames(owner)
             with b.indent():
                 dump_scope(owner, frames)
         return b.build()
@@ -212,7 +212,7 @@ class ScopeAnalyzer:
         self,
         src_name: str,
         res: "Resolution",
-        frames: list[SymTable],
+        frames: list[FrameInfo],
         color: ColorFormatter,
     ) -> str:
         if isinstance(res, SPyError):
@@ -229,7 +229,7 @@ class ScopeAnalyzer:
             s = f"{name} -> {sym.slot_name}"
         return s + self._fmt_impref(sym)
 
-    def _enclosing_symtables(self, scope: Scope) -> list[SymTable]:
+    def _enclosing_frames(self, scope: Scope) -> list[FrameInfo]:
         """
         The chain of runtime frames enclosing (and including) `scope`, innermost
         first: the scope's own frame, then its parent frame, etc.  Block scopes
@@ -239,7 +239,7 @@ class ScopeAnalyzer:
         s: Optional[Scope] = scope
         while s is not None:
             if s.kind in ("function", "module", "class"):
-                result.append(s.symtable)
+                result.append(s.frameinfo)
             s = s.parent
         return result
 
@@ -253,14 +253,14 @@ class ScopeAnalyzer:
         return self.scopes[self.mod]
 
     @property
-    def mod_symtable(self) -> SymTable:
+    def mod_frameinfo(self) -> FrameInfo:
         return self.by_module()
 
-    def by_module(self) -> SymTable:
-        return self.get_symtable(self.mod)
+    def by_module(self) -> FrameInfo:
+        return self.get_frameinfo(self.mod)
 
-    def get_symtable(self, node: ast.Node) -> SymTable:
-        return self.scopes[node].symtable
+    def get_frameinfo(self, node: ast.Node) -> FrameInfo:
+        return self.scopes[node].frameinfo
 
     def get_resolution(self, node: ast.Node) -> "Resolution":
         """
@@ -315,20 +315,19 @@ class ScopeAnalyzer:
         color: Color,
         kind: ScopeKind,
         *,
-        symtable: Optional[SymTable] = None,
+        frameinfo: Optional[FrameInfo] = None,
     ) -> Scope:
         """
         Create a new Scope nested inside the current one.
 
-        `symtable` is the runtime frame the scope belongs to; it defaults to the
-        enclosing frame (the right choice for block scopes).  Function scopes
-        pass their own freshly-created symtable.
+        `frameinfo` is the runtime frame the scope belongs to; it defaults to the
+        enclosing frame. Function scopes pass their own freshly-created frameinfo.
         """
         parent = self.scope_stack[-1]
-        if symtable is None:
-            symtable = self.symtable
+        if frameinfo is None:
+            frameinfo = self.frameinfo
         return Scope(
-            f"{parent.name}::{name}", color, kind, symtable=symtable, parent=parent
+            f"{parent.name}::{name}", color, kind, frameinfo=frameinfo, parent=parent
         )
 
     def push_scope(self, scope: Scope) -> None:
@@ -345,11 +344,11 @@ class ScopeAnalyzer:
         return self.scope_stack[-1]
 
     @property
-    def symtable(self) -> SymTable:
+    def frameinfo(self) -> FrameInfo:
         """
-        Return the currently active SymTable
+        Return the currently active FrameInfo
         """
-        return self.scope.symtable
+        return self.scope.frameinfo
 
     # ====
     # collect pass
@@ -369,7 +368,7 @@ class ScopeAnalyzer:
         valid_from: Optional[int] = None,
     ) -> Symbol:
         """
-        Add a name definition to the given scope and its symtable (frame_depth 0).
+        Add a name definition to the given scope and its frame (frame_depth 0).
 
         By default, `scope` is `self.scope`. It differs only in case of implicit
         declarations which happens inside `if` blocks, which are lifted to their
@@ -382,7 +381,7 @@ class ScopeAnalyzer:
         """
         if scope is None:
             scope = self.scope
-        symtable = scope.symtable
+        frameinfo = scope.frameinfo
         existing_sym = scope.symbols.get(name)
         if existing_sym:
             if existing_sym.storage == "decl-global":
@@ -418,14 +417,14 @@ class ScopeAnalyzer:
             varkind_origin,
             storage,
             decl_origin=decl_origin,
-            slot_name=symtable.get_fresh_slot(name),
+            slot_name=frameinfo.get_fresh_slot(name),
             loc=loc,
             type_loc=type_loc,
             impref=impref,
             frame_depth=0,
         )
         scope.add(new_sym)
-        symtable.add(new_sym)
+        frameinfo.add(new_sym)
         if valid_from is None:
             valid_from = self.cur_seq  # remember when it was created
         self.valid_from[new_sym] = valid_from
@@ -494,7 +493,7 @@ class ScopeAnalyzer:
         #
         # For scope analysis, we need to:
         #     1. collect/bind the name "add" in the outer scope
-        #     2. push a scope/symtable for the blue function
+        #     2. push a scope/frameinfo for the blue function
         #     3. collect/bind the generic arguments ("T")
         #     4. collect/bind the inner funcdef/classdef
 
@@ -502,10 +501,10 @@ class ScopeAnalyzer:
         loc = inner.loc
         self.create_new_local(node, name, "explicit", "const", "funcdef", loc, loc)
 
-        # (2) push the blue scope/symtable; see also collect_FuncDef
-        symtable_name = f"{self.symtable.name}::{name}"
-        symtable = SymTable(symtable_name, "blue", "function")
-        inner_scope = self.new_Scope(name, "blue", "function", symtable=symtable)
+        # (2) push the blue scope/frameinfo; see also collect_FuncDef
+        frame_name = f"{self.frameinfo.name}::{name}"
+        frameinfo = FrameInfo(frame_name, "blue", "function")
+        inner_scope = self.new_Scope(name, "blue", "function", frameinfo=frameinfo)
         self.push_scope(inner_scope)
         self.scopes[node] = inner_scope
 
@@ -560,11 +559,13 @@ class ScopeAnalyzer:
             valid_from=0,
         )
 
-        # the class body is its own frame (a "class" scope with its own symtable);
+        # the class body is its own frame (a "class" scope with its own frameinfo);
         # methods defined inside become nested funcdefs `test::P::get`.
-        symtable_name = f"{self.symtable.name}::{classdef.name}"
-        symtable = SymTable(symtable_name, "blue", "class")
-        inner_scope = self.new_Scope(classdef.name, "blue", "class", symtable=symtable)
+        frame_name = f"{self.frameinfo.name}::{classdef.name}"
+        frameinfo = FrameInfo(frame_name, "blue", "class")
+        inner_scope = self.new_Scope(
+            classdef.name, "blue", "class", frameinfo=frameinfo
+        )
         self.push_scope(inner_scope)
         self.scopes[classdef] = inner_scope
         classdef.body.scope = inner_scope
@@ -586,14 +587,10 @@ class ScopeAnalyzer:
             argkind = "const"
             argkind_origin = "blue-param"
 
-        # the symtable name is derived from the ENCLOSING FRAME (symtable), not
-        # the lexical scope: block scopes must not appear in it. E.g. a function
-        # defined inside an `if` inside `foo` is `test::foo::inner`, not
-        # `test::foo::if.then::inner`.
-        symtable_name = f"{self.symtable.name}::{funcdef.name}"
-        symtable = SymTable(symtable_name, scope_color, "function")
+        frame_name = f"{self.frameinfo.name}::{funcdef.name}"
+        frameinfo = FrameInfo(frame_name, scope_color, "function")
         inner_scope = self.new_Scope(
-            funcdef.name, scope_color, "function", symtable=symtable
+            funcdef.name, scope_color, "function", frameinfo=frameinfo
         )
         self.push_scope(inner_scope)
         self.scopes[funcdef] = inner_scope
@@ -760,26 +757,26 @@ class ScopeAnalyzer:
             self.collect(child)
 
     def collect_List(self, lst: ast.List) -> None:
-        self.mod_symtable.implicit_imports.add("_list")
+        self.mod_frameinfo.implicit_imports.add("_list")
         self.collect_children(lst)
 
     def collect_Tuple(self, tup: ast.Tuple) -> None:
-        self.mod_symtable.implicit_imports.add("_tuple")
+        self.mod_frameinfo.implicit_imports.add("_tuple")
         self.collect_children(tup)
 
     def collect_Dict(self, d: ast.Dict) -> None:
-        self.mod_symtable.implicit_imports.add("_dict")
+        self.mod_frameinfo.implicit_imports.add("_dict")
         self.collect_children(d)
 
     def collect_Slice(self, slc: ast.Slice) -> None:
-        self.mod_symtable.implicit_imports.add("_slice")
+        self.mod_frameinfo.implicit_imports.add("_slice")
         self.collect_children(slc)
 
     def collect_Assign(self, assign: ast.Assign) -> None:
         # FIRST collect the value, THEN (maybe) declare the target, like in VarDef.
         self.collect(assign.value)
         if isinstance(assign.target, ast.UnpackTarget):
-            self.mod_symtable.implicit_imports.add("_tuple")
+            self.mod_frameinfo.implicit_imports.add("_tuple")
         if self.mod.scoping_rules == "pythonic":
             # [py.implicit-decl]: in pythonic_scoping, an assignment might be an
             # implicit declaration
@@ -856,7 +853,7 @@ class ScopeAnalyzer:
         assert sym.varkind == "const"
         new_sym = sym.replace(varkind="var")
         scope.symbols[sym.src_name] = new_sym
-        scope.symtable._symbols[sym.slot_name] = new_sym
+        scope.frameinfo._symbols[sym.slot_name] = new_sym
         self.valid_from[new_sym] = self.valid_from.pop(sym)
 
     def collect_AugAssign(self, node: ast.AugAssign) -> None:
@@ -907,7 +904,7 @@ class ScopeAnalyzer:
         """
         Find a loop-target Symbol named `varname` in the current frame, if any.
         """
-        for sym in self.symtable._symbols.values():
+        for sym in self.frameinfo._symbols.values():
             if sym.src_name == varname and sym.varkind_origin == "loop-target":
                 return sym
         return None
@@ -935,7 +932,7 @@ class ScopeAnalyzer:
             return
 
         elif frame_depth == 0:
-            # found in the local symtable
+            # found in the local frameinfo
             assert sym is not None
             if sym.is_local and node in self.seq:
                 seq = self.seq[node]
@@ -962,7 +959,7 @@ class ScopeAnalyzer:
             # found in an outer scope
             assert sym is not None
             if sym.impref is not None:
-                self.mod_symtable.implicit_imports.add(sym.impref.modname)
+                self.mod_frameinfo.implicit_imports.add(sym.impref.modname)
             self.set_binding(node, self.scope, sym.replace(frame_depth=frame_depth))
             return
 

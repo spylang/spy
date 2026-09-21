@@ -65,7 +65,7 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING, Iterator, Optional
 
 from spy import ast
-from spy.analyze.symtable import Scope, Symbol, SymTable
+from spy.analyze.symtable import FrameInfo, Scope, Symbol
 from spy.location import Loc
 from spy.util import magic_dispatch
 from spy.vm.b import B
@@ -113,9 +113,9 @@ class Linearizer:
     def linearize(self) -> W_ASTFunc:
         funcdef = self.w_func.funcdef
         new_body = self.rewrite_block(funcdef.body)
-        new_symtable = self._copy_symtable(funcdef.symtable)
+        new_frameinfo = self._copy_frameinfo(funcdef.frameinfo)
         new_funcdef = funcdef.replace(
-            stage="linearized", body=new_body, _symtable=new_symtable
+            stage="linearized", body=new_body, _frameinfo=new_frameinfo
         )
         new_funcdef.assert_valid_at("linearized")
 
@@ -139,8 +139,8 @@ class Linearizer:
 
     # ==== helpers ====
 
-    def _copy_symtable(self, symtable: SymTable) -> SymTable:
-        new_st = symtable.copy()
+    def _copy_frameinfo(self, frameinfo: FrameInfo) -> FrameInfo:
+        new_st = frameinfo.copy()
         for sym in self.new_symbols:
             new_st.add(sym)
         return new_st

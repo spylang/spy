@@ -9,7 +9,7 @@ else:
     from fixedint import FixedInt
 
 from spy import ast
-from spy.analyze.symtable import SymTable
+from spy.analyze.symtable import FrameInfo
 from spy.fqn import FQN
 from spy.parser import Parser
 from spy.textbuilder import TextBuilder
@@ -53,7 +53,7 @@ class SPyBackend:
         self.w_func: W_ASTFunc = None  # type: ignore
         self.vars_declared: set[str] = None  # type: ignore
         self.modname = ""  # set by dump_mod
-        self.scope_stack: list[SymTable] = []
+        self.scope_stack: list[FrameInfo] = []
 
     def dump_mod(self, modname: str) -> str:
         """
@@ -127,7 +127,7 @@ class SPyBackend:
             ret = "None"  # special case: emit '-> None' instead of '-> NoneType'
         else:
             ret = self.fmt_w_obj(w_functype.w_restype)
-        self.scope_stack.append(w_func.funcdef.symtable)
+        self.scope_stack.append(w_func.funcdef.frameinfo)
         self.wl(f"def {name}({params}) -> {ret}:")
         with self.out.indent():
             for stmt in w_func.funcdef.body.body:
@@ -237,8 +237,8 @@ class SPyBackend:
     # statements
 
     def get_vartype_to_declare_maybe(self, varname: str) -> Optional[str]:
-        symtable = self.scope_stack[-1]
-        sym = symtable.lookup(varname)
+        frameinfo = self.scope_stack[-1]
+        sym = frameinfo.lookup(varname)
         if (
             self.w_func is not None
             and self.w_func.stage not in ("parsed", "astcompiled")
@@ -261,7 +261,7 @@ class SPyBackend:
             paramlist.append(f"{n}: {t}")
         params = ", ".join(paramlist)
         ret = self.fmt_expr(funcdef.return_type)
-        self.scope_stack.append(funcdef.symtable)
+        self.scope_stack.append(funcdef.frameinfo)
         self.wl(f"def {name}({params}) -> {ret}:")
         with self.out.indent():
             for stmt in funcdef.body.body:
@@ -271,7 +271,7 @@ class SPyBackend:
     def emit_stmt_ClassDef(self, classdef: ast.ClassDef) -> None:
         assert classdef.kind == "struct", "IMPLEMENT ME"
         name = classdef.name
-        self.scope_stack.append(classdef.symtable)
+        self.scope_stack.append(classdef.frameinfo)
         self.wl("@struct")
         self.wl(f"class {name}:")
         with self.out.indent():

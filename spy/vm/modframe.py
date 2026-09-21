@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 from spy import ast
-from spy.analyze.symtable import Color, SymTable
+from spy.analyze.symtable import Color, FrameInfo
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.astframe import AbstractFrame
@@ -30,8 +30,8 @@ class ModFrame(AbstractFrame):
         mod: ast.Module,
     ) -> None:
         assert mod.stage == "astcompiled"
-        assert mod.symtable.kind == "module"
-        super().__init__(vm, ns, mod.loc, mod.symtable, closure=())
+        assert mod.frameinfo.kind == "module"
+        super().__init__(vm, ns, mod.loc, mod.frameinfo, closure=())
         self.mod = mod
         self.w_mod = W_Module(ns.modname, mod.filename)
         self.vm.register_module(self.w_mod)
@@ -115,7 +115,7 @@ class ModFrame(AbstractFrame):
 
     # NOTE: ast.Import is not (yet?) a statement
     def exec_Import(self, imp: ast.Import) -> None:
-        sym = self.symtable.lookup(imp.asname)
+        sym = self.frameinfo.lookup(imp.asname)
         assert sym.is_local
         assert sym.impref == imp.ref
         w_val = self.vm.lookup_ImportRef(imp.ref)

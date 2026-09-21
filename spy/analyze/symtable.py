@@ -34,7 +34,7 @@ from spy.textbuilder import ColorFormatter
 
 Color = Literal["red", "blue"]
 # "decl-global" (and later "decl-nonlocal") marks an analysis-only marker Symbol
-# placed in a Scope by a `global x` declaration.  It never appears in a SymTable
+# placed in a Scope by a `global x` declaration.  It never appears in a FrameInfo
 # and is never bound to a node at runtime (see scope.collect_Global).
 #
 # "decl-cannot-lift" marks an explicit decl below a lift target, so a later
@@ -115,7 +115,7 @@ class Symbol:
     #   diagnostic messages. A Scope is a collection of symbols indexed by src_name
     #
     # - slot_name is used at runtime to identify a local variable in the running
-    #   ASTFrame. A SymTable is a collection of symbols indexed by slot_name.
+    #   ASTFrame. A FrameInfo is a collection of symbols indexed by slot_name.
     #
     # For example:
     #     def foo() -> None:
@@ -137,7 +137,7 @@ class Symbol:
 
     # frame_depth indicates in which scope the symbol resides:
     #   0: this Symbol is defined in the scope corresponding to
-    #      the current SymTable (i.e., it's a "local variable")
+    #      the current FrameInfo (i.e., it's a "local variable")
     #   1: this is the most immediate outer scope
     #   2: the outer-outer, etc.
     #
@@ -165,7 +165,7 @@ class LookupResult:
     The result of Scope.lookup.
     """
 
-    frame_depth: int  # number of symtables crossed; -1 if not found.
+    frame_depth: int  # number of frames crossed; -1 if not found.
     scope: Optional["Scope"]
     sym: Optional[Symbol]
     has_global_decl: bool  # was there a `global x` declaration in a scope?
@@ -188,7 +188,7 @@ class Scope:
     name: str
     color: Color
     kind: ScopeKind
-    symtable: "SymTable"
+    frameinfo: "FrameInfo"
     symbols: dict[str, Symbol]  # names declared in this scope
 
     # lexical tree links, wired at construction (see __init__): a scope appends
@@ -202,14 +202,14 @@ class Scope:
         color: Color,
         kind: ScopeKind,
         *,
-        symtable: "SymTable",
+        frameinfo: "FrameInfo",
         parent: Optional["Scope"],
     ) -> None:
         self.name = name
         self.color = color
         self.kind = kind
         self.symbols = {}
-        self.symtable = symtable
+        self.frameinfo = frameinfo
         self.children = []
         self.parent = parent
         if parent is not None:
@@ -238,10 +238,10 @@ class Scope:
         from spy.vm.b import BUILTINS
         from spy.vm.function import W_BuiltinFunc
 
-        # the builtins symtable is empty because it should never be reached at
+        # the builtins frameinfo is empty because it should never be reached at
         # runtime: all builtins lookups are resolved at the scope level.
-        symtable = SymTable("builtins", "blue", "module")
-        scope = cls("builtins", "blue", "module", symtable=symtable, parent=None)
+        frameinfo = FrameInfo("builtins", "blue", "module")
+        scope = cls("builtins", "blue", "module", frameinfo=frameinfo, parent=None)
         generic_loc = Loc(
             filename="<builtins>", line_start=0, line_end=0, col_start=0, col_end=0
         )
@@ -287,7 +287,7 @@ class Scope:
         pp_symbols(repr(self), self.symbols, indent)
 
     def add(self, sym: Symbol) -> None:
-        # NOTE: we use src_name as the key (compare and contrast with SymTable.add)
+        # NOTE: we use src_name as the key (compare and contrast with FrameInfo.add)
         assert sym.src_name not in self.symbols
         self.symbols[sym.src_name] = sym
 
@@ -325,13 +325,13 @@ class Scope:
         return LookupResult(-1, None, None, has_global_decl)
 
 
-class SymTable:
+class FrameInfo:
     """
     A flat, per-frame runtime namespace.  It is attached to a FuncDef/ClassDef/
     Module and used at runtime by the frames to index their locals. It contains the
     definition of all the "local variables" of a given frame.
 
-    SymTable also record the color of the frame which it corresponds to:
+    FrameInfo also record the color of the frame which it corresponds to:
 
       - frames associated to red functions are RED
 
@@ -354,20 +354,20 @@ class SymTable:
         self.implicit_imports = set()
 
     @classmethod
-    def from_builtins(cls) -> "SymTable":
+    def from_builtins(cls) -> "FrameInfo":
         builtins_scope = Scope.from_builtins()
-        symtable = cls(builtins_scope.name, builtins_scope.color, builtins_scope.kind)
-        symtable._symbols = dict(builtins_scope.symbols)
-        return symtable
+        frameinfo = cls(builtins_scope.name, builtins_scope.color, builtins_scope.kind)
+        frameinfo._symbols = dict(builtins_scope.symbols)
+        return frameinfo
 
     def __repr__(self) -> str:
-        return f"<SymTable '{self.name}' ({self.color}, {self.kind})>"
+        return f"<FrameInfo '{self.name}' ({self.color}, {self.kind})>"
 
     def pp(self, indent: str = "") -> None:
         pp_symbols(repr(self), self._symbols, indent)
 
-    def copy(self) -> "SymTable":
-        new_st = SymTable(self.name, self.color, self.kind)
+    def copy(self) -> "FrameInfo":
+        new_st = FrameInfo(self.name, self.color, self.kind)
         new_st._symbols = dict(self._symbols)
         new_st.implicit_imports = set(self.implicit_imports)
         return new_st
@@ -431,7 +431,7 @@ class SymTable:
 
 def pp_symbols(header: str, symbols: dict[str, Symbol], indent: str) -> None:
     """
-    Pretty-print a dict of symbols. Shared by Scope.pp and SymTable.pp.
+    Pretty-print a dict of symbols. Shared by Scope.pp and FrameInfo.pp.
     """
     color = ColorFormatter(use_colors=True)
     print(f"{indent}{header}")

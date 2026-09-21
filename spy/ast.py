@@ -18,7 +18,7 @@ from typing import (
     no_type_check,
 )
 
-from spy.analyze.symtable import Color, ImportRef, Scope, Symbol, SymTable, VarKind
+from spy.analyze.symtable import Color, FrameInfo, ImportRef, Scope, Symbol, VarKind
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.util import extend
@@ -282,13 +282,13 @@ class Node:
                 cls = node.__class__.__name__
                 raise Exception(f"Node `ast.{cls}` is not valid at state '{state}'")
 
-            # in ">parsed" state, .scope and .symtable must be not-None
+            # in ">parsed" state, .scope and .frameinfo must be not-None
             if state != "parsed":
                 if isinstance(node, Block) and node.scope is None:
                     raise Exception(f"Block.scope is None at state '{state}'")
-                if hasattr(node, "_symtable") and node._symtable is None:
+                if hasattr(node, "_frameinfo") and node._frameinfo is None:
                     cls = node.__class__.__name__
-                    raise Exception(f"{cls}.symtable is None at state '{state}'")
+                    raise Exception(f"{cls}.frameinfo is None at state '{state}'")
 
     def visit(self, prefix: str, visitor: Any, *args: Any) -> None:
         """
@@ -320,12 +320,12 @@ class Module(Node):
     scoping_rules: ScopingRules
     decls: list["Decl"]
     # None when "parsed', present when ">= astcompiled"
-    _symtable: Optional[SymTable] = field(repr=False, default=None)
+    _frameinfo: Optional[FrameInfo] = field(repr=False, default=None)
 
     @property
-    def symtable(self) -> SymTable:
-        assert self._symtable is not None, "symtable not set (still at parsed stage?)"
-        return self._symtable
+    def frameinfo(self) -> FrameInfo:
+        assert self._frameinfo is not None, "frameinfo not set (still at parsed stage?)"
+        return self._frameinfo
 
     def get_funcdef(self, name: str) -> "FuncDef":
         """
@@ -842,12 +842,12 @@ class FuncDef(Stmt):
 
     # None when "parsed', present when ">= astcompiled"
     _sym: Optional[Symbol] = None
-    _symtable: Optional[SymTable] = field(repr=False, default=None)
+    _frameinfo: Optional[FrameInfo] = field(repr=False, default=None)
 
     @property
-    def symtable(self) -> SymTable:
-        assert self._symtable is not None, "symtable not set (still at parsed stage?)"
-        return self._symtable
+    def frameinfo(self) -> FrameInfo:
+        assert self._frameinfo is not None, "frameinfo not set (still at parsed stage?)"
+        return self._frameinfo
 
     @property
     def sym(self) -> Symbol:
@@ -881,12 +881,12 @@ class GenericFuncDef(Stmt):
     name: str
     args: list[FuncArg]
     inner: FuncDef
-    _symtable: Optional[SymTable] = field(repr=False, default=None)
+    _frameinfo: Optional[FrameInfo] = field(repr=False, default=None)
 
     @property
-    def symtable(self) -> SymTable:
-        assert self._symtable is not None, "symtable not set (still at parsed stage?)"
-        return self._symtable
+    def frameinfo(self) -> FrameInfo:
+        assert self._frameinfo is not None, "frameinfo not set (still at parsed stage?)"
+        return self._frameinfo
 
     def shortrepr(self) -> Optional[str]:
         return self.name
@@ -901,12 +901,12 @@ class ClassDef(Stmt):
     body: Block
 
     _sym: Optional[Symbol] = None  # None when "parsed", present when ">= astcompiled"
-    _symtable: Optional[SymTable] = field(repr=False, default=None)
+    _frameinfo: Optional[FrameInfo] = field(repr=False, default=None)
 
     @property
-    def symtable(self) -> SymTable:
-        assert self._symtable is not None, "symtable not set (still at parsed stage?)"
-        return self._symtable
+    def frameinfo(self) -> FrameInfo:
+        assert self._frameinfo is not None, "frameinfo not set (still at parsed stage?)"
+        return self._frameinfo
 
     @property
     def sym(self) -> Symbol:
@@ -933,12 +933,12 @@ class GenericClassDef(Stmt):
     name: str
     args: list[FuncArg]
     inner: ClassDef
-    _symtable: Optional[SymTable] = field(repr=False, default=None)
+    _frameinfo: Optional[FrameInfo] = field(repr=False, default=None)
 
     @property
-    def symtable(self) -> SymTable:
-        assert self._symtable is not None, "symtable not set (still at parsed stage?)"
-        return self._symtable
+    def frameinfo(self) -> FrameInfo:
+        assert self._frameinfo is not None, "frameinfo not set (still at parsed stage?)"
+        return self._frameinfo
 
     def shortrepr(self) -> Optional[str]:
         return self.name

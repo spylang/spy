@@ -12,7 +12,7 @@ from spy.vm.b import B
 
 
 def assert_node_dump(node: ast.Node, expected: str):
-    dumped = dump(node, use_colors=False, fields_to_ignore=("_symtable",))
+    dumped = dump(node, use_colors=False, fields_to_ignore=("_frameinfo",))
     dumped = dumped.strip()
     expected = textwrap.dedent(expected).strip()
     if dumped != expected:
