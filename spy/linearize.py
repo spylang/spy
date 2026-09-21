@@ -201,7 +201,7 @@ class Linearizer:
             slot_name=name,
             loc=loc,
             type_loc=loc,
-            level=0,
+            frame_depth=0,
         )
         self.new_symbols.append(sym)
         return name, sym

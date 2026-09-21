@@ -45,7 +45,7 @@ class ScopeAnalyzer:
 
       1. collect: walk all statements that introduce new names (VarDef, FuncDef,
          Import, etc.) and add a Symbol to the current Scope.  After this pass,
-         every Scope contains the names directly defined in it (sym.level == 0)
+         every Scope contains the names directly defined in it (sym.frame_depth == 0)
          and is read-only.
 
          During this pass we also create a SymTable for each FuncDef and other nodes
@@ -154,7 +154,7 @@ class ScopeAnalyzer:
 
         # `frames` are the enclosing runtime frames, innermost first: frames[0] is
         # the current frame, frames[1] the parent frame, etc.  A name resolved
-        # with sym.level == N lives in frames[N].
+        # with sym.frame_depth == N lives in frames[N].
         def dump_scope(scope: Scope, frames: list[SymTable]) -> None:
             b.wl(f"scope {scope.short_name}:")
             with b.indent():
@@ -220,11 +220,11 @@ class ScopeAnalyzer:
             return color.set("yellow", f"{src_name} -> {errname}")
         sym = res
         name = color.set(self._varkind_color(sym), src_name)
-        if sym.level > 0:
+        if sym.frame_depth > 0:
             # the name is resolved in an outer frame: show which one, and how many
             # frame boundaries away it is
-            frame = frames[sym.level]
-            s = f"{name} -> {sym.slot_name} @ {frame.name} (depth={sym.level})"
+            frame = frames[sym.frame_depth]
+            s = f"{name} -> {sym.slot_name} @ {frame.name} (depth={sym.frame_depth})"
         else:
             s = f"{name} -> {sym.slot_name}"
         return s + self._fmt_impref(sym)
@@ -369,7 +369,7 @@ class ScopeAnalyzer:
         valid_from: Optional[int] = None,
     ) -> Symbol:
         """
-        Add a name definition to the given scope and its symtable (level 0).
+        Add a name definition to the given scope and its symtable (frame_depth 0).
 
         By default, `scope` is `self.scope`. It differs only in case of implicit
         declarations which happens inside `if` blocks, which are lifted to their
@@ -422,7 +422,7 @@ class ScopeAnalyzer:
             loc=loc,
             type_loc=type_loc,
             impref=impref,
-            level=0,
+            frame_depth=0,
         )
         scope.add(new_sym)
         symtable.add(new_sym)
@@ -738,7 +738,7 @@ class ScopeAnalyzer:
                     slot_name=varname,
                     loc=vardef.loc,
                     type_loc=vardef.type.loc,
-                    level=0,
+                    frame_depth=0,
                 )
                 lift_target.add(marker)
             elif sym.decl_origin == "implicit":
@@ -816,7 +816,7 @@ class ScopeAnalyzer:
         if res.has_global_decl:
             # [global.write]: if there is `global x`, it's NOT an implicit decl
             return
-        if res.found and res.level == 0:
+        if res.found and res.frame_depth == 0:
             # the name is already present in the current frame: reassign it
             assert res.scope is not None and res.sym is not None
             if res.sym.varkind == "const" and res.sym.varkind_origin == "auto":
@@ -893,7 +893,7 @@ class ScopeAnalyzer:
                 slot_name=name,
                 loc=glob.loc,
                 type_loc=glob.loc,
-                level=0,
+                frame_depth=0,
             )
             self.scope.add(marker)
 
@@ -927,14 +927,14 @@ class ScopeAnalyzer:
         # in _resolved_nodes); astcompile turns it into an ast.PoisonExpr.
 
         res = self.scope.lookup(varname)
-        level, sym = res.level, res.sym
+        frame_depth, sym = res.frame_depth, res.sym
 
         if not res.found:
             # name not found: the node resolves to a lazy NameError (no Symbol)
             self.set_binding(node, self.scope, self.make_NameError(varname, use_loc))
             return
 
-        elif level == 0:
+        elif frame_depth == 0:
             # found in the local symtable
             assert sym is not None
             if sym.is_local and node in self.seq:
@@ -963,7 +963,7 @@ class ScopeAnalyzer:
             assert sym is not None
             if sym.impref is not None:
                 self.mod_symtable.implicit_imports.add(sym.impref.modname)
-            self.set_binding(node, self.scope, sym.replace(level=level))
+            self.set_binding(node, self.scope, sym.replace(frame_depth=frame_depth))
             return
 
     def lookup_and_bind_target(
@@ -978,7 +978,7 @@ class ScopeAnalyzer:
         res = self.scope.lookup(varname)
         sym = res.sym
         if (
-            res.level > 0
+            res.frame_depth > 0
             and res.scope is not None
             and res.scope.kind == "module"
             and not res.has_global_decl
@@ -1108,7 +1108,7 @@ class ScopeAnalyzer:
     def bind_VarDef(self, vardef: ast.VarDef) -> None:
         # a VarDef must have a local symbol in the current scope, get it
         sym = self.scope.symbols[vardef.name.value]
-        assert sym.level == 0
+        assert sym.frame_depth == 0
         self.set_binding(vardef, self.scope, sym)
         self.bind(vardef.type)
         if vardef.value is not None:

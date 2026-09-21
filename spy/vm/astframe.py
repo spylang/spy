@@ -838,7 +838,7 @@ class AbstractFrame:
         color: Color = "blue"  # closed-over variables are always blue
         sym = name.sym
         assert not sym.is_local
-        outervars = self.closure[-sym.level]
+        outervars = self.closure[-sym.frame_depth]
         w_val = outervars[sym.slot_name].w_val
         assert w_val is not None
         w_T = self.vm.dynamic_type(w_val)
@@ -851,7 +851,7 @@ class AbstractFrame:
         if name.fqn is not None:
             w_cell = self.vm.lookup_global(name.fqn)
         else:
-            outervars = self.closure[-sym.level]
+            outervars = self.closure[-sym.frame_depth]
             w_cell = outervars[sym.slot_name].w_val
         assert isinstance(w_cell, W_Cell)
         w_val = w_cell.get()
@@ -901,7 +901,7 @@ class AbstractFrame:
             if target_fqn is not None:
                 w_cell = self.vm.lookup_global(target_fqn)
             else:
-                outervars = self.closure[-sym.level]
+                outervars = self.closure[-sym.frame_depth]
                 w_cell = outervars[sym.slot_name].w_val
             assert isinstance(w_cell, W_Cell)
             w_cell.set(wam.w_val)

@@ -135,7 +135,7 @@ class Symbol:
     loc: Loc  # where the symbol is defined, in the source code
     type_loc: Loc  # loc of the TYPE of the symbols
 
-    # level indicates in which scope the symbol resides:
+    # frame_depth indicates in which scope the symbol resides:
     #   0: this Symbol is defined in the scope corresponding to
     #      the current SymTable (i.e., it's a "local variable")
     #   1: this is the most immediate outer scope
@@ -145,7 +145,7 @@ class Symbol:
     #   * 0: local variables inside the funcdef
     #   * 1: module-level scope
     #   * 2: builtins
-    level: int  # TODO: rename to frame_depth
+    frame_depth: int
     impref: Optional[ImportRef] = None
 
     def replace(self, **kwargs: Any) -> "Symbol":
@@ -153,7 +153,7 @@ class Symbol:
 
     @property
     def is_local(self) -> bool:
-        return self.level == 0
+        return self.frame_depth == 0
 
     def pp(self) -> None:
         pprint.pprint(self)
@@ -165,14 +165,14 @@ class LookupResult:
     The result of Scope.lookup.
     """
 
-    level: int  # frame depth (i.e, number of symtables crossed); -1 if not found.
+    frame_depth: int  # number of symtables crossed; -1 if not found.
     scope: Optional["Scope"]
     sym: Optional[Symbol]
     has_global_decl: bool  # was there a `global x` declaration in a scope?
 
     @property
     def found(self) -> bool:
-        return self.level != -1
+        return self.frame_depth != -1
 
 
 class Scope:
@@ -255,7 +255,7 @@ class Scope:
                 slot_name=attr,
                 loc=loc or generic_loc,
                 type_loc=loc or generic_loc,
-                level=0,
+                frame_depth=0,
                 impref=impref,
             )
             scope.add(sym)
@@ -391,7 +391,7 @@ class SymTable:
             slot_name=slot_name,
             loc=loc,
             type_loc=loc,
-            level=0,
+            frame_depth=0,
         )
         self.add(sym)
         return sym
@@ -436,12 +436,12 @@ def pp_symbols(header: str, symbols: dict[str, Symbol], indent: str) -> None:
     color = ColorFormatter(use_colors=True)
     print(f"{indent}{header}")
     # sort symbols by:
-    #   1. level
+    #   1. frame_depth
     #   2. color (const, then var)
     #   3. name (@special names last)
     sorted_symbols = sorted(
         symbols.values(),
-        key=lambda sym: (sym.level, sym.varkind, sym.src_name.replace("@", "~")),
+        key=lambda sym: (sym.frame_depth, sym.varkind, sym.src_name.replace("@", "~")),
     )
     for sym in sorted_symbols:
         sym_color = "blue" if sym.varkind == "const" else "red"
@@ -453,5 +453,5 @@ def pp_symbols(header: str, symbols: dict[str, Symbol], indent: str) -> None:
         if sym.storage == "cell":
             storage = "[cell]"
         print(
-            f"{indent}    [{sym.level}] {sym.varkind:5s} {sym_name} {storage} {impref}"
+            f"{indent}    [{sym.frame_depth}] {sym.varkind:5s} {sym_name} {storage} {impref}"
         )

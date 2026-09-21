@@ -242,7 +242,7 @@ class SPyBackend:
         if (
             self.w_func is not None
             and self.w_func.stage not in ("parsed", "astcompiled")
-            and sym.level == 0
+            and sym.frame_depth == 0
             and varname not in self.vars_declared
         ):
             assert self.w_func.locals_types_w is not None

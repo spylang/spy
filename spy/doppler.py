@@ -577,7 +577,7 @@ class DopplerFrame(ASTFrame):
         # so we want to record it in the node. This is a small code duplication with
         # ASTFrame, but too bad.  See also shift_stmt_AssignCell.
         sym = name.sym
-        outervars = self.closure[-sym.level]
+        outervars = self.closure[-sym.frame_depth]
         w_cell = outervars[sym.slot_name].w_val
         assert isinstance(w_cell, W_Cell)
         return name.replace(w_T=wam.w_static_T, fqn=w_cell.fqn)
@@ -754,7 +754,7 @@ class DopplerFrame(ASTFrame):
         # at redshift time we KNOW the FQN of the cell
         assert assignexpr.target_fqn is None, "already redshifted?"
         sym = assignexpr.sym
-        outervars = self.closure[-sym.level]
+        outervars = self.closure[-sym.frame_depth]
         w_cell = outervars[sym.slot_name].w_val
         assert isinstance(w_cell, W_Cell)
         return assignexpr.replace(

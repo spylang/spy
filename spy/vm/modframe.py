@@ -86,7 +86,7 @@ class ModFrame(AbstractFrame):
         # used both as the runtime slot and as the module attribute / FQN name.
         varname = sym.slot_name
         fqn = self.ns.join(varname)
-        assert sym.level == 0, "module assign to name declared outside?"
+        assert sym.frame_depth == 0, "module assign to name declared outside?"
 
         # evaluate the right side of the vardef
         assert vardef.value is not None
