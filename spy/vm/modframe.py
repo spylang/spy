@@ -1,7 +1,7 @@
 from typing import TYPE_CHECKING
 
 from spy import ast
-from spy.analyze.symtable import Color, FrameInfo
+from spy.analyze.sym import Color, FrameInfo
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.astframe import AbstractFrame

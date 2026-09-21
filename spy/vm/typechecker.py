@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Literal, NoReturn, Optional
 
-from spy.analyze.symtable import Color
+from spy.analyze.sym import Color
 from spy.errors import SPyError
 from spy.location import Loc
 from spy.vm.exc import W_TypeError

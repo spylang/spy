@@ -7,7 +7,7 @@ from typing import Any, Literal, Optional, Sequence
 
 import spy.ast
 from spy import ROOT
-from spy.analyze.symtable import Color, Symbol
+from spy.analyze.sym import Color, Symbol
 from spy.backend.spy import SPyBackend
 from spy.util import build_char_color_map, encode_color_map
 from spy.vm.vm import SPyVM

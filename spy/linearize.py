@@ -65,7 +65,7 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING, Iterator, Optional
 
 from spy import ast
-from spy.analyze.symtable import FrameInfo, Scope, Symbol
+from spy.analyze.sym import FrameInfo, Scope, Symbol
 from spy.location import Loc
 from spy.util import magic_dispatch
 from spy.vm.b import B

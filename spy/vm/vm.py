@@ -9,7 +9,7 @@ import fixedint
 import py
 
 from spy import ROOT, ast, libspy
-from spy.analyze.symtable import Color, FrameInfo, ImportRef, maybe_blue
+from spy.analyze.sym import Color, FrameInfo, ImportRef, maybe_blue
 from spy.ast import Color, FuncKind
 from spy.build.build_info import BuildInfoFunc
 from spy.doppler import ErrorMode, redshift

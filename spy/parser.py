@@ -13,7 +13,7 @@ import fixedint
 from fixedint.base import FixedInt
 
 import spy.ast
-from spy.analyze.symtable import ImportRef, VarKind
+from spy.analyze.sym import ImportRef, VarKind
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.location import Loc

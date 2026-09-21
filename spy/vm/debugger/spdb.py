@@ -8,7 +8,7 @@ import sys
 from typing import IO, TYPE_CHECKING, Annotated, Any, Literal, Optional
 
 from spy import ast
-from spy.analyze.symtable import Scope
+from spy.analyze.sym import Scope
 from spy.astcompile import astcompile_interactive
 from spy.doppler import DopplerFrame
 from spy.errfmt import ErrorFormatter

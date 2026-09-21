@@ -1,7 +1,7 @@
 from typing import Optional
 
 from spy import ast
-from spy.analyze.symtable import (
+from spy.analyze.sym import (
     Color,
     DeclOrigin,
     FrameInfo,

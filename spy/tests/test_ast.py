@@ -3,7 +3,7 @@ from typing import cast
 import pytest
 
 from spy import ast
-from spy.analyze.symtable import Scope
+from spy.analyze.sym import Scope
 from spy.ast import _parse_stage_spec, astnode
 from spy.location import Loc
 

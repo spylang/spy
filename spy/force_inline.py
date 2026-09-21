@@ -5,7 +5,7 @@ Helpers for @force_inline: validation and inlining mechanics.
 from typing import TYPE_CHECKING
 
 from spy import ast
-from spy.analyze.symtable import FrameInfo, Symbol
+from spy.analyze.sym import FrameInfo, Symbol
 from spy.doppler import make_const
 from spy.errors import SPyError
 from spy.util import magic_dispatch

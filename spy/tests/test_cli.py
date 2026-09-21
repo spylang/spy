@@ -404,10 +404,8 @@ class TestMain:
             "Removed" in stdout and ".spyc file(s)" in stdout
         )
 
-    def test_symtable(self):
-        # FIXME! the CLI command is still called "symtable" (user-facing name unchanged),
-        # even though it now dumps FrameInfo objects
-        _, stdout = self.run("symtable", self.main_spy)
+    def test_scopes(self):
+        _, stdout = self.run("scopes", self.main_spy)
         assert "frameinfo main::main (function):" in stdout
 
     def test_imports(self):

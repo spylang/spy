@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Never, Optional, Sequence
 from fixedint import Int8, Int32, Int64, UInt8, UInt32, UInt64
 
 from spy import ast
-from spy.analyze.symtable import Color, FrameInfo, Symbol, maybe_blue
+from spy.analyze.sym import Color, FrameInfo, Symbol, maybe_blue
 from spy.errors import WIP, SPyError
 from spy.fqn import FQN
 from spy.location import Loc

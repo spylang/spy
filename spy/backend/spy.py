@@ -9,7 +9,7 @@ else:
     from fixedint import FixedInt
 
 from spy import ast
-from spy.analyze.symtable import FrameInfo
+from spy.analyze.sym import FrameInfo
 from spy.fqn import FQN
 from spy.parser import Parser
 from spy.textbuilder import TextBuilder

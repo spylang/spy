@@ -11,7 +11,7 @@ Moreover, do other easy desugaring like converting `for` loops into `while` loop
 from typing import TYPE_CHECKING, Optional
 
 import spy.ast as ast
-from spy.analyze.symtable import FrameInfo, Scope, Symbol
+from spy.analyze.sym import FrameInfo, Scope, Symbol
 from spy.ast import LoweringStage
 from spy.errors import WIP, SPyError
 from spy.location import Loc

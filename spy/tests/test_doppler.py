@@ -4,7 +4,7 @@ from typing import Optional
 import pytest
 
 from spy import ast
-from spy.analyze.symtable import Color
+from spy.analyze.sym import Color
 from spy.backend.spy import FQN_FORMAT, SPyBackend
 from spy.errors import SPyError
 from spy.fqn import FQN

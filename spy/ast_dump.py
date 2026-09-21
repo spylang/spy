@@ -2,7 +2,7 @@ import ast as py_ast
 from typing import TYPE_CHECKING, Any, Optional
 
 import spy.ast
-from spy.analyze.symtable import Color, Symbol
+from spy.analyze.sym import Color, Symbol
 from spy.textbuilder import TextBuilder
 
 if TYPE_CHECKING:

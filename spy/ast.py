@@ -18,7 +18,7 @@ from typing import (
     no_type_check,
 )
 
-from spy.analyze.symtable import Color, FrameInfo, ImportRef, Scope, Symbol, VarKind
+from spy.analyze.sym import Color, FrameInfo, ImportRef, Scope, Symbol, VarKind
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.util import extend

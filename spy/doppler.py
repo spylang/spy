@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING, Literal, Optional
 from fixedint import FixedInt
 
 from spy import ast
-from spy.analyze.symtable import Color, Symbol
+from spy.analyze.sym import Color, Symbol
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.location import Loc

@@ -1,4 +1,4 @@
-from spy.analyze.symtable import FrameInfo
+from spy.analyze.sym import FrameInfo
 
 
 def test_get_fresh_slot_no_double_suffix():

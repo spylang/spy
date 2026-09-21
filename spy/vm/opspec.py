@@ -29,7 +29,7 @@ blue and can be optimized away during redshifting.
 
 from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Optional, no_type_check
 
-from spy.analyze.symtable import Color, Symbol
+from spy.analyze.sym import Color, Symbol
 from spy.errors import SPyError
 from spy.location import Loc
 from spy.vm.b import OPERATOR, B
