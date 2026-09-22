@@ -182,7 +182,7 @@ class CompilerConfig:
             ).stdout.strip()
             if prefix:
                 self.cflags += ["-I", f"{prefix}/include"]
-                self.ldflags += ["-L", f"{prefix}/lib"]
+                self.ldflags += ["-L", f"{prefix}/lib", "-lgc"]
                 return
 
         # 4. fallback, let's hope libgc is installed system-wide
