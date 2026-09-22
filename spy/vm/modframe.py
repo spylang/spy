@@ -1,8 +1,7 @@
 from typing import TYPE_CHECKING
 
 from spy import ast
-from spy.analyze.scope import ScopeAnalyzer
-from spy.analyze.symtable import Color, SymTable
+from spy.analyze.sym import Color, FrameInfo
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.astframe import AbstractFrame
@@ -23,7 +22,6 @@ class ModFrame(AbstractFrame):
     vm: "SPyVM"
     modname: str
     mod: ast.Module
-    scopes: ScopeAnalyzer
 
     def __init__(
         self,
@@ -32,9 +30,8 @@ class ModFrame(AbstractFrame):
         mod: ast.Module,
     ) -> None:
         assert mod.stage == "astcompiled"
-        assert mod.symtable is not None
-        assert mod.symtable.kind == "module"
-        super().__init__(vm, ns, mod.loc, mod.symtable, closure=())
+        assert mod.frameinfo.kind == "module"
+        super().__init__(vm, ns, mod.loc, mod.frameinfo, closure=())
         self.mod = mod
         self.w_mod = W_Module(ns.modname, mod.filename)
         self.vm.register_module(self.w_mod)
@@ -84,10 +81,12 @@ class ModFrame(AbstractFrame):
 
     def exec_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
         vardef = decl.vardef
-        varname = vardef.name.value
+        sym = vardef.sym
+        # module-level names are not mangled, so slot_name == src_name and can be
+        # used both as the runtime slot and as the module attribute / FQN name.
+        varname = sym.slot_name
         fqn = self.ns.join(varname)
-        sym = self.symtable.lookup(varname)
-        assert sym.level == 0, "module assign to name declared outside?"
+        assert sym.frame_depth == 0, "module assign to name declared outside?"
 
         # evaluate the right side of the vardef
         assert vardef.value is not None
@@ -104,27 +103,27 @@ class ModFrame(AbstractFrame):
 
         # do the assignment
         if sym.storage == "direct":
-            self.store_local(sym.name, wam.w_val)
+            self.store_local(sym.slot_name, wam.w_val)
 
         elif sym.storage == "cell":
             w_cell = W_Cell(fqn, wam.w_val)
             self.vm.add_global(fqn, w_cell)
-            self.store_local(sym.name, w_cell)
+            self.store_local(sym.slot_name, w_cell)
 
         else:
             assert False
 
     # NOTE: ast.Import is not (yet?) a statement
     def exec_Import(self, imp: ast.Import) -> None:
-        sym = self.symtable.lookup(imp.asname)
+        sym = self.frameinfo.lookup(imp.asname)
         assert sym.is_local
         assert sym.impref == imp.ref
         w_val = self.vm.lookup_ImportRef(imp.ref)
         if w_val is not None:
             # import successful
             w_T = self.vm.dynamic_type(w_val)
-            self.declare_local(sym.name, "blue", w_T, imp.loc)
-            self.store_local(sym.name, w_val)
+            self.declare_local(sym.slot_name, "blue", w_T, imp.loc)
+            self.store_local(sym.slot_name, w_val)
             return
 
         if imp.ref.modname not in self.vm.modules_w:

@@ -25,8 +25,8 @@ class ClassFrame(AbstractFrame):
     def __init__(
         self, vm: "SPyVM", classdef: ast.ClassDef, ns: FQN, closure: CLOSURE
     ) -> None:
-        assert classdef.symtable.kind == "class"
-        super().__init__(vm, ns, classdef.loc, classdef.symtable, closure)
+        assert classdef.frameinfo.kind == "class"
+        super().__init__(vm, ns, classdef.loc, classdef.frameinfo, closure)
         self.classdef = classdef
 
     def __repr__(self) -> str:
@@ -41,8 +41,7 @@ class ClassFrame(AbstractFrame):
         assert isinstance(w_str_type_dict, W_Type)
         self.declare_local("__extra_fields__", "red", w_str_type_dict, Loc.fake())
 
-        for stmt in self.classdef.body:
-            self.exec_stmt(stmt)
+        self.exec_Block(self.classdef.body)
 
         body = ClassBody(self.classdef.loc, fields_w={}, dict_w={})
         for name, lv in self.locals.items():
@@ -55,6 +54,7 @@ class ClassFrame(AbstractFrame):
                 continue
             if lv.w_val is None:
                 # locals declared but not assigned
+                assert lv.w_T is not None
                 body.fields_w[name] = W_Field(name, lv.w_T, lv.decl_loc)
             else:
                 body.dict_w[name] = lv.w_val

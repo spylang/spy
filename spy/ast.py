@@ -18,12 +18,13 @@ from typing import (
     no_type_check,
 )
 
-from spy.analyze.symtable import Color, ImportRef, Symbol, VarKind
+from spy.analyze.sym import Color, FrameInfo, ImportRef, Scope, Symbol, VarKind
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.util import extend
 
 if TYPE_CHECKING:
+    from spy.errors import SPyError
     from spy.vm.object import W_Object, W_Type
     from spy.vm.vm import SPyVM
 
@@ -66,6 +67,7 @@ LoweringStage = typing.Literal[
 ClassKind = typing.Literal["class", "struct"]
 FuncKind = typing.Literal["plain", "generic", "metafunc"]
 FuncParamKind = typing.Literal["simple", "var_positional"]
+ScopingRules = typing.Literal["strict", "pythonic"]
 
 
 @extend(py_ast.AST)
@@ -84,10 +86,31 @@ class AST:
         raise ValueError(f"{self.__class__.__name__} does not have a location")
 
     @no_type_check
-    def compute_all_locs(self, filename: str) -> None:
+    def compute_all_locs(self, filename: str, src: str) -> None:
         """
         Compute .loc for itself and all its descendants.
+
+        src should be the preprocessed source (as passed to ast.parse). Python
+        reports col_offset/end_col_offset as UTF-8 byte offsets of that
+        source, so we need it to convert back to character offsets.
+
+        See test_parser::test_loc_with_unicode_chars.
         """
+        # Build a per-line byte->char offset converter from the preprocessed source.
+        # For lines that contain only ASCII the mapping is identity; for lines with
+        # multi-byte chars we decode the UTF-8 prefix to find the char position.
+        lines_bytes: list[bytes] = []
+        for line in src.splitlines(keepends=True):
+            lines_bytes.append(line.encode("utf-8"))
+
+        def byte_to_char(lineno: int, byte_col: int) -> int:
+            # lineno is 1-based; lines_bytes is 0-based
+            if not lines_bytes or lineno > len(lines_bytes):
+                return byte_col
+            lb = lines_bytes[lineno - 1]
+            # decode only the prefix up to byte_col to get the char count
+            return len(lb[:byte_col].decode("utf-8"))
+
         for py_node in py_ast.walk(self):  # type: ignore
             if hasattr(py_node, "lineno"):
                 assert py_node.end_lineno is not None
@@ -96,8 +119,8 @@ class AST:
                     filename=filename,
                     line_start=py_node.lineno,
                     line_end=py_node.end_lineno,
-                    col_start=py_node.col_offset,
-                    col_end=py_node.end_col_offset,
+                    col_start=byte_to_char(py_node.lineno, py_node.col_offset),
+                    col_end=byte_to_char(py_node.end_lineno, py_node.end_col_offset),
                 )
                 py_node._loc = loc
 
@@ -259,6 +282,18 @@ class Node:
                 cls = node.__class__.__name__
                 raise Exception(f"Node `ast.{cls}` is not valid at state '{state}'")
 
+            # in ">parsed" state, .scope and .frameinfo must be not-None
+            if state != "parsed":
+                if isinstance(node, Block) and node.scope is None:
+                    raise Exception(f"Block.scope is None at state '{state}'")
+                if hasattr(node, "_frameinfo") and node._frameinfo is None:
+                    cls = node.__class__.__name__
+                    raise Exception(f"{cls}.frameinfo is None at state '{state}'")
+                if isinstance(node, Module) and node._implicit_imports is None:
+                    raise Exception(
+                        f"Module.implicit_imports is None at state '{state}'"
+                    )
+
     def visit(self, prefix: str, visitor: Any, *args: Any) -> None:
         """
         Generic visitor algorithm.
@@ -286,8 +321,23 @@ class Module(Node):
     stage: LoweringStage
     filename: str
     docstring: Optional[str]
+    scoping_rules: ScopingRules
     decls: list["Decl"]
-    symtable: Any = field(repr=False, default=None)
+    # None when "parsed', present when ">= astcompiled"
+    _frameinfo: Optional[FrameInfo] = field(repr=False, default=None)
+    _implicit_imports: Optional[set[str]] = field(repr=False, default=None)
+
+    @property
+    def frameinfo(self) -> FrameInfo:
+        assert self._frameinfo is not None, "frameinfo not set (still at parsed stage?)"
+        return self._frameinfo
+
+    @property
+    def implicit_imports(self) -> set[str]:
+        assert self._implicit_imports is not None, (
+            "implicit_imports not set (still at parsed stage?)"
+        )
+        return self._implicit_imports
 
     def get_funcdef(self, name: str) -> "FuncDef":
         """
@@ -416,6 +466,14 @@ class Name(Expr):
         return self.id
 
 
+@astnode("parsed")
+class NameTemp(Expr):
+    # read a temp var. This is a transient node created by astcompiler when desugaring.
+    # It is lowered to NameLocalDirect by compile_expr.  See also AssignTemp.
+    precedence = 100  # the highest
+    sym: Symbol
+
+
 @astnode(">= astcompiled")
 class NameLocalDirect(Expr):
     precedence = 100  # the highest
@@ -448,30 +506,19 @@ class NameImportRef(Expr):
 
 
 @astnode(">= astcompiled")
-class NameInteractive(Expr):
+class PoisonExpr(Expr):
     """
-    A Name lookup which is resolved dynamically.
+    Poison node that carries a pre-built SPyError, to enable lazy static errors.
 
-    This is generated only by astcompile_interactive, when the name is not found in the
-    surrounding symtable.  It's mostly meant to be used by SPdb.
-
-    See e.g. test_astcompile::test_NameInteractive and test_spdb::test_NameInteractive
-    """
-
-    precedence = 100
-    id: str
-
-
-@astnode(">= astcompiled")
-class NameError(Expr):
-    """
-    Poison node needed to enable lazy NameErrors.
-
-    Produced by astcompiler when ast.Name refers to unknown IDs.
+    The error is constructed by ScopeAnalyzer (scope.py), which has all the
+    diagnostic context (declaration sites, help messages, ...).  astcompile puts
+    it in the expression slot where the offending name/assignment was; the error
+    is only raised if/when the expression is actually evaluated (so a static
+    error in a never-called red function never fires).
     """
 
     precedence = 100
-    id: str
+    err: "SPyError"
 
 
 # === /Name family ===
@@ -480,6 +527,12 @@ class NameError(Expr):
 @astnode
 class Auto(Expr):
     precedence = 100  # the highest
+
+    def as_typed_node(self) -> "Auto":
+        from spy.vm.b import B
+
+        assert self.w_T is None
+        return self.replace(w_T=B.w_type)
 
 
 @astnode
@@ -751,19 +804,6 @@ class AssignExprCell(Expr):
     value: Expr
 
 
-@astnode(">= astcompiled")
-class AssignExprConstError(Expr):
-    """
-    Poison node for assignment to a const target.
-
-    Produced by astcompiler instead of raising eagerly.
-    """
-
-    precedence = 0
-    sym: Symbol
-    target_loc: Loc
-
-
 # ====== Stmt hierarchy ======
 
 
@@ -773,10 +813,26 @@ class Stmt(Node):
 
 
 @astnode
+class Block(Node):
+    body: list["Stmt"]
+
+    # the scope as computed by ScopeAnalyzer: this basically serves the role of "debug
+    # info" for interactive name resolution (e.g. for spdb).
+    # None when "parsed', present when ">= astcompiled"
+    scope: Optional[Scope] = field(repr=False, default=None, compare=False)
+
+
+@astnode
 class FuncArg(Node):
     name: str
     type: "Expr"
     kind: FuncParamKind
+    _sym: Optional[Symbol] = None  # None when "parsed", present when ">= astcompiled"
+
+    @property
+    def sym(self) -> Symbol:
+        assert self._sym is not None
+        return self._sym
 
     def shortrepr(self) -> Optional[str]:
         return f"{self.name} {self.kind}"
@@ -792,9 +848,23 @@ class FuncDef(Stmt):
     return_type: "Expr"
     defaults: list[Expr]
     docstring: Optional[str]
-    body: list["Stmt"]
+    scoping_rules: ScopingRules
+    body: Block
     decorators: list["Expr"]
-    symtable: Any = field(repr=False, default=None)
+
+    # None when "parsed', present when ">= astcompiled"
+    _sym: Optional[Symbol] = None
+    _frameinfo: Optional[FrameInfo] = field(repr=False, default=None)
+
+    @property
+    def frameinfo(self) -> FrameInfo:
+        assert self._frameinfo is not None, "frameinfo not set (still at parsed stage?)"
+        return self._frameinfo
+
+    @property
+    def sym(self) -> Symbol:
+        assert self._sym is not None
+        return self._sym
 
     def shortrepr(self) -> Optional[str]:
         return f"{self.color} {self.name}"
@@ -823,7 +893,12 @@ class GenericFuncDef(Stmt):
     name: str
     args: list[FuncArg]
     inner: FuncDef
-    symtable: Any = field(repr=False, default=None)
+    _frameinfo: Optional[FrameInfo] = field(repr=False, default=None)
+
+    @property
+    def frameinfo(self) -> FrameInfo:
+        assert self._frameinfo is not None, "frameinfo not set (still at parsed stage?)"
+        return self._frameinfo
 
     def shortrepr(self) -> Optional[str]:
         return self.name
@@ -835,8 +910,20 @@ class ClassDef(Stmt):
     name: str
     kind: ClassKind
     docstring: Optional[str]
-    body: list["Stmt"]
-    symtable: Any = field(repr=False, default=None)
+    body: Block
+
+    _sym: Optional[Symbol] = None  # None when "parsed", present when ">= astcompiled"
+    _frameinfo: Optional[FrameInfo] = field(repr=False, default=None)
+
+    @property
+    def frameinfo(self) -> FrameInfo:
+        assert self._frameinfo is not None, "frameinfo not set (still at parsed stage?)"
+        return self._frameinfo
+
+    @property
+    def sym(self) -> Symbol:
+        assert self._sym is not None
+        return self._sym
 
     def shortrepr(self) -> Optional[str]:
         return f"{self.kind} {self.name}"
@@ -858,7 +945,12 @@ class GenericClassDef(Stmt):
     name: str
     args: list[FuncArg]
     inner: ClassDef
-    symtable: Any = field(repr=False, default=None)
+    _frameinfo: Optional[FrameInfo] = field(repr=False, default=None)
+
+    @property
+    def frameinfo(self) -> FrameInfo:
+        assert self._frameinfo is not None, "frameinfo not set (still at parsed stage?)"
+        return self._frameinfo
 
     def shortrepr(self) -> Optional[str]:
         return self.name
@@ -880,6 +972,12 @@ class VarDef(Stmt):
     name: StrLiteral
     type: Expr
     value: Optional[Expr]
+    _sym: Optional[Symbol] = None  # None when "parsed", present when ">= astcompiled"
+
+    @property
+    def sym(self) -> Symbol:
+        assert self._sym is not None
+        return self._sym
 
 
 @astnode
@@ -933,9 +1031,12 @@ class AugAssign(Stmt):
         return self.op
 
 
-@astnode(">= astcompiled")
-class AssignConstError(Stmt):
-    expr: AssignExprConstError
+@astnode("parsed")
+class AssignTemp(Stmt):
+    # write to temp var. This is a transient node created by astcompiler when desugaring.
+    # It is lowered to AssignLocal by compile_expr.  See also NameTemp.
+    sym: Symbol
+    value: Expr
 
 
 @astnode(">= astcompiled")
@@ -992,18 +1093,18 @@ class AugSetItem(Stmt):
 @astnode
 class If(Stmt):
     test: Expr
-    then_body: list[Stmt]
-    else_body: list[Stmt]
+    then: Block
+    else_: Block
 
     @property
     def has_else(self) -> bool:
-        return len(self.else_body) > 0
+        return len(self.else_.body) > 0
 
 
 @astnode
 class While(Stmt):
     test: Expr
-    body: list[Stmt]
+    body: Block
 
 
 @astnode("parsed")
@@ -1011,7 +1112,7 @@ class For(Stmt):
     seq: int  # unique id within a funcdef
     target: StrLiteral
     iter: Expr
-    body: list[Stmt]
+    body: Block
 
 
 @astnode
@@ -1033,6 +1134,16 @@ class Break(Stmt):
 @astnode
 class Continue(Stmt):
     pass
+
+
+@astnode
+class Global(Stmt):
+    names: list[str]
+
+
+@astnode
+class Nonlocal(Stmt):
+    names: list[str]
 
 
 @astnode(">= astcompiled")

@@ -154,23 +154,6 @@ class TestBasic(CompilerTest):
         """)
         assert mod.foo() == 100
 
-    @only_interp
-    def test_blue_cannot_redeclare(self):
-        # see also the equivalent test
-        # TestScopeAnalyzer.test_red_cannot_redeclare
-        src = """
-        @blue
-        def foo() -> i32:
-            x: i32 = 1
-            x: i32 = 2
-        """
-        errors = expect_errors(
-            "variable `x` already declared",
-            ("this is the new declaration", "x: i32 = 2"),
-            ("this is the previous declaration", "x: i32 = 1"),
-        )
-        self.compile_raises(src, "foo", errors)
-
     def test_local_typecheck(self):
         src = """
         def foo() -> i32:
@@ -245,6 +228,7 @@ class TestBasic(CompilerTest):
         def get_x() -> i32:
             return x
         def set_x(newval: i32) -> None:
+            global x
             x = newval
         """)
         vm = self.vm
@@ -270,6 +254,7 @@ class TestBasic(CompilerTest):
         src = """
         x: i32 = 42
         def set_x() -> None:
+            global x
             x = 100
         """
         errors = expect_errors(
@@ -338,6 +323,7 @@ class TestBasic(CompilerTest):
         var counter: i32 = 0
 
         def bump() -> i32:
+            global counter
             return (counter := counter + 1)
 
         def current() -> i32:
@@ -352,6 +338,7 @@ class TestBasic(CompilerTest):
         var calls: i32 = 0
 
         def bump() -> i32:
+            global calls
             calls = calls + 1
             return calls
 
@@ -388,11 +375,13 @@ class TestBasic(CompilerTest):
         mod = self.compile("""
         var x: i32 = 0
         def foo() -> None:
+            global x
             x = 1
             return
             x = 2
 
         def bar() -> None:
+            global x
             x = 3
             return None
             x = 4
@@ -406,9 +395,11 @@ class TestBasic(CompilerTest):
         mod = self.compile("""
         var x: i32 = 0
         def implicit_return_void() -> None:
+            global x
             x = 1
 
         def implicit_return_i32() -> i32:
+            global x
             x = 3
             # ideally, we should detect this case at compile time.
             # For now, it is a runtime error.
@@ -596,6 +587,7 @@ class TestBasic(CompilerTest):
         mod = self.compile("""
         var x: i32 = 0
         def inc() -> None:
+            global x
             x = x + 1
 
         def foo() -> None:
@@ -760,14 +752,17 @@ class TestBasic(CompilerTest):
         var counter: i32 = 0
 
         def bump_true() -> bool:
+            global counter
             counter = counter + 1
             return True
 
         def bump_false() -> bool:
+            global counter
             counter = counter + 1
             return False
 
         def reset_counter() -> None:
+            global counter
             counter = 0
 
         def and_all_false() -> bool:
@@ -798,16 +793,19 @@ class TestBasic(CompilerTest):
         var c: i32 = 0
 
         def reset() -> None:
+            global a, b, c
             a = 0
             b = 0
             c = 0
 
         def if_then(x: i32) -> None:
+            global a, b, c
             if x == 0:
                 a = 100
             c = 300
 
         def if_then_else(x: i32) -> None:
+            global a, b, c
             if x == 0:
                 a = 100
             else:
@@ -902,6 +900,7 @@ class TestBasic(CompilerTest):
             return count
 
         def idx() -> i32:
+            global count
             count = count + 1
             return 0
 
@@ -1491,6 +1490,21 @@ class TestBasic(CompilerTest):
         mod = self.compile(src)
         assert mod.factorial(4) == 2 * 3 * 4
 
+    def test_two_for_loops(self):
+        # two sibling `for` loops in the same frame must each get their own hidden
+        # iterator temp; they must not clobber each other.
+        src = """
+        def foo() -> i32:
+            total = 0
+            for i in range(3):
+                total = total + i
+            for i in range(3):
+                total = total + i * 10
+            return total
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 3 + 30
+
     def test_break_in_while(self):
         src = """
         def foo() -> i32:
@@ -1679,6 +1693,7 @@ class TestBasic(CompilerTest):
         var N: i32 = 0
 
         def bar() -> None:
+            global N
             N = N + 1
 
         def foo() -> i32:

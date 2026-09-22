@@ -191,7 +191,7 @@ Examples:
 ```
 $ spy pyparse examples/hello.spy
 $ spy parse examples/hello.spy
-$ spy symtable examples/hello.spy
+$ spy scopes examples/hello.spy
 $ spy redshift examples/hello.spy
 $ spy build --no-compile examples/hello.spy
 ```

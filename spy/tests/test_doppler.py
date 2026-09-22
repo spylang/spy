@@ -4,7 +4,7 @@ from typing import Optional
 import pytest
 
 from spy import ast
-from spy.analyze.symtable import Color
+from spy.analyze.sym import Color
 from spy.backend.spy import FQN_FORMAT, SPyBackend
 from spy.errors import SPyError
 from spy.fqn import FQN
@@ -71,7 +71,10 @@ class TestDoppler:
             return x
         """
         self.redshift(src)
-        self.assert_dump(src)
+        self.assert_dump("""
+        def foo(x: i32) -> i32:
+            return x$0
+        """)
 
     def test_funcargs(self):
         src = """
@@ -79,7 +82,10 @@ class TestDoppler:
             return x + y
         """
         self.redshift(src)
-        self.assert_dump(src)
+        self.assert_dump("""
+        def foo(x: i32, y: i32) -> i32:
+            return x$0 + y$0
+        """)
 
     def test_fqn_format(self):
         src = """
@@ -89,7 +95,7 @@ class TestDoppler:
         self.redshift(src)
         expected = """
         def `test::foo`(x: `builtins::i32`) -> `types::NoneType`:
-            y: `builtins::str` = 'hello'
+            y$0: `builtins::str` = 'hello'
         """
         self.assert_dump(expected, fqn_format="full")
 
@@ -99,7 +105,10 @@ class TestDoppler:
             return x + 1
         """
         self.redshift(src)
-        self.assert_dump(src)
+        self.assert_dump("""
+        def foo(x: i32) -> i32:
+            return x$0 + 1
+        """)
 
     def test_dont_redshift_function_calls(self):
         src = """
@@ -112,7 +121,7 @@ class TestDoppler:
         self.redshift(src)
         expected = """
         def inc(x: i32) -> i32:
-            return x + 1
+            return x$0 + 1
 
         def foo() -> i32:
             return `test::inc`(5)
@@ -168,12 +177,12 @@ class TestDoppler:
         """)
         self.assert_dump("""
         def inc(x: i32) -> i32:
-            return x + 1
+            return x$0 + 1
 
         def foo() -> i32:
-            x: i32 = 0
-            y: i32 = `test::inc`(x := 1)
-            return x + y
+            x$0: i32 = 0
+            y$0: i32 = `test::inc`(x$0 := 1)
+            return x$0 + y$0
         """)
 
     def test_assignexpr_const_target_is_folded(self):
@@ -193,10 +202,10 @@ class TestDoppler:
             pass
 
         def main() -> None:
-            x: i32 = 0
-            `test::foo`(x := 1)
+            x$0: i32 = 0
+            `test::foo`(x$0 := 1)
             `test::foo`(2)
-            `_print::println[i32]`(x)
+            `_print::println[i32]`(x$0)
             `_print::println[str]`('2')
         """)
 
@@ -216,7 +225,7 @@ class TestDoppler:
             return `test::make_fn::fn`(21)
 
         def `test::make_fn::fn`(x: i32) -> i32:
-            return x * 2
+            return x$0 * 2
         """)
 
     def test_call_func_already_redshifted(self):
@@ -271,7 +280,29 @@ class TestDoppler:
             f >= f
         """
         self.redshift(src)
-        self.assert_dump(src)
+        self.assert_dump("""
+        def foo(i: i32, f: f64) -> None:
+            i$0 + i$0
+            i$0 - i$0
+            i$0 * i$0
+            i$0 / i$0
+            i$0 == i$0
+            i$0 != i$0
+            i$0 < i$0
+            i$0 <= i$0
+            i$0 > i$0
+            i$0 >= i$0
+            f$0 + f$0
+            f$0 - f$0
+            f$0 * f$0
+            f$0 / f$0
+            f$0 == f$0
+            f$0 != f$0
+            f$0 < f$0
+            f$0 <= f$0
+            f$0 > f$0
+            f$0 >= f$0
+        """)
 
     def test_list(self):
         src = """
@@ -312,20 +343,21 @@ class TestDoppler:
         """)
         self.assert_dump("""
         def foo() -> None:
-            x: i32 = `test::add[i32]::impl`(1, 2)
-            y: str = `test::add[str]::impl`('a', 'b')
+            x$0: i32 = `test::add[i32]::impl`(1, 2)
+            y$0: str = `test::add[str]::impl`('a', 'b')
 
         def `test::add[i32]::impl`(x: i32, y: i32) -> i32:
-            return x + y
+            return x$0 + y$0
 
         def `test::add[str]::impl`(x: str, y: str) -> str:
-            return `_str::methods::__add__`(x, y)
+            return `_str::methods::__add__`(x$0, y$0)
         """)
 
     def test_store_outer_var(self):
         self.redshift("""
         var x: i32 = 0
         def foo() -> None:
+            global x
             x = 1
         """)
         self.assert_dump("""
@@ -460,7 +492,7 @@ class TestDoppler:
         """)
         expected = """
         def foo(a: i32, b: i32) -> i32:
-            return __block__(x$0: i32 = a; x$0 + 1) + __block__(x$1: i32 = b; x$1 + 1)
+            return __block__(x$0: i32 = a$0; x$0 + 1) + __block__(x$1: i32 = b$0; x$1 + 1)
         """
         self.assert_dump(expected, funcname="foo")
 
@@ -503,7 +535,7 @@ class TestDoppler:
         """)
         expected = """
         def foo() -> i32:
-            return __block__(x$0: i32 = 10; __block__(x$1$0: i32 = __block__(x$0$0: i32 = x$0; x$0$0 + 1); x$1$0 + 1))
+            return __block__(x$0: i32 = 10; __block__(x$2: i32 = __block__(x$1: i32 = x$0; x$1 + 1); x$2 + 1))
         """
         self.assert_dump(expected, funcname="foo")
 
@@ -538,11 +570,11 @@ class TestDoppler:
             pass
 
         def foo(x: i32) -> f64:
-            `test::bar`(`operator::i32_to_f64`(x))
-            flag: bool = `operator::i32_to_bool`(x)
-            if `operator::i32_to_bool`(x):
+            `test::bar`(`operator::i32_to_f64`(x$0))
+            flag$0: bool = `operator::i32_to_bool`(x$0)
+            if `operator::i32_to_bool`(x$0):
                 pass
-            return `operator::i32_to_f64`(x)
+            return `operator::i32_to_f64`(x$0)
        """)
 
     def test_eager_type_conversion(self):
@@ -565,7 +597,7 @@ class TestDoppler:
 
         def foo() -> f64:
             `test::bar`(42.0)
-            flag: bool = True
+            flag$0: bool = True
             if True:
                 pass
             return 42.0

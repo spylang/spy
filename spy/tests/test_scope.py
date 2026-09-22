@@ -1,63 +1,15 @@
 import textwrap
-from typing import Any
 
 import pytest
 
-from spy import ast
 from spy.analyze.scope import ScopeAnalyzer
-from spy.analyze.symtable import (
-    Color,
-    ImportRef,
-    Symbol,
-    SymTable,
-    VarKind,
-    VarKindOrigin,
-    VarStorage,
-)
-from spy.fqn import FQN
 from spy.parser import Parser
 from spy.tests.support import MatchAnnotation, expect_errors
-
-MISSING = object()
-
-
-class MatchSymbol:
-    """
-    Helper class which compares equals to Symbol if the specified fields match
-    """
-
-    def __init__(
-        self,
-        name: str,
-        varkind: VarKind,
-        varkind_origin: VarKindOrigin,
-        *,
-        level: int = 0,
-        impref: Any = MISSING,
-        storage: VarStorage = "direct",
-    ):
-        self.name = name
-        self.varkind = varkind
-        self.varkind_origin = varkind_origin
-        self.level = level
-        self.impref = impref
-        self.storage = storage
-
-    def __eq__(self, sym: object) -> bool:
-        if not isinstance(sym, Symbol):
-            return NotImplemented
-        return (
-            self.name == sym.name
-            and self.varkind == sym.varkind
-            and self.varkind_origin == sym.varkind_origin
-            and self.level == sym.level
-            and self.storage == sym.storage
-            and (self.impref is MISSING or self.impref == sym.impref)
-        )
+from spy.util import print_diff
 
 
 @pytest.mark.usefixtures("init")
-class TestScopeAnalyzer:
+class TestScopeAnalyzer2:
     @pytest.fixture
     def init(self, tmpdir):
         self.tmpdir = tmpdir
@@ -68,709 +20,909 @@ class TestScopeAnalyzer:
         f.write(src)
         parser = Parser(src, str(f))
         self.mod = parser.parse()
-        scopes = ScopeAnalyzer("test", self.mod)
-        scopes.analyze()
-        return scopes
+        self.sa = ScopeAnalyzer("test", self.mod)
+        self.sa.analyze()
+        return self.sa
 
     def expect_errors(self, src: str, main: str, *anns: MatchAnnotation):
         with expect_errors(main, *anns):
             self.analyze(src)
 
-    def test_global(self):
-        scopes = self.analyze("""
-        a = 0
-        b: i32 = 0
-        const c: i32 = 0
-        var d: i32 = 0
+    def assert_dump(self, *args: str):
+        # the frame names to dump come first, `expected` is the last arg:
+        #   assert_dump(expected)
+        #   assert_dump("test::foo", "test::bar", expected)
+        *frame_names, expected = args
+        got = self.sa.dump(*frame_names).strip()
+        expected = textwrap.dedent(expected).strip()
+        if got != expected:
+            print_diff(expected, got, "expected", "got")
+            pytest.fail("assert_dump failed")
 
-        def foo() -> None:
-            pass
-
-        def bar() -> None:
-            pass
-        """)
-        scope = scopes.by_module()
-        assert scope.name == "test"
-        assert scope.color == "blue"
-        assert scope._symbols == {
-            "a": MatchSymbol("a", "const", "global-const"),
-            "b": MatchSymbol("b", "const", "global-const"),
-            "c": MatchSymbol("c", "const", "explicit"),
-            "d": MatchSymbol("d", "var", "explicit", storage="cell"),
-            "foo": MatchSymbol("foo", "const", "funcdef"),
-            "bar": MatchSymbol("bar", "const", "funcdef"),
-            # captured
-            "i32": MatchSymbol("i32", "const", "explicit", level=1),
-        }
-
-    def test_capture_global(self):
-        scopes = self.analyze("""
-        var a: i32 = 0
-        def foo() -> None:
-            a = 1
-            b = 2
-        def bar() -> None:
-            a, b = 3, 4
-        """)
-        foo_def = self.mod.get_funcdef("foo")
-        foo_scope = scopes.by_funcdef(foo_def)
-        assert foo_scope._symbols == {
-            "a": MatchSymbol("a", "var", "explicit", storage="cell", level=1),
-            "b": MatchSymbol("b", "const", "auto"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-        }
-        bar_def = self.mod.get_funcdef("bar")
-        bar_scope = scopes.by_funcdef(bar_def)
-        assert bar_scope._symbols == {
-            "a": MatchSymbol("a", "var", "explicit", storage="cell", level=1),
-            "b": MatchSymbol("b", "const", "auto"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-        }
-
-    def test_funcargs_and_locals(self):
-        scopes = self.analyze("""
-        def foo(a: i32) -> i32:
-            b = 0
-            c: i32 = 0
-            const d: i32 = 0
-            var e: i32 = 0
-        """)
-        funcdef = self.mod.get_funcdef("foo")
-        scope = scopes.by_funcdef(funcdef)
-        assert scope.name == "test::foo"
-        assert scope.color == "red"
-        assert scope._symbols == {
-            "a": MatchSymbol("a", "var", "red-param"),
-            "b": MatchSymbol("b", "const", "auto"),
-            "c": MatchSymbol("c", "const", "auto"),
-            "d": MatchSymbol("d", "const", "explicit"),
-            "e": MatchSymbol("e", "var", "explicit"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-            # captured
-            "i32": MatchSymbol("i32", "const", "explicit", level=2),
-        }
-        assert funcdef.symtable is scope
-
-    def test_var_and_const(self):
-        scopes = self.analyze("""
-        def range(n: i32) -> dynamic:
-            pass
-
-        def foo(a: i32) -> None:
-            # a is not touched   # param: var
-            b: i32 = 0           # vardef, implicit varkind: const
-            var c: i32 = 0       # vardef, explicit varkind: var
-            d = 0                # single assign: const
-            e = 0                # multi assign: var
-            e = 0
-            f = 0                # single assign + augassign: var
-            f += 0
-            g: i32 = 0           # vardef + augassign: var
-            g += 0
-
-            for i in range(10):  # loop variable: var
-                h = 0            # assign in loop: var
-
-            while True:
-                j = 0       # assign in loop: var
-        """)
-        funcdef = self.mod.get_funcdef("foo")
-        scope = scopes.by_funcdef(funcdef)
-        assert scope.name == "test::foo"
-        assert scope.color == "red"
-        assert scope._symbols == {
-            "a": MatchSymbol("a", "var", "red-param"),
-            "b": MatchSymbol("b", "const", "auto"),
-            "c": MatchSymbol("c", "var", "explicit"),
-            "d": MatchSymbol("d", "const", "auto"),
-            "e": MatchSymbol("e", "var", "auto"),
-            "f": MatchSymbol("f", "var", "auto"),
-            "g": MatchSymbol("g", "var", "auto"),
-            "h": MatchSymbol("h", "var", "auto"),
-            "i": MatchSymbol("i", "var", "auto"),
-            "j": MatchSymbol("j", "var", "auto"),
-            #
-            "_$iter0": MatchSymbol("_$iter0", "var", "auto"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-            "range": MatchSymbol("range", "const", "funcdef", level=1),
-            "i32": MatchSymbol("i32", "const", "explicit", level=2),
-        }
-
-    def test_assignexpr_scope(self):
-        scopes = self.analyze("""
-        def foo() -> i32:
-            if (x := 1):
-                pass
-            return x
-
-        def bar() -> None:
-            while True:
-                if (y := 1):
-                    break
-        """)
-        foo_scope = scopes.by_funcdef(self.mod.get_funcdef("foo"))
-        assert foo_scope._symbols == {
-            "x": MatchSymbol("x", "const", "auto"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-        }
-        bar_scope = scopes.by_funcdef(self.mod.get_funcdef("bar"))
-        assert bar_scope._symbols == {
-            "y": MatchSymbol("y", "var", "auto"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-        }
-
-    def test_assignexpr_loop_tests_are_var(self):
-        scopes = self.analyze("""
-        def foo() -> None:
-            while (x := 1):
-                break
-            for _ in (xs := [1]):
-                pass
-        """)
-
-        foo_scope = scopes.by_funcdef(self.mod.get_funcdef("foo"))
-        assert foo_scope._symbols["x"] == MatchSymbol("x", "var", "auto")
-        assert foo_scope._symbols["xs"] == MatchSymbol("xs", "var", "auto")
-
-    def test_assignexpr_globals(self):
-        scopes = self.analyze("""
-        x = 1
-        var y: i32 = 1
-
-        def main() -> None:
-            z0 = (x := 1) # scope captures const x; runtime should reject assigning to it
-            z1 = (y := 1)
-        """)
-        scope = scopes.by_funcdef(self.mod.get_funcdef("main"))
-        assert scope._symbols == {
-            "x": MatchSymbol("x", "const", "global-const", level=1),
-            "y": MatchSymbol("y", "var", "explicit", level=1, storage="cell"),
-            "z0": MatchSymbol("z0", "const", "auto"),
-            "z1": MatchSymbol("z1", "const", "auto"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-        }
-
-    def test_var_and_const_assignexpr(self):
-        scopes = self.analyze("""
-        def foo() -> None:
-            a = (x := 0)
-            b = (x := 1)
-            if True:
-                c = (y := 2)
-            while True:
-                d = (z := 3)
-                break
-        """)
-        scope = scopes.by_funcdef(self.mod.get_funcdef("foo"))
-        assert scope._symbols == {
-            "a": MatchSymbol("a", "const", "auto"),
-            "b": MatchSymbol("b", "const", "auto"),
-            "c": MatchSymbol("c", "const", "auto"),
-            "d": MatchSymbol("d", "var", "auto"),
-            "x": MatchSymbol("x", "var", "auto"),
-            "y": MatchSymbol("y", "const", "auto"),
-            "z": MatchSymbol("z", "var", "auto"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-        }
-
-    def test_vardef_initializer_declares_assignexpr_target(self):
-        scopes = self.analyze("""
-        def foo() -> i32:
-            var z: i32 = (x := 1)
-            return x + z
-        """)
-        scope = scopes.by_funcdef(self.mod.get_funcdef("foo"))
-        assert scope._symbols == {
-            "z": MatchSymbol("z", "var", "explicit"),
-            "x": MatchSymbol("x", "const", "auto"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-            "i32": MatchSymbol("i32", "const", "explicit", level=2),
-        }
-
-    def test_const_var_without_type(self):
-        scopes = self.analyze("""
-        def foo() -> None:
-            var x = 42
-            const y = 100
-            x = 50
-        """)
-        funcdef = self.mod.get_funcdef("foo")
-        scope = scopes.by_funcdef(funcdef)
-        assert scope.name == "test::foo"
-        assert scope.color == "red"
-        assert scope._symbols == {
-            "x": MatchSymbol("x", "var", "explicit"),
-            "y": MatchSymbol("y", "const", "explicit"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-        }
-
-    def test_blue_func(self):
-        scopes = self.analyze("""
-        @blue
-        def foo(x) -> None:
-            pass
-        """)
-        funcdef = self.mod.get_funcdef("foo")
-        scope = scopes.by_funcdef(funcdef)
-        assert scope.name == "test::foo"
-        assert scope.color == "blue"
-        assert scope._symbols == {
-            "x": MatchSymbol("x", "const", "blue-param"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-        }
-
-    def test_blue_param_stay_const(self):
-        # this code will raise when executed, see
-        # test_basic.py:test_cannot_assign_to_blue_param. But here we want to test that
-        # "const" of "blue-param" origin cannot be promoted to "var"
-        scopes = self.analyze("""
-        @blue
-        def foo(x) -> None:
-            x = 4
-        """)
-        funcdef = self.mod.get_funcdef("foo")
-        scope = scopes.by_funcdef(funcdef)
-        assert scope._symbols == {
-            "x": MatchSymbol("x", "const", "blue-param"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-        }
-
-    def test_assign_does_not_redeclare(self):
-        scopes = self.analyze("""
-        def foo() -> None:
-            x: i32 = 0
-            x = 1
-        """)
-        funcdef = self.mod.get_funcdef("foo")
-        scope = scopes.by_funcdef(funcdef)
-        assert scope._symbols == {
-            "x": MatchSymbol("x", "var", "auto"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-            "i32": MatchSymbol("i32", "const", "explicit", level=2),
-        }
-
-    def test_red_cannot_redeclare(self):
-        # see also the equivalent test
-        # TestBasic.test_blue_cannot_redeclare
+    def test_dump(self):
         src = """
+        from __spy__ import strict_scoping
+
+        const K: i32 = 42
+
         def foo() -> i32:
-            x: i32 = 1
-            x: i32 = 2
+            const x: i32 = 1
+            const y: i32 = 1
+            if K:
+                const y = 10
+                const z = x + y
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test (module):
+            strict_scoping: Symbol("strict_scoping", "const", "auto") => <ImportRef __spy__.strict_scoping>
+            K: Symbol("K", "const", "explicit")
+            foo: Symbol("foo", "const", "funcdef")
+
+            scope test:
+                K -> K
+                i32 -> i32 @ builtins (depth=1) => <ImportRef builtins.i32>
+                foo -> foo
+
+        frameinfo test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            x$0: Symbol("x", "const", "explicit")
+            y$0: Symbol("y", "const", "explicit")
+            y$1: Symbol("y", "const", "explicit")
+            z$0: Symbol("z", "const", "explicit")
+
+            scope foo:
+                x -> x$0
+                i32 -> i32 @ builtins (depth=2) => <ImportRef builtins.i32>
+                y -> y$0
+                K -> K @ test (depth=1)
+                scope if.then:
+                    y -> y$1
+                    z -> z$0
+                    x -> x$0
+        """
+        self.assert_dump(expected)
+
+    # ======= strict scoping tests =======
+
+    def test_decl_forms(self):
+        # [decl.forms]: var and const declarations inside a function
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo() -> None:
+            var a: i32 = 42
+            const b: i32 = 43
+            var c: i32
+            const d: i32
+            var e: auto = 44
+            var f = 45
+            var g: auto
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            a$0: Symbol("a", "var", "explicit")
+            b$0: Symbol("b", "const", "explicit")
+            c$0: Symbol("c", "var", "explicit")
+            d$0: Symbol("d", "const", "explicit")
+            e$0: Symbol("e", "var", "explicit")
+            f$0: Symbol("f", "var", "explicit")
+            g$0: Symbol("g", "var", "explicit")
+
+            scope foo:
+                a -> a$0
+                i32 -> i32 @ builtins (depth=2) => <ImportRef builtins.i32>
+                b -> b$0
+                c -> c$0
+                d -> d$0
+                e -> e$0
+                f -> f$0
+                g -> g$0
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_decl_use_before(self):
+        # [decl.use-before]: the use resolves lazily to a NameError (used before
+        # its declaration)
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo() -> None:
+            x
+            var x: i32 = 1
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            x$0: Symbol("x", "var", "explicit")
+
+            scope foo:
+                x -> NameError
+                i32 -> i32 @ builtins (depth=2) => <ImportRef builtins.i32>
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_decl_use_before_class_forward(self):
+        # [decl.use-before]: a `class` implicitly insers a forward-declaration at the
+        # start of its enclosing scope
+        src = """
+        from __spy__ import strict_scoping
+        from unsafe import raw_ptr
+
+        def foo() -> None:
+            const p = raw_ptr[S]
+            @struct
+            class S:
+                pass
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            p$0: Symbol("p", "const", "explicit")
+            S$0: Symbol("S", "const", "classdef")
+
+            scope foo:
+                p -> p$0
+                raw_ptr -> raw_ptr @ test (depth=1) => <ImportRef unsafe.raw_ptr>
+                S -> S$0
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_decl_no_redeclare(self):
+        """
+        [decl.no-redeclare]: declaring the same name twice in the same scope is an error
+        """
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo() -> None:
+            var x: i32 = 0
+            var x: i32 = 1
         """
         self.expect_errors(
             src,
             "variable `x` already declared",
-            ("this is the new declaration", "x: i32 = 2"),
-            ("this is the previous declaration", "x: i32 = 1"),
+            ("this is the new declaration", "var x: i32 = 1"),
+            ("this is the previous declaration", "var x: i32 = 0"),
         )
 
-    def test_blue_can_redeclare(self):
-        # see also the related test
-        # TestBasic.test_blue_cannot_redeclare
+    def test_NameError(self):
+        src = """
+        from __spy__ import strict_scoping
 
-        # The difference is that at ScopeAnalyzer time, we allow POTENTIAL
-        # multiple declarations inside @blue functions, but if we actually
-        # redeclare it, we catch it at runtime.
+        def foo() -> None:
+            nope
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+
+            scope foo:
+                nope -> NameError
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_scope_block_if(self):
+        # [scope.block]: a name declared inside an if body is not visible
+        # outside. The block-local `x` lives in the function frameinfo (x$0), is
+        # visible as `x -> x$0` inside if.then, but resolves to NameError in the
+        # enclosing `foo` scope. Names used inside the block still capture from
+        # outer frames (K -> K @ test), showing captures propagate through blocks.
+        src = """
+        from __spy__ import strict_scoping
+
+        const K: i32 = 42
+
+        def foo(cond: bool) -> None:
+            if cond:
+                const x: i32 = K
+            x
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            cond$0: Symbol("cond", "var", "red-param")
+            @return: Symbol("@return", "var", "auto")
+            x$0: Symbol("x", "const", "explicit")
+
+            scope foo:
+                cond -> cond$0
+                x -> NameError
+                scope if.then:
+                    x -> x$0
+                    i32 -> i32 @ builtins (depth=2) => <ImportRef builtins.i32>
+                    K -> K @ test (depth=1)
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_scope_loop_target(self):
+        # [scope.loop-target]: the for target `i` is block-local to the loop body;
+        # `i` resolves to NameError after the loop.
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo() -> None:
+            for i in range(10):
+                pass
+            i
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            i$0: Symbol("i", "var", "loop-target")
+
+            scope foo:
+                range -> range @ builtins (depth=2) => <ImportRef _range.range>
+                i -> NameError
+                scope for.body:
+                    i -> i$0
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_scope_loop_target_declare(self):
+        # [scope.loop-target-declare]: if a binding of the same name already
+        # exists in an enclosing block, the loop target reuses it (i$0) instead
+        # of creating a fresh block-local. So `i` is visible after the loop.
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo() -> None:
+            var i: auto
+            for i in range(3):
+                pass
+            i
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            i$0: Symbol("i", "var", "explicit")
+
+            scope foo:
+                i -> i$0
+                range -> range @ builtins (depth=2) => <ImportRef _range.range>
+                scope for.body:
+                    i -> i$0
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_name_class_skip(self):
+        # [name.class-skip]: class scopes are skipped by method bodies. A bare
+        # reference to a field name inside a method resolves to NameError (the
+        # user must write `self.x`).
+        src = """
+        from __spy__ import strict_scoping
+
+        @struct
+        class P:
+            x: i32
+            def get(self: P) -> i32:
+                return x
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::P::get (function):
+            self$0: Symbol("self", "var", "red-param")
+            @return: Symbol("@return", "var", "auto")
+
+            scope get:
+                self -> self$0
+                x -> NameError
+        """
+        self.assert_dump("test::P::get", expected)
+
+    def test_class_flat_body(self):
+        # [class.flat-body]: fields declared inside `if` still counts
+        src = """
+        from __spy__ import strict_scoping
+
+        const COND: bool = True
+
+        @struct
+        class P:
+            x: i32
+            if COND:
+                y: i32
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::P (class):
+            x: Symbol("x", "const", "auto")
+            y: Symbol("y", "const", "auto")
+
+            scope P:
+                x -> x
+                i32 -> i32 @ builtins (depth=2) => <ImportRef builtins.i32>
+                COND -> COND @ test (depth=1)
+                scope if.then:
+                    y -> y
+                    i32 -> i32 @ builtins (depth=2) => <ImportRef builtins.i32>
+        """
+        self.assert_dump("test::P", expected)
+
+    def test_global_write(self):
+        # [global.write]: a function can READ a module-level name freely, but
+        # ASSIGNING to it without a `global` declaration is an error.
+        src = """
+        from __spy__ import strict_scoping
+
+        var x: i32 = 42
+        var y: i32 = 43
+
+        def f() -> None:
+            print(x)
+            y = 0
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::f (function):
+            @return: Symbol("@return", "var", "auto")
+
+            scope f:
+                print -> print @ builtins (depth=2) => <ImportRef builtins.print>
+                x -> x @ test (depth=1)
+                y -> ScopeError
+        """
+        self.assert_dump("test::f", expected)
+
+    def test_global_write_declared(self):
+        # [global.write]: with an explicit `global y`, assigning to the
+        # module-level `y` is allowed; the target resolves to the global. The
+        # `global y` declaration is shown in the scope dump.
+        src = """
+        from __spy__ import strict_scoping
+
+        var y: i32 = 43
+
+        def f() -> None:
+            global y
+            y = 0
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test (module):
+            strict_scoping: Symbol("strict_scoping", "const", "auto") => <ImportRef __spy__.strict_scoping>
+            y: Symbol("y", "var", "explicit") [cell]
+            f: Symbol("f", "const", "funcdef")
+
+            scope test:
+                y -> y
+                i32 -> i32 @ builtins (depth=1) => <ImportRef builtins.i32>
+                f -> f
+
+        frameinfo test::f (function):
+            @return: Symbol("@return", "var", "auto")
+
+            scope f:
+                global y
+                y -> y @ test (depth=1)
+        """
+        self.assert_dump(expected)
+
+    def test_global_read_is_noop(self):
+        # a `global y` followed by a READ resolves outward to the module `y`,
+        # exactly as if the `global` were not there.
+        src = """
+        from __spy__ import strict_scoping
+
+        var y: i32 = 43
+
+        def f() -> i32:
+            global y
+            return y
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::f (function):
+            @return: Symbol("@return", "var", "auto")
+
+            scope f:
+                global y
+                y -> y @ test (depth=1)
+        """
+        self.assert_dump("test::f", expected)
+
+    def test_global_is_per_scope(self):
+        # `global` is a per-scope property: a `global y` in the `else` branch
+        # does not conflict with a branch-local `var y` in the `then` branch.
+        # In `then`, `y` is the block-local y$0; in `else`, the write resolves
+        # to the module `y`.
+        src = """
+        from __spy__ import strict_scoping
+
+        var y: i32 = 0
+
+        def foo(cond: bool) -> None:
+            if cond:
+                var y: i32 = 1
+            else:
+                global y
+                y = 2
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            cond$0: Symbol("cond", "var", "red-param")
+            @return: Symbol("@return", "var", "auto")
+            y$0: Symbol("y", "var", "explicit")
+
+            scope foo:
+                cond -> cond$0
+                scope if.then:
+                    y -> y$0
+                    i32 -> i32 @ builtins (depth=2) => <ImportRef builtins.i32>
+                scope if.else:
+                    global y
+                    y -> y @ test (depth=1)
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_global_define_conflict(self):
+        # rule 1: declaring `global y` and then defining a local `y` in the SAME
+        # scope is an error.
+        src = """
+        from __spy__ import strict_scoping
+
+        var y: i32 = 0
+
+        def foo() -> None:
+            global y
+            var y: i32 = 1
+        """
+        self.expect_errors(
+            src,
+            "variable `y` is already declared as global",
+            ("this is the new declaration", "var y: i32 = 1"),
+            ("`y` was declared global here", "global y"),
+        )
+
+    def test_scope_shadow(self):
+        # [scope.shadow]: an inner block may shadow an outer name. Inside if.then
+        # `x` resolves to the block-local x$1; outside it resolves to x$0.
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo(cond: bool) -> str:
+            const x: str = "outer"
+            if cond:
+                const x: str = "inner"
+                return x
+            return x
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            cond$0: Symbol("cond", "var", "red-param")
+            @return: Symbol("@return", "var", "auto")
+            x$0: Symbol("x", "const", "explicit")
+            x$1: Symbol("x", "const", "explicit")
+
+            scope foo:
+                cond -> cond$0
+                x -> x$0
+                str -> str @ builtins (depth=2) => <ImportRef builtins.str>
+                scope if.then:
+                    x -> x$1
+                    str -> str @ builtins (depth=2) => <ImportRef builtins.str>
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_no_implicit_decl_if_explicit_is_present(self):
+        src = """
+        def foo(cond: bool) -> None:
+            if cond:
+                x: auto
+                x = 42
+            else:
+                y = 1
+            x
+            y
+        """
+        self.analyze(src)
+        # NOTE: `x$0` is `var` because [py.constness-paths] is deferred
+        expected = """
+        frameinfo test::foo (function):
+            cond$0: Symbol("cond", "var", "red-param")
+            @return: Symbol("@return", "var", "auto")
+            x$0: Symbol("x", "var", "auto")
+            y$0: Symbol("y", "const", "auto")
+
+            scope foo:
+                cond -> cond$0
+                x -> NameError
+                y -> y$0
+                scope if.then:
+                    x -> x$0
+                scope if.else:
+                    y -> y$0
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_def(self):
+        src = """
+        from __spy__ import strict_scoping
+
+        def foo() -> None:
+            if True:
+                # aaa is local to this block
+                aaa: auto
+                def aaa() -> None: pass
+            else:
+                # bbb is implicitly lifted out of the if/else
+                def bbb() -> None: pass
+            aaa
+            bbb
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            aaa$0: Symbol("aaa", "var", "auto")
+            bbb$0: Symbol("bbb", "const", "funcdef")
+
+            scope foo:
+                aaa -> NameError
+                bbb -> bbb$0
+                scope if.then:
+                    aaa -> aaa$0
+                scope if.else:
+                    bbb -> bbb$0
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_implicit_imports(self):
+        src = """
+        def foo(x: dynamic) -> None:
+            [1, 2, 3]
+            tup = 1, 2, 3
+            d = {10: 20, 30: 50}
+            x[1:2]
+        """
+        self.analyze(src)
+        # `builtins` is also implicitly imported (via the `dynamic` annotation)
+        assert self.sa.implicit_imports == {
+            "_list",
+            "_tuple",
+            "_dict",
+            "_slice",
+            "builtins",
+        }
+
+    # ======= pythonic scoping tests =======
+
+    def test_py_implicit_decl(self):
+        # [py.implicit-decl] + [py.constness]: a bare assignment implicitly
+        # declares the name on first assignment; assigned once -> const,
+        # assigned more than once -> var.
+        src = """
+        def foo() -> None:
+            a = 1
+            b = 1
+            b = b + 1
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            a$0: Symbol("a", "const", "auto")
+            b$0: Symbol("b", "var", "auto")
+
+            scope foo:
+                a -> a$0
+                b -> b$0
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_py_augassign_needs_binding(self):
+        # [py.augassign]: augassign does not implicitly declare
+        src = """
+        def foo() -> None:
+            x += 1
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+
+            scope foo:
+                x -> NameError
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_py_augassign_promotes_to_var(self):
+        src = """
+        def foo() -> None:
+            x = 0
+            x += 1
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            x$0: Symbol("x", "var", "auto")
+
+            scope foo:
+                x -> x$0
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_py_shadow_write_caught(self):
+        # [py.shadow-write-caught]: a bare `COUNT = COUNT + 1` implicitly declares a
+        # new local COUNT; the RHS read happens before that declaration, so it is
+        # caught by [decl.use-before] (the read resolves to a NameError, NOT to the
+        # module-level COUNT).
+        src = """
+        var COUNT: i32 = 0
+
+        def foo() -> None:
+            COUNT = COUNT + 1
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            COUNT$0: Symbol("COUNT", "const", "auto")
+
+            scope foo:
+                COUNT -> NameError
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_py_scope_lifting(self):
+        # [py.scope-lifting]: an implicit assignment inside an if/else chain is
+        # lifted to the enclosing block.
+        src = """
+        def foo(a: bool, b: bool) -> i32:
+            if a:
+                if b:
+                    x = 1
+                else:
+                    x = 2
+            else:
+                x = 3
+            return x
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            a$0: Symbol("a", "var", "red-param")
+            b$0: Symbol("b", "var", "red-param")
+            @return: Symbol("@return", "var", "auto")
+            x$0: Symbol("x", "var", "auto")
+
+            scope foo:
+                a -> a$0
+                b -> b$0
+                x -> x$0
+                scope if.then:
+                    b -> b$0
+                    scope if.then:
+                        x -> x$0
+                    scope if.else:
+                        x -> x$0
+                scope if.else:
+                    x -> x$0
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_py_scope_lifting_loop(self):
+        # [py.scope-lifting-loop]: a loop body never lifts.
+        src = """
+        def foo() -> None:
+            for i in range(10):
+                total = i
+            total
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            i$0: Symbol("i", "var", "loop-target")
+            total$0: Symbol("total", "const", "auto")
+
+            scope foo:
+                range -> range @ builtins (depth=2) => <ImportRef _range.range>
+                total -> NameError
+                scope for.body:
+                    i -> i$0
+                    total -> total$0
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_py_walrus(self):
+        # [py.walrus]: a walrus in an `if` test binds in the ENCLOSING block
+        src = """
+        def foo() -> None:
+            if (x := 5) > 0:
+                x
+            x
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            x$0: Symbol("x", "const", "auto")
+
+            scope foo:
+                x -> x$0
+                scope if.then:
+                    x -> x$0
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_py_unpack_targets(self):
+        # [py.implicit-decl]: an unpack assignment implicitly declares each target.
+        src = """
+        def make() -> None:
+            pass
+
+        def foo() -> None:
+            a, b, c = make()
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            a$0: Symbol("a", "const", "auto")
+            b$0: Symbol("b", "const", "auto")
+            c$0: Symbol("c", "const", "auto")
+
+            scope foo:
+                make -> make @ test (depth=1)
+                a -> a$0
+                b -> b$0
+                c -> c$0
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_py_blue_params(self):
+        # [py.blue-params]: blue function arguments are const.
         src = """
         @blue
-        def foo(FLAG):
-            if FLAG:
+        def foo(x: i32) -> i32:
+            return x
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            x$0: Symbol("x", "const", "blue-param")
+            @return: Symbol("@return", "var", "auto")
+
+            scope foo:
+                x -> x$0
+        """
+        self.assert_dump("test::foo", expected)
+
+    # [py.scope-lifting-mixing-error]: mixing an implicit and an explicit
+    # declaration for the same name in the same lift target is an error. The four
+    # tests below cover the four combinations of ORDER (which comes first) and
+    # whether the implicit sits DIRECTLY in the lift target or is LIFTED out of a
+    # sibling branch.
+
+    def test_py_mixing_error_expl_block_then_impl_lifted(self):
+        # explicit in one branch, implicit LIFTED from the other branch
+        src = """
+        def foo(cond: bool) -> None:
+            if cond:
+                const x = 1
+            else:
+                x = 2
+        """
+        self.expect_errors(
+            src,
+            "Cannot mix implicit and explicit declarations for `x`",
+            ("this is an explicit declaration", "const x = 1"),
+            ("this is an implicit declaration", "x"),
+        )
+
+    def test_py_mixing_error_impl_lifted_then_expl_block(self):
+        # implicit LIFTED from one branch, explicit in the other branch
+        src = """
+        def foo(cond: bool) -> None:
+            if cond:
                 x = 1
             else:
-                x = 'hello'
-        """
-        scopes = self.analyze(src)
-        funcdef = self.mod.get_funcdef("foo")
-        scope = scopes.by_funcdef(funcdef)
-        assert scope._symbols == {
-            "FLAG": MatchSymbol("FLAG", "const", "blue-param"),
-            "x": MatchSymbol("x", "var", "auto"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-        }
-
-    def test_no_shadowing(self):
-        src = """
-        x: i32 = 1
-        def foo() -> i32:
-            x: i32 = 2
+                const x = 2
         """
         self.expect_errors(
             src,
-            "variable `x` shadows a name declared in an outer scope",
-            ("this is the new declaration", "x: i32 = 2"),
-            ("this is the previous declaration", "x: i32 = 1"),
+            "Cannot mix implicit and explicit declarations for `x`",
+            ("this is an explicit declaration", "const x = 2"),
+            ("this is an implicit declaration", "x"),
         )
 
-    def test_can_shadow_builtins(self):
-        scopes = self.analyze("""
-        # Shadow the builtin i32 at module level
-        i32: type = str
-
-        def foo() -> None:
-            # Shadow the builtin str inside a function
-            str: type = i32
-        """)
-
-        # Check module scope
-        mod_scope = scopes.by_module()
-        assert mod_scope._symbols == {
-            "i32": MatchSymbol("i32", "const", "global-const"),
-            "foo": MatchSymbol("foo", "const", "funcdef"),
-            # captured builtins that are referenced
-            "type": MatchSymbol("type", "const", "explicit", level=1),
-            "str": MatchSymbol("str", "const", "explicit", level=1),
-        }
-
-        # Check function scope
-        funcdef = self.mod.get_funcdef("foo")
-        func_scope = scopes.by_funcdef(funcdef)
-        assert func_scope._symbols == {
-            "str": MatchSymbol("str", "const", "auto"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-            "i32": MatchSymbol("i32", "const", "global-const", level=1),
-            "type": MatchSymbol("type", "const", "explicit", level=2),
-        }
-
-    def test_inner_funcdef(self):
-        scopes = self.analyze("""
-        def foo() -> None:
-            x: i32 = 0
-            def bar(y: i32) -> i32:
-                return x + y
-        """)
-        foodef = self.mod.get_funcdef("foo")
-        assert foodef.symtable._symbols == {
-            "x": MatchSymbol("x", "const", "auto"),
-            "bar": MatchSymbol("bar", "const", "funcdef"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-            "i32": MatchSymbol("i32", "const", "explicit", level=2),
-        }
-        #
-        bardef = foodef.body[1]
-        assert isinstance(bardef, ast.FuncDef)
-        assert bardef.symtable._symbols == {
-            "y": MatchSymbol("y", "var", "red-param"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-            "x": MatchSymbol("x", "const", "auto", level=1),
-        }
-
-    def test_import(self):
-        scopes = self.analyze("""
-        import foo
-        from bar import aaa
-        from baz import bbb as ccc
-        """)
-        scope = scopes.by_module()
-        assert scope._symbols == {
-            "foo": MatchSymbol("foo", "const", "auto", impref=ImportRef("foo", None)),
-            "aaa": MatchSymbol("aaa", "const", "auto", impref=ImportRef("bar", "aaa")),
-            "ccc": MatchSymbol("ccc", "const", "auto", impref=ImportRef("baz", "bbb")),
-        }
-
-    def test_class(self):
-        scopes = self.analyze("""
-        class Foo:
-            x: i32
-            y: i32
-
-            def foo() -> None:
-                pass
-        """)
-        mod_scope = scopes.by_module()
-        assert mod_scope._symbols == {
-            "Foo": MatchSymbol("Foo", "const", "classdef"),
-        }
-        classdef = self.mod.get_classdef("Foo")
-        assert classdef.symtable._symbols == {
-            "x": MatchSymbol("x", "var", "class-field"),
-            "y": MatchSymbol("y", "var", "class-field"),
-            "foo": MatchSymbol("foo", "const", "funcdef"),
-            "i32": MatchSymbol("i32", "const", "explicit", level=2),
-        }
-
-    def test_generic_class(self):
-        scopes = self.analyze("""
-        @struct
-        class Foo[T]:
-            x: T
-
-            def foo(self) -> T:
-                return self.x
-        """)
-        gclassdef = self.mod.get_generic_classdef("Foo")
-        scope = scopes.by_generic_classdef(gclassdef)
-        assert scope.name == "test::Foo"
-        assert scope.color == "blue"
-        assert scope._symbols == {
-            "T": MatchSymbol("T", "const", "blue-param"),
-            "Self": MatchSymbol("Self", "const", "classdef"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-        }
-
-        inner_scope = scopes.by_classdef(gclassdef.inner)
-        assert inner_scope.name == "test::Foo::Self"
-        assert inner_scope._symbols == {
-            "x": MatchSymbol("x", "var", "class-field"),
-            "foo": MatchSymbol("foo", "const", "funcdef"),
-            "T": MatchSymbol("T", "const", "blue-param", level=1),
-        }
-
-    def test_vararg(self):
-        scopes = self.analyze("""
-        def foo(a: i32, *args: str) -> None:
-            pass
-        """)
-        funcdef = self.mod.get_funcdef("foo")
-        scope = scopes.by_funcdef(funcdef)
-        assert scope.name == "test::foo"
-        assert scope.color == "red"
-        assert scope._symbols == {
-            "a": MatchSymbol("a", "var", "red-param"),
-            "args": MatchSymbol("args", "var", "red-param"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-        }
-
-    def test_capture_across_multiple_scopes(self):
-        # see also the similar test in test_basic
-        scopes = self.analyze("""
-        def a() -> dynamic:
-            x = 42  # x is defined in this scope
-            def b() -> dynamic:
-                # x is referenced but NOT defined in this scope
-                y = x
-                def c() -> i32:
-                    # x should point TWO levels up
-                    return x
-                return c
-            return b
-
-        """)
-
-        def get_scope(name: str) -> SymTable:
-            for funcdef, scope in scopes.inner_scopes.items():
-                if funcdef.name == name:
-                    return scope
-            raise KeyError
-
-        a = get_scope("a")
-        b = get_scope("b")
-        c = get_scope("c")
-        assert a._symbols["x"] == MatchSymbol("x", "const", "auto", level=0)
-        assert b._symbols["x"] == MatchSymbol("x", "const", "auto", level=1)
-        assert c._symbols["x"] == MatchSymbol("x", "const", "auto", level=2)
-
-    def test_capture_decorator(self):
-        scopes = self.analyze("""
-        @blue
-        def deco(fn):
-            pass
-
-        @blue
-        def outer():
-            @deco
-            def inner() -> None:
-                pass
-        """)
-        funcdef = self.mod.get_funcdef("outer")
-        scope = scopes.by_funcdef(funcdef)
-        assert scope.name == "test::outer"
-        assert scope.color == "blue"
-        assert scope._symbols == {
-            "inner": MatchSymbol("inner", "const", "funcdef"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-            "deco": MatchSymbol("deco", "const", "funcdef", level=1),
-        }
-
-    def test_generic_args(self):
-        scopes = self.analyze("""
-        def foo[T](x: T):
-            v: T = 1
-        """)
-
-        gfuncdef = self.mod.get_generic_funcdef("foo")
-        scope = scopes.by_generic_funcdef(gfuncdef)
-        assert scope.name == "test::foo"
-        assert scope.color == "blue"
-        assert scope._symbols == {
-            "T": MatchSymbol("T", "const", "blue-param"),
-            "__impl": MatchSymbol("__impl", "const", "funcdef"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-        }
-
-        inner_scope = scopes.by_funcdef(gfuncdef.inner)
-        assert inner_scope.name == "test::foo::__impl"
-        assert inner_scope.color == "red"
-        assert inner_scope._symbols == {
-            "x": MatchSymbol("x", "var", "red-param"),
-            "v": MatchSymbol("v", "const", "auto"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-            "T": MatchSymbol("T", "const", "blue-param", level=1),
-        }
-
-    def test_symbol_not_found(self):
-        scopes = self.analyze("""
-        def foo() -> None:
-            x = y
-        """)
-        funcdef = self.mod.get_funcdef("foo")
-        scope = scopes.by_funcdef(funcdef)
-        assert scope._symbols == {
-            "x": MatchSymbol("x", "const", "auto"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-            "y": MatchSymbol("y", "var", "auto", level=-1, storage="NameError"),
-        }
-
-    def test_for_loop(self):
-        scopes = self.analyze("""
-        def foo() -> None:
-            for i in range(10):
-                x: i32 = i * 2
-        """)
-        funcdef = self.mod.get_funcdef("foo")
-        scope = scopes.by_funcdef(funcdef)
-        assert scope._symbols == {
-            "_$iter0": MatchSymbol("_$iter0", "var", "auto"),
-            "i": MatchSymbol("i", "var", "auto"),
-            "x": MatchSymbol("x", "var", "auto"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-            "range": MatchSymbol("range", "const", "explicit", level=2),
-            "i32": MatchSymbol("i32", "const", "explicit", level=2),
-        }
-
-    def test_for_loop_multiple(self):
-        scopes = self.analyze("""
-        def foo() -> None:
-            for i in range(10):
-                x: i32 = i * 2
-            for j in range(5):
-                y: i32 = j * 3
-        """)
-        funcdef = self.mod.get_funcdef("foo")
-        scope = scopes.by_funcdef(funcdef)
-        assert scope._symbols == {
-            "_$iter0": MatchSymbol("_$iter0", "var", "auto"),
-            "_$iter1": MatchSymbol("_$iter1", "var", "auto"),
-            "i": MatchSymbol("i", "var", "auto"),
-            "j": MatchSymbol("j", "var", "auto"),
-            "x": MatchSymbol("x", "var", "auto"),
-            "y": MatchSymbol("y", "var", "auto"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-            "range": MatchSymbol("range", "const", "explicit", level=2),
-            "i32": MatchSymbol("i32", "const", "explicit", level=2),
-        }
-
-    def test_for_loop_nested_funcs(self):
-        scopes = self.analyze("""
-        def foo() -> None:
-            for i in range(10):
-                x: i32 = i * 2
-
-            def bar() -> None:
-                for j in range(5):
-                    y: i32 = j * 3
-        """)
-        foo_scope = scopes.by_funcdef(self.mod.get_funcdef("foo"))
-        assert foo_scope._symbols == {
-            "_$iter0": MatchSymbol("_$iter0", "var", "auto"),
-            "i": MatchSymbol("i", "var", "auto"),
-            "x": MatchSymbol("x", "var", "auto"),
-            "bar": MatchSymbol("bar", "const", "funcdef"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-            "range": MatchSymbol("range", "const", "explicit", level=2),
-            "i32": MatchSymbol("i32", "const", "explicit", level=2),
-        }
-        foo_funcdef = self.mod.get_funcdef("foo")
-        bar_funcdef = foo_funcdef.body[1]  # type: ignore[assignment]
-        bar_scope = scopes.by_funcdef(bar_funcdef)
-        assert bar_scope._symbols == {
-            "_$iter1": MatchSymbol("_$iter1", "var", "auto"),
-            "j": MatchSymbol("j", "var", "auto"),
-            "y": MatchSymbol("y", "var", "auto"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-            "range": MatchSymbol("range", "const", "explicit", level=3),
-            "i32": MatchSymbol("i32", "const", "explicit", level=3),
-        }
-
-    def test_for_loop_no_shadowing(self):
+    def test_py_mixing_error_impl_direct_then_expl_block(self):
+        # implicit DIRECTLY in the lift target, then explicit in a nested block
         src = """
-        i: i32 = 0
-
-        def foo() -> None:
-            for i in range(10):
-                pass
+        def foo(cond: bool) -> None:
+            x = 3
+            if cond:
+                const x = 2
         """
         self.expect_errors(
             src,
-            "variable `i` shadows a name declared in an outer scope",
-            ("this is the new declaration", "i"),
-            ("this is the previous declaration", "i: i32 = 0"),
+            "Cannot mix implicit and explicit declarations for `x`",
+            ("this is an explicit declaration", "const x = 2"),
+            ("this is an implicit declaration", "x"),
         )
 
-    def test_global_const_hint(self):
-        scopes = self.analyze("""
-        x: i32 = 42
-        var y: i32 = 0
-        """)
-        scope = scopes.by_module()
-        assert scope._symbols == {
-            "x": MatchSymbol("x", "const", "global-const"),
-            "y": MatchSymbol("y", "var", "explicit", storage="cell"),
-            "i32": MatchSymbol("i32", "const", "explicit", level=1),
-        }
+    def test_py_mixing_error_expl_block_then_impl_direct(self):
+        # explicit in a nested block, then implicit DIRECTLY in the lift target
+        src = """
+        def foo(cond: bool) -> None:
+            if cond:
+                const x = 2
+            x = 3
+        """
+        self.expect_errors(
+            src,
+            "Cannot mix implicit and explicit declarations for `x`",
+            ("this is an explicit declaration", "const x = 2"),
+            ("this is an implicit declaration", "x"),
+        )
 
-    def test_blue_func_vararg(self):
-        scopes = self.analyze("""
-        @blue
-        def foo(a: i32, *args: str) -> None:
-            pass
-        """)
-        funcdef = self.mod.get_funcdef("foo")
-        scope = scopes.by_funcdef(funcdef)
-        assert scope._symbols == {
-            "a": MatchSymbol("a", "const", "blue-param"),
-            "args": MatchSymbol("args", "const", "blue-param"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-        }
-
-    def test_default_args(self):
-        scopes = self.analyze("""
-        MYCONST = 42
-
-        def outer() -> None:
-            def foo(b: i32 = MYCONST) -> None:
-                pass
-        """)
-        outer_def = self.mod.get_funcdef("outer")
-        outer_scope = scopes.by_funcdef(outer_def)
-        assert outer_scope._symbols == {
-            "foo": MatchSymbol("foo", "const", "funcdef"),
-            "@return": MatchSymbol("@return", "var", "auto"),
-            "i32": MatchSymbol("i32", "const", "explicit", level=2),
-            "MYCONST": MatchSymbol("MYCONST", "const", "global-const", level=1),
-        }
-
-    def test_list_literal(self):
-        # using a string literal implicitly imports '_list'
-        scopes = self.analyze("""
+    def test_py_scope_lifting_stops_at_loop(self):
+        # [py.scope-lifting]: lifting stops at a loop boundary. `x` is assigned in an
+        # `if` inside the loop body; it lifts only up to the `for.body` (the nearest
+        # lift target), so it is visible in the rest of the loop body but NOT after
+        # the loop.
+        src = """
         def foo() -> None:
-            [1, 2, 3]
-        """)
-        scope = scopes.by_module()
-        assert scope.implicit_imports == {"_list"}
+            for i in range(10):
+                if i > 5:
+                    x = i
+                x
+            x
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            i$0: Symbol("i", "var", "loop-target")
+            x$0: Symbol("x", "const", "auto")
 
-    def test_tuple_literal(self):
-        scopes = self.analyze("""
-        def foo() -> None:
-            tup = 1, 2, 3
-        """)
-        scope = scopes.by_module()
-        assert scope.implicit_imports == {"_tuple"}
+            scope foo:
+                range -> range @ builtins (depth=2) => <ImportRef _range.range>
+                x -> NameError
+                scope for.body:
+                    i -> i$0
+                    x -> x$0
+                    scope if.then:
+                        i -> i$0
+                        x -> x$0
+        """
+        self.assert_dump("test::foo", expected)
 
-    def test_dict_literal(self):
-        scopes = self.analyze("""
-        def foo() -> None:
-            dicts = {10: 20, 30: 50}
-        """)
+    def test_py_explicit_decls_dont_raise_mixing_error(self):
+        # [py.scope-lifting-mixing-error]: two EXPLICIT declarations do not mix
+        # (the error is only about implicit-vs-explicit). The block-local `x` and
+        # the function-level `x` are two separate bindings ([scope.shadow]).
+        src = """
+        def foo(cond: bool) -> i32:
+            if cond:
+                const x = 0
+                return x
+            const x = 1
+            return x
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            cond$0: Symbol("cond", "var", "red-param")
+            @return: Symbol("@return", "var", "auto")
+            x$0: Symbol("x", "const", "explicit")
+            x$1: Symbol("x", "const", "explicit")
 
-        scope = scopes.by_module()
-        assert scope.implicit_imports == {"_dict"}
+            scope foo:
+                cond -> cond$0
+                x -> x$1
+                scope if.then:
+                    x -> x$0
+        """
+        self.assert_dump("test::foo", expected)

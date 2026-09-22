@@ -1,65 +1,87 @@
 """
 astcompile pass
 
-The main job of this pass is to resolve names and symbols using the symtable collected
+The main job of this pass is to resolve names and symbols using the frameinfo collected
 by ScopeAnalyzer.  In particular rewrites generic ast.Name into more specific
 ast.NameLocalDirect, ast.NameOuterDirect, etc.
 
 Moreover, do other easy desugaring like converting `for` loops into `while` loops, etc.
 """
 
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 import spy.ast as ast
-from spy.analyze.symtable import SymTable
+from spy.analyze.sym import FrameInfo, Scope, Symbol
 from spy.ast import LoweringStage
 from spy.errors import WIP, SPyError
 from spy.location import Loc
 from spy.util import magic_dispatch
 
+if TYPE_CHECKING:
+    from spy.analyze.scope import ScopeAnalyzer
 
-def astcompile(parsed_mod: ast.Module) -> ast.Module:
+
+def astcompile(
+    parsed_mod: ast.Module,
+    scope_analyzer: Optional["ScopeAnalyzer"] = None,
+) -> ast.Module:
     assert parsed_mod.stage == "parsed"
-    compiled_mod = ASTCompiler(parsed_mod).compile_mod()
+    compiled_mod = ASTCompiler(parsed_mod, scope_analyzer=scope_analyzer).compile_mod()
     assert compiled_mod.stage == "astcompiled"
     compiled_mod.assert_valid_at("astcompiled")
     return compiled_mod
 
 
-def astcompile_interactive(expr: ast.Expr, symtable: SymTable) -> ast.Expr:
+def astcompile_interactive(expr: ast.Expr, scope: Scope) -> ast.Expr:
     """
-    Compile a single expression against the given symtable, in interactive
-    mode. This is meant to be used by SPdb.
+    Compile a single expression in interactive mode.  The names are looked up in the
+    given scope and its parents.  This is meant to be used by SPdb.
     """
-    compiler = ASTCompiler(None, interactive=True)
-    compiler.push_symtable(symtable)
+    compiler = ASTCompiler(None, interactive_scope=scope)
+    compiler.push_frameinfo(scope.frameinfo)
     return compiler.compile_expr(expr)
 
 
 class ASTCompiler:
-    def __init__(self, mod: Optional[ast.Module], *, interactive: bool = False) -> None:
+    def __init__(
+        self,
+        mod: Optional[ast.Module],
+        *,
+        scope_analyzer: Optional["ScopeAnalyzer"] = None,
+        interactive_scope: Optional[Scope] = None,
+    ) -> None:
+        # we support two compilation modes:
+        #   - AOT, the default: we pass mod and scope_analyzer, names are resolved using
+        #     scope_analyzer
+        #   - interactive, for spdb: we pass interactive_scope and we use it for
+        #     resolving names
         self.mod = mod
-        self.interactive = interactive
-        self.symtable_stack: list[SymTable] = []
+        self.frameinfo_stack: list[FrameInfo] = []
+        self.sa = scope_analyzer
+        self.interactive_scope = interactive_scope
 
-    def push_symtable(self, symtable: SymTable) -> None:
-        self.symtable_stack.append(symtable)
+    def push_frameinfo(self, frameinfo: FrameInfo) -> None:
+        self.frameinfo_stack.append(frameinfo)
 
-    def pop_symtable(self) -> SymTable:
-        return self.symtable_stack.pop()
+    def pop_frameinfo(self) -> FrameInfo:
+        return self.frameinfo_stack.pop()
 
     @property
-    def symtable(self) -> SymTable:
-        return self.symtable_stack[-1]
+    def frameinfo(self) -> FrameInfo:
+        return self.frameinfo_stack[-1]
 
     def compile_mod(self) -> ast.Module:
         assert self.mod is not None
-        self.push_symtable(self.mod.symtable)
+        assert self.sa is not None
+        mod_frameinfo = self.sa.by_module()
+        self.push_frameinfo(mod_frameinfo)
         new_decls = [self.compile_decl(decl) for decl in self.mod.decls]
-        self.pop_symtable()
+        self.pop_frameinfo()
         return self.mod.replace(
             stage="astcompiled",
             decls=new_decls,
+            _frameinfo=mod_frameinfo,
+            _implicit_imports=set(self.sa.implicit_imports),
         )
 
     def compile_decl(self, decl: ast.Decl) -> ast.Decl:
@@ -67,7 +89,7 @@ class ASTCompiler:
 
     def compile_stmt(self, stmt: ast.Stmt) -> list[ast.Stmt]:
         # if we are in a ClassDef, only a few stmts are actually allowed
-        in_classdef = self.symtable.kind == "class"
+        in_classdef = self.frameinfo.kind == "class"
         allowed = (
             ast.VarDef,
             ast.Assign,
@@ -85,11 +107,14 @@ class ASTCompiler:
             )
         return magic_dispatch(self, "compile_stmt", stmt)
 
-    def compile_body(self, body: list[ast.Stmt]) -> list[ast.Stmt]:
+    def compile_stmts(self, body: list[ast.Stmt]) -> list[ast.Stmt]:
         result = []
         for stmt in body:
             result.extend(self.compile_stmt(stmt))
         return result
+
+    def compile_block(self, block: ast.Block) -> ast.Block:
+        return block.replace(body=self.compile_stmts(block.body))
 
     def compile_expr(self, expr: ast.Expr) -> ast.Expr:
         return magic_dispatch(self, "compile_expr", expr)
@@ -104,29 +129,87 @@ class ASTCompiler:
         self, decl: ast.GlobalGenericFuncDef
     ) -> ast.Decl:
         gfuncdef = decl.funcdef
-        self.push_symtable(gfuncdef.symtable)
-        new_inner = self.compile_funcdef(gfuncdef.inner)
-        self.pop_symtable()
-        new_gfuncdef = gfuncdef.replace(inner=new_inner)
-        return decl.replace(funcdef=new_gfuncdef)
+        # desugar into a `FuncDef(kind="generic")` here, so the GenericFuncDef node
+        # never reaches the runtime (like for/augassign).
+        outer_funcdef = self._desugar_generic(
+            gfuncdef, gfuncdef.name, gfuncdef.args, gfuncdef.inner
+        )
+        return ast.GlobalFuncDef(decl.loc, outer_funcdef)
 
     def compile_decl_GlobalGenericClassDef(
         self, decl: ast.GlobalGenericClassDef
     ) -> ast.Decl:
-        # GenericClassDef is basically _function_ which returns a class. So when
-        # evaluating the body we need to push:
-        #     gclassdef.symtable which contains e.g. 'T'
-        #     inner.symtable which contains the body of the class
         gclassdef = decl.classdef
-        inner = gclassdef.inner
-        self.push_symtable(gclassdef.symtable)
-        self.push_symtable(inner.symtable)
-        new_body = self.compile_body(inner.body)
-        self.pop_symtable()
-        self.pop_symtable()
-        new_inner = inner.replace(body=new_body)
-        new_gclassdef = gclassdef.replace(inner=new_inner)
-        return decl.replace(classdef=new_gclassdef)
+        # desugar into a `FuncDef(kind="generic")` here.
+        outer_funcdef = self._desugar_generic(
+            gclassdef, gclassdef.name, gclassdef.args, gclassdef.inner
+        )
+        return ast.GlobalFuncDef(decl.loc, outer_funcdef)
+
+    def _desugar_generic(
+        self,
+        node: ast.Node,
+        name: str,
+        args: list[ast.FuncArg],
+        inner: ast.Stmt,
+    ) -> ast.FuncDef:
+        # desugar:
+        #   def add[T](x: T, y: T) -> T:
+        #       ...
+        #
+        # into:
+        #   @blue
+        #   def add(T):
+        #       def __impl(x: T, y: T) -> T:
+        #           ...
+        #       return __impl
+        #
+        # (same for class[T])
+
+        assert self.sa is not None
+        assert self.mod is not None
+        loc = inner.loc
+        # the generic args and body are compiled in the outer generic frame
+        outer_frameinfo = self.sa.get_frameinfo(node)
+        self.push_frameinfo(outer_frameinfo)
+        new_args = [
+            arg.replace(
+                type=self.compile_expr(arg.type),
+                _sym=self.sa.get_resolved_sym(arg),
+            )
+            for arg in args
+        ]
+
+        # compile the inner def/class as the first body statement...
+        new_inner = self.compile_stmt(inner)
+        assert len(new_inner) == 1
+        # synthesize `return <inner>`
+        inner_sym = self.sa.get_resolved_sym(inner)
+        return_stmt = ast.Return(
+            loc=loc,
+            value=ast.NameLocalDirect(loc=loc, sym=inner_sym),
+        )
+        self.pop_frameinfo()
+
+        body = ast.Block(
+            loc=loc, body=new_inner + [return_stmt], scope=self.sa.scopes[node]
+        )
+        return ast.FuncDef(
+            loc=loc,
+            stage="astcompiled",
+            color="blue",
+            kind="generic",
+            name=name,
+            args=new_args,
+            return_type=ast.Auto(loc),
+            defaults=[],
+            docstring=None,
+            scoping_rules=self.mod.scoping_rules,
+            body=body,
+            decorators=[],
+            _frameinfo=outer_frameinfo,
+            _sym=self.sa.get_resolved_sym(node),
+        )
 
     def compile_decl_GlobalVarDef(self, decl: ast.GlobalVarDef) -> ast.Decl:
         new_vardef = self.compile_stmt_VarDef(decl.vardef)
@@ -135,11 +218,7 @@ class ASTCompiler:
         return decl.replace(vardef=new_vardef[0])
 
     def compile_decl_GlobalClassDef(self, decl: ast.GlobalClassDef) -> ast.Decl:
-        classdef = decl.classdef
-        self.push_symtable(classdef.symtable)
-        new_body = self.compile_body(classdef.body)
-        self.pop_symtable()
-        new_classdef = classdef.replace(body=new_body)
+        new_classdef = self.compile_classdef(decl.classdef)
         return decl.replace(classdef=new_classdef)
 
     def compile_decl_Import(self, decl: ast.Import) -> ast.Decl:
@@ -148,18 +227,25 @@ class ASTCompiler:
     # ===== FuncDef =====
 
     def compile_funcdef(self, funcdef: ast.FuncDef) -> ast.FuncDef:
+        assert self.sa is not None
         # decorators, arg types, return type and defaults are evaluated in the outer scope
         new_decorators = [self.compile_expr(d) for d in funcdef.decorators]
         new_return_type = self.compile_expr(funcdef.return_type)
         new_args = [
-            arg.replace(type=self.compile_expr(arg.type)) for arg in funcdef.args
+            arg.replace(
+                type=self.compile_expr(arg.type),
+                _sym=self.sa.get_resolved_sym(arg),
+            )
+            for arg in funcdef.args
         ]
         new_defaults = [self.compile_expr(d) for d in funcdef.defaults]
 
         # the statements of the function are evaluated in the inner scope
-        self.push_symtable(funcdef.symtable)
-        new_body = self.compile_body(funcdef.body)
-        self.pop_symtable()
+        inner_frameinfo = self.sa.get_frameinfo(funcdef)
+        self.push_frameinfo(inner_frameinfo)
+        new_body = self.compile_block(funcdef.body)
+        self.pop_frameinfo()
+        new_sym = self.sa.get_resolved_sym(funcdef)
         return funcdef.replace(
             stage="astcompiled",
             decorators=new_decorators,
@@ -167,6 +253,8 @@ class ASTCompiler:
             args=new_args,
             defaults=new_defaults,
             body=new_body,
+            _frameinfo=inner_frameinfo,
+            _sym=new_sym,
         )
 
     # ===== Stmt handlers =====
@@ -188,10 +276,22 @@ class ASTCompiler:
     def compile_stmt_Continue(self, stmt: ast.Continue) -> list[ast.Stmt]:
         return [stmt]
 
+    def compile_stmt_Global(self, stmt: ast.Global) -> list[ast.Stmt]:
+        # `global x` has effect only at ScopeAnalyzer time, no runtime effect.
+        return []
+
+    def compile_stmt_Nonlocal(self, stmt: ast.Nonlocal) -> list[ast.Stmt]:
+        raise WIP("`nonlocal` is not implemented yet")
+
     def compile_stmt_VarDef(self, stmt: ast.VarDef) -> list[ast.Stmt]:
+        assert self.sa is not None
         new_type = self.compile_expr(stmt.type)
         new_value = self.compile_expr(stmt.value) if stmt.value is not None else None
-        return [stmt.replace(type=new_type, value=new_value)]
+        # scope resolves every VarDef to a Symbol; fill it in so that the
+        # runtime indexes the frame by sym.slot_name.
+        sym = self.sa.get_resolved_sym_maybe(stmt)
+        assert sym is not None
+        return [stmt.replace(type=new_type, value=new_value, _sym=sym)]
 
     def compile_stmt_Assign(self, stmt: ast.Assign) -> list[ast.Stmt]:
         if isinstance(stmt.target, ast.SingleTarget):
@@ -207,8 +307,9 @@ class ASTCompiler:
                 assign = ast.AssignLocal(stmt.loc, expr)
             elif isinstance(expr, ast.AssignExprCell):
                 assign = ast.AssignCell(stmt.loc, expr)
-            elif isinstance(expr, ast.AssignExprConstError):
-                assign = ast.AssignConstError(stmt.loc, expr)
+            elif isinstance(expr, ast.PoisonExpr):
+                # assignment to a const: the poison sits in statement position
+                assign = ast.StmtExpr(stmt.loc, expr)
             else:
                 assert False, "unknown AssignExpr node"
             return [assign]
@@ -217,10 +318,13 @@ class ASTCompiler:
             # TODO: support nested unpack targets (e.g. (a, (b, c)) = ...)
             targets = []
             for t in stmt.target.targets:
-                if isinstance(t, ast.SingleTarget):
-                    targets.append(t.name)
-                else:
+                if not isinstance(t, ast.SingleTarget):
                     raise WIP("nested unpack targets are not supported yet")
+                name = t.name
+                assert self.sa is not None
+                sym = self.sa.get_resolved_sym(name)
+                name = ast.StrLiteral(name.loc, sym.slot_name)
+                targets.append(name)
             return [
                 ast.AssignUnpack(
                     loc=stmt.loc,
@@ -232,11 +336,24 @@ class ASTCompiler:
         else:
             assert False
 
+    def compile_stmt_AssignTemp(self, stmt: ast.AssignTemp) -> list[ast.Stmt]:
+        # a write to a hidden compiler temp; lower directly to AssignLocal, no lookup.
+        value = self.compile_expr(stmt.value)
+        target = ast.StrLiteral(stmt.loc, stmt.sym.slot_name)
+        assign_expr = ast.AssignExprLocal(stmt.loc, target, stmt.sym, value)
+        return [ast.AssignLocal(stmt.loc, assign_expr)]
+
     def compile_stmt_ClassDef(self, stmt: ast.ClassDef) -> list[ast.Stmt]:
-        self.push_symtable(stmt.symtable)
-        new_body = self.compile_body(stmt.body)
-        self.pop_symtable()
-        return [stmt.replace(body=new_body)]
+        return [self.compile_classdef(stmt)]
+
+    def compile_classdef(self, classdef: ast.ClassDef) -> ast.ClassDef:
+        assert self.sa is not None
+        inner_frameinfo = self.sa.get_frameinfo(classdef)
+        new_sym = self.sa.get_resolved_sym(classdef)
+        self.push_frameinfo(inner_frameinfo)
+        new_body = self.compile_block(classdef.body)
+        self.pop_frameinfo()
+        return classdef.replace(body=new_body, _frameinfo=inner_frameinfo, _sym=new_sym)
 
     def compile_stmt_FuncDef(self, stmt: ast.FuncDef) -> list[ast.Stmt]:
         return [self.compile_funcdef(stmt)]
@@ -246,22 +363,20 @@ class ASTCompiler:
         #   for i in X:
         #       body
         # into:
-        #   it = X.__fastiter__()
-        #   while it.__continue_iteration__():
-        #       i = it.__item__()
-        #       it = it.__next__()
+        #   $_iter = X.__fastiter__()
+        #   while $_iter.__continue_iteration__():
+        #       i = $_iter.__item__()
+        #       $_iter = $_iter.__next__()
         #       body
         loc = stmt.loc
         # use non-colorize locs for synthetic nodes, to avoid painting over user nodes
         iter_loc = stmt.iter.loc.replace(colorize=False)
         target_loc = stmt.target.loc.replace(colorize=False)
-        iter_name = f"_$iter{stmt.seq}"
-        iter_target = ast.SingleTarget(iter_loc, ast.StrLiteral(iter_loc, iter_name))
-        iter_name_node = ast.Name(loc=iter_loc, id=iter_name)
+        iter_sym = self.frameinfo.make_temp_symbol("_$iter", iter_loc)  # e.g. _$iter$0
 
-        init_iter = ast.Assign(
+        init_iter = ast.AssignTemp(
             loc=iter_loc,
-            target=iter_target,
+            sym=iter_sym,
             value=ast.CallMethod(
                 loc=iter_loc,
                 target=stmt.iter,
@@ -274,30 +389,33 @@ class ASTCompiler:
             target=ast.SingleTarget(target_loc, stmt.target),
             value=ast.CallMethod(
                 loc=target_loc,
-                target=iter_name_node,
+                target=ast.NameTemp(iter_loc, iter_sym),
                 method=ast.StrLiteral(target_loc, "__item__"),
                 args=[],
             ),
         )
-        advance_iter = ast.Assign(
+        advance_iter = ast.AssignTemp(
             loc=iter_loc,
-            target=iter_target,
+            sym=iter_sym,
             value=ast.CallMethod(
                 loc=iter_loc,
-                target=iter_name_node,
+                target=ast.NameTemp(iter_loc, iter_sym),
                 method=ast.StrLiteral(iter_loc, "__next__"),
                 args=[],
             ),
         )
+        # NOTE: the synthesized `while` gets its .scope from for.body.scope
         while_loop = ast.While(
             loc=loc,
             test=ast.CallMethod(
                 loc=iter_loc,
-                target=iter_name_node,
+                target=ast.NameTemp(iter_loc, iter_sym),
                 method=ast.StrLiteral(iter_loc, "__continue_iteration__"),
                 args=[],
             ),
-            body=[assign_item, advance_iter] + stmt.body,
+            body=stmt.body.replace(
+                body=[assign_item, advance_iter] + stmt.body.body,
+            ),
         )
         compiled_init = self.compile_stmt(init_iter)
         compiled_while = self.compile_stmt(while_loop)
@@ -308,94 +426,99 @@ class ASTCompiler:
         # use non-colorize locs for synthetic nodes, to avoid painting over user nodes
         binop_loc = stmt.loc.replace(colorize=False)
         target_loc = stmt.target.loc.replace(colorize=False)
+        read_name = ast.Name(loc=target_loc, id=stmt.target.value)
+        assert self.sa is not None
+        # we must bind the synthetic node
+        scope = self.sa.get_resolved_scope(stmt.target)
+        res = self.sa.get_resolution(stmt.target)
+        self.sa.bind_synthetic_node(read_name, scope, res)
         desugared = ast.Assign(
             loc=stmt.loc,
             target=ast.SingleTarget(target_loc, stmt.target),
             value=ast.BinOp(
                 loc=binop_loc,
                 op=stmt.op,
-                left=ast.Name(loc=target_loc, id=stmt.target.value),
+                left=read_name,
                 right=stmt.value,
             ),
         )
         return self.compile_stmt(desugared)
 
     def compile_stmt_AugSetAttr(self, stmt: ast.AugSetAttr) -> list[ast.Stmt]:
+        # we have:
+        #   obj.attr OP= v
+        #
+        # we want to evaluate `obj` only once. We desugar into:
+        #   _$t = obj
+        #   _$t.attr = _$t.attr OP v
         target_loc = stmt.target.loc.replace(colorize=False)
         value_loc = stmt.loc.replace(colorize=False)
-        target_name = f"_$aug_target{stmt.seq}"
-        target = ast.SingleTarget(
-            target_loc,
-            ast.StrLiteral(target_loc, target_name),
-        )
+        target_sym = self.frameinfo.make_temp_symbol("_$t", target_loc)
+
         desugared: list[ast.Stmt] = [
-            ast.Assign(loc=target_loc, target=target, value=stmt.target),
+            ast.AssignTemp(loc=target_loc, sym=target_sym, value=stmt.target),
             ast.SetAttr(
                 loc=stmt.loc,
-                target=ast.Name(loc=target_loc, id=target_name),
+                target=ast.NameTemp(target_loc, target_sym),
                 attr=stmt.attr,
                 value=ast.BinOp(
                     loc=value_loc,
                     op=stmt.op,
                     left=ast.GetAttr(
                         loc=target_loc,
-                        value=ast.Name(loc=target_loc, id=target_name),
+                        value=ast.NameTemp(target_loc, target_sym),
                         attr=stmt.attr,
                     ),
                     right=stmt.value,
                 ),
             ),
         ]
-        return self.compile_body(desugared)
+        return self.compile_stmts(desugared)
 
     def compile_stmt_AugSetItem(self, stmt: ast.AugSetItem) -> list[ast.Stmt]:
+        # we have:
+        #   obj[arg0, arg1, ...] OP= v
+        #
+        # we want to evaluate `obj` and each `arg` only once. We desugar into:
+        #   _$t = obj
+        #   _$a0 = arg0
+        #   _$a1 = arg1
+        #   _$t[_$a0, _$a1, ...] = _$t[_$a0, _$a1, ...] OP v
         target_loc = stmt.target.loc.replace(colorize=False)
         value_loc = stmt.loc.replace(colorize=False)
-        target_name = f"_$aug_target{stmt.seq}"
-        target = ast.SingleTarget(
-            target_loc,
-            ast.StrLiteral(target_loc, target_name),
-        )
-        desugared: list[ast.Stmt] = [
-            ast.Assign(loc=target_loc, target=target, value=stmt.target)
-        ]
-        arg_names = []
-        for i, arg in enumerate(stmt.args):
-            arg_loc = arg.loc.replace(colorize=False)
-            arg_name = f"_$aug_arg{stmt.seq}_{i}"
-            arg_names.append((arg_name, arg_loc))
-            desugared.append(
-                ast.Assign(
-                    loc=arg_loc,
-                    target=ast.SingleTarget(
-                        arg_loc,
-                        ast.StrLiteral(arg_loc, arg_name),
-                    ),
-                    value=arg,
-                )
-            )
+        target_sym = self.frameinfo.make_temp_symbol("_$t", target_loc)
 
-        def make_args() -> list[ast.Expr]:
-            return [ast.Name(loc=loc, id=name) for name, loc in arg_names]
+        desugared: list[ast.Stmt] = [
+            ast.AssignTemp(loc=target_loc, sym=target_sym, value=stmt.target)
+        ]
+        arg_syms = []
+        for arg in stmt.args:
+            arg_loc = arg.loc.replace(colorize=False)
+            arg_sym = self.frameinfo.make_temp_symbol("_$a", arg_loc)
+            arg_syms.append((arg_sym, arg_loc))
+            desugared.append(ast.AssignTemp(loc=arg_loc, sym=arg_sym, value=arg))
+
+        lhs_args: list[ast.Expr] = [ast.NameTemp(loc, sym) for sym, loc in arg_syms]
+        rhs_args: list[ast.Expr] = [ast.NameTemp(loc, sym) for sym, loc in arg_syms]
 
         desugared.append(
             ast.SetItem(
                 loc=stmt.loc,
-                target=ast.Name(loc=target_loc, id=target_name),
-                args=make_args(),
+                target=ast.NameTemp(target_loc, target_sym),
+                args=lhs_args,
                 value=ast.BinOp(
                     loc=value_loc,
                     op=stmt.op,
                     left=ast.GetItem(
                         loc=target_loc,
-                        value=ast.Name(loc=target_loc, id=target_name),
-                        args=make_args(),
+                        value=ast.NameTemp(target_loc, target_sym),
+                        args=rhs_args,
                     ),
                     right=stmt.value,
                 ),
             )
         )
-        return self.compile_body(desugared)
+        return self.compile_stmts(desugared)
 
     def compile_stmt_SetItem(self, stmt: ast.SetItem) -> list[ast.Stmt]:
         return [
@@ -421,7 +544,7 @@ class ASTCompiler:
         return [
             stmt.replace(
                 test=self.compile_expr(stmt.test),
-                body=self.compile_body(stmt.body),
+                body=self.compile_block(stmt.body),
             )
         ]
 
@@ -438,8 +561,8 @@ class ASTCompiler:
         return [
             stmt.replace(
                 test=self.compile_expr(stmt.test),
-                then_body=self.compile_body(stmt.then_body),
-                else_body=self.compile_body(stmt.else_body),
+                then=self.compile_block(stmt.then),
+                else_=self.compile_block(stmt.else_),
             )
         ]
 
@@ -532,18 +655,31 @@ class ASTCompiler:
 
     def compile_expr_BlockExpr(self, expr: ast.BlockExpr) -> ast.Expr:
         return expr.replace(
-            body=self.compile_body(expr.body),
+            body=self.compile_stmts(expr.body),
             value=self.compile_expr(expr.value),
         )
 
     def compile_expr_AssignExpr(self, expr: ast.AssignExpr) -> ast.Expr:
         target = expr.target
-        sym = self.symtable.lookup(target.value)
+        assert self.sa is not None
+        if (err := self.sa.get_poison_error_maybe(target)) is not None:
+            return ast.PoisonExpr(expr.loc, err)
+        sym = self.sa.get_resolved_sym(target)
+
         value = self.compile_expr(expr.value)
 
         if sym.varkind == "const" and sym.varkind_origin != "auto":
-            # this is an error, let's insert the appropriate poison node
-            return ast.AssignExprConstError(expr.loc, sym, target.loc)
+            # assignment to a const: resolve to a lazy poison error
+            err = SPyError("W_TypeError", "invalid assignment target")
+            err.add("error", f"{sym.src_name} is const", target.loc)
+            err.add("note", f"const declared here ({sym.varkind_origin})", sym.loc)
+            if sym.varkind_origin == "global-const":
+                msg = f"help: declare it as variable: `var {sym.src_name} ...`"
+                err.add("note", msg, sym.loc)
+            elif sym.varkind_origin == "blue-param":
+                msg = "blue function arguments are const by default"
+                err.add("note", msg, sym.loc)
+            return ast.PoisonExpr(expr.loc, err)
 
         if sym.storage == "direct":
             assert sym.is_local
@@ -562,27 +698,50 @@ class ASTCompiler:
         else:
             assert False, f"unexpected storage: {sym.storage!r}"
 
-    def compile_expr_Name(self, name: ast.Name) -> ast.Expr:
-        varname = name.id
-        sym = self.symtable.lookup_maybe(varname)
-        if sym is None:
-            # sym can be None ONLY in interactive mode (i.e. an expression typed at
-            # the SPdb prompt, compiled against the symtable of a live frame), else
-            # it means that there is a bug in symtable.
-            assert self.interactive, "sym not found"
-            return ast.NameInteractive(name.loc, name.id)
+    def compile_expr_NameTemp(self, name: ast.NameTemp) -> ast.Expr:
+        # a hidden compiler temp carries its own Symbol; lower directly, no lookup.
+        return ast.NameLocalDirect(name.loc, name.sym)
 
+    def compile_expr_Name(self, name: ast.Name) -> ast.Expr:
+        if self.interactive_scope is not None:
+            return self._resolve_interactive(name)
+        assert self.sa is not None
+        # a name resolves either to a Symbol or to a lazy SPyError
+        err = self.sa.get_poison_error_maybe(name)
+        if err is not None:
+            return ast.PoisonExpr(name.loc, err)
+        sym = self.sa.get_resolved_sym_maybe(name)
+        assert sym is not None, "sym not found"
+        return self._emit_name_node(name.loc, sym)
+
+    def _emit_name_node(self, loc: Loc, sym: Symbol) -> ast.Expr:
         if sym.impref is not None:
-            return ast.NameImportRef(name.loc, sym)
+            return ast.NameImportRef(loc, sym)
         elif sym.storage == "direct" and sym.is_local:
-            return ast.NameLocalDirect(name.loc, sym)
+            return ast.NameLocalDirect(loc, sym)
         elif sym.storage == "direct":
-            return ast.NameOuterDirect(name.loc, sym)
+            return ast.NameOuterDirect(loc, sym)
         elif sym.storage == "cell" and sym.is_local:
-            return ast.NameLocalCell(name.loc, sym)
+            return ast.NameLocalCell(loc, sym)
         elif sym.storage == "cell" and not sym.is_local:
-            return ast.NameOuterCell(name.loc, sym, fqn=None)
-        elif sym.storage == "NameError":
-            return ast.NameError(name.loc, name.id)
+            return ast.NameOuterCell(loc, sym, fqn=None)
         else:
             assert False, f"unexpected storage: {sym.storage!r}"
+
+    def _resolve_interactive(self, name: ast.Name) -> ast.Expr:
+        """
+        Resolve a name against self.interactive_scope. This is used by interactive
+        compilation for e.g. spdb.
+        """
+        assert self.interactive_scope is not None
+        res = self.interactive_scope.lookup(name.id)
+        if res.found:
+            assert res.sym is not None
+            # this is the equivalent of what we do in ScopeAnalyzer.lookup_and_bind
+            new_sym = res.sym.replace(frame_depth=res.frame_depth)
+            return self._emit_name_node(name.loc, new_sym)
+
+        # not found
+        err = SPyError("W_NameError", f"name `{name.id}` is not defined")
+        err.add("error", "not found in this scope", name.loc)
+        return ast.PoisonExpr(name.loc, err)

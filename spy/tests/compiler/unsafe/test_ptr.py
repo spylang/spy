@@ -503,6 +503,7 @@ class TestUnsafePtr(CompilerTest):
             return null_ptr[i]
 
         def bar(i: i32, v: i32) -> None:
+            global null_ptr
             null_ptr[i] = v
         """)
         with SPyError.raises("W_PanicError", "cannot dereference NULL pointer"):
@@ -521,6 +522,7 @@ class TestUnsafePtr(CompilerTest):
             return global_ptr == k_ptr[i32].NULL
 
         def alloc_global_ptr() -> None:
+            global global_ptr
             global_ptr = k_alloc[i32](1)
         """)
         assert mod.is_null() is True

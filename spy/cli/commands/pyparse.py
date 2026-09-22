@@ -6,5 +6,5 @@ async def pyparse(args: Base_Args_With_Filename) -> None:
     """Dump the Python AST"""
     with open(args.filename) as f:
         src = f.read()
-    mod = magic_py_parse(src)
+    mod, _ = magic_py_parse(src)
     mod.pp()

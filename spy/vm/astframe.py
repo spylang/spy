@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Never, Optional, Sequence
 from fixedint import Int8, Int32, Int64, UInt8, UInt32, UInt64
 
 from spy import ast
-from spy.analyze.symtable import Color, Symbol, SymTable, maybe_blue
+from spy.analyze.sym import Color, FrameInfo, Symbol, maybe_blue
 from spy.errors import WIP, SPyError
 from spy.fqn import FQN
 from spy.location import Loc
@@ -59,21 +59,27 @@ class AbstractFrame:
     ns: FQN
     loc: Loc
     closure: CLOSURE
-    symtable: SymTable
+    frameinfo: FrameInfo
     locals: dict[str, LocalVar]
     special_calls: dict[ast.Call, str]
+    # stack of currently-entered Blocks; used by spdb to interactively resolve names
+    block_stack: list[ast.Block]
 
     def __init__(
-        self, vm: "SPyVM", ns: FQN, loc: Loc, symtable: SymTable, closure: CLOSURE
+        self, vm: "SPyVM", ns: FQN, loc: Loc, frameinfo: FrameInfo, closure: CLOSURE
     ) -> None:
         assert type(self) is not AbstractFrame, "abstract class"
         self.vm = vm
         self.ns = ns
         self.loc = loc
-        self.symtable = symtable
+        self.frameinfo = frameinfo
         self.closure = closure
+        # TODO: once the scope migration is done, we know all the slots in advance
+        # (from the frameinfo), so we could pre-initialize self.locals with the right
+        # slots instead of populating it lazily via declare_local.
         self.locals = {}
         self.special_calls = {}
+        self.block_stack = []
 
     # overridden by DopplerFrame
     @property
@@ -81,14 +87,15 @@ class AbstractFrame:
         return False
 
     def get_locals_types_w(self) -> dict[str, W_Type]:
-        return {
-            name: lv.w_T
-            for name, lv in self.locals.items()
-            if lv.color == "red"
-        }  # fmt: skip
+        res = {}
+        for name, lv in self.locals.items():
+            if lv.color == "red":
+                assert lv.w_T is not None
+                res[name] = lv.w_T
+        return res
 
     def declare_local(
-        self, name: str, desired_color: Color, w_type: W_Type, loc: Loc
+        self, name: str, desired_color: Color, w_type: Optional[W_Type], loc: Loc
     ) -> None:
         if name in self.locals:
             # this is the same check that we already do in
@@ -102,7 +109,7 @@ class AbstractFrame:
             err.add("note", "this is the previous declaration", old_loc)
             raise err
 
-        if not isinstance(w_type, W_FuncType):
+        if w_type is not None and not isinstance(w_type, W_FuncType):
             self.vm.make_fqn_const(w_type)
 
         # determine the color of the local var:
@@ -119,7 +126,7 @@ class AbstractFrame:
             # special case '@if', '@while', etc.
             color: Color = "red"
         else:
-            sym = self.symtable.lookup(name)
+            sym = self.frameinfo.lookup(name)
             assert sym.is_local
             if sym.varkind == "const" and desired_color == "blue":
                 color = "blue"
@@ -136,12 +143,23 @@ class AbstractFrame:
 
     def store_local(self, name: str, w_value: W_Object) -> None:
         lv = self.locals[name]
+        if lv.w_T is None:
+            # deferred type inference, see exec_stmt_VarDef
+            lv.w_T = self.vm.dynamic_type(w_value)
         # sanity check
         if isinstance(w_value, W_Cell):
             assert self.vm.isinstance(w_value.get(), lv.w_T)
         else:
             assert self.vm.isinstance(w_value, lv.w_T)
         lv.w_val = w_value
+
+    def fix_deferred_inference_type(self, name: str, w_T: W_Type) -> None:
+        """
+        Fix the type of a local declared as `var x: auto` with no initializer.
+        Called on the first assignment to that variable.
+        Subclasses (DopplerFrame) may override to also patch the deferred VarDef node.
+        """
+        self.locals[name].w_T = w_T
 
     def load_local(self, name: str) -> W_Object:
         localvar = self.locals.get(name)
@@ -152,12 +170,25 @@ class AbstractFrame:
     def exec_stmt(self, stmt: ast.Stmt) -> None:
         return magic_dispatch(self, "exec_stmt", stmt)
 
+    def exec_Block(self, block: ast.Block) -> None:
+        # Entering a Block is the single, centralized place where we push/pop the
+        # runtime block stack. Every body (funcdef/if/while/for) routes through
+        # here, so the push/pop cannot be forgotten and survives
+        # Break/Continue/Return/exceptions (finally).
+        self.block_stack.append(block)
+        try:
+            for stmt in block.body:
+                self.exec_stmt(stmt)
+        finally:
+            self.block_stack.pop()
+
     def typecheck_maybe(
         self, wam: W_MetaArg, varname: Optional[str]
     ) -> Optional[W_OpImpl]:
         if varname is None:
             return None  # no typecheck needed
         lv = self.locals[varname]
+        assert lv.w_T is not None
         w_expT = lv.w_T
         wam_expT = W_MetaArg.from_w_obj(self.vm, lv.w_T, loc=lv.decl_loc)
         try:
@@ -172,12 +203,12 @@ class AbstractFrame:
             elif varname == "@return":
                 exp = w_expT.fqn.human_name(self.vm)
                 msg = f"expected `{exp}` because of return type"
-                loc = self.symtable.lookup(varname).type_loc
+                loc = self.frameinfo.lookup(varname).type_loc
                 err.add("note", msg, loc=loc)
             else:
                 exp = w_expT.fqn.human_name(self.vm)
                 msg = f"expected `{exp}` because of type declaration"
-                loc = self.symtable.lookup(varname).type_loc
+                loc = self.frameinfo.lookup(varname).type_loc
                 err.add("note", msg, loc=loc)
 
             raise
@@ -201,6 +232,7 @@ class AbstractFrame:
             # apply the conversion
             assert varname is not None
             lv = self.locals[varname]
+            assert lv.w_T is not None
             wam_expT = W_MetaArg.from_w_obj(self.vm, lv.w_T, loc=lv.decl_loc)
             wam_gotT = W_MetaArg.from_w_obj(self.vm, wam.w_static_T, loc=wam.loc)
             wam_val = self.vm.eval_opimpl(
@@ -242,7 +274,7 @@ class AbstractFrame:
 
     def exec_stmt_FuncDef(self, funcdef: ast.FuncDef) -> None:
         # if we are defining a function inside a class, it's a method
-        is_method = self.symtable.kind == "class"
+        is_method = self.frameinfo.kind == "class"
 
         # evaluate the functype
         params = []
@@ -296,7 +328,13 @@ class AbstractFrame:
         # create the w_func
         fqn = self.ns.join(funcdef.name)
         # XXX we should capture only the names actually used in the inner func
-        closure = self.closure + (self.locals,)
+        if self.frameinfo.kind == "class":
+            # [name.class-skip]: symbols in the class frame cannot be captured by inner
+            # methods, do we don't need to save it in the closure.  See also
+            # Scope.lookup.
+            closure = self.closure
+        else:
+            closure = self.closure + (self.locals,)
 
         # this is just a cosmetic nicety. In presence of decorators, "mod.foo"
         # will NOT necessarily contain the function object which is being
@@ -341,8 +379,9 @@ class AbstractFrame:
                 w_func = wam_inner.w_blueval
 
         w_T = self.vm.dynamic_type(w_func)
-        self.declare_local(funcdef.name, "blue", w_T, funcdef.prototype_loc)
-        self.store_local(funcdef.name, w_func)
+        slot_name = funcdef.sym.slot_name
+        self.declare_local(slot_name, "blue", w_T, funcdef.prototype_loc)
+        self.store_local(slot_name, w_func)
 
     def exec_stmt_GenericFuncDef(self, gfuncdef: ast.GenericFuncDef) -> None:
         """
@@ -360,10 +399,9 @@ class AbstractFrame:
                 return __impl
         """
         loc = gfuncdef.loc
-        assert gfuncdef.symtable is not None
 
         # build synthetic return: return __impl
-        impl_symbol = gfuncdef.symtable.lookup("__impl")
+        impl_symbol = gfuncdef.frameinfo.lookup("__impl")
         return_stmt = ast.Return(
             loc=loc,
             value=ast.NameLocalDirect(loc=loc, sym=impl_symbol),
@@ -379,9 +417,13 @@ class AbstractFrame:
             return_type=ast.Auto(loc),
             defaults=[],
             docstring=None,
-            body=[gfuncdef.inner, return_stmt],
+            scoping_rules="strict",
+            body=ast.Block(
+                loc=loc,
+                body=[gfuncdef.inner, return_stmt],
+            ),
             decorators=[],
-            symtable=gfuncdef.symtable,
+            _frameinfo=gfuncdef.frameinfo,
         )
 
         self.exec_stmt_FuncDef(outer_funcdef)
@@ -402,13 +444,15 @@ class AbstractFrame:
         """
         Create a forward-declaration for the given classdef
         """
+        # the FQN uses the src name; the local slot uses the (maybe mangled) slot_name
         fqn = self.ns.join(classdef.name)
         fqn = self.vm.get_unique_FQN(fqn)
         pyclass = self.metaclass_for_classdef(classdef)
         w_typedecl = pyclass.declare(fqn)
         w_meta_type = self.vm.dynamic_type(w_typedecl)
-        self.declare_local(classdef.name, "blue", w_meta_type, classdef.loc)
-        self.store_local(classdef.name, w_typedecl)
+        slot_name = classdef.sym.slot_name
+        self.declare_local(slot_name, "blue", w_meta_type, classdef.loc)
+        self.store_local(slot_name, w_typedecl)
         self.vm.add_global(fqn, w_typedecl)
 
     def exec_stmt_ClassDef(self, classdef: ast.ClassDef) -> None:
@@ -416,7 +460,8 @@ class AbstractFrame:
 
         # we are DEFINING a type which has already been declared by
         # fwdecl_ClassDef. Look it up
-        w_T = self.load_local(classdef.name)
+        slot_name = classdef.sym.slot_name
+        w_T = self.load_local(slot_name)
         assert isinstance(w_T, W_Type)
         assert w_T.fqn.parts[-1].name == classdef.name  # sanity check
         assert not w_T.is_defined()
@@ -449,10 +494,9 @@ class AbstractFrame:
                 return Self
         """
         loc = gclassdef.loc
-        assert gclassdef.symtable is not None
 
         # build synthetic return: return Self
-        impl_symbol = gclassdef.symtable.lookup("Self")
+        impl_symbol = gclassdef.frameinfo.lookup("Self")
         return_stmt = ast.Return(
             loc=loc,
             value=ast.NameLocalDirect(loc=loc, sym=impl_symbol),
@@ -468,9 +512,13 @@ class AbstractFrame:
             return_type=ast.Auto(loc),
             defaults=[],
             docstring=None,
-            body=[gclassdef.inner, return_stmt],
+            scoping_rules="strict",
+            body=ast.Block(
+                loc=loc,
+                body=[gclassdef.inner, return_stmt],
+            ),
             decorators=[],
-            symtable=gclassdef.symtable,
+            _frameinfo=gclassdef.frameinfo,
         )
 
         self.exec_stmt_FuncDef(outer_funcdef)
@@ -480,18 +528,24 @@ class AbstractFrame:
         #   declaration    (not is_auto and not value):  [var] x: i32
         #   definition     (not is_auto and value):      [var] x: i32 = 0
         #   type inference (is_auto and value):          var   x      = 0
-        #   invalid        (is_auto and not value):      var   x
+        #   deferred inf.  (is_auto and not value):      var   x: auto
         #
         # Note that the "type inference" case is basically a simple Assign.
-        varname = vardef.name.value
-        sym = self.symtable.lookup(varname)
+        sym = vardef.sym
+        varname = sym.slot_name
+        # [scope.loop-fresh]: if we have a VarDef inside a loop, it needs to be
+        # reinitialized at each iteration
+        self.locals.pop(varname, None)
         is_auto = isinstance(vardef.type, ast.Auto)
 
         if vardef.value is None:
-            # declaration
-            assert not is_auto, "invalid VarDef"
-            w_T = self.eval_expr_type(vardef.type)
-            self.declare_local(varname, "red", w_T, vardef.loc)
+            if is_auto:
+                # deferred inference, type will be fixed on first assignment
+                # see also eval_expr_AssignExprLocal
+                self.declare_local(varname, "red", None, vardef.loc)
+            else:
+                w_T = self.eval_expr_type(vardef.type)
+                self.declare_local(varname, "red", w_T, vardef.loc)
             return
 
         if is_auto:
@@ -525,9 +579,6 @@ class AbstractFrame:
         self.eval_expr(assign.expr)
 
     def exec_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
-        self.eval_expr(assign.expr)
-
-    def exec_stmt_AssignConstError(self, assign: ast.AssignConstError) -> None:
         self.eval_expr(assign.expr)
 
     def exec_stmt_AssignUnpack(self, assign: ast.AssignUnpack) -> None:
@@ -578,7 +629,7 @@ class AbstractFrame:
             assign_expr = ast.AssignExprLocal(
                 loc=target.loc,
                 target=target,
-                sym=self.symtable.lookup(target.value),
+                sym=self.frameinfo.lookup(target.value),
                 value=getitem,
             )
             self.eval_expr_AssignExprLocal(assign_expr)
@@ -630,11 +681,9 @@ class AbstractFrame:
         wam_cond = self.eval_expr(if_node.test, varname="@if")
         assert isinstance(wam_cond.w_val, W_Bool)
         if self.vm.is_True(wam_cond.w_val):
-            for stmt in if_node.then_body:
-                self.exec_stmt(stmt)
+            self.exec_Block(if_node.then)
         else:
-            for stmt in if_node.else_body:
-                self.exec_stmt(stmt)
+            self.exec_Block(if_node.else_)
 
     def exec_stmt_While(self, while_node: ast.While) -> None:
         while True:
@@ -643,8 +692,7 @@ class AbstractFrame:
             if self.vm.is_False(wam_cond.w_val):
                 break
             try:
-                for stmt in while_node.body:
-                    self.exec_stmt(stmt)
+                self.exec_Block(while_node.body)
             except Break:
                 break
             except Continue:
@@ -739,70 +787,8 @@ class AbstractFrame:
         assert w_value is not None
         return W_MetaArg.from_w_obj(self.vm, w_value)
 
-    def eval_expr_NameError(self, name: ast.NameError) -> W_MetaArg:
-        raise SPyError.simple(
-            "W_NameError",
-            f"name `{name.id}` is not defined",
-            "not found in this scope",
-            name.loc,
-        )
-
-    def eval_expr_NameInteractive(self, name: ast.NameInteractive) -> W_MetaArg:
-        # NameInteractive is generated only during interactive sessions, like SPdb.  See
-        # e.g. test_astcompile::test_NameInteractive and
-        # test_spdb::test_NameInteractive.
-        #
-        # We want to lookup a name which is NOT found in the symtable. We basically need
-        # to do at runtime usually is done at ScopeAnalyzer time:
-        w_val: Optional[W_Object]
-        for level in range(1, len(self.closure) + 1):
-            outervars = self.closure[-level]
-            lv = outervars.get(name.id)
-            if lv is None:
-                continue
-            if isinstance(lv.w_val, W_Cell):
-                w_val = lv.w_val.get()
-            else:
-                w_val = lv.w_val
-            assert w_val is not None
-            return W_MetaArg(self.vm, lv.color, lv.w_T, w_val, name.loc)
-
-        # name not found. Let's try the builtins
-        sym = SymTable.from_builtins().lookup_maybe(name.id)
-        if sym is not None:
-            assert sym.impref is not None
-            w_val = self.vm.lookup_ImportRef(sym.impref)
-            if w_val is None:
-                # this is likely a builtin which triggers an implicit import. Do the
-                # import and redo the lookup
-                self.vm.import_(sym.impref.modname)
-                w_val = self.vm.lookup_ImportRef(sym.impref)
-                assert w_val is not None
-            w_T = self.vm.dynamic_type(w_val)
-            return W_MetaArg(self.vm, "blue", w_T, w_val, name.loc)
-
-        raise SPyError.simple(
-            "W_NameError",
-            f"name `{name.id}` is not defined",
-            "not found in this scope",
-            name.loc,
-        )
-
-    def eval_expr_AssignExprConstError(
-        self, node: ast.AssignExprConstError
-    ) -> W_MetaArg:
-        sym = node.sym
-        target_loc = node.target_loc
-        err = SPyError("W_TypeError", "invalid assignment target")
-        err.add("error", f"{sym.name} is const", target_loc)
-        err.add("note", f"const declared here ({sym.varkind_origin})", sym.loc)
-        if sym.varkind_origin == "global-const":
-            msg = f"help: declare it as variable: `var {sym.name} ...`"
-            err.add("note", msg, sym.loc)
-        elif sym.varkind_origin == "blue-param":
-            msg = "blue function arguments are const by default"
-            err.add("note", msg, sym.loc)
-        raise err
+    def eval_expr_PoisonExpr(self, node: ast.PoisonExpr) -> W_MetaArg:
+        raise node.err
 
     def eval_expr_NameImportRef(self, name: ast.NameImportRef) -> W_MetaArg:
         # this is correct as long as we import 'const', but if we import 'var', then it
@@ -825,30 +811,32 @@ class AbstractFrame:
 
     def eval_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> W_MetaArg:
         sym = name.sym
-        lv = self.locals[sym.name]
+        lv = self.locals[sym.slot_name]
         if lv.color == "red" and self.redshifting:
             w_val = None
         else:
-            w_val = self.load_local(sym.name)
+            w_val = self.load_local(sym.slot_name)
+        assert lv.w_T is not None
         return W_MetaArg(self.vm, lv.color, lv.w_T, w_val, name.loc, sym=sym)
 
     def eval_expr_NameLocalCell(self, name: ast.NameLocalCell) -> W_MetaArg:
         sym = name.sym
-        lv = self.locals[sym.name]
+        lv = self.locals[sym.slot_name]
         if lv.color == "red" and self.redshifting:
             w_val = None
         else:
-            w_cell = self.load_local(sym.name)
+            w_cell = self.load_local(sym.slot_name)
             assert isinstance(w_cell, W_Cell)
             w_val = w_cell.get()
+        assert lv.w_T is not None
         return W_MetaArg(self.vm, lv.color, lv.w_T, w_val, name.loc, sym=sym)
 
     def eval_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> W_MetaArg:
         color: Color = "blue"  # closed-over variables are always blue
         sym = name.sym
         assert not sym.is_local
-        outervars = self.closure[-sym.level]
-        w_val = outervars[sym.name].w_val
+        outervars = self.closure[-sym.frame_depth]
+        w_val = outervars[sym.slot_name].w_val
         assert w_val is not None
         w_T = self.vm.dynamic_type(w_val)
         return W_MetaArg(self.vm, color, w_T, w_val, name.loc, sym=sym)
@@ -860,8 +848,8 @@ class AbstractFrame:
         if name.fqn is not None:
             w_cell = self.vm.lookup_global(name.fqn)
         else:
-            outervars = self.closure[-sym.level]
-            w_cell = outervars[sym.name].w_val
+            outervars = self.closure[-sym.frame_depth]
+            w_cell = outervars[sym.slot_name].w_val
         assert isinstance(w_cell, W_Cell)
         w_val = w_cell.get()
         w_T = self.vm.dynamic_type(w_val)
@@ -876,7 +864,7 @@ class AbstractFrame:
     def eval_expr_AssignExprLocal(self, assign: ast.AssignExprLocal) -> W_MetaArg:
         target = assign.target
         value = assign.value
-        varname = target.value
+        varname = assign.sym.slot_name
 
         lv = self.locals.get(varname)
         if lv is None:
@@ -884,6 +872,11 @@ class AbstractFrame:
             wam = self.eval_expr(value)
             self.declare_local(varname, wam.color, wam.w_static_T, target.loc)
             lv = self.locals[varname]
+        elif lv.w_T is None:
+            # deferred type inference: var x: auto with no initializer
+            wam = self.eval_expr(value)
+            lv.color = wam.color if assign.sym.varkind == "const" else "red"
+            self.fix_deferred_inference_type(varname, wam.w_static_T)
         else:
             wam = self.eval_expr(value, varname=varname)
 
@@ -905,8 +898,8 @@ class AbstractFrame:
             if target_fqn is not None:
                 w_cell = self.vm.lookup_global(target_fqn)
             else:
-                outervars = self.closure[-sym.level]
-                w_cell = outervars[sym.name].w_val
+                outervars = self.closure[-sym.frame_depth]
+                w_cell = outervars[sym.slot_name].w_val
             assert isinstance(w_cell, W_Cell)
             w_cell.set(wam.w_val)
 
@@ -1229,11 +1222,11 @@ class ASTFrame(AbstractFrame):
         # if w_func was lowered, automatically use the most lowered version
         w_func = w_func.get_most_lowered_version()
         assert isinstance(w_func, W_ASTFunc)
-        assert w_func.funcdef.symtable.kind == "function"
+        assert w_func.funcdef.frameinfo.kind == "function"
         assert w_func.funcdef.stage in ("astcompiled", "redshifted", "linearized")
         ns = w_func.compute_inner_ns(args_w or [])
         super().__init__(
-            vm, ns, w_func.funcdef.loc, w_func.funcdef.symtable, w_func.closure
+            vm, ns, w_func.funcdef.loc, w_func.funcdef.frameinfo, w_func.closure
         )
         self.w_func = w_func
         self.funcdef = w_func.funcdef
@@ -1268,12 +1261,11 @@ class ASTFrame(AbstractFrame):
             # Is the forward declaration of "S" available or not?  For now, we
             # just ignore the problem and support only classdef done at the
             # outermost level.
-            for stmt in self.funcdef.body:
+            for stmt in self.funcdef.body.body:
                 if isinstance(stmt, ast.ClassDef):
                     self.fwdecl_ClassDef(stmt)
 
-            for stmt in self.funcdef.body:
-                self.exec_stmt(stmt)
+            self.exec_Block(self.funcdef.body)
             #
             # we reached the end of the function. If it's void, we can return
             # None, else it's an error.
@@ -1297,14 +1289,15 @@ class ASTFrame(AbstractFrame):
         assert w_ft.is_argcount_ok(len(funcdef.args))
         for i, param in enumerate(w_ft.params):
             arg = funcdef.args[i]
+            slot_name = arg.sym.slot_name
             if param.kind == "simple":
-                self.declare_local(arg.name, color, param.w_T, arg.loc)
+                self.declare_local(slot_name, color, param.w_T, arg.loc)
 
             elif param.kind == "var_positional":
                 # XXX: we don't have typed tuples, for now we just use a
                 # generic untyped tuple as the type.
                 assert i == len(funcdef.args) - 1
-                self.declare_local(arg.name, color, SPY.w_interp_tuple, arg.loc)
+                self.declare_local(slot_name, color, SPY.w_interp_tuple, arg.loc)
 
             else:
                 assert False
@@ -1316,17 +1309,17 @@ class ASTFrame(AbstractFrame):
         w_ft = self.w_func.w_functype
 
         for i, param in enumerate(w_ft.params):
+            arg = self.funcdef.args[i]
+            slot_name = arg.sym.slot_name
             if param.kind == "simple":
-                arg = self.funcdef.args[i]
                 w_arg = args_w[i]
-                self.store_local(arg.name, w_arg)
+                self.store_local(slot_name, w_arg)
 
             elif param.kind == "var_positional":
                 assert i == len(self.funcdef.args) - 1
-                arg = self.funcdef.args[i]
                 items_w = args_w[i:]
                 w_varargs = W_InterpTuple(list(items_w))
-                self.store_local(arg.name, w_varargs)
+                self.store_local(slot_name, w_varargs)
 
             else:
                 assert False

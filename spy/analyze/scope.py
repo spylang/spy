@@ -1,238 +1,455 @@
-# ================== IMPORTANT: .spyc versioning =================
-# Update importing.SPYC_VERSION in case of any significant change
-# ================================================================
-
 from typing import Optional
 
 from spy import ast
-from spy.analyze.symtable import (
+from spy.analyze.sym import (
     Color,
+    DeclOrigin,
+    FrameInfo,
     ImportRef,
+    Scope,
     ScopeKind,
     Symbol,
-    SymTable,
     VarKind,
     VarKindOrigin,
     VarStorage,
 )
 from spy.errors import SPyError
 from spy.location import Loc
+from spy.textbuilder import ColorFormatter, TextBuilder
+
+# FrameInfo and Scope are similar but conceptually different:
+#
+#   - `Scope` are created during the collect pass of ScopeAnalyzer, they are nested and
+#     they correspond to a lexical scope (including e.g. blocks).
+#
+#   - `FrameInfo` is a runtime concept: it's a flat per-function namespace, which
+#     contains its local variables
+
+# Key used to look up Scopes in ScopeAnalyzer.scopes
+# Usually a single node (ast.Module, ast.FuncDef, ...); the tuple case is for
+# nodes with multiple blocks, like `(ast.If, "then")` and `(ast.If, "else")`.
+ScopeKey = ast.Node | tuple[ast.Node, str]
+
+# What a node resolves to during the bind pass: a real Symbol, or a lazy static
+# error (poison) that astcompile turns into an ast.PoisonExpr.
+Resolution = Symbol | SPyError
 
 
 class ScopeAnalyzer:
     """
     Visit the given AST Module and determine the scope of each name.
 
-    The scoping rules for SPy are very simple for now:
-
-      - names defined at module-level scopes are always available to all
-        their inner scopes
-
-      - inside a function, assignment defines a local variable ONLY if this
-        name does not exist in an outer scope. Note that this is different
-        from Python rules. No more 'global' and 'nonlocal' declarations.
-
-      - shadowing a name is an error
-
-    In the future, we might want to introduce a special compatibility mode to
-    use Python's rules to make porting easier, e.g. by using `from __python__
-    import scoping_rules`, but for now it's not a priority.
+    See docs/src/reference/scoping.md for the full scoping rules.
 
     The analyzer operates in two passes:
 
-      1. declare: find all the statements which introduce new symbols (such as
-         VarDef, Assign, FuncDef, etc.). At the end of the declare() pass,
-         each symtable contains all the names which are directly defined in
-         that scope (i.e., sym.level == 0).
+      1. collect: walk all statements that introduce new names (VarDef, FuncDef,
+         Import, etc.) and add a Symbol to the current Scope.  After this pass,
+         every Scope contains the names directly defined in it (sym.frame_depth == 0)
+         and is read-only.
 
-      2. flatten: for each usage of a name, determine in which scope the
-         definition reside (either the current or an outer one). At the end of
-         the flatten() pass, each symtable contains all the names which are
-         defined or referenced in that scope.
+         During this pass we also create a FrameInfo for each FuncDef and other nodes
+         with a runtime frame, and we fill it with its locals.
+
+      2. bind: visit all nodes which need a name lookup (e.g. ast.Name), and bind
+         each occurrence to the corresponding Symbol.
+
+     Both passes maintain a stack of lexical scopes (scope_stack), one entry per
+     block/function/module.  Each Scope points to the currently active `.frameinfo`.
     """
 
     mod: ast.Module
-    stack: list[SymTable]
-    inner_scopes: dict[
-        ast.FuncDef | ast.GenericFuncDef | ast.ClassDef | ast.GenericClassDef, SymTable
-    ]
-    loop_depth: int
+    scope_stack: list[Scope]
+    scopes: dict[ScopeKey, Scope]  # which Scope corresponds to a given node?
+
+    # == Collect and declaration sequence ==
+    #
+    # To detect "use before declaration", we must memoize in which order we collected
+    # the nodes and when a certain declaration start to be visible: self.collect()
+    # assign a monotoic "seq" number to all visited nodes, and create_new_local stores
+    # the "current seq" to remember when it was created. Then later, the bind step
+    # checks that the usage happens after the declaration.
+    seq: dict[ast.Node, int]  # seq number for each node
+    cur_seq: int
+    valid_from: dict[Symbol, int]  # seq number after Sym is valid
+
+    # A node resolves either to a Symbol or to a lazy SPyError
+    _resolved_nodes: dict[ast.Node, tuple[Scope, "Resolution"]]
+
+    # modules implicitly imported by `mod` (e.g. `_list` for a list literal)
+    implicit_imports: set[str]
 
     def __init__(self, modname: str, mod: ast.Module) -> None:
         self.mod = mod
-        self.builtins_scope = SymTable.from_builtins()
-        self.mod_scope = SymTable(modname, "blue", "module")
-        self.stack = []
-        self.inner_scopes = {}
-        self.loop_depth = 0
-        self.push_scope(self.builtins_scope)
-        self.push_scope(self.mod_scope)
+        self.scope_stack = []
+        self.scopes = {}
+
+        # build the [builtins, module] initial scope stack
+        self.builtins_scope = Scope.from_builtins()
+        mod_frameinfo = FrameInfo(modname, "blue", "module")
+        mod_scope = Scope(
+            modname,
+            "blue",
+            "module",
+            frameinfo=mod_frameinfo,
+            parent=self.builtins_scope,
+        )
+
+        self.scopes[mod] = mod_scope
+        self.seq = {}
+        self.valid_from = {}
+        self.cur_seq = 0
+        self._resolved_nodes = {}
+        self.implicit_imports = set()
 
     # ===============
     # public API
     # ================
 
     def analyze(self) -> None:
-        assert len(self.stack) == 2  # [builtins, module]
+        self.push_scope(self.builtins_scope)
+        self.push_scope(self.mod_scope)
+
+        # ------- collect pass -------
+        assert len(self.scope_stack) == 2  # [builtins, module]
         for decl in self.mod.decls:
-            self.declare(decl)
-        assert len(self.stack) == 2
+            self.collect(decl)
 
+        # ------ bind pass -----
+        assert len(self.scope_stack) == 2  # [builtins, module]
         for decl in self.mod.decls:
-            self.flatten(decl)
-        assert len(self.stack) == 2
-
-    def by_module(self) -> SymTable:
-        return self.mod_scope
-
-    def by_funcdef(self, funcdef: ast.FuncDef) -> SymTable:
-        return self.inner_scopes[funcdef]
-
-    def by_generic_funcdef(self, gfuncdef: ast.GenericFuncDef) -> SymTable:
-        return self.inner_scopes[gfuncdef]
-
-    def by_classdef(self, classdef: ast.ClassDef) -> SymTable:
-        return self.inner_scopes[classdef]
-
-    def by_generic_classdef(self, gclassdef: ast.GenericClassDef) -> SymTable:
-        return self.inner_scopes[gclassdef]
+            self.bind(decl)
+        assert len(self.scope_stack) == 2
 
     def pp(self) -> None:
-        print("Implicit imports:")
-        for modname in self.mod_scope.implicit_imports:
-            print(f"    {modname}")
-        print()
-        self.by_module().pp()
-        print()
-        for key, symtable in self.inner_scopes.items():
-            symtable.pp(indent="    " * symtable.depth)
-            print()
+        print(self.dump(use_colors=True))
+
+    def dump(self, *frame_names: str, use_colors: bool = False) -> str:
+        """
+        Return a compact, human-readable dump of the computed frameinfos and the
+        lexical scope nesting, including how each name resolves during the bind
+        pass.
+
+        If `frame_names` is given, dump only the listed frames (by frameinfo
+        name, e.g. "test::foo"); otherwise dump all of them.
+        """
+        b = TextBuilder(use_colors=use_colors)
+        color = ColorFormatter(use_colors=use_colors)
+
+        # Group the resolved occurrences (bind pass) by the scope they occurred in.
+        # For poison (SPyError) resolutions there is no Symbol, so the display name
+        # is taken from the node's source text.
+        uses_by_scope: dict[str, list[tuple[str, Resolution]]] = {}
+        for node, (scope, res) in self._resolved_nodes.items():
+            src_name = res.src_name if isinstance(res, Symbol) else node.loc.get_src()
+            uses_by_scope.setdefault(scope.name, []).append((src_name, res))
+
+        def scope_is_empty(scope: Scope) -> bool:
+            if uses_by_scope.get(scope.name):
+                return False
+            return all(scope_is_empty(child) for child in scope.children)
+
+        def dump_frameinfo(frameinfo: FrameInfo) -> None:
+            b.wl(f"frameinfo {frameinfo.name} ({frameinfo.kind}):")
+            with b.indent():
+                for slot_name, sym in frameinfo._symbols.items():
+                    key = color.set(self._varkind_color(sym), slot_name)
+                    b.wl(f"{key}: {self._fmt_sym(sym)}")
+
+        # `frames` are the enclosing runtime frames, innermost first: frames[0] is
+        # the current frame, frames[1] the parent frame, etc.  A name resolved
+        # with sym.frame_depth == N lives in frames[N].
+        def dump_scope(scope: Scope, frames: list[FrameInfo]) -> None:
+            b.wl(f"scope {scope.short_name}:")
+            with b.indent():
+                # scope modifiers like `global x`
+                for sym in scope.symbols.values():
+                    if sym.storage == "decl-global":
+                        b.wl(color.set("red", f"global {sym.src_name}"))
+                # names USED in this scope (resolved during the bind pass)
+                seen: set[str] = set()
+                for src_name, res in uses_by_scope.get(scope.name, []):
+                    if src_name in seen:
+                        continue
+                    seen.add(src_name)
+                    b.wl(self._fmt_resolution(src_name, res, frames, color))
+                # descend only into scopes belonging to the same runtime frame;
+                # nested function scopes are dumped in their own frameinfo section.
+                for child in scope.children:
+                    if child.frameinfo is not scope.frameinfo:
+                        continue
+                    if child.kind == "block" and scope_is_empty(child):
+                        continue
+                    dump_scope(child, frames)
+
+        # frame-owning scopes (module + FuncDefs) in collection order; block
+        # scopes are dumped recursively by dump_scope, not as top-level frames.
+        owners = [
+            s for s in self.scopes.values() if s.kind in ("module", "function", "class")
+        ]
+        if frame_names:
+            owners = [s for s in owners if s.frameinfo.name in frame_names]
+
+        # for each runtime frame, dump its frameinfo and its lexical scopes
+        for i, owner in enumerate(owners):
+            if i > 0:
+                b.wl()
+            dump_frameinfo(owner.frameinfo)
+            b.wl()
+            # the frame chain, innermost first: this owner then its enclosing frames
+            frames = self._enclosing_frames(owner)
+            with b.indent():
+                dump_scope(owner, frames)
+        return b.build()
+
+    def _varkind_color(self, sym: Symbol) -> str:
+        # match scope.py's pp_symbols: const is blue, var is red
+        return "blue" if sym.varkind == "const" else "red"
+
+    def _fmt_sym(self, sym: Symbol) -> str:
+        s = f'Symbol("{sym.src_name}", "{sym.varkind}", "{sym.varkind_origin}")'
+        if sym.storage == "cell":
+            s += " [cell]"
+        return s + self._fmt_impref(sym)
+
+    def _fmt_resolution(
+        self,
+        src_name: str,
+        res: "Resolution",
+        frames: list[FrameInfo],
+        color: ColorFormatter,
+    ) -> str:
+        if isinstance(res, SPyError):
+            errname = res.etype.removeprefix("W_")
+            return color.set("yellow", f"{src_name} -> {errname}")
+        sym = res
+        name = color.set(self._varkind_color(sym), src_name)
+        if sym.frame_depth > 0:
+            # the name is resolved in an outer frame: show which one, and how many
+            # frame boundaries away it is
+            frame = frames[sym.frame_depth]
+            s = f"{name} -> {sym.slot_name} @ {frame.name} (depth={sym.frame_depth})"
+        else:
+            s = f"{name} -> {sym.slot_name}"
+        return s + self._fmt_impref(sym)
+
+    def _enclosing_frames(self, scope: Scope) -> list[FrameInfo]:
+        """
+        The chain of runtime frames enclosing (and including) `scope`, innermost
+        first: the scope's own frame, then its parent frame, etc.  Block scopes
+        share their enclosing frame, so only function/module scopes are kept.
+        """
+        result = []
+        s: Optional[Scope] = scope
+        while s is not None:
+            if s.kind in ("function", "module", "class"):
+                result.append(s.frameinfo)
+            s = s.parent
+        return result
+
+    def _fmt_impref(self, sym: Symbol) -> str:
+        if sym.impref is None:
+            return ""
+        return f" => {sym.impref}"
+
+    @property
+    def mod_scope(self) -> Scope:
+        return self.scopes[self.mod]
+
+    @property
+    def mod_frameinfo(self) -> FrameInfo:
+        return self.by_module()
+
+    def by_module(self) -> FrameInfo:
+        return self.get_frameinfo(self.mod)
+
+    def get_frameinfo(self, node: ast.Node) -> FrameInfo:
+        return self.scopes[node].frameinfo
+
+    def get_resolution(self, node: ast.Node) -> "Resolution":
+        """
+        Return what `node` resolved to: a real Symbol or a lazy poison (SPyError).
+        """
+        scope, res = self._resolved_nodes[node]
+        return res
+
+    def get_resolved_sym(self, node: ast.Node) -> Symbol:
+        """
+        Return the Symbol that `node` resolved to.
+        """
+        res = self.get_resolution(node)
+        assert isinstance(res, Symbol)
+        return res
+
+    def get_resolved_sym_maybe(self, node: ast.Node) -> Optional[Symbol]:
+        if node in self._resolved_nodes:
+            scope, res = self._resolved_nodes[node]
+            if isinstance(res, Symbol):
+                return res
+        return None
+
+    def get_poison_error_maybe(self, node: ast.Node) -> Optional[SPyError]:
+        if node in self._resolved_nodes:
+            scope, res = self._resolved_nodes[node]
+            if isinstance(res, SPyError):
+                return res
+        return None
+
+    def bind_synthetic_node(
+        self, node: ast.Node, scope: Scope, res: "Resolution"
+    ) -> None:
+        """
+        This is exactly like set_binding, but it's a public API which can be used by
+        astcompiler to bind the node it synthethizes (e.g. when desugaring a For)
+        """
+        self.set_binding(node, scope, res)
+
+    def get_resolved_scope(self, node: ast.Node) -> Scope:
+        """
+        Return the lexical Scope in which `node` was resolved.
+        """
+        scope, sym = self._resolved_nodes[node]
+        return scope
 
     # =====
 
-    def new_SymTable(self, name: str, color: Color, kind: ScopeKind) -> SymTable:
-        """
-        Create a new SymTable whose name is derived from its parent
-        """
-        parent = self.stack[-1].name
-        fullname = f"{parent}::{name}"
-        return SymTable(fullname, color, kind)
-
-    def push_scope(self, scope: SymTable) -> None:
-        self.stack.append(scope)
-
-    def pop_scope(self) -> SymTable:
-        return self.stack.pop()
-
-    @property
-    def scope(self) -> SymTable:
-        """
-        Return the currently active scope
-        """
-        return self.stack[-1]
-
-    def lookup_ref(self, name: str) -> tuple[int, Optional[SymTable], Optional[Symbol]]:
-        """
-        Lookup a name reference, starting from the innermost scope,
-        towards the outer.
-        """
-        for level, scope in enumerate(reversed(self.stack)):
-            if level > 0 and scope.kind == "class":
-                # jump over 'class' scopes
-                continue
-            if sym := scope.lookup_maybe(name):
-                return level, scope, sym
-        # not found
-        return -1, None, None
-
-    def lookup_definition(self, name: str) -> tuple[int, Optional[Symbol]]:
-        """
-        Lookup a name definition, starting from the innermost scope,
-        towards the output.
-        """
-        for level, scope in enumerate(reversed(self.stack)):
-            if sym := scope.lookup_definition_maybe(name):
-                return level, sym
-        # not found
-        return -1, None
-
-    def define_name(
+    def new_Scope(
         self,
         name: str,
+        color: Color,
+        kind: ScopeKind,
+        *,
+        frameinfo: Optional[FrameInfo] = None,
+    ) -> Scope:
+        """
+        Create a new Scope nested inside the current one.
+
+        `frameinfo` is the runtime frame the scope belongs to; it defaults to the
+        enclosing frame. Function scopes pass their own freshly-created frameinfo.
+        """
+        parent = self.scope_stack[-1]
+        if frameinfo is None:
+            frameinfo = self.frameinfo
+        return Scope(
+            f"{parent.name}::{name}", color, kind, frameinfo=frameinfo, parent=parent
+        )
+
+    def push_scope(self, scope: Scope) -> None:
+        self.scope_stack.append(scope)
+
+    def pop_scope(self) -> Scope:
+        return self.scope_stack.pop()
+
+    @property
+    def scope(self) -> Scope:
+        """
+        Return the currently active lexical scope.
+        """
+        return self.scope_stack[-1]
+
+    @property
+    def frameinfo(self) -> FrameInfo:
+        """
+        Return the currently active FrameInfo
+        """
+        return self.scope.frameinfo
+
+    # ====
+    # collect pass
+
+    def create_new_local(
+        self,
+        node: ast.Node,
+        name: str,
+        decl_origin: DeclOrigin,
         varkind: VarKind,
         varkind_origin: VarKindOrigin,
         loc: Loc,
         type_loc: Loc,
         *,
         impref: Optional[ImportRef] = None,
-    ) -> None:
+        scope: Optional[Scope] = None,
+        valid_from: Optional[int] = None,
+    ) -> Symbol:
         """
-        Add a name definition to the current scope.
+        Add a name definition to the given scope and its frame (frame_depth 0).
 
-        The level of the new symbol will be 0.
+        By default, `scope` is `self.scope`. It differs only in case of implicit
+        declarations which happens inside `if` blocks, which are lifted to their
+        encloding scope, see [py.scope-lifting].
+
+        `valid_from` controls when the name starts to be visible for the
+        [decl.use-before] check; by default it's the current seq (the textual
+        position). `valid_from=0` means "always valid", i.e. visible from the
+        beginning of the scope.
         """
-        level, scope, sym = self.lookup_ref(name)
-        if sym and name != "@return":
-            assert scope is not None
-            if level == 0 and scope.color == "blue":
-                # this happens if we have e.g. the same name defined in two
-                # branches of an "if".
-                # Note that if the redeclaration happens at runtime, it's
-                # still an error, but it's caught by astframe.
-                return
-
-            elif level == 0:
-                # re-declaration in the same scope
-                msg = f"variable `{name}` already declared"
+        if scope is None:
+            scope = self.scope
+        frameinfo = scope.frameinfo
+        existing_sym = scope.symbols.get(name)
+        if existing_sym:
+            if existing_sym.storage == "decl-global":
+                # rule 1: `global x` then a local decl of `x` in the same scope
+                msg = f"variable `{name}` is already declared as global"
                 err = SPyError("W_ScopeError", msg)
                 err.add("error", "this is the new declaration", loc)
-                err.add("note", "this is the previous declaration", sym.loc)
+                err.add("note", f"`{name}` was declared global here", existing_sym.loc)
                 raise err
+            if existing_sym.storage == "decl-cannot-lift":
+                # we found a decl-cannot-lift: this is not a real symbol, its only goal
+                # is to prevent to place an implicit decl in this scope. We can safely
+                # replace it with OUR own symbol, which will also prevent new implicit
+                # decl in this scope.
+                scope.remove(name)
+                existing_sym = None
+        if existing_sym:
+            msg = f"variable `{name}` already declared"
+            err = SPyError("W_ScopeError", msg)
+            err.add("error", "this is the new declaration", loc)
+            err.add("note", "this is the previous declaration", existing_sym.loc)
+            raise err
 
-            elif scope is not self.builtins_scope:
-                # shadowing a name in an outer scope
-                # Exception: always allow shadowing builtins
-                msg = (
-                    f"variable `{name}` shadows a name declared " + "in an outer scope"
-                )
-                err = SPyError("W_ScopeError", msg)
-                err.add("error", "this is the new declaration", loc)
-                err.add("note", "this is the previous declaration", sym.loc)
-                raise err
-
-        # Determine storage type: module-level vars use "cell", others use
-        # "direct"
-        assert varkind is not None
         storage: VarStorage
-        if self.scope is self.mod_scope and varkind == "var":
+        if scope.kind == "module" and varkind == "var":
             storage = "cell"
         else:
             storage = "direct"
 
-        sym = Symbol(
+        new_sym = Symbol(
             name,
             varkind,
             varkind_origin,
             storage,
+            decl_origin=decl_origin,
+            slot_name=frameinfo.get_fresh_slot(name),
             loc=loc,
             type_loc=type_loc,
             impref=impref,
-            level=0,
+            frame_depth=0,
         )
-        self.scope.add(sym)
+        scope.add(new_sym)
+        frameinfo.add(new_sym)
+        if valid_from is None:
+            valid_from = self.cur_seq  # remember when it was created
+        self.valid_from[new_sym] = valid_from
+        return new_sym
 
-    # ====
+    def collect(self, node: ast.Node) -> None:
+        # like ast.Node.visit(), but keeps track of seq numbers
+        self.seq[node] = self.cur_seq = len(self.seq)
+        methname = f"collect_{node.__class__.__name__}"
+        meth = getattr(self, methname, None)
+        if meth is not None:
+            meth(node)
+        else:
+            for child in node.get_children():
+                self.collect(child)
 
-    def declare(self, node: ast.Node) -> None:
-        """
-        Visit all the nodes which introduce a new name in the scope, and
-        add symbol definitions to the corresponding symtable.
-        """
-        return node.visit("declare", self)
-
-    def declare_Import(self, imp: ast.Import) -> None:
-        self.define_name(
+    def collect_Import(self, imp: ast.Import) -> None:
+        self.create_new_local(
+            imp,
             imp.asname,
+            "explicit",
             "const",
             "auto",
             imp.loc,
@@ -240,373 +457,680 @@ class ScopeAnalyzer:
             impref=imp.ref,
         )
 
-    def declare_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
-        varname = decl.vardef.name.value
-        varkind = decl.vardef.kind
-        if varkind is None:
-            varkind = "const"
+    def collect_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> None:
+        self.collect_FuncDef(decl.funcdef)
+
+    def collect_GlobalClassDef(self, decl: ast.GlobalClassDef) -> None:
+        self.collect_ClassDef(decl.classdef)
+
+    def collect_GlobalGenericFuncDef(self, decl: ast.GlobalGenericFuncDef) -> None:
+        self.collect_GenericFuncDef(decl.funcdef)
+
+    def collect_GlobalGenericClassDef(self, decl: ast.GlobalGenericClassDef) -> None:
+        self.collect_GenericClassDef(decl.classdef)
+
+    def collect_GenericFuncDef(self, gfuncdef: ast.GenericFuncDef) -> None:
+        self._collect_generic(gfuncdef, gfuncdef.name, gfuncdef.args, gfuncdef.inner)
+
+    def collect_GenericClassDef(self, gclassdef: ast.GenericClassDef) -> None:
+        self._collect_generic(
+            gclassdef, gclassdef.name, gclassdef.args, gclassdef.inner
+        )
+
+    def _collect_generic(
+        self,
+        node: ast.Node,
+        name: str,
+        args: list[ast.FuncArg],
+        inner: ast.Stmt,
+    ) -> None:
+        # A GenericFuncDef/GenericClassDef is essentially a blue function:
+        # def add[T](x: T, y: T) -> T:
+        #     ...
+        #
+        # is equivalent to:
+        # @blue
+        # def add(T):
+        #     def __impl(x: T, y: T) -> T:
+        #         ...
+        #     return __impl
+        #
+        # For scope analysis, we need to:
+        #     1. collect/bind the name "add" in the outer scope
+        #     2. push a scope/frameinfo for the blue function
+        #     3. collect/bind the generic arguments ("T")
+        #     4. collect/bind the inner funcdef/classdef
+
+        # (1) collect the name of the generic function/class
+        loc = inner.loc
+        self.create_new_local(node, name, "explicit", "const", "funcdef", loc, loc)
+
+        # (2) push the blue scope/frameinfo; see also collect_FuncDef
+        frame_name = f"{self.frameinfo.name}::{name}"
+        frameinfo = FrameInfo(frame_name, "blue", "function")
+        inner_scope = self.new_Scope(name, "blue", "function", frameinfo=frameinfo)
+        self.push_scope(inner_scope)
+        self.scopes[node] = inner_scope
+
+        # (3) collect the generic arguments
+        for arg in args:
+            self.create_new_local(
+                arg, arg.name, "explicit", "const", "blue-param", arg.loc, arg.type.loc
+            )
+
+        # (4) collect the inner funcdef/classdef
+        self.collect(inner)
+        self.pop_scope()
+
+    def collect_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
+        vardef = decl.vardef
+        varname = vardef.name.value
+        decl_origin: DeclOrigin = "explicit"
+        if vardef.kind is None:
+            # bare `x: T` at module level is an implicit const
+            varkind: VarKind = "const"
             varkind_origin: VarKindOrigin = "global-const"
         else:
+            varkind = vardef.kind
             varkind_origin = "explicit"
-        self.define_name(
+
+        # FIRST we collect the initializer, THEN we create the var. E.g. in:
+        #     var x = x + 1
+        # the "x" on the right triggers [decl.use-before]
+        if vardef.value is not None:
+            self.collect(vardef.value)
+        self.create_new_local(
+            decl,
             varname,
+            decl_origin,
             varkind,
             varkind_origin,
             decl.loc,
-            decl.vardef.type.loc,
-        )
-
-    def declare_VarDef(self, vardef: ast.VarDef) -> None:
-        varname = vardef.name.value
-        if self.scope.kind == "class":
-            varkind: VarKind = "var"
-            varkind_origin: VarKindOrigin = "class-field"
-        else:
-            varkind_optional = vardef.kind
-            if varkind_optional is None:
-                if self.loop_depth > 0:
-                    varkind = "var"
-                else:
-                    varkind = "const"
-                varkind_origin = "auto"
-            else:
-                varkind = varkind_optional
-                varkind_origin = "explicit"
-        self.define_name(
-            varname,
-            varkind,
-            varkind_origin,
-            vardef.loc,
             vardef.type.loc,
         )
-        if vardef.value is not None:
-            self.declare(vardef.value)
 
-    def declare_FuncDef(self, funcdef: ast.FuncDef) -> None:
-        # declare the func in the "outer" scope
+    def collect_ClassDef(self, classdef: ast.ClassDef) -> None:
+        # collect the class name in the outer scope. Note that the name if valid_from=0,
+        # because it's an implicit forward declaration.
+        self.create_new_local(
+            classdef,
+            classdef.name,
+            "explicit",
+            "const",
+            "classdef",
+            classdef.loc,
+            classdef.loc,
+            valid_from=0,
+        )
+
+        # the class body is its own frame (a "class" scope with its own frameinfo);
+        # methods defined inside become nested funcdefs `test::P::get`.
+        frame_name = f"{self.frameinfo.name}::{classdef.name}"
+        frameinfo = FrameInfo(frame_name, "blue", "class")
+        inner_scope = self.new_Scope(
+            classdef.name, "blue", "class", frameinfo=frameinfo
+        )
+        self.push_scope(inner_scope)
+        self.scopes[classdef] = inner_scope
+        classdef.body.scope = inner_scope
+        for stmt in classdef.body.body:
+            self.collect(stmt)
+        self.pop_scope()
+
+    def collect_FuncDef(self, funcdef: ast.FuncDef) -> None:
+        # A `def` is an implicit declaration
         protoloc = funcdef.prototype_loc
-        self.define_name(funcdef.name, "const", "funcdef", protoloc, protoloc)
-        # add function arguments to the "inner" scope
+        self.assign_or_declare_maybe(funcdef, funcdef.name, "funcdef", protoloc)
+
         scope_color = funcdef.color
         if scope_color == "red":
             argkind: VarKind = "var"
             argkind_origin: VarKindOrigin = "red-param"
         else:
+            # [py.blue-params]: blue function arguments are const.
             argkind = "const"
             argkind_origin = "blue-param"
 
-        inner_scope = self.new_SymTable(funcdef.name, scope_color, "function")
+        frame_name = f"{self.frameinfo.name}::{funcdef.name}"
+        frameinfo = FrameInfo(frame_name, scope_color, "function")
+        inner_scope = self.new_Scope(
+            funcdef.name, scope_color, "function", frameinfo=frameinfo
+        )
         self.push_scope(inner_scope)
-        self.inner_scopes[funcdef] = inner_scope
+        self.scopes[funcdef] = inner_scope
+        funcdef.body.scope = inner_scope
+
         for arg in funcdef.args:
-            self.define_name(
+            self.create_new_local(
+                arg,
                 arg.name,
+                "explicit",
                 argkind,
                 argkind_origin,
                 arg.loc,
                 arg.type.loc,
             )
-        self.define_name(
+
+        ret_sym = self.create_new_local(
+            funcdef.return_type,
             "@return",
+            "explicit",
             "var",
             "auto",
             funcdef.return_type.loc,
             funcdef.return_type.loc,
         )
-        for stmt in funcdef.body:
-            self.declare(stmt)
+
+        for stmt in funcdef.body.body:
+            self.collect(stmt)
+
         self.pop_scope()
 
-    def declare_GenericFuncDef(self, gfuncdef: ast.GenericFuncDef) -> None:
-        # declare the name in the outer scope, just like declare_FuncDef does
-        protoloc = gfuncdef.inner.prototype_loc
-        self.define_name(gfuncdef.name, "const", "funcdef", protoloc, protoloc)
-
-        # outer scope: blue, contains only the generic args (T, ...) and __impl
-        inner_scope = self.new_SymTable(gfuncdef.name, "blue", "function")
-        self.push_scope(inner_scope)
-        self.inner_scopes[gfuncdef] = inner_scope
-        for arg in gfuncdef.args:
-            self.define_name(arg.name, "const", "blue-param", arg.loc, arg.type.loc)
-        self.define_name(
-            "__impl",
-            "const",
-            "funcdef",
-            gfuncdef.inner.prototype_loc,
-            gfuncdef.inner.prototype_loc,
-        )
-        self.define_name(
-            "@return",
-            "var",
-            "auto",
-            gfuncdef.inner.return_type.loc,
-            gfuncdef.inner.return_type.loc,
-        )
-        self.declare(gfuncdef.inner)
+    def collect_If(self, ifstmt: ast.If) -> None:
+        self.collect(ifstmt.test)
+        then_scope = self.new_Scope("if.then", self.scope.color, "block")
+        self.push_scope(then_scope)
+        ifstmt.then.scope = then_scope
+        for stmt in ifstmt.then.body:
+            self.collect(stmt)
         self.pop_scope()
-
-    def declare_ClassDef(self, classdef: ast.ClassDef) -> None:
-        # declare the class in the "outer" scope
-        self.define_name(
-            classdef.name,
-            "const",
-            "classdef",
-            classdef.loc,
-            classdef.loc,
-        )
-        inner_scope = self.new_SymTable(classdef.name, "blue", "class")
-        self.push_scope(inner_scope)
-        self.inner_scopes[classdef] = inner_scope
-        for stmt in classdef.body:
-            self.declare(stmt)
+        else_scope = self.new_Scope("if.else", self.scope.color, "block")
+        self.push_scope(else_scope)
+        ifstmt.else_.scope = else_scope
+        for stmt in ifstmt.else_.body:
+            self.collect(stmt)
         self.pop_scope()
+        self.scopes[ifstmt, "then"] = then_scope
+        self.scopes[ifstmt, "else"] = else_scope
 
-    def declare_GenericClassDef(self, gclassdef: ast.GenericClassDef) -> None:
-        # declare the name in the outer scope, just like declare_FuncDef does
-        loc = gclassdef.inner.loc
-        self.define_name(gclassdef.name, "const", "funcdef", loc, loc)
+    def collect_For(self, forstmt: ast.For) -> None:
+        # The iterator (`X`) is evaluated in the enclosing scope.
+        self.collect(forstmt.iter)
 
-        # outer scope: blue, contains only the generic args (T, ...) and Self
-        inner_scope = self.new_SymTable(gclassdef.name, "blue", "function")
-        self.push_scope(inner_scope)
-        self.inner_scopes[gclassdef] = inner_scope
-        for arg in gclassdef.args:
-            self.define_name(arg.name, "const", "blue-param", arg.loc, arg.type.loc)
-        self.define_name("Self", "const", "classdef", loc, loc)
-        self.define_name("@return", "var", "auto", loc, loc)
-        self.declare(gclassdef.inner)
-        self.pop_scope()
+        # `[scope.block]`: the loop body is its own block scope.
+        body_scope = self.new_Scope("for.body", self.scope.color, "block")
 
-    def declare_Assign(self, assign: ast.Assign) -> None:
-        for target in assign.target.flatten():
-            self._declare_target_maybe(target, assign.value)
-        self.declare(assign.value)
-
-    def declare_AugAssign(self, augassign: ast.AugAssign) -> None:
-        self._promote_const_to_var_maybe(augassign.target)
-        self.declare(augassign.value)
-
-    def _declare_hidden_local(self, name: str, value: ast.Expr) -> None:
-        self.define_name(name, "var", "auto", value.loc, value.loc)
-
-    def declare_AugSetAttr(self, augsetattr: ast.AugSetAttr) -> None:
-        target_name = f"_$aug_target{augsetattr.seq}"
-        self._declare_hidden_local(target_name, augsetattr.target)
-        self.declare(augsetattr.target)
-        self.declare(augsetattr.value)
-
-    def declare_AugSetItem(self, augsetitem: ast.AugSetItem) -> None:
-        target_name = f"_$aug_target{augsetitem.seq}"
-        self._declare_hidden_local(target_name, augsetitem.target)
-        self.declare(augsetitem.target)
-        for i, arg in enumerate(augsetitem.args):
-            arg_name = f"_$aug_arg{augsetitem.seq}_{i}"
-            self._declare_hidden_local(arg_name, arg)
-            self.declare(arg)
-        self.declare(augsetitem.value)
-
-    def declare_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
-        self._declare_target_maybe(assignexpr.target, assignexpr.value)
-        self.declare(assignexpr.value)
-
-    def _declare_target_maybe(self, target: ast.StrLiteral, value: ast.Expr) -> None:
-        # if target name does not exist elsewhere, we treat it as an implicit
-        # declaration
-        level, scope, sym = self.lookup_ref(target.value)
-        if sym is None:
-            # First assignment: mark as const unless in a loop
-            type_loc = value.loc
-            if self.loop_depth > 0:
-                varkind: VarKind = "var"
-            else:
-                varkind = "const"
-            self.define_name(target.value, varkind, "auto", target.loc, type_loc)
-        else:
-            # possible second assignment: promote to var if needed
-            self._promote_const_to_var_maybe(target)
-
-    def _promote_const_to_var_maybe(self, target: ast.StrLiteral) -> None:
-        level, scope, sym = self.lookup_ref(target.value)
-        if (
-            sym
-            and sym.is_local
-            and sym.varkind == "const"
-            and sym.varkind_origin == "auto"
-        ):
-            if target.value in self.scope._symbols:
-                # Second assignment to a local const: make it var
-                old_sym = self.scope._symbols[target.value]
-                if old_sym.varkind == "const":
-                    new_sym = old_sym.replace(varkind="var")
-                    self.scope._symbols[target.value] = new_sym
-
-    def declare_While(self, whilestmt: ast.While) -> None:
-        # Increment loop depth before processing body
-        self.loop_depth += 1
-        self.declare(whilestmt.test)
-        for stmt in whilestmt.body:
-            self.declare(stmt)
-        self.loop_depth -= 1
-
-    def declare_For(self, forstmt: ast.For) -> None:
-        # Declare the hidden iterator variable _$iter0
-        iter_name = f"_$iter{forstmt.seq}"
-        self.define_name(
-            iter_name,
-            "var",
-            "auto",
-            forstmt.iter.loc,
-            forstmt.iter.loc,
-        )
-
-        # Declare the loop variable (e.g., "i" in "for i in range(10)")
-        # What is the "type_loc" of i? It's an implicit declaration, and its
-        # value depends on the iterator returned by range. So we use
-        # "range(10)" as the type_loc.
-        self.define_name(
-            forstmt.target.value,
-            "var",
-            "auto",
-            forstmt.target.loc,
-            forstmt.iter.loc,
-        )
-
-        # Increment loop depth before processing body
-        self.loop_depth += 1
-        self.declare(forstmt.iter)
-        for stmt in forstmt.body:
-            self.declare(stmt)
-        self.loop_depth -= 1
-
-    # ===
-
-    def capture_maybe(self, varname: str) -> None:
-        level, _, _ = self.lookup_ref(varname)
-        if level == -1:
-            # name not found
-            assert not self.scope.has_definition(varname)
-            sym = Symbol(
-                varname,
+        # `[scope.loop-target]`: the target `i` is a block-local of the loop body.
+        # `[scope.loop-target-declare]`: unless a binding of the same name already
+        # exists in an enclosing scope, in which case the loop reuses it (the
+        # target is an ordinary assignment) so it outlives the loop.
+        self.push_scope(body_scope)
+        forstmt.body.scope = body_scope
+        target = forstmt.target
+        res = self.scope.lookup(target.value)
+        if not res.found:
+            self.create_new_local(
+                target,
+                target.value,
+                "explicit",
                 "var",
-                "auto",
-                "NameError",
-                level=-1,
-                loc=Loc.fake(),
-                type_loc=Loc.fake(),
+                "loop-target",
+                target.loc,
+                forstmt.iter.loc,
             )
-            self.scope.add(sym)
+        for stmt in forstmt.body.body:
+            self.collect(stmt)
+        self.pop_scope()
+        self.scopes[forstmt, "body"] = body_scope
 
-        elif level == 0:
-            # name already in the symtable, nothing to do
+    def collect_While(self, whilestmt: ast.While) -> None:
+        # The condition is evaluated in the enclosing scope.
+        self.collect(whilestmt.test)
+        # `[scope.block]`: the loop body is its own block scope (a lift target, so
+        # implicit declarations inside the loop outlive one iteration).
+        body_scope = self.new_Scope("while.body", self.scope.color, "block")
+        self.push_scope(body_scope)
+        whilestmt.body.scope = body_scope
+        for stmt in whilestmt.body.body:
+            self.collect(stmt)
+        self.pop_scope()
+        self.scopes[whilestmt, "body"] = body_scope
+
+    def collect_VarDef(self, vardef: ast.VarDef) -> None:
+        varname = vardef.name.value
+        decl_origin: DeclOrigin = "explicit"
+        varkind_optional = vardef.kind
+        if varkind_optional is None:
+            # bare `x: T` inside a function body - not valid in strict mode,
+            # but we still need to handle it gracefully during collect; the
+            # runtime/checker will reject it later.
+            varkind: VarKind = "const"
+            varkind_origin: VarKindOrigin = "auto"
+        else:
+            varkind = varkind_optional
+            varkind_origin = "explicit"
+
+        # collect the initializer BEFORE declaring the name. E.g.:
+        #     var x = x + 1
+        # triggers [decl.use-before]
+        if vardef.value is not None:
+            self.collect(vardef.value)
+
+        # [py.scope-lifting-mixing-error]: it is an error to mix an implicit and an
+        # explicit declaration for the same name:
+        #     if cond:
+        #         const x = 1
+        #         y = 1
+        #     else:
+        #         x = 2
+        #         const y = 2
+        #
+        # In this example, "const x = 1" would shadow the implicitly lifted "x = 2", and
+        # "const y = 2" would shadow the implicitly lifted "y = 1".
+        #
+        # To detect the mixing, we do two things:
+        #   1. if the explicit decl shadows an `implicit` symbol, then it's an
+        #      error. This catches the `y` case above.
+        #
+        #   2. if we encounter an explicit decl, we also put a `decl-cannot-lift` marker
+        #      in the lift_target scope: this will cause an error if later we try to
+        #      lift a symbol there. This catches the `x` case above.
+        lift_target = self.get_lift_target()
+        if lift_target is not self.scope:
+            # we might need to do actual lifting
+            sym = lift_target.symbols.get(varname)
+            if sym is None:
+                # (2): place the decl-cannot-lift marker in the lift_target scope
+                marker = Symbol(
+                    varname,
+                    "const",
+                    "explicit",
+                    "decl-cannot-lift",
+                    slot_name=varname,
+                    loc=vardef.loc,
+                    type_loc=vardef.type.loc,
+                    frame_depth=0,
+                )
+                lift_target.add(marker)
+            elif sym.decl_origin == "implicit":
+                # (1): we detected the mixing
+                self.report_mixed_declarations(varname, vardef.loc, sym.loc)
+
+        self.create_new_local(
+            vardef,
+            varname,
+            decl_origin,
+            varkind,
+            varkind_origin,
+            vardef.loc,
+            vardef.type.loc,
+        )
+
+    def collect_children(self, node: ast.Node) -> None:
+        for child in node.get_children():
+            self.collect(child)
+
+    def collect_List(self, lst: ast.List) -> None:
+        self.implicit_imports.add("_list")
+        self.collect_children(lst)
+
+    def collect_Tuple(self, tup: ast.Tuple) -> None:
+        self.implicit_imports.add("_tuple")
+        self.collect_children(tup)
+
+    def collect_Dict(self, d: ast.Dict) -> None:
+        self.implicit_imports.add("_dict")
+        self.collect_children(d)
+
+    def collect_Slice(self, slc: ast.Slice) -> None:
+        self.implicit_imports.add("_slice")
+        self.collect_children(slc)
+
+    def collect_Assign(self, assign: ast.Assign) -> None:
+        # FIRST collect the value, THEN (maybe) declare the target, like in VarDef.
+        self.collect(assign.value)
+        if isinstance(assign.target, ast.UnpackTarget):
+            self.implicit_imports.add("_tuple")
+        if self.mod.scoping_rules == "pythonic":
+            # [py.implicit-decl]: in pythonic_scoping, an assignment might be an
+            # implicit declaration
+            for tgt in assign.target.flatten():
+                self.assign_or_declare_maybe(tgt, tgt.value, "auto", tgt.loc)
+
+    def collect_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
+        # [py.walrus]: a walrus `x := E` implicitly declares `x`.
+        self.collect(assignexpr.value)
+        if self.mod.scoping_rules == "pythonic":
+            tgt = assignexpr.target
+            self.assign_or_declare_maybe(tgt, tgt.value, "auto", tgt.loc)
+
+    def get_lift_target(self) -> Scope:
+        """
+        [py.scope-lifting]: find the nearest lift target at or above the current
+        scope.  Implicit declarations bind here.
+        """
+        scope = self.scope
+        while not scope.is_lift_target:
+            assert scope.parent is not None
+            scope = scope.parent
+        return scope
+
+    def assign_or_declare_maybe(
+        self,
+        node: ast.Node,
+        varname: str,
+        varkind_origin: VarKindOrigin,
+        loc: Loc,
+    ) -> None:
+        # Reassign an existing name, or implicitly declare
+        res = self.scope.lookup(varname)
+        if res.has_global_decl:
+            # [global.write]: if there is `global x`, it's NOT an implicit decl
+            return
+        if res.found and res.frame_depth == 0:
+            # the name is already present in the current frame: reassign it
+            assert res.scope is not None and res.sym is not None
+            if res.sym.varkind == "const" and res.sym.varkind_origin == "auto":
+                # [py.constness]: a second assignment makes an implicit const a var
+                self.promote_const_to_var(res.scope, res.sym)
+        else:
+            # first assignment: this is an implicit declaration. The declaration happens
+            # in the lift_target scope, UNLESS we find an `decl-cannot-lift` marker, see
+            # also collect_VarDef
+            lift_target = self.get_lift_target()
+            marker = lift_target.symbols.get(varname)
+            if marker is not None and marker.storage == "decl-cannot-lift":
+                self.report_mixed_declarations(varname, marker.loc, loc)
+
+            self.create_new_local(
+                node,
+                varname,
+                "implicit",
+                "const",
+                varkind_origin,
+                loc,
+                loc,
+                scope=lift_target,
+            )
+
+    def report_mixed_declarations(self, name: str, exp_loc: Loc, imp_loc: Loc) -> None:
+        # [py.scope-lifting-mixing-error]
+        msg = f"Cannot mix implicit and explicit declarations for `{name}`"
+        err = SPyError("W_ScopeError", msg)
+        err.add("error", f"this is an explicit declaration", exp_loc)
+        err.add("error", f"this is an implicit declaration", imp_loc)
+        raise err
+
+    def promote_const_to_var(self, scope: Scope, sym: Symbol) -> None:
+        # `scope` is the scope that owns `sym` (may be an outer block for a lifted
+        # binding, not necessarily self.scope).
+        assert sym.varkind == "const"
+        new_sym = sym.replace(varkind="var")
+        scope.symbols[sym.src_name] = new_sym
+        scope.frameinfo._symbols[sym.slot_name] = new_sym
+        self.valid_from[new_sym] = self.valid_from.pop(sym)
+
+    def collect_AugAssign(self, node: ast.AugAssign) -> None:
+        # [py.augassign]: an AugAssign does NOT implicitly declare, but counts as a
+        # re-assignment
+        if self.mod.scoping_rules == "pythonic":
+            res = self.scope.lookup(node.target.value)
+            if (
+                res.found
+                and res.sym is not None
+                and res.scope is not None
+                and res.sym.varkind == "const"
+                and res.sym.varkind_origin == "auto"
+            ):
+                self.promote_const_to_var(res.scope, res.sym)
+        self.collect(node.value)
+
+    def collect_Global(self, glob: ast.Global) -> None:
+        # [global.write]: record that we saw a `global x`. See Scope.lookup.
+        for name in glob.names:
+            existing = self.scope.symbols.get(name)
+            if existing is not None:
+                # a `global x` cannot coexist with a local `x` in the same scope
+                msg = f"variable `{name}` is already declared"
+                err = SPyError("W_ScopeError", msg)
+                err.add("error", "this is the new declaration", glob.loc)
+                err.add("note", "this is the previous declaration", existing.loc)
+                raise err
+            marker = Symbol(
+                name,
+                "var",
+                "explicit",
+                "decl-global",
+                slot_name=name,
+                loc=glob.loc,
+                type_loc=glob.loc,
+                frame_depth=0,
+            )
+            self.scope.add(marker)
+
+    # ====
+    # bind pass
+
+    def set_binding(self, node: ast.Node, scope: Scope, res: "Resolution") -> None:
+        self._resolved_nodes[node] = (scope, res)
+
+    def find_loop_target_maybe(self, varname: str) -> Optional[Symbol]:
+        """
+        Find a loop-target Symbol named `varname` in the current frame, if any.
+        """
+        for sym in self.frameinfo._symbols.values():
+            if sym.src_name == varname and sym.varkind_origin == "loop-target":
+                return sym
+        return None
+
+    def make_NameError(self, varname: str, use_loc: Loc) -> SPyError:
+        err = SPyError("W_NameError", f"name `{varname}` is not defined")
+        err.add("error", "not found in this scope", use_loc)
+        # [scope.loop-target]: if `varname` is local to a `for` body in this frame,
+        # teach the user how to make it outlive the loop.
+        if (sym := self.find_loop_target_maybe(varname)) is not None:
+            msg = f"help: declare `var {varname}: auto` before the loop"
+            err.add("note", msg, sym.loc)
+        return err
+
+    def lookup_and_bind(self, node: ast.Node, varname: str, use_loc: Loc) -> None:
+        # NOTE: a not-found / used-before name resolves to a lazy SPyError (stored
+        # in _resolved_nodes); astcompile turns it into an ast.PoisonExpr.
+
+        res = self.scope.lookup(varname)
+        frame_depth, sym = res.frame_depth, res.sym
+
+        if not res.found:
+            # name not found: the node resolves to a lazy NameError (no Symbol)
+            self.set_binding(node, self.scope, self.make_NameError(varname, use_loc))
+            return
+
+        elif frame_depth == 0:
+            # found in the local frameinfo
+            assert sym is not None
+            if sym.is_local and node in self.seq:
+                seq = self.seq[node]
+                if seq < self.valid_from[sym]:
+                    # [decl.use-before]: the use happens before the name becomes valid;
+                    # the node resolves to a lazy error (no usable Symbol here)
+                    err = SPyError("W_NameError", f"name `{varname}` is not defined")
+                    err.add("error", "used before its declaration", use_loc)
+                    err.add("note", "declared later here", sym.loc)
+                    # a common cause is a bare assignment `x = ...` which implicitly
+                    # declares a local that shadows a module-level global; hint at it.
+                    glob = self.mod_scope.symbols.get(varname)
+                    if glob is not None and glob is not sym:
+                        err.add("note", f"help: shadowing this `{varname}`", glob.loc)
+                        msg = f"help: add `global {varname}` earlier"
+                        err.add("note", msg, use_loc)
+                    self.set_binding(node, self.scope, err)
+                    return
+
+            self.set_binding(node, self.scope, sym)
             return
 
         else:
-            # the name was found but in an outer scope. Let's "capture" it.
-            level, sym = self.lookup_definition(varname)  # type: ignore
-            assert sym
-            assert not self.scope.has_definition(varname)
-            new_sym = sym.replace(level=level)
-            self.scope.add(new_sym)
+            # found in an outer scope
+            assert sym is not None
             if sym.impref is not None:
-                self.mod_scope.implicit_imports.add(sym.impref.modname)
+                self.implicit_imports.add(sym.impref.modname)
+            self.set_binding(node, self.scope, sym.replace(frame_depth=frame_depth))
+            return
 
-    def flatten(self, node: ast.Node) -> None:
+    def lookup_and_bind_target(
+        self, node: ast.Node, varname: str, use_loc: Loc
+    ) -> None:
         """
-        Visit all the nodes in the AST and flatten the symtables of all the
-        FuncDefs.
+        Bind an assignment target.
 
-        In particular, introduce a symbol for every Name which is used inside
-        a function but defined in some outer scope.
+        Like lookup_and_bind, but a target that resolves to a module-level binding is
+        rejected unless there is an explicit `global` declaration [global.write]
         """
-        return node.visit("flatten", self)
+        res = self.scope.lookup(varname)
+        sym = res.sym
+        if (
+            res.frame_depth > 0
+            and res.scope is not None
+            and res.scope.kind == "module"
+            and not res.has_global_decl
+        ):
+            assert sym is not None
+            msg = f"`{varname}` cannot be re-assigned without a `global` declaration"
+            err = SPyError("W_ScopeError", msg)
+            err.add("error", f"`{varname}` is a global", use_loc)
+            err.add("note", f"help: add `global {varname}` earlier", use_loc)
+            err.add("note", f"`{varname}` is declared here", sym.loc)
+            self.set_binding(node, self.scope, err)
+            return
+        self.lookup_and_bind(node, varname, use_loc)
 
-    def flatten_FuncDef(self, funcdef: ast.FuncDef) -> None:
-        # decorators are evaluated in the outer scope
+    def bind(self, node: ast.Node) -> None:
+        return node.visit("bind", self)
+
+    def bind_FuncDef(self, funcdef: ast.FuncDef) -> None:
+        # NOTE: evaluate arg.type in the OUTER scope, arg in the INNER scope.
+        #
+        # The funcdef NAME is bound to the outer scope.
+        self.lookup_and_bind(funcdef, funcdef.name, funcdef.prototype_loc)
+
+        # outer scope: decorators and argument types
         for decorator in funcdef.decorators:
-            self.flatten(decorator)
-        # the TYPES of the arguments and defaults are evaluated in the outer scope
-        self.flatten(funcdef.return_type)
+            self.bind(decorator)
+        self.bind(funcdef.return_type)
         for arg in funcdef.args:
-            self.flatten(arg)
+            self.bind(arg.type)
         for default in funcdef.defaults:
-            self.flatten(default)
-        #
-        # the statements of the function are evaluated in the inner scope
-        inner_scope = self.by_funcdef(funcdef)
-        self.push_scope(inner_scope)
-        for stmt in funcdef.body:
-            self.flatten(stmt)
+            self.bind(default)
+
+        # inner scope: arguments and function body
+        scope = self.scopes[funcdef]
+        self.push_scope(scope)
+        for arg in funcdef.args:
+            self.lookup_and_bind(arg, arg.name, arg.loc)
+        for stmt in funcdef.body.body:
+            self.bind(stmt)
         self.pop_scope()
-        #
-        funcdef.symtable = inner_scope
 
-    def flatten_GenericFuncDef(self, gfuncdef: ast.GenericFuncDef) -> None:
-        for arg in gfuncdef.args:
-            self.flatten(arg)
-        inner_scope = self.by_generic_funcdef(gfuncdef)
-        self.push_scope(inner_scope)
-        self.flatten_FuncDef(gfuncdef.inner)
+    def bind_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> None:
+        self.bind_FuncDef(decl.funcdef)
+
+    def bind_GlobalClassDef(self, decl: ast.GlobalClassDef) -> None:
+        self.bind_ClassDef(decl.classdef)
+
+    def bind_ClassDef(self, classdef: ast.ClassDef) -> None:
+        # the classdef NAME is bound in the outer scope, the body in the inner scope
+        self.lookup_and_bind(classdef, classdef.name, classdef.loc)
+        scope = self.scopes[classdef]
+        self.push_scope(scope)
+        for stmt in classdef.body.body:
+            self.bind(stmt)
         self.pop_scope()
-        gfuncdef.symtable = inner_scope
 
-    def flatten_ClassDef(self, classdef: ast.ClassDef) -> None:
-        inner_scope = self.by_classdef(classdef)
-        self.push_scope(inner_scope)
-        for stmt in classdef.body:
-            self.flatten(stmt)
+    def bind_GlobalGenericFuncDef(self, decl: ast.GlobalGenericFuncDef) -> None:
+        self.bind_GenericFuncDef(decl.funcdef)
+
+    def bind_GlobalGenericClassDef(self, decl: ast.GlobalGenericClassDef) -> None:
+        self.bind_GenericClassDef(decl.classdef)
+
+    def bind_GenericFuncDef(self, gfuncdef: ast.GenericFuncDef) -> None:
+        self._bind_generic(gfuncdef, gfuncdef.name, gfuncdef.args, gfuncdef.inner)
+
+    def bind_GenericClassDef(self, gclassdef: ast.GenericClassDef) -> None:
+        self._bind_generic(gclassdef, gclassdef.name, gclassdef.args, gclassdef.inner)
+
+    def _bind_generic(
+        self,
+        node: ast.Node,
+        name: str,
+        args: list[ast.FuncArg],
+        inner: ast.Stmt,
+    ) -> None:
+        # See the big comment in _collect_generic for a general overview of the steps
+
+        # (1) bind the name of the generic in the outer scope
+        self.lookup_and_bind(node, name, inner.loc)
+
+        # bind arg types (still in the outer scope)
+        for arg in args:
+            self.bind(arg.type)
+
+        # (2) push a scope for the blue function
+        scope = self.scopes[node]
+        self.push_scope(scope)
+        for arg in args:
+            # (3) bind the generic arguments ("T")
+            self.lookup_and_bind(arg, arg.name, arg.loc)
+
+        # (4) bind the inner funcdef/classdef
+        self.bind(inner)
         self.pop_scope()
-        #
-        classdef.symtable = inner_scope
 
-    def flatten_GenericClassDef(self, gclassdef: ast.GenericClassDef) -> None:
-        for arg in gclassdef.args:
-            self.flatten(arg)
-        inner_scope = self.by_generic_classdef(gclassdef)
-        self.push_scope(inner_scope)
-        self.flatten_ClassDef(gclassdef.inner)
+    def bind_If(self, ifstmt: ast.If) -> None:
+        self.bind(ifstmt.test)
+        then_scope = self.scopes[ifstmt, "then"]
+        self.push_scope(then_scope)
+        for stmt in ifstmt.then.body:
+            self.bind(stmt)
         self.pop_scope()
-        gclassdef.symtable = inner_scope
+        else_scope = self.scopes[ifstmt, "else"]
+        self.push_scope(else_scope)
+        for stmt in ifstmt.else_.body:
+            self.bind(stmt)
+        self.pop_scope()
 
-    def flatten_Name(self, name: ast.Name) -> None:
-        self.capture_maybe(name.id)
+    def bind_For(self, forstmt: ast.For) -> None:
+        self.bind(forstmt.iter)
+        body_scope = self.scopes[forstmt, "body"]
+        self.push_scope(body_scope)
+        tgt = forstmt.target
+        self.lookup_and_bind(tgt, tgt.value, tgt.loc)
+        for stmt in forstmt.body.body:
+            self.bind(stmt)
+        self.pop_scope()
 
-    def flatten_Assign(self, assign: ast.Assign) -> None:
-        if isinstance(assign.target, ast.UnpackTarget):
-            self.mod_scope.implicit_imports.add("_tuple")
-        for target in assign.target.flatten():
-            assert isinstance(target, ast.StrLiteral)
-            self.capture_maybe(target.value)
-        self.flatten(assign.value)
+    def bind_While(self, whilestmt: ast.While) -> None:
+        self.bind(whilestmt.test)
+        body_scope = self.scopes[whilestmt, "body"]
+        self.push_scope(body_scope)
+        for stmt in whilestmt.body.body:
+            self.bind(stmt)
+        self.pop_scope()
 
-    def flatten_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
-        self.capture_maybe(assignexpr.target.value)
-        self.flatten(assignexpr.value)
+    def bind_VarDef(self, vardef: ast.VarDef) -> None:
+        # a VarDef must have a local symbol in the current scope, get it
+        sym = self.scope.symbols[vardef.name.value]
+        assert sym.frame_depth == 0
+        self.set_binding(vardef, self.scope, sym)
+        self.bind(vardef.type)
+        if vardef.value is not None:
+            self.bind(vardef.value)
 
-    def flatten_For(self, forstmt: ast.For) -> None:
-        # capture the loop variable and flatten the iterator
-        self.capture_maybe(forstmt.target.value)
-        self.flatten(forstmt.iter)
-        # flatten the body
-        for stmt in forstmt.body:
-            self.flatten(stmt)
+    def bind_Assign(self, assign: ast.Assign) -> None:
+        self.bind(assign.value)
+        for tgt in assign.target.flatten():
+            self.lookup_and_bind_target(tgt, tgt.value, tgt.loc)
 
-    def flatten_List(self, lst: ast.List) -> None:
-        self.mod_scope.implicit_imports.add("_list")
-        for item in lst.items:
-            self.flatten(item)
+    def bind_AugAssign(self, node: ast.AugAssign) -> None:
+        # [py.augassign]: the target is both read and written
+        self.bind(node.value)
+        tgt = node.target
+        self.lookup_and_bind_target(tgt, tgt.value, tgt.loc)
 
-    def flatten_Tuple(self, tup: ast.Tuple) -> None:
-        self.mod_scope.implicit_imports.add("_tuple")
-        for item in tup.items:
-            self.flatten(item)
+    def bind_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
+        # walrus `x := E`
+        self.bind(assignexpr.value)
+        tgt = assignexpr.target
+        self.lookup_and_bind_target(tgt, tgt.value, tgt.loc)
 
-    def flatten_Slice(self, slc: ast.Slice) -> None:
-        self.mod_scope.implicit_imports.add("_slice")
-        for item in (slc.start, slc.stop, slc.step):
-            self.flatten(item)
-
-    def flatten_Dict(self, dict: ast.Dict) -> None:
-        self.mod_scope.implicit_imports.add("_dict")
-        for keyVal in dict.items:
-            self.flatten(keyVal.key)
-            self.flatten(keyVal.value)
+    def bind_Name(self, name: ast.Name) -> None:
+        self.lookup_and_bind(name, name.id, name.loc)

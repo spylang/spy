@@ -1,7 +1,7 @@
 from pathlib import Path
 
 import spy.ast
-from spy.analyze.symtable import Color
+from spy.analyze.sym import Color
 from spy.backend.html import HTMLBackend, SpyastJs
 from spy.backend.spy import AST_FORMAT, FQN_FORMAT, SPyBackend
 from spy.highlight import highlight_src

@@ -172,8 +172,9 @@ class Context:
         for i, param in enumerate(w_functype.params):
             c_type = self.w2c(param.w_T)
             if param.kind == "simple":
-                c_param_name = C_Ident(funcdef.args[i].name)
-                c_params.append(C_FuncParam(c_param_name, c_type))
+                arg = funcdef.args[i]
+                slot_name = arg.sym.slot_name
+                c_params.append(C_FuncParam(C_Ident(slot_name), c_type))
             elif param.kind == "var_positional":
                 assert i == len(funcdef.args) - 1
                 raise SPyError.simple(

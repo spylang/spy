@@ -11,7 +11,7 @@ from spy.cli.commands.imports import imports
 from spy.cli.commands.parse import parse
 from spy.cli.commands.pyparse import pyparse
 from spy.cli.commands.redshift import redshift
-from spy.cli.commands.symtable import symtable
+from spy.cli.commands.scopes import scopes
 from spy.cli.spy_typer import SpyGroupConfig, SpyTyper
 
 app = SpyTyper(
@@ -36,6 +36,6 @@ app.spy_command(astcompile, name="astcompile")
 app.spy_command(parse, name="parse")
 app.spy_command(pyparse, name="pyparse")
 app.spy_command(imports, name="imports")
-app.spy_command(symtable, name="symtable")
+app.spy_command(scopes, name="scopes")
 app.spy_command(cleanup, name="cleanup")
 app.spy_command(format, name="format")

@@ -7,13 +7,13 @@ import re
 import textwrap
 from ctypes import c_float as float32
 from types import NoneType
-from typing import NoReturn, Optional
+from typing import NoReturn, Optional, cast
 
 import fixedint
 from fixedint.base import FixedInt
 
 import spy.ast
-from spy.analyze.symtable import ImportRef, VarKind
+from spy.analyze.sym import ImportRef, VarKind
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.location import Loc
@@ -85,6 +85,7 @@ class Parser:
         self.filename = filename
         self.for_loop_seq = 0
         self.augassign_seq = 0
+        self.scoping_rules_stack: list[spy.ast.ScopingRules] = ["pythonic"]
 
     @classmethod
     def from_filename(cls, filename: str) -> "Parser":
@@ -93,9 +94,9 @@ class Parser:
         return Parser(src, filename)
 
     def parse(self) -> spy.ast.Module:
-        py_mod = magic_py_parse(self.src, self.filename)
+        py_mod, src2 = magic_py_parse(self.src, self.filename)
         assert isinstance(py_mod, py_ast.Module)
-        py_mod.compute_all_locs(self.filename)
+        py_mod.compute_all_locs(self.filename, src2)
         parsed_mod = self.from_py_Module(py_mod)
         assert parsed_mod.stage == "parsed"
         parsed_mod.assert_valid_at("parsed")
@@ -105,9 +106,9 @@ class Parser:
         """
         Parse the source code assuming it contains a single stmt. Used by SPdb.
         """
-        py_mod = magic_py_parse(self.src, self.filename)
+        py_mod, src2 = magic_py_parse(self.src, self.filename)
         assert isinstance(py_mod, py_ast.Module)
-        py_mod.compute_all_locs(self.filename)
+        py_mod.compute_all_locs(self.filename, src2)
         if len(py_mod.body) > 1:
             self.error(
                 "expected exactly one statement",
@@ -147,6 +148,42 @@ class Parser:
 
         return None, body
 
+    def get_spy_pragmas(self, body: list[py_ast.stmt]) -> set[str]:
+        """
+        Scan the leading pragma area (after the docstring, alongside any
+        `from __future__ import ...`) for recognised `from __spy__ import ...`
+        declarations.
+
+        The import statements are left in the body unchanged so they are
+        processed as normal imports later - the same behaviour as Python's
+        `from __future__ import ...`.
+        """
+        KNOWN_PRAGMAS = ("strict_scoping", "pythonic_scoping")
+        pragma_zone = True
+        result: set[str] = set()
+
+        for stmt in body:
+            if isinstance(stmt, py_ast.ImportFrom) and stmt.module == "__spy__":
+                pragma_names = [
+                    alias.name for alias in stmt.names if alias.name in KNOWN_PRAGMAS
+                ]
+                if pragma_names:
+                    if not pragma_zone:
+                        self.error(
+                            "`from __spy__ import ...` must appear "
+                            "at the beginning of the module or function",
+                            "move this to the top",
+                            stmt.loc,
+                        )
+                    result.update(pragma_names)
+                # non-pragma __spy__ imports are ordinary imports, no restriction
+            elif isinstance(stmt, py_ast.ImportFrom) and stmt.module == "__future__":
+                pass  # __future__ imports stay in the pragma zone
+            else:
+                pragma_zone = False
+
+        return result
+
     def from_py_Module(self, py_mod: py_ast.Module) -> spy.ast.Module:
         # create a Loc which encompasses the whole module. Lines are 1-based, columns
         # are 0-based.
@@ -154,8 +191,10 @@ class Parser:
         endcol = len(lines[-1])
         loc = Loc(self.filename, 1, len(lines) + 1, 0, endcol)
 
-        # Extract module docstring
+        # Extract module docstring, then __spy__ pragmas
         docstring, py_body = self.get_docstring_maybe(py_mod.body)
+        pragmas = self.get_spy_pragmas(py_body)
+        scoping_rules = self.get_scoping_rules(pragmas)
 
         mod = spy.ast.Module(
             loc=loc,
@@ -163,8 +202,10 @@ class Parser:
             filename=self.filename,
             decls=[],
             docstring=docstring,
+            scoping_rules=scoping_rules,
         )
 
+        self.scoping_rules_stack.append(scoping_rules)
         for py_stmt in py_body:
             if isinstance(py_stmt, py_ast.FunctionDef):
                 funcdef = self.from_py_stmt_FunctionDef(py_stmt)
@@ -209,7 +250,16 @@ class Parser:
                     "only function and variable definitions are allowed at global scope"
                 )
                 self.error(msg, "this is not allowed here", py_stmt.loc)
+        self.scoping_rules_stack.pop()
         return mod
+
+    def get_scoping_rules(self, pragmas: set[str]) -> spy.ast.ScopingRules:
+        if "strict_scoping" in pragmas:
+            return "strict"
+        elif "pythonic_scoping" in pragmas:
+            return "pythonic"
+        else:
+            return self.scoping_rules_stack[-1]
 
     def from_py_stmt_FunctionDef(
         self, py_funcdef: py_ast.FunctionDef
@@ -293,7 +343,7 @@ class Parser:
         #
         py_returns = py_funcdef.returns
         if py_returns:
-            return_type = self.from_py_expr(py_returns)
+            return_type = self.from_py_type_expr(py_returns)
         else:
             # we need to synthesize a reasonable Loc for the (missing) return type. See
             # also test_FuncDef_prototype_loc.
@@ -313,12 +363,17 @@ class Parser:
             return_type = spy.ast.Auto(retloc)
 
         docstring, py_body = self.get_docstring_maybe(py_funcdef.body)
+        pragmas = self.get_spy_pragmas(py_body)
+        scoping_rules = self.get_scoping_rules(pragmas)
+
         # by doing this "saved_seq" dance, we ensure that nested functions "continue"
         # the numbering from the their parent, but sibling functions reset the
         # numbering. See test_scope::test_for_loop_nested_funcs
         saved_for_loop_seq = self.for_loop_seq
         saved_augassign_seq = self.augassign_seq
-        body = self.from_py_body(py_body)
+        self.scoping_rules_stack.append(scoping_rules)
+        body = self.from_py_body_block(py_funcdef.loc, py_body)
+        self.scoping_rules_stack.pop()
         self.for_loop_seq = saved_for_loop_seq
         self.augassign_seq = saved_augassign_seq
 
@@ -333,6 +388,7 @@ class Parser:
             defaults=defaults,
             body=body,
             docstring=docstring,
+            scoping_rules=scoping_rules,
             decorators=decorators,
         )
 
@@ -370,7 +426,7 @@ class Parser:
         self, color: spy.ast.Color, py_arg: py_ast.arg, kind: spy.ast.FuncParamKind
     ) -> spy.ast.FuncArg:
         if py_arg.annotation:
-            spy_type = self.from_py_expr(py_arg.annotation)
+            spy_type = self.from_py_type_expr(py_arg.annotation)
         else:
             spy_type = spy.ast.Auto(py_arg.loc)
         return spy.ast.FuncArg(
@@ -435,16 +491,17 @@ class Parser:
 
         # collect statements inside a "class:" block.
         # validation is delegated to ClassFrame
-        body: list[spy.ast.Stmt] = []
+        stmts: list[spy.ast.Stmt] = []
         for py_stmt in py_class_body:
             if isinstance(py_stmt, py_ast.AnnAssign):
-                body.append(self.from_py_AnnAssign(py_stmt))
+                stmts.append(self.from_py_AnnAssign(py_stmt))
             else:
-                body.append(self.from_py_stmt(py_stmt))
+                stmts.append(self.from_py_stmt(py_stmt))
 
         # loc points to the 'class X' line, body_loc to the whole class body
         body_loc = py_classdef.loc
         loc = body_loc.replace(line_end=body_loc.line_start, col_end=-1)
+        body = spy.ast.Block(loc=body_loc, body=stmts)
         return spy.ast.ClassDef(
             loc=loc,
             body_loc=body_loc,
@@ -487,10 +544,19 @@ class Parser:
             if isinstance(py_stmt, py_ast.AnnAssign):
                 vardef = self.from_py_AnnAssign(py_stmt)
                 body.append(vardef)
+            elif isinstance(py_stmt, py_ast.ImportFrom):
+                importstmts = self.from_py_ImportFrom(py_stmt)
+                body += importstmts  # type: ignore
             else:
                 stmt = self.from_py_stmt(py_stmt)
                 body.append(stmt)
         return body
+
+    def from_py_body_block(self, loc: Loc, py_body: list[py_ast.stmt]) -> spy.ast.Block:
+        """
+        Like from_py_body, but wrap the resulting statements in an ast.Block.
+        """
+        return spy.ast.Block(loc=loc, body=self.from_py_body(py_body))
 
     def from_py_stmt(self, py_node: py_ast.stmt) -> spy.ast.Stmt:
         return magic_dispatch(self, "from_py_stmt", py_node)
@@ -557,7 +623,7 @@ class Parser:
             loc=py_node.loc,
             kind=varkind,
             name=spy.ast.StrLiteral(py_node.target.loc, real_name),
-            type=self.from_py_expr(py_node.annotation),
+            type=self.from_py_type_expr(py_node.annotation),
             value=value,
         )
 
@@ -681,8 +747,8 @@ class Parser:
         return spy.ast.If(
             loc=py_node.loc,
             test=self.from_py_expr(py_node.test),
-            then_body=self.from_py_body(py_node.body),
-            else_body=self.from_py_body(py_node.orelse),
+            then=self.from_py_body_block(py_node.loc, py_node.body),
+            else_=self.from_py_body_block(py_node.loc, py_node.orelse),
         )
 
     def from_py_stmt_While(self, py_node: py_ast.While) -> spy.ast.While:
@@ -691,7 +757,7 @@ class Parser:
         return spy.ast.While(
             loc=py_node.loc,
             test=self.from_py_expr(py_node.test),
-            body=self.from_py_body(py_node.body),
+            body=self.from_py_body_block(py_node.loc, py_node.body),
         )
 
     def from_py_stmt_For(self, py_node: py_ast.For) -> spy.ast.For:
@@ -716,7 +782,7 @@ class Parser:
             seq=seq,
             target=spy.ast.StrLiteral(py_node.target.loc, py_node.target.id),
             iter=self.from_py_expr(py_node.iter),
-            body=self.from_py_body(py_node.body),
+            body=self.from_py_body_block(py_node.loc, py_node.body),
         )
 
     def from_py_stmt_Raise(self, py_node: py_ast.Raise) -> spy.ast.Raise:
@@ -740,6 +806,12 @@ class Parser:
     def from_py_stmt_Continue(self, py_node: py_ast.Continue) -> spy.ast.Continue:
         return spy.ast.Continue(py_node.loc)
 
+    def from_py_stmt_Global(self, py_node: py_ast.Global) -> spy.ast.Global:
+        return spy.ast.Global(py_node.loc, list(py_node.names))
+
+    def from_py_stmt_Nonlocal(self, py_node: py_ast.Nonlocal) -> spy.ast.Nonlocal:
+        return spy.ast.Nonlocal(py_node.loc, list(py_node.names))
+
     # ====== spy.ast.Expr ======
 
     def from_py_expr(self, py_node: py_ast.expr) -> spy.ast.Expr:
@@ -747,7 +819,16 @@ class Parser:
 
     from_py_expr_NotImplemented = unsupported
 
-    def from_py_expr_Name(self, py_node: py_ast.Name) -> spy.ast.Name:
+    def from_py_type_expr(self, py_node: py_ast.expr) -> spy.ast.Expr:
+        """
+        Parse a type-annotation expression. Unlike from_py_expr, this treats
+        the bare name `auto` as ast.Auto rather than ast.Name.
+        """
+        if isinstance(py_node, py_ast.Name) and py_node.id == "auto":
+            return spy.ast.Auto(py_node.loc)
+        return self.from_py_expr(py_node)
+
+    def from_py_expr_Name(self, py_node: py_ast.Name) -> spy.ast.Expr:
         return spy.ast.Name(py_node.loc, py_node.id)
 
     def from_py_expr_Constant(self, py_node: py_ast.Constant) -> spy.ast.Expr:
@@ -1008,8 +1089,8 @@ class Parser:
                 py_node.loc,
             )
         src = textwrap.dedent(py_node.args[0].value).strip()
-        inner_mod = magic_py_parse(src, filename=self.filename)
-        inner_mod.compute_all_locs(self.filename)
+        inner_mod, src2 = magic_py_parse(src, filename=self.filename)
+        inner_mod.compute_all_locs(self.filename, src2)
         if not inner_mod.body:
             self.error(
                 "__block__ body is empty",

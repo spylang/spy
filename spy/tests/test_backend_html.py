@@ -134,6 +134,7 @@ class TestHTMLBackend:
         <Module> (stmt, default)
             stage: <'parsed'> (leaf, emerald)
             filename: <'{tmpdir}/test.spy'> (leaf, emerald)
+            scoping_rules: <'pythonic'> (leaf, emerald)
             decls[0]: <GlobalFuncDef> (stmt, default)
                 funcdef: <FuncDef: red foo> (stmt, default)
                     stage: <'parsed'> (leaf, emerald)
@@ -142,7 +143,10 @@ class TestHTMLBackend:
                     name: <'foo'> (leaf, emerald)
                     return_type: <Name: void> (expr, amber)
                         id: <'void'> (leaf, emerald)
-                    body[0]: <Pass> (stmt, default)
+                    scoping_rules: <'pythonic'> (leaf, emerald)
+                    body: <Block> (stmt, default)
+                        body[0]: <Pass> (stmt, default)
+                    _sym: <None> (leaf, emerald)
         """
         self.assert_dump(d, expected)
 
@@ -163,15 +167,19 @@ class TestHTMLBackend:
                 type: <Name: i32> (expr, amber)
                     id: <'i32'> (leaf, emerald)
                 kind: <'simple'> (leaf, emerald)
+                _sym: <None> (leaf, emerald)
             return_type: <Name: i32> (expr, amber)
                 id: <'i32'> (leaf, emerald)
-            body[0]: <Return> (stmt, default)
-                value: <BinOp: +> (expr, amber)
-                    op: <'+'> (leaf, emerald)
-                    left: <Name: x> (expr, amber)
-                        id: <'x'> (leaf, emerald)
-                    right: <Literal: 1> (expr, amber)
-                        value: <1> (leaf, emerald)
+            scoping_rules: <'pythonic'> (leaf, emerald)
+            body: <Block> (stmt, default)
+                body[0]: <Return> (stmt, default)
+                    value: <BinOp: +> (expr, amber)
+                        op: <'+'> (leaf, emerald)
+                        left: <Name: x> (expr, amber)
+                            id: <'x'> (leaf, emerald)
+                        right: <Literal: 1> (expr, amber)
+                            value: <1> (leaf, emerald)
+            _sym: <None> (leaf, emerald)
         """
         self.assert_dump(funcdef, expected)
 
@@ -196,20 +204,26 @@ class TestHTMLBackend:
                     | i32
                     id: <'i32'> (leaf, emerald)
                 kind: <'simple'> (leaf, emerald)
+                _sym: <None> (leaf, emerald)
             return_type: <Name: i32> (expr, amber)
                 | i32
                 id: <'i32'> (leaf, emerald)
-            body[0]: <Return> (stmt, default)
-                | return x + 1
-                value: <BinOp: +> (expr, amber)
-                    | x + 1
-                    op: <'+'> (leaf, emerald)
-                    left: <Name: x> (expr, amber)
-                        | x
-                        id: <'x'> (leaf, emerald)
-                    right: <Literal: 1> (expr, amber)
-                        | 1
-                        value: <1> (leaf, emerald)
+            scoping_rules: <'pythonic'> (leaf, emerald)
+            body: <Block> (stmt, default)
+                | def foo(x: i32) -> i32:
+                |     return x + 1
+                body[0]: <Return> (stmt, default)
+                    | return x + 1
+                    value: <BinOp: +> (expr, amber)
+                        | x + 1
+                        op: <'+'> (leaf, emerald)
+                        left: <Name: x> (expr, amber)
+                            | x
+                            id: <'x'> (leaf, emerald)
+                        right: <Literal: 1> (expr, amber)
+                            | 1
+                            value: <1> (leaf, emerald)
+            _sym: <None> (leaf, emerald)
         """
         self.assert_dump(funcdef, expected, show_src=True)
 
@@ -225,7 +239,7 @@ class TestHTMLBackend:
                 func: <FQNConst> (expr, amber)
                     fqn: <operator::i32_add> (leaf, emerald)
                 args[0]: <NameLocalDirect> (expr, amber)
-                    sym: <x> (leaf, emerald)
+                    sym: <x$0> (leaf, emerald)
                 args[1]: <Const: W_I32(1)> (expr, amber)
                     w_val: <W_I32(1)> (leaf, emerald)
         """
@@ -241,13 +255,13 @@ class TestHTMLBackend:
         <Return> (stmt, default)
             | return x + 1
             value: <Call> (expr, amber)
-                | x + 1
+                | x$0 + 1
                 func: <FQNConst> (expr, amber)
                     | `operator::i32_add`
                     fqn: <operator::i32_add> (leaf, emerald)
                 args[0]: <NameLocalDirect> (expr, amber)
-                    | x
-                    sym: <x> (leaf, emerald)
+                    | x$0
+                    sym: <x$0> (leaf, emerald)
                 args[1]: <Const: W_I32(1)> (expr, amber)
                     | 1
                     w_val: <W_I32(1)> (leaf, emerald)
@@ -268,7 +282,7 @@ class TestHTMLBackend:
             value: <BinOp: +> (expr, red)
                 op: <'+'> (leaf, emerald)
                 left: <NameLocalDirect> (expr, red)
-                    sym: <x> (leaf, emerald)
+                    sym: <x$0> (leaf, emerald)
                 right: <Literal: 1> (expr, blue)
                     value: <1> (leaf, emerald)
         """
@@ -355,5 +369,6 @@ class TestHTMLBackend:
                 id: <'str'> (leaf, emerald)
             value: <StrLiteral: 'hello'> (expr, amber)
                 value: <'hello'> (leaf, emerald)
+            _sym: <None> (leaf, emerald)
         """
         self.assert_dump(vardef, expected)

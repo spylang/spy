@@ -61,7 +61,7 @@ class CFuncWriter:
         self.tbc.wl(c_func.decl() + " {")
         with self.tbc.indent():
             self.emit_local_vars()
-            for stmt in self.w_func.funcdef.body:
+            for stmt in self.w_func.funcdef.body.body:
                 self.emit_stmt(stmt)
 
             if self.w_func.w_functype.w_restype is not TYPES.w_NoneType:
@@ -82,7 +82,8 @@ class CFuncWriter:
         see e.g. a VarDef.
         """
         assert self.w_func.locals_types_w is not None
-        param_names = [arg.name for arg in self.w_func.funcdef.args]
+        funcdef = self.w_func.funcdef
+        param_names = [arg.sym.slot_name for arg in funcdef.args]
         for varname, w_T in self.w_func.locals_types_w.items():
             c_type = self.ctx.w2c(w_T)
             if (
@@ -170,7 +171,7 @@ class CFuncWriter:
         # NOTE: the local variable declaration happens in emit_local_vars, here we just
         # assign the value
         if vardef.value:
-            target = vardef.name.value
+            target = vardef.sym.slot_name
             v = self.fmt_expr(vardef.value)
             if vardef.value.w_T is TYPES.w_NoneType:
                 self.tbc.wl(f"/* {target} = */ {v};")
@@ -178,7 +179,7 @@ class CFuncWriter:
                 self.tbc.wl(f"{target} = {v};")
 
     def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
-        target = assign.expr.target.value
+        target = assign.expr.sym.slot_name
         v = self.fmt_expr(assign.expr.value)
         c_varname = C_Ident(target)
         if assign.expr.value.w_T is TYPES.w_NoneType:
@@ -230,13 +231,13 @@ class CFuncWriter:
         test = self.fmt_expr(if_node.test)
         self.tbc.wl(f"if ({test})" + "{")
         with self.tbc.indent():
-            for stmt in if_node.then_body:
+            for stmt in if_node.then.body:
                 self.emit_stmt(stmt)
         #
-        if if_node.else_body:
+        if if_node.else_.body:
             self.tbc.wl("} else {")
             with self.tbc.indent():
-                for stmt in if_node.else_body:
+                for stmt in if_node.else_.body:
                     self.emit_stmt(stmt)
         #
         self.tbc.wl("}")
@@ -245,7 +246,7 @@ class CFuncWriter:
         test = self.fmt_expr(while_node.test)
         self.tbc.wl(f"while ({test}) " + "{")
         with self.tbc.indent():
-            for stmt in while_node.body:
+            for stmt in while_node.body.body:
                 self.emit_stmt(stmt)
         self.tbc.wl("}")
 
@@ -383,10 +384,10 @@ class CFuncWriter:
             )
 
     def fmt_expr_Name(self, name: ast.Name) -> C.Expr:
-        assert False, "ast.Name nodes should not survive redshifting"
+        assert False, "ast.Name nodes should not survive astcompile"
 
     def fmt_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> C.Expr:
-        varname = C_Ident(name.sym.name)
+        varname = C_Ident(name.sym.slot_name)
         if name.w_T is TYPES.w_NoneType:
             return C.Literal(f"/* {varname} */")
         else:
@@ -402,10 +403,10 @@ class CFuncWriter:
         assert False, "unexpected NameOuterDirect"
 
     def fmt_expr_AssignExpr(self, assignexpr: ast.AssignExpr) -> C.Expr:
-        return self._fmt_assignexpr(assignexpr.target.value, assignexpr.value)
+        assert False, "ast.AssignExpr nodes should not survive astcompile"
 
     def fmt_expr_AssignExprLocal(self, assignexpr: ast.AssignExprLocal) -> C.Expr:
-        return self._fmt_assignexpr(assignexpr.target.value, assignexpr.value)
+        return self._fmt_assignexpr(assignexpr.sym.slot_name, assignexpr.value)
 
     def fmt_expr_AssignExprCell(self, assignexpr: ast.AssignExprCell) -> C.Expr:
         assert assignexpr.target_fqn is not None, "fqn is set during redshift"

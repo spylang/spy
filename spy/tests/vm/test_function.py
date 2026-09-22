@@ -60,7 +60,8 @@ def make_w_func(
         return_type=ast.Literal(loc=loc, value=0),
         defaults=[],
         docstring=None,
-        body=[],
+        scoping_rules="pythonic",
+        body=ast.Block(loc=loc, body=[]),
         decorators=[],
     )
     return W_ASTFunc(

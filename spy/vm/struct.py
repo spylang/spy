@@ -216,7 +216,8 @@ class W_StructType(W_Type):
             return_type=ast.FQNConst(func_loc, B.w_bool.fqn),
             defaults=[],
             docstring=None,
-            body=[stmt],
+            scoping_rules="strict",
+            body=ast.Block(func_loc, [stmt]),
             decorators=[],
         )
 
@@ -226,11 +227,12 @@ class W_StructType(W_Type):
             stage="parsed",
             filename="<generated>",
             docstring=None,
+            scoping_rules="strict",
             decls=[ast.GlobalFuncDef(func_loc, funcdef)],
         )
         analyzer = ScopeAnalyzer(self.fqn.modname, module)
         analyzer.analyze()
-        module = astcompile(module)
+        module = astcompile(module, scope_analyzer=analyzer)
         funcdef = module.get_funcdef(name)
 
         # create the actual W_ASTFunc object

@@ -2,7 +2,7 @@ import ast as py_ast
 from typing import TYPE_CHECKING, Any, Optional
 
 import spy.ast
-from spy.analyze.symtable import Color, Symbol
+from spy.analyze.sym import Color, Symbol
 from spy.textbuilder import TextBuilder
 
 if TYPE_CHECKING:
@@ -57,11 +57,16 @@ class Dumper(TextBuilder):
             "body_loc",
             "target_locs",
             "loc_asname",
+            "scope",
         )
         self.vm = vm
 
     def dump_anything(self, obj: Any) -> None:
-        if isinstance(obj, spy.ast.Node):
+        if isinstance(obj, spy.ast.Block):
+            # we don't show the Block node in dumps, to simplify the output. A block is
+            # rendered as a statement list
+            self.dump_list(obj.body)
+        elif isinstance(obj, spy.ast.Node):
             self.dump_spy_node(obj)
         elif isinstance(obj, py_ast.AST):
             self.dump_py_node(obj)
@@ -89,7 +94,7 @@ class Dumper(TextBuilder):
         self._dump_node(node, name, fields, text_color="turquoise")
 
     def dump_Symbol(self, sym: Symbol) -> None:
-        self.write(f"Symbol({sym.name!r}, {sym.varkind!r}, {sym.storage!r})")
+        self.write(f"Symbol({sym.slot_name!r}, {sym.varkind!r}, {sym.storage!r})")
 
     def _dump_node(
         self, node: Any, name: str, fields: list[str], text_color: Optional[str]
@@ -119,11 +124,21 @@ class Dumper(TextBuilder):
             self.writeline("")
         with self.indent():
             for field, value in zip(fields, values):
-                # print the w_T only if it's not None
-                if field == "w_T" and value is None:
+                # print w_T, sym, frameinfo and implicit_imports only if not None
+                if (
+                    field in ("w_T", "_sym", "_frameinfo", "_implicit_imports")
+                    and value is None
+                ):
                     continue
                 is_last = field is fields[-1]
-                self.write(f"{field}=")
+                # `_sym`/`_frameinfo`/`_implicit_imports` are private fields exposed
+                # via public properties; dump them under the public name.
+                label = {
+                    "_sym": "sym",
+                    "_frameinfo": "frameinfo",
+                    "_implicit_imports": "implicit_imports",
+                }.get(field, field)
+                self.write(f"{label}=")
                 self.dump_anything(value)
                 if multiline:
                     self.writeline(",")

@@ -9,7 +9,7 @@ import fixedint
 import py
 
 from spy import ROOT, ast, libspy
-from spy.analyze.symtable import Color, ImportRef, SymTable, maybe_blue
+from spy.analyze.sym import Color, FrameInfo, ImportRef, maybe_blue
 from spy.ast import Color, FuncKind
 from spy.build.build_info import BuildInfoFunc
 from spy.doppler import ErrorMode, redshift
@@ -294,11 +294,11 @@ class SPyVM:
                 self.fast_call(w_init, [])
 
     def _seed_human_aliases(self) -> None:
-        for sym in SymTable.from_builtins()._symbols.values():
+        for sym in FrameInfo.from_builtins()._symbols.values():
             if sym.impref is None or sym.impref.attr is None:
                 continue
             real_fqn = FQN([sym.impref.modname, sym.impref.attr])
-            display_fqn = FQN(sym.name)
+            display_fqn = FQN(sym.src_name)
             if real_fqn != display_fqn:
                 self.fqn_human_aliases[real_fqn] = display_fqn
 

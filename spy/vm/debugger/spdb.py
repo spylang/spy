@@ -8,6 +8,7 @@ import sys
 from typing import IO, TYPE_CHECKING, Annotated, Any, Literal, Optional
 
 from spy import ast
+from spy.analyze.sym import Scope
 from spy.astcompile import astcompile_interactive
 from spy.doppler import DopplerFrame
 from spy.errfmt import ErrorFormatter
@@ -16,11 +17,11 @@ from spy.location import Loc
 from spy.parser import Parser
 from spy.textbuilder import ColorFormatter
 from spy.util import record_src_in_linecache
-from spy.vm.astframe import ASTFrame
+from spy.vm.astframe import AbstractFrame, ASTFrame
 from spy.vm.b import BUILTINS
 from spy.vm.classframe import ClassFrame
 from spy.vm.debugger.longlist import print_longlist
-from spy.vm.exc import FrameInfo, W_Traceback
+from spy.vm.exc import TBEntry, W_Traceback
 from spy.vm.modframe import ModFrame
 from spy.vm.modules.operator import OP
 from spy.vm.opspec import W_MetaArg
@@ -111,7 +112,7 @@ class SPdb(cmd.Cmd):
             self.curindex = i
             self.print_frame_info(i)
 
-    def get_curframe(self) -> FrameInfo:
+    def get_curframe(self) -> TBEntry:
         return self.w_tb.entries[self.curindex]
 
     def print_frame_info(self, i: int) -> None:
@@ -220,6 +221,29 @@ class SPdb(cmd.Cmd):
     do_l = do_longlist
     do_ll = do_longlist
 
+    def _resolution_scope(self, spyframe: "AbstractFrame") -> Scope:
+        """
+        Return the lexical Scope to use for interactive compilation at the current
+        breakpoint.
+
+        XXX: in post-mortem, block_stack is empty (the blocks were already popped while
+        the exception unwound), so we fall back to the frame's top-level body
+        scope. This loses the exact nested block, but function-level and outer names
+        still resolve correctly.  We should probably fix by attaching the scope to the
+        traceback.
+        """
+        for block in reversed(spyframe.block_stack):
+            if block.scope is not None:
+                return block.scope
+        if isinstance(spyframe, ASTFrame) and spyframe.funcdef.body.scope is not None:
+            return spyframe.funcdef.body.scope
+        raise SPyError.simple(
+            "W_WIP",
+            "cannot resolve names in this frame",
+            "no lexical scope available here",
+            spyframe.loc,
+        )
+
     def do_print(self, arg: str) -> None:
         try:
             # eval "arg" in the current frame
@@ -236,10 +260,11 @@ class SPdb(cmd.Cmd):
                 )
 
             f = self.get_curframe()
-            # the parser produces a "parsed"-stage expression, but the frame can
-            # only evaluate astcompiled nodes: run the astcompile pass on the
-            # fly, against the symtable of the live frame
-            expr = astcompile_interactive(stmt.value, f.spyframe.symtable)
+            # the parser produces a "parsed"-stage expression, but the frame can only
+            # evaluate astcompiled nodes: run the astcompile pass on the fly, resolving
+            # names against the scope of the currently active block in the frame
+            scope = self._resolution_scope(f.spyframe)
+            expr = astcompile_interactive(stmt.value, scope)
             wam = f.spyframe.eval_expr(expr)
             print_wam(self.vm, wam, file=self.stdout, use_colors=self.use_colors)
 

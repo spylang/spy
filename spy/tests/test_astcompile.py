@@ -43,16 +43,18 @@ class TestASTCompile:
     def compile_interactive(self, src: str) -> ast.Expr:
         """
         Parse a single expression and astcompile it in interactive mode against the
-        symtable of `test::foo`. This is meant to be similar to what SPdb does when
-        evaluating interactive exprs.
+        lexical scope of `test::foo`'s body. This is meant to be similar to what
+        SPdb does when evaluating interactive exprs.
         """
         fqn = FQN("test::foo")
         w_foo = self.vm.globals_w[fqn]
         assert isinstance(w_foo, W_ASTFunc)
+        scope = w_foo.funcdef.body.scope
+        assert scope is not None
         parser = Parser(src, "<test>")
         stmt = parser.parse_single_stmt()
         assert isinstance(stmt, ast.StmtExpr)
-        return astcompile_interactive(stmt.value, w_foo.funcdef.symtable)
+        return astcompile_interactive(stmt.value, scope)
 
     def assert_dump(
         self,
@@ -103,11 +105,11 @@ class TestASTCompile:
     def test_name_lowered_to_nameerror(self):
         self.compile_src("""
         def foo() -> i32:
-            return undefined_name
+            return bla
         """)
         expected = """
         def foo() -> i32:
-            return NameError(undefined_name)
+            return PoisonExpr('name `bla` is not defined')
         """
         self.assert_dump(expected, ast_format="full")
 
@@ -119,11 +121,11 @@ class TestASTCompile:
         """)
         expected = """
         def foo(lst: dynamic) -> None:
-            _$iter0 = lst.__fastiter__()
-            while _$iter0.__continue_iteration__():
-                i = _$iter0.__item__()
-                _$iter0 = _$iter0.__next__()
-                print(i)
+            _$iter$0 = lst$0.__fastiter__()
+            while _$iter$0.__continue_iteration__():
+                i$0 = _$iter$0.__item__()
+                _$iter$0 = _$iter$0.__next__()
+                print(i$0)
         """
         self.assert_dump(expected)
 
@@ -135,8 +137,8 @@ class TestASTCompile:
         """)
         expected = """
         def foo(x: i32) -> i32:
-            AssignLocal(y := LocalDirect(x))
-            return LocalDirect(y)
+            AssignLocal(y$0 := LocalDirect(x$0))
+            return LocalDirect(y$0)
         """
         self.assert_dump(expected, ast_format="full")
 
@@ -155,6 +157,7 @@ class TestASTCompile:
         self.compile_src("""
         var x: i32 = 0
         def foo() -> i32:
+            global x
             x = 1
             return x
         """)
@@ -175,10 +178,10 @@ class TestASTCompile:
         """)
         expected = """
         def outer() -> dynamic:
-            AssignLocal(x := 1)
+            AssignLocal(x$0 := 1)
             def inner() -> ImportRef(i32):
-                return OuterDirect(x)
-            return LocalDirect(inner)
+                return OuterDirect(x$0)
+            return LocalDirect(inner$0)
         """
         self.assert_dump(expected, ast_format="full", funcname="outer")
 
@@ -204,8 +207,8 @@ class TestASTCompile:
         """)
         expected = """
         def foo(x: i32) -> i32:
-            x = x + 1
-            return x
+            x$0 = x$0 + 1
+            return x$0
         """
         self.assert_dump(expected)
 
@@ -216,9 +219,9 @@ class TestASTCompile:
         """)
         expected = """
         def foo(items: dynamic, idx: i32, val: i32) -> None:
-            _$aug_target0 = items
-            _$aug_arg0_0 = idx
-            _$aug_target0[_$aug_arg0_0] = _$aug_target0[_$aug_arg0_0] + val
+            _$t$0 = items$0
+            _$a$0 = idx$0
+            _$t$0[_$a$0] = _$t$0[_$a$0] + val$0
         """
         self.assert_dump(expected)
 
@@ -229,28 +232,38 @@ class TestASTCompile:
         """)
         expected = """
         def foo(obj: dynamic, val: i32) -> None:
-            _$aug_target0 = obj
-            _$aug_target0.x = _$aug_target0.x + val
+            _$t$0 = obj$0
+            _$t$0.x = _$t$0.x + val$0
         """
         self.assert_dump(expected)
 
-    def test_NameInteractive(self):
+    def test_interactive_name_resolution(self):
         self.compile_src("""
         X = 10
 
         def foo() -> None:
             Y = 20
         """)
+        # X is an outer module-level const, resolved by walking the scope tree
         expr_X = self.compile_interactive("X")
         expected = """
-        NameInteractive(id='X')
+        NameOuterDirect(
+            sym=Symbol('X', 'const', 'direct'),
+        )
         """
         assert_node_dump(expr_X, expected)
 
         expr_Y = self.compile_interactive("Y")
         expected = """
         NameLocalDirect(
-            sym=Symbol('Y', 'const', 'direct'),
+            sym=Symbol('Y$0', 'const', 'direct'),
         )
         """
         assert_node_dump(expr_Y, expected)
+
+        # an undefined name resolves to a lazy PoisonExpr
+        expr_Z = self.compile_interactive("Z")
+        expected = """
+        PoisonExpr(err=SPyError('name `Z` is not defined'))
+        """
+        assert_node_dump(expr_Z, expected)

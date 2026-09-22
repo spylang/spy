@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Literal, NoReturn, Optional
 
-from spy.analyze.symtable import Color
+from spy.analyze.sym import Color
 from spy.errors import SPyError
 from spy.location import Loc
 from spy.vm.exc import W_TypeError
@@ -190,7 +190,7 @@ def _opspec_null_error(
             err.add("error", f"this is `{t}`", wam_target.loc)
         if wam_target.sym:
             sym = wam_target.sym
-            err.add("note", f"`{sym.name}` defined here", sym.loc)
+            err.add("note", f"`{sym.src_name}` defined here", sym.loc)
 
     elif dispatch == "multi":
         for wam_arg in in_args_wam:
