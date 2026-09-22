@@ -585,32 +585,6 @@ def f() -> None:
     x += 1               # ERROR: name `x` is not defined
 ```
 
-### `[py.def-class]` A nested `def` or `class` is a binding like any other { #py-def-class }
-
-There is no special case: it follows the same rules as other assignments, so
-it is block-local, and eligible for scope lifting
-([`[py.scope-lifting]`](#py-scope-lifting)).
-
-```python
-COND = True
-
-def main() -> None:
-    if COND:
-        def g() -> i32:
-            return 42
-    print(g())           # ERROR: `g` is local to the `if` body
-```
-
-```python
-def main() -> None:
-    if COND:
-        def g() -> i32: return 42
-    else:
-        def g() -> i32: return 0
-    print(g())           # OK: lifted
-```
-
-
 ### `[py.scope-lifting]` Automatic scope lifting { #py-scope-lifting }
 
 An implicit declaration defines a name in the nearest "lift target" scope.
@@ -876,6 +850,32 @@ var COUNT: i32 = 0
 def reset() -> None:
     COUNT = 0            # a dead local; the global is untouched
 ```
+
+### `[py.def-class]` A nested `def` or `class` is a binding like any other { #py-def-class }
+
+There is no special case: it follows the same rules as other assignments, so
+it is block-local, and eligible for scope lifting
+([`[py.scope-lifting]`](#py-scope-lifting)).
+
+```python
+COND = True
+
+def main() -> None:
+    if COND:
+        def g() -> i32:
+            return 42
+    print(g())           # ERROR: `g` is local to the `if` body
+```
+
+```python
+def main() -> None:
+    if COND:
+        def g() -> i32: return 42
+    else:
+        def g() -> i32: return 0
+    print(g())           # OK: lifted
+```
+
 
 ## Future directions
 
