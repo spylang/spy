@@ -119,37 +119,55 @@ class CompilerConfig:
         if config.gc == "bdwgc":
             self.cflags = [f for f in self.cflags if f != "-DSPY_GC_NONE"]
             self.cflags += ["-DSPY_GC_BDWGC"]
-            if config.static:
-                self._build_bdwgc_static()
-                gc_prefix = str(spy.libspy.DEPS.join("build", "native-static"))
-                self.cflags += ["-I", f"{gc_prefix}/include"]
-                self.ldflags += ["-L", f"{gc_prefix}/lib", "-lgc"]
-            else:
-                self.ldflags += ["-lgc"]
-                conda_prefix = os.environ.get("CONDA_PREFIX")
-                # XXX temporarily disable the fix
-                if (
-                    False
-                    and conda_prefix
-                    and os.path.exists(os.path.join(conda_prefix, "include", "gc.h"))
-                ):
-                    # bdw-gc installed in a conda environment
-                    self.cflags += ["-I", f"{conda_prefix}/include"]
-                    self.ldflags += ["-L", f"{conda_prefix}/lib"]
-                    # conda-forge libgc has an @rpath install name: without an
-                    # rpath entry the executable won't find it at runtime
-                    self.ldflags += [f"-Wl,-rpath,{conda_prefix}/lib"]
-                elif sys.platform == "darwin" and shutil.which("brew"):
-                    # On macOS, Homebrew installs bdw-gc outside the default
-                    # compiler search paths
-                    prefix = subprocess.run(
-                        ["brew", "--prefix", "bdw-gc"],
-                        capture_output=True,
-                        text=True,
-                    ).stdout.strip()
-                    if prefix:
-                        self.cflags += ["-I", f"{prefix}/include"]
-                        self.ldflags += ["-L", f"{prefix}/lib"]
+            self.add_libgc(config)
+
+    def add_libgc(self, config: BuildConfig) -> None:
+        # where do we find libgc? We support the following configurations:
+        #
+        #   1. --static builds: we use our vendored copy of libgc.a
+        #   2. conda/pixi env: we use the bdw-gc package installed in the env
+        #   3. homebrew installation on maxOS
+        #   4. system-wide libraries as a fallback
+        #
+        # Case (4) is e.g. what you get on ubuntu if you do `apt install libgc`
+        conda_prefix = os.environ.get("CONDA_PREFIX")
+
+        if config.static:
+            # 1. --static builds
+            self._build_bdwgc_static()
+            gc_prefix = str(spy.libspy.DEPS.join("build", "native-static"))
+            self.cflags += ["-I", f"{gc_prefix}/include"]
+            self.ldflags += ["-L", f"{gc_prefix}/lib", "-lgc"]
+            return
+
+        elif conda_prefix is not None:
+            # 2. conda/pixi env, bgw-gc package
+            gc_h = py.path.local(conda_prefix).join("include", "gc.h")
+            if not gc_h.check(exists=True):
+                raise SPyError("conda package bdw-gc seems not installed?")
+
+            self.cflags += ["-I", f"{conda_prefix}/include"]
+            self.ldflags += ["-L", f"{conda_prefix}/lib"]
+            # conda-forge libgc has an @rpath install name: without an
+            # rpath entry the executable won't find it at runtime
+            self.ldflags += [f"-Wl,-rpath,{conda_prefix}/lib"]
+            self.ldflags += ["-lgc"]
+            return
+
+        elif sys.platform == "darwin" and shutil.which("brew"):
+            # 3. homebrew on macOS: check whether bdw-gc is present, else fallback
+            prefix = subprocess.run(
+                ["brew", "--prefix", "bdw-gc"],
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+            if prefix:
+                self.cflags += ["-I", f"{prefix}/include"]
+                self.ldflags += ["-L", f"{prefix}/lib"]
+                return
+
+        # 4. fallback, let's hope libgc is installed system-wide
+        self.ldflags += ["-lgc"]
 
         # NOTE: LDFLAGS (-lm) must be the very last thing added
         self.ldflags += LDFLAGS
