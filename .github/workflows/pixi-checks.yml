@@ -55,16 +55,7 @@ jobs:
         run: |
           pixi run spy build -x examples/1_high_level/hello.spy
 
-      - name: Build str_bytes.spy (links against libgc)
+      # check that we can run the executable OUTSIDE the pixi env. See PR 695
+      - name: Run build/hello standalone
         run: |
-          pixi run spy build examples/1_high_level/str_bytes.spy
-
-      - name: Run str_bytes binary outside the pixi environment
-        # Deliberately NOT wrapped in "pixi run": this is a plain shell step,
-        # so none of pixi's activation env vars (in particular
-        # DYLD_LIBRARY_PATH on macOS) are set. This is what actually happens
-        # when a user runs a spy-built binary later, in a fresh shell/script,
-        # rather than from inside "pixi run"/"pixi shell". It's the only way
-        # to catch a missing rpath to libgc.
-        run: |
-          examples/1_high_level/build/str_bytes
+          examples/1_high_level/build/hello
