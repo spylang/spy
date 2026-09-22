@@ -65,7 +65,6 @@ class CompilerConfig:
         )
         self.cflags += EXTRA_CFLAGS
 
-        self.ldflags += LDFLAGS
         self.ldflags += get_ldflags(flags_target, config.build_type)
 
         libdir = get_libdir(flags_target, config.build_type, config.kind)
@@ -137,6 +136,9 @@ class CompilerConfig:
                     if prefix:
                         self.cflags += ["-I", f"{prefix}/include"]
                         self.ldflags += ["-L", f"{prefix}/lib"]
+
+        # NOTE: LDFLAGS (-lm) must be the very last thing added
+        self.ldflags += LDFLAGS
 
     @staticmethod
     def _build_bdwgc_static() -> None:
