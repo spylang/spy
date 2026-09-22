@@ -6,6 +6,8 @@ MT19937 seeding (single 32-bit `init_genrand`, i.e. NOT CPython's `random.seed()
 which additionally hashes/spreads the seed via `init_by_array`).
 """
 
+import pytest
+
 from spy.tests.support import CompilerTest
 
 
@@ -30,6 +32,9 @@ class TestRandom(CompilerTest):
         assert abs(mod.r() - 0.7319939418114051) < 1e-12
         assert abs(mod.r() - 0.5986584841970366) < 1e-12
         assert abs(mod.r() - 0.15601864044243652) < 1e-12
+
+        if self.backend in ("interp", "doppler") and not self.slow_tests:
+            pytest.skip("stress part skipped on interp/doppler; use --slow-tests")
 
         mod.seed_with(1)
         b1 = mod.r()
