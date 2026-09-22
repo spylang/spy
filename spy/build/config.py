@@ -10,7 +10,7 @@ import py.path
 import spy.libspy
 from spy.build.build_info import BuildTarget, BuildType, OutputKind
 from spy.build.flags import get_cc, get_cflags, get_ldflags, get_libdir
-from spy.errors import WIP
+from spy.errors import WIP, SPyError
 
 GCOption = Literal["none", "bdwgc"]
 
@@ -163,7 +163,7 @@ class CompilerConfig:
             # 2. conda/pixi env, bgw-gc package
             gc_h = py.path.local(conda_prefix).join("include", "gc.h")
             if not gc_h.check(exists=True):
-                raise SPyError("conda package bdw-gc seems not installed?")
+                raise SPyError("W_Exception", "conda package bdw-gc is not installed")
 
             self.cflags += ["-I", f"{conda_prefix}/include"]
             self.ldflags += ["-L", f"{conda_prefix}/lib"]
