@@ -994,10 +994,10 @@ outer function or module scope, instead of silently making a local
 would stay silent, since there is no mutable binding to hit by accident.
 
 ```python
-var B: i32 = 2
+var B: i32 = 0
 
 def main() -> None:
-    B = 0                # under this rule: ERROR - say `global B`, or `var B` for a local
+    B = 1                # under this rule: ERROR - say `global B`, or `var B` for a local
 ```
 
 It targets the one case [`[decl.use-before]`](#decl-use-before) cannot catch,
@@ -1007,7 +1007,7 @@ the write-only shadow:
 var COUNT: i32 = 0
 
 def reset() -> None:
-    COUNT = 0            # under this rule: ERROR instead of a silent dead local
+    COUNT = 1            # under this rule: ERROR instead of a silent dead local
 ```
 
 Against it: name resolution would depend on the mutability of a binding in
