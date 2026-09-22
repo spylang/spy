@@ -121,6 +121,25 @@ class CompilerConfig:
             self.cflags += ["-DSPY_GC_BDWGC"]
             self.add_libgc(config)
 
+        # NOTE: it's important that `-lm` (which is included in LDFLAGS) is placed
+        # towards the end, and in particular AFTER -lspy.
+        #
+        # This is because on some platforms (at least linux/ubuntu) `ld` passes
+        # --as-needed by default: libraries are included only if they are needed AT THE
+        # TIME THEY ARE CONSIDERED.  LD flags are scanned left-to-right, and order is
+        # important:
+        #
+        #     - "-lspy -lm": ld sees libspy first, which needs libm; then it seems
+        #       libm, and decides to keep it. GOOD.
+        #
+        #     - "-lm -lspy": ld sees libm, which is not needed, and SILENTLY DISCARDS
+        #       IT. Then it sees libspy, which needs libm, but this dependency stays -
+        #       unfulfilled. BAD!
+        #
+        # The thumb rule is: things that need symbols go on the left, things that
+        # provide them go on the right
+        self.ldflags += LDFLAGS
+
     def add_libgc(self, config: BuildConfig) -> None:
         # where do we find libgc? We support the following configurations:
         #
@@ -168,9 +187,6 @@ class CompilerConfig:
 
         # 4. fallback, let's hope libgc is installed system-wide
         self.ldflags += ["-lgc"]
-
-        # NOTE: LDFLAGS (-lm) must be the very last thing added
-        self.ldflags += LDFLAGS
 
     @staticmethod
     def _build_bdwgc_static() -> None:

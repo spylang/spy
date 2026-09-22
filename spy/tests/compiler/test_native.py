@@ -33,14 +33,8 @@ class TestNative(CompilerTest):
         assert lines == ["foo", "bar", "7"]
 
     def test_f32_mod_link(self):
-        # Regression test for a linker ordering bug: on the native target,
-        # `-lm` used to be placed *before* `-lspy` on the link command line.
-        #
-        # This never showed up on the default "C" backend (wasi/testlib),
-        # because there libspy.a is force-included via --whole-archive and
-        # linked against the wasi-libc sysroot, which doesn't hit the same
-        # as-needed/archive-ordering issue as a native build against the
-        # system libm.
+        # Make sure that `-lm` is placed in the correct place in the LDFLAGS. See the
+        # big comment in CompilerConfig.__init__.
         src = """
         def compute(x: f32, y: f32) -> f32:
             return x % y
