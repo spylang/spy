@@ -64,6 +64,23 @@ class TestUnsafePtr(CompilerTest):
         assert mod.bar(1) == 3.4
         assert mod.bar(2) == 5.6
 
+    def test_debug_get_length(self, memkind):
+        k = memkind
+        mod = self.compile(f"""
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr
+
+        def ptr_length(n: i32) -> i32:
+            buf = k_alloc[i32](n)
+            return buf._debug_get_length()
+
+        def null_length() -> i32:
+            return k_ptr[i32].NULL._debug_get_length()
+        """)
+        assert mod.ptr_length(0) == 0
+        assert mod.ptr_length(1) == 1
+        assert mod.ptr_length(42) == 42
+        assert mod.null_length() == 0
+
     def test_gc_ptr_u8(self):
         # gc_ptr[u8] is special-cased and predeclared manually in unsafe.h. Exercise
         # alloc/store/load and bounds-checking to make sure that everything works.
@@ -80,8 +97,13 @@ class TestUnsafePtr(CompilerTest):
         def out_of_bound() -> u8:
             buf = gc_alloc[u8](3)
             return buf[3]
+
+        def get_length() -> i32:
+            buf = gc_alloc[u8](5)
+            return buf._debug_get_length()
         """)
         assert mod.foo() == 6
+        assert mod.get_length() == 5
         with SPyError.raises("W_PanicError", match="ptr_getitem out of bounds"):
             mod.out_of_bound()
 
@@ -681,7 +703,7 @@ class TestUnsafePtr(CompilerTest):
 
     def test_return_struct_with_ptr(self, memkind):
         k = memkind
-        mod = self.compile(f"""
+        src = f"""
         from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr
 
         @struct
@@ -698,14 +720,15 @@ class TestUnsafePtr(CompilerTest):
             p.x = 1
             p.y = 2
             return Wrapper(p)
-        """)
+        """
+        mod = self.compile(src)
         w = mod.foo()
         addr = w.p.addr
         self.vm.ll.mem.read_i32(addr) == 1
         self.vm.ll.mem.read_i32(addr + 4) == 2
 
     def test_as_StrObject(self):
-        mod = self.compile("""
+        src = """
         from unsafe import _str_to_StrObject
         from _str import StrObject
 
@@ -716,7 +739,8 @@ class TestUnsafePtr(CompilerTest):
         def get_byte(s: str, i: i32) -> u8:
             data = _str_to_StrObject(s)
             return data.utf8[i]
-        """)
+        """
+        mod = self.compile(src)
         assert mod.get_length("hello") == 5
         assert mod.get_byte("hello", 0) == ord("h")
         assert mod.get_byte("hello", 4) == ord("o")

@@ -92,6 +92,11 @@ spy_gc_alloc_pointerless_bdwgc(size_t size) {
     }                                                                                  \
     static inline bool PTR##$to_bool(PTR p) {                                          \
         return p.p;                                                                    \
+    }                                                                                  \
+    static inline ptrdiff_t PTR##$debug_get_length(PTR p) {                            \
+        spy_panic("PanicError", "_debug_get_length called in release mode",            \
+            __FILE__, __LINE__);                                                       \
+        return 0;                                                                      \
     }
 
 #define _SPY_PTR_FUNCTIONS_CHECKED(ALLOC_FUNC, PTR, T)                                 \
@@ -139,6 +144,9 @@ spy_gc_alloc_pointerless_bdwgc(size_t size) {
     }                                                                                  \
     static inline bool PTR##$to_bool(PTR p) {                                          \
         return p.p;                                                                    \
+    }                                                                                  \
+    static inline ptrdiff_t PTR##$debug_get_length(PTR p) {                            \
+        return p.length;                                                               \
     }
 
 /* gc_ptr[u8] is predeclared here, see also cstructwriter.py:emit_PtrType.
