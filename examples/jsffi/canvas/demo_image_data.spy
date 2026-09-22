@@ -34,11 +34,11 @@ class Params:
 
 var counter: i32 = 0
 var inc: i32 = 5
-var BUF: gc_ptr[u8] = gc_ptr[u8].NULL
-var PARAMS:  gc_ptr[Params] = gc_ptr[Params].NULL
+var BUF = gc_ptr[u8].NULL
+var PARAMS = gc_ptr[Params].NULL
 var n_jsrefs: i32 = 0
 
-var JS_REFS: gc_ptr[JsRef] = gc_ptr[JsRef].NULL
+var JS_REFS = gc_ptr[JsRef].NULL
 CTX_IDX: i32 = 0
 IMAGE_DATA_IDX: i32 = 1
 
@@ -113,6 +113,7 @@ def frame(timestamp: f64) -> None:
 def main() -> None:
     global BUF
     global PARAMS
+    global JS_REFS
 
     jsffi.init()
     BUF = gc_alloc[u8](SIZE)

@@ -49,9 +49,9 @@ class Params:
 
 
 var n_jsrefs: i32 = 0
-var PARTICLES: gc_ptr[Particle] = gc_ptr[Particle].NULL
-var PARAMS: gc_ptr[Params] = gc_ptr[Params].NULL
-var JS_REFS: gc_ptr[JsRef] = gc_ptr[JsRef].NULL
+var PARTICLES = gc_ptr[Particle].NULL
+var PARAMS = gc_ptr[Params].NULL
+var JS_REFS = gc_ptr[JsRef].NULL
 CTX_IDX: i32 = 0
 
 
