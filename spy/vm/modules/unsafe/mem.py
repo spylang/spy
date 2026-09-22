@@ -10,18 +10,44 @@ from spy.vm.struct import W_Struct, W_StructType
 from spy.vm.w import W_Object, W_Type
 
 from . import UNSAFE
-from .misc import sizeof
+from .misc import parse_optional_alignment, sizeof
 from .ptr import W_Ptr, W_PtrType, w_gc_ptr, w_raw_ptr
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
+# The base alignment that the interp-level allocators (spy_raw_alloc,
+# spy_nogc_alloc, which are just malloc) already guarantee.  This must
+# match the C-side SPY_BASE_ALIGNMENT in spy/libspy/include/spy/unsafe.h.
+# On wasm32/wasm64, malloc returns 8-byte-aligned pointers; on native
+# 16-byte alignment.
+SPY_BASE_ALIGNMENT_INTERP = 8
+
+
 @UNSAFE.builtin_func(color="blue", kind="generic")
-def w_raw_alloc(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
-    w_ptrtype = vm.fast_call(w_raw_ptr, [w_T])  # unsafe::raw_ptr[i32]
+def w_raw_alloc(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
+    if len(args_w) == 0:
+        # raw_alloc[T] means "default alignment", same as raw_ptr[T]. Go
+        # through the 0-arg raw_ptr[T] call rather than pre-resolving
+        # alignof(T) here: this lands on the SAME blue-cache entry that a
+        # field declaration like `next: raw_ptr[Node]` produces, so we get
+        # the identical W_PtrType object back.
+        #
+        # If we instead resolved alignof(T) ourselves and called
+        # raw_ptr[T, alignof(T)], the blue-cache key would differ whenever
+        # T is a not-yet-defined (e.g. self-referential) struct: alignof(T)
+        # is 1 during the struct body but its real value after definition.
+        # That would create a second W_PtrType with the same FQN and trip
+        # make_fqn_const's uniqueness assertion.
+        w_ptrtype = vm.fast_call(w_raw_ptr, [w_T])
+    else:
+        alignment = parse_optional_alignment(vm, w_T, args_w, "raw_alloc")
+        w_N = vm.wrap(alignment)
+        w_ptrtype = vm.fast_call(w_raw_ptr, [w_T, w_N])  # unsafe::raw_ptr[...]
     assert isinstance(w_ptrtype, W_PtrType)
     ITEMSIZE = sizeof(w_T)
+    ALIGNMENT = w_ptrtype.alignment
 
     # unsafe::raw_ptr[i32]::alloc
     #
@@ -31,17 +57,29 @@ def w_raw_alloc(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     def w_fn(vm: "SPyVM", w_n: W_I32) -> Annotated[W_Ptr, w_ptrtype]:
         n = vm.unwrap_i32(w_n)
         size = ITEMSIZE * n
-        addr = vm.ll.call("spy_raw_alloc", size)
+        if ALIGNMENT <= SPY_BASE_ALIGNMENT_INTERP:
+            # the allocator already guarantees this alignment
+            addr = vm.ll.call("spy_raw_alloc", size)
+        else:
+            # over-allocate and round up, mirroring spy_alloc_aligned_impl
+            addr = vm.ll.call("spy_raw_alloc_aligned", size, ALIGNMENT)
         return W_Ptr(w_ptrtype, addr, n)  # type: ignore
 
     return w_fn
 
 
 @UNSAFE.builtin_func(color="blue", kind="generic")
-def w_gc_alloc(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
-    w_ptrtype = vm.fast_call(w_gc_ptr, [w_T])  # unsafe::gc_ptr[i32]
+def w_gc_alloc(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
+    if len(args_w) == 0:
+        # see the comment in w_raw_alloc above
+        w_ptrtype = vm.fast_call(w_gc_ptr, [w_T])
+    else:
+        alignment = parse_optional_alignment(vm, w_T, args_w, "gc_alloc")
+        w_N = vm.wrap(alignment)
+        w_ptrtype = vm.fast_call(w_gc_ptr, [w_T, w_N])  # unsafe::gc_ptr[...]
     assert isinstance(w_ptrtype, W_PtrType)
     ITEMSIZE = sizeof(w_T)
+    ALIGNMENT = w_ptrtype.alignment
 
     # unsafe::gc_ptr[i32]::alloc
     #
@@ -51,7 +89,12 @@ def w_gc_alloc(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     def w_fn(vm: "SPyVM", w_n: W_I32) -> Annotated[W_Ptr, w_ptrtype]:
         n = vm.unwrap_i32(w_n)
         size = ITEMSIZE * n
-        addr = vm.ll.call("spy_nogc_alloc", size)
+        if ALIGNMENT <= SPY_BASE_ALIGNMENT_INTERP:
+            # the allocator already guarantees this alignment
+            addr = vm.ll.call("spy_nogc_alloc", size)
+        else:
+            # over-allocate and round up, mirroring spy_alloc_aligned_impl
+            addr = vm.ll.call("spy_nogc_alloc_aligned", size, ALIGNMENT)
         return W_Ptr(w_ptrtype, addr, n)  # type: ignore
 
     return w_fn

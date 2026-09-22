@@ -7,7 +7,7 @@ from spy.backend.c.cffiwriter import CFFIWriter
 from spy.backend.c.context import C_Type, Context
 from spy.fqn import FQN
 from spy.textbuilder import TextBuilder
-from spy.vm.modules.unsafe.misc import contains_gc_ptr
+from spy.vm.modules.unsafe.misc import alignof, contains_gc_ptr
 from spy.vm.modules.unsafe.ptr import W_PtrType, W_RefType
 from spy.vm.object import W_Type
 from spy.vm.struct import W_StructType
@@ -171,6 +171,12 @@ class CStructWriter:
             self.tbh_fwdecl.wl(
                 f"// {c_ptrtype}: skip as it's already pre-declared by libspy"
             )
+            # The struct typedef and SPY_PTR_FUNCTIONS are hand-written in
+            # libspy for these types, but the per-field unaligned helpers
+            # are NOT (they depend on the field layout of the *item* type,
+            # which the C backend, not libspy, knows about) -- so those
+            # still need to be emitted here if needed.
+            self._emit_ptr_field_helpers(w_ptrtype)
             return
 
         self.tbh_fwdecl.wb(f"""
@@ -196,11 +202,53 @@ class CStructWriter:
                 # to scan it. See spy/libspy/include/spy/unsafe.h.
                 alloc_func = "gc_alloc_pointerless"
 
+        alignment = w_ptrtype.alignment
         self.tbh_ptrs_def.wb(f"""
-        SPY_PTR_FUNCTIONS({alloc_func}, {c_ptrtype}, {c_itemT});
+        SPY_PTR_FUNCTIONS({alloc_func}, {c_ptrtype}, {c_itemT}, {alignment});
         #define {c_ptrtype}$NULL (({c_ptrtype}){{0}})
         """)
         self.tbh_ptrs_def.wl()
+
+        # Emit per-field unaligned helpers if the ptr may be under-aligned
+        # relative to one of the item struct's fields.
+        self._emit_ptr_field_helpers(w_ptrtype)
+
+    def _emit_ptr_field_helpers(self, w_ptrtype: W_PtrType) -> None:
+        """
+        Emit unaligned load/store helpers for struct fields accessed
+        through an under-aligned ptr (see fmt_ptr_getfield/fmt_ptr_setfield
+        in cwriter.py, which decide when to call these instead of a plain
+        typed field access).
+        """
+        w_itemT = w_ptrtype.w_itemT
+        if not isinstance(w_itemT, W_StructType) or not w_itemT.is_defined():
+            return
+
+        c_ptrtype = C_Type(w_ptrtype.fqn.c_name)
+        ptr_align = w_ptrtype.alignment
+
+        for w_field in w_itemT.iterfields_w():
+            field_align = alignof(w_field.w_T)
+            if ptr_align >= field_align:
+                continue
+
+            c_fieldtype = self.ctx.w2c(w_field.w_T)
+            c_fieldname = w_field.name
+
+            self.tbh_ptrs_def.wb(f"""
+            static inline {c_fieldtype} {c_ptrtype}$getfield_{c_fieldname}_unaligned(
+                {c_ptrtype} p) {{
+                {c_fieldtype} _tmp;
+                __builtin_memcpy(&_tmp, (const char *)p.p + {w_field.offset}, sizeof({c_fieldtype}));
+                return _tmp;
+            }}
+
+            static inline void {c_ptrtype}$setfield_{c_fieldname}_unaligned(
+                {c_ptrtype} p, {c_fieldtype} v) {{
+                __builtin_memcpy((char *)p.p + {w_field.offset}, &v, sizeof({c_fieldtype}));
+            }}
+            """)
+            self.tbh_ptrs_def.wl()
 
     def emit_RefType(self, fqn: FQN, w_reftype: W_RefType) -> None:
         w_ptrtype = w_reftype.as_ptrtype(self.ctx.vm)
