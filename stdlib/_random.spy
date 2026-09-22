@@ -83,6 +83,8 @@ var _ptr_global_random = gc_ptr[Random].NULL
 
 
 def _get_global_random(value: u32 = 0, reset: bool = False) -> Random:
+
+    global _ptr_global_random
     if _ptr_global_random == gc_ptr[Random].NULL:
         reset = True
         _ptr_global_random = gc_alloc[Random](1)
