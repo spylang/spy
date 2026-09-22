@@ -1,5 +1,3 @@
-import operator
-
 from jsffi import init as js_init
 from jsffi import JsRef, get_GlobalThis, get_Console, js_call_method_1
 from jsffi import jsval_from_jsref, jsval_from_str, jsval_from_func
@@ -8,6 +6,7 @@ var counter: i32 = 0
 
 
 def onclick() -> None:
+    global counter
     counter = counter + 1
     window = get_GlobalThis()
     document = window.document
@@ -16,7 +15,7 @@ def onclick() -> None:
         "getElementById",
         jsval_from_str("message"),
     )
-    message.innerText = jsval_from_str(operator.str_add("onclick ", str(counter)))
+    message.innerText = jsval_from_str("onclick " + str(counter))
 
 
 def main() -> None:

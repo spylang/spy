@@ -152,7 +152,9 @@ def frame(timestamp: f64) -> None:
     n_per_frame = n_tmp - n_jsrefs
     n_jsrefs = n_tmp
 
-    console.log("n_per_frame:", n_per_frame, "; per part: ", n_per_frame / params.n_particles)
+    console.log(
+        "n_per_frame:", n_per_frame, "; per part: ", n_per_frame / params.n_particles
+    )
 
     jsffi.request_animation_frame(frame)
     # this is equivalent to

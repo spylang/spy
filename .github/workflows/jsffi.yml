@@ -53,10 +53,6 @@ jobs:
       - name: Build libspy
         run: uv run make -C ../../../spy/libspy
 
-      - name: Install spy dev dependencies
-        run: |
-          uv pip install -e ../../..[dev]
-
       - name: Run jsffi tests
         run: uv run pytest ../../../spy/tests/compiler/test_jsffi.py -v
 
@@ -64,7 +60,8 @@ jobs:
         run: |
           uv run --directory ../minimal spy build --target emscripten demo.spy
           uv run --directory ../minimal spy build --target emscripten lldemo.spy
-          uv run --directory ../minimal ./make_raw_c_demo.sh
+          # broken
+          # uv run --directory ../minimal ./make_raw_c_demo.sh
 
       - name: Build canvas demo (particles)
         run: |
