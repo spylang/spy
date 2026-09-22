@@ -7,6 +7,7 @@ from spy.backend.c.cffiwriter import CFFIWriter
 from spy.backend.c.context import C_Type, Context
 from spy.fqn import FQN
 from spy.textbuilder import TextBuilder
+from spy.vm.modules.unsafe.misc import contains_gc_ptr
 from spy.vm.modules.unsafe.ptr import W_PtrType, W_RefType
 from spy.vm.object import W_Type
 from spy.vm.struct import W_StructType
@@ -124,7 +125,23 @@ class CStructWriter:
             )
             return
 
-        self.tbh_fwdecl.wl(f"typedef struct {c_st} {c_st}; /* {w_st.fqn.human_name} */")
+        # _str::StrObject is already declared in str.h as spy_StrObject. Just emit a
+        # typedef.
+        if str(w_st.fqn) == "_str::StrObject":
+            self.tbh_fwdecl.wl(
+                f"typedef spy_StrObject {c_st}; /* alias of spy_StrObject */"
+            )
+            return
+
+        # _bytes::BytesObject is already declared in bytes.h as spy_BytesObject.
+        if str(w_st.fqn) == "_bytes::BytesObject":
+            self.tbh_fwdecl.wl(
+                f"typedef spy_BytesObject {c_st}; /* alias of spy_BytesObject */"
+            )
+            return
+
+        human_fqn = w_st.fqn.human_name(self.ctx.vm)
+        self.tbh_fwdecl.wl(f"typedef struct {c_st} {c_st}; /* {human_fqn} */")
 
         # XXX this is VERY wrong: it assumes that the standard C layout
         # matches the layout computed by struct.calc_layout: as long as we use
@@ -143,6 +160,19 @@ class CStructWriter:
         c_ptrtype = C_Type(w_ptrtype.fqn.c_name)
         w_itemT = w_ptrtype.w_itemT
         c_itemT = self.ctx.w2c(w_itemT)
+
+        # some ptr types are predeclared manually in libspy. Make sure to keep the code
+        # generated here and the code manually written there always in sync.
+        if str(w_ptrtype.fqn) in (
+            "unsafe::gc_ptr[u8]",
+            "unsafe::gc_ptr[_str::StrObject]",
+            "unsafe::gc_ptr[_bytes::BytesObject]",
+        ):
+            self.tbh_fwdecl.wl(
+                f"// {c_ptrtype}: skip as it's already pre-declared by libspy"
+            )
+            return
+
         self.tbh_fwdecl.wb(f"""
         typedef struct {c_ptrtype} {{
             {c_itemT} *p;
@@ -154,8 +184,20 @@ class CStructWriter:
         self.tbh_fwdecl.wl()
 
         memkind = w_ptrtype.memkind
+        if memkind == "raw":
+            alloc_func = "raw_alloc"
+        else:
+            assert memkind == "gc"
+            if contains_gc_ptr(w_itemT):
+                alloc_func = "gc_alloc"
+            else:
+                # T contains no gc_ptr/gc_ref, so it's safe (and faster) to
+                # allocate it with GC_MALLOC_ATOMIC: the collector doesn't need
+                # to scan it. See spy/libspy/include/spy/unsafe.h.
+                alloc_func = "gc_alloc_pointerless"
+
         self.tbh_ptrs_def.wb(f"""
-        SPY_PTR_FUNCTIONS({memkind}, {c_ptrtype}, {c_itemT});
+        SPY_PTR_FUNCTIONS({alloc_func}, {c_ptrtype}, {c_itemT});
         #define {c_ptrtype}$NULL (({c_ptrtype}){{0}})
         """)
         self.tbh_ptrs_def.wl()
@@ -172,6 +214,4 @@ class CStructWriter:
         self.tbh_ptrs_def.wb(f"""
         #define {c_reftype}_from_addr {c_ptrtype}_from_addr
         #define {c_reftype}$deref {c_ptrtype}$deref
-        #define {c_reftype}$__eq__ {c_ptrtype}$__eq__
-        #define {c_reftype}$__ne__ {c_ptrtype}$__ne__
         """)

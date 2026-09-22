@@ -1,0 +1,53 @@
+"""
+Things to notice:
+  - The unsafe module allows C-level direct memory access to pointers and
+    unsafe arrays.
+  - Structs map directly to C structs.
+  - Structs are passed by values (i.e. copied).
+  - Most users will never have to deal with this directly: using the
+    `unsafe` module is the equivalent of writing C extensions or using
+    Cython.
+
+Exercise for the reader: write a Rect struct with two points, and check what its C layout.
+"""
+
+from unsafe import gc_ptr, gc_alloc
+
+
+@struct
+class Point:
+    x: f64
+    y: f64
+
+
+# eventually structs will get an automatic ctor, like dataclasses
+def new_point(x: f64, y: f64) -> gc_ptr[Point]:
+    p = gc_alloc[Point](1)  # allocate 1 Point
+    p.x = x
+    p.y = y
+    return p
+
+
+def squared_distance(p0: Point, p1: Point) -> f64:
+    dx = p0.x - p1.x
+    dy = p0.y - p1.y
+    return dx * dx + dy * dy
+
+
+def main() -> None:
+    arr: gc_ptr[i32] = gc_alloc[i32](5)  # allocates an array of 5 i32
+    arr[0]  # read item 0 of the array
+    arr[0] = 42  # write item 0
+    print(arr[0])
+
+    p0 = Point(1, 2)
+    p1 = Point(5, 4)
+    # defined on the stack => immutable
+    # p1.x = 3  # would raise an error
+    print(squared_distance(p0, p1))
+
+    ptr0 = new_point(1, 2)
+    ptr1 = new_point(3, 4)
+    # heap-allocated => mutable
+    ptr1.x = 5
+    print(squared_distance(ptr0[0], ptr1[0]))

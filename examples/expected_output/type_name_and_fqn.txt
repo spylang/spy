@@ -1,0 +1,4 @@
+__full_fqn__  type_name_and_fqn::Foo[i32]::Self
+__fqn__       type_name_and_fqn::Foo[i32]
+__qualname__  type_name_and_fqn::Foo[i32]
+__name__      Foo[i32]

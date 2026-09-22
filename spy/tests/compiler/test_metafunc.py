@@ -111,6 +111,7 @@ class TestMetaFunc(CompilerTest):
             return x
 
         def inc() -> i32:
+            global x
             x = x + 1
             return x
 

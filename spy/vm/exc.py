@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 FrameKind = Literal["astframe", "modframe", "classframe", "dopplerframe"]
 
 
-class FrameInfo:
+class TBEntry:
     def __init__(self, spyframe: "AbstractFrame") -> None:
         self.spyframe = spyframe
         self.loc = spyframe.loc
@@ -48,9 +48,9 @@ class W_Traceback(W_Object):
     similar to CPython 'traceback.StackSummary' class.
     """
 
-    entries: list[FrameInfo]
+    entries: list[TBEntry]
 
-    def __init__(self, entries: list[FrameInfo]) -> None:
+    def __init__(self, entries: list[TBEntry]) -> None:
         self.entries = entries
 
     def __repr__(self) -> str:
@@ -126,7 +126,7 @@ class W_Traceback(W_Object):
             ):
                 # found an applevel frame
                 spyframe = frame.f_locals["self"]
-                entries.append(FrameInfo(spyframe))
+                entries.append(TBEntry(spyframe))
 
             elif frame.f_code in (
                 ASTFrame.eval_expr.__code__,
@@ -286,6 +286,11 @@ class W_ParseError(W_Exception):
     pass
 
 
+@BUILTINS.builtin_type("SyntaxError")
+class W_SyntaxError(W_Exception):
+    pass
+
+
 @BUILTINS.builtin_type("ImportError")
 class W_ImportError(W_Exception):
     pass
@@ -297,7 +302,7 @@ class W_ScopeError(W_Exception):
 
 
 @BUILTINS.builtin_type("NameError")
-class W_NameError(W_Exception):
+class W_NameError(W_StaticError):
     pass
 
 
@@ -323,6 +328,11 @@ class W_KeyError(W_Exception):
 
 @BUILTINS.builtin_type("OSError")
 class W_OSError(W_Exception):
+    pass
+
+
+@BUILTINS.builtin_type("NotImplementedError")
+class W_NotImplementedError(W_Exception):
     pass
 
 

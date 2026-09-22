@@ -3,16 +3,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#if !defined(SPY_TARGET_WASI)
+#if defined(SPY_DEBUG_FROM_HOST)
+
+EMSCRIPTEN_IMPORT(void, spy_debug_log, (const char *s));
+EMSCRIPTEN_IMPORT(void, spy_debug_log_i32, (const char *s, int32_t n));
+EMSCRIPTEN_IMPORT(
+    void,
+    spy_debug_set_panic_message,
+    (const char *etype, const char *message, const char *fname, int32_t lineno)
+);
+
+#else // defined(SPY_DEBUG_FROM_HOST)
 
 void
 spy_debug_log(const char *s) {
-    printf("%s\n", s);
+    fprintf(stderr, "%s\n", s);
 }
 
 void
 spy_debug_log_i32(const char *s, int32_t n) {
-    printf("%s %d\n", s, n);
+    fprintf(stderr, "%s %d\n", s, n);
 }
 
 /* Helper function to read a specific line from a file */
@@ -84,4 +94,28 @@ spy_panic(const char *etype, const char *message, const char *fname, int32_t lin
     abort();
 }
 
-#endif /* !defined(SPY_TARGET_WASI) */
+#endif /* !defined(SPY_DEBUG_FROM_HOST) */
+
+#if defined(SPY_TARGET_EMSCRIPTEN)
+#  include "emscripten.h"
+#  include "stdio.h"
+
+// clang-format off
+EM_JS(void, _spy_panic_import_stub_js, (__externref_t jsname), {
+    withStackSave(() => {
+        __spy_panic_import_stub(stringToUTF8OnStack(jsname));
+    });
+})
+// clang-format on
+
+EMSCRIPTEN_KEEPALIVE void
+_spy_panic_import_stub(char *name) {
+    char *msg;
+    asprintf(&msg, "Called undefined import stub '%s()'", name);
+    spy_debug_log(msg);
+    free(msg);
+    spy_debug_log("Unfortunately we're not sure where you called it...");
+    abort();
+}
+
+#endif /* defined(SPY_TARGET_EMSCRIPTEN) */

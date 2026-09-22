@@ -161,6 +161,7 @@ class CModuleWriter:
             returns_i32 = w_restype == B.w_i32
 
             if has_argv:
+                self.ctx.add_include_maybe(FQN("_list::list[str]::_ListImpl"))
                 self.tbc.wb("""
                     /* helper code for C->SPy argv wrapping */
 
@@ -172,8 +173,8 @@ class CModuleWriter:
                         spy_list_str lst = spy_list_str_new();
                         for (int i = 0; i < argc; i++) {
                             size_t length = strlen(argv[i]);
-                            spy_Str *s = spy_str_alloc(length);
-                            char *buf = (char *)s->utf8;
+                            spy_StrObject *s = spy_str_alloc(length);
+                            char *buf = (char *)spy_StrObject_UTF8(s);
                             memcpy(buf, argv[i], length);
                             lst = spy_list_str_push(lst, s);
                         }

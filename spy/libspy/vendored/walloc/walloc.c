@@ -1,6 +1,6 @@
 // walloc.c: a small malloc implementation for use in WebAssembly targets
 // Copyright (c) 2020 Igalia, S.L.
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a
 // copy of this software and associated documentation files (the
 // "Software"), to deal in the Software without restriction, including
@@ -8,10 +8,10 @@
 // distribute, sublicense, and/or sell copies of the Software, and to
 // permit persons to whom the Software is furnished to do so, subject to
 // the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included
 // in all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
 // OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
 // MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
@@ -83,7 +83,7 @@ enum chunk_kind {
   LARGE_OBJECT = 255
 };
 
-static const uint8_t small_object_granule_sizes[] = 
+static const uint8_t small_object_granule_sizes[] =
 {
 #define SMALL_OBJECT_GRANULE_SIZE(i) i,
   FOR_EACH_SMALL_OBJECT_GRANULES(SMALL_OBJECT_GRANULE_SIZE)
@@ -96,7 +96,7 @@ static enum chunk_kind granules_to_chunk_kind(unsigned granules) {
 #undef TEST_GRANULE_SIZE
   return LARGE_OBJECT;
 }
-  
+
 static unsigned chunk_kind_to_granules(enum chunk_kind kind) {
   switch (kind) {
 #define CHUNK_KIND_GRANULE_SIZE(i) case GRANULES_##i: return i;
@@ -184,7 +184,7 @@ allocate_pages(size_t payload_size, size_t *n_allocated) {
     }
     walloc_heap_size += grow;
   }
-  
+
   struct page *ret = (struct page *)base;
   size_t size = grow + preallocated;
   ASSERT(size);
@@ -358,14 +358,14 @@ allocate_large_object(size_t size) {
       tail_size = best_size - size;
     }
     best->size -= tail_size;
-    
+
     unsigned tail_idx = get_chunk_index(end - tail_size);
     while (tail_idx < FIRST_ALLOCATABLE_CHUNK && tail_size) {
       // We would be splitting in a page header; don't do that.
       tail_size -= CHUNK_SIZE;
       tail_idx++;
     }
-    
+
     if (tail_size) {
       struct page *page = get_page(end - tail_size);
       char *tail_ptr = allocate_chunk(page, tail_idx, FREE_LARGE_OBJECT);
@@ -436,7 +436,7 @@ allocate_large(size_t size) {
   struct large_object *obj = allocate_large_object(size);
   return obj ? get_large_object_payload(obj) : NULL;
 }
-  
+
 void*
 malloc(size_t size) {
   size_t granules = size_to_granules(size);

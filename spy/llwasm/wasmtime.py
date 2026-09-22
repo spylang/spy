@@ -53,7 +53,7 @@ def get_linker(
     """
     Setup a Linker which can be used to instantiate llmod.
 
-    If wasi_config is supplied, the module will be linked agains WASI.
+    If wasi_config is supplied, the module will be linked against WASI.
 
     The remaining non-wasi imports expected by llmod are searched inside the
     HostModules.

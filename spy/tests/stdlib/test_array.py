@@ -155,3 +155,62 @@ class TestArray(CompilerTest):
         # Test 3D array with dimensions 2x2x3
         # Element at [1, 0, 1] should be at index: 1*2*3 + 0*3 + 1 = 7
         assert mod.test3(buf, 2, 2, 3) == 70
+
+    def test_contains_array1(self):
+        src = """
+        from array import array
+
+        def c(v: int) -> bool:
+            a = array[int, 1](3)
+            a[0] = 1
+            a[1] = 10
+            a[2] = 20
+            return v in a
+        """
+        mod = self.compile(src)
+        assert mod.c(1) == True
+        assert mod.c(10) == True
+        assert mod.c(20) == True
+        assert mod.c(5) == False
+        assert mod.c(0) == False
+
+    def test_contains_array2(self):
+        src = """
+        from array import array
+
+        def c(v: int) -> bool:
+            a = array[int, 2](2, 2)
+            a[0, 0] = 1
+            a[0, 1] = 20
+            a[1, 0] = 30
+            a[1, 1] = 40
+            return v in a
+        """
+        mod = self.compile(src)
+        assert mod.c(1) == True
+        assert mod.c(30) == True
+        assert mod.c(40) == True
+        assert mod.c(5) == False
+
+    def test_contains_array3(self):
+        src = """
+        from array import array
+
+        def c(v: int) -> bool:
+            a = array[int, 3](2, 2, 2)
+            a[0, 0, 0] = 1
+            a[0, 0, 1] = 2
+            a[0, 1, 0] = 3
+            a[0, 1, 1] = 4
+            a[1, 0, 0] = 5
+            a[1, 0, 1] = 6
+            a[1, 1, 0] = 7
+            a[1, 1, 1] = 8
+            return v in a
+        """
+        mod = self.compile(src)
+        assert mod.c(1) == True
+        assert mod.c(8) == True
+        assert mod.c(5) == True
+        assert mod.c(9) == False
+        assert mod.c(0) == False

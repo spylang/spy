@@ -17,30 +17,33 @@ Next, clone the repo to your machine:
   cd spy
   ```
 
-Create a virtual environment for your project, and install both the SPy dependencies and the docs-specific dependencies. Any package installer and virtual environment will work; here are a couple of options:
+Create a virtual environment for your project, and install both the SPy dependencies
+and the docs-specific dependencies. Any package installer and virtual environment will work,
+but `uv` is preferred as it's the one tested in CI. Here are a couple of options:
 
+=== "uv"
+    ```bash
+    uv sync --group docs --locked
+    ```
 === "pip"
     ```bash
     python -m venv .venv
     source ./.venv/bin/activate # or similar for your flavor of shell
-    python -m pip install .[docs]
-    ```
-=== "uv"
-    ```bash
-    uv sync --group docs
+    python -m pip install pip --update
+    python -m pip install . --group docs
     ```
 
 Build a copy of the docs locally, and start a live server to view the current state of the docs:
 
+=== "uv"
+    ```bash
+    uv run mkdocs serve
+    # open http://localhost:8000/mylocalcopy in a browser
+    ```
 === "pip"
     ```bash
     # with the virtual environment active
     mkdocs serve
-    # open http://localhost:8000/mylocalcopy in a browser
-    ```
-=== "uv"
-    ```bash
-    uv run mkdocs serve
     # open http://localhost:8000/mylocalcopy in a browser
     ```
 

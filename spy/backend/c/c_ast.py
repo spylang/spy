@@ -49,7 +49,7 @@ def make_table(src: str) -> dict[str, int]:
     for line in src.splitlines():
         m = re.match(r" *(\d+): (.*)", line)
         if not m:
-            raise ValueError("Syntax Error in the opeator table")
+            raise ValueError("Syntax Error in the operator table")
         prec = int(m.group(1))
         ops = m.group(2).split()
         for op in ops:
@@ -106,7 +106,7 @@ class Literal(Expr):
 
         # The C standard mandates that `\x` consumes as many hex digits as possible, but
         # what we want is that each of them is followed by exactly TWO hex digits. The
-        # following regex finds occurences of `\x` followed by THREE hex digits, and
+        # following regex finds occurrences of `\x` followed by THREE hex digits, and
         # inserts a literal "" after the 2nd. E.g. "\x0aBall" -> "\x0a""Ball"
         lit = re.sub(r"(\\x[0-9A-Fa-f]{2})(?=[0-9A-Fa-f])", r'\1""', lit)
 
@@ -167,12 +167,26 @@ class BinOp(Expr):
         assert self.op in self._table, f"Unknown operator {self.op}"
         return self._table[self.op]
 
+    def associativity(self) -> str:
+        # all the binary operators in our table are left-associative, except for
+        # from assignment. (i'm not sure assignment every shows up as a BinOp)
+        return "R" if self.op == "=" else "L"
+
     def __str__(self) -> str:
         l = str(self.left)
         r = str(self.right)
-        if self.left.precedence() < self.precedence():
+        prec = self.precedence()
+        assoc = self.associativity()
+        # a same-precedence operand on the side opposite the associativity
+        # would be regrouped if we printed it without parens (e.g. `a - (b - c)`
+        # must not become `a - b - c`), so we parenthesize it.
+        if self.left.precedence() < prec:
             l = f"({l})"
-        if self.right.precedence() < self.precedence():
+        elif self.left.precedence() == prec and assoc == "R":
+            l = f"({l})"
+        if self.right.precedence() < prec:
+            r = f"({r})"
+        elif self.right.precedence() == prec and assoc == "L":
             r = f"({r})"
         return f"{l} {self.op} {r}"
 

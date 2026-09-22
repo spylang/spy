@@ -1,29 +1,22 @@
 from typing import TYPE_CHECKING
 
 from spy.errors import SPyError
-from spy.vm.primitive import W_I8, W_I32, W_U8, W_U32, W_Bool, W_Complex128
+from spy.vm.primitive import (
+    W_I8,
+    W_I32,
+    W_I64,
+    W_U8,
+    W_U32,
+    W_U64,
+    W_Bool,
+    W_Complex128,
+)
 from spy.vm.str import W_Str
 
 from . import OP
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
-
-
-@OP.builtin_func
-def w_str_add(vm: "SPyVM", w_a: W_Str, w_b: W_Str) -> W_Str:
-    assert isinstance(w_a, W_Str)
-    assert isinstance(w_b, W_Str)
-    ptr_c = vm.ll.call("spy_str_add", w_a.ptr, w_b.ptr)
-    return W_Str.from_ptr(vm, ptr_c)
-
-
-@OP.builtin_func
-def w_str_mul(vm: "SPyVM", w_a: W_Str, w_b: W_I32) -> W_Str:
-    assert isinstance(w_a, W_Str)
-    assert isinstance(w_b, W_I32)
-    ptr_c = vm.ll.call("spy_str_mul", w_a.ptr, w_b.value)
-    return W_Str.from_ptr(vm, ptr_c)
 
 
 @OP.builtin_func
@@ -83,6 +76,20 @@ def w_str_to_u8(vm: "SPyVM", w_s: W_Str) -> W_U8:
     val = _parse_int(vm, w_s)
     _check_range(val, 0, 255, "u8")
     return W_U8(val)
+
+
+@OP.builtin_func
+def w_str_to_i64(vm: "SPyVM", w_s: W_Str) -> W_I64:
+    val = _parse_int(vm, w_s)
+    _check_range(val, -(2**63), 2**63 - 1, "i64")
+    return W_I64(val)
+
+
+@OP.builtin_func
+def w_str_to_u64(vm: "SPyVM", w_s: W_Str) -> W_U64:
+    val = _parse_int(vm, w_s)
+    _check_range(val, 0, 2**64 - 1, "u64")
+    return W_U64(val)
 
 
 @OP.builtin_func

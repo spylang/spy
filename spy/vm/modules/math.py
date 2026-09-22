@@ -101,14 +101,14 @@ def w_atan2(vm: "SPyVM", w_y: W_F64, w_x: W_F64) -> W_F64:
 def w_ceil(vm: "SPyVM", w_x: W_F64) -> W_F64:
     x = vm.unwrap_f64(w_x)
     res = math.ceil(x)
-    return vm.wrap(res)
+    return vm.wrap(float(res))
 
 
 @MATH.builtin_func
 def w_floor(vm: "SPyVM", w_x: W_F64) -> W_F64:
     x = vm.unwrap_f64(w_x)
     res = math.floor(x)
-    return vm.wrap(res)
+    return vm.wrap(float(res))
 
 
 @MATH.builtin_func

@@ -26,6 +26,14 @@ class TestImportAnalyzer:
             f.setmtime(f.mtime() + mtime_delta)
         return f
 
+    def test_find_file_on_path(self):
+        analyzer = ImportAnalyzer(self.vm, "main")
+        self.tmpdir.join("main.spy").write("x: i32 = 42\n")
+        assert analyzer.find_file_on_path("main") == self.tmpdir.join("main.spy")
+        assert analyzer.find_file_on_path("nonexistent") is None
+        self.tmpdir.join("py.py").write("i = 42\n")
+        assert analyzer.find_file_on_path("py") == self.tmpdir.join("py.py")
+
     def test_simple_import(self):
         src = """
         x: i32 = 42
@@ -36,7 +44,7 @@ class TestImportAnalyzer:
         """
         self.write("main.spy", src)
         analyzer = ImportAnalyzer(self.vm, "main")
-        analyzer.parse_all()
+        analyzer.astcompile_all()
 
         assert list(analyzer.mods) == ["main", "mod1"]
         assert isinstance(analyzer.mods["main"], ast.Module)
@@ -77,7 +85,7 @@ class TestImportAnalyzer:
         self.write("b2.spy", src)
 
         analyzer = ImportAnalyzer(self.vm, "main")
-        analyzer.parse_all()
+        analyzer.astcompile_all()
         mods = analyzer.get_import_list()
         assert mods == ["a1", "a2", "aaa", "b1", "b2", "bbb", "main"]
 
@@ -93,7 +101,7 @@ class TestImportAnalyzer:
         """
         self.write("mod1.spy", src)
         analyzer = ImportAnalyzer(self.vm, "main")
-        analyzer.parse_all()
+        analyzer.astcompile_all()
         assert list(analyzer.mods) == ["main", "mod1"]
 
     def test_missing_module(self):
@@ -101,7 +109,7 @@ class TestImportAnalyzer:
         self.write("main.spy", src)
 
         analyzer = ImportAnalyzer(self.vm, "main")
-        analyzer.parse_all()
+        analyzer.astcompile_all()
         assert list(analyzer.mods) == ["main", "nonexistent"]
         assert isinstance(analyzer.mods["main"], ast.Module)
         assert analyzer.mods["nonexistent"] is None
@@ -115,18 +123,18 @@ class TestImportAnalyzer:
         self.vm.modules_w["mod1"] = dummy_module  # type: ignore
 
         analyzer = ImportAnalyzer(self.vm, "main")
-        analyzer.parse_all()
+        analyzer.astcompile_all()
         assert list(analyzer.mods) == ["main", "mod1"]
         assert analyzer.mods["mod1"] is dummy_module
 
     def test_analyze_scopes(self):
         self.write("main.spy", "x: i32 = 42")
         analyzer = ImportAnalyzer(self.vm, "main")
-        analyzer.parse_all()
+        analyzer.astcompile_all()
         mod = analyzer.mods["main"]
         assert isinstance(mod, ast.Module)
-        assert mod.symtable is not None
-        assert mod.symtable.name == "main"
+        assert mod.frameinfo is not None
+        assert mod.frameinfo.name == "main"
 
     def test_vm_path(self):
         # we write mod1 in an unrelated dir, which is the added to vm.path
@@ -134,7 +142,7 @@ class TestImportAnalyzer:
         self.write("main.spy", "import mod1")
         self.vm.path.append(self.tmpdir.join("mylib"))
         analyzer = ImportAnalyzer(self.vm, "main")
-        analyzer.parse_all()
+        analyzer.astcompile_all()
         assert list(analyzer.mods) == ["main", "mod1"]
         assert analyzer.mods["mod1"] is not None  # check that we found it
 
@@ -144,7 +152,7 @@ class TestImportAnalyzer:
 
         # First import - create .spyc
         analyzer1 = ImportAnalyzer(self.vm, "mod1")
-        analyzer1.parse_all()
+        analyzer1.astcompile_all()
         analyzer1.import_all()
         assert self.tmpdir.join("__pycache__", "mod1.spyc").exists()
 
@@ -152,7 +160,7 @@ class TestImportAnalyzer:
         vm2 = SPyVM()
         vm2.path = [str(self.tmpdir)]
         analyzer2 = ImportAnalyzer(vm2, "mod1")
-        analyzer2.parse_all()
+        analyzer2.astcompile_all()
         assert "mod1" in analyzer2.cached_mods
 
     def test_cache_invalidation(self):
@@ -161,7 +169,7 @@ class TestImportAnalyzer:
 
         # First import - create .spyc
         analyzer1 = ImportAnalyzer(self.vm, "mod1")
-        analyzer1.parse_all()
+        analyzer1.astcompile_all()
         analyzer1.import_all()
         spyc_file = self.tmpdir.join("__pycache__", "mod1.spyc")
         assert spyc_file.exists()
@@ -176,7 +184,7 @@ class TestImportAnalyzer:
         vm2 = SPyVM()
         vm2.path = [str(self.tmpdir)]
         analyzer2 = ImportAnalyzer(vm2, "mod1")
-        analyzer2.parse_all()
+        analyzer2.astcompile_all()
         assert "mod1" not in analyzer2.cached_mods
 
         # Import to update cache
@@ -192,7 +200,7 @@ class TestImportAnalyzer:
 
         # First run - create caches
         analyzer1 = ImportAnalyzer(self.vm, "main")
-        analyzer1.parse_all()
+        analyzer1.astcompile_all()
         analyzer1.import_all()
 
         # Check all cache files exist
@@ -204,34 +212,34 @@ class TestImportAnalyzer:
         vm2 = SPyVM()
         vm2.path = [str(self.tmpdir)]
         analyzer2 = ImportAnalyzer(vm2, "main")
-        analyzer2.parse_all()
+        analyzer2.astcompile_all()
         assert "a" in analyzer2.cached_mods
         assert "b" in analyzer2.cached_mods
         assert "main" in analyzer2.cached_mods
 
-    def test_cache_preserves_symtable(self):
+    def test_cache_preserves_frameinfo(self):
         src = "x: i32 = 42"
         self.write("mod1.spy", src, mtime_delta=-1)
 
         # First import with analysis
         analyzer1 = ImportAnalyzer(self.vm, "mod1")
-        analyzer1.parse_all()
-        analyzer1.import_all()  # This sets symtable and saves cache
-        symtable1 = analyzer1.getmod("mod1").symtable
+        analyzer1.astcompile_all()
+        analyzer1.import_all()  # This sets frameinfo and saves cache
+        frameinfo1 = analyzer1.getmod("mod1").frameinfo
 
-        assert symtable1 is not None
+        assert frameinfo1 is not None
 
-        # Second import with fresh VM should load from cache with symtable
+        # Second import with fresh VM should load from cache with frameinfo
         vm2 = SPyVM()
         vm2.path = [str(self.tmpdir)]
         analyzer2 = ImportAnalyzer(vm2, "mod1")
-        analyzer2.parse_all()
+        analyzer2.astcompile_all()
         assert "mod1" in analyzer2.cached_mods
 
-        # The cached module should already have symtable
+        # The cached module should already have frameinfo
         mod2 = analyzer2.getmod("mod1")
-        assert mod2.symtable is not None
-        assert mod2.symtable.name == "mod1"
+        assert mod2.frameinfo is not None
+        assert mod2.frameinfo.name == "mod1"
 
     def test_cache_version_mismatch(self, monkeypatch):
         src = "x: i32 = 42"
@@ -239,7 +247,7 @@ class TestImportAnalyzer:
 
         # First import - create cache with current version
         analyzer1 = ImportAnalyzer(self.vm, "mod1")
-        analyzer1.parse_all()
+        analyzer1.astcompile_all()
         analyzer1.import_all()
         assert self.tmpdir.join("__pycache__", "mod1.spyc").exists()
 
@@ -248,7 +256,7 @@ class TestImportAnalyzer:
         vm2 = SPyVM()
         vm2.path = [str(self.tmpdir)]
         analyzer2 = ImportAnalyzer(vm2, "mod1")
-        analyzer2.parse_all()
+        analyzer2.astcompile_all()
         assert "mod1" not in analyzer2.cached_mods
 
         # A version mismatch error should be recorded
@@ -265,7 +273,7 @@ class TestImportAnalyzer:
 
         # Import with use_spyc=False should not create .spyc
         analyzer1 = ImportAnalyzer(self.vm, "mod1", use_spyc=False)
-        analyzer1.parse_all()
+        analyzer1.astcompile_all()
         analyzer1.import_all()
         assert not self.tmpdir.join("__pycache__", "mod1.spyc").exists()
 
@@ -273,7 +281,7 @@ class TestImportAnalyzer:
         vm2 = SPyVM()
         vm2.path = [str(self.tmpdir)]
         analyzer2 = ImportAnalyzer(vm2, "mod1", use_spyc=True)
-        analyzer2.parse_all()
+        analyzer2.astcompile_all()
         analyzer2.import_all()
         assert self.tmpdir.join("__pycache__", "mod1.spyc").exists()
 
@@ -281,7 +289,7 @@ class TestImportAnalyzer:
         vm3 = SPyVM()
         vm3.path = [str(self.tmpdir)]
         analyzer3 = ImportAnalyzer(vm3, "mod1", use_spyc=False)
-        analyzer3.parse_all()
+        analyzer3.astcompile_all()
         assert "mod1" not in analyzer3.cached_mods
 
     def test_duplicate_imports_deduplicated(self):
@@ -300,7 +308,7 @@ class TestImportAnalyzer:
         self.write("main.spy", src)
 
         analyzer = ImportAnalyzer(self.vm, "main")
-        analyzer.parse_all()
+        analyzer.astcompile_all()
 
         # "aaa" should appear only once in the dependency list for "main"
         assert "main" in analyzer.deps
@@ -321,7 +329,7 @@ class TestImportAnalyzer:
         # initial import
         self.write("main.spy", src, mtime_delta=-1)
         analyzer = ImportAnalyzer(self.vm, "main")
-        analyzer.parse_all()
+        analyzer.astcompile_all()
         import_list = analyzer.get_import_list()
         assert import_list == ["_range", "main"]
         #
@@ -329,7 +337,7 @@ class TestImportAnalyzer:
         vm2 = SPyVM()
         vm2.path = [str(self.tmpdir)]
         analyzer2 = ImportAnalyzer(vm2, "main")
-        analyzer2.parse_all()
+        analyzer2.astcompile_all()
         assert "main" in analyzer2.cached_mods
         import_list = analyzer2.get_import_list()
         assert import_list == ["_range", "main"]

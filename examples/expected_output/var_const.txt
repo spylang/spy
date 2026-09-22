@@ -1,0 +1,7 @@
+COLOR(LIMIT) blue
+COLOR(LIMIT2) blue
+COLOR(LIMIT3) blue
+COLOR(LIMIT4) red
+N+1: 11
+counter: 0
+counter: 5

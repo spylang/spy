@@ -138,6 +138,8 @@ def simulate_step(n: i32, speed: f64, radius: i32) -> None:
 
 
 def frame(timestamp: f64) -> None:
+    global n_jsrefs
+
     console = jsffi.get_Console()
 
     params = PARAMS[0]
@@ -159,6 +161,7 @@ def frame(timestamp: f64) -> None:
 
 def init_particles(speed: f64, radius: i32) -> None:
     """Deterministic sunburst init — replace with random angles once math.random exists."""
+    global PARTICLES
     cx: f64 = float(WIDTH) / 2.0
     cy: f64 = float(HEIGHT) / 2.0
     for i in range(MAX_PARTICLES):
@@ -172,6 +175,11 @@ def init_particles(speed: f64, radius: i32) -> None:
 
 
 def main() -> None:
+
+    global PARTICLES
+    global PARAMS
+    global JS_REFS
+
     jsffi.init()
 
     PARTICLES = gc_alloc[Particle](MAX_PARTICLES)

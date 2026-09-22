@@ -40,40 +40,40 @@ JsRef WASM_EXPORT(jsffi_call_method_6)(JsRef c_target, const char *c_name,
 /* ------------------------------------------------------------------ */
 
 static inline JsRef
-spy_jsffi$js_call_method_0(JsRef target, spy_Str *name) {
-    return jsffi_call_method_0(target, name->utf8);
+spy_jsffi$js_call_method_0(JsRef target, spy_StrObject *name) {
+    return jsffi_call_method_0(target, spy_StrObject_CHARS(name));
 }
 static inline JsRef
-spy_jsffi$js_call_method_1(JsRef target, spy_Str *name, JsVal arg0) {
-    return jsffi_call_method_1(target, name->utf8,
+spy_jsffi$js_call_method_1(JsRef target, spy_StrObject *name, JsVal arg0) {
+    return jsffi_call_method_1(target, spy_StrObject_CHARS(name),
                                arg0.tag, jsval_payload(arg0));
 }
 static inline JsRef
-spy_jsffi$js_call_method_2(JsRef target, spy_Str *name, JsVal arg0, JsVal arg1) {
-    return jsffi_call_method_2(target, name->utf8,
+spy_jsffi$js_call_method_2(JsRef target, spy_StrObject *name, JsVal arg0, JsVal arg1) {
+    return jsffi_call_method_2(target, spy_StrObject_CHARS(name),
                                arg0.tag, jsval_payload(arg0),
                                arg1.tag, jsval_payload(arg1));
 }
 static inline JsRef
-spy_jsffi$js_call_method_3(JsRef target, spy_Str *name, JsVal arg0, JsVal arg1, JsVal arg2) {
-    return jsffi_call_method_3(target, name->utf8,
+spy_jsffi$js_call_method_3(JsRef target, spy_StrObject *name, JsVal arg0, JsVal arg1, JsVal arg2) {
+    return jsffi_call_method_3(target, spy_StrObject_CHARS(name),
                                arg0.tag, jsval_payload(arg0),
                                arg1.tag, jsval_payload(arg1),
                                arg2.tag, jsval_payload(arg2));
 }
 static inline JsRef
-spy_jsffi$js_call_method_4(JsRef target, spy_Str *name,
+spy_jsffi$js_call_method_4(JsRef target, spy_StrObject *name,
                             JsVal arg0, JsVal arg1, JsVal arg2, JsVal arg3) {
-    return jsffi_call_method_4(target, name->utf8,
+    return jsffi_call_method_4(target, spy_StrObject_CHARS(name),
                                arg0.tag, jsval_payload(arg0),
                                arg1.tag, jsval_payload(arg1),
                                arg2.tag, jsval_payload(arg2),
                                arg3.tag, jsval_payload(arg3));
 }
 static inline JsRef
-spy_jsffi$js_call_method_5(JsRef target, spy_Str *name,
+spy_jsffi$js_call_method_5(JsRef target, spy_StrObject *name,
                             JsVal arg0, JsVal arg1, JsVal arg2, JsVal arg3, JsVal arg4) {
-    return jsffi_call_method_5(target, name->utf8,
+    return jsffi_call_method_5(target, spy_StrObject_CHARS(name),
                                arg0.tag, jsval_payload(arg0),
                                arg1.tag, jsval_payload(arg1),
                                arg2.tag, jsval_payload(arg2),
@@ -81,9 +81,9 @@ spy_jsffi$js_call_method_5(JsRef target, spy_Str *name,
                                arg4.tag, jsval_payload(arg4));
 }
 static inline JsRef
-spy_jsffi$js_call_method_6(JsRef target, spy_Str *name,
+spy_jsffi$js_call_method_6(JsRef target, spy_StrObject *name,
                             JsVal arg0, JsVal arg1, JsVal arg2, JsVal arg3, JsVal arg4, JsVal arg5) {
-    return jsffi_call_method_6(target, name->utf8,
+    return jsffi_call_method_6(target, spy_StrObject_CHARS(name),
                                arg0.tag, jsval_payload(arg0),
                                arg1.tag, jsval_payload(arg1),
                                arg2.tag, jsval_payload(arg2),

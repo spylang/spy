@@ -3,7 +3,7 @@ from typing import Any
 from spy.tests.support import CompilerTest, no_C
 from spy.vm.builtin import builtin_method
 from spy.vm.opspec import W_MetaArg, W_OpSpec
-from spy.vm.primitive import W_I32
+from spy.vm.primitive import W_I32, W_Bool
 from spy.vm.registry import ModuleRegistry
 from spy.vm.vm import SPyVM
 from spy.vm.w import W_Object
@@ -129,6 +129,13 @@ class W_BinOpClass(W_Object):
         x = vm.unwrap_i32(w_self.w_x)
         other = vm.unwrap_i32(w_other)
         return vm.wrap(1 if x >= other else 0)
+
+    @builtin_method("__contains__")
+    @staticmethod
+    def w_contains(vm: "SPyVM", w_self: "W_BinOpClass", w_other: W_I32) -> W_Bool:
+        x = vm.unwrap_i32(w_self.w_x)
+        other = vm.unwrap_i32(w_other)
+        return vm.wrap(other == x)
 
 
 class W_MyInt(W_Object):
@@ -344,3 +351,16 @@ class TestOperatorBinop(CompilerTest):
         assert mod.eq(5, 6) == False  # 5 == 6 is False
         assert mod.ne(5, 5) == False  # 5 != 5 is False
         assert mod.ne(5, 6) == True  # 5 != 6 is True
+
+    def test_in(self):
+        self.setup_ext()
+        src = """
+        from ext import BinOpClass
+
+        def foo(x: i32, y: i32) -> bool:
+            obj = BinOpClass(x)
+            return y in obj
+        """
+        mod = self.compile(src)
+        assert mod.foo(5, 5) == True  # 5 in BinOpClass(5) is True
+        assert mod.foo(5, 6) == False  # 6 in BinOpClass(5) is False

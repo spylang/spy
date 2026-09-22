@@ -61,27 +61,28 @@ automatically, with no system packages required.
 The most up-to-date version of the requirements and the installation steps is
 the [GitHub Actions workflow](https://github.com/spylang/spy/blob/main/.github/workflows/tests.yml).
 
-### pip
-
-**Prerequisites:** Python 3.12, and bdw-gc (`libgc-dev` on Debian/Ubuntu).
-
-```sh
-cd /path/to/spy/
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -e .[dev]
-# build the `libspy` runtime library
-make -C spy/libspy
-```
+All the following commands must be run from the root directory of the SPy
+repo, and without a virtual environment activated beforehand.
 
 ### uv
 
 **Prerequisite:** bdw-gc (`libgc-dev` on Debian/Ubuntu).
 
 ```sh
-uv venv .venv -p 3.12
+uv sync
 . .venv/bin/activate
-uv pip install -e .[dev]
+make -C spy/libspy
+```
+
+### pip
+
+**Prerequisites:** Python 3.12, pip >= 25.1 (to support PEP 735 Dependency Groups), and bdw-gc (`libgc-dev` on Debian/Ubuntu).
+
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+pip install -e . --group dev
+# build the `libspy` runtime library
 make -C spy/libspy
 ```
 
@@ -110,6 +111,26 @@ pixi run ruff-check
 pixi run doc-serve
 pixi run test-xdist
 ```
+
+### Optional build dependencies
+
+The `spy build` command compiles the C code produced by the SPy pipeline into a native
+or WebAssembly binary. Depending on the target:
+
+- **Native** (`--target native`): requires a system C compiler (e.g. `gcc` or `clang`),
+typically available via your system package manager (`build-essential` on Debian/Ubuntu).
+
+- **Emscripten** (`--target emscripten`): requires the
+[Emscripten SDK](https://github.com/emscripten-core/emsdk).
+Install and activate the `latest` toolchain so that `emcc` is on your `PATH` — see the
+[emsdk instructions](https://github.com/emscripten-core/emsdk#downloads--how-do-i-get-the-latest-emscripten-build).
+In CI, this is handled by the `mymindstorm/setup-emsdk` GitHub Action.
+
+- **WASI** (`--target wasi`): uses [Zig](https://ziglang.org/) as the compiler, which is
+a hard SPy dependency and is installed automatically alongside SPy — no extra setup required.
+
+These are only needed if you intend to produce compiled binaries; the interpreter and
+redshift modes work without them.
 
 ### Testing
 
@@ -170,7 +191,7 @@ Examples:
 ```
 $ spy pyparse examples/hello.spy
 $ spy parse examples/hello.spy
-$ spy symtable examples/hello.spy
+$ spy scopes examples/hello.spy
 $ spy redshift examples/hello.spy
 $ spy build --no-compile examples/hello.spy
 ```
@@ -236,7 +257,10 @@ ways:
     statically linked to any spy executable
 
   - `make -C spy/libspy` creates a `libspy.a` for each supported target, which
-    currently are `native`, `emscripten` and `wasi`
+    currently are `native`, `emscripten` and `wasi`. For `emscripten` and `wasi`
+    it also creates a second `libspy.a` used by llwasm which expects the
+    WebAssembly host to provide debug helpers as WASM imports. The normal
+    `libspy.a` implements them in `debug.c`.
 
   - `spy/libspy/__init__.py` contains some support code to be able to load the
     WASM version of libspy in the interpreter.

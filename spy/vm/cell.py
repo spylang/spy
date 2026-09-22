@@ -17,7 +17,7 @@ class W_Cell(W_Object):
     by the C backend, but its content is red and mutable at runtime.
 
     See Symbol.storage, ScopeAnalyzer.define_name and
-    ASTFrame._specialize_Name.
+    ASTFrame.compile_expr_Name
     """
 
     def __init__(self, fqn: FQN, w_val: W_Object) -> None:

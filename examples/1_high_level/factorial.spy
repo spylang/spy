@@ -1,0 +1,22 @@
+"""
+Things to notice:
+  - `i32` is a concrete 32-bit integer type (unlike Python's arbitrary-precision `int`).
+  - SPy primitive types include i8, i32, i64, u8, u32, u64, f32, f64.
+  - `for` loops and `range()` work as in Python.
+  - After redshift, the for loop is compiled to efficient code without runtime dispatch and boxing.
+"""
+
+import time
+
+
+def factorial(n: i32) -> i32:
+    res = 1
+    for i in range(n):
+        res *= i + 1
+    return res
+
+
+def main() -> None:
+    print(factorial(5))
+    # this is needed to force gcc to compile the function, else it just precomputes the result
+    # print(factorial(int(time.time())))

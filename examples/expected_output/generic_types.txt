@@ -1,0 +1,5 @@
+Pair[1, 2]
+PairWOSyntacticSugar[1, 2]
+Pair[2, 1]
+Pair['hello', 'world']
+Pair[Pair[1, 2], Pair[2, 1]]

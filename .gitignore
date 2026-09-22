@@ -205,7 +205,8 @@ CLAUDE.local.md
 /playground/libspy.mjs
 /playground/*.whl
 /playground/assets/
-/playground/*.spy
+/playground/examples
+/playground/.pyodide-cache/
 
 # pixi environments
 .pixi/*

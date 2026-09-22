@@ -132,15 +132,21 @@ class TestHTMLBackend:
         """)
         expected = """
         <Module> (stmt, default)
+            stage: <'parsed'> (leaf, emerald)
             filename: <'{tmpdir}/test.spy'> (leaf, emerald)
+            scoping_rules: <'pythonic'> (leaf, emerald)
             decls[0]: <GlobalFuncDef> (stmt, default)
                 funcdef: <FuncDef: red foo> (stmt, default)
+                    stage: <'parsed'> (leaf, emerald)
                     color: <'red'> (leaf, emerald)
                     kind: <'plain'> (leaf, emerald)
                     name: <'foo'> (leaf, emerald)
                     return_type: <Name: void> (expr, amber)
                         id: <'void'> (leaf, emerald)
-                    body[0]: <Pass> (stmt, default)
+                    scoping_rules: <'pythonic'> (leaf, emerald)
+                    body: <Block> (stmt, default)
+                        body[0]: <Pass> (stmt, default)
+                    _sym: <None> (leaf, emerald)
         """
         self.assert_dump(d, expected)
 
@@ -152,6 +158,7 @@ class TestHTMLBackend:
         funcdef = self.get_node(d, "FuncDef: red foo")
         expected = """
         <FuncDef: red foo> (stmt, default)
+            stage: <'parsed'> (leaf, emerald)
             color: <'red'> (leaf, emerald)
             kind: <'plain'> (leaf, emerald)
             name: <'foo'> (leaf, emerald)
@@ -160,15 +167,19 @@ class TestHTMLBackend:
                 type: <Name: i32> (expr, amber)
                     id: <'i32'> (leaf, emerald)
                 kind: <'simple'> (leaf, emerald)
+                _sym: <None> (leaf, emerald)
             return_type: <Name: i32> (expr, amber)
                 id: <'i32'> (leaf, emerald)
-            body[0]: <Return> (stmt, default)
-                value: <BinOp: +> (expr, amber)
-                    op: <'+'> (leaf, emerald)
-                    left: <Name: x> (expr, amber)
-                        id: <'x'> (leaf, emerald)
-                    right: <Constant: 1> (expr, amber)
-                        value: <1> (leaf, emerald)
+            scoping_rules: <'pythonic'> (leaf, emerald)
+            body: <Block> (stmt, default)
+                body[0]: <Return> (stmt, default)
+                    value: <BinOp: +> (expr, amber)
+                        op: <'+'> (leaf, emerald)
+                        left: <Name: x> (expr, amber)
+                            id: <'x'> (leaf, emerald)
+                        right: <Literal: 1> (expr, amber)
+                            value: <1> (leaf, emerald)
+            _sym: <None> (leaf, emerald)
         """
         self.assert_dump(funcdef, expected)
 
@@ -182,6 +193,7 @@ class TestHTMLBackend:
         <FuncDef: red foo> (stmt, default)
             | def foo(x: i32) -> i32:
             |     return x + 1
+            stage: <'parsed'> (leaf, emerald)
             color: <'red'> (leaf, emerald)
             kind: <'plain'> (leaf, emerald)
             name: <'foo'> (leaf, emerald)
@@ -192,20 +204,26 @@ class TestHTMLBackend:
                     | i32
                     id: <'i32'> (leaf, emerald)
                 kind: <'simple'> (leaf, emerald)
+                _sym: <None> (leaf, emerald)
             return_type: <Name: i32> (expr, amber)
                 | i32
                 id: <'i32'> (leaf, emerald)
-            body[0]: <Return> (stmt, default)
-                | return x + 1
-                value: <BinOp: +> (expr, amber)
-                    | x + 1
-                    op: <'+'> (leaf, emerald)
-                    left: <Name: x> (expr, amber)
-                        | x
-                        id: <'x'> (leaf, emerald)
-                    right: <Constant: 1> (expr, amber)
-                        | 1
-                        value: <1> (leaf, emerald)
+            scoping_rules: <'pythonic'> (leaf, emerald)
+            body: <Block> (stmt, default)
+                | def foo(x: i32) -> i32:
+                |     return x + 1
+                body[0]: <Return> (stmt, default)
+                    | return x + 1
+                    value: <BinOp: +> (expr, amber)
+                        | x + 1
+                        op: <'+'> (leaf, emerald)
+                        left: <Name: x> (expr, amber)
+                            | x
+                            id: <'x'> (leaf, emerald)
+                        right: <Literal: 1> (expr, amber)
+                            | 1
+                            value: <1> (leaf, emerald)
+            _sym: <None> (leaf, emerald)
         """
         self.assert_dump(funcdef, expected, show_src=True)
 
@@ -221,9 +239,9 @@ class TestHTMLBackend:
                 func: <FQNConst> (expr, amber)
                     fqn: <operator::i32_add> (leaf, emerald)
                 args[0]: <NameLocalDirect> (expr, amber)
-                    sym: <x> (leaf, emerald)
-                args[1]: <Constant: 1> (expr, amber)
-                    value: <1> (leaf, emerald)
+                    sym: <x$0> (leaf, emerald)
+                args[1]: <Const: W_I32(1)> (expr, amber)
+                    w_val: <W_I32(1)> (leaf, emerald)
         """
         self.assert_dump(ret, expected)
 
@@ -237,16 +255,16 @@ class TestHTMLBackend:
         <Return> (stmt, default)
             | return x + 1
             value: <Call> (expr, amber)
-                | x + 1
+                | x$0 + 1
                 func: <FQNConst> (expr, amber)
                     | `operator::i32_add`
                     fqn: <operator::i32_add> (leaf, emerald)
                 args[0]: <NameLocalDirect> (expr, amber)
-                    | x
-                    sym: <x> (leaf, emerald)
-                args[1]: <Constant: 1> (expr, amber)
+                    | x$0
+                    sym: <x$0> (leaf, emerald)
+                args[1]: <Const: W_I32(1)> (expr, amber)
                     | 1
-                    value: <1> (leaf, emerald)
+                    w_val: <W_I32(1)> (leaf, emerald)
         """
         self.assert_dump(ret, expected, show_src=True)
 
@@ -263,9 +281,9 @@ class TestHTMLBackend:
         <Return> (stmt, default)
             value: <BinOp: +> (expr, red)
                 op: <'+'> (leaf, emerald)
-                left: <Name: x> (expr, red)
-                    id: <'x'> (leaf, emerald)
-                right: <Constant: 1> (expr, blue)
+                left: <NameLocalDirect> (expr, red)
+                    sym: <x$0> (leaf, emerald)
+                right: <Literal: 1> (expr, blue)
                     value: <1> (leaf, emerald)
         """
         self.assert_dump(ret, expected)
@@ -285,19 +303,19 @@ class TestHTMLBackend:
     def test_nested_multiline_src_is_dedented(self):
         d = self.colorize("""
         def foo(x: i32) -> i32:
-            for i in range(x):
+            while x > 0:
                 pass
             return x + 1
         """)
-        # For is nested at col_start > 0 and is multi-line:
+        # While is nested at col_start > 0 and is multi-line:
         # its src must be dedented and src_colors must align with it
-        for_node = self.get_node(d, "For")
-        src = for_node["src"]
-        src_colors = for_node.get("src_colors", "")
-        assert src == "for i in range(x):\n    pass"
-        assert src_colors == "_9 B5 R3 _10"
+        while_node = self.get_node(d, "While")
+        src = while_node["src"]
+        src_colors = while_node.get("src_colors", "")
+        assert src == "while x > 0:\n    pass"
+        assert src_colors == "_6 R4 B1 _10"
         fmt = self.format_src(src, src_colors)
-        assert fmt == "for i in [B]range[/B][R](x)[/R]:\n    pass"
+        assert fmt == "while [R]x > [/R][B]0[/B]:\n    pass"
 
     def test_colorize_src_colors_no_overflow(self):
         d = self.colorize("""
@@ -345,11 +363,12 @@ class TestHTMLBackend:
         expected = """
         <VarDef> (stmt, default)
             kind: <None> (leaf, emerald)
-            name: <StrConst: 'x'> (expr, amber)
+            name: <StrLiteral: 'x'> (expr, amber)
                 value: <'x'> (leaf, emerald)
             type: <Name: str> (expr, amber)
                 id: <'str'> (leaf, emerald)
-            value: <StrConst: 'hello'> (expr, amber)
+            value: <StrLiteral: 'hello'> (expr, amber)
                 value: <'hello'> (leaf, emerald)
+            _sym: <None> (leaf, emerald)
         """
         self.assert_dump(vardef, expected)

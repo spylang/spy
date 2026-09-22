@@ -1,4 +1,5 @@
 from operator import OpSpec, MetaArg
+from _slice import Slice
 
 
 @struct
@@ -16,6 +17,8 @@ class range:
             return range.__make__(a, b, 1)
 
         def impl3(a: int, b: int, c: int) -> range:
+            if c == 0:
+                raise ValueError("range() arg 3 must not be zero")
             return range.__make__(a, b, c)
 
         # we cannot do list(args_m), so we need to do it manually somehow :(
@@ -33,6 +36,91 @@ class range:
             return OpSpec(impl3, [m0, m1, m2])
         else:
             return OpSpec.NULL
+
+    def __repr__(self) -> str:
+        result = "range(" + str(self.start) + ", " + str(self.stop)
+        if self.step != 1:
+            result = result + ", " + str(self.step)
+        return result + ")"
+
+    @blue.metafunc
+    def __convert_to__(m_expT, m_gotT, m_self):
+        if m_expT.blueval == bool:
+
+            def to_bool(self: range) -> bool:
+                return len(self) != 0
+
+            return OpSpec(to_bool, [m_self])
+        return OpSpec.NULL
+
+    def __len__(self) -> i32:
+        if self.step > 0:
+            if self.start >= self.stop:
+                return 0
+            return (self.stop - self.start - 1) // self.step + 1
+
+        if self.start <= self.stop:
+            return 0
+        return (self.start - self.stop - 1) // -self.step + 1
+
+    @blue.metafunc
+    def __getitem__(m_self, m_index: MetaArg):
+        if m_index.static_type == i32:
+            return OpSpec(range._getitem_int)
+        elif m_index.static_type == Slice:
+            return OpSpec(range._getitem_slice)
+        return OpSpec.NULL
+
+    def _getitem_int(self, index: int) -> int:
+        length = len(self)
+        if index < 0:
+            index = index + length
+        if index < 0 or index >= length:
+            raise IndexError
+        return self.start + index * self.step
+
+    def _getitem_slice(self, s: Slice) -> range:
+        indices = s.indices(len(self))
+        return range(
+            self.start + indices.start * self.step,
+            self.start + indices.stop * self.step,
+            self.step * indices.step,
+        )
+
+    def __eq__(self, other: range) -> bool:
+        length = len(self)
+        if length != len(other):
+            return False
+        if length == 0:
+            return True
+        if self.start != other.start:
+            return False
+        if length == 1:
+            return True
+        return self.step == other.step
+
+    def __ne__(self, other: range) -> bool:
+        return not self.__eq__(other)
+
+    def __contains__(self, value: int) -> bool:
+        if self.step > 0:
+            if value < self.start or value >= self.stop:
+                return False
+        else:
+            if value > self.start or value <= self.stop:
+                return False
+
+        return (value - self.start) % self.step == 0
+
+    def count(self, value: int) -> int:
+        if value in self:
+            return 1
+        return 0
+
+    def index(self, value: int) -> int:
+        if value in self:
+            return (value - self.start) // self.step
+        raise ValueError("range.index(x): x not in range")
 
     def __fastiter__(self) -> range_iterator:
         return range_iterator(self.start, self.stop, self.step)

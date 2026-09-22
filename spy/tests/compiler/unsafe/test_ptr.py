@@ -64,6 +64,27 @@ class TestUnsafePtr(CompilerTest):
         assert mod.bar(1) == 3.4
         assert mod.bar(2) == 5.6
 
+    def test_gc_ptr_u8(self):
+        # gc_ptr[u8] is special-cased and predeclared manually in unsafe.h. Exercise
+        # alloc/store/load and bounds-checking to make sure that everything works.
+        mod = self.compile("""
+        from unsafe import gc_alloc, gc_ptr
+
+        def foo() -> i32:
+            buf: gc_ptr[u8] = gc_alloc[u8](3)
+            buf[0] = 1
+            buf[1] = 2
+            buf[2] = 3
+            return buf[0] + buf[1] + buf[2]
+
+        def out_of_bound() -> u8:
+            buf = gc_alloc[u8](3)
+            return buf[3]
+        """)
+        assert mod.foo() == 6
+        with SPyError.raises("W_PanicError", match="ptr_getitem out of bounds"):
+            mod.out_of_bound()
+
     def test_out_of_bound(self, memkind):
         k = memkind
         mod = self.compile(f"""
@@ -95,9 +116,9 @@ class TestUnsafePtr(CompilerTest):
         with SPyError.raises("W_PanicError", match="ptr_store out of bounds"):
             mod.bar(-5, 300)
 
-    def test_ptr_to_struct(self, memkind):
+    def test_ptr_to_struct_getattr_setattr(self, memkind):
         k = memkind
-        mod = self.compile(f"""
+        src = f"""
         from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, {k}_ref as k_ref
 
         @struct
@@ -107,23 +128,40 @@ class TestUnsafePtr(CompilerTest):
 
         def make_point(x: i32, y: f64) -> k_ptr[Point]:
             p = k_alloc[Point](1)
-            p.x = x
+            p.x = x  # setattr via ptr[T]
             p.y = y
             return p
 
-        def with_ptr(x: i32, y: f64) -> f64:
+        def foo(x: i32, y: f64) -> f64:
             p = make_point(x, y)
-            return p.x + p.y
+            return p.x + p.y  # getattr via ptr[T]
+        """
+        mod = self.compile(src)
+        assert mod.foo(3, 4.5) == 7.5
 
-        def with_ref(x: i32, y: f64) -> f64:
-            # reading an item out of a ptr returns a ref
-            p = make_point(x, y)
-            r: k_ref[Point] = p[0]
-            return r.x + r.y
+    def test_ref_to_struct_getattr_setattr(self, memkind):
+        k = memkind
+        src = f"""
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, {k}_ref as k_ref
 
-        """)
-        assert mod.with_ptr(3, 4.5) == 7.5
-        assert mod.with_ref(6, 7.8) == 13.8
+        @struct
+        class Point:
+            x: i32
+            y: f64
+
+        def make_point(x: i32, y: f64) -> k_ref[Point]:
+            p = k_alloc[Point](1)
+            r: k_ref[Point] = p[0]  # get a ref out of ptr
+            r.x = x  # setattr via ref[T]
+            r.y = y
+            return r
+
+        def foo(x: i32, y: f64) -> f64:
+            r = make_point(x, y)
+            return r.x + r.y  # getattr via ref[T]
+        """
+        mod = self.compile(src)
+        assert mod.foo(3, 4.5) == 7.5
 
     def test_ptr_to_string(self, memkind):
         # XXX: support for raw_alloc[str] was added by 30ffdb9a, but doesn't make sense
@@ -163,7 +201,6 @@ class TestUnsafePtr(CompilerTest):
             p = k_alloc[Point](1)
             r = p[0]
             return dir(r)
-
         """)
         d1 = mod.dir_ptr_point()
         assert "x" in d1
@@ -261,6 +298,7 @@ class TestUnsafePtr(CompilerTest):
         assert mod.rect_ref() == 9876
 
     def test_ptr_eq(self, memkind):
+        # ptr equaliy compares THE POINTERS
         k = memkind
         mod = self.compile(f"""
         from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr
@@ -282,6 +320,8 @@ class TestUnsafePtr(CompilerTest):
         assert mod.ne(p0, p1)
 
     def test_ref_eq(self, memkind):
+        # ref equality delegates to itemT.__eq__, so it compares THE VALUES
+        # here we check all combinations of {ref[T],T} == {ref[T],T}
         k = memkind
         mod = self.compile(f"""
         from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, {k}_ref as k_ref
@@ -290,27 +330,57 @@ class TestUnsafePtr(CompilerTest):
         class MyInt:
             val: i32
 
-        def alloc() -> k_ptr[MyInt]:
-            return k_alloc[MyInt](1)
+        def get_MyInt_ref(x: i32) -> k_ref[MyInt]:
+            p = k_alloc[MyInt](1)
+            p[0] = MyInt(x)
+            return p[0]
 
-        def eq(a: k_ptr[MyInt], b: k_ptr[MyInt]) -> bool:
-            ra: k_ref[MyInt] = a[0]
-            rb: k_ref[MyInt] = b[0]
+        def eq_ref_ref(a: i32, b: i32) -> bool:
+            ra = get_MyInt_ref(a)
+            rb = get_MyInt_ref(b)
             return ra == rb
 
-        def ne(a: k_ptr[MyInt], b: k_ptr[MyInt]) -> bool:
-            ra: k_ref[MyInt] = a[0]
-            rb: k_ref[MyInt] = b[0]
-            return ra != rb
-        """)
-        p0 = mod.alloc()
-        p1 = mod.alloc()
-        assert mod.eq(p0, p0)
-        assert not mod.eq(p0, p1)
-        assert not mod.ne(p0, p0)
-        assert mod.ne(p0, p1)
+        def eq_ref_T(a: i32, b: i32) -> bool:
+            ra = get_MyInt_ref(a)
+            bb = MyInt(b)
+            return ra == bb
 
-    def test_ref_method(self, memkind):
+        def eq_T_ref(a: i32, b: i32) -> bool:
+            aa = MyInt(a)
+            rb = get_MyInt_ref(b)
+            return aa == rb
+
+        def ne_ref_ref(a: i32, b: i32) -> bool:
+            ra = get_MyInt_ref(a)
+            rb = get_MyInt_ref(b)
+            return ra != rb
+
+        def ne_ref_T(a: i32, b: i32) -> bool:
+            ra = get_MyInt_ref(a)
+            bb = MyInt(b)
+            return ra != bb
+
+        def ne_T_ref(a: i32, b: i32) -> bool:
+            aa = MyInt(a)
+            rb = get_MyInt_ref(b)
+            return aa != rb
+        """)
+        # testing ==
+        assert mod.eq_ref_ref(42, 42)
+        assert mod.eq_ref_T(42, 42)
+        assert mod.eq_T_ref(42, 42)
+        assert not mod.eq_ref_ref(42, 100)
+        assert not mod.eq_ref_T(42, 100)
+        assert not mod.eq_T_ref(42, 100)
+        # testing !=
+        assert mod.ne_ref_ref(42, 100)
+        assert mod.ne_ref_T(42, 100)
+        assert mod.ne_T_ref(42, 100)
+        assert not mod.ne_ref_ref(42, 42)
+        assert not mod.ne_ref_T(42, 42)
+        assert not mod.ne_T_ref(42, 42)
+
+    def test_ref_dunder_methods(self, memkind):
         k = memkind
         mod = self.compile(f"""
         from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, {k}_ref as k_ref
@@ -323,20 +393,32 @@ class TestUnsafePtr(CompilerTest):
             def foo(self) -> i32:
                 return self.x + self.y
 
-        def method_on_ref() -> i32:
+            def __getitem__(self, i: i32) -> Point:
+                return Point(self.x + i, self.y + i)
+
+            def __add__(self, p: Point) -> Point:
+                return Point(self.x + p.x, self.y + p.y)
+
+        def get_ref() -> k_ref[Point]:
             p: k_ptr[Point] = k_alloc[Point](1)
             p[0] = Point(1,2)
-            r: k_ref[Point] = p[0]
+            return p[0]
+
+        def call_method() -> i32:
+            r = get_ref()
             return r.foo()
 
-        def compare_eq() -> bool:
-            p: k_ptr[Point] = k_alloc[Point](1)
-            r: k_ref[Point] = p[0]
-            return r == p[0]
-        """)
+        def getitem() -> Point:
+            r = get_ref()
+            return r[10]
 
-        assert mod.method_on_ref() == 3
-        assert mod.compare_eq()
+        def add() -> Point:
+            r = get_ref()
+            return r + Point(10, 20)
+        """)
+        assert mod.call_method() == 3
+        assert mod.getitem() == (11, 12)
+        assert mod.add() == (11, 22)
 
     def test_can_allocate_ptr(self, memkind):
         k = memkind
@@ -421,6 +503,7 @@ class TestUnsafePtr(CompilerTest):
             return null_ptr[i]
 
         def bar(i: i32, v: i32) -> None:
+            global null_ptr
             null_ptr[i] = v
         """)
         with SPyError.raises("W_PanicError", "cannot dereference NULL pointer"):
@@ -439,6 +522,7 @@ class TestUnsafePtr(CompilerTest):
             return global_ptr == k_ptr[i32].NULL
 
         def alloc_global_ptr() -> None:
+            global global_ptr
             global_ptr = k_alloc[i32](1)
         """)
         assert mod.is_null() is True
@@ -619,3 +703,137 @@ class TestUnsafePtr(CompilerTest):
         addr = w.p.addr
         self.vm.ll.mem.read_i32(addr) == 1
         self.vm.ll.mem.read_i32(addr + 4) == 2
+
+    def test_as_StrObject(self):
+        mod = self.compile("""
+        from unsafe import _str_to_StrObject
+        from _str import StrObject
+
+        def get_length(s: str) -> i32:
+            data = _str_to_StrObject(s)
+            return data.length
+
+        def get_byte(s: str, i: i32) -> u8:
+            data = _str_to_StrObject(s)
+            return data.utf8[i]
+        """)
+        assert mod.get_length("hello") == 5
+        assert mod.get_byte("hello", 0) == ord("h")
+        assert mod.get_byte("hello", 4) == ord("o")
+
+    def test_ptr_index_all_dtypes(self):
+        mod = self.compile(
+            """
+            from unsafe import gc_alloc, gc_ptr
+
+            def rt[T](v: T) -> T:
+                p: gc_ptr[T] = gc_alloc[T](4)
+                p[0] = v
+                return p[0]
+
+            rt_i8 = rt[i8]
+            rt_u8 = rt[u8]
+            rt_i32 = rt[i32]
+            rt_u32 = rt[u32]
+            rt_i64 = rt[i64]
+            rt_u64 = rt[u64]
+            rt_f32 = rt[f32]
+            rt_f64 = rt[f64]
+            """
+        )
+        assert mod.rt_i8(-(2**7)) == -(2**7)
+        assert mod.rt_u8(2**8 - 1) == 2**8 - 1
+        assert mod.rt_i32(-(2**31)) == -(2**31)
+        assert mod.rt_u32(2**32 - 1) == 2**32 - 1
+        assert mod.rt_i64(2**63 - 1) == 2**63 - 1
+        assert mod.rt_i64(-(2**63)) == -(2**63)
+        assert mod.rt_u64(2**64 - 1) == 2**64 - 1
+        assert mod.rt_f32(7) == 7.0
+        assert mod.rt_f64(1.5) == 1.5
+
+    def test_ptr_struct_fields_all_dtypes(self):
+        mod = self.compile("""
+            from unsafe import gc_alloc, gc_ptr
+
+            @struct
+            class BoxI8:
+                v: i8
+            @struct
+            class BoxU8:
+                v: u8
+            @struct
+            class BoxI32:
+                v: i32
+            @struct
+            class BoxU32:
+                v: u32
+            @struct
+            class BoxI64:
+                v: i64
+            @struct
+            class BoxU64:
+                v: u64
+            @struct
+            class BoxF32:
+                v: f32
+            @struct
+            class BoxF64:
+                v: f64
+
+            def rt_i8(v: i8) -> i8:
+                p: gc_ptr[BoxI8] = gc_alloc[BoxI8](1)
+                p.v = v
+                return p.v
+
+            def rt_u8(v: u8) -> u8:
+                p: gc_ptr[BoxU8] = gc_alloc[BoxU8](1)
+                p.v = v
+                return p.v
+
+            def rt_i32(v: i32) -> i32:
+                p: gc_ptr[BoxI32] = gc_alloc[BoxI32](1)
+                p.v = v
+                return p.v
+
+            def rt_u32(v: u32) -> u32:
+                p: gc_ptr[BoxU32] = gc_alloc[BoxU32](1)
+                p.v = v
+                return p.v
+
+            def rt_i64(v: i64) -> i64:
+                p: gc_ptr[BoxI64] = gc_alloc[BoxI64](1)
+                p.v = v
+                return p.v
+
+            def rt_u64(v: u64) -> u64:
+                p: gc_ptr[BoxU64] = gc_alloc[BoxU64](1)
+                p.v = v
+                return p.v
+
+            def rt_f32(v: f32) -> f32:
+                p: gc_ptr[BoxF32] = gc_alloc[BoxF32](1)
+                p.v = v
+                return p.v
+
+            def rt_f64(v: f64) -> f64:
+                p: gc_ptr[BoxF64] = gc_alloc[BoxF64](1)
+                p.v = v
+                return p.v
+
+            def rt_struct_byval_f32(v: f32) -> f32:
+                p: gc_ptr[BoxF32] = gc_alloc[BoxF32](1)
+                p.v = v
+                x: BoxF32 = p[0]
+                return x.v
+            """)
+        assert mod.rt_i8(-(2**7)) == -(2**7)
+        assert mod.rt_u8(2**8 - 1) == 2**8 - 1
+        assert mod.rt_i32(-(2**31)) == -(2**31)
+        assert mod.rt_u32(2**32 - 1) == 2**32 - 1
+        assert mod.rt_i64(2**63 - 1) == 2**63 - 1
+        assert mod.rt_i64(-(2**63)) == -(2**63)
+        assert mod.rt_u64(2**64 - 1) == 2**64 - 1
+
+        assert mod.rt_f32(7) == 7.0
+        assert mod.rt_f64(1.5) == 1.5
+        assert mod.rt_struct_byval_f32(7) == 7.0

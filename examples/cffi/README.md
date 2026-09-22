@@ -14,14 +14,14 @@ There are two ways to generate the extension:
 
 1. by letting `spy` to invoke the C compiler for you:
    ```
-   $ spy --output-kind py-cffi --compile spydemo.spy
+   $ spy build --output-kind py-cffi spydemo.spy
    ==> build/cffi/_spydemo.cpython-312-x86_64-linux-gnu.so
    ```
 
 2. by letting `spy` to generated only the source code, and then use `setup.py`
    to do actual compilation:
    ```
-   $ spy --output-kind py-cffi --cwrite spydemo.spy
+   $ spy build --output-kind py-cffi --no-compile spydemo.spy
    C files:      build/src/spydemo.c
    Build script: build/cffi/_spydemo-cffi-build.py
 

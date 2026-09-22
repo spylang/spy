@@ -60,7 +60,7 @@ class AST:
     # <spy>
     _loc: Optional[Loc]
     loc: Loc
-    def compute_all_locs(self, filename: str) -> None: ...
+    def compute_all_locs(self, filename: str, src: str) -> None: ...
     def pp(self) -> None: ...
     # </spy>
 
@@ -1142,9 +1142,6 @@ class Name(expr):
         __match_args__ = ("id", "ctx")
     id: _Identifier
     ctx: expr_context  # Not present in Python < 3.13 if not passed to `__init__`
-    # <spy>
-    spy_varkind: Optional[Literal["var", "const"]]
-    # </spy>
 
     def __init__(self, id: _Identifier, ctx: expr_context = ..., **kwargs: Unpack[_Attributes]) -> None: ...
 

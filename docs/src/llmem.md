@@ -192,7 +192,7 @@ def test(p: raw_ptr[Point]) -> None:
     assert p.y == p[0].y
 ```
 
-The low-level representation of pointers depends on the excecution mode.
+The low-level representation of pointers depends on the execution mode.
 
 The interpreter keeps track of the address **and the length** of the allocated region,
 and checks for out-of-bounds access:

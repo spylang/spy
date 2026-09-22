@@ -2,7 +2,7 @@ from typing import TYPE_CHECKING, Annotated, Any, Protocol
 
 from spy.errors import SPyError
 from spy.vm.object import W_Object
-from spy.vm.primitive import W_F64, W_I8, W_I32, W_U8, W_U32, W_Bool
+from spy.vm.primitive import W_F64, W_I8, W_I32, W_I64, W_U8, W_U32, W_U64, W_Bool
 
 from . import OP
 
@@ -86,6 +86,16 @@ def make_ops(T: str, pyclass: type[W_Object]) -> None:
     def w_xor(vm: "SPyVM", w_a: WT, w_b: WT) -> WT:
         return _binop(vm, w_a, w_b, lambda a, b: a ^ b)
 
+    @OP.builtin_func(f"{T}_pow")
+    def w_pow(vm: "SPyVM", w_a: WT, w_b: WT) -> WT:
+        if w_b.value < 0:
+            if w_a.value == 0:
+                raise SPyError(
+                    "W_ZeroDivisionError", "0 cannot be raised to a negative power"
+                )
+            raise SPyError("W_ValueError", "integer ** negative exponent")
+        return _binop(vm, w_a, w_b, lambda a, b: a**b)
+
     @OP.builtin_func(f"{T}_eq")
     def w_eq(vm: "SPyVM", w_a: WT, w_b: WT) -> W_Bool:
         return _binop(vm, w_a, w_b, lambda a, b: a == b)
@@ -117,5 +127,7 @@ def make_ops(T: str, pyclass: type[W_Object]) -> None:
 
 make_ops("i32", W_I32)
 make_ops("u32", W_U32)
+make_ops("i64", W_I64)
+make_ops("u64", W_U64)
 make_ops("i8", W_I8)
 make_ops("u8", W_U8)

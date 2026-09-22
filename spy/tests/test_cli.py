@@ -121,11 +121,54 @@ class TestMain:
         _, stdout = self.run("parse", self.main_spy)
         assert stdout.startswith("Module(")
 
+    def test_astcompile(self):
+        _, stdout = self.run("astcompile", self.main_spy)
+        assert stdout.startswith("Module(")
+        assert "stage='astcompiled'" in stdout
+
+    def test_astcompile_html(self):
+        _, stdout = self.run("astcompile", "--format", "html", self.main_spy)
+        out = self.tmpdir.join("build", "main_astcompile.html")
+        assert out.exists()
+        assert f"Written {out}" in stdout
+
+    def test_astcompile_spy_output(self):
+        src = """
+        def main() -> None:
+            for i in range(3):
+                print(i)
+        """
+        f = self.write("test.spy", src)
+        _, stdout = self.run("astcompile", "--format", "spy", f)
+        # `for` should be desugared to `while` in the astcompiled tree
+        assert "for " not in stdout
+        assert "while " in stdout
+        assert stdout.startswith("def main() -> None:")
+
     def test_execute(self):
         argsets = [["execute"], []]  # No subcommand is equivalent to execute command
         for argset in argsets:
             _, stdout = self.run(*argset, self.main_spy)
             assert stdout == "hello world\n"
+
+    def test_execute_argv(self):
+        src = """
+        def main(argv: list[str]) -> None:
+            for s in argv:
+                print(s, "+") # Separate argv so we're sure we're not just seeing the input on the command line
+        """
+        test = self.write("test.spy", src)
+
+        _, stdout = self.run("execute", test, "1", "--timeit", "2")
+        # --timeit appears in argc and not as flag
+        assert "1 +\n--timeit +\n2" in stdout
+        assert "seconds" not in stdout
+
+        # Default command is execute - make sure the default action also doesn't affect argv
+        _, stdout = self.run(test, "1", "--timeit", "2")
+        # --timeit appears in argc and not as flag
+        assert "1 +\n--timeit +\n2" in stdout
+        assert "seconds" not in stdout
 
     def test_timeit(self):
         _, stdout = self.run("--timeit", self.main_spy)
@@ -159,8 +202,8 @@ class TestMain:
         _, stdout = self.run("redshift", "--linearize", f)
         expected = textwrap.dedent("""
         def foo(a: i32) -> i32:
-            x: i32 = a
-            return x
+            x$0: i32 = a$0
+            return x$0
         """)
         assert stdout.strip() == expected.strip()
 
@@ -194,7 +237,7 @@ class TestMain:
         def factorial(n: i32) -> i32:
             [R]res = [/COLOR][B]1[/COLOR]
             for i in [B]range[/COLOR][R](n)[/COLOR]:
-                res *= ([R]i+[/COLOR][B]1[/COLOR])
+                [R]res *= (i+[/COLOR][B]1[/COLOR][R])[/COLOR]
             return [R]res[/COLOR]
 
         def main() -> None:
@@ -289,6 +332,30 @@ class TestMain:
         out, err = capfd.readouterr()
         assert "hello world" in out
 
+    def test_build_execute_argv(self, capfd):
+        src = """
+        def main(argv: list[str]) -> None:
+            for s in argv:
+                print(s, "+") # Separate argv so we're sure we're not just seeing the input on the command line
+        """
+        f = self.write("test.spy", src)
+        res, stdout = self.run(
+            "build",
+            "-x",
+            "--target", "native",
+            "--build-dir", self.tmpdir,
+            f,
+            "1",
+            "2",
+            "--timeit"
+        )  # fmt: skip
+        # hack hack hack since the stdout of the subprocess isn't captured
+        # by the test runner, check the output from timeit instead
+        out, err = capfd.readouterr()
+        # --timeit should be passed to the program as argv, not a flag for SPy
+        assert "1 +\n2 +\n--timeit" in out
+        assert "seconds" not in out
+
     @pytest.mark.skipif(PYODIDE_EXE is None, reason="./pyodide/venv not found")
     @pytest.mark.pyodide
     def test_execute_pyodide(self):
@@ -337,13 +404,30 @@ class TestMain:
             "Removed" in stdout and ".spyc file(s)" in stdout
         )
 
-    def test_symtable(self):
-        _, stdout = self.run("symtable", self.main_spy)
-        assert "<SymTable 'main::main'" in stdout
+    def test_scopes(self):
+        _, stdout = self.run("scopes", self.main_spy)
+        assert "frameinfo main::main (function):" in stdout
 
     def test_imports(self):
         _, stdout = self.run("imports", self.main_spy)
         assert stdout.startswith("Import tree:")
+
+    def test_fmt_file(self):
+        src = """
+        def main( ) -> None:
+            print("hello world")
+        """
+        src = textwrap.dedent(src)
+        file = self.write("ugly.spy", src)
+
+        self.run("format", file)
+
+        expected = """\
+        def main() -> None:
+            print("hello world")
+        """
+        expected = textwrap.dedent(expected)
+        assert file.read() == expected
 
     def test_interp_exit_code(self):
         src = """
@@ -389,6 +473,17 @@ class TestMain:
         status, out = getstatusoutput(f"{test_exe} aaa bbb ccc")
         assert out.split() == [str(test_exe), "aaa", "bbb", "ccc"]
 
+    def test_compile_argv_unused(self):
+        src = """
+        def main(argv: list[str]) -> i32:
+            return 0
+        """
+        f = self.write("test.spy", src)
+        self.run("build", f)
+        test_exe = self.tmpdir.join("build", "test")
+        status, out = getstatusoutput(f"{test_exe} aaa bbb ccc")
+        assert status == 0
+
     def test_redshift_argv(self):
         src = """
         def main(argv: list[str]) -> None:
@@ -396,7 +491,9 @@ class TestMain:
                 print(a)
         """
         f = self.write("test.spy", src)
-        res = self.runner.invoke(app, ["redshift", "-x", str(f), "aaa", "bbb", "ccc"])
+        res = self.runner.invoke(
+            app, ["redshift", "-x", str(f), "aaa", "bbb", "ccc", "--timeit"]
+        )
         assert res.exit_code == 0
         output = decolorize(res.output)
-        assert output.split() == [str(f), "aaa", "bbb", "ccc"]
+        assert output.split() == [str(f), "aaa", "bbb", "ccc", "--timeit"]

@@ -39,7 +39,7 @@ def w_CALL(vm: "SPyVM", wam_obj: W_MetaArg, *args_wam: W_MetaArg) -> W_OpImpl:
 
     elif w_T is B.w_dynamic:
         w_opspec = W_OpSpec(OP.w_dynamic_call)
-    elif w_call := w_T.lookup_func("__call__"):
+    elif w_call := w_T.lookup_func(vm, "__call__"):
         w_opspec = vm.fast_metacall(w_call, newargs_wam)
 
     return typecheck_opspec(
@@ -62,7 +62,7 @@ def w_CALL_METHOD(
     meth = unwrap_name_maybe(vm, wam_meth)
 
     # if the type provides __call_method__, use it
-    if w_call_method := w_T.lookup_func("__call_method__"):
+    if w_call_method := w_T.lookup_func(vm, "__call_method__"):
         newargs_wam = [wam_obj, wam_meth] + list(args_wam)
         w_opspec = vm.fast_metacall(w_call_method, newargs_wam)
     else:
@@ -88,7 +88,7 @@ def default_callmethod(
     Default logic for call_method: look into the type dict
     """
     w_T = wam_obj.w_static_T
-    if w_func := w_T.dict_w.get(meth):
+    if w_func := w_T.lookup(vm, meth):
         # XXX: this should be turned into a proper exception, but for now we
         # cannot even write a test because we don't any way to inject
         # non-methods in the type dict

@@ -65,7 +65,7 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING, Iterator, Optional
 
 from spy import ast
-from spy.analyze.symtable import Symbol, SymTable
+from spy.analyze.sym import FrameInfo, Scope, Symbol
 from spy.location import Loc
 from spy.util import magic_dispatch
 from spy.vm.b import B
@@ -82,7 +82,7 @@ def linearize(vm: "SPyVM", w_func: W_ASTFunc) -> W_ASTFunc:
     """
     Run the linearize pass on the given already-redshifted function.
     """
-    assert w_func.lowering_stage == "redshift", "linearize must run after redshift"
+    assert w_func.stage == "redshifted", "linearize must run after redshift"
     lin = Linearizer(vm, w_func)
     return lin.linearize()
 
@@ -97,6 +97,9 @@ class Linearizer:
     # append to this list when they need to hoist stmts out of an
     # expression (either from a BlockExpr body, or from spilling)
     hoisted: list[ast.Stmt]
+    # the scope of the Block currently being rewritten; compiler-internal Blocks
+    # synthesized here (break_if, short-circuit if) reuse it
+    cur_scope: Optional[Scope]
 
     def __init__(self, vm: "SPyVM", w_func: W_ASTFunc) -> None:
         self.vm = vm
@@ -105,12 +108,16 @@ class Linearizer:
         self.new_symbols: list[Symbol] = []
         self.tmp_counter = 0
         self.hoisted = []
+        self.cur_scope = None
 
     def linearize(self) -> W_ASTFunc:
         funcdef = self.w_func.funcdef
-        new_body = self.rewrite_body(funcdef.body)
-        new_symtable = self._copy_symtable(funcdef.symtable)
-        new_funcdef = funcdef.replace(body=new_body, symtable=new_symtable)
+        new_body = self.rewrite_block(funcdef.body)
+        new_frameinfo = self._copy_frameinfo(funcdef.frameinfo)
+        new_funcdef = funcdef.replace(
+            stage="linearized", body=new_body, _frameinfo=new_frameinfo
+        )
+        new_funcdef.assert_valid_at("linearized")
 
         assert self.w_func.locals_types_w is not None
         new_locals_types_w = dict(self.w_func.locals_types_w)
@@ -122,7 +129,7 @@ class Linearizer:
             w_functype=self.w_func.w_functype,
             funcdef=new_funcdef,
             defaults_w=self.w_func.defaults_w,
-            lowering_stage="linearize",
+            stage="linearized",
             locals_types_w=new_locals_types_w,
             is_force_inline=self.w_func.is_force_inline,
         )
@@ -132,8 +139,8 @@ class Linearizer:
 
     # ==== helpers ====
 
-    def _copy_symtable(self, symtable: SymTable) -> SymTable:
-        new_st = symtable.copy()
+    def _copy_frameinfo(self, frameinfo: FrameInfo) -> FrameInfo:
+        new_st = frameinfo.copy()
         for sym in self.new_symbols:
             new_st.add(sym)
         return new_st
@@ -168,8 +175,13 @@ class Linearizer:
         self.hoisted.append(
             ast.AssignLocal(
                 loc=loc,
-                target=ast.StrConst(loc, name),
-                value=expr,
+                expr=ast.AssignExprLocal(
+                    loc=loc,
+                    target=ast.StrLiteral(loc, name),
+                    sym=sym,
+                    value=expr,
+                    w_T=expr.w_T,
+                ),
             )
         )
         return ast.NameLocalDirect(loc=loc, sym=sym, w_T=expr.w_T)
@@ -181,7 +193,16 @@ class Linearizer:
         name = f"$v{self.tmp_counter}"
         self.tmp_counter += 1
         self.new_locals[name] = w_T
-        sym = Symbol(name, "var", "auto", "direct", loc=loc, type_loc=loc, level=0)
+        sym = Symbol(
+            name,
+            "var",
+            "auto",
+            "direct",
+            slot_name=name,
+            loc=loc,
+            type_loc=loc,
+            frame_depth=0,
+        )
         self.new_symbols.append(sym)
         return name, sym
 
@@ -192,6 +213,14 @@ class Linearizer:
                 new_stmts = magic_dispatch(self, "rewrite_stmt", stmt)
             new_body += hoisted + new_stmts
         return new_body
+
+    def rewrite_block(self, block: ast.Block) -> ast.Block:
+        outer_scope = self.cur_scope
+        self.cur_scope = block.scope
+        try:
+            return block.replace(body=self.rewrite_body(block.body))
+        finally:
+            self.cur_scope = outer_scope
 
     def rewrite_stmt_Return(self, ret: ast.Return) -> list[ast.Stmt]:
         to_spill = self.mark_to_spill([ret.value])
@@ -211,19 +240,24 @@ class Linearizer:
         return [vardef.replace(value=new_value)]
 
     def rewrite_stmt_AssignLocal(self, assign: ast.AssignLocal) -> list[ast.Stmt]:
-        to_spill = self.mark_to_spill([assign.value])
-        new_value = self.rewrite_expr(assign.value, to_spill)
-        return [assign.replace(value=new_value)]
+        to_spill = self.mark_to_spill([assign.expr.value])
+        new_value = self.rewrite_expr(assign.expr.value, to_spill)
+        return [assign.replace(expr=assign.expr.replace(value=new_value))]
 
-    def rewrite_stmt_UnpackAssign(self, assign: ast.UnpackAssign) -> list[ast.Stmt]:
+    def rewrite_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
         to_spill = self.mark_to_spill([assign.value])
         new_value = self.rewrite_expr(assign.value, to_spill)
         return [assign.replace(value=new_value)]
 
     def rewrite_stmt_AssignCell(self, assign: ast.AssignCell) -> list[ast.Stmt]:
-        to_spill = self.mark_to_spill([assign.value])
-        new_value = self.rewrite_expr(assign.value, to_spill)
-        return [assign.replace(value=new_value)]
+        to_spill = self.mark_to_spill([assign.expr.value])
+        new_value = self.rewrite_expr(assign.expr.value, to_spill)
+        return [assign.replace(expr=assign.expr.replace(value=new_value))]
+
+    def rewrite_stmt_AssignUnpack(self, unpack: ast.AssignUnpack) -> list[ast.Stmt]:
+        to_spill = self.mark_to_spill([unpack.value])
+        new_value = self.rewrite_expr(unpack.value, to_spill)
+        return [unpack.replace(value=new_value)]
 
     def rewrite_stmt_Pass(self, stmt: ast.Pass) -> list[ast.Stmt]:
         return [stmt]
@@ -260,13 +294,13 @@ class Linearizer:
             to_spill = self.mark_to_spill([while_node.test])
             new_test = self.rewrite_expr(while_node.test, to_spill)
 
-        new_body = self.rewrite_body(while_node.body)
+        new_body = self.rewrite_block(while_node.body)
 
         if not test_hoisted:
             return [while_node.replace(test=new_test, body=new_body)]
 
         loc = while_node.loc
-        true_const = ast.Constant(loc=loc, value=True, w_T=B.w_bool)
+        true_const = ast.Const(loc=loc, w_val=B.w_True, w_T=B.w_bool)
         not_test = ast.Call(
             loc=loc,
             func=ast.FQNConst(loc=loc, fqn=OP.w_bool_not.fqn, w_T=B.w_dynamic),
@@ -276,21 +310,24 @@ class Linearizer:
         break_if = ast.If(
             loc=loc,
             test=not_test,
-            then_body=[ast.Break(loc=loc)],
-            else_body=[],
+            then=ast.Block(
+                loc=loc,
+                body=[ast.Break(loc=loc)],
+                scope=new_body.scope,
+            ),
+            else_=ast.Block(loc=loc, body=[], scope=new_body.scope),
         )
-        return [
-            while_node.replace(
-                test=true_const, body=test_hoisted + [break_if] + new_body
-            )
-        ]
+        new_while_body = new_body.replace(
+            body=test_hoisted + [break_if] + new_body.body
+        )
+        return [while_node.replace(test=true_const, body=new_while_body)]
 
     def rewrite_stmt_If(self, if_node: ast.If) -> list[ast.Stmt]:
         to_spill = self.mark_to_spill([if_node.test])
         new_test = self.rewrite_expr(if_node.test, to_spill)
-        new_then = self.rewrite_body(if_node.then_body)
-        new_else = self.rewrite_body(if_node.else_body)
-        return [if_node.replace(test=new_test, then_body=new_then, else_body=new_else)]
+        new_then = self.rewrite_block(if_node.then)
+        new_else = self.rewrite_block(if_node.else_)
+        return [if_node.replace(test=new_test, then=new_then, else_=new_else)]
 
     # ==== pass 1: mark ====
     #
@@ -301,13 +338,19 @@ class Linearizer:
     #   - pure: no side effects, no dependence on mutable state; never spilled.
     #
     #   - names: trivially side-effect free, but they are not pure because earlier calls
-    #     might modifiy their value. The gets added to `pending_spills`
+    #     might modify their value. The gets added to `pending_spills`
     #
     #   - side-effecting (impure Call, or anything not whitelisted): acts
     #     as a sequence point. Promote ``pending_spills`` into ``to_spill``
     #     and mark self for spill.
 
-    PURE_EXPRS = (ast.Constant, ast.StrConst, ast.FQNConst, ast.LocConst)
+    PURE_EXPRS = (
+        ast.Const,
+        ast.Literal,
+        ast.StrLiteral,
+        ast.BytesLiteral,
+        ast.FQNConst,
+    )
     NAME_EXPRS = (ast.NameLocalDirect, ast.NameOuterDirect, ast.NameOuterCell)
 
     def is_pure(self, expr: ast.Expr) -> bool:
@@ -401,15 +444,25 @@ class Linearizer:
         loc = op.loc
         assert op.w_T is not None
         name, sym = self.fresh_tmp(op.w_T, loc)
-        target = ast.StrConst(loc, name)
-        assign_rhs = ast.AssignLocal(loc=loc, target=target, value=new_right)
+        target = ast.StrLiteral(loc, name)
+        assign_rhs = ast.AssignLocal(
+            loc=loc,
+            expr=ast.AssignExprLocal(
+                loc=loc, target=target, sym=sym, value=new_right, w_T=op.w_T
+            ),
+        )
 
         # new_left is used as both the if-test and the value for the
         # short-circuit branch; spill it if needed so it is only evaluated once.
         # Names are safe to reuse without spilling (reading a name is not a call).
         if not isinstance(new_left, self.NAME_EXPRS):
             new_left = self.spill(new_left)
-        assign_left = ast.AssignLocal(loc=loc, target=target, value=new_left)
+        assign_left = ast.AssignLocal(
+            loc=loc,
+            expr=ast.AssignExprLocal(
+                loc=loc, target=target, sym=sym, value=new_left, w_T=op.w_T
+            ),
+        )
 
         if kind == "and":
             then_body: list[ast.Stmt] = rhs_hoisted + [assign_rhs]
@@ -419,7 +472,10 @@ class Linearizer:
             else_body = rhs_hoisted + [assign_rhs]
 
         if_stmt = ast.If(
-            loc=loc, test=new_left, then_body=then_body, else_body=else_body
+            loc=loc,
+            test=new_left,
+            then=ast.Block(loc=loc, body=then_body, scope=self.cur_scope),
+            else_=ast.Block(loc=loc, body=else_body, scope=self.cur_scope),
         )
         self.hoisted.append(if_stmt)
         return ast.NameLocalDirect(loc=loc, sym=sym, w_T=op.w_T)
@@ -473,17 +529,20 @@ class Linearizer:
     ) -> ast.Expr:
         return name
 
-    def rewrite_expr_StrConst(
-        self, const: ast.StrConst, to_spill: set[ast.Expr]
+    def rewrite_expr_StrLiteral(
+        self, const: ast.StrLiteral, to_spill: set[ast.Expr]
     ) -> ast.Expr:
         return const
 
-    def rewrite_expr_Constant(
-        self, const: ast.Constant, to_spill: set[ast.Expr]
+    def rewrite_expr_BytesLiteral(
+        self, const: ast.BytesLiteral, to_spill: set[ast.Expr]
     ) -> ast.Expr:
         return const
 
-    def rewrite_expr_LocConst(
-        self, const: ast.LocConst, to_spill: set[ast.Expr]
-    ) -> ast.Expr:
+    def rewrite_expr_Const(self, const: ast.Const, to_spill: set[ast.Expr]) -> ast.Expr:
         return const
+
+    def rewrite_expr_Literal(
+        self, const: ast.Literal, to_spill: set[ast.Expr]
+    ) -> ast.Expr:
+        assert False, "ast.Literal should not appear after redshift"

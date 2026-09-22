@@ -19,7 +19,7 @@ def w_NEG(vm: "SPyVM", wam_v: W_MetaArg) -> W_OpImpl:
     w_vtype = wam_v.w_static_T
     if w_opspec := MM.get_unary_opspec("-", wam_v):
         pass
-    elif w_neg := w_vtype.lookup_func("__neg__"):
+    elif w_neg := w_vtype.lookup_func(vm, "__neg__"):
         w_opspec = vm.fast_metacall(w_neg, [wam_v])
     else:
         w_opspec = W_OpSpec.NULL
@@ -43,6 +43,7 @@ def w_NOT(vm: "SPyVM", wam_v: W_MetaArg) -> W_OpImpl:
 
 MM.register("-", "i8", None, OP.w_i8_neg)
 MM.register("-", "i32", None, OP.w_i32_neg)
+MM.register("-", "i64", None, OP.w_i64_neg)
 MM.register("-", "f64", None, OP.w_f64_neg)
 MM.register("-", "f32", None, OP.w_f32_neg)
 MM.register("-", "complex128", None, OP.w_complex128_neg)

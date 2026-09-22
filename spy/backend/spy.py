@@ -1,19 +1,29 @@
 import re
-from typing import Literal, Optional, TypeGuard
+from typing import TYPE_CHECKING, Literal, Optional, TypeGuard
+
+# fixedint/__init__.pyi overrides FixedInt and mypy thinks it's a function;
+# convince it back that it's a type (see also spy/vm/primitive.py)
+if TYPE_CHECKING:
+    from fixedint import _FixedInt as FixedInt
+else:
+    from fixedint import FixedInt
 
 from spy import ast
-from spy.analyze.scope import SymTable
+from spy.analyze.sym import FrameInfo
 from spy.fqn import FQN
+from spy.parser import Parser
 from spy.textbuilder import TextBuilder
 from spy.util import magic_dispatch
 from spy.vm.b import TYPES, B
 from spy.vm.exc import W_Exception
 from spy.vm.function import W_ASTFunc
 from spy.vm.modules.__spy__.interp_list import W_InterpList
+from spy.vm.modules.types import W_Loc as W_Loc
 from spy.vm.object import W_Object, W_Type
 from spy.vm.vm import SPyVM
 
 FQN_FORMAT = Literal["full", "short"]
+AST_FORMAT = Literal["full", "short"]
 
 # Regex pattern for valid identifiers (alphanumeric + underscore)
 VALID_IDENTIFIER = re.compile(r"^[a-zA-Z0-9_]+$")
@@ -26,9 +36,16 @@ class SPyBackend:
     Mostly used for testing.
     """
 
-    def __init__(self, vm: SPyVM, *, fqn_format: FQN_FORMAT = "short") -> None:
+    def __init__(
+        self,
+        vm: SPyVM,
+        *,
+        fqn_format: FQN_FORMAT = "short",
+        ast_format: AST_FORMAT = "short",
+    ) -> None:
         self.vm = vm
         self.fqn_format = fqn_format
+        self.ast_format = ast_format
         self.out = TextBuilder(use_colors=False)
         self.w = self.out.w
         self.wl = self.out.wl
@@ -36,7 +53,7 @@ class SPyBackend:
         self.w_func: W_ASTFunc = None  # type: ignore
         self.vars_declared: set[str] = None  # type: ignore
         self.modname = ""  # set by dump_mod
-        self.scope_stack: list[SymTable] = []
+        self.scope_stack: list[FrameInfo] = []
 
     def dump_mod(self, modname: str) -> str:
         """
@@ -68,7 +85,8 @@ class SPyBackend:
             ):
                 aliases.append((attr, w_obj))
         for attr, w_obj in aliases:
-            self.out.wl(f"{attr} = `{w_obj.fqn}`")
+            fqn_str = w_obj.fqn.human_name(self.vm)
+            self.out.wl(f"{attr} = `{fqn_str}`")
         if aliases:
             self.out.wl()
 
@@ -109,10 +127,10 @@ class SPyBackend:
             ret = "None"  # special case: emit '-> None' instead of '-> NoneType'
         else:
             ret = self.fmt_w_obj(w_functype.w_restype)
-        self.scope_stack.append(w_func.funcdef.symtable)
+        self.scope_stack.append(w_func.funcdef.frameinfo)
         self.wl(f"def {name}({params}) -> {ret}:")
         with self.out.indent():
-            for stmt in w_func.funcdef.body:
+            for stmt in w_func.funcdef.body.body:
                 self.emit_stmt(stmt)
         self.scope_stack.pop()
 
@@ -135,7 +153,7 @@ class SPyBackend:
         if isinstance(w_obj, W_Type) and issubclass(w_obj.pyclass, W_InterpList):
             # this is a ugly special case for now, we need to find a better
             # solution
-            return w_obj.fqn.human_name
+            return w_obj.fqn.human_name(self.vm)
         #
         # this assumes that w_obj has a valid FQN
         fqn = self.vm.reverse_lookup_global(w_obj)
@@ -146,7 +164,7 @@ class SPyBackend:
         if self.fqn_format == "full":
             name = str(fqn)
         elif self.fqn_format == "short":
-            name = fqn.human_name  # don't show builtins::
+            name = fqn.human_name(self.vm)  # don't show builtins::
         else:
             assert False
         #
@@ -166,19 +184,65 @@ class SPyBackend:
     def fmt_expr(self, expr: ast.Expr) -> str:
         return magic_dispatch(self, "fmt_expr", expr)
 
+    def is_operator_call(self, expr: ast.Expr) -> TypeGuard[ast.Call]:
+        return (
+            isinstance(expr, ast.Call)
+            and isinstance(expr.func, ast.FQNConst)
+            and (expr.func.fqn in self.FQN2BinOp or expr.func.fqn in self.FQN2CmpOp)
+        )
+
+    def xform_call_binop(self, call: ast.Call) -> ast.Expr:
+        """
+        Convert an operator::* call into the equivalent BinOp/CmpOp.
+
+        Operands that are themselves operator::* calls are converted recursively.
+        Non-call nodes are not explored.
+        """
+        if not self.is_operator_call(call):
+            return call
+        assert isinstance(call.func, ast.FQNConst)
+        left, right = call.args
+        if self.is_operator_call(left):
+            left = self.xform_call_binop(left)
+        if self.is_operator_call(right):
+            right = self.xform_call_binop(right)
+
+        fqn = call.func.fqn
+        if fqn in self.FQN2BinOp:
+            return ast.BinOp(call.loc, self.FQN2BinOp[fqn], left, right)
+        elif fqn in self.FQN2CmpOp:
+            return ast.CmpOp(call.loc, self.FQN2CmpOp[fqn], left, right)
+        else:
+            raise TypeError("Unexpected operator call", fqn)
+
     # declarations
 
     def emit_decl_GlobalFuncDef(self, decl: ast.GlobalFuncDef) -> None:
         self.emit_stmt(decl.funcdef)
 
+    def emit_decl_GlobalVarDef(self, decl: ast.GlobalVarDef) -> None:
+        vardef = decl.vardef
+        name = vardef.name.value
+        has_type = not isinstance(vardef.type, ast.Auto)
+        t = self.fmt_expr(vardef.type) if has_type else ""
+        if vardef.value is not None:
+            v = self.fmt_expr(vardef.value)
+            if has_type:
+                self.wl(f"var {name}: {t} = {v}")
+            else:
+                self.wl(f"var {name} = {v}")
+        else:
+            self.wl(f"var {name}: {t}")
+
     # statements
 
     def get_vartype_to_declare_maybe(self, varname: str) -> Optional[str]:
-        symtable = self.scope_stack[-1]
-        sym = symtable.lookup(varname)
+        frameinfo = self.scope_stack[-1]
+        sym = frameinfo.lookup(varname)
         if (
-            self.w_func.lowering_stage != "source"
-            and sym.level == 0
+            self.w_func is not None
+            and self.w_func.stage not in ("parsed", "astcompiled")
+            and sym.frame_depth == 0
             and varname not in self.vars_declared
         ):
             assert self.w_func.locals_types_w is not None
@@ -197,21 +261,21 @@ class SPyBackend:
             paramlist.append(f"{n}: {t}")
         params = ", ".join(paramlist)
         ret = self.fmt_expr(funcdef.return_type)
-        self.scope_stack.append(funcdef.symtable)
+        self.scope_stack.append(funcdef.frameinfo)
         self.wl(f"def {name}({params}) -> {ret}:")
         with self.out.indent():
-            for stmt in funcdef.body:
+            for stmt in funcdef.body.body:
                 self.emit_stmt(stmt)
         self.scope_stack.pop()
 
     def emit_stmt_ClassDef(self, classdef: ast.ClassDef) -> None:
         assert classdef.kind == "struct", "IMPLEMENT ME"
         name = classdef.name
-        self.scope_stack.append(classdef.symtable)
+        self.scope_stack.append(classdef.frameinfo)
         self.wl("@struct")
         self.wl(f"class {name}:")
         with self.out.indent():
-            for stmt in classdef.body:
+            for stmt in classdef.body.body:
                 self.emit_stmt(stmt)
         self.scope_stack.pop()
 
@@ -229,27 +293,52 @@ class SPyBackend:
         self.wl(f"return {v}")
 
     def emit_stmt_Assign(self, assign: ast.Assign) -> None:
-        varname = assign.target.value
-        t = self.get_vartype_to_declare_maybe(varname)
-        v = self.fmt_expr(assign.value)
-        if t is not None:
-            self.wl(f"{varname}: {t} = {v}")
+        if isinstance(assign.target, ast.SingleTarget):
+            varname = assign.target.name.value
+            t = self.get_vartype_to_declare_maybe(varname)
+            v = self.fmt_expr(assign.value)
+            if t is not None:
+                self.wl(f"{varname}: {t} = {v}")
+            else:
+                self.wl(f"{varname} = {v}")
         else:
-            self.wl(f"{varname} = {v}")
+            unpack = assign.target
+            assert isinstance(unpack, ast.UnpackTarget)
+            names = []
+            for tt in unpack.targets:
+                assert isinstance(tt, ast.SingleTarget)
+                names.append(tt.name.value)
+            targets = ", ".join(names)
+            v = self.fmt_expr(assign.value)
+            self.wl(f"{targets} = {v}")
 
     def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
-        varname = assign.target.value
+        varname = assign.expr.sym.slot_name
         t = self.get_vartype_to_declare_maybe(varname)
-        v = self.fmt_expr(assign.value)
-        if t is not None:
+        v = self.fmt_expr(assign.expr.value)
+        if self.ast_format == "full":
+            self.wl(f"AssignLocal({varname} := {v})")
+        elif t is not None:
             self.wl(f"{varname}: {t} = {v}")
         else:
             self.wl(f"{varname} = {v}")
 
-    def emit_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
-        varname = self.fmt_fqn(assign.target_fqn)
+    def emit_stmt_AssignUnpack(self, assign: ast.AssignUnpack) -> None:
+        targets = ", ".join(t.value for t in assign.targets)
         v = self.fmt_expr(assign.value)
-        self.wl(f"{varname} = {v}")
+        self.wl(f"{targets} = {v}")
+
+    def emit_stmt_AssignCell(self, assign: ast.AssignCell) -> None:
+        varname = (
+            self.fmt_fqn(assign.expr.target_fqn)
+            if assign.expr.target_fqn is not None
+            else assign.expr.sym.slot_name
+        )
+        v = self.fmt_expr(assign.expr.value)
+        if self.ast_format == "full":
+            self.wl(f"AssignCell({varname} := {v})")
+        else:
+            self.wl(f"{varname} = {v}")
 
     def emit_stmt_AugAssign(self, node: ast.AugAssign) -> None:
         varname = node.target.value
@@ -257,16 +346,17 @@ class SPyBackend:
         v = self.fmt_expr(node.value)
         self.wl(f"{varname} {op}= {v}")
 
-    def emit_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> None:
-        targets = ", ".join([t.value for t in unpack.targets])
-        v = self.fmt_expr(unpack.value)
-        self.wl(f"{targets} = {v}")
-
     def emit_stmt_SetAttr(self, node: ast.SetAttr) -> None:
         t = self.fmt_expr(node.target)
         a = node.attr.value
         v = self.fmt_expr(node.value)
         self.wl(f"{t}.{a} = {v}")
+
+    def emit_stmt_AugSetAttr(self, node: ast.AugSetAttr) -> None:
+        t = self.fmt_expr(node.target)
+        a = node.attr.value
+        v = self.fmt_expr(node.value)
+        self.wl(f"{t}.{a} {node.op}= {v}")
 
     def emit_stmt_SetItem(self, node: ast.SetItem) -> None:
         t = self.fmt_expr(node.target)
@@ -275,13 +365,22 @@ class SPyBackend:
         v = self.fmt_expr(node.value)
         self.wl(f"{t}[{args}] = {v}")
 
+    def emit_stmt_AugSetItem(self, node: ast.AugSetItem) -> None:
+        t = self.fmt_expr(node.target)
+        arglist = [self.fmt_expr(arg) for arg in node.args]
+        args = ", ".join(arglist)
+        v = self.fmt_expr(node.value)
+        self.wl(f"{t}[{args}] {node.op}= {v}")
+
     def emit_stmt_VarDef(self, vardef: ast.VarDef) -> None:
-        varname = vardef.name.value
+        varname = vardef.sym.slot_name
         is_auto = isinstance(vardef.type, ast.Auto)
         if is_auto:
-            assert vardef.value
-            v = self.fmt_expr(vardef.value)
-            self.wl(f"{varname} = {v}")
+            if vardef.value is None:
+                self.wl(f"{varname}: auto")
+            else:
+                v = self.fmt_expr(vardef.value)
+                self.wl(f"{varname} = {v}")
         else:
             t = self.fmt_expr(vardef.type)
             if vardef.value:
@@ -299,7 +398,7 @@ class SPyBackend:
         test = self.fmt_expr(while_node.test)
         self.wl(f"while {test}:")
         with self.out.indent():
-            for stmt in while_node.body:
+            for stmt in while_node.body.body:
                 self.emit_stmt(stmt)
 
     def emit_stmt_For(self, for_node: ast.For) -> None:
@@ -307,19 +406,19 @@ class SPyBackend:
         iter_expr = self.fmt_expr(for_node.iter)
         self.wl(f"for {target} in {iter_expr}:")
         with self.out.indent():
-            for stmt in for_node.body:
+            for stmt in for_node.body.body:
                 self.emit_stmt(stmt)
 
     def emit_stmt_If(self, if_node: ast.If) -> None:
         test = self.fmt_expr(if_node.test)
         self.wl(f"if {test}:")
         with self.out.indent():
-            for stmt in if_node.then_body:
+            for stmt in if_node.then.body:
                 self.emit_stmt(stmt)
-        if if_node.else_body:
+        if if_node.else_.body:
             self.wl("else:")
             with self.out.indent():
-                for stmt in if_node.else_body:
+                for stmt in if_node.else_.body:
                     self.emit_stmt(stmt)
 
     def emit_stmt_Raise(self, raise_node: ast.Raise) -> None:
@@ -340,14 +439,53 @@ class SPyBackend:
     def fmt_expr_Auto(self, node: ast.Auto) -> str:
         # this should never happen when formatting a module using the SPy backend
         # (because ast.Auto is special-cased by emit_stmt_VarDef, but it happens when
-        # using the HTML backend (because it inconditionally formats ALL the ast.Expr,
+        # using the HTML backend (because it unconditionally formats ALL the ast.Expr,
         # including ast.Auto).
         return ""
 
-    def fmt_expr_Constant(self, const: ast.Constant) -> str:
+    def fmt_expr_Const(self, const: ast.Const) -> str:
+        vm = self.vm
+        w_T = const.w_T
+        w_val = const.w_val
+        if w_T is B.w_bool:
+            return repr(vm.unwrap_bool(w_val))
+        elif w_T is B.w_i32:
+            return repr(int(vm.unwrap_i32(w_val)))
+        elif w_T is B.w_f64:
+            return repr(float(vm.unwrap_f64(w_val)))
+        elif w_T is B.w_f32:
+            return f"f32({float(vm.unwrap_f32(w_val))})"
+        elif w_T is B.w_complex128:
+            return repr(vm.unwrap_complex128(w_val))
+        elif w_T in (B.w_i8, B.w_u8, B.w_u32, B.w_i64, B.w_u64):
+            val = vm.unwrap(w_val)
+            prefix = self.IPREFIX[type(val)]
+            return f"{prefix}({int(val)})"
+        elif w_T is TYPES.w_NoneType:
+            assert w_val is B.w_None
+            return "None"
+        elif w_T is TYPES.w_Loc:
+            assert isinstance(w_val, W_Loc)
+            r = w_val.loc._repr()
+            return f"Loc('{r}')"
+        else:
+            raise NotImplementedError(f"WIP: {w_T}")
+
+    IPREFIX = {cls: name for name, cls in Parser.ITYPES.items()}
+
+    def fmt_expr_Literal(self, const: ast.Literal) -> str:
+        # for prefixed literals the value is a fixedint, whose repr is e.g.
+        # "Int32(42)"; emit the SPy source form i32(42) instead
+        val = const.value
+        if isinstance(val, FixedInt):
+            prefix = self.IPREFIX[type(val)]
+            return f"{prefix}({int(val)})"
+        return repr(val)
+
+    def fmt_expr_StrLiteral(self, const: ast.StrLiteral) -> str:
         return repr(const.value)
 
-    def fmt_expr_StrConst(self, const: ast.StrConst) -> str:
+    def fmt_expr_BytesLiteral(self, const: ast.BytesLiteral) -> str:
         return repr(const.value)
 
     def fmt_expr_FQNConst(self, const: ast.FQNConst) -> str:
@@ -361,25 +499,57 @@ class SPyBackend:
             return f"{t}({m!r})"
         return self.fmt_fqn(const.fqn)
 
-    def fmt_expr_LocConst(self, const: ast.LocConst) -> str:
-        r = const.value._repr()
-        return f"Loc('{r}')"
-
     def fmt_expr_Name(self, name: ast.Name) -> str:
         return name.id
 
+    def fmt_expr_PoisonExpr(self, node: ast.PoisonExpr) -> str:
+        if self.ast_format == "full":
+            return f"PoisonExpr({node.err.w_exc.message!r})"
+        # short mode: re-emit the original offending source text
+        return node.loc.get_src()
+
+    def fmt_expr_NameImportRef(self, name: ast.NameImportRef) -> str:
+        if self.ast_format == "full":
+            return f"ImportRef({name.sym.slot_name})"
+        return name.sym.slot_name
+
     def fmt_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> str:
-        return name.sym.name
+        if self.ast_format == "full":
+            return f"LocalDirect({name.sym.slot_name})"
+        return name.sym.slot_name
+
+    def fmt_expr_NameLocalCell(self, name: ast.NameLocalCell) -> str:
+        if self.ast_format == "full":
+            return f"LocalCell({name.sym.slot_name})"
+        return name.sym.slot_name
+
+    def fmt_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> str:
+        if self.ast_format == "full":
+            return f"OuterDirect({name.sym.slot_name})"
+        return name.sym.slot_name
 
     def fmt_expr_NameOuterCell(self, name: ast.NameOuterCell) -> str:
-        return self.fmt_fqn(name.fqn)
+        if name.fqn is not None:
+            varname = self.fmt_fqn(name.fqn)
+        else:
+            varname = name.sym.slot_name
+        if self.ast_format == "full":
+            return f"OuterCell({varname})"
+        return varname
 
     def fmt_expr_BinOp(self, binop: ast.BinOp) -> str:
         l = self.fmt_expr(binop.left)
         r = self.fmt_expr(binop.right)
+        # a same-precedence operand on the side opposite the associativity
+        # would be regrouped if we printed it without parens (e.g. `a - (b - c)`
+        # must not become `a - b - c`), so we parenthesize it.
         if binop.left.precedence < binop.precedence:
             l = f"({l})"
+        elif binop.left.precedence == binop.precedence and binop.associativity == "R":
+            l = f"({l})"
         if binop.right.precedence < binop.precedence:
+            r = f"({r})"
+        elif binop.right.precedence == binop.precedence and binop.associativity == "L":
             r = f"({r})"
         return f"{l} {binop.op} {r}"
 
@@ -434,11 +604,15 @@ class SPyBackend:
 
     def fmt_expr_AssignExprLocal(self, assignexpr: ast.AssignExprLocal) -> str:
         return self._fmt_assignexpr(
-            assignexpr.target.value, assignexpr.value, assignexpr.precedence
+            assignexpr.sym.slot_name, assignexpr.value, assignexpr.precedence
         )
 
     def fmt_expr_AssignExprCell(self, assignexpr: ast.AssignExprCell) -> str:
-        target = self.fmt_fqn(assignexpr.target_fqn)
+        target = (
+            self.fmt_fqn(assignexpr.target_fqn)
+            if assignexpr.target_fqn is not None
+            else assignexpr.sym.slot_name
+        )
         return self._fmt_assignexpr(target, assignexpr.value, assignexpr.precedence)
 
     def _fmt_assignexpr(
@@ -484,30 +658,22 @@ class SPyBackend:
             return None
         fqn = call.func.fqn
 
-        if fqn in self.FQN2BinOp:
+        if self.is_operator_call(call):
             # `operator::i32_add`(a, b) --> "a + b"
-            assert len(call.args) == 2
-            op = self.FQN2BinOp[fqn]
-            binop = ast.BinOp(call.loc, op, call.args[0], call.args[1])
-            return self.fmt_expr_BinOp(binop)
-        elif fqn in self.FQN2CmpOp:
-            assert len(call.args) == 2
-            op = self.FQN2CmpOp[fqn]
-            cmpop = ast.CmpOp(call.loc, op, call.args[0], call.args[1])
-            return self.fmt_expr_CmpOp(cmpop)
+            return self.fmt_expr(self.xform_call_binop(call))
         elif fqn == FQN("operator::raise"):
             # `operator::raise('TypeError', ...)` -->."raise TypeError(...)"
             assert len(call.args) == 4
             etype, msg, fname, lineno = call.args
-            assert isinstance(etype, ast.StrConst)
-            assert isinstance(msg, ast.StrConst)
-            assert isinstance(fname, ast.StrConst)
-            assert isinstance(lineno, ast.Constant)
+            assert isinstance(etype, ast.StrLiteral)
+            assert isinstance(msg, ast.StrLiteral)
+            assert isinstance(fname, ast.StrLiteral)
+            assert isinstance(lineno, ast.Const)
             E = etype.value
             m = self.fmt_expr(msg)
             # show only the last part of the filename
             f = fname.value.split("/")[-1]
-            l = lineno.value
+            l = int(self.vm.unwrap_i32(lineno.w_val))
             if m == "''":
                 return f"raise {etype.value} # /.../{f}:{l}"
             else:

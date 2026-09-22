@@ -270,6 +270,8 @@ def colors_coordinates(ast_module, ast_color_map) -> dict[int, list[tuple[str, s
     ast_nodes = list(ast_module.walk())
     coords = defaultdict(list)
     for node in ast_nodes:
+        if not node.loc.colorize:
+            continue
         col_range = f"{node.loc.col_start}:{node.loc.col_end - 1}"
         if ast_color_map.get(node):
             # collect just the lines that needs to be colored

@@ -72,6 +72,7 @@ jobs:
 
       - name: Commit artifact
         working-directory: /tmp/spy-docs
+        continue-on-error: true
         run: |
           git add pr-preview
           git commit -m "Added preview build for PR ${{ steps.pr.outputs.pr_number }}"

@@ -1,0 +1,19 @@
+=== str ===
+Hello, world!
+HelloHelloHello
+5
+e
+True
+True
+HELLO
+True
+Herro
+43
+=== bytes ===
+5
+72
+b'Hello, world!'
+b'HelloHello'
+True
+True
+b'hi\nbye'

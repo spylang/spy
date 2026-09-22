@@ -4,14 +4,13 @@ from typing import (
     Any,
     Callable,
     Iterator,
-    Literal,
     Optional,
     Self,
     Sequence,
 )
 
 from spy import ast
-from spy.ast import Color, FuncKind, FuncParamKind
+from spy.ast import Color, FuncKind, FuncParamKind, LoweringStage
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.location import Loc
@@ -35,7 +34,7 @@ class LocalVar:
     varname: str
     decl_loc: Loc
     color: Color
-    w_T: W_Type
+    w_T: Optional[W_Type]  # None means "auto, type not yet fixed"
     w_val: Optional[W_Object] = None
 
 
@@ -130,7 +129,7 @@ class W_FuncType(W_Type):
         w_functype.color = color
         w_functype.kind = kind
 
-        # print(fqn.human_name)
+        # print(fqn.debug_human_name)
         _CACHE[key] = w_functype
         return w_functype
 
@@ -175,7 +174,7 @@ class W_FuncType(W_Type):
     def arity(self) -> int:
         """
         Return the *minimum* number of arguments expected by the function.
-        In case of varargs, it's the number of non-varargs paramenters.
+        In case of varargs, it's the number of non-varargs parameters.
         """
         if self.has_varargs:
             return len(self.params) - 1
@@ -212,6 +211,7 @@ class W_Func(W_Object):
     w_functype: W_FuncType
     fqn: FQN
     def_loc: Loc
+    w_origin: Optional["W_Object"]
 
     @property
     def color(self) -> Color:
@@ -240,7 +240,43 @@ class W_Func(W_Object):
 
     _pure_fqns = {
         FQN("builtins::type::__new__"),
+        FQN("_str::methods::__add__"),
+        FQN("_str::methods::__mul__"),
+        FQN("_str::methods::__getitem__"),
+        FQN("_str::methods::__len__"),
+        FQN("_str::methods::__repr__"),
+        FQN("_str::methods::replace"),
     }
+
+    def compute_inner_ns(self, args_w: Sequence[W_Object]) -> FQN:
+        """
+        Try to generate a meaningful namespace for blue functions. The
+        idea is that if a blue func takes type parameters, we want to include
+        them in the qualifiers. E.g.:
+
+            @blue
+            def add(T):
+                def impl(x: T, y: T) -> T:
+                    return x + y
+                return impl
+
+            add(i32) # ==> add[i32]::impl
+            add(str) # ==> add[str]::impl
+
+        At the moment, the implementation is a bit ad-hoc and hackish, as it
+        considers ONLY type params as qualifiers, and ignores everything else.
+
+        Note that this is more about readability than correctness: in case of
+        blue params which are ignored, we might get clashing namespaces, but
+        this is still ok, because uniqueness of FQNs is guaranteed by
+        vm.get_unique_FQN().
+
+        This is fine as long as we don't support separate compilation. For sep
+        comp, we will probably need a deterministic and reproducible way to
+        compute unique FQNs out of a blue call.
+        """
+        quals = [w_arg.fqn for w_arg in args_w if isinstance(w_arg, W_Type)]
+        return self.fqn.with_qualifiers(quals)
 
     def spy_get_w_type(self, vm: "SPyVM") -> W_Type:
         return self.w_functype
@@ -316,9 +352,9 @@ class W_Func(W_Object):
 
         if not isinstance(w_opspec, W_OpSpec):
             w_T = vm.dynamic_type(w_opspec)
+            got = w_T.fqn.human_name(vm)
             msg = (
-                "wrong metafunc return type: expected `operator::OpSpec`, "
-                + f"got `{w_T.fqn.human_name}`"
+                f"wrong metafunc return type: expected `operator::OpSpec`, got `{got}`"
             )
             err = SPyError("W_TypeError", msg)
             err.add("error", "this is a metafunc", wam_func.loc)
@@ -335,13 +371,11 @@ class W_Func(W_Object):
         return w_opspec
 
 
-# =========== W_ASTFunc and compilation stages ========
+# =========== W_ASTFunc and compilation passes ========
 #
-# W_ASTFunc start at the "source" stage. The various compilation passes create new
-# versions of the function. Once a function has been lowered it becomes "invalid", and
-# we set the `w_replaced_by` field.
-
-LoweringStage = Literal["source", "redshift_in_progress", "redshift", "linearize"]
+# Each W_ASTFunc is created by a certain pass and has corresponding stage. The
+# various passes create new versions of the function. Once a function has been lowered
+# it becomes "invalid", and we set the `w_replaced_by` field.
 
 
 class W_ASTFunc(W_Func):
@@ -354,7 +388,7 @@ class W_ASTFunc(W_Func):
 
     # if the function has been lowered, this contains the NEW function, and the current
     # one becomes invalid
-    lowering_stage: LoweringStage
+    stage: LoweringStage
     w_replaced_by: Optional["W_ASTFunc"]
 
     # set by the @force_inline decorator
@@ -368,7 +402,7 @@ class W_ASTFunc(W_Func):
         closure: CLOSURE,
         defaults_w: list[W_Object],
         *,
-        lowering_stage: LoweringStage,
+        stage: LoweringStage,
         locals_types_w: Optional[dict[str, W_Type]] = None,
         is_force_inline: bool = False,
     ) -> None:
@@ -379,12 +413,17 @@ class W_ASTFunc(W_Func):
         self.closure = closure
         self.defaults_w = defaults_w
         self.locals_types_w = locals_types_w
-        self.lowering_stage = lowering_stage
         self.w_replaced_by = None
         self.is_force_inline = is_force_inline
+        self.w_origin = None
+
+        # stage is almost always the same as funcdef.stage. The only time it's different
+        # is when we temporarily set it to "redshiting".
+        assert stage == funcdef.stage
+        self.stage = stage
 
         # sanity check
-        if lowering_stage in ("source", "redshift_in_progress"):
+        if self.stage in ("parsed", "astcompiled", "redshifting"):
             assert self.locals_types_w is None
         else:
             assert self.locals_types_w is not None
@@ -411,9 +450,9 @@ class W_ASTFunc(W_Func):
         extras = []
         if self.color == "blue":
             extras.append("blue")
-        stage = self.lowering_stage
-        if stage not in ("source", "redshift_in_progress"):
-            extras.append(stage)
+        state = self.stage
+        if state not in ("parsed", "redshifting"):
+            extras.append(state)
         if not self.is_valid:
             extras.append("invalid")
 
@@ -482,6 +521,7 @@ class W_BuiltinFunc(W_Func):
         # bluecache
         self._pyfunc = pyfunc
         self._is_pure = is_pure
+        self.w_origin = None
 
     def __repr__(self) -> str:
         return f"<spy function '{self.fqn}' (builtin)>"

@@ -3,18 +3,19 @@ from typing import TYPE_CHECKING, Literal, Optional
 from fixedint import FixedInt
 
 from spy import ast
-from spy.analyze.symtable import Color, Symbol
+from spy.analyze.sym import Color, Symbol
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.util import magic_dispatch
 from spy.vm.astframe import ASTFrame
 from spy.vm.b import B
-from spy.vm.exc import W_StaticError
+from spy.vm.cell import W_Cell
+from spy.vm.exc import W_Exception, W_StaticError
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
-from spy.vm.modules.types import TYPES, W_Loc
+from spy.vm.modules.types import TYPES
 from spy.vm.object import W_Object
 from spy.vm.opimpl import ArgSpec, W_OpImpl
 from spy.vm.opspec import W_MetaArg
@@ -36,29 +37,42 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
     """
     Create an AST node to represent a constant of the given w_val.
 
-    For primitive types, it's easy, we can just reuse ast.Constant.
+    For primitive types, we use ast.Const (an IR-only typed node).
     For non primitive types, we assign an unique FQN to the w_val, and we
     return ast.FQNConst.
     """
     res: ast.Expr
     w_T = vm.dynamic_type(w_val)
-    if w_T in (B.w_i32, B.w_f64, B.w_complex128, B.w_bool, TYPES.w_NoneType):
-        # this is a primitive, we can just use ast.Constant
-        value = vm.unwrap(w_val)
-        if isinstance(value, FixedInt):  # type: ignore
-            value = int(value)
-        res = ast.Constant(loc, value, w_T=w_T)
+    if w_T in (
+        B.w_i32,
+        B.w_i64,
+        B.w_u64,
+        B.w_i8,
+        B.w_u8,
+        B.w_u32,
+        B.w_f32,
+        B.w_f64,
+        B.w_complex128,
+        B.w_bool,
+        TYPES.w_NoneType,
+    ):
+        res = ast.Const(loc, w_val, w_T=w_T)
 
     elif w_T is B.w_str:
         value = vm.unwrap_str(w_val)
-        res = ast.StrConst(loc, value, w_T=w_T)
+        res = ast.StrLiteral(loc, value, w_T=w_T)
+
+    elif w_T is B.w_bytes:
+        value = vm.unwrap(w_val)
+        assert isinstance(value, bytes)
+        res = ast.BytesLiteral(loc, value, w_T=w_T)
 
     elif w_T is SPY.w_interp_tuple:
         assert isinstance(w_val, W_InterpTuple)
         items = [make_const(vm, loc, w_item) for w_item in w_val.items_w]
         res = ast.Tuple(loc, items, w_T=w_T)
 
-    elif w_T.fqn.match("_tuple::tuple[*]::_tup"):
+    elif vm.is_tuple_type(w_T):
         # transform the struct into a syntactical ast.Tuple node, so that we can put it
         # in the AST without necessarily create a FQN
         assert isinstance(w_val, W_Struct)
@@ -68,12 +82,10 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
         res = ast.Tuple(loc, items, w_T=w_T)
 
     elif w_T is TYPES.w_Loc:
-        # note that here we have two locs: 'loc' is as usual the location
-        # where the const comes from; 'value' is the actual value of the
-        # const, which happen to be of type Loc.
-        assert isinstance(w_val, W_Loc)
-        value = w_val.loc
-        res = ast.LocConst(loc, value, w_T=w_T)
+        res = ast.Const(loc, w_val, w_T=w_T)
+
+    elif isinstance(w_val, W_Exception):
+        res = ast.Const(loc, w_val, w_T=w_T)
 
     else:
         # this is a non-primitive prebuilt constant.
@@ -83,6 +95,20 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
     if vm.ast_color_map is not None:
         vm.ast_color_map[res] = "blue"
     return res
+
+
+def unmake_const_maybe(vm: "SPyVM", expr: ast.Expr) -> Optional[W_Object]:
+    """
+    The inverse of make_const: if `expr` is a constant AST node, return its
+    W_Object value. Otherwise return None.
+    """
+    if isinstance(expr, ast.Const):
+        return expr.w_val
+    elif isinstance(expr, ast.StrLiteral):
+        return vm.wrap(expr.value)
+    elif isinstance(expr, ast.FQNConst):
+        return vm.lookup_global(expr.fqn)
+    return None
 
 
 class DopplerFrame(ASTFrame):
@@ -103,9 +129,11 @@ class DopplerFrame(ASTFrame):
         self.opimpl = {}
         assert error_mode != "warn"
         self.error_mode = error_mode
-        self._inline_counter = 0
-        self._new_symbols: list["Symbol"] = []
         self._new_locals_types_w: dict[str, "W_Type"] = {}
+        self._new_frameinfo = w_func.funcdef.frameinfo.copy()
+        # when we encounter a deferred inference VarDef, we don't know its actual type
+        # yet: we will discover it later on first assignment
+        self._deferred_auto_vardefs: dict[str, ast.VarDef] = {}
 
     # overridden
     @property
@@ -113,23 +141,23 @@ class DopplerFrame(ASTFrame):
         return True
 
     def redshift(self) -> W_ASTFunc:
-        assert self.w_func.lowering_stage == "source", "cannot redshift twice"
-        self.w_func.lowering_stage = "redshift_in_progress"
+        assert self.w_func.stage == "astcompiled", "cannot redshift twice"
+        self.w_func.stage = "redshifting"
         self.declare_arguments()
         funcdef = self.w_func.funcdef
-        new_body = []
         # fwdecl of types
-        for stmt in funcdef.body:
+        for stmt in funcdef.body.body:
             if isinstance(stmt, ast.ClassDef):
                 self.fwdecl_ClassDef(stmt)
 
-        for stmt in funcdef.body:
-            new_body += self.shift_stmt(stmt)
+        new_body = self.shift_block(funcdef.body)
 
-        new_symtable = funcdef.symtable.copy()
-        for sym in self._new_symbols:
-            new_symtable.add(sym)
-        new_funcdef = funcdef.replace(body=new_body, symtable=new_symtable)
+        new_funcdef = funcdef.replace(
+            stage="redshifted",
+            body=new_body,
+            _frameinfo=self._new_frameinfo,
+        )
+        new_funcdef.assert_valid_at("redshifted")
         #
         new_fqn = self.w_func.fqn
         # all the non-local lookups are redshifted into constants, so the
@@ -143,7 +171,7 @@ class DopplerFrame(ASTFrame):
             w_functype=w_newfunctype,
             funcdef=new_funcdef,
             defaults_w=self.w_func.defaults_w,
-            lowering_stage="redshift",
+            stage="redshifted",
             locals_types_w=locals_types_w,
             is_force_inline=self.w_func.is_force_inline,
         )
@@ -175,8 +203,9 @@ class DopplerFrame(ASTFrame):
         """
         Turn the given stmt into a "raise"
         """
-        fqn = self.vm.make_fqn_const(err.w_exc)
-        exc = ast.FQNConst(fqn=fqn, loc=stmt.loc)
+        w_exc = err.w_exc
+        w_T = self.vm.dynamic_type(w_exc)
+        exc = ast.Const(loc=stmt.loc, w_val=w_exc, w_T=w_T)
         return self.shift_stmt(ast.Raise(exc=exc, loc=stmt.loc))
 
     def record_node_color(self, node: ast.Node, color: Color) -> None:
@@ -197,20 +226,30 @@ class DopplerFrame(ASTFrame):
         return [stmt]
 
     def shift_stmt_VarDef(self, vardef: ast.VarDef) -> list[ast.Stmt]:
-        varname = vardef.name.value
+        # the frame is indexed by slot_name
+        varname = vardef.sym.slot_name
         is_auto = isinstance(vardef.type, ast.Auto)
         self.exec_stmt_VarDef(vardef)
 
-        sym = self.symtable.lookup(varname)
-        assert sym.is_local
         if self.locals[varname].color == "blue":
             # redshift away assignments to blue locals
             return []
 
         newname = vardef.name.as_typed_node()
-        if is_auto:
+        if is_auto and vardef.value is None:
+            # deferred inference: the type will be fixed later, see
+            # fix_deferred_inference_type.
+            assert isinstance(vardef.type, ast.Auto)
+            newvardef = vardef.replace(
+                name=newname,
+                type=vardef.type.as_typed_node(),
+            )
+            self._deferred_auto_vardefs[varname] = newvardef
+            return [newvardef]
+        elif is_auto:
             # use the actual type computed during type inference
             w_T = self.locals[varname].w_T
+            assert w_T is not None
             newtype = make_const(self.vm, vardef.type.loc, w_T)
         else:
             newtype = self.shifted_expr[vardef.type]
@@ -221,43 +260,37 @@ class DopplerFrame(ASTFrame):
             newvalue = self.shifted_expr[vardef.value]
         return [vardef.replace(name=newname, type=newtype, value=newvalue)]
 
-    def shift_stmt_Assign(self, assign: ast.Assign) -> list[ast.Stmt]:
-        self.exec_stmt_Assign(assign)
-        varname = assign.target.value
-        sym = self.symtable.lookup(varname)
-        if sym.is_local and self.locals[varname].color == "blue":
-            self.record_node_color(assign, "blue")
-            # redshift away assignments to blue locals, but preserve
-            # any side effects from BlockExpr bodies
-            shifted_value = self.shifted_expr[assign.value]
-            if isinstance(shifted_value, ast.BlockExpr):
-                return shifted_value.body
-            return []
-        else:
-            if sym.is_local:
-                self.record_node_color(assign, self.locals[varname].color)
-            specialized = self.specialized_assigns[assign]
-            newtarget = assign.target.as_typed_node()
-            newvalue = self.shifted_expr[assign.value]
-            return [specialized.replace(target=newtarget, value=newvalue)]
+    def fix_deferred_inference_type(self, name: str, w_T: "W_Type") -> None:
+        super().fix_deferred_inference_type(name, w_T)
+        vardef = self._deferred_auto_vardefs.pop(name)
+        vardef.type = make_const(self.vm, vardef.type.loc, w_T)
 
     def shift_stmt_AssignLocal(self, assign: ast.AssignLocal) -> list[ast.Stmt]:
-        # specialized stmts such as AssignLocal and AssignCell are present
-        # ONLY inside redshifted ASTs, so we should never see them here
-        assert False, "not supposed to happen"
+        self.exec_stmt(assign)
+        expr = assign.expr
+        varname = expr.sym.slot_name
+        lv = self.locals[varname]
+        self.record_node_color(assign, lv.color)
+        if lv.color == "blue":
+            # blue local: redshift away the assign, but preserve any side effects from
+            # BlockExpr bodies
+            shifted_value = self.shifted_expr[expr.value]
+            if isinstance(shifted_value, ast.BlockExpr):
+                return shifted_value.body
+            else:
+                return []
+        else:
+            new_expr = self.shifted_expr[expr]
+            return [assign.replace(expr=new_expr)]
 
     def shift_stmt_AssignCell(self, assign: ast.AssignCell) -> list[ast.Stmt]:
-        # specialized stmts such as AssignLocal and AssignCell are present
-        # ONLY inside redshifted ASTs, so we should never see them here
-        assert False, "not supposed to happen"
+        self.exec_stmt(assign)
+        new_expr = self.shifted_expr[assign.expr]
+        return [assign.replace(expr=new_expr)]
 
-    def shift_stmt_AugAssign(self, node: ast.AugAssign) -> list[ast.Stmt]:
-        assign = self._desugar_AugAssign(node)
-        return self.shift_stmt_Assign(assign)
-
-    def shift_stmt_UnpackAssign(self, unpack: ast.UnpackAssign) -> list[ast.Stmt]:
+    def shift_stmt_AssignUnpack(self, unpack: ast.AssignUnpack) -> list[ast.Stmt]:
+        self.exec_stmt(unpack)
         newtargets = [target.as_typed_node() for target in unpack.targets]
-        self.exec_stmt_UnpackAssign(unpack)
         newvalue = self.shifted_expr[unpack.value]
         return [unpack.replace(targets=newtargets, value=newvalue)]
 
@@ -289,20 +322,19 @@ class DopplerFrame(ASTFrame):
             newbody += self.shift_stmt(stmt)
         return newbody
 
+    def shift_block(self, block: ast.Block) -> ast.Block:
+        return block.replace(body=self.shift_body(block.body))
+
     def shift_stmt_If(self, if_node: ast.If) -> list[ast.Stmt]:
         newtest = self.eval_and_shift(if_node.test, varname="@if")
-        newthen = self.shift_body(if_node.then_body)
-        newelse = self.shift_body(if_node.else_body)
-        return [if_node.replace(test=newtest, then_body=newthen, else_body=newelse)]
+        newthen = self.shift_block(if_node.then)
+        newelse = self.shift_block(if_node.else_)
+        return [if_node.replace(test=newtest, then=newthen, else_=newelse)]
 
     def shift_stmt_While(self, while_node: ast.While) -> list[ast.Stmt]:
         newtest = self.eval_and_shift(while_node.test, varname="@while")
-        newbody = self.shift_body(while_node.body)
+        newbody = self.shift_block(while_node.body)
         return [while_node.replace(test=newtest, body=newbody)]
-
-    def shift_stmt_For(self, for_node: ast.For) -> list[ast.Stmt]:
-        init_iter, while_loop = self._desugar_For(for_node)
-        return self.shift_stmt(init_iter) + self.shift_stmt(while_loop)
 
     def shift_stmt_Raise(self, raise_node: ast.Raise) -> list[ast.Stmt]:
         self.exec_stmt(raise_node)
@@ -320,11 +352,8 @@ class DopplerFrame(ASTFrame):
 
             if wam_msg.w_static_T is not B.w_str:
                 err = SPyError("W_TypeError", "mismatched types")
-                err.add(
-                    "error",
-                    f"expected `str`, got `{wam_msg.w_static_T.fqn.human_name}`",
-                    loc=wam_msg.loc,
-                )
+                got = wam_msg.w_static_T.fqn.human_name(self.vm)
+                err.add("error", f"expected `str`, got `{got}`", loc=wam_msg.loc)
                 raise err
 
             new_msg = self.shifted_expr[assert_node.msg]
@@ -388,17 +417,27 @@ class DopplerFrame(ASTFrame):
         new_expr = self.shift_expr(expr, wam)
         assert new_expr.w_T is not None, "shift_expr should return a typed ast.Expr"
 
+        # do we need a type conversion because we are assigning to a local var?
         w_typeconv_opimpl = self.typecheck_maybe(wam, varname)
         if w_typeconv_opimpl:
             assert varname is not None
             lv = self.locals[varname]
-            expT = make_const(self.vm, lv.decl_loc, lv.w_T)
-            gotT = make_const(self.vm, wam.loc, wam.w_static_T)
-            new_expr = self.shift_opimpl(
-                expr,
-                w_typeconv_opimpl,
-                [expT, gotT, new_expr],
-            )
+            if wam.color == "blue" and w_typeconv_opimpl.is_pure():
+                # apply it eagerly: see the case "local var conv" in
+                # test_doppler::test_eager_type_conversion
+                wam = self.vm.eval_opimpl(w_typeconv_opimpl, [wam], loc=expr.loc)
+                assert wam.color == "blue"
+                new_expr = make_const(self.vm, expr.loc, wam.w_val)
+            else:
+                # add a residual call to the convert function
+                assert lv.w_T is not None
+                expT = make_const(self.vm, lv.decl_loc, lv.w_T)
+                gotT = make_const(self.vm, wam.loc, wam.w_static_T)
+                new_expr = self.shift_opimpl(
+                    expr,
+                    w_typeconv_opimpl,
+                    [expT, gotT, new_expr],
+                )
 
         self.shifted_expr[expr] = new_expr
         # record the color of the ORIGINAL expression
@@ -459,24 +498,21 @@ class DopplerFrame(ASTFrame):
         from spy.force_inline import inline_call
 
         w_callee = w_func.get_most_lowered_version()
-        stage = w_callee.lowering_stage
-        if stage == "redshift_in_progress":
+        stage = w_callee.stage
+        if stage == "redshifting":
+            callee = w_callee.fqn.human_name(self.vm)
             err = SPyError(
                 "W_TypeError",
-                f"cannot inline a recursive call to @force_inline function"
-                f" `{w_callee.fqn.human_name}`",
+                f"cannot inline a recursive call to @force_inline function `{callee}`",
             )
             err.add("error", "recursive inline call", op.loc)
             raise err
-        if stage == "source":
+        if stage == "astcompiled":
             self.vm._redshift_some([(w_callee.fqn, w_callee)], self.error_mode)
             w_callee = w_callee.get_most_lowered_version()
-        assert w_callee.lowering_stage == "redshift"
+        assert w_callee.stage == "redshifted"
 
-        n = self._inline_counter
-        self._inline_counter += 1
-        result = inline_call(self.vm, op, w_callee, real_args, n)
-        self._new_symbols.extend(result.new_symbols)
+        result = inline_call(self.vm, op, self._new_frameinfo, w_callee, real_args)
         self._new_locals_types_w.update(result.new_locals_types_w)
         return result.block
 
@@ -495,18 +531,34 @@ class DopplerFrame(ASTFrame):
                 expT = getarg(spec.expT)
                 gotT = getarg(spec.gotT)
                 arg = getarg(spec.arg)
-                return self.shift_opimpl(arg, spec.w_conv_opimpl, [expT, gotT, arg])
+
+                # try to evaluate the conversion eagerly, if the opimpl is pure and the
+                # the arg is known. See the case "func arg conv" in
+                # test_doppler::test_eager_type_conversion
+                is_pure = spec.w_conv_opimpl.is_pure()
+                if is_pure and (w_arg := unmake_const_maybe(self.vm, arg)) is not None:
+                    w_expT = unmake_const_maybe(self.vm, expT)
+                    w_gotT = unmake_const_maybe(self.vm, gotT)
+                    assert w_expT is not None and w_gotT is not None
+                    w_res = spec.w_conv_opimpl._execute(
+                        self.vm, [w_expT, w_gotT, w_arg]
+                    )
+                    return make_const(self.vm, arg.loc, w_res)
+                else:
+                    # no eager evaluation: insert a residual call to the conversion func
+                    return self.shift_opimpl(arg, spec.w_conv_opimpl, [expT, gotT, arg])
             else:
                 assert False
 
         real_args = [getarg(spec) for spec in w_opimpl.args]
         return real_args
 
-    def shift_expr_Constant(self, const: ast.Constant, wam: W_MetaArg) -> ast.Expr:
+    def shift_expr_Const(self, const: ast.Const, wam: W_MetaArg) -> ast.Expr:
         return const.replace(w_T=wam.w_static_T)
 
-    def shift_expr_Name(self, name: ast.Name, wam: W_MetaArg) -> ast.Expr:
-        return self.specialized_names[name].replace(w_T=wam.w_static_T)
+    def shift_expr_Literal(self, const: ast.Literal, wam: W_MetaArg) -> ast.Expr:
+        w_val = self.vm.wrap(const.value)
+        return ast.Const(const.loc, w_val, w_T=wam.w_static_T)
 
     def shift_expr_NameLocalDirect(
         self, name: ast.NameLocalDirect, wam: W_MetaArg
@@ -521,7 +573,14 @@ class DopplerFrame(ASTFrame):
     def shift_expr_NameOuterCell(
         self, name: ast.NameOuterCell, wam: W_MetaArg
     ) -> ast.Expr:
-        return name.replace(w_T=wam.w_static_T)
+        # NameOuterCell is a bit special: at redshift time we KNOW the FQN of the cell,
+        # so we want to record it in the node. This is a small code duplication with
+        # ASTFrame, but too bad.  See also shift_stmt_AssignCell.
+        sym = name.sym
+        outervars = self.closure[-sym.frame_depth]
+        w_cell = outervars[sym.slot_name].w_val
+        assert isinstance(w_cell, W_Cell)
+        return name.replace(w_T=wam.w_static_T, fqn=w_cell.fqn)
 
     def shift_expr_BinOp(self, binop: ast.BinOp, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[binop]
@@ -676,14 +735,31 @@ class DopplerFrame(ASTFrame):
         new_value = self.shifted_expr[block.value]
         return block.replace(body=new_body, value=new_value, w_T=wam.w_static_T)
 
-    def shift_expr_AssignExpr(
-        self, assignexpr: ast.AssignExpr, wam: W_MetaArg
+    def shift_expr_AssignExprLocal(
+        self, assignexpr: ast.AssignExprLocal, wam: W_MetaArg
     ) -> ast.Expr:
-        specialized = self.specialized_assignexprs[assignexpr]
         new_target = assignexpr.target.as_typed_node()
         new_value = self.shifted_expr[assignexpr.value]
-        return specialized.replace(
+        return assignexpr.replace(
             target=new_target,
+            value=new_value,
+            w_T=wam.w_static_T,
+        )
+
+    def shift_expr_AssignExprCell(
+        self, assignexpr: ast.AssignExprCell, wam: W_MetaArg
+    ) -> ast.Expr:
+        new_target = assignexpr.target.as_typed_node()
+        new_value = self.shifted_expr[assignexpr.value]
+        # at redshift time we KNOW the FQN of the cell
+        assert assignexpr.target_fqn is None, "already redshifted?"
+        sym = assignexpr.sym
+        outervars = self.closure[-sym.frame_depth]
+        w_cell = outervars[sym.slot_name].w_val
+        assert isinstance(w_cell, W_Cell)
+        return assignexpr.replace(
+            target=new_target,
+            target_fqn=w_cell.fqn,
             value=new_value,
             w_T=wam.w_static_T,
         )

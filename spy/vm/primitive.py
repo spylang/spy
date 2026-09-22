@@ -40,12 +40,21 @@ class W_NoneType(W_Object):
     def spy_unwrap(self, vm: "SPyVM") -> None:
         return None
 
-    @builtin_method("__str__", color="blue", kind="metafunc")
     @staticmethod
-    def w_STR(vm: "SPyVM", wam_self: "W_MetaArg") -> "W_OpSpec":
+    def _w_format(vm: "SPyVM") -> "W_OpSpec":
         from spy.vm.opspec import W_OpSpec
 
         return W_OpSpec.const(vm.wrap("None"))
+
+    @builtin_method("__str__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_STR(vm: "SPyVM", wam_self: "W_MetaArg") -> "W_OpSpec":
+        return W_NoneType._w_format(vm)
+
+    @builtin_method("__repr__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_REPR(vm: "SPyVM", wam_self: "W_MetaArg") -> "W_OpSpec":
+        return W_NoneType._w_format(vm)
 
 
 B.add("None", W_NoneType.__new__(W_NoneType))
@@ -73,6 +82,12 @@ class W_I32(W_Object):
             return W_OpSpec(OP.w_f32_to_i32, [wam_arg])
         elif wam_arg.w_static_T == B.w_str:
             return W_OpSpec(OP.w_str_to_i32, [wam_arg])
+        elif wam_arg.w_static_T == B.w_i8:
+            return W_OpSpec(OP.w_i8_to_i32, [wam_arg])
+        elif wam_arg.w_static_T == B.w_u8:
+            return W_OpSpec(OP.w_u8_to_i32, [wam_arg])
+        elif wam_arg.w_static_T == B.w_u32:
+            return W_OpSpec(OP.w_u32_to_i32, [wam_arg])
         return W_OpSpec.NULL
 
     def __repr__(self) -> str:
@@ -141,6 +156,106 @@ class W_U32(W_Object):
         return vm.wrap(str(i))
 
 
+@B.builtin_type("i64", lazy_definition=True)
+class W_I64(W_Object):
+    __spy_storage_category__ = "value"
+    value: fixedint.Int64
+
+    def __init__(self, value: int | FixedInt) -> None:
+        self.value = fixedint.Int64(value)
+
+    @builtin_method("__new__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_NEW(vm: "SPyVM", wam_cls: "W_MetaArg", *args_wam: "W_MetaArg") -> "W_OpSpec":
+        from spy.vm.opspec import W_OpSpec
+
+        if len(args_wam) != 1:
+            return W_OpSpec.NULL
+        wam_arg = args_wam[0]
+        if wam_arg.w_static_T == B.w_f64:
+            return W_OpSpec(OP.w_f64_to_i64, [wam_arg])
+        elif wam_arg.w_static_T == B.w_f32:
+            return W_OpSpec(OP.w_f32_to_i64, [wam_arg])
+        elif wam_arg.w_static_T == B.w_str:
+            return W_OpSpec(OP.w_str_to_i64, [wam_arg])
+        elif wam_arg.w_static_T == B.w_i8:
+            return W_OpSpec(OP.w_i8_to_i64, [wam_arg])
+        elif wam_arg.w_static_T == B.w_u8:
+            return W_OpSpec(OP.w_u8_to_i64, [wam_arg])
+        elif wam_arg.w_static_T == B.w_i32:
+            return W_OpSpec(OP.w_i32_to_i64, [wam_arg])
+        elif wam_arg.w_static_T == B.w_u32:
+            return W_OpSpec(OP.w_u32_to_i64, [wam_arg])
+        elif wam_arg.w_static_T == B.w_u64:
+            return W_OpSpec(OP.w_u64_to_i64, [wam_arg])
+        return W_OpSpec.NULL
+
+    def __repr__(self) -> str:
+        return f"W_I64({self.value})"
+
+    def spy_unwrap(self, vm: "SPyVM") -> fixedint.Int64:
+        return self.value
+
+    def spy_key(self, vm: "SPyVM") -> fixedint.Int64:
+        return self.value
+
+    @builtin_method("__str__")
+    @staticmethod
+    def w_str(vm: "SPyVM", w_self: "W_I64") -> "W_Str":
+        i = vm.unwrap_i64(w_self)
+        return vm.wrap(str(i))
+
+    @builtin_method("__repr__")
+    @staticmethod
+    def w_repr(vm: "SPyVM", w_self: "W_I64") -> "W_Str":
+        i = vm.unwrap_i64(w_self)
+        return vm.wrap(str(i))
+
+
+@B.builtin_type("u64", lazy_definition=True)
+class W_U64(W_Object):
+    __spy_storage_category__ = "value"
+    value: fixedint.UInt64
+
+    def __init__(self, value: int | FixedInt) -> None:
+        self.value = fixedint.UInt64(value)
+
+    @builtin_method("__new__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_NEW(vm: "SPyVM", wam_cls: "W_MetaArg", *args_wam: "W_MetaArg") -> "W_OpSpec":
+        from spy.vm.opspec import W_OpSpec
+
+        if len(args_wam) != 1:
+            return W_OpSpec.NULL
+        wam_arg = args_wam[0]
+        if wam_arg.w_static_T == B.w_str:
+            return W_OpSpec(OP.w_str_to_u64, [wam_arg])
+        elif wam_arg.w_static_T == B.w_i64:
+            return W_OpSpec(OP.w_i64_to_u64, [wam_arg])
+        return W_OpSpec.NULL
+
+    def __repr__(self) -> str:
+        return f"W_U64({self.value})"
+
+    def spy_unwrap(self, vm: "SPyVM") -> fixedint.UInt64:
+        return self.value
+
+    def spy_key(self, vm: "SPyVM") -> fixedint.UInt64:
+        return self.value
+
+    @builtin_method("__str__")
+    @staticmethod
+    def w_str(vm: "SPyVM", w_self: "W_U64") -> "W_Str":
+        u = vm.unwrap(w_self)
+        return vm.wrap(str(u))
+
+    @builtin_method("__repr__")
+    @staticmethod
+    def w_repr(vm: "SPyVM", w_self: "W_U64") -> "W_Str":
+        u = vm.unwrap(w_self)
+        return vm.wrap(str(u))
+
+
 @B.builtin_type("i8", lazy_definition=True)
 class W_I8(W_Object):
     __spy_storage_category__ = "value"
@@ -159,6 +274,8 @@ class W_I8(W_Object):
         wam_arg = args_wam[0]
         if wam_arg.w_static_T == B.w_str:
             return W_OpSpec(OP.w_str_to_i8, [wam_arg])
+        elif wam_arg.w_static_T == B.w_i32:
+            return W_OpSpec(OP.w_i32_to_i8, [wam_arg])
         return W_OpSpec.NULL
 
     def __repr__(self) -> str:
@@ -173,6 +290,12 @@ class W_I8(W_Object):
     @builtin_method("__str__")
     @staticmethod
     def w_str(vm: "SPyVM", w_self: "W_I8") -> "W_Str":
+        i = vm.unwrap(w_self)
+        return vm.wrap(str(i))
+
+    @builtin_method("__repr__")
+    @staticmethod
+    def w_repr(vm: "SPyVM", w_self: "W_I8") -> "W_Str":
         i = vm.unwrap(w_self)
         return vm.wrap(str(i))
 
@@ -195,6 +318,8 @@ class W_U8(W_Object):
         wam_arg = args_wam[0]
         if wam_arg.w_static_T == B.w_str:
             return W_OpSpec(OP.w_str_to_u8, [wam_arg])
+        elif wam_arg.w_static_T == B.w_i32:
+            return W_OpSpec(OP.w_i32_to_u8, [wam_arg])
         return W_OpSpec.NULL
 
     def __repr__(self) -> str:
@@ -209,6 +334,12 @@ class W_U8(W_Object):
     @builtin_method("__str__")
     @staticmethod
     def w_str(vm: "SPyVM", w_self: "W_U8") -> "W_Str":
+        u = vm.unwrap(w_self)
+        return vm.wrap(str(u))
+
+    @builtin_method("__repr__")
+    @staticmethod
+    def w_repr(vm: "SPyVM", w_self: "W_U8") -> "W_Str":
         u = vm.unwrap(w_self)
         return vm.wrap(str(u))
 
@@ -245,11 +376,25 @@ class W_F64(W_Object):
     def spy_key(self, vm: "SPyVM") -> float:
         return self.value
 
+    @staticmethod
+    def _w_format(vm: "SPyVM", w_self: "W_F64") -> "W_Str":
+        # Import locally so str registration does not run while primitive builtins
+        # are still being initialized.
+        from spy.vm.str import W_Str
+
+        f = vm.unwrap_f64(w_self)
+        ptr = vm.ll.call("spy_f64_to_str", f)
+        return W_Str.from_ptr(vm, ptr)
+
     @builtin_method("__str__")
     @staticmethod
     def w_str(vm: "SPyVM", w_self: "W_F64") -> "W_Str":
-        f = vm.unwrap_f64(w_self)
-        return vm.wrap(str(f))
+        return W_F64._w_format(vm, w_self)
+
+    @builtin_method("__repr__")
+    @staticmethod
+    def w_repr(vm: "SPyVM", w_self: "W_F64") -> "W_Str":
+        return W_F64._w_format(vm, w_self)
 
 
 @B.builtin_type("f32", lazy_definition=True)
@@ -260,6 +405,20 @@ class W_F32(W_Object):
     def __init__(self, value: float | float32) -> None:
         self.value = float32(value) if type(value) is float else value  # type: ignore[assignment]
 
+    @builtin_method("__new__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_NEW(vm: "SPyVM", wam_cls: "W_MetaArg", *args_wam: "W_MetaArg") -> "W_OpSpec":
+        from spy.vm.opspec import W_OpSpec
+
+        if len(args_wam) != 1:
+            return W_OpSpec.NULL
+        wam_arg = args_wam[0]
+        if wam_arg.w_static_T == B.w_i32:
+            return W_OpSpec(OP.w_i32_to_f32, [wam_arg])
+        elif wam_arg.w_static_T == B.w_f64:
+            return W_OpSpec(OP.w_f64_to_f32, [wam_arg])
+        return W_OpSpec.NULL
+
     def __repr__(self) -> str:
         return f"W_F32({self.value.value:.7g})"
 
@@ -269,16 +428,34 @@ class W_F32(W_Object):
     def spy_key(self, vm: "SPyVM") -> float:
         return self.value.value
 
+    @staticmethod
+    def _w_format(vm: "SPyVM", w_self: "W_F32") -> "W_Str":
+        # Import locally so str registration does not run while primitive builtins
+        # are still being initialized.
+        from spy.vm.str import W_Str
+
+        f = vm.unwrap_f32(w_self)
+        ptr = vm.ll.call("spy_f32_to_str", f)
+        return W_Str.from_ptr(vm, ptr)
+
     @builtin_method("__str__")
     @staticmethod
     def w_str(vm: "SPyVM", w_self: "W_F32") -> "W_Str":
-        f = vm.unwrap_f32(w_self)
-        return vm.wrap(f"{f:.7g}")
+        return W_F32._w_format(vm, w_self)
+
+    @builtin_method("__repr__")
+    @staticmethod
+    def w_repr(vm: "SPyVM", w_self: "W_F32") -> "W_Str":
+        return W_F32._w_format(vm, w_self)
 
 
 @B.builtin_type("complex128", lazy_definition=True)
 class W_Complex128(W_Object):
     __spy_storage_category__ = "value"
+    __spy_lazy_attributes__ = {
+        "__str__": FQN("_complex::methods::__str__"),
+        "__repr__": FQN("_complex::methods::__repr__"),
+    }
     value: complex
     w_real: Annotated[W_F64, Member("real")]
     w_imag: Annotated[W_F64, Member("imag")]
@@ -324,12 +501,6 @@ class W_Complex128(W_Object):
     def spy_key(self, vm: "SPyVM") -> complex:
         return self.value
 
-    @builtin_method("__str__")
-    @staticmethod
-    def w_str(vm: "SPyVM", w_self: "W_Complex128") -> "W_Str":
-        c = vm.unwrap_complex128(w_self)
-        return vm.wrap(str(c))
-
     @builtin_method("conjugate")
     @staticmethod
     def w_conjugate(vm: "SPyVM", w_self: "W_Complex128") -> "W_Complex128":
@@ -374,6 +545,12 @@ class W_Bool(W_Object):
         b = vm.unwrap(w_self)
         return vm.wrap(str(b))
 
+    @builtin_method("__repr__", is_pure=True)
+    @staticmethod
+    def w_repr(vm: "SPyVM", w_self: "W_Bool") -> "W_Str":
+        b = vm.unwrap(w_self)
+        return vm.wrap(str(b))
+
 
 B.add("True", W_Bool._make_singleton(True))
 B.add("False", W_Bool._make_singleton(False))
@@ -386,12 +563,21 @@ class W_NotImplementedType(W_Object):
         # create additional instances
         raise Exception("You cannot instantiate W_NotImplementedType")
 
-    @builtin_method("__str__", color="blue", kind="metafunc")
     @staticmethod
-    def w_STR(vm: "SPyVM", wam_self: "W_MetaArg") -> "W_OpSpec":
+    def _w_format(vm: "SPyVM") -> "W_OpSpec":
         from spy.vm.opspec import W_OpSpec
 
         return W_OpSpec.const(vm.wrap("NotImplemented"))
+
+    @builtin_method("__str__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_STR(vm: "SPyVM", wam_self: "W_MetaArg") -> "W_OpSpec":
+        return W_NotImplementedType._w_format(vm)
+
+    @builtin_method("__repr__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_REPR(vm: "SPyVM", wam_self: "W_MetaArg") -> "W_OpSpec":
+        return W_NotImplementedType._w_format(vm)
 
 
 B.add("NotImplemented", W_NotImplementedType.__new__(W_NotImplementedType))

@@ -7,7 +7,9 @@ from typing import TYPE_CHECKING, Optional, Union
 import py.path
 
 from spy import ast
-from spy.analyze.scope import ScopeAnalyzer
+from spy.analyze import scope
+from spy.astcompile import astcompile
+from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.parser import Parser
 from spy.textbuilder import ColorFormatter
@@ -20,8 +22,8 @@ if TYPE_CHECKING:
 
 MODULE = Union[ast.Module, "W_Module", None]
 
-# Cache version: increment this when ast.Module or SymTable structure changes
-SPYC_VERSION = 3
+# Cache version: increment this when ast.Module or FrameInfo structure changes
+SPYC_VERSION = 10
 
 
 @dataclass
@@ -40,7 +42,7 @@ class ImportAnalyzer:
 
     This is very different than Python where `import` is a statement which can
     trigger dynamic loading of a new module. In SPy, `import` is just a
-    declaration which makes avaiable in the current module an entity which has
+    declaration which makes available in the current module an entity which has
     already been loaded.
 
     NOTE: eventually, we might want to slightly tweak the rules to allow
@@ -52,7 +54,7 @@ class ImportAnalyzer:
     all the modules found in that way, INCLUDING the `import`s which are not
     top-level.
 
-    This basicaly creates a tree of imports. E.g.:
+    This basically creates a tree of imports. E.g.:
 
         # main.spy
         import aaa
@@ -105,6 +107,8 @@ class ImportAnalyzer:
         self.queue = deque([modname])
         self.mods: dict[str, MODULE] = {}
         self.deps: dict[str, OrderedSet[str]] = {}  # modname -> list_of_imports
+        # modname -> first ast.Import that referenced it
+        self.importers: dict[str, ast.Import] = {}
         self.cur_modname: Optional[str] = None
         self.cached_mods: dict[str, py.path.local] = {}  # modname -> cache file path
         self.cache_errors: list[CacheError] = []  # List of all cache errors
@@ -114,6 +118,26 @@ class ImportAnalyzer:
         mod = self.mods[modname]
         assert isinstance(mod, ast.Module)
         return mod
+
+    def find_file_on_path(self, modname: str) -> Optional[py.path.local]:
+        # XXX for now we assume that we find the module as a single file in
+        # the only vm.path entry. Eventually we will need a proper import
+        # mechanism and support for packages
+        #
+        # We search dir by dir, and within a dir .spy wins over .py. The
+        # caller is expected to check the extension of the result: a .py file
+        # cannot be imported, but we return it anyway so that the caller can
+        # produce a good error message. Note that a .py found in an earlier
+        # dir shadows a .spy in a later dir.
+        assert self.vm.path, "vm.path not set"
+        for d in self.vm.path:
+            f = py.path.local(d).join(f"{modname}.spy")
+            if f.exists():
+                return f
+            py_f = f.new(ext=".py")
+            if py_f.exists():
+                return py_f
+        return None
 
     def _get_spyc(self, spyfile: py.path.local) -> py.path.local:
         """
@@ -196,7 +220,7 @@ class ImportAnalyzer:
             if not self.vm.robust_import_caching:
                 raise
 
-    def parse_all(self) -> None:
+    def astcompile_all(self) -> None:
         while self.queue:
             modname = self.queue.popleft()
 
@@ -209,18 +233,19 @@ class ImportAnalyzer:
                 w_mod = self.vm.modules_w[modname]
                 self.mods[modname] = w_mod
 
-            elif spyfile := self.vm.find_file_on_path(modname):
+            elif (spyfile := self.find_file_on_path(modname)) and (
+                spyfile.ext == ".spy"
+            ):
                 # Initialize the dependency list for this module
                 if modname not in self.deps:
                     self.deps[modname] = OrderedSet()
 
-                mod = self.parse_one(modname, spyfile)
+                mod = self.astcompile_one(modname, spyfile)
                 self.mods[modname] = mod
 
                 # record implicit imports
-                assert mod.symtable is not None
-                for imp_modname in mod.symtable.implicit_imports:
-                    self.record_import(modname, imp_modname)
+                for imp_modname in mod.implicit_imports:
+                    self.record_import(modname, imp_modname, node=None)
 
                 # record explicit imports
                 self.cur_modname = modname
@@ -231,9 +256,9 @@ class ImportAnalyzer:
                 # we couldn't find .spy for this modname
                 self.mods[modname] = None
 
-    def parse_one(self, modname: str, spyfile: py.path.local) -> ast.Module:
+    def astcompile_one(self, modname: str, spyfile: py.path.local) -> ast.Module:
         """
-        Parse a module AND run ScopeAnalyzer on it.
+        Parse a module, run ScopeAnalyzer, run astcompile.
         """
         # try to load from cache first
         mod = None
@@ -245,19 +270,23 @@ class ImportAnalyzer:
                     return mod
 
         # no cache found, parse it
-        parser = Parser.from_filename(str(spyfile))
-        mod = parser.parse()
-        scopes = self.analyze_one(modname, mod)
-        mod.symtable = scopes.by_module()
+        parsed_mod = self.parse_one(spyfile)
+        sa = self.analyze_one(modname, parsed_mod)
+        compiled_mod = astcompile(parsed_mod, scope_analyzer=sa)
 
         if self.use_spyc:
-            self._save_spyc(mod, spyc)
-        return mod
+            self._save_spyc(compiled_mod, spyc)
+        return compiled_mod
 
-    def analyze_one(self, modname: str, mod: ast.Module) -> ScopeAnalyzer:
-        scopes = ScopeAnalyzer(modname, mod)
-        scopes.analyze()
-        return scopes
+    def parse_one(self, spyfile: py.path.local) -> ast.Module:
+        parser = Parser.from_filename(str(spyfile))
+        return parser.parse()
+
+    def analyze_one(self, modname: str, mod: ast.Module) -> scope.ScopeAnalyzer:
+        assert mod.scoping_rules in ("strict", "pythonic")
+        sa = scope.ScopeAnalyzer(modname, mod)
+        sa.analyze()
+        return sa
 
     def get_import_list(self) -> list[str]:
         """
@@ -289,15 +318,39 @@ class ImportAnalyzer:
         return result
 
     def import_all(self) -> None:
-        assert self.mods, "call .parse_all() first"
+        from spy.vm.module import W_Module
+
+        assert self.mods, "call .astcompile_all() first"
         import_list = self.get_import_list()
         for modname in import_list:
             mod = self.mods[modname]
             if isinstance(mod, ast.Module):
                 self.import_one(modname, mod)
+            elif isinstance(mod, W_Module):
+                pass  # already imported, nothing to do
+            elif mod is None:
+                # not found, raise ImportError
+                self.raise_import_error(modname)
+            else:
+                assert False
+
+    def raise_import_error(self, modname: str) -> None:
+        f = self.find_file_on_path(modname)
+        if f is not None and f.ext == ".py":
+            msg = f"file `{modname}.py` exists, but py files cannot be imported"
+        else:
+            msg = f"module `{modname}` does not exist"
+
+        imp = self.importers.get(modname)
+        if imp is None:
+            # nobody imported this module via an `import` statement: it's
+            # either the root module or an implicit import (which has no node)
+            raise SPyError("W_ImportError", msg)
+        err = SPyError("W_ImportError", f"cannot import `{imp.ref.spy_name()}`")
+        err.add("error", msg, loc=imp.loc)
+        raise err
 
     def import_one(self, modname: str, mod: ast.Module) -> None:
-        assert mod.symtable is not None
         fqn = FQN(modname)
         modframe = ModFrame(self.vm, fqn, mod)
         w_mod = modframe.run()
@@ -385,7 +438,7 @@ class ImportAnalyzer:
             ├── b1
             └── b2
         """
-        assert self.mods, "call .parse_all() first"
+        assert self.mods, "call .astcompile_all() first"
 
         # Constants for tree formatting
         # fmt: off
@@ -436,19 +489,24 @@ class ImportAnalyzer:
             print_tree(root, prefix="  ", indent="", marker="", visited=set())
 
     # ===========================================================
-    # visitor pattern to recurively find all "import" statements
+    # visitor pattern to recursively find all "import" statements
 
     def visit(self, mod: ast.Module) -> None:
         mod.visit("visit", self)
 
     def visit_Import(self, imp: ast.Import) -> None:
         assert self.cur_modname is not None
-        self.record_import(self.cur_modname, imp.ref.modname)
+        self.record_import(self.cur_modname, imp.ref.modname, node=imp)
 
-    def record_import(self, cur_modname: str, modname: str) -> None:
+    def record_import(
+        self, cur_modname: str, modname: str, *, node: ast.Import | None
+    ) -> None:
         if modname == "builtins":
             return
         self.deps[cur_modname].add(modname)
         self.queue.append(modname)
+        # remember the first Import node which referenced this module
+        if node is not None:
+            self.importers.setdefault(modname, node)
 
     # ===========================================================

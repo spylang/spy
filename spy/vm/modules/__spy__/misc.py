@@ -7,7 +7,7 @@ from spy.vm.builtin import builtin_method
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.object import W_Object
 from spy.vm.opspec import W_MetaArg, W_OpSpec
-from spy.vm.primitive import W_Bool
+from spy.vm.primitive import W_Bool, W_Dynamic
 from spy.vm.str import W_Str
 
 from . import SPY, interp_list
@@ -41,6 +41,10 @@ def w_is_compiled(vm: "SPyVM") -> W_Bool:
 
 @SPY.builtin_func("__INIT__", color="blue")
 def w_INIT(vm: "SPyVM") -> None:
+    w_mod = vm.modules_w["__spy__"]
+    w_mod.setattr("strict_scoping", vm.wrap("strict_scoping"))
+    w_mod.setattr("pythonic_scoping", vm.wrap("pythonic_scoping"))
+
     for w_listtype in interp_list.PREBUILT_INTERP_LIST_TYPES.values():
         w_listtype.register_push_function(vm)
 
@@ -75,7 +79,7 @@ class W_EmptyListType(W_Object):
             if sym := wam_self.sym:
                 err.add(
                     "note",
-                    f"help: use an explicit type: `{sym.name}: list[T] = []`",
+                    f"help: use an explicit type: `{sym.src_name}: list[T] = []`",
                     sym.loc,
                 )
             raise err
@@ -127,3 +131,14 @@ def w_force_inline(vm: "SPyVM", w_func: W_Object) -> W_Object:
 @SPY.builtin_func
 def w__stdout_write(vm: "SPyVM", w_s: W_Str) -> None:
     sys.stdout.write(vm.unwrap(w_s))
+
+
+@SPY.builtin_func(color="blue")
+def w_lookup_fqn(vm: "SPyVM", w_s: W_Str) -> W_Dynamic:
+    fqn_str = vm.unwrap_str(w_s)
+    fqn = FQN(fqn_str)
+    vm.import_(fqn.modname)
+    w_val = vm.lookup_global_maybe(fqn)
+    if w_val is None:
+        raise SPyError("W_ValueError", f"FQN not found: {fqn_str}")
+    return w_val

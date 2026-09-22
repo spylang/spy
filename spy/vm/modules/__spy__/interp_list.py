@@ -119,7 +119,7 @@ class W_InterpList(W_BaseInterpList, Generic[T]):
 
     def __repr__(self) -> str:
         cls = self.__class__.__name__
-        T = self.w_listtype.w_itemtype.fqn.human_name
+        T = self.w_listtype.w_itemtype.fqn.debug_human_name
         return f"{cls}('{T}', {self.items_w})"
 
     def spy_get_w_type(self, vm: "SPyVM") -> W_Type:

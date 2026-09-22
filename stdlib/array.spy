@@ -15,7 +15,7 @@ hardcode _array1, _array2, _array3, etc.
 """
 
 from operator import OpSpec
-from unsafe import gc_alloc, gc_ptr
+from unsafe import gc_alloc, gc_ptr, ptr_setbytes
 
 
 @blue.generic
@@ -74,6 +74,15 @@ def _array1(DTYPE):
         def __len__(self) -> i32:
             return self.__ll__.l
 
+        def __contains__(self, v: DTYPE) -> bool:
+            ll = self.__ll__
+            i = 0
+            while i < ll.l:
+                if ll.items[i] == v:
+                    return True
+                i = i + 1
+            return False
+
     return ndarray
 
 
@@ -127,6 +136,16 @@ def _array2(DTYPE):
 
         # XXX: we don't have a good way to know "w". We need to implement
         # .shape
+
+        def __contains__(self, v: DTYPE) -> bool:
+            ll = self.__ll__
+            total = ll.h * ll.w
+            i = 0
+            while i < total:
+                if ll.items[i] == v:
+                    return True
+                i = i + 1
+            return False
 
     return ndarray
 
@@ -186,6 +205,16 @@ def _array3(DTYPE):
         def __len__(self) -> i32:
             return self.__ll__.d
 
+        def __contains__(self, v: DTYPE) -> bool:
+            ll = self.__ll__
+            total = ll.d * ll.h * ll.w
+            i = 0
+            while i < total:
+                if ll.items[i] == v:
+                    return True
+                i = i + 1
+            return False
+
     return ndarray
 
 
@@ -197,7 +226,13 @@ def zeros(DTYPE):
             ArrayT = array[DTYPE, 1]
 
             def impl(n: i32) -> ArrayT:
-                return ArrayT(n)
+                a = ArrayT(n)
+                # XXX: this loop is a temporary workaround. gc_alloc does not zero
+                # memory, so we zero the array here.  Eventually we should have a
+                # gc_alloc_zero (or similar) which returns zeroed memory, and use it for
+                # the underlying buffer.
+                ptr_setbytes(a.__ll__.items, 0, n)
+                return a
 
             return OpSpec(impl)
 

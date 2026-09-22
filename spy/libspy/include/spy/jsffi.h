@@ -36,7 +36,7 @@ typedef struct {
 static inline JsVal spy_jsffi$jsval_from_jsref(JsRef r)  { return (JsVal){JSVAL_JSREF, .jsref_id = r.id}; }
 static inline JsVal spy_jsffi$jsval_from_f64(double x)   { return (JsVal){JSVAL_F64,   .f64 = x};         }
 static inline JsVal spy_jsffi$jsval_from_i32(int32_t x)  { return (JsVal){JSVAL_I32,   .i32 = x};         }
-static inline JsVal spy_jsffi$jsval_from_str(spy_Str *s) { return (JsVal){JSVAL_STR,   .str = s->utf8};   }
+static inline JsVal spy_jsffi$jsval_from_str(spy_StrObject *s) { return (JsVal){JSVAL_STR,   .str = spy_StrObject_CHARS(s)};   }
 static inline JsVal spy_jsffi$jsval_from_bool(int x)     { return (JsVal){JSVAL_BOOL,  .bool_ = x};       }
 static inline JsVal jsval_from_funcptr(em_callback_func fn) { return (JsVal){JSVAL_FUNCPTR, .i32 = (int32_t)fn}; }
 
@@ -90,8 +90,8 @@ void WASM_EXPORT(jsffi_request_animation_frame)(em_callback_func cfunc);
 
 // SPy JSFFI module
 static inline void
-spy_jsffi$debug(spy_Str *s) {
-    jsffi_debug(s->utf8);
+spy_jsffi$debug(spy_StrObject *s) {
+    jsffi_debug(spy_StrObject_CHARS(s));
 }
 
 static inline int32_t
@@ -120,8 +120,8 @@ spy_jsffi$get_Document(void) {
 }
 
 static inline JsRef
-spy_jsffi$js_string(spy_Str *s) {
-    return jsffi_string(s->utf8);
+spy_jsffi$js_string(spy_StrObject *s) {
+    return jsffi_string(spy_StrObject_CHARS(s));
 }
 
 static inline JsRef
@@ -140,13 +140,13 @@ spy_jsffi$drop_ref(JsRef target) {
 }
 
 static inline JsRef
-spy_jsffi$JsRef$__getattribute__(JsRef target, spy_Str *name) {
-    return jsffi_getattr(target, name->utf8);
+spy_jsffi$JsRef$__getattribute__(JsRef target, spy_StrObject *name) {
+    return jsffi_getattr(target, spy_StrObject_CHARS(name));
 }
 
 static inline void
-spy_jsffi$JsRef$__setattr__(JsRef target, spy_Str *name, JsVal val) {
-    jsffi_setattr(target, name->utf8, val.tag, jsval_payload(val));
+spy_jsffi$JsRef$__setattr__(JsRef target, spy_StrObject *name, JsVal val) {
+    jsffi_setattr(target, spy_StrObject_CHARS(name), val.tag, jsval_payload(val));
 }
 
 // Use a macro so it works with any ptr type (gc_ptr, raw_ptr)

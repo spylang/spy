@@ -35,6 +35,7 @@ def f2() -> i32:
     return 20
 
 def tick() -> i32:
+    global N
     N = N + 1
     print('tick')
     return N
@@ -59,6 +60,7 @@ def blue_i32() -> i32:
 
 TEMPLATE = """
 def foo(x: i32) -> i32:
+    global N
     y: i32 = 0
     _i: i32 = 0
     {body}

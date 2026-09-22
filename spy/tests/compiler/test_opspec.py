@@ -102,6 +102,23 @@ class TestOpSpec(CompilerTest):
         w_null = mod.get_null(unwrap=False)
         assert w_null is W_OpSpec.NULL
 
+    def test_opspec_const(self):
+        mod = self.compile("""
+        from operator import OpSpec
+
+        def bar() -> None:
+            pass
+
+        @blue
+        def foo() -> OpSpec:
+            return OpSpec.const(7)
+        """)
+        w_opspec = mod.foo(unwrap=False)
+        assert isinstance(w_opspec, W_OpSpec)
+        assert w_opspec._w_func is None
+        assert w_opspec._w_const is not None
+        assert self.vm.unwrap(w_opspec._w_const) == 7
+
     def test_oparg_from_type(self):
         mod = self.compile("""
         from operator import MetaArg

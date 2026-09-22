@@ -7,50 +7,43 @@
 #   emscripten     wasm32-unknown-emscripten   emcc
 #
 # (*) the actual triplet for "native" depends on your system, of course
-
-ZIG := $(shell python ../getzig.py)
-# exit early if zig can't be found
-ifeq ($(ZIG),)
-    $(error zig not found)
-endif
-
+#
 EMCC_AVAILABLE := $(shell which emcc 2>/dev/null)
 
-SRCS = src/str.c src/builtins.c src/debug.c src/unsafe.c src/operator.c src/posix.c
+SRCS = src/str.c src/bytes.c src/builtins.c src/debug.c src/unsafe.c src/operator.c src/posix.c \
+       vendored/ryu/ryu/f2s.c vendored/ryu/ryu/d2s.c
 
-# Base CFLAGS without optimization or debug settings
+# RYU_FLOAT_FULL_TABLE makes f2s use its dedicated binary32 powers-of-five
+# tables instead of depending on the larger d2s tables.
 #
-# XXX: do we really want -fPIC all the time? This is needed to generate CFFI
-# bindings, but it seems a waste in case of statically linked
-# executable. Maybe we should produce two versions, libspy.a and libspy-pic.a?
-CFLAGS := \
-    -fvisibility=hidden \
-    -Iinclude \
-    -fPIC
-
-# uncomment to enable debugging
-#CFLAGS := $(CFLAGS) -O0 -g
+# RYU_ONLY_64_BIT_OPS disables d2s's __uint128_t path. Zig lowers those
+# operations to compiler runtime helpers whose signatures conflict under the
+# WASM multivalue ABI, so use Ryu's portable 64-bit implementation instead.
+RYU_CFLAGS := -I $(CURDIR)/vendored/ryu -DRYU_FLOAT_FULL_TABLE -DRYU_ONLY_64_BIT_OPS
 
 # Add BUILD_TYPE with a default value
 BUILD_TYPE ?= release
+OUTPUT_KIND ?= exe
 
-# Modify BUILD_DIR to include build type
-BUILD_DIR := build/$(TARGET)/$(BUILD_TYPE)
-
-# Add build type specific flags
-ifeq ($(BUILD_TYPE),release)
-    CFLAGS += -DNDEBUG -DSPY_RELEASE -O3
-else ifeq ($(BUILD_TYPE),debug)
-    CFLAGS += -DSPY_DEBUG -O0 -g
-else
-    $(error Invalid BUILD_TYPE: $(BUILD_TYPE). Must be 'release' or 'debug')
+ifeq ($(filter $(BUILD_TYPE),debug release),)
+  $(error Invalid BUILD_TYPE: '$(BUILD_TYPE)'. Valid: debug, release)
 endif
 
-# All compiler warnings are treated as errors
-ifeq ($(SPY_WERROR), true)
-	CFLAGS += "-Werror"
-else ifeq ($(SPY_WERROR), 1)
-	CFLAGS += "-Werror"
+ifeq ($(filter $(OUTPUT_KIND),exe testlib),)
+  $(error Invalid OUTPUT_KIND: '$(OUTPUT_KIND)'. Valid: exe, testlib)
+endif
+
+ifeq ($(OUTPUT_KIND), testlib)
+  BUILD_DIR := build/$(TARGET)/$(BUILD_TYPE)-testlib
+else
+  BUILD_DIR := build/$(TARGET)/$(BUILD_TYPE)
+endif
+
+# don't bother invoking spy.build.flags if we don't have a TARGET
+ifneq ($(TARGET),)
+	CC             := $(shell python -m spy.build.flags --cc     --target=$(TARGET))
+	AR             := $(shell python -m spy.build.flags --ar     --target=$(TARGET))
+	CFLAGS         := $(shell python -m spy.build.flags --cflags --target=$(TARGET) --build-type=$(BUILD_TYPE) --output-kind=$(OUTPUT_KIND)) $(RYU_CFLAGS)
 endif
 
 # ------- no target specified -------
@@ -59,38 +52,18 @@ ifeq ($(TARGET),)
 
 # ---------- wasi target ----------
 else ifeq ($(TARGET), wasi)
-	CC := $(ZIG) cc
-	LD := $(ZIG) wasm-ld
-	AR := $(ZIG) ar
-
-	CFLAGS := \
-		$(CFLAGS) \
-		-DSPY_TARGET_WASI \
-		--target=wasm32-wasi-musl \
-		-mmultivalue \
-		-Xclang -target-abi \
-		-Xclang experimental-mv \
-		-mbulk-memory
-
 	LDFLAGS := \
 		--no-entry \
 		--import-memory
 
-	.DEFAULT_GOAL := build/wasi/$(BUILD_TYPE)/libspy.wasm
+	ifeq ($(OUTPUT_KIND), testlib)
+		.DEFAULT_GOAL := wasi_all_testlib
+	else
+		.DEFAULT_GOAL := wasi_all
+	endif
 
 # -------- emscripten target --------
 else ifeq ($(TARGET), emscripten)
-    CC := emcc
-    AR := emar
-
-    CFLAGS := \
-        $(CFLAGS) \
-        -DSPY_TARGET_EMSCRIPTEN \
-		-mmultivalue \
-		-Xclang -target-abi \
-		-Xclang experimental-mv \
-		-mbulk-memory
-
 	LDFLAGS := \
 		-sWASM_BIGINT \
 		-sEXPORTED_RUNTIME_METHODS=HEAP8
@@ -99,25 +72,17 @@ else ifeq ($(TARGET), emscripten)
 		$(SRCS) \
 		src/jsffi/jsffi.c
 
-    ifeq ($(EMCC_AVAILABLE),)
-        # emcc not found - display message and skip
-        $(warning Skipping emscripten target - emcc compiler not found in PATH)
-        .DEFAULT_GOAL := skip_emscripten
-	else
-        .DEFAULT_GOAL := build/emscripten/$(BUILD_TYPE)/libspy.mjs
-    endif
+  ifeq ($(EMCC_AVAILABLE),)
+    # emcc not found - display message and skip
+    $(warning Skipping emscripten target - emcc compiler not found in PATH)
+    .DEFAULT_GOAL := skip_emscripten
+  else
+    .DEFAULT_GOAL := emscripten_all
+  endif
 
 # ---------- native target ----------
 else ifeq ($(TARGET), native)
-	CC := cc
-	LD := ld
-	AR := ar
-
-	CFLAGS := \
-		$(CFLAGS) \
-		-DSPY_TARGET_NATIVE
-
-	.DEFAULT_GOAL := build/native/$(BUILD_TYPE)/libspy.a
+	.DEFAULT_GOAL := native_all
 
 # ------- native-static target ------
 else ifeq ($(TARGET), native-static)
@@ -125,15 +90,7 @@ else ifeq ($(TARGET), native-static)
     $(warning Skipping native-static target - not supported on macOS)
     .DEFAULT_GOAL := skip_native_static
   else
-	CC := $(ZIG) cc
-	AR := $(ZIG) ar
-
-	CFLAGS := \
-		$(CFLAGS) \
-		-DSPY_TARGET_NATIVE \
-		--target=native-native-musl
-
-	.DEFAULT_GOAL := build/native-static/$(BUILD_TYPE)/libspy.a
+    .DEFAULT_GOAL := native_static_all
   endif
 
 # ---------- invalid target ---------
@@ -141,34 +98,45 @@ else
 	.DEFAULT_GOAL := usage
 endif
 
-OBJS := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SRCS))
+OBJS         := $(patsubst %.c,$(BUILD_DIR)/%.o,$(SRCS))
 
 # Build all targets in release/debug mode
 all:
-	make TARGET=wasi BUILD_TYPE=release
-	make TARGET=wasi BUILD_TYPE=debug
-	make TARGET=native BUILD_TYPE=release
-	make TARGET=native BUILD_TYPE=debug
-	make TARGET=native-static BUILD_TYPE=release
-	make TARGET=native-static BUILD_TYPE=debug
-	make TARGET=emscripten BUILD_TYPE=release
-	make TARGET=emscripten BUILD_TYPE=debug
+	make TARGET=native        BUILD_TYPE=release OUTPUT_KIND=exe
+	make TARGET=native        BUILD_TYPE=debug   OUTPUT_KIND=exe
+	make TARGET=native-static BUILD_TYPE=release OUTPUT_KIND=exe
+	make TARGET=native-static BUILD_TYPE=debug   OUTPUT_KIND=exe
+
+	make TARGET=wasi          BUILD_TYPE=release OUTPUT_KIND=exe
+	make TARGET=wasi          BUILD_TYPE=debug   OUTPUT_KIND=exe
+	make TARGET=wasi          BUILD_TYPE=debug   OUTPUT_KIND=testlib
+
+	make TARGET=emscripten    BUILD_TYPE=release OUTPUT_KIND=exe
+	make TARGET=emscripten    BUILD_TYPE=debug   OUTPUT_KIND=exe
+	make TARGET=emscripten    BUILD_TYPE=debug   OUTPUT_KIND=testlib
 
 # wasi-specific rules
-build/wasi/$(BUILD_TYPE)/libspy.wasm: build/$(TARGET)/$(BUILD_TYPE)/libspy.a
+wasi_all_testlib: $(BUILD_DIR)/libspy.wasm
+wasi_all: $(BUILD_DIR)/libspy.a
+
+# libspy.wasm is loaded by the SPy VM, which provides the debug helpers as WASM
+# imports: this is why we build it out of the testlib flavor
+$(BUILD_DIR)/libspy.wasm: $(BUILD_DIR)/libspy.a
 	$(CC) \
         --target=wasm32-wasi-musl \
         -mexec-model=reactor \
         -Wl,--whole-archive \
-        build/$(TARGET)/$(BUILD_TYPE)/libspy.a \
+        $(BUILD_DIR)/libspy.a \
         -o $@
 
 # emscripten-specific rules
-build/emscripten/$(BUILD_TYPE)/libspy.mjs: build/$(TARGET)/$(BUILD_TYPE)/libspy.a
+emscripten_all: $(BUILD_DIR)/libspy.mjs
+
+$(BUILD_DIR)/libspy.mjs: $(BUILD_DIR)/libspy.a
 	$(CC) \
 		$(LDFLAGS) \
         -Wl,--whole-archive \
-		build/$(TARGET)/$(BUILD_TYPE)/libspy.a \
+		$(BUILD_DIR)/libspy.a \
 		-o $@
 
 
@@ -176,12 +144,22 @@ $(BUILD_DIR):
 	mkdir -p $@
 
 # generic rules
-build/$(TARGET)/$(BUILD_TYPE)/libspy.a: $(OBJS)
+native_all: $(BUILD_DIR)/libspy.a
+
+native_static_all: $(BUILD_DIR)/libspy.a
+
+$(BUILD_DIR)/libspy.a: $(OBJS)
 	$(AR) rcs $@ $(OBJS)
 
 $(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
 	mkdir -p $(dir $@)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CFLAGS) -MMD -MF $@.d -c $< -o $@
+
+
+# without this, editing a header does not trigger a recompilation, and we can
+# end up with .a files whose objects were compiled with different versions of
+# debug.h
+-include $(OBJS:.o=.o.d)
 
 skip_native_static:
 	@echo "Skipping native-static build - not supported on macOS"

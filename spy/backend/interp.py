@@ -51,7 +51,7 @@ class InterpModuleWrapper:
             if not w_func.is_valid:
                 assert w_func.w_replaced_by is not None
                 w_func = w_func.get_most_lowered_version()
-                assert w_func.lowering_stage != "source"
+                assert w_func.stage != "parsed"
                 assert self.vm.lookup_global(w_func.fqn) is w_func
             return InterpFuncWrapper(self.vm, w_func)
         elif isinstance(w_obj, W_Func):
@@ -92,6 +92,10 @@ class InterpFuncWrapper:
                 arg = fixedint.UInt8(arg)
             elif w_T is B.w_u32:
                 arg = fixedint.UInt32(arg)
+            elif w_T is B.w_i64:
+                arg = fixedint.Int64(arg)
+            elif w_T is B.w_u64:
+                arg = fixedint.UInt64(arg)
             elif w_T is B.w_f32:
                 arg = float32(arg)
             w_arg = self.vm.wrap(arg)

@@ -7,7 +7,7 @@ from typing import Any, Literal, Optional, Sequence
 
 import spy.ast
 from spy import ROOT
-from spy.analyze.symtable import Color, Symbol
+from spy.analyze.sym import Color, Symbol
 from spy.backend.spy import SPyBackend
 from spy.util import build_char_color_map, encode_color_map
 from spy.vm.vm import SPyVM
@@ -21,22 +21,24 @@ FIELDS_TO_IGNORE = frozenset(
         "body_loc",
         "target_locs",
         "loc_asname",
-        "symtable",
+        "_frameinfo",
+        "_implicit_imports",
         "w_T",
         "docstring",
         "seq",
+        "scope",
     }
 )
 
 # Nodes that start expanded.
-EXPAND_BY_DEFAULT = frozenset({"Module", "FuncDef", "GlobalFuncDef"})
+EXPAND_BY_DEFAULT = frozenset({"Module", "FuncDef", "GlobalFuncDef", "Block"})
 
 _SPYAST_JS = ROOT / ".." / "playground" / "spyast" / "spyast.js"
 
 
 def _label_str(val: Any) -> str:
     if isinstance(val, Symbol):
-        return val.name
+        return val.slot_name
     if isinstance(val, str):
         return repr(val)
     return str(val)
