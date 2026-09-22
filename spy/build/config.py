@@ -127,8 +127,11 @@ class CompilerConfig:
             else:
                 self.ldflags += ["-lgc"]
                 conda_prefix = os.environ.get("CONDA_PREFIX")
-                if conda_prefix and os.path.exists(
-                    os.path.join(conda_prefix, "include", "gc.h")
+                # XXX temporarily disable the fix
+                if (
+                    False
+                    and conda_prefix
+                    and os.path.exists(os.path.join(conda_prefix, "include", "gc.h"))
                 ):
                     # bdw-gc installed in a conda environment
                     self.cflags += ["-I", f"{conda_prefix}/include"]
