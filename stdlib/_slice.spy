@@ -48,7 +48,65 @@ class Slice:
     step_is_none: i32  # bool
 
     @blue.metafunc
-    def __new__(m_cls, m_start, m_stop, m_step) -> OpSpec:
+    def __new__(m_cls, *args_m):
+        m_start: MetaArg
+        m_stop: MetaArg
+        m_step: MetaArg
+
+        if len(args_m) == 1:
+            m_stop = args_m[0]
+            if m_stop.static_type == i32:
+
+                def impl_stop(_stop: i32) -> Slice:
+                    return Slice.__make__(0, 1, _stop, 0, 1, 1)
+
+                return OpSpec(impl_stop, interp_list[MetaArg](m_stop))
+            elif m_stop.static_type == NoneType:
+
+                def impl_none() -> Slice:
+                    return Slice.__make__(0, 1, 0, 1, 1, 1)
+
+                return OpSpec(impl_none, interp_list[MetaArg]())
+            return OpSpec.NULL
+
+        elif len(args_m) == 2:
+            m_start = args_m[0]
+            m_stop = args_m[1]
+            TYPES = interp_tuple(m_start.static_type, m_stop.static_type)
+            if TYPES == interp_tuple(i32, i32):
+
+                def impl_start_stop(_start: i32, _stop: i32) -> Slice:
+                    return Slice.__make__(_start, 0, _stop, 0, 1, 1)
+
+                return OpSpec(
+                    impl_start_stop, interp_list[MetaArg](m_start, m_stop)
+                )
+            elif TYPES == interp_tuple(NoneType, i32):
+
+                def impl_none_stop(_stop: i32) -> Slice:
+                    return Slice.__make__(0, 1, _stop, 0, 1, 1)
+
+                return OpSpec(impl_none_stop, interp_list[MetaArg](m_stop))
+            elif TYPES == interp_tuple(i32, NoneType):
+
+                def impl_start_none(_start: i32) -> Slice:
+                    return Slice.__make__(_start, 0, 0, 1, 1, 1)
+
+                return OpSpec(impl_start_none, interp_list[MetaArg](m_start))
+            elif TYPES == interp_tuple(NoneType, NoneType):
+
+                def impl_none_none() -> Slice:
+                    return Slice.__make__(0, 1, 0, 1, 1, 1)
+
+                return OpSpec(impl_none_none, interp_list[MetaArg]())
+            return OpSpec.NULL
+
+        elif len(args_m) != 3:
+            return OpSpec.NULL
+
+        m_start = args_m[0]
+        m_stop = args_m[1]
+        m_step = args_m[2]
         TYPES = interp_tuple(
             m_start.static_type, m_stop.static_type, m_step.static_type
         )
