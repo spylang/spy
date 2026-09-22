@@ -40,6 +40,15 @@ class SPyError(Exception):
     def match(self, pyclass: type["W_Exception"]) -> bool:
         return isinstance(self.w_exc, pyclass)
 
+    def __reduce__(self) -> Any:
+        # Exception.__reduce__ would reconstruct via
+        # self.__class__(*self.args), but self.args is just (message,)
+        # while __init__ requires (etype, message). Supply the correct
+        # constructor args explicitly; the __dict__ we pass as state
+        # overwrites the freshly-built w_exc with the original one (which
+        # carries the real annotations/traceback).
+        return (self.__class__, (self.etype, self.w_exc.message), self.__dict__)
+
     def __str__(self) -> str:
         return self.format(use_colors=False)
 
