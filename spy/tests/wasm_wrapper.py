@@ -16,7 +16,7 @@ from spy.vm.modules.rawbuffer import RB
 from spy.vm.modules.unsafe.ptr import W_PtrType
 from spy.vm.object import W_Type
 from spy.vm.str import ll_str_new
-from spy.vm.struct import SPyTuple, UnwrappedStruct, W_StructType
+from spy.vm.struct import UnwrappedStruct, W_StructType
 from spy.vm.vm import SPyVM
 
 
@@ -198,15 +198,18 @@ class WasmFuncWrapper:
             if w_T.fqn == FQN(
                 "_list::list[i32]::_ListImpl"
             ):  # reading list[i32] for tests
+                assert isinstance(pyres, UnwrappedStruct)
                 return self._to_pylist_i32(pyres)
             elif w_T.fqn == FQN(
                 "_list::list[str]::_ListImpl"
             ):  # reading list[str] for tests
+                assert isinstance(pyres, UnwrappedStruct)
                 return self._to_pylist_str(pyres)
             elif self.vm.is_list_type(w_T):
                 raise NotImplementedError(f"Reading {w_T.fqn} out of WASM memory")
             elif w_T.fqn == FQN("_dict::dict[i32, i32]::_dict"):
                 # we support only reading dict[i32, i32] for test
+                assert isinstance(pyres, UnwrappedStruct)
                 return self._to_pydict_i32(pyres)
             else:
                 return pyres
@@ -312,7 +315,7 @@ class WasmFuncWrapper:
 
 def unflatten_struct(
     vm: SPyVM, ll: LLSPyInstance, w_T: W_StructType, flat_values: list[Any]
-) -> UnwrappedStruct:
+) -> UnwrappedStruct | tuple[Any, ...]:
     """
     Unflatten a struct from a flat list of values.
 
@@ -320,7 +323,9 @@ def unflatten_struct(
     into a single list. This function reconstructs the nested structure.
     """
 
-    def unflatten(w_T: W_StructType, start_idx: int) -> tuple[UnwrappedStruct, int]:
+    def unflatten(
+        w_T: W_StructType, start_idx: int
+    ) -> tuple[UnwrappedStruct | tuple[Any, ...], int]:
         content: dict[str, Any] = {}
         idx = start_idx
 
@@ -358,7 +363,7 @@ def unflatten_struct(
                 idx += 1
 
         if vm.is_tuple_type(w_T):
-            return SPyTuple(w_T.fqn, content), idx
+            return tuple(content.values()), idx
         return UnwrappedStruct(w_T.fqn, content), idx
 
     result, consumed = unflatten(w_T, 0)

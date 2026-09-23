@@ -341,7 +341,7 @@ class W_Struct(W_Object):
 
         fields = {key: w_obj.spy_unwrap(vm) for key, w_obj in self.values_w.items()}
         if vm.is_tuple_type(self.w_structtype):
-            return SPyTuple(fqn, fields)
+            return tuple(fields.values())
         return UnwrappedStruct(fqn, fields)
 
     def __repr__(self) -> str:
@@ -433,26 +433,6 @@ class UnwrappedStruct:
 
     def __repr__(self) -> str:
         return f"<UnwrappedStruct {self.fqn}: {self._content}>"
-
-
-class SPyTuple(UnwrappedStruct):
-    """
-    Return value of vm.unwrap(w_some_tuple), where w_some_tuple is an
-    instance of the stdlib `tuple[T1, T2, ...]` (which is implemented as a
-    struct with fields `_item0`, `_item1`, ...). Purely a testing convenience.
-    """
-
-    def __len__(self) -> int:
-        return len(self._content)
-
-    def __iter__(self) -> Any:
-        return iter(self._content.values())
-
-    def __getitem__(self, i: Any) -> Any:
-        return tuple(self._content.values())[i]
-
-    def __repr__(self) -> str:
-        return f"SPyTuple({list(self._content.values())!r})"
 
 
 def unwrap_list(vm: "SPyVM", w_list: W_Object) -> list[Any]:
