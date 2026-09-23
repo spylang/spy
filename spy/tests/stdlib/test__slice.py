@@ -57,6 +57,25 @@ class TestSlice(CompilerTest):
         s = mod.make_none_stop()
         assert (s.start, s.stop_is_none, s.step_is_none) == (1, 1, 1)
 
+    def test_repr_str(self):
+        mod = self.compile("""
+        def repr1() -> str:
+            return repr(slice(5))
+
+        def repr2() -> str:
+            return repr(slice(1, 5))
+
+        def repr3() -> str:
+            return repr(slice(1, 5, 2))
+
+        def str3() -> str:
+            return str(slice(None, 5, None))
+        """)
+        assert mod.repr1() == "slice(None, 5, None)"
+        assert mod.repr2() == "slice(1, 5, None)"
+        assert mod.repr3() == "slice(1, 5, 2)"
+        assert mod.str3() == "slice(None, 5, None)"
+
     def test__slice_indices(self):
         # This test is a bit of a workaround for the fact that we cannot easily
         # have SPy functions which accept either int or None; and we want to test a
