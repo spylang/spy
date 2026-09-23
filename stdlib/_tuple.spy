@@ -117,6 +117,17 @@ def tuple(*items_T):
             The generated functions are force-inlined into one concatenation
             expression.
             """
+        # NOTE: this is suboptimal, both for performance and for readabiltiy. As soon as we
+        # have unroll() and StringBuilder(), we should rewrite to something like this:
+        ## def __repr__(self) -> str:
+        ##     sb = StringBuilder()
+        ##     sb.append("(")
+        ##     for i in unroll(N):
+        ##         item = self[i]
+        ##         sb.append(repr(item))
+        ##         sb.append(",") # XXX don't emit the last ","
+        ##     sb.append(")")
+        ##     return sb.build()
 
             @blue
             def build(idx):
