@@ -93,8 +93,10 @@ def tuple(*items_T):
             @blue
             def build(idx):
                 if idx == N:
+
                     def check_none(self: _tup, v: T) -> bool:
                         return False
+
                     return check_none
 
                 rest = build(idx + 1)
@@ -104,6 +106,7 @@ def tuple(*items_T):
                     if getattr(self, attr) == v:
                         return True
                     return rest(self, v)
+
                 return check_or_rest
 
             return OpSpec(build(0), [m_self, m_v])
@@ -117,35 +120,43 @@ def tuple(*items_T):
             The generated functions are force-inlined into one concatenation
             expression.
             """
-        # NOTE: this is suboptimal, both for performance and for readabiltiy. As soon as we
-        # have unroll() and StringBuilder(), we should rewrite to something like this:
-        ## def __repr__(self) -> str:
-        ##     sb = StringBuilder()
-        ##     sb.append("(")
-        ##     for i in unroll(N):
-        ##         item = self[i]
-        ##         sb.append(repr(item))
-        ##         sb.append(",") # XXX don't emit the last ","
-        ##     sb.append(")")
-        ##     return sb.build()
+            # NOTE: this is suboptimal, both for performance and for readabiltiy. As
+            # soon as we have unroll() and StringBuilder(), we should rewrite to
+            # something like this:
+            #
+            ## def __repr__(self) -> str:
+            ##     sb = StringBuilder()
+            ##     sb.append("(")
+            ##     for i in unroll(N):
+            ##         item = self[i]
+            ##         sb.append(repr(item))
+            ##         sb.append(",") # XXX don't emit the last ","
+            ##     sb.append(")")
+            ##     return sb.build()
 
             @blue
             def build(idx):
                 if idx == N:
                     if N == 0:
+
                         @force_inline
                         def finish_empty(self: _tup) -> str:
                             return "()"
+
                         return finish_empty
                     elif N == 1:
+
                         @force_inline
                         def finish_singleton(self: _tup) -> str:
                             return ",)"
+
                         return finish_singleton
                     else:
+
                         @force_inline
                         def finish(self: _tup) -> str:
                             return ")"
+
                         return finish
 
                 rest = build(idx + 1)
@@ -158,6 +169,7 @@ def tuple(*items_T):
                 @force_inline
                 def format_item(self: _tup) -> str:
                     return prefix + repr(getattr(self, attr)) + rest(self)
+
                 return format_item
 
             return OpSpec(build(0))
