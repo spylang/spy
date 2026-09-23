@@ -173,3 +173,18 @@ class TestBlueGeneric(CompilerTest):
         assert w_list.fqn.human_name(self.vm) == "list[i32]"
         assert w_dict.fqn.human_name(self.vm) == "dict[i32, str]"
         assert w_tuple.fqn.human_name(self.vm) == "tuple[i32, str, f64]"
+
+    def test_call_via_module_attr(self):
+        src = """
+        def foo[T](x: T) -> T:
+            return 2 * x
+        """
+        self.write_file("mymod.spy", src)
+
+        mod = self.compile("""
+        import mymod
+
+        def call_via_module_attr() -> i32:
+            return mymod.foo[i32](2)
+        """)
+        assert mod.call_via_module_attr() == 4

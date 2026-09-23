@@ -39,10 +39,6 @@ class TestMetaFunc(CompilerTest):
         assert mod.test2() == "hello world"
 
     def test_call_via_module_attr(self):
-        # Regression test: calling a @blue.metafunc through a module
-        # attribute (`mod.foo(...)`) used to fail with "cannot call blue
-        # function with red arguments", because W_Module.__call_method__
-        # built a direct OpSpec instead of metacalling `foo`.
         src = """
         from operator import OpSpec
 
