@@ -57,6 +57,33 @@ class TestTange(CompilerTest):
         x = mod.foo()
         assert x == 2
 
+    def test_repr_str(self):
+        mod = self.compile("""
+        def repr_empty() -> str:
+            return repr(())
+
+        def repr_singleton(item: int) -> str:
+            return repr((item,))
+
+        def repr_pair(first: int, second: int) -> str:
+            return repr((first, second))
+
+        def repr_heterogeneous(first: str, second: int) -> str:
+            return repr((first, second))
+
+        def repr_nested(first: int, second: int, third: int) -> str:
+            return repr((first, (second, third)))
+
+        def str_pair(first: int, second: int) -> str:
+            return str((first, second))
+        """)
+        assert mod.repr_empty() == "()"
+        assert mod.repr_singleton(1) == "(1,)"
+        assert mod.repr_pair(1, 2) == "(1, 2)"
+        assert mod.repr_heterogeneous("hello", 42) == "('hello', 42)"
+        assert mod.repr_nested(1, 2, 3) == "(1, (2, 3))"
+        assert mod.str_pair(1, 2) == "(1, 2)"
+
     def test_eq(self):
         mod = self.compile("""
         def tup1() -> tuple[int, int]:
