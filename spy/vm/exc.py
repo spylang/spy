@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from types import FrameType, TracebackType
 from typing import TYPE_CHECKING, Annotated, Iterable, Literal, Optional
 
+from spy.analyze.sym import Scope
 from spy.errfmt import Annotation, ErrorFormatter, Level
 from spy.fqn import FQN
 from spy.location import Loc
@@ -24,9 +25,19 @@ FrameKind = Literal["astframe", "modframe", "classframe", "dopplerframe"]
 
 
 class TBEntry:
+    spyframe: "AbstractFrame"
+    loc: Loc
+    _scope: Optional[Scope]
+
     def __init__(self, spyframe: "AbstractFrame") -> None:
         self.spyframe = spyframe
         self.loc = spyframe.loc
+        self._scope = None
+
+    def __repr__(self) -> str:
+        fname = self.spyframe.w_func.fqn
+        scope = "None" if self._scope is None else self._scope.name
+        return f"<TBEntry: {self.kind} `{fname}`, {scope=}>"
 
     @property
     def kind(self) -> FrameKind:
@@ -37,6 +48,11 @@ class TBEntry:
     @property
     def fqn(self) -> FQN:
         return self.spyframe.ns
+
+    @property
+    def scope(self) -> Scope:
+        assert self._scope is not None, "bug in _from_py_frames?"
+        return self._scope
 
 
 @TYPES.builtin_type("TracebackType")
@@ -102,12 +118,14 @@ class W_Traceback(W_Object):
         #   real_main (in cli.py)
         #   [...]
         #   ASTFrame.run                       applevel frame for `x::main`
+        #   ASTFrame.exec_Block                    funcdef.body
         #   ASTFrame.exec_stmt                     ast.Return(ast.Call(...))
         #   ASTFrame.exec_stmt_Stmt_Return
         #   ASTFrame.eval_expr                     ast.Call(...)
         #   ASTFrame.eval_expr_Call
         #   [...]
         #   ASTFrame.run                       applevel frame for `x::foo`
+        #   ASTFrame.exec_Block                    funcdef.body
         #   ASTFrame.exec_stmt                     ast.Raise(...)
         #   ASTFrame.exec_stmt_Raise
         #   [...]
@@ -116,8 +134,12 @@ class W_Traceback(W_Object):
         #   When we encounter ASTFrame.run, we record an app-level SPy frame.
         #   When we encounter exec_stmt or eval_expr, we set a more precise loc info
         #   for the last recorded frame.
+        #   When we encounter exec_Block, we record the active scope, which is needed by
+        #   SPdb for interactive astcompilation
         entries = []
         for frame, lineno in frames:
+            # uncomment this and the "## print" lines below to aid debugging
+            ## co_name = frame.f_code.co_name
             if frame.f_code in (
                 ASTFrame.run.__code__,
                 ModFrame.run.__code__,
@@ -127,6 +149,7 @@ class W_Traceback(W_Object):
                 # found an applevel frame
                 spyframe = frame.f_locals["self"]
                 entries.append(TBEntry(spyframe))
+                ## print(co_name, "=> new entry:", entries[-1])
 
             elif frame.f_code in (
                 ASTFrame.eval_expr.__code__,
@@ -135,11 +158,22 @@ class W_Traceback(W_Object):
                 # update last frame with more precise loc info
                 expr = frame.f_locals["expr"]
                 entries[-1].loc = expr.loc
+                ## print("   ", co_name, "=> update expr loc")
 
             elif frame.f_code is ASTFrame.exec_stmt.__code__:
                 # update last frame with more precise loc info
                 stmt = frame.f_locals["stmt"]
                 entries[-1].loc = stmt.loc
+                ## print("   ", co_name, "=> update stmt loc")
+
+            elif frame.f_code is ASTFrame.exec_Block.__code__:
+                # found a Block, record its scope
+                block = frame.f_locals["block"]
+                entries[-1]._scope = block.scope
+                ## print("   ", co_name, "=> update scope", block.scope.name)
+
+            ## elif co_name.startswith("exec_stmt_") or co_name.startswith("eval_expr_"):
+            ##     print("   ", co_name)
 
         return cls(entries)
 

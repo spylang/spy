@@ -12,10 +12,18 @@ from spy.vm.exc import TBEntry
 
 
 class MatchFrame:
-    def __init__(self, fqn: str, src: str, *, kind: str = "astframe") -> None:
+    def __init__(
+        self,
+        fqn: str,
+        src: str,
+        *,
+        kind: str = "astframe",
+        scope: str = None,
+    ) -> None:
         self.kind = kind
         self.fqn = fqn
         self.src = src
+        self.scope = scope
 
     def __eq__(self, info: object) -> bool:
         if not isinstance(info, TBEntry):
@@ -24,10 +32,14 @@ class MatchFrame:
             self.kind == info.kind
             and self.fqn == str(info.fqn)
             and self.src == info.loc.get_src()
+            and (self.scope is None or self.scope == info.scope.name)
         )
 
     def __repr__(self) -> str:
-        return f"<MatchFrame({self.fqn!r}, {self.src!r}, kind={self.kind!r})"
+        return (
+            f"<MatchFrame({self.fqn!r}, {self.src!r}, "
+            f"kind={self.kind!r}, scope={self.scope!r})"
+        )
 
 
 class TestException(CompilerTest):
@@ -153,6 +165,37 @@ class TestException(CompilerTest):
                 MatchFrame("test::bar", "get_k()", kind="dopplerframe"),
                 MatchFrame("test::get_k", 'raise StaticError("hello")'),
             ]
+
+    @skip_backends("C", reason="tracebacks not supported by the C backend")
+    def test_traceback_scope(self):
+        src = """
+        def bar() -> None:
+            while True:
+                if True:
+                    raise ValueError("hello")
+
+        def foo() -> None:
+            if True:
+                while True:
+                    bar()
+
+        """
+        mod = self.compile(src)
+        with SPyError.raises("W_ValueError", match="hello") as exc:
+            mod.foo()
+        w_tb = exc.value.add_traceback()
+        assert w_tb.entries == [
+            MatchFrame(
+                "test::foo",
+                "bar()",
+                scope="test::foo::if.then::while.body",
+            ),
+            MatchFrame(
+                "test::bar",
+                'raise ValueError("hello")',
+                scope="test::bar::while.body::if.then",
+            ),
+        ]
 
     def test_lazy_error(self):
         src = """
