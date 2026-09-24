@@ -631,6 +631,11 @@ class W_Type(W_Object):
             "W_Bool": W_Bool,
             "W_Dynamic": W_Dynamic,
         }
+        # avoid a circular import
+        if "W_Loc" in pyfunc.__annotations__.values() and "W_Loc" not in extra_types:
+            from spy.vm.modules.types import W_Loc
+
+            extra_types["W_Loc"] = W_Loc
         w_func = make_builtin_func(
             pyfunc,
             namespace=self.fqn,

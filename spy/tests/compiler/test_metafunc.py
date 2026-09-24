@@ -153,3 +153,25 @@ class TestMetaFunc(CompilerTest):
         w_T = mod.foo(unwrap=False)
         assert w_T is B.w_i32
         assert mod.get_x() == 1
+
+    def test_loc_source(self):
+        src = """
+        from operator import OpSpec
+
+        @blue.metafunc
+        def meta(m_x):
+            loc = m_x.loc
+            source = m_x.source
+
+            def impl(x: i32) -> tuple[str, str]:
+                return source, loc.filename
+            return OpSpec(impl)
+
+        def foo() -> tuple[str, str]:
+            var x = 2
+            return meta(x + 2)
+        """
+        mod = self.compile(src)
+        result = mod.foo()
+        assert result[0] == "x + 2"
+        assert result[1].endswith("test.spy")
