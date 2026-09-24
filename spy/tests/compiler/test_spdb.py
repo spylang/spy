@@ -428,3 +428,28 @@ class TestSPdb(CompilerTest):
         except SPyError as e:
             w_tb = e.add_traceback()
             spdb_expect(self.vm, w_tb, session, post_mortem=True)
+
+    def test_post_mortem_shadowing(self):
+        src = """
+        def foo() -> None:
+            const x = "outer"  # x$0
+            if True:
+                const x = "inner"  # x$1
+                raise ValueError("hello")
+        """
+        session = f"""
+        --- entering applevel debugger (post-mortem) ---
+           [0] test::foo at {self.filename}:6
+            |         raise ValueError("hello")
+            |         |_______________________|
+        (spdb) x
+        type: str
+        'inner'
+        (spdb) continue
+        """
+        mod = self.compile(src)
+        try:
+            mod.foo()
+        except SPyError as e:
+            w_tb = e.add_traceback()
+            spdb_expect(self.vm, w_tb, session, post_mortem=True)

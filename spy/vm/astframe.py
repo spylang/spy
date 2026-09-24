@@ -62,8 +62,6 @@ class AbstractFrame:
     frameinfo: FrameInfo
     locals: dict[str, LocalVar]
     special_calls: dict[ast.Call, str]
-    # stack of currently-entered Blocks; used by spdb to interactively resolve names
-    block_stack: list[ast.Block]
 
     def __init__(
         self, vm: "SPyVM", ns: FQN, loc: Loc, frameinfo: FrameInfo, closure: CLOSURE
@@ -79,7 +77,6 @@ class AbstractFrame:
         # slots instead of populating it lazily via declare_local.
         self.locals = {}
         self.special_calls = {}
-        self.block_stack = []
 
     # overridden by DopplerFrame
     @property
@@ -171,16 +168,13 @@ class AbstractFrame:
         return magic_dispatch(self, "exec_stmt", stmt)
 
     def exec_Block(self, block: ast.Block) -> None:
-        # Entering a Block is the single, centralized place where we push/pop the
-        # runtime block stack. Every body (funcdef/if/while/for) routes through
-        # here, so the push/pop cannot be forgotten and survives
-        # Break/Continue/Return/exceptions (finally).
-        self.block_stack.append(block)
-        try:
-            for stmt in block.body:
-                self.exec_stmt(stmt)
-        finally:
-            self.block_stack.pop()
+        # NOTE: the presence of this function is essential for SPdb. During the
+        # construction of W_Traceback.entries, we use the presence of an exec_Block frame
+        # in the call stack to know what is the active scope in that frame. This
+        # information is then stored in TBEntry, and later used by SPdb to call
+        # astcompile_interactive.
+        for stmt in block.body:
+            self.exec_stmt(stmt)
 
     def typecheck_maybe(
         self, wam: W_MetaArg, varname: Optional[str]
