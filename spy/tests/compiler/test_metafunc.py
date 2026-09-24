@@ -123,3 +123,34 @@ class TestMetaFunc(CompilerTest):
         w_T = mod.foo(unwrap=False)
         assert w_T is B.w_i32
         assert mod.get_x() == 1
+
+    def test_variadic_starred(self):
+        src = """
+        from operator import OpSpec, MetaArg
+
+        @blue.metafunc
+        def foo(*m_args):
+            m_x: MetaArg = m_args[0]
+            m_y: MetaArg = m_args[1]
+
+            T = m_x.static_type
+            assert m_y.static_type == T
+
+            def impl_str(x: T, y: T) -> T:
+                return x + y
+
+            # fails ("this is not supported")
+            return OpSpec(impl_str, [*m_args])
+            # currently works
+            # return OpSpec(impl_str, [m_x, m_y])
+
+        def test_i32(x: i32, y: i32) -> i32:
+            return foo(x, y)
+
+        def test_str(x: str, y: str) -> str:
+            return foo(x, y)
+        """
+
+        mod = self.compile(src)
+        assert mod.test_i32(1, 2) == 3
+        assert mod.test_str("S", "Py") == "SPy"
