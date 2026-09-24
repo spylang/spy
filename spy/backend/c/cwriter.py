@@ -307,6 +307,14 @@ class CFuncWriter:
         elif w_T is TYPES.w_NoneType:
             assert w_val is B.w_None
             return C.Void()
+        elif w_T is TYPES.w_Loc:
+            raise SPyError.simple(
+                "W_NotImplementedError",
+                "cannot use a `Loc` value at runtime",
+                "this value has type `Loc`, which only exists at redshift "
+                "time and has no C-level representation",
+                const.loc,
+            )
         else:
             raise NotImplementedError(f"WIP: {w_T}")
 
