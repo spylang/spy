@@ -1,3 +1,5 @@
+from typing import Optional
+
 import pytest
 
 from spy.errors import SPyError
@@ -18,7 +20,7 @@ class MatchFrame:
         src: str,
         *,
         kind: str = "astframe",
-        scope: str = None,
+        scope: Optional[str] = None,
     ) -> None:
         self.kind = kind
         self.fqn = fqn

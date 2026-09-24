@@ -35,9 +35,8 @@ class TBEntry:
         self._scope = None
 
     def __repr__(self) -> str:
-        fname = self.spyframe.w_func.fqn
         scope = "None" if self._scope is None else self._scope.name
-        return f"<TBEntry: {self.kind} `{fname}`, {scope=}>"
+        return f"<TBEntry: {self.kind} `{self.fqn}`, {scope=}>"
 
     @property
     def kind(self) -> FrameKind:
