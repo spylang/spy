@@ -818,6 +818,10 @@ class Block(Node):
 
     # the scope as computed by ScopeAnalyzer: this basically serves the role of "debug
     # info" for interactive name resolution (e.g. for spdb).
+    # See also:
+    #   - AbstractFrame.exec_Block
+    #   - W_Traceback._from_py_frames
+    #
     # None when "parsed', present when ">= astcompiled"
     scope: Optional[Scope] = field(repr=False, default=None, compare=False)
 
