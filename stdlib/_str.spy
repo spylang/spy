@@ -477,6 +477,7 @@ class methods:
             return OpSpec(_count_3)
         return OpSpec.NULL
 
+
 def _str_cmp(a: str, b: str) -> i32:
     # lexicographic comparison of the UTF-8 representations. Byte-wise order
     # matches code-point order for UTF-8.
@@ -491,6 +492,7 @@ def _str_cmp(a: str, b: str) -> i32:
     if res != 0:
         return res
     return lla.length - llb.length
+
 
 def _ll_isspace(ch: u8) -> bool:
     """
