@@ -117,3 +117,16 @@ class TestTuple(CompilerTest):
             ("this is `i32`", "42"),
         )
         self.compile_raises(src, "foo", errors)
+
+    def test_prebuilt_constant(self):
+        src = """
+        @blue
+        def get_tup():
+            return (1, 2, "hello")
+
+        def foo() -> str:
+            t = get_tup()
+            return t[2]
+        """
+        mod = self.compile(src)
+        assert mod.foo() == "hello"
