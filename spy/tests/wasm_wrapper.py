@@ -201,18 +201,15 @@ class WasmFuncWrapper:
             elif w_T.fqn == FQN(
                 "_list::list[i32]::_ListImpl"
             ):  # reading list[i32] for tests
-                assert isinstance(pyres, UnwrappedStruct)
                 return self._to_pylist_i32(pyres)
             elif w_T.fqn == FQN(
                 "_list::list[str]::_ListImpl"
             ):  # reading list[str] for tests
-                assert isinstance(pyres, UnwrappedStruct)
                 return self._to_pylist_str(pyres)
             elif self.vm.is_list_type(w_T):
                 raise NotImplementedError(f"Reading {w_T.fqn} out of WASM memory")
             elif w_T.fqn == FQN("_dict::dict[i32, i32]::_dict"):
                 # we support only reading dict[i32, i32] for test
-                assert isinstance(pyres, UnwrappedStruct)
                 return self._to_pydict_i32(pyres)
             else:
                 return pyres
