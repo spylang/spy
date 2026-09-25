@@ -18,18 +18,36 @@ class TestStrBuilder(CompilerTest):
         """
         mod = self.compile(src)
 
-        for capacity in (0, 1, 5, 6, 7, 32):
-            for chunks in (
-                [],
-                [""],
-                ["hello"],
-                ["abc", "def", "!"],
-                ["", "abc", "", "def", "!", ""],
-                ["a", "much longer chunk", "b", "c"],
-                ["é", "🐍", "!"],
-                ["a\x00", "b", "\x00"],
-            ):
-                assert mod.concatenate(capacity, chunks) == "".join(chunks)
+        assert mod.concatenate(0, []) == ""
+        assert mod.concatenate(5, ["hello"]) == "hello"
+        assert mod.concatenate(7, ["", "abc", "", "def", "!", ""]) == "abcdef!"
+        assert mod.concatenate(7, ["é", "🐍", "!"]) == "é🐍!"
+        assert mod.concatenate(4, ["a\x00", "b", "\x00"]) == "a\x00b\x00"
+
+    def test_build_underfilled(self):
+        src = """
+        from strbuilder import StrBuilder
+
+        def build_underfilled() -> str:
+            sb = StrBuilder(6)
+            sb.append("hello")
+            return sb.build()
+        """
+        mod = self.compile(src)
+        with SPyError.raises("W_ValueError"):
+            mod.build_underfilled()
+
+    def test_append_over_capacity(self):
+        src = """
+        from strbuilder import StrBuilder
+
+        def append_over_capacity() -> None:
+            sb = StrBuilder(4)
+            sb.append("hello")
+        """
+        mod = self.compile(src)
+        with SPyError.raises("W_ValueError"):
+            mod.append_over_capacity()
 
     def test_shared_state(self):
         src = """
@@ -38,8 +56,8 @@ class TestStrBuilder(CompilerTest):
         def append_middle(sb: StrBuilder) -> None:
             sb.append("middle")
 
-        def build(capacity: int) -> str:
-            sb = StrBuilder(capacity)
+        def build() -> str:
+            sb = StrBuilder(15)
             alias = sb
             sb.append("left")
             append_middle(alias)
@@ -47,39 +65,32 @@ class TestStrBuilder(CompilerTest):
             return alias.build()
         """
         mod = self.compile(src)
-        for capacity in (0, 5, 15, 32):
-            assert mod.build(capacity) == "leftmiddleright"
+        assert mod.build() == "leftmiddleright"
 
     def test_append_after_build(self):
         src = """
         from strbuilder import StrBuilder
 
-        def append_after_build(capacity: int, chunk: str) -> None:
-            sb = StrBuilder(capacity)
-            alias = sb
+        def append_after_build() -> None:
+            sb = StrBuilder(5)
             sb.append("hello")
-            result = sb.build()
-            alias.append(chunk)
+            sb.build()
+            sb.append("world")
         """
         mod = self.compile(src)
-        for capacity in (0, 3, 5, 32):
-            for chunk in ("!", ""):
-                with SPyError.raises("W_ValueError"):
-                    mod.append_after_build(capacity, chunk)
+        with SPyError.raises("W_ValueError"):
+            mod.append_after_build()
 
     def test_build_after_build(self):
         src = """
         from strbuilder import StrBuilder
 
-        def build_after_build(capacity: int, chunk: str) -> str:
-            sb = StrBuilder(capacity)
-            alias = sb
-            sb.append(chunk)
-            result = sb.build()
-            return alias.build()
+        def build_after_build() -> str:
+            sb = StrBuilder(5)
+            sb.append("hello")
+            sb.build()
+            return sb.build()
         """
         mod = self.compile(src)
-        for capacity in (0, 3, 5, 32):
-            for chunk in ("hello", ""):
-                with SPyError.raises("W_ValueError"):
-                    mod.build_after_build(capacity, chunk)
+        with SPyError.raises("W_ValueError"):
+            mod.build_after_build()
