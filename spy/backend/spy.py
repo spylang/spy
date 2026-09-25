@@ -713,6 +713,10 @@ class SPyBackend:
         items = ", ".join(itemlist)
         return f"[{items}]"
 
+    def fmt_expr_Starred(self, node: ast.Starred) -> str:
+        v = self.fmt_expr(node.value)
+        return f"*{v}"
+
     def fmt_expr_Tuple(self, node: ast.Tuple) -> str:
         itemlist = [self.fmt_expr(it) for it in node.items]
         items = ", ".join(itemlist)

@@ -595,6 +595,24 @@ class List(Expr):
     items: list[Expr]
 
 
+@astnode("<= astcompiled")
+class Starred(Expr):
+    """
+    A starred expression, e.g. `*m_args` inside a list literal like
+    `[*m_args]`.
+
+    For now, this is supported only as an item of a `List` literal, and only
+    to splat the elements of a blue `interp_tuple` (which backs variadic blue
+    arguments, i.e. `*m_args` in a `@blue.metafunc` definition). It never
+    survives redshifting: interp tuples are blue-only and cannot appear in
+    compiled (red) code, so this node is only ever evaluated by the AST
+    interpreter, never by the doppler.
+    """
+
+    precedence = 17
+    value: Expr
+
+
 @astnode
 class Tuple(Expr):
     precedence = 17

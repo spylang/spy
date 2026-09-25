@@ -518,6 +518,29 @@ class TestDoppler:
         """
         self.assert_dump(expected, funcname="foo")
 
+    def test_variadic_starred_in_metafunc(self):
+        self.redshift("""
+        from operator import OpSpec, MetaArg
+
+        @blue.metafunc
+        def foo(*m_args):
+            m_x: MetaArg = m_args[0]
+            m_y: MetaArg = m_args[1]
+            T = m_x.static_type
+            assert m_y.static_type == T
+            def impl(x: T, y: T) -> T:
+                return x + y
+            return OpSpec(impl, [*m_args])
+
+        def test(x: i32, y: i32) -> i32:
+            return foo(x, y)
+        """)
+        expected = """
+        def test(x: i32, y: i32) -> i32:
+            return `test::foo::impl`(x$0, y$0)
+        """
+        self.assert_dump(expected, funcname="test")
+
     def test_nested_force_inline(self):
         self.redshift("""
         from __spy__ import force_inline

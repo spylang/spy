@@ -1057,6 +1057,31 @@ class AbstractFrame:
         w_opimpl = self.vm.call_OP(op.loc, OP.w_GETATTR, [wam_obj, wam_name])
         return self.eval_opimpl(op, w_opimpl, [wam_obj, wam_name])
 
+    def eval_expr_Starred(self, op: ast.Starred) -> list[W_MetaArg]:
+        """
+        Evaluate a `*expr` splat.
+
+        This is currently supported only as an item of a `List` literal (see
+        eval_expr_List), to unpack the elements of a blue `interp_tuple` --
+        the type which backs variadic blue arguments, i.e. `*m_args` in a
+        `@blue.metafunc` definition. Returns one W_MetaArg per element.
+        """
+        wam_seq = self.eval_expr(op.value)
+        w_val = wam_seq.w_blueval if wam_seq.color == "blue" else None
+        if not isinstance(w_val, W_InterpTuple):
+            w_Tname = wam_seq.w_static_T.fqn.human_name(self.vm)
+            raise SPyError.simple(
+                "W_TypeError",
+                f"cannot unpack `{w_Tname}`: only a blue interp_tuple "
+                "can be splatted with `*`",
+                "this is not supported",
+                op.value.loc,
+            )
+        return [
+            W_MetaArg.from_w_obj(self.vm, w_item, loc=op.loc)
+            for w_item in w_val.items_w
+        ]
+
     def eval_expr_List(self, lst: ast.List) -> W_MetaArg:
         # 0. empty lists are special
         if len(lst.items) == 0:
@@ -1064,13 +1089,28 @@ class AbstractFrame:
             w_val = SPY.w_empty_list
             return W_MetaArg(self.vm, "red", w_T, w_val, lst.loc)
 
-        # 1. evaluate the individual items and infer the itemtype
-        items_wam = []
+        # 1. evaluate the individual items (expanding any `*expr` splat into
+        # zero or more items) and infer the itemtype
+        src_items: list[ast.Expr] = []
+        items_wam: list[W_MetaArg] = []
+        for item in lst.items:
+            if isinstance(item, ast.Starred):
+                for wam_item in self.eval_expr_Starred(item):
+                    src_items.append(item)
+                    items_wam.append(wam_item)
+            else:
+                src_items.append(item)
+                items_wam.append(self.eval_expr(item))
+
+        # a list made only of splatted, empty interp_tuple(s) is empty too
+        if len(items_wam) == 0:
+            w_T = SPY.w_EmptyListType
+            w_val = SPY.w_empty_list
+            return W_MetaArg(self.vm, "red", w_T, w_val, lst.loc)
+
         w_itemtype = None
         color: Color = "red"  # XXX should be blue?
-        for item in lst.items:
-            wam_item = self.eval_expr(item)
-
+        for i, wam_item in enumerate(items_wam):
             # This is needed when building a list[MetaArg].
             #
             # If we have two blue items which happen to be equal, we reuse the same
@@ -1082,8 +1122,8 @@ class AbstractFrame:
             #    test_list::test_list_MetaArg_identity
             #    typecheck_opspec, big comment starting with "THIS IS PROBABLY A BUG".
             wam_item = wam_item.as_red(self.vm)
+            items_wam[i] = wam_item
 
-            items_wam.append(wam_item)
             color = maybe_blue(color, wam_item.color)
             if w_itemtype is None:
                 w_itemtype = wam_item.w_static_T
@@ -1104,7 +1144,7 @@ class AbstractFrame:
         w_push = self.vm.lookup_global(fqn_push)
         wam_push = W_MetaArg.from_w_obj(self.vm, w_push)
 
-        for item, wam_item in zip(lst.items, items_wam):
+        for item, wam_item in zip(src_items, items_wam):
             w_opimpl = self.vm.call_OP(
                 lst.loc, OP.w_CALL, [wam_push, wam_list, wam_item]
             )

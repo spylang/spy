@@ -867,7 +867,19 @@ class Parser:
         return spy.ast.GetAttr(py_node.loc, value, attr)
 
     def from_py_expr_List(self, py_node: py_ast.List) -> spy.ast.List:
-        items = [self.from_py_expr(py_item) for py_item in py_node.elts]
+        items = []
+        for py_item in py_node.elts:
+            if isinstance(py_item, py_ast.Starred):
+                # `*expr` inside a list literal, e.g. `[*m_args]`. Note that
+                # this is intentionally handled only here (for List literals)
+                # and not as a generic `from_py_expr_Starred`: splatting is
+                # supported only to unpack a blue interp_tuple (e.g. `*m_args`)
+                # into a list literal, not in other contexts (e.g. `*args` in
+                # a function call).
+                value = self.from_py_expr(py_item.value)
+                items.append(spy.ast.Starred(py_item.loc, value))
+            else:
+                items.append(self.from_py_expr(py_item))
         return spy.ast.List(py_node.loc, items)
 
     def from_py_expr_Tuple(self, py_node: py_ast.Tuple) -> spy.ast.Tuple:
