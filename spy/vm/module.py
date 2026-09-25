@@ -45,11 +45,19 @@ class W_Module(W_Object):
 
     # ==== applevel interface =====
 
-    @builtin_method("__getattribute__")
+    @builtin_method("__getattribute__", color="blue", kind="metafunc")
     @staticmethod
-    def w_getattribute(vm: "SPyVM", w_mod: "W_Module", w_attr: W_Str) -> W_Dynamic:
-        attr = vm.unwrap_str(w_attr)
-        return w_mod.getattr(attr)
+    def w_GETATTRIBUTE(
+        vm: "SPyVM", wam_mod: W_MetaArg, wam_name: W_MetaArg
+    ) -> W_OpSpec:
+        assert wam_mod.color == "blue"
+        w_mod = wam_mod.w_blueval
+        assert isinstance(w_mod, W_Module)
+        name = wam_name.blue_unwrap_str(vm)
+        w_attr = w_mod.getattr_maybe(name)
+        if w_attr is None:
+            return W_OpSpec.NULL
+        return W_OpSpec.const(w_attr)
 
     @builtin_method("__setattr__")
     @staticmethod
@@ -75,7 +83,14 @@ class W_Module(W_Object):
             return W_OpSpec.NULL
 
         if isinstance(w_func, W_Func):
-            return W_OpSpec(w_func, list(args_wam))
+            wam_func = W_MetaArg.from_w_obj(vm, w_func, color="blue")
+            kind = w_func.w_functype.kind
+            if kind == "plain":
+                return W_Func.op_CALL(vm, wam_func, *args_wam)
+            elif kind == "metafunc":
+                return W_Func.op_METACALL(vm, wam_func, *args_wam)
+            else:
+                return W_OpSpec.NULL
         else:
             raise WIP("trying to call a non-function (we should emit a better error)")
 

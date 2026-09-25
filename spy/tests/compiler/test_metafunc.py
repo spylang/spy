@@ -38,6 +38,36 @@ class TestMetaFunc(CompilerTest):
         assert mod.test1() == 10
         assert mod.test2() == "hello world"
 
+    def test_call_via_module_attr(self):
+        src = """
+        from operator import OpSpec
+
+        @blue.metafunc
+        def foo(m_x):
+            if m_x.static_type == i32:
+                def impl_i32(x: i32) -> i32:
+                    return x * 2
+                return OpSpec(impl_i32)
+            elif m_x.static_type == str:
+                def impl_str(x: str) -> str:
+                    return x + ' world'
+                return OpSpec(impl_str)
+            raise StaticError("unsupported type")
+        """
+        self.write_file("mymod.spy", src)
+
+        mod = self.compile("""
+        import mymod
+
+        def test1() -> i32:
+            return mymod.foo(5)
+
+        def test2() -> str:
+            return mymod.foo('hello')
+        """)
+        assert mod.test1() == 10
+        assert mod.test2() == "hello world"
+
     def test_method(self):
         mod = self.compile("""
         from operator import OpSpec
