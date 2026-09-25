@@ -189,10 +189,16 @@ class WasmFuncWrapper:
             return WasmPtr(addr, length)
         elif isinstance(w_T, W_StructType):
             # when you return struct-by-val from C, wasmtime automatically
-            # converts them into a list, flattening nested structs
-            assert isinstance(res, list)
+            # converts them into a list, flattening nested structs. However,
+            # for a struct with a single flat field, wasmtime returns a bare
+            # scalar instead of a one-element list.
+            if not isinstance(res, list):
+                res = [res]
             pyres = unflatten_struct(self.ll, w_T, res)
-            if w_T.fqn == FQN(
+
+            if self.vm.is_tuple_type(w_T):
+                return tuple(pyres._content.values())
+            elif w_T.fqn == FQN(
                 "_list::list[i32]::_ListImpl"
             ):  # reading list[i32] for tests
                 return self._to_pylist_i32(pyres)

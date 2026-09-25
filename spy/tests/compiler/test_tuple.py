@@ -71,6 +71,27 @@ class TestTuple(CompilerTest):
         tup = mod.foo(3, 4)
         assert tup == (3, 4)
 
+    def test_return_tuple(self):
+        src = """
+        def foo() -> tuple[i32, i32, i32]:
+            return 1, 2, 3
+
+        def nested() -> tuple[i32, tuple[i32, i32]]:
+            return 1, (2, 3)
+
+        def mixed_type() -> tuple[i32, f64, bool, str]:
+            return 1, 2.5, True, "hello"
+        """
+        mod = self.compile(src)
+        tup = mod.foo()
+        assert tup == (1, 2, 3)
+
+        tup = mod.nested()
+        assert tup == (1, (2, 3))
+
+        tup = mod.mixed_type()
+        assert tup == (1, 2.5, True, "hello")
+
     def test_unpacking_wrong_number(self):
         src = """
         def make_tuple() -> tuple[int, int]:

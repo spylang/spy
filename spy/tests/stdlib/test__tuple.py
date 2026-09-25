@@ -14,8 +14,8 @@ class TestTange(CompilerTest):
         mod = self.compile(src)
         p = mod.make_pair("hello", 42)
         assert p == ("hello", 42)
-        assert p._item0 == "hello"
-        assert p._item1 == 42
+        assert p[0] == "hello"
+        assert p[1] == 42
 
     def test_getitem(self):
         src = """
