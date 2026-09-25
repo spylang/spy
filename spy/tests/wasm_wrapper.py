@@ -194,8 +194,11 @@ class WasmFuncWrapper:
             # scalar instead of a one-element list.
             if not isinstance(res, list):
                 res = [res]
-            pyres = unflatten_struct(self.vm, self.ll, w_T, res)
-            if w_T.fqn == FQN(
+            pyres = unflatten_struct(self.ll, w_T, res)
+
+            if self.vm.is_tuple_type(w_T):
+                return tuple(pyres._content.values())
+            elif w_T.fqn == FQN(
                 "_list::list[i32]::_ListImpl"
             ):  # reading list[i32] for tests
                 assert isinstance(pyres, UnwrappedStruct)
@@ -314,8 +317,8 @@ class WasmFuncWrapper:
 
 
 def unflatten_struct(
-    vm: SPyVM, ll: LLSPyInstance, w_T: W_StructType, flat_values: list[Any]
-) -> UnwrappedStruct | tuple[Any, ...]:
+    ll: LLSPyInstance, w_T: W_StructType, flat_values: list[Any]
+) -> UnwrappedStruct:
     """
     Unflatten a struct from a flat list of values.
 
@@ -323,9 +326,7 @@ def unflatten_struct(
     into a single list. This function reconstructs the nested structure.
     """
 
-    def unflatten(
-        w_T: W_StructType, start_idx: int
-    ) -> tuple[UnwrappedStruct | tuple[Any, ...], int]:
+    def unflatten(w_T: W_StructType, start_idx: int) -> tuple[UnwrappedStruct, int]:
         content: dict[str, Any] = {}
         idx = start_idx
 
@@ -362,8 +363,6 @@ def unflatten_struct(
                 content[w_field.name] = flat_values[idx]
                 idx += 1
 
-        if vm.is_tuple_type(w_T):
-            return tuple(content.values()), idx
         return UnwrappedStruct(w_T.fqn, content), idx
 
     result, consumed = unflatten(w_T, 0)
