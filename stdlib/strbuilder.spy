@@ -1,0 +1,10 @@
+@struct
+class StrBuilder:
+    def __new__(initial_capacity: int) -> StrBuilder:
+        raise NotImplementedError("StrBuilder is not implemented yet")
+
+    def append(self, chunk: str) -> None:
+        raise NotImplementedError("StrBuilder is not implemented yet")
+
+    def build(self) -> str:
+        raise NotImplementedError("StrBuilder is not implemented yet")
