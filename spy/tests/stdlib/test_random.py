@@ -10,21 +10,21 @@ import pytest
 
 from spy.tests.support import CompilerTest
 
+SRC = """
+from random import seed, random
+
+def seed_with(value: i32) -> None:
+    print("seed with", value)
+    seed(value)
+
+def r() -> f64:
+    return random()
+"""
+
 
 class TestRandom(CompilerTest):
-    def test_random(self):
-        src = """
-        from random import seed, random
-
-        def seed_with(value: i32) -> None:
-            print("seed with", value)
-            seed(value)
-
-        def r() -> f64:
-            return random()
-        """
-        mod = self.compile(src)
-
+    def test_random_simple(self):
+        mod = self.compile(SRC)
         mod.seed_with(42)
         a1 = mod.r()
         assert abs(a1 - 0.3745401188473625) < 1e-12
@@ -33,8 +33,14 @@ class TestRandom(CompilerTest):
         assert abs(mod.r() - 0.5986584841970366) < 1e-12
         assert abs(mod.r() - 0.15601864044243652) < 1e-12
 
+    def test_random_stress(self):
         if self.backend in ("interp", "doppler") and not self.slow_tests:
-            pytest.skip("stress part skipped on interp/doppler; use --slow-tests")
+            pytest.skip("skipped on interp/doppler; use --slow-tests")
+
+        mod = self.compile(SRC)
+
+        mod.seed_with(42)
+        a1 = mod.r()
 
         mod.seed_with(1)
         b1 = mod.r()
