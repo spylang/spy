@@ -361,6 +361,12 @@ class CFuncWriter:
         v = f"{v} /* {comment} */"
         return C.UnaryOp("&", C.Literal(v))
 
+    def fmt_expr_Tuple(self, tup: ast.Tuple) -> C.Expr:
+        c_structtype = self.ctx.w2c(tup.w_T)
+        c_items = [self.fmt_expr(item) for item in tup.items]
+        stritems = ", ".join(map(str, c_items))
+        return C.Cast(c_structtype, C.Literal("{ %s }" % stritems))
+
     def fmt_expr_FQNConst(self, const: ast.FQNConst) -> C.Expr:
         w_obj = self.ctx.vm.lookup_global(const.fqn)
         if isinstance(w_obj, W_Ptr):
