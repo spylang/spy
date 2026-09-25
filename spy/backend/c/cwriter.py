@@ -362,6 +362,7 @@ class CFuncWriter:
         return C.UnaryOp("&", C.Literal(v))
 
     def fmt_expr_Tuple(self, tup: ast.Tuple) -> C.Expr:
+        assert tup.w_T is not None
         c_structtype = self.ctx.w2c(tup.w_T)
         c_items = [self.fmt_expr(item) for item in tup.items]
         stritems = ", ".join(map(str, c_items))
