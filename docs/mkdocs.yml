@@ -49,6 +49,7 @@ markdown_extensions:
 
 hooks:
   - generate_reference.py
+  - gen_example_pages.py
 
 plugins:
   - mkdocs-typer2
@@ -59,6 +60,11 @@ nav:
   - Language features:
     - howto/main_function.md
     - howto/generics.md
+  - Examples:
+    - examples/1_high_level.md
+    - examples/2_metaprogramming.md
+    - examples/3_low_level.md
+    - examples/4_advanced.md
   - Reference:
     - reference/python_builtins.md
     - reference/spy_builtin_functions.md
