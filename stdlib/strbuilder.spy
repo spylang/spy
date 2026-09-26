@@ -1,0 +1,58 @@
+from _str import StrObject
+from unsafe import gc_alloc, gc_ptr, ptr_copy_slice
+
+
+@struct
+class BuilderState:
+    buffer: gc_ptr[StrObject]
+    position: i32
+    sealed: u8
+
+
+@struct
+class StrBuilder:
+    """
+    Build a string in a fixed-size buffer, with capacity measured in bytes.
+
+    Appended chunks must fill the buffer exactly before build() can return it
+    as an immutable string without copying. A successful build seals the shared
+    state, so further append() or build() calls through any alias raise ValueError.
+
+    Negative capacity, appending beyond capacity, and building an underfilled
+    buffer also raise ValueError.
+    """
+
+    __ll__: gc_ptr[BuilderState]
+
+    def __new__(capacity: i32) -> StrBuilder:
+        if capacity < 0:
+            raise ValueError("StrBuilder capacity must not be negative")
+        state = gc_alloc[BuilderState](1)
+        state.buffer = StrObject.alloc(capacity)
+        state.position = 0
+        state.sealed = u8(0)
+        return StrBuilder.__make__(state)
+
+    def append(self, chunk: str) -> None:
+        state = self.__ll__
+        if state.sealed != u8(0):
+            raise ValueError("StrBuilder is already sealed")
+        source = StrObject.from_str(chunk)
+        length = source.length
+        if length > state.buffer.length - state.position:
+            raise ValueError("StrBuilder capacity exceeded")
+        if length > 0:
+            ptr_copy_slice(
+                state.buffer.utf8, state.position, state.position + length,
+                source.utf8, 0, length,
+            )
+            state.position = state.position + length
+
+    def build(self) -> str:
+        state = self.__ll__
+        if state.sealed != u8(0):
+            raise ValueError("StrBuilder is already sealed")
+        if state.position != state.buffer.length:
+            raise ValueError("StrBuilder is not completely filled")
+        state.sealed = u8(1)
+        return StrObject.to_str(state.buffer)
