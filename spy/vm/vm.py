@@ -1,6 +1,7 @@
 import importlib.util
 import itertools
 import sys
+import typing
 from ctypes import c_float as float32
 from types import FunctionType
 from typing import Any, Callable, Iterable, Optional, Sequence, Union, overload
@@ -112,11 +113,15 @@ class SPyVM:
     """
 
     ll: LLSPyInstance
-    globals_w: dict[FQN, W_Object]
+    _globals_w: dict[FQN, W_Object]
+    # Reverse index for reverse_lookup_global(), kept in sync by
+    # globals_set(). Relies on W_Object using identity-based __hash__/__eq__
+    # at the interp level (see _storage_sanity_check in object.py).
+    _reverse_globals: dict[W_Object, FQN]
     irtags: dict[FQN, IRTag]
     modules_w: dict[str, W_Module]
     # Maps a real FQN to a display FQN used only for human-readable rendering.
-    # The display FQN is NOT registered in globals_w and must not be used for lookup.
+    # The display FQN is NOT registered in _globals_w and must not be used for lookup.
     fqn_human_aliases: dict[FQN, FQN]
     path: list[str]
     bluecache: BlueCache
@@ -152,7 +157,8 @@ class SPyVM:
             extra_regs = []
             self.ll = ll
 
-        self.globals_w = {}
+        self._globals_w = {}
+        self._reverse_globals = {}
         self.irtags = {}
         self.modules_w = {}
         self.fqn_human_aliases = {}
@@ -200,6 +206,23 @@ class SPyVM:
         w_mod = self.modules_w[modname]
         return w_mod
 
+    def globals_set(self, fqn: FQN, w_value: W_Object) -> None:
+        """
+        The only place that should write into self._globals_w: keeps
+        _reverse_globals in sync so reverse_lookup_global() stays O(1).
+        """
+        self._globals_w[fqn] = w_value
+        self._reverse_globals.setdefault(w_value, fqn)
+
+    def globals_get(self, fqn: FQN) -> W_Object:
+        return self._globals_w[fqn]
+
+    def globals_items(self) -> typing.ItemsView[FQN, W_Object]:
+        return self._globals_w.items()
+
+    def globals_contains(self, fqn: FQN) -> bool:
+        return fqn in self._globals_w
+
     def redshift(self, error_mode: ErrorMode) -> None:
         """
         Perform a redshift on all W_ASTFunc.
@@ -210,7 +233,7 @@ class SPyVM:
             return w_func.color != "blue" and w_func.stage == "astcompiled"
 
         def get_funcs() -> Iterable[tuple[FQN, W_ASTFunc]]:
-            for fqn, w_func in self.globals_w.items():
+            for fqn, w_func in self._globals_w.items():
                 if isinstance(w_func, W_ASTFunc) and should_redshift(w_func):
                     yield fqn, w_func
 
@@ -230,21 +253,21 @@ class SPyVM:
             assert w_func.stage == "astcompiled"
             w_newfunc = redshift(self, w_func, error_mode)
             assert w_newfunc.stage == "redshifted"
-            self.globals_w[fqn] = w_newfunc
+            self.globals_set(fqn, w_newfunc)
 
     def linearize_all(self) -> None:
         """
         Apply the linearize pass to all redshifted W_ASTFuncs.
         """
-        for fqn, w_obj in list(self.globals_w.items()):
+        for fqn, w_obj in list(self._globals_w.items()):
             if isinstance(w_obj, W_ASTFunc) and w_obj.stage == "redshifted":
-                self.globals_w[fqn] = linearize(self, w_obj)
+                self.globals_set(fqn, linearize(self, w_obj))
 
     def register_module(self, w_mod: W_Module) -> None:
         assert w_mod.name not in self.modules_w
-        assert w_mod.fqn not in self.globals_w
+        assert w_mod.fqn not in self._globals_w
         self.modules_w[w_mod.name] = w_mod
-        self.globals_w[w_mod.fqn] = w_mod
+        self.globals_set(w_mod.fqn, w_mod)
 
     def make_module(self, reg: ModuleRegistry) -> None:
         w_mod = W_Module(reg.fqn.modname, None)
@@ -288,7 +311,7 @@ class SPyVM:
     def call_INITs(self) -> None:
         for modname in self.modules_w:
             init_fqn = FQN(modname).join("__INIT__")
-            w_init = self.globals_w.get(init_fqn)
+            w_init = self._globals_w.get(init_fqn)
             if w_init is not None:
                 assert isinstance(w_init, W_Func)
                 self.fast_call(w_init, [])
@@ -306,7 +329,7 @@ class SPyVM:
         """
         Get an unique variant of the given FQN, adding a suffix if necessary.
         """
-        if fqn not in self.globals_w:
+        if fqn not in self._globals_w:
             # fqn not used yet, just return it
             return fqn
 
@@ -316,7 +339,7 @@ class SPyVM:
         # conflicting FQNs, but for now we don't care
         for n in itertools.count(1):
             fqn2 = fqn.with_suffix(str(n))
-            if fqn2 not in self.globals_w:
+            if fqn2 not in self._globals_w:
                 return fqn2
         assert False, "unreachable"
 
@@ -333,9 +356,9 @@ class SPyVM:
         self, fqn: FQN, w_value: W_Object, *, irtag: IRTag = IRTag.Empty
     ) -> None:
         assert fqn.modname in self.modules_w
-        w_existing = self.globals_w.get(fqn)
+        w_existing = self._globals_w.get(fqn)
         if w_existing is None:
-            self.globals_w[fqn] = w_value
+            self.globals_set(fqn, w_value)
         else:
             raise ValueError(f"'{fqn}' already exists")
         self.irtags[fqn] = irtag
@@ -344,7 +367,7 @@ class SPyVM:
         if fqn.is_module():
             return self.modules_w.get(fqn.modname)
         else:
-            return self.globals_w.get(fqn)
+            return self._globals_w.get(fqn)
 
     def lookup_global(self, fqn: FQN) -> W_Object:
         w_val = self.lookup_global_maybe(fqn)
@@ -356,21 +379,16 @@ class SPyVM:
         return self.irtags.get(fqn, IRTag.Empty)
 
     def reverse_lookup_global(self, w_val: W_Object) -> Optional[FQN]:
-        # XXX we should maintain a reverse-lookup table instead of doing a
-        # linear search
-        for fqn, w_obj in self.globals_w.items():
-            if w_val == w_obj:
-                return fqn
-        return None
+        return self._reverse_globals.get(w_val)
 
     def fqns_by_modname(self, modname: str) -> Iterable[tuple[FQN, W_Object]]:
-        for fqn, w_obj in self.globals_w.items():
+        for fqn, w_obj in self._globals_w.items():
             if fqn.modname == modname and not fqn.is_module():
                 yield (fqn, w_obj)
 
     def pp_globals(self, modname: Optional[str] = None) -> None:
         all_pbcs = sorted(
-            self.globals_w.items(),
+            self._globals_w.items(),
             key=lambda item: str(item[0]),  # item[0] is fqn
         )
         if modname is not None:
@@ -502,7 +520,7 @@ class SPyVM:
         elif isinstance(w_val, W_BuiltinFunc):
             # ideally, I'd like ALL builtin funcs to be created with
             # @vm.register_builtin_func. This way, we should just assert that
-            # w_val.fqn is already in vm.globals_w.
+            # w_val.fqn is already in vm._globals_w.
             #
             # However, this is not easily achievable at the moment, because we
             # create all module-level builtin functions AND all the
@@ -511,13 +529,13 @@ class SPyVM:
             # have a vm available at that point, so it would require some
             # serious refactoring.
             fqn = w_val.fqn
-            assert w_val.fqn not in self.globals_w
+            assert w_val.fqn not in self._globals_w
 
         elif isinstance(w_val, W_Type):
             # for now types are only builtin so they must have an unique fqn,
             # we might need to change this when we introduce custom types
             fqn = w_val.fqn
-            assert w_val.fqn not in self.globals_w
+            assert w_val.fqn not in self._globals_w
         else:
             w_T = self.dynamic_type(w_val)
             T = w_T.fqn.human_name(self)
@@ -528,9 +546,6 @@ class SPyVM:
         assert fqn is not None
         self.add_global(fqn, w_val)
         return fqn
-
-    def store_global(self, fqn: FQN, w_value: W_Object) -> None:
-        self.globals_w[fqn] = w_value
 
     def dynamic_type(self, w_obj: W_Object) -> W_Type:
         assert isinstance(w_obj, W_Object)

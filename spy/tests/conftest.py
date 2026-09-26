@@ -80,6 +80,12 @@ def pytest_addoption(parser):
         default=False,
         help="Remove all .spyc cache files from stdlib before running tests",
     )
+    parser.addoption(
+        "--slow-tests",
+        action="store_true",
+        default=False,
+        help="Also run slow tests on interp/doppler backends",
+    )
 
 
 @pytest.fixture(autouse=True)

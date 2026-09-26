@@ -136,7 +136,7 @@ class CBackend:
         structdefs: list[tuple[FQN, W_Type]] = []
 
         # Put each FQN into the corresponding CModule or structdefs
-        for fqn, w_obj in self.vm.globals_w.items():
+        for fqn, w_obj in self.vm.globals_items():
             # ignore W_Modules
             if fqn.is_module():
                 continue

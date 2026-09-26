@@ -131,6 +131,7 @@ class CompilerTest:
     def init(self, request, tmpdir, compiler_backend):
         self.dump_c = request.config.getoption("--dump-c")
         self.dump_redshift = request.config.getoption("--dump-redshift")
+        self.slow_tests = request.config.getoption("--slow-tests")
         self.tmpdir = tmpdir
         self.builddir = self.tmpdir.join("build").ensure(dir=True)
         self.backend = compiler_backend
