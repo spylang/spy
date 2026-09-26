@@ -1,28 +1,36 @@
-import pytest
-
 from spy.errors import SPyError
 from spy.tests.support import CompilerTest
 
 
-@pytest.mark.xfail(strict=True, reason="StrBuilder is not implemented yet")
 class TestStrBuilder(CompilerTest):
     def test_build(self):
         src = """
         from strbuilder import StrBuilder
 
-        def concatenate(capacity: int, chunks: list[str]) -> str:
+        def concatenate(capacity: int, first: str, second: str, third: str) -> str:
             sb = StrBuilder(capacity)
-            for chunk in chunks:
+            for chunk in [first, second, third]:
                 sb.append(chunk)
             return sb.build()
         """
         mod = self.compile(src)
 
-        assert mod.concatenate(0, []) == ""
-        assert mod.concatenate(5, ["hello"]) == "hello"
-        assert mod.concatenate(7, ["", "abc", "", "def", "!", ""]) == "abcdef!"
-        assert mod.concatenate(7, ["é", "🐍", "!"]) == "é🐍!"
-        assert mod.concatenate(4, ["a\x00", "b", "\x00"]) == "a\x00b\x00"
+        assert mod.concatenate(0, "", "", "") == ""
+        assert mod.concatenate(5, "", "hello", "") == "hello"
+        assert mod.concatenate(7, "abc", "def", "!") == "abcdef!"
+        assert mod.concatenate(7, "é", "🐍", "!") == "é🐍!"
+        assert mod.concatenate(4, "a\x00", "b", "\x00") == "a\x00b\x00"
+
+    def test_negative_capacity(self):
+        src = """
+        from strbuilder import StrBuilder
+
+        def negative_capacity() -> None:
+            sb = StrBuilder(-1)
+        """
+        mod = self.compile(src)
+        with SPyError.raises("W_ValueError"):
+            mod.negative_capacity()
 
     def test_build_underfilled(self):
         src = """
@@ -34,7 +42,10 @@ class TestStrBuilder(CompilerTest):
             return sb.build()
         """
         mod = self.compile(src)
-        with SPyError.raises("W_ValueError"):
+        with SPyError.raises(
+            "W_ValueError",
+            match="StrBuilder is not completely filled",
+        ):
             mod.build_underfilled()
 
     def test_append_over_capacity(self):
@@ -46,7 +57,10 @@ class TestStrBuilder(CompilerTest):
             sb.append("hello")
         """
         mod = self.compile(src)
-        with SPyError.raises("W_ValueError"):
+        with SPyError.raises(
+            "W_ValueError",
+            match="StrBuilder capacity exceeded",
+        ):
             mod.append_over_capacity()
 
     def test_shared_state(self):
@@ -75,7 +89,7 @@ class TestStrBuilder(CompilerTest):
             sb = StrBuilder(5)
             sb.append("hello")
             sb.build()
-            sb.append("world")
+            sb.append("")
         """
         mod = self.compile(src)
         with SPyError.raises("W_ValueError"):
