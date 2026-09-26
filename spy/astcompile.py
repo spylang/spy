@@ -641,6 +641,9 @@ class ASTCompiler:
     def compile_expr_List(self, expr: ast.List) -> ast.Expr:
         return expr.replace(items=[self.compile_expr(item) for item in expr.items])
 
+    def compile_expr_Starred(self, expr: ast.Starred) -> ast.Expr:
+        return expr.replace(value=self.compile_expr(expr.value))
+
     def compile_expr_Tuple(self, expr: ast.Tuple) -> ast.Expr:
         return expr.replace(items=[self.compile_expr(item) for item in expr.items])
 

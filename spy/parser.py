@@ -866,6 +866,11 @@ class Parser:
         attr = spy.ast.StrLiteral(py_node.loc, py_node.attr)
         return spy.ast.GetAttr(py_node.loc, value, attr)
 
+    def from_py_expr_Starred(self, py_node: py_ast.Starred) -> spy.ast.Starred:
+        # `*expr`, e.g. `[*m_args]`, `(*fields.keys(),)`, `f(*args)`.
+        value = self.from_py_expr(py_node.value)
+        return spy.ast.Starred(py_node.loc, value)
+
     def from_py_expr_List(self, py_node: py_ast.List) -> spy.ast.List:
         items = [self.from_py_expr(py_item) for py_item in py_node.elts]
         return spy.ast.List(py_node.loc, items)

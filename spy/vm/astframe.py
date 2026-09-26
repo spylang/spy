@@ -1051,6 +1051,104 @@ class AbstractFrame:
         w_opimpl = self.vm.call_OP(op.loc, OP.w_GETATTR, [wam_obj, wam_name])
         return self.eval_opimpl(op, w_opimpl, [wam_obj, wam_name])
 
+    def _call_method_blue(
+        self, op: ast.Starred, wam_obj: W_MetaArg, methname: str
+    ) -> W_MetaArg:
+        """
+        `wam_obj.methname()`, evaluated eagerly and blue, via the same
+        OP.w_CALL_METHOD dynamic-dispatch opcode that `x.method(...)`
+        expressions and the `for`-loop desugaring use (see
+        eval_expr_CallMethod and astcompile.py:compile_stmt_For).
+
+        We deliberately do NOT use vm.lookup_global(w_T.fqn.join(methname))
+        here (unlike spy/vm/struct.py:unwrap_dict): that only works for
+        methods that happen to also be registered as plain globals (true of
+        compiled-from-.spy methods like dict's, but NOT of interp-level
+        @builtin_method-decorated methods like interp_tuple's __fastiter__,
+        which live only in the type's own method table). Going through
+        OP.w_CALL_METHOD works uniformly for both.
+        """
+        wam_meth = W_MetaArg.from_w_obj(self.vm, self.vm.wrap(methname))
+        w_opimpl = self.vm.call_OP(op.loc, OP.w_CALL_METHOD, [wam_obj, wam_meth])
+        return self.eval_opimpl(op, w_opimpl, [wam_obj, wam_meth])
+
+    def _blue_splat_items(self, op: ast.Starred, wam_seq: W_MetaArg) -> list[W_Object]:
+        """
+        Eagerly drain a blue value through the __fastiter__ protocol -- the
+        same one that `for` loops desugar to (see
+        astcompile.py:compile_stmt_For) -- and collect every item into a
+        plain list. Used to implement `*expr` splats.
+
+        `wam_seq` must be blue: this deliberately does NOT support splatting
+        a red value, whose length is not known at compile time (see
+        eval_starred_items below for the error raised in that case).
+        """
+        assert wam_seq.color == "blue"
+        w_T = wam_seq.w_static_T
+        if w_T.lookup_func(self.vm, "__fastiter__") is None:
+            w_Tname = w_T.fqn.human_name(self.vm)
+            raise SPyError.simple(
+                "W_TypeError",
+                f"cannot unpack `{w_Tname}`: it does not support "
+                "iteration, so it cannot be splatted with `*`",
+                "this is not supported",
+                op.loc,
+            )
+        wam_it = self._call_method_blue(op, wam_seq, "__fastiter__")
+
+        items_w = []
+        while True:
+            wam_cont = self._call_method_blue(op, wam_it, "__continue_iteration__")
+            if not self.vm.unwrap_bool(wam_cont.w_val):
+                break
+            wam_item = self._call_method_blue(op, wam_it, "__item__")
+            items_w.append(wam_item.w_val)
+            wam_it = self._call_method_blue(op, wam_it, "__next__")
+        return items_w
+
+    def eval_starred_items(self, op: ast.Starred) -> list[W_MetaArg]:
+        """
+        Evaluate a `*expr` splat and expand it into zero or more items.
+
+        This is currently supported only as an item of a `List` literal (see
+        eval_expr_List), for any blue value whose type implements the
+        __fastiter__ protocol (the same one `for` loops desugar to) -- this
+        includes, but is not limited to, the blue `interp_tuple` type which
+        backs variadic blue arguments, i.e. `*m_args` in a `@blue.metafunc`
+        definition. Returns one W_MetaArg per element.
+
+        Splatting a *red* value is out of scope for now: the target
+        container's static type would need to reflect a variable-length
+        unpack, which is a materially bigger feature.
+        """
+        wam_seq = self.eval_expr(op.value)
+        if wam_seq.color != "blue":
+            raise SPyError.simple(
+                "W_TypeError",
+                "cannot splat a red value: `*expr` is currently supported "
+                "only for blue values",
+                "this is not supported",
+                op.value.loc,
+            )
+        items_w = self._blue_splat_items(op, wam_seq)
+        return [W_MetaArg.from_w_obj(self.vm, w_item, loc=op.loc) for w_item in items_w]
+
+    def eval_expr_Starred(self, op: ast.Starred) -> W_MetaArg:
+        """
+        Generic fallback for a `*expr` splat appearing somewhere that
+        doesn't special-case ast.Starred before calling self.eval_expr(...)
+        on it (e.g. Call args, today). List/Tuple deliberately pre-check
+        `isinstance(item, ast.Starred)` and route to eval_starred_items
+        instead of going through here -- see eval_expr_List.
+        """
+        raise SPyError.simple(
+            "W_TypeError",
+            "splat expressions (`*expr`) are supported only as items of "
+            "a list or tuple literal",
+            "not supported here",
+            op.loc,
+        )
+
     def eval_expr_List(self, lst: ast.List) -> W_MetaArg:
         # 0. empty lists are special
         if len(lst.items) == 0:
@@ -1058,13 +1156,28 @@ class AbstractFrame:
             w_val = SPY.w_empty_list
             return W_MetaArg(self.vm, "red", w_T, w_val, lst.loc)
 
-        # 1. evaluate the individual items and infer the itemtype
-        items_wam = []
+        # 1. evaluate the individual items (expanding any `*expr` splat into
+        # zero or more items) and infer the itemtype
+        src_items: list[ast.Expr] = []
+        items_wam: list[W_MetaArg] = []
+        for item in lst.items:
+            if isinstance(item, ast.Starred):
+                for wam_item in self.eval_starred_items(item):
+                    src_items.append(item)
+                    items_wam.append(wam_item)
+            else:
+                src_items.append(item)
+                items_wam.append(self.eval_expr(item))
+
+        # a list made only of splatted, empty interp_tuple(s) is empty too
+        if len(items_wam) == 0:
+            w_T = SPY.w_EmptyListType
+            w_val = SPY.w_empty_list
+            return W_MetaArg(self.vm, "red", w_T, w_val, lst.loc)
+
         w_itemtype = None
         color: Color = "red"  # XXX should be blue?
-        for item in lst.items:
-            wam_item = self.eval_expr(item)
-
+        for i, wam_item in enumerate(items_wam):
             # This is needed when building a list[MetaArg].
             #
             # If we have two blue items which happen to be equal, we reuse the same
@@ -1076,8 +1189,8 @@ class AbstractFrame:
             #    test_list::test_list_MetaArg_identity
             #    typecheck_opspec, big comment starting with "THIS IS PROBABLY A BUG".
             wam_item = wam_item.as_red(self.vm)
+            items_wam[i] = wam_item
 
-            items_wam.append(wam_item)
             color = maybe_blue(color, wam_item.color)
             if w_itemtype is None:
                 w_itemtype = wam_item.w_static_T
@@ -1098,7 +1211,7 @@ class AbstractFrame:
         w_push = self.vm.lookup_global(fqn_push)
         wam_push = W_MetaArg.from_w_obj(self.vm, w_push)
 
-        for item, wam_item in zip(lst.items, items_wam):
+        for item, wam_item in zip(src_items, items_wam):
             w_opimpl = self.vm.call_OP(
                 lst.loc, OP.w_CALL, [wam_push, wam_list, wam_item]
             )
@@ -1117,8 +1230,14 @@ class AbstractFrame:
         return wam_slice
 
     def eval_expr_Tuple(self, tup: ast.Tuple) -> W_MetaArg:
-        # 1. evaluate each item
-        items_wam = [self.eval_expr(item) for item in tup.items]
+        # 1. evaluate each item (expanding any `*expr` splat into zero or
+        # more items, same as eval_expr_List)
+        items_wam: list[W_MetaArg] = []
+        for item in tup.items:
+            if isinstance(item, ast.Starred):
+                items_wam.extend(self.eval_starred_items(item))
+            else:
+                items_wam.append(self.eval_expr(item))
         itemtypes_w = [wam.w_static_T for wam in items_wam]
         colors = [wam.color for wam in items_wam]
         color = maybe_blue(*colors)

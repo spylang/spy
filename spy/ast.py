@@ -595,6 +595,22 @@ class List(Expr):
     items: list[Expr]
 
 
+@astnode("<= astcompiled")
+class Starred(Expr):
+    """
+    A starred expression, e.g. `*m_args` inside a list literal like
+    `[*m_args]`.
+
+    The parser accepts this node wherever Python's own grammar allows a
+    `Starred` expression (list/tuple literals, call args, ...). Whether a
+    given position actually *supports* the splat at runtime is up to the
+    consumer. Currently, it never survives redshifting.
+    """
+
+    precedence = 17
+    value: Expr
+
+
 @astnode
 class Tuple(Expr):
     precedence = 17
