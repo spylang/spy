@@ -755,6 +755,7 @@ class TestUnsafePtr(CompilerTest):
                 p[0] = v
                 return p[0]
 
+            rt_bool = rt[bool]
             rt_i8 = rt[i8]
             rt_u8 = rt[u8]
             rt_i32 = rt[i32]
@@ -774,11 +775,16 @@ class TestUnsafePtr(CompilerTest):
         assert mod.rt_u64(2**64 - 1) == 2**64 - 1
         assert mod.rt_f32(7) == 7.0
         assert mod.rt_f64(1.5) == 1.5
+        assert mod.rt_bool(False) is False
+        assert mod.rt_bool(True) is True
 
     def test_ptr_struct_fields_all_dtypes(self):
         mod = self.compile("""
             from unsafe import gc_alloc, gc_ptr
 
+            @struct
+            class BoxBool:
+                v: bool
             @struct
             class BoxI8:
                 v: i8
@@ -803,6 +809,11 @@ class TestUnsafePtr(CompilerTest):
             @struct
             class BoxF64:
                 v: f64
+
+            def rt_bool(v: bool) -> bool:
+                p: gc_ptr[BoxBool] = gc_alloc[BoxBool](1)
+                p.v = v
+                return p.v
 
             def rt_i8(v: i8) -> i8:
                 p: gc_ptr[BoxI8] = gc_alloc[BoxI8](1)
@@ -861,3 +872,5 @@ class TestUnsafePtr(CompilerTest):
         assert mod.rt_f32(7) == 7.0
         assert mod.rt_f64(1.5) == 1.5
         assert mod.rt_struct_byval_f32(7) == 7.0
+        assert mod.rt_bool(False) is False
+        assert mod.rt_bool(True) is True
