@@ -22,9 +22,12 @@ WASI_TESTLIB = py.path.local(get_libdir("wasi", "debug", "testlib"))
 EMSCRIPTEN_TESTLIB = py.path.local(get_libdir("emscripten", "debug", "testlib"))
 
 
+LLMOD: LLWasmModule | None
 if IS_NODE:
     LIBSPY_WASM = EMSCRIPTEN_TESTLIB.join("libspy.mjs")
-    LLMOD = None
+    from pyodide.ffi import run_sync
+
+    LLMOD = run_sync(LLWasmModule.async_new(str(LIBSPY_WASM)))
 elif IS_BROWSER or IS_DOCS_BUILD:
     LIBSPY_WASM = None  # type: ignore    # needs to be set by the embedder
     LLMOD = None
