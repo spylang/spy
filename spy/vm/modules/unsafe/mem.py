@@ -536,7 +536,9 @@ def w_mem_write(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
 def generic_mem_read(vm: "SPyVM", addr: int, w_T: W_Type) -> W_Object:
     from spy.vm.modules.posix import POSIX, W__FILE
 
-    if w_T is B.w_i8:
+    if w_T is B.w_bool:
+        return vm.wrap(bool(vm.ll.mem.read_u8(addr)))
+    elif w_T is B.w_i8:
         return W_I8(vm.ll.mem.read_i8(addr))
     elif w_T is B.w_u8:
         return W_U8(vm.ll.mem.read_u8(addr))
@@ -577,7 +579,9 @@ def generic_mem_read(vm: "SPyVM", addr: int, w_T: W_Type) -> W_Object:
 def generic_mem_write(vm: "SPyVM", addr: int, w_T: W_Type, w_val: W_Object) -> None:
     from spy.vm.modules.posix import POSIX, W__FILE
 
-    if w_T is B.w_i8:
+    if w_T is B.w_bool:
+        vm.ll.mem.write_u8(addr, int(vm.unwrap_bool(w_val)))
+    elif w_T is B.w_i8:
         assert isinstance(w_val, W_I8)
         vm.ll.mem.write_i8(addr, int(w_val.value))
     elif w_T is B.w_u8:
