@@ -1,7 +1,7 @@
 #include "spy.h"
 #include <emscripten.h>
 
-EM_JS_DEPS(jsffi, "$UTF8ToString,$wasmTable");
+EM_JS_DEPS(jsffi, "$UTF8ToString,$wasmTable,$wasmMemory");
 
 // see the corresponding comment in jsffi.h
 void jsffi_force_include(void) {};
@@ -11,13 +11,26 @@ EM_JS(JsRef, jsffi_debug, (const char *ptr), {
     console.log(s);
 });
 
+EM_JS(int32_t, jsffi_debug_n_jsrefs, (void), {
+    // subtract 7 for the reserved singleton slots (0-6)
+    let n = Object.keys(jsffi.objects).length - 7;
+    console.log("Number of live JsRef", n);
+    return n;
+});
+
 EM_JS(void, jsffi_init, (void), {
     let jsffi = {
-        objects: {}
+        objects: {},
+        next_id: 7  // 0-6 are reserved for well-known singletons
     };
     globalThis.jsffi = jsffi;
     jsffi.objects[0] = globalThis;
     jsffi.objects[1] = console;
+    jsffi.objects[2] = globalThis.document;
+    jsffi.objects[3] = undefined;
+    jsffi.objects[4] = null;
+    jsffi.objects[5] = true;
+    jsffi.objects[6] = false;
 
     jsffi.from_jsref = function(idval) {
         if (idval in jsffi.objects) {
@@ -29,9 +42,25 @@ EM_JS(void, jsffi_init, (void), {
     };
 
     jsffi.to_jsref = function(jsval) {
-        let n = Object.keys(jsffi.objects).length;
-        jsffi.objects[n] = jsval;
-        return n;
+        if (jsval === undefined) return 3;
+        if (jsval === null)      return 4;
+        if (jsval === true)      return 5;
+        if (jsval === false)     return 6;
+        let id = jsffi.next_id++;
+        // console.log(`to_jsref, jsval: ${ jsval }`);
+        jsffi.objects[id] = jsval;
+        return id;
+    };
+
+    jsffi.from_jsval = function(tag, val) {
+        switch(tag) {
+            case 0: return jsffi.from_jsref(val);  // JSVAL_JSREF
+            case 1: return val;                    // JSVAL_F64
+            case 2: return val;                    // JSVAL_I32
+            case 3: return UTF8ToString(val);      // JSVAL_STR
+            case 4: return val !== 0;              // JSVAL_BOOL
+            case 5: return wasmTable.get(val);     // JSVAL_FUNCPTR
+        }
     };
 });
 
@@ -39,14 +68,10 @@ EM_JS(JsRef, jsffi_string, (const char *ptr), { return jsffi.to_jsref(UTF8ToStri
 
 EM_JS(JsRef, jsffi_i32, (int32_t x), { return jsffi.to_jsref(x); });
 
-EM_JS(JsRef, jsffi_wrap_func, (em_callback_func cfunc), { return jsffi.to_jsref(wasmTable.get(cfunc)); });
+EM_JS(JsRef, jsffi_f64, (double x), { return jsffi.to_jsref(x); });
 
-EM_JS(JsRef, jsffi_call_method_1, (JsRef c_target, const char *c_name, JsRef c_arg0), {
-    let target = jsffi.from_jsref(c_target);
-    let name = UTF8ToString(c_name);
-    let arg0 = jsffi.from_jsref(c_arg0);
-    let res = target[name].call(target, arg0);
-    return jsffi.to_jsref(res);
+EM_JS(void, jsffi_drop_ref, (JsRef c_ref), {
+    delete jsffi.objects[c_ref];
 });
 
 EM_JS(JsRef, jsffi_getattr, (JsRef c_target, const char *c_name), {
@@ -56,9 +81,38 @@ EM_JS(JsRef, jsffi_getattr, (JsRef c_target, const char *c_name), {
     return jsffi.to_jsref(res);
 });
 
-EM_JS(void, jsffi_setattr, (JsRef c_target, const char *c_name, JsRef c_val), {
+EM_JS(void, jsffi_setattr, (JsRef c_target, const char *c_name,
+                             int32_t tag, double val), {
     let target = jsffi.from_jsref(c_target);
-    let name = UTF8ToString(c_name);
-    let val = jsffi.from_jsref(c_val);
-    target[name] = val;
+    target[UTF8ToString(c_name)] = jsffi.from_jsval(tag, val);
 });
+
+
+EM_JS(JsRef, jsffi_u8array_from_ptr, (void *ptr, int32_t length), {
+    let view = new Uint8ClampedArray(wasmMemory.buffer, ptr, length);
+    return jsffi.to_jsref(view);
+});
+
+EM_JS(JsRef, jsffi_new_ImageData, (JsRef ref_array, int32_t width, int32_t height), {
+    let array = jsffi.from_jsref(ref_array);
+    return jsffi.to_jsref(new ImageData(array, width, height));
+});
+
+EM_JS(int32_t, jsffi_to_i32, (JsRef c_ref), {
+    return jsffi.from_jsref(c_ref)|0;
+});
+
+EM_JS(double, jsffi_to_f64, (JsRef c_ref), {
+    return +jsffi.from_jsref(c_ref);
+});
+
+EM_JS(void, jsffi_request_animation_frame, (em_callback_func cfunc), {
+    requestAnimationFrame(wasmTable.get(cfunc));
+});
+
+/*
+ * jsffi_call_method.c is included so that all EM_JS
+ * functions share the same translation unit and can access the `jsffi`
+ * object initialised by jsffi_init().
+ */
+#include "jsffi_call_method.c"

@@ -72,6 +72,19 @@ else ifeq ($(TARGET), emscripten)
 		$(SRCS) \
 		src/jsffi/jsffi.c
 
+	# EM_JS-declared functions (jsffi_init, jsffi_call_method_N, ...) carry
+	# import_module/import_name attributes instead of a real body. LLVM's
+	# LTO codegen does not reliably preserve those attributes when the
+	# object is linked with -flto, which makes wasm-ld report them as
+	# undefined symbols in release builds.
+	# jsffi.c is pure glue with nothing to gain from LTO, so always
+	# compile it without -flto here, regardless of BUILD_TYPE.
+	JSFFI_CFLAGS = $(filter-out -flto,$(CFLAGS))
+
+$(BUILD_DIR)/src/jsffi/jsffi.o: src/jsffi/jsffi.c | $(BUILD_DIR)
+	mkdir -p $(dir $@)
+	$(CC) $(JSFFI_CFLAGS) -MMD -MF $@.d -c $< -o $@
+
   ifeq ($(EMCC_AVAILABLE),)
     # emcc not found - display message and skip
     $(warning Skipping emscripten target - emcc compiler not found in PATH)
