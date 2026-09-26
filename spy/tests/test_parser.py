@@ -842,6 +842,64 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
+    def test_Starred_in_List(self):
+        mod = self.parse("""
+        def foo() -> None:
+            return [*m_args]
+        """)
+        stmt = mod.get_funcdef("foo").body.body[0]
+        expected = """
+        Return(
+            value=List(
+                items=[
+                    Starred(
+                        value=Name(id='m_args'),
+                    ),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    def test_Starred_in_Tuple(self):
+        mod = self.parse("""
+        def foo() -> None:
+            return (*m_args,)
+        """)
+        stmt = mod.get_funcdef("foo").body.body[0]
+        expected = """
+        Return(
+            value=Tuple(
+                items=[
+                    Starred(
+                        value=Name(id='m_args'),
+                    ),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    def test_Starred_in_Call_args(self):
+        mod = self.parse("""
+        def foo() -> None:
+            bar(*args)
+        """)
+        stmt = mod.get_funcdef("foo").body.body[0]
+        expected = """
+        StmtExpr(
+            value=Call(
+                func=Name(id='bar'),
+                args=[
+                    Starred(
+                        value=Name(id='args'),
+                    ),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
     def test_Dict(self):
         mod = self.parse(
             """

@@ -601,12 +601,10 @@ class Starred(Expr):
     A starred expression, e.g. `*m_args` inside a list literal like
     `[*m_args]`.
 
-    For now, this is supported only as an item of a `List` literal, and only
-    to splat the elements of a blue `interp_tuple` (which backs variadic blue
-    arguments, i.e. `*m_args` in a `@blue.metafunc` definition). It never
-    survives redshifting: interp tuples are blue-only and cannot appear in
-    compiled (red) code, so this node is only ever evaluated by the AST
-    interpreter, never by the doppler.
+    The parser accepts this node wherever Python's own grammar allows a
+    `Starred` expression (list/tuple literals, call args, ...). Whether a
+    given position actually *supports* the splat at runtime is up to the
+    consumer. Currently, it never survives redshifting.
     """
 
     precedence = 17

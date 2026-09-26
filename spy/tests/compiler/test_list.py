@@ -210,3 +210,49 @@ class TestList(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == 2
+
+    @only_interp
+    def test_splat_red_value(self):
+        src = """
+        def bar(xs: list[i32]) -> list[i32]:
+            return [*xs]
+
+        def foo() -> list[i32]:
+            return bar([1, 2, 3])
+        """
+        errors = expect_errors(
+            "cannot splat a red value: `*expr` is currently supported "
+            "only for blue values",
+            ("this is not supported", "xs"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    @only_interp
+    def test_splat_no_fastiter(self):
+        src = """
+        def foo() -> None:
+            x = [*42]
+        """
+        errors = expect_errors(
+            "cannot unpack `i32`: it does not support iteration, so it "
+            "cannot be splatted with `*`",
+            ("this is not supported", "*42"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    @only_interp
+    def test_splat_in_call_args(self):
+        src = """
+        def bar(x: i32) -> i32:
+            return x
+
+        def foo() -> i32:
+            args = (1,)
+            return bar(*args)
+        """
+        errors = expect_errors(
+            "splat expressions (`*expr`) are supported only as items of "
+            "a list or tuple literal",
+            ("not supported here", "*args"),
+        )
+        self.compile_raises(src, "foo", errors)

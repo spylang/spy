@@ -1236,8 +1236,14 @@ class AbstractFrame:
         return wam_slice
 
     def eval_expr_Tuple(self, tup: ast.Tuple) -> W_MetaArg:
-        # 1. evaluate each item
-        items_wam = [self.eval_expr(item) for item in tup.items]
+        # 1. evaluate each item (expanding any `*expr` splat into zero or
+        # more items, same as eval_expr_List)
+        items_wam: list[W_MetaArg] = []
+        for item in tup.items:
+            if isinstance(item, ast.Starred):
+                items_wam.extend(self.eval_starred_items(item))
+            else:
+                items_wam.append(self.eval_expr(item))
         itemtypes_w = [wam.w_static_T for wam in items_wam]
         colors = [wam.color for wam in items_wam]
         color = maybe_blue(*colors)
