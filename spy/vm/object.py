@@ -611,7 +611,11 @@ class W_Type(W_Object):
         Turn @builtin_method into a W_BuiltinFunc and @builtin_property
         into a W_Property
         """
+        # NOTE: if you get a circular import error when importing one of the
+        # W_Something, it's very likely that the fix is to use:
+        #     @MOD.builtin_type("Something", lazy_definition=True)
         from spy.vm.builtin import make_builtin_func
+        from spy.vm.modules.types import W_Loc
         from spy.vm.opspec import W_MetaArg, W_OpSpec
         from spy.vm.primitive import W_Bool, W_Dynamic
         from spy.vm.property import W_ClassMethod, W_Property, W_StaticMethod
@@ -630,12 +634,8 @@ class W_Type(W_Object):
             "W_Str": W_Str,
             "W_Bool": W_Bool,
             "W_Dynamic": W_Dynamic,
+            "W_Loc": W_Loc,
         }
-        # avoid a circular import
-        if "W_Loc" in pyfunc.__annotations__.values() and "W_Loc" not in extra_types:
-            from spy.vm.modules.types import W_Loc
-
-            extra_types["W_Loc"] = W_Loc
         w_func = make_builtin_func(
             pyfunc,
             namespace=self.fqn,

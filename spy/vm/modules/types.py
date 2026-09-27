@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
-@TYPES.builtin_type("Loc")
+@TYPES.builtin_type("Loc", lazy_definition=True)
 class W_Loc(W_Object):
     """
     Wrapped version of Loc.
