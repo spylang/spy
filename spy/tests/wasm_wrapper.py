@@ -1,9 +1,9 @@
+import sys
 from dataclasses import dataclass
 from typing import Any
 
 import fixedint
 import py.path
-import wasmtime
 
 from spy.fqn import FQN
 from spy.libspy import LLSPyInstance
@@ -18,6 +18,9 @@ from spy.vm.object import W_Type
 from spy.vm.str import ll_str_new
 from spy.vm.struct import UnwrappedStruct, W_StructType
 from spy.vm.vm import SPyVM
+
+if sys.platform != "emscripten":
+    import wasmtime
 
 
 @dataclass
@@ -58,12 +61,14 @@ class WasmModuleWrapper:
     def read_function(self, w_func: W_Func) -> "WasmFuncWrapper":
         # sanity check
         wasm_func = self.ll.get_export(w_func.fqn.c_name)
-        assert isinstance(wasm_func, wasmtime.Func)
+        if sys.platform != "emscripten":
+            assert isinstance(wasm_func, wasmtime.Func)
         return WasmFuncWrapper(self.vm, self.ll, w_func.fqn.c_name, w_func.w_functype)
 
     def read_cell(self, w_cell: W_Cell) -> Any:
         wasm_glob = self.ll.get_export(w_cell.fqn.c_name)
-        assert isinstance(wasm_glob, wasmtime.Global)
+        if sys.platform != "emscripten":
+            assert isinstance(wasm_glob, wasmtime.Global)
         w_T = self.vm.dynamic_type(w_cell.get())
         t: LLWasmType
         if w_T is B.w_i32:
@@ -92,6 +97,10 @@ class WasmFuncWrapper:
         if w_T in (B.w_i32, B.w_u32, B.w_i8, B.w_u8, B.w_f64, B.w_bool):
             return pyval
         elif w_T in (B.w_i64, B.w_u64):
+            if sys.platform == "emscripten":
+                from pyodide.ffi import JsBigInt
+
+                return JsBigInt(pyval)
             return int(pyval)
         elif w_T is B.w_complex128:
             return (pyval.real, pyval.imag)
@@ -141,6 +150,8 @@ class WasmFuncWrapper:
             assert res is None
             return None
         elif w_T in (B.w_f64, B.w_f32):
+            if sys.platform == "emscripten":
+                return float(res)
             return res
         # return fixedints for the integer types, to match what the interp
         # backend does (vm.unwrap -> spy_unwrap). For u64 this also takes care
@@ -192,8 +203,9 @@ class WasmFuncWrapper:
             # converts them into a list, flattening nested structs. However,
             # for a struct with a single flat field, wasmtime returns a bare
             # scalar instead of a one-element list.
-            if not isinstance(res, list):
-                res = [res]
+            if sys.platform != "emscripten":
+                if not isinstance(res, list):
+                    res = [res]
             pyres = unflatten_struct(self.ll, w_T, res)
 
             if self.vm.is_tuple_type(w_T):

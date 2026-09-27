@@ -66,7 +66,10 @@ else ifeq ($(TARGET), wasi)
 else ifeq ($(TARGET), emscripten)
 	LDFLAGS := \
 		-sWASM_BIGINT \
-		-sEXPORTED_RUNTIME_METHODS=HEAP8
+		-sEXPORTED_RUNTIME_METHODS=HEAP8,FS,ERRNO_CODES,addOnPostCtor \
+		-lnodefs.js \
+		-lproxyfs.js \
+		--pre-js=src/emscripten_pre.js
 
 	SRCS := \
 		$(SRCS) \
@@ -132,7 +135,7 @@ $(BUILD_DIR)/libspy.wasm: $(BUILD_DIR)/libspy.a
 # emscripten-specific rules
 emscripten_all: $(BUILD_DIR)/libspy.mjs
 
-$(BUILD_DIR)/libspy.mjs: $(BUILD_DIR)/libspy.a
+$(BUILD_DIR)/libspy.mjs: $(BUILD_DIR)/libspy.a src/emscripten_pre.js
 	$(CC) \
 		$(LDFLAGS) \
         -Wl,--whole-archive \
@@ -151,7 +154,7 @@ native_static_all: $(BUILD_DIR)/libspy.a
 $(BUILD_DIR)/libspy.a: $(OBJS)
 	$(AR) rcs $@ $(OBJS)
 
-$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
+$(BUILD_DIR)/%.o: %.c include/*.h include/spy/*.h | $(BUILD_DIR)
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -MMD -MF $@.d -c $< -o $@
 

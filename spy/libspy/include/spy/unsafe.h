@@ -70,7 +70,7 @@ spy_gc_alloc_pointerless_bdwgc(size_t size) {
         return (PTR){p};                                                               \
     }                                                                                  \
     static inline PTR PTR##$alloc(size_t n) {                                          \
-        return (PTR){(T*)spy_##ALLOC_FUNC(sizeof(T) * n)};                             \
+        return (PTR){(T *)spy_##ALLOC_FUNC(sizeof(T) * n)};                            \
     }                                                                                  \
     static inline T PTR##$deref(PTR p) {                                               \
         return *(p.p);                                                                 \
@@ -94,8 +94,10 @@ spy_gc_alloc_pointerless_bdwgc(size_t size) {
         return p.p;                                                                    \
     }                                                                                  \
     static inline ptrdiff_t PTR##$debug_get_length(PTR p) {                            \
-        spy_panic("PanicError", "_debug_get_length called in release mode",            \
-            __FILE__, __LINE__);                                                       \
+        spy_panic(                                                                     \
+            "PanicError", "_debug_get_length called in release mode", __FILE__,        \
+            __LINE__                                                                   \
+        );                                                                             \
         return 0;                                                                      \
     }
 
@@ -104,7 +106,7 @@ spy_gc_alloc_pointerless_bdwgc(size_t size) {
         return (PTR){p, 1};                                                            \
     }                                                                                  \
     static inline PTR PTR##$alloc(size_t n) {                                          \
-        return (PTR){(T*)spy_##ALLOC_FUNC(sizeof(T) * n), (ptrdiff_t) n};              \
+        return (PTR){(T *)spy_##ALLOC_FUNC(sizeof(T) * n), (ptrdiff_t)n};              \
     }                                                                                  \
     static inline T PTR##$deref(PTR p) {                                               \
         return *(p.p);                                                                 \

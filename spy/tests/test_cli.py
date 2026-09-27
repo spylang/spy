@@ -16,6 +16,9 @@ PYODIDE_EXE = spy.ROOT.dirpath().join("pyodide", "venv", "bin", "python")
 if not PYODIDE_EXE.exists():
     PYODIDE_EXE = None  # type: ignore
 
+if sys.platform == "emscripten":
+    pytest.skip("Doesn't work on Emscripten", allow_module_level=True)
+
 # https://stackoverflow.com/a/14693789
 # 7-bit C1 ANSI sequences
 ANSI_ESCAPE = re.compile(

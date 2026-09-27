@@ -1,3 +1,4 @@
+import sys
 import textwrap
 from contextlib import contextmanager
 from typing import Any, Literal, Optional, no_type_check
@@ -19,6 +20,10 @@ from spy.vm.vm import SPyVM
 
 Backend = Literal["interp", "doppler", "C"]
 ALL_BACKENDS = Backend.__args__  # type: ignore
+
+skip_if_emscripten = pytest.mark.skipif(
+    sys.platform == "emscripten", reason="not supported on Emscripten"
+)
 
 
 def params_with_marks(params):
@@ -129,6 +134,8 @@ class CompilerTest:
 
     @pytest.fixture
     def init(self, request, tmpdir, compiler_backend):
+        if compiler_backend == "native" and sys.platform == "emscripten":
+            pytest.skip("native backend doesn't work on emscripten")
         self.dump_c = request.config.getoption("--dump-c")
         self.dump_redshift = request.config.getoption("--dump-redshift")
         self.slow_tests = request.config.getoption("--slow-tests")
@@ -225,8 +232,11 @@ class CompilerTest:
             return interp_mod
 
         if self.backend == "C":
+            target: Literal["wasi", "emscripten"] = (
+                "emscripten" if sys.platform == "emscripten" else "wasi"
+            )
             config = BuildConfig(
-                target="wasi",
+                target=target,
                 kind="testlib",
                 build_type="debug",
                 opt_level=self.OPT_LEVEL,
@@ -370,7 +380,10 @@ class CTest:
     def init(self, tmpdir):
         self.tmpdir = tmpdir
         # NOTE: target is overwritten by TestLLWasm.init_llwasm
-        self.target = "wasi"
+        if sys.platform == "emscripten":
+            self.target = "emscripten"
+        else:
+            self.target = "wasi"
         self.kind = "testlib"
         self.build_dir = self.tmpdir.join("build").ensure(dir=True)
 

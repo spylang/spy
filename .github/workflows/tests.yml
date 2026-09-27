@@ -74,7 +74,7 @@ jobs:
 
       - name: Install venv
         run: |
-          uv sync --locked
+          uv sync --locked -p 3.12
 
       - name: Linter
         run: |
@@ -151,15 +151,7 @@ jobs:
 
       - name: Install venv
         run: |
-          uv sync --locked
-
-      - name: Linter
-        run: |
-          uv run ruff check .
-
-      - name: Format check
-        run: |
-          uv run ruff format --check .
+          uv sync --locked -p 3.14
 
       - name: Install EMCC
         run: |
@@ -171,18 +163,15 @@ jobs:
           echo "$PWD/upstream/emscripten" >> $GITHUB_PATH
           echo "EMSDK=$PWD" >> $GITHUB_ENV
 
-      - name: Install pyodide
-        run: |
-          npm --prefix pyodide install
-
       - name: Create pyodide venv
         # needed by test_cli::test_execute_pyodide, which otherwise is silently
         # skipped. The `pyodide` command comes from pyodide-build, see
         # pyodide/README.md
         run: |
-          cd pyodide
-          uv run pyodide venv venv
-          ./venv/bin/pip install -e ..
+          source .venv/bin/activate
+          pyodide venv .venv-pyodide
+          .venv-pyodide/bin/pip install . --group dev
+
 
       - name: Build libspy
         run: |
@@ -191,7 +180,7 @@ jobs:
 
       - name: Run tests
         run: |
-          uv run pytest -n auto -m pyodide --junit-xml=pyodide-test-results.xml
+          .venv-pyodide/bin/python -m pytest --junit-xml=pyodide-test-results.xml
 
       # - name: Run mypy
       #   run: |
