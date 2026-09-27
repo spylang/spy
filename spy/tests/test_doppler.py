@@ -520,12 +520,12 @@ class TestDoppler:
 
     def test_variadic_starred_in_metafunc(self):
         self.redshift("""
-        from operator import OpSpec, MetaArg
+        from operator import OpSpec
 
         @blue.metafunc
         def foo(*m_args):
-            m_x: MetaArg = m_args[0]
-            m_y: MetaArg = m_args[1]
+            m_x = m_args[0]
+            m_y = m_args[1]
             T = m_x.static_type
             assert m_y.static_type == T
             def impl(x: T, y: T) -> T:
