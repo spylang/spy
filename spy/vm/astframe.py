@@ -1121,7 +1121,7 @@ class AbstractFrame:
         eval_expr_List), for any value whose type implements the
         __fastiter__ protocol (the same one `for` loops desugar to) -- this
         includes, but is not limited to, the blue `interp_tuple` type which
-        backs variadic blue arguments, i.e. `*m_args` in a `@blue.metafunc`
+        backs variadic blue arguments, i.e. `*args_m` in a `@blue.metafunc`
         definition. Returns one W_MetaArg per element.
 
         Splatting a value with no concrete w_val is out of scope for now.

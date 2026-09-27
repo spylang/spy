@@ -523,14 +523,14 @@ class TestDoppler:
         from operator import OpSpec
 
         @blue.metafunc
-        def foo(*m_args):
-            m_x = m_args[0]
-            m_y = m_args[1]
+        def foo(*args_m):
+            m_x = args_m[0]
+            m_y = args_m[1]
             T = m_x.static_type
             assert m_y.static_type == T
             def impl(x: T, y: T) -> T:
                 return x + y
-            return OpSpec(impl, [*m_args])
+            return OpSpec(impl, [*args_m])
 
         def test(x: i32, y: i32) -> i32:
             return foo(x, y)

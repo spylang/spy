@@ -178,9 +178,9 @@ class TestMetaFunc(CompilerTest):
         from operator import OpSpec
 
         @blue.metafunc
-        def foo(*m_args):
-            m_x = m_args[0]
-            m_y = m_args[1]
+        def foo(*args_m):
+            m_x = args_m[0]
+            m_y = args_m[1]
 
             T = m_x.static_type
             assert m_y.static_type == T
@@ -188,7 +188,7 @@ class TestMetaFunc(CompilerTest):
             def impl_str(x: T, y: T) -> T:
                 return x + y
 
-            return OpSpec(impl_str, [*m_args])
+            return OpSpec(impl_str, [*args_m])
 
         def test_i32(x: i32, y: i32) -> i32:
             return foo(x, y)

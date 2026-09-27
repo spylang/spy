@@ -896,7 +896,7 @@ class Parser:
         return spy.ast.GetAttr(py_node.loc, value, attr)
 
     def from_py_expr_Starred(self, py_node: py_ast.Starred) -> spy.ast.Starred:
-        # `*expr`, e.g. `[*m_args]`, `(*fields.keys(),)`, `f(*args)`.
+        # `*expr`, e.g. `[*args_m]`, `(*fields.keys(),)`, `f(*args)`.
         value = self.from_py_expr(py_node.value)
         return spy.ast.Starred(py_node.loc, value)
 

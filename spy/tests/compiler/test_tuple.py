@@ -43,10 +43,10 @@ class TestTuple(CompilerTest):
         from operator import OpSpec, MetaArg
 
         @blue.metafunc
-        def foo(*m_args):
-            m_x: MetaArg = m_args[0]
-            m_y: MetaArg = m_args[1]
-            names = (*m_args,)
+        def foo(*args_m):
+            m_x: MetaArg = args_m[0]
+            m_y: MetaArg = args_m[1]
+            names = (*args_m,)
             assert names[0] is m_x
             assert names[1] is m_y
 
@@ -56,7 +56,7 @@ class TestTuple(CompilerTest):
             def impl_str(x: T, y: T) -> T:
                 return x + y
 
-            return OpSpec(impl_str, [*m_args])
+            return OpSpec(impl_str, [*args_m])
 
         def test_i32(x: i32, y: i32) -> i32:
             return foo(x, y)

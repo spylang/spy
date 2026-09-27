@@ -652,7 +652,7 @@ class DopplerFrame(ASTFrame):
         return newlst
 
     def shift_expr_Starred(self, op: ast.Starred, wam: W_MetaArg) -> ast.Expr:
-        # Starred expressions (`*m_args`) are used to splat a blue
+        # Starred expressions (`*args_m`) are used to splat a blue
         # interp_tuple into a list literal. interp_tuples are blue-only and
         # cannot appear in compiled (red) code, so a Starred node should
         # never reach the doppler: it is always fully consumed by
