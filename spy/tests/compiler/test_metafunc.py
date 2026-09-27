@@ -200,3 +200,29 @@ class TestMetaFunc(CompilerTest):
         mod = self.compile(src)
         assert mod.test_i32(1, 2) == 3
         assert mod.test_str("S", "Py") == "SPy"
+
+    @no_C
+    def test_splat_of_a_red_value_inside_a_blue_function(self):
+        src = """
+        from operator import OpSpec
+
+        @blue
+        def make():
+            # cannot yet use a tuple, missing __fastiter__
+            t = [1, 2, 3]
+            l = [*t]  # red
+            l.append(4)
+            t2 = (*l,)
+
+            def func(i: i32) -> i32:
+                return t2[0] + i
+            return func
+
+        def foo(i: i32) -> i32:
+            return make()(i)
+        """
+        mod = self.compile(src)
+        assert mod.foo(0) == 1
+        assert mod.foo(1) == 2
+        assert mod.foo(2) == 3
+        assert mod.foo(3) == 4
