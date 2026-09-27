@@ -920,10 +920,11 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_Starred_in_List(self):
-        mod = self.parse("""
+        src = """
         def foo() -> None:
             return [*m_args]
-        """)
+        """
+        mod = self.parse(src)
         stmt = mod.get_funcdef("foo").body.body[0]
         expected = """
         Return(
@@ -939,10 +940,11 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_Starred_in_Tuple(self):
-        mod = self.parse("""
+        src = """
         def foo() -> None:
             return (*m_args,)
-        """)
+        """
+        mod = self.parse(src)
         stmt = mod.get_funcdef("foo").body.body[0]
         expected = """
         Return(
@@ -958,10 +960,11 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_Starred_in_Call_args(self):
-        mod = self.parse("""
+        src = """
         def foo() -> None:
             bar(*args)
-        """)
+        """
+        mod = self.parse(src)
         stmt = mod.get_funcdef("foo").body.body[0]
         expected = """
         StmtExpr(

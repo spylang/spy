@@ -6,8 +6,6 @@ from spy.tests.support import (
     CompilerTest,
     expect_errors,
     no_C,
-    only_interp,
-    skip_backends,
 )
 from spy.vm.b import B
 
@@ -177,12 +175,12 @@ class TestMetaFunc(CompilerTest):
 
     def test_variadic_starred(self):
         src = """
-        from operator import OpSpec, MetaArg
+        from operator import OpSpec
 
         @blue.metafunc
         def foo(*m_args):
-            m_x: MetaArg = m_args[0]
-            m_y: MetaArg = m_args[1]
+            m_x = m_args[0]
+            m_y = m_args[1]
 
             T = m_x.static_type
             assert m_y.static_type == T
@@ -190,10 +188,7 @@ class TestMetaFunc(CompilerTest):
             def impl_str(x: T, y: T) -> T:
                 return x + y
 
-            # fails ("this is not supported")
             return OpSpec(impl_str, [*m_args])
-            # currently works
-            # return OpSpec(impl_str, [m_x, m_y])
 
         def test_i32(x: i32, y: i32) -> i32:
             return foo(x, y)
