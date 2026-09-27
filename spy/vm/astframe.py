@@ -1051,14 +1051,20 @@ class AbstractFrame:
         w_opimpl = self.vm.call_OP(op.loc, OP.w_GETATTR, [wam_obj, wam_name])
         return self.eval_opimpl(op, w_opimpl, [wam_obj, wam_name])
 
-    def _call_method_blue(
+    def _call_method_eager(
         self, op: ast.Starred, wam_obj: W_MetaArg, methname: str
     ) -> W_MetaArg:
         """
-        `wam_obj.methname()`, evaluated eagerly and blue, via the same
+        `wam_obj.methname()`, evaluated eagerly, via the same
         OP.w_CALL_METHOD dynamic-dispatch opcode that `x.method(...)`
         expressions and the `for`-loop desugaring use (see
         eval_expr_CallMethod and astcompile.py:compile_stmt_For).
+
+        This relies on eval_opimpl's own "do we actually have a value"
+        check (color == "red" and redshifting -> no concrete result): it is
+        only ever called with wam_obj/intermediate results that we already
+        know are concrete (see eval_starred_items), so it always produces a
+        w_val we can use, regardless of the color tag involved.
 
         We deliberately do NOT use vm.lookup_global(w_T.fqn.join(methname))
         here (unlike spy/vm/struct.py:unwrap_dict): that only works for
@@ -1072,18 +1078,19 @@ class AbstractFrame:
         w_opimpl = self.vm.call_OP(op.loc, OP.w_CALL_METHOD, [wam_obj, wam_meth])
         return self.eval_opimpl(op, w_opimpl, [wam_obj, wam_meth])
 
-    def _blue_splat_items(self, op: ast.Starred, wam_seq: W_MetaArg) -> list[W_Object]:
+    def _eager_splat_items(self, op: ast.Starred, wam_seq: W_MetaArg) -> list[W_Object]:
         """
-        Eagerly drain a blue value through the __fastiter__ protocol -- the
-        same one that `for` loops desugar to (see
+        Eagerly drain a value through the __fastiter__ protocol -- the same
+        one that `for` loops desugar to (see
         astcompile.py:compile_stmt_For) -- and collect every item into a
         plain list. Used to implement `*expr` splats.
 
-        `wam_seq` must be blue: this deliberately does NOT support splatting
-        a red value, whose length is not known at compile time (see
-        eval_starred_items below for the error raised in that case).
+        `wam_seq` must carry a concrete w_val: this deliberately does NOT
+        support splatting a red value during redshifting, since its length
+        is not known at compile time in that case (see eval_starred_items
+        below for the error raised then).
         """
-        assert wam_seq.color == "blue"
+        assert wam_seq.has_value()
         w_T = wam_seq.w_static_T
         if w_T.lookup_func(self.vm, "__fastiter__") is None:
             w_Tname = w_T.fqn.human_name(self.vm)
@@ -1094,16 +1101,16 @@ class AbstractFrame:
                 "this is not supported",
                 op.loc,
             )
-        wam_it = self._call_method_blue(op, wam_seq, "__fastiter__")
+        wam_it = self._call_method_eager(op, wam_seq, "__fastiter__")
 
         items_w = []
         while True:
-            wam_cont = self._call_method_blue(op, wam_it, "__continue_iteration__")
+            wam_cont = self._call_method_eager(op, wam_it, "__continue_iteration__")
             if not self.vm.unwrap_bool(wam_cont.w_val):
                 break
-            wam_item = self._call_method_blue(op, wam_it, "__item__")
+            wam_item = self._call_method_eager(op, wam_it, "__item__")
             items_w.append(wam_item.w_val)
-            wam_it = self._call_method_blue(op, wam_it, "__next__")
+            wam_it = self._call_method_eager(op, wam_it, "__next__")
         return items_w
 
     def eval_starred_items(self, op: ast.Starred) -> list[W_MetaArg]:
@@ -1111,26 +1118,24 @@ class AbstractFrame:
         Evaluate a `*expr` splat and expand it into zero or more items.
 
         This is currently supported only as an item of a `List` literal (see
-        eval_expr_List), for any blue value whose type implements the
+        eval_expr_List), for any value whose type implements the
         __fastiter__ protocol (the same one `for` loops desugar to) -- this
         includes, but is not limited to, the blue `interp_tuple` type which
         backs variadic blue arguments, i.e. `*m_args` in a `@blue.metafunc`
         definition. Returns one W_MetaArg per element.
 
-        Splatting a *red* value is out of scope for now: the target
-        container's static type would need to reflect a variable-length
-        unpack, which is a materially bigger feature.
+        Splatting a value with no concrete w_val is out of scope for now.
         """
         wam_seq = self.eval_expr(op.value)
-        if wam_seq.color != "blue":
+        if not wam_seq.has_value():
             raise SPyError.simple(
                 "W_TypeError",
                 "cannot splat a red value: `*expr` is currently supported "
-                "only for blue values",
+                "only for values known at compile time",
                 "this is not supported",
                 op.value.loc,
             )
-        items_w = self._blue_splat_items(op, wam_seq)
+        items_w = self._eager_splat_items(op, wam_seq)
         return [W_MetaArg.from_w_obj(self.vm, w_item, loc=op.loc) for w_item in items_w]
 
     def eval_expr_Starred(self, op: ast.Starred) -> W_MetaArg:

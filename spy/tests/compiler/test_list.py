@@ -1,5 +1,11 @@
 from spy.fqn import FQN
-from spy.tests.support import CompilerTest, expect_errors, no_C, only_interp
+from spy.tests.support import (
+    CompilerTest,
+    expect_errors,
+    no_C,
+    only_doppler,
+    only_interp,
+)
 from spy.vm.b import B
 from spy.vm.object import W_Type
 
@@ -212,7 +218,24 @@ class TestList(CompilerTest):
         assert mod.foo() == 2
 
     @only_interp
-    def test_splat_red_value(self):
+    def test_splat_red_value_interp(self):
+        # under pure interpretation, `bar` is never redshifted: `xs` still
+        # has a concrete value at the point we splat it, even though it's
+        # a red-colored parameter, so this is expected to work.
+        src = """
+        def bar(xs: list[i32]) -> list[i32]:
+            return [*xs]
+
+        def foo() -> list[i32]:
+            return bar([1, 2, 3])
+        """
+        mod = self.compile(src)
+        assert mod.foo() == [1, 2, 3]
+
+    @only_doppler
+    def test_splat_red_value_doppler(self):
+        # here `bar` gets redshifted, so `xs`'s value is genuinely not
+        # known at compile time: splatting it must raise.
         src = """
         def bar(xs: list[i32]) -> list[i32]:
             return [*xs]
@@ -222,7 +245,7 @@ class TestList(CompilerTest):
         """
         errors = expect_errors(
             "cannot splat a red value: `*expr` is currently supported "
-            "only for blue values",
+            "only for values known at compile time",
             ("this is not supported", "xs"),
         )
         self.compile_raises(src, "foo", errors)
