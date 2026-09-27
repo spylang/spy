@@ -922,7 +922,7 @@ class TestParser:
     def test_Starred_in_List(self):
         src = """
         def foo() -> None:
-            return [*m_args]
+            return [*args_m]
         """
         mod = self.parse(src)
         stmt = mod.get_funcdef("foo").body.body[0]
@@ -931,7 +931,7 @@ class TestParser:
             value=List(
                 items=[
                     Starred(
-                        value=Name(id='m_args'),
+                        value=Name(id='args_m'),
                     ),
                 ],
             ),
@@ -942,7 +942,7 @@ class TestParser:
     def test_Starred_in_Tuple(self):
         src = """
         def foo() -> None:
-            return (*m_args,)
+            return (*args_m,)
         """
         mod = self.parse(src)
         stmt = mod.get_funcdef("foo").body.body[0]
@@ -951,7 +951,7 @@ class TestParser:
             value=Tuple(
                 items=[
                     Starred(
-                        value=Name(id='m_args'),
+                        value=Name(id='args_m'),
                     ),
                 ],
             ),
