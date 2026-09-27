@@ -6,7 +6,7 @@ A Slice similar to CPython's
 
 from operator import OpSpec, MetaArg
 from types import NoneType
-from __spy__ import interp_list, interp_tuple
+from __spy__ import interp_list, interp_tuple, lookup_fqn
 
 # ===== ATTENTION =======
 #
@@ -183,7 +183,18 @@ class Slice:
         step = "None"
         if not self.step_is_none:
             step = str(self.step)
-        return "slice(" + start + ", " + stop + ", " + step + ")"
+        capacity = 11 + len(start) + len(stop) + len(step)
+        # strbuilder depends on _str, whose imports lead back to this module.
+        StrBuilder = lookup_fqn("strbuilder::StrBuilder")
+        sb = StrBuilder(capacity)
+        sb.append("slice(")
+        sb.append(start)
+        sb.append(", ")
+        sb.append(stop)
+        sb.append(", ")
+        sb.append(step)
+        sb.append(")")
+        return sb.build()
 
     def indices(self, length: i32) -> tuple3:
         _step: i32 = 1

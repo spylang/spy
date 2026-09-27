@@ -1,5 +1,6 @@
 from operator import OpSpec, MetaArg
 from _slice import Slice
+from __spy__ import lookup_fqn
 
 
 @struct
@@ -38,10 +39,26 @@ class range:
             return OpSpec.NULL
 
     def __repr__(self) -> str:
-        result = "range(" + str(self.start) + ", " + str(self.stop)
+        start = str(self.start)
+        stop = str(self.stop)
+        step = ""
+        capacity = 9 + len(start) + len(stop)
         if self.step != 1:
-            result = result + ", " + str(self.step)
-        return result + ")"
+            step = str(self.step)
+            capacity = capacity + 2 + len(step)
+
+        # strbuilder depends on _str, whose imports lead back to this module.
+        StrBuilder = lookup_fqn("strbuilder::StrBuilder")
+        sb = StrBuilder(capacity)
+        sb.append("range(")
+        sb.append(start)
+        sb.append(", ")
+        sb.append(stop)
+        if self.step != 1:
+            sb.append(", ")
+            sb.append(step)
+        sb.append(")")
+        return sb.build()
 
     @blue.metafunc
     def __convert_to__(m_expT, m_gotT, m_self):
