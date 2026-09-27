@@ -438,20 +438,14 @@ class methods:
         for i in range(n):
             total_len = total_len + len(items[i])
 
-        out = StrObject.alloc(total_len)
-        out.hash = 0
-        pos: i32 = 0
+        # Defer lookup because strbuilder imports StrObject from this module.
+        StrBuilder = lookup_fqn("strbuilder::StrBuilder")
+        sb = StrBuilder(total_len)
         for j in range(n):
-            if j > 0 and sep_len > 0:
-                ptr_copy_slice(out.utf8, pos, pos + sep_len, ll_sep.utf8, 0, sep_len)
-                pos = pos + sep_len
-            item = items[j]
-            ll_item = StrObject.from_str(item)
-            item_len = ll_item.length
-            if item_len > 0:
-                ptr_copy_slice(out.utf8, pos, pos + item_len, ll_item.utf8, 0, item_len)
-                pos = pos + item_len
-        return StrObject.to_str(out)
+            if j > 0:
+                sb.append(self)
+            sb.append(items[j])
+        return sb.build()
 
     def isspace(self: str) -> bool:
         """
