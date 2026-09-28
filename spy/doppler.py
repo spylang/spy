@@ -720,7 +720,21 @@ class DopplerFrame(ASTFrame):
         v_attr = self.shifted_expr[op.attr]
         return self.shift_opimpl(op, w_opimpl, [v, v_attr])
 
+    def _check_no_starred_args(self, args: list[ast.Expr]) -> None:
+        # Splats in call args are expanded eagerly by eval_args_with_starred.
+        # This point is reached only when the call is red.
+        for arg in args:
+            if isinstance(arg, ast.Starred):
+                raise SPyError.simple(
+                    "W_WIP",
+                    "splat arguments (`*expr`) are supported only in calls "
+                    "to blue functions",
+                    "not supported here",
+                    arg.loc,
+                )
+
     def shift_expr_Call(self, call: ast.Call, wam: W_MetaArg) -> ast.Expr:
+        self._check_no_starred_args(call.args)
         w_opimpl = self.opimpl[call]
         newfunc = self.shifted_expr[call.func]
         newargs = [self.shifted_expr[arg] for arg in call.args]
@@ -732,6 +746,7 @@ class DopplerFrame(ASTFrame):
             return self.shift_opimpl(call, w_opimpl, [newfunc] + newargs)
 
     def shift_expr_CallMethod(self, op: ast.CallMethod, wam: W_MetaArg) -> ast.Expr:
+        self._check_no_starred_args(op.args)
         w_opimpl = self.opimpl[op]
         v_obj = self.shifted_expr[op.target]
         v_meth = self.shifted_expr[op.method]

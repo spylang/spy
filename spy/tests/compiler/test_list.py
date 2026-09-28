@@ -268,8 +268,8 @@ class TestList(CompilerTest):
             return bar(*args)
         """
         errors = expect_errors(
-            "splat expressions (`*expr`) are supported only as items of "
-            "a list or tuple literal",
-            ("not supported here", "*args"),
+            "cannot unpack `tuple[i32]`: it does not support iteration, "
+            "so it cannot be splatted with `*`",
+            ("this is not supported", "*args"),
         )
         self.compile_raises(src, "foo", errors)

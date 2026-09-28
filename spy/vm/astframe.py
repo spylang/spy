@@ -997,7 +997,7 @@ class AbstractFrame:
 
     def eval_expr_Call(self, call: ast.Call) -> W_MetaArg:
         wam_func = self.eval_expr(call.func)
-        args_wam = [self.eval_expr(arg) for arg in call.args]
+        args_wam = self.eval_args_with_starred(call.args)
         w_opimpl = self.vm.call_OP(call.loc, OP.w_CALL, [wam_func] + args_wam)
 
         # special case getattr, hasattr and setattr: if we arrive at this point it means that the
@@ -1029,7 +1029,7 @@ class AbstractFrame:
     def eval_expr_CallMethod(self, op: ast.CallMethod) -> W_Object:
         wam_obj = self.eval_expr(op.target)
         wam_meth = self.eval_expr(op.method)
-        args_wam = [self.eval_expr(arg) for arg in op.args]
+        args_wam = self.eval_args_with_starred(op.args)
         w_opimpl = self.vm.call_OP(
             op.loc, OP.w_CALL_METHOD, [wam_obj, wam_meth] + args_wam
         )
@@ -1054,10 +1054,20 @@ class AbstractFrame:
     def _call_method_eager(
         self, op: ast.Starred, wam_obj: W_MetaArg, methname: str
     ) -> W_MetaArg:
-        """`wam_obj.methname()`, evaluated eagerly."""
+        """
+        `wam_obj.methname()`, evaluated eagerly.
+
+        Note: we call vm.eval_opimpl directly with redshifting=False (instead
+        of going through self.eval_opimpl), because eval_starred_items always
+        wants an actual value back, even when called from FuncDoppler (where
+        self.redshifting is True and self.eval_opimpl would normally produce
+        an abstract, not-yet-computed W_MetaArg to be shifted later).
+        """
         wam_meth = W_MetaArg.from_w_obj(self.vm, self.vm.wrap(methname))
         w_opimpl = self.vm.call_OP(op.loc, OP.w_CALL_METHOD, [wam_obj, wam_meth])
-        return self.eval_opimpl(op, w_opimpl, [wam_obj, wam_meth])
+        return self.vm.eval_opimpl(
+            w_opimpl, [wam_obj, wam_meth], loc=op.loc, redshifting=False
+        )
 
     def _eager_splat_items(self, op: ast.Starred, wam_seq: W_MetaArg) -> list[W_Object]:
         """
@@ -1065,6 +1075,9 @@ class AbstractFrame:
         """
         assert wam_seq.has_value()
         w_T = wam_seq.w_static_T
+        if w_T is SPY.w_EmptyListType:
+            # `*[]` splats to nothing
+            return []
         if w_T.lookup_func(self.vm, "__fastiter__") is None:
             w_Tname = w_T.fqn.human_name(self.vm)
             raise SPyError.simple(
@@ -1101,6 +1114,19 @@ class AbstractFrame:
         items_w = self._eager_splat_items(op, wam_seq)
         return [W_MetaArg.from_w_obj(self.vm, w_item, loc=op.loc) for w_item in items_w]
 
+    def eval_args_with_starred(self, args: Sequence[ast.Expr]) -> list[W_MetaArg]:
+        """
+        Evaluate a sequence of expressions (call args, tuple items, ...),
+        expanding any `*expr` splat into zero or more items.
+        """
+        args_wam: list[W_MetaArg] = []
+        for arg in args:
+            if isinstance(arg, ast.Starred):
+                args_wam.extend(self.eval_starred_items(arg))
+            else:
+                args_wam.append(self.eval_expr(arg))
+        return args_wam
+
     def eval_expr_Starred(self, op: ast.Starred) -> W_MetaArg:
         """
         Generic fallback for a `*expr` splat appearing somewhere that
@@ -1109,7 +1135,7 @@ class AbstractFrame:
         raise SPyError.simple(
             "W_TypeError",
             "splat expressions (`*expr`) are supported only as items of "
-            "a list or tuple literal",
+            "a list or tuple literal, or as arguments of a call",
             "not supported here",
             op.loc,
         )
@@ -1197,12 +1223,7 @@ class AbstractFrame:
     def eval_expr_Tuple(self, tup: ast.Tuple) -> W_MetaArg:
         # 1. evaluate each item (expanding any `*expr` splat into zero or
         # more items, same as eval_expr_List)
-        items_wam: list[W_MetaArg] = []
-        for item in tup.items:
-            if isinstance(item, ast.Starred):
-                items_wam.extend(self.eval_starred_items(item))
-            else:
-                items_wam.append(self.eval_expr(item))
+        items_wam = self.eval_args_with_starred(tup.items)
         itemtypes_w = [wam.w_static_T for wam in items_wam]
         colors = [wam.color for wam in items_wam]
         color = maybe_blue(*colors)
