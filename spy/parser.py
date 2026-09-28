@@ -852,6 +852,30 @@ class Parser:
         else:
             assert False, f"Unexpected literal: {py_node.value}"
 
+    def from_py_expr_JoinedStr(self, py_node: py_ast.JoinedStr) -> spy.ast.JoinedStr:
+        items: list[spy.ast.StrLiteral | spy.ast.FormattedExpr] = []
+        for py_value in py_node.values:
+            item = self.from_py_expr(py_value)
+            assert isinstance(item, spy.ast.StrLiteral | spy.ast.FormattedExpr)
+            items.append(item)
+        return spy.ast.JoinedStr(py_node.loc, items)
+
+    def from_py_expr_FormattedValue(
+        self, py_node: py_ast.FormattedValue
+    ) -> spy.ast.FormattedExpr:
+        value = self.from_py_expr(py_node.value)
+        conversion: Optional[str] = None
+        format_spec: Optional[spy.ast.JoinedStr] = None
+        if py_node.conversion != -1:
+            # py_node.conversion is an int: -1 means "no conversion", else it is
+            # ord("s"), ord("r") or ord("a").
+            conversion = chr(py_node.conversion)
+            assert conversion in ("s", "r", "a")
+        if py_node.format_spec is not None:
+            assert isinstance(py_node.format_spec, py_ast.JoinedStr)
+            format_spec = self.from_py_expr_JoinedStr(py_node.format_spec)
+        return spy.ast.FormattedExpr(py_node.loc, value, conversion, format_spec)
+
     def from_py_expr_Subscript(self, py_node: py_ast.Subscript) -> spy.ast.GetItem:
         value = self.from_py_expr(py_node.value)
         v = self.from_py_expr(py_node.slice)

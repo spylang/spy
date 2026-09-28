@@ -582,6 +582,35 @@ class BytesLiteral(Expr):
         return repr(self.value)
 
 
+@astnode("parsed")
+class JoinedStr(Expr):
+    """
+    An f-string, e.g. f"hello {name}".
+    """
+
+    precedence = 17
+    items: list["StrLiteral | FormattedExpr"]
+
+
+@astnode("parsed")
+class FormattedExpr(Expr):
+    """
+    A single `{x}` part inside a JoinedStr.
+
+    The full syntax is: `{value!conversion:format_spec}`
+
+    `conversion` is None or one of 's', 'r', 'a'.
+
+    `format_spec` is itself a JoinedStr because it can contain nested interpolations,
+    e.g. f"{x:{width}}".
+    """
+
+    precedence = 100  # the highest
+    value: Expr
+    conversion: Optional[str]
+    format_spec: Optional["JoinedStr"]
+
+
 @astnode
 class GetItem(Expr):
     precedence = 16
