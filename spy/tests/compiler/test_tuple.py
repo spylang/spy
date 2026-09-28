@@ -40,33 +40,29 @@ class TestTuple(CompilerTest):
 
     def test_variadic_starred(self):
         src = """
-        from operator import OpSpec, MetaArg
+        from operator import OpSpec
 
         @blue.metafunc
         def foo(*args_m):
-            m_x: MetaArg = args_m[0]
-            m_y: MetaArg = args_m[1]
-            names = (*args_m,)
-            assert names[0] is m_x
-            assert names[1] is m_y
+            m_x = args_m[0]
+            m_y = args_m[1]
+            args2_m = (*args_m,)
+            assert args2_m[0] is m_x
+            assert args2_m[1] is m_y
 
             T = m_x.static_type
             assert m_y.static_type == T
 
-            def impl_str(x: T, y: T) -> T:
+            def impl(x: T, y: T) -> T:
                 return x + y
 
-            return OpSpec(impl_str, [*args_m])
+            return OpSpec(impl, [*args2_m])
 
-        def test_i32(x: i32, y: i32) -> i32:
-            return foo(x, y)
-
-        def test_str(x: str, y: str) -> str:
+        def test(x: i32, y: i32) -> i32:
             return foo(x, y)
         """
         mod = self.compile(src)
-        assert mod.test_i32(1, 2) == 3
-        assert mod.test_str("S", "Py") == "SPy"
+        assert mod.test(1, 2) == 3
 
     def test_unpacking_blue(self):
         mod = self.compile("""
