@@ -309,7 +309,7 @@ class CFuncWriter:
             return C.Void()
         elif w_T is TYPES.w_Loc:
             raise SPyError.simple(
-                "W_NotImplementedError",
+                "W_WIP",
                 "cannot use a `Loc` value at runtime",
                 "this value has type `Loc`, which only exists at redshift "
                 "time and has no C-level representation",

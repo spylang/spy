@@ -323,15 +323,6 @@ class W_MetaArg(W_Object):
 
         return W_Loc(w_self.loc)
 
-    @builtin_property("source")
-    @staticmethod
-    def w_get_source(vm: "SPyVM", w_self: "W_MetaArg") -> "W_Str":
-        """
-        Applevel property to get the piece of source code corresponding to
-        this MetaArg's location.
-        """
-        return vm.wrap(w_self.loc.get_src())
-
 
 @OPERATOR.builtin_type("OpSpec", lazy_definition=True)
 class W_OpSpec(W_Object):

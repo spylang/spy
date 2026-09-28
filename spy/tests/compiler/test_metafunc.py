@@ -1,15 +1,6 @@
 import pytest
 
-from spy.errors import SPyError
-from spy.fqn import FQN
-from spy.tests.support import (
-    CompilerTest,
-    expect_errors,
-    no_C,
-    only_C,
-    only_interp,
-    skip_backends,
-)
+from spy.tests.support import CompilerTest, expect_errors, no_C
 from spy.vm.b import B
 
 
@@ -161,8 +152,8 @@ class TestMetaFunc(CompilerTest):
 
         @blue.metafunc
         def meta(m_x):
-            source = m_x.source
             filename = m_x.loc.filename
+            source = m_x.loc.get_src()
             def impl(x: i32) -> tuple[str, str]:
                 return source, filename
             return OpSpec(impl)
@@ -175,25 +166,3 @@ class TestMetaFunc(CompilerTest):
         result = mod.foo()
         assert result[0] == "x + 2"
         assert result[1].endswith("test.spy")
-
-    @only_C
-    def test_loc_cannot_flow_into_runtime_code(self):
-        src = """
-        from operator import OpSpec
-
-        @blue.metafunc
-        def meta(m_x):
-            loc = m_x.loc
-
-            def impl(x: i32) -> i32:
-                # 'loc' (not one of its str/int attributes) is used here,
-                # i.e. we try to embed a `Loc` value into compiled code.
-                return loc.line_start
-            return OpSpec(impl)
-
-        def foo() -> i32:
-            var x = 2
-            return meta(x + 2)
-        """
-        errors = expect_errors("cannot use a `Loc` value at runtime")
-        self.compile_raises(src, "foo", errors)

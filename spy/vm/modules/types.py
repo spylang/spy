@@ -61,3 +61,8 @@ class W_Loc(W_Object):
     @staticmethod
     def w_get_col_end(vm: "SPyVM", w_self: "W_Loc") -> W_I32:
         return vm.wrap(w_self.loc.col_end)
+
+    @builtin_method("get_src")
+    @staticmethod
+    def w_get_src(vm: "SPyVM", w_self: "W_Loc") -> "W_Str":
+        return vm.wrap(w_self.loc.get_src())
