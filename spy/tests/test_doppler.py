@@ -541,6 +541,43 @@ class TestDoppler:
         """
         self.assert_dump(expected, funcname="test")
 
+    def test_splat_call_args_blue_call_is_constant(self):
+        self.redshift("""
+        @blue
+        def bfunc(a, b):
+            return a
+
+        @blue
+        def types():
+            return (i32, str)
+
+        def test() -> type:
+            return bfunc(*types())
+        """)
+        expected = """
+        def test() -> type:
+            return i32
+        """
+        self.assert_dump(expected, funcname="test")
+
+    def test_splat_call_args_red_call_error(self):
+        src = """
+        @blue
+        def types():
+            return (i32, i32)
+
+        def red(a: type, b: type) -> i32:
+            return 0
+
+        def test() -> i32:
+            return red(*types())
+        """
+        with SPyError.raises(
+            "W_WIP",
+            match=r"splat arguments \(`\*expr`\) are supported only in calls to blue",
+        ):
+            self.redshift(src)
+
     def test_nested_force_inline(self):
         self.redshift("""
         from __spy__ import force_inline

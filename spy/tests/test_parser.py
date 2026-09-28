@@ -959,6 +959,32 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
+    def test_Starred_multiple_in_List(self):
+        src = """
+        def foo() -> None:
+            return [a, b, *c, *d, e]
+        """
+        mod = self.parse(src)
+        stmt = mod.get_funcdef("foo").body.body[0]
+        expected = """
+        Return(
+            value=List(
+                items=[
+                    Name(id='a'),
+                    Name(id='b'),
+                    Starred(
+                        value=Name(id='c'),
+                    ),
+                    Starred(
+                        value=Name(id='d'),
+                    ),
+                    Name(id='e'),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
     def test_Starred_in_Call_args(self):
         src = """
         def foo() -> None:

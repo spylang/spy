@@ -203,8 +203,6 @@ class TestMetaFunc(CompilerTest):
 
     def test_splat_of_a_red_value_inside_a_blue_function(self):
         src = """
-        from operator import OpSpec
-
         @blue
         def make():
             # cannot yet use a tuple, missing __fastiter__
@@ -222,3 +220,89 @@ class TestMetaFunc(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo(2) == 3
+
+    def test_splat_call_args_blue_func(self):
+        src = """
+        @blue
+        def bfunc(a, b, c):
+            return a + b + c
+
+        @blue
+        def make():
+            t = [2, 3]
+            return bfunc(*t, 4), bfunc(1, *t), bfunc(*[1, 1], 1)
+
+        def foo() -> tuple[i32, i32, i32]:
+            return make()
+        """
+        mod = self.compile(src)
+        assert mod.foo() == (9, 6, 3)
+
+    def test_splat_call_args_empty(self):
+        src = """
+        @blue
+        def bfunc(a):
+            return a
+
+        @blue
+        def make():
+            empty = [*[]]
+            return bfunc(1, *empty)
+
+        def foo() -> i32:
+            return make()
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 1
+
+    def test_splat_call_args_dict_keys(self):
+        src = """
+        @blue
+        def bfunc(a, b):
+            return a + b
+
+        @blue
+        def make():
+            d = {1: "x", 2: "y"}
+            return bfunc(*d.keys())
+
+        def foo() -> i32:
+            return make()
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 3
+
+    def test_splat_call_args_method(self):
+        src = """
+        @blue
+        def make():
+            l = [1]
+            more = [2, 3]
+            l.extend([*more])
+            return len(l)
+
+        def foo() -> i32:
+            return make()
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 3
+
+    def test_splat_call_args_not_iterable(self):
+        src = """
+        @blue
+        def bfunc(a):
+            return a
+
+        @blue
+        def make():
+            return bfunc(*42)
+
+        def foo() -> i32:
+            return make()
+        """
+        errors = expect_errors(
+            "cannot unpack `i32`: it does not support iteration, "
+            "so it cannot be splatted with `*`",
+            ("this is not supported", "*42"),
+        )
+        self.compile_raises(src, "foo", errors)
