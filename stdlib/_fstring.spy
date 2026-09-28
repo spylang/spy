@@ -1,0 +1,26 @@
+from __spy__ import force_inline
+from strbuilder import StrBuilder
+
+# this module contains a small helper used by `__spy__::fstring`, which implements
+# f-string formatting.  The end goal is to write the full fstring() in SPy, but for now
+# we cannot because we don't support e.g. `UNROLL`.
+#
+# See also:
+#   - vm/modules/__spy__/fstring.py
+#   - w_print() in vm/modules/builtins.py
+#   - stdlib/_print.spy
+
+
+@blue.generic
+def format1(T, conversion, format_spec):
+    if conversion is not None:
+        raise StaticError("WIP: conversion not supported: " + conversion)
+
+    if format_spec is not None:
+        raise StaticError("WIP: format_spec not supported: " + format_spec)
+
+    @force_inline
+    def impl(x: T) -> str:
+        return str(x)
+
+    return impl

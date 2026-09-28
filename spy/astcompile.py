@@ -14,6 +14,7 @@ import spy.ast as ast
 from spy.analyze.sym import FrameInfo, Scope, Symbol
 from spy.ast import LoweringStage
 from spy.errors import WIP, SPyError
+from spy.fqn import FQN
 from spy.location import Loc
 from spy.util import magic_dispatch
 
@@ -637,6 +638,55 @@ class ASTCompiler:
             func=self.compile_expr(expr.func),
             args=[self.compile_expr(arg) for arg in expr.args],
         )
+
+    def compile_expr_JoinedStr(self, expr: ast.JoinedStr) -> ast.Expr:
+        # The complete pipeline is more or less:
+        # source:
+        #     f"AAA {x} BBB {y}"
+        # parsed into:
+        #     ast.JoinedStr(...)
+        # astcompiled into a call to the metafunc:
+        #     `__spy__::fstring("AAA ", x, " BBB ", y)`
+        # which generates a @force_inline impl:
+        #     @force_inline
+        #     def impl(x: T0, y: T1) -> str:
+        #         s0 = _fstring::format1[T0, None, None](x)
+        #         s1 = _fstring::format1[T1, None, None](y)
+        #         cap = len(s0) + len(s1)
+        #         sb = StrBuilder(cap)
+        #         sb.append(s0)
+        #         sb.append(s1)
+        #         return sb.build()
+        #
+        # The sig of format1 is:
+        #     format1[T, conversion, format_spec](x: T) -> str
+        #
+        # However, at the moment we don't support `conversion` and/or format_spec, so we
+        # hardcode `None` for both.
+        args: list[ast.Expr] = []
+        for item in expr.items:
+            if isinstance(item, ast.StrLiteral):
+                args.append(item)
+            else:
+                assert isinstance(item, ast.FormattedExpr)
+                if item.conversion is not None:
+                    raise SPyError.simple(
+                        "W_WIP",
+                        f"not implemented yet: `!{item.conversion}` conversion "
+                        "in f-strings",
+                        "this is not supported",
+                        item.loc,
+                    )
+                if item.format_spec is not None:
+                    raise SPyError.simple(
+                        "W_WIP",
+                        "not implemented yet: format specs in f-strings",
+                        "this is not supported",
+                        item.format_spec.loc,
+                    )
+                args.append(self.compile_expr(item.value))
+        func = ast.FQNConst(expr.loc, FQN("__spy__::fstring"))
+        return ast.Call(expr.loc, func, args)
 
     def compile_expr_List(self, expr: ast.List) -> ast.Expr:
         return expr.replace(items=[self.compile_expr(item) for item in expr.items])

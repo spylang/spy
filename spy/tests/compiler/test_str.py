@@ -4,7 +4,7 @@ from textwrap import dedent
 import pytest
 
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest, only_interp, skip_backends
+from spy.tests.support import CompilerTest, expect_errors, only_interp, skip_backends
 
 
 class TestStr(CompilerTest):
@@ -827,3 +827,41 @@ class TestStr(CompilerTest):
         input = b"\xff"
         with pytest.raises(SPyError, match="invalid first utf-8 byte: 255"):
             mod.run_unicode_codepoints(input)
+
+    def test_fstring_simple(self):
+        src = """
+        def foo(s: str, x: i32) -> str:
+            return f"The {s} is {x}"
+        """
+        mod = self.compile(src)
+        assert mod.foo("answer", 42) == "The answer is 42"
+
+    def test_fstring_empty(self):
+        src = """
+        def foo() -> str:
+            return f""
+        """
+        mod = self.compile(src)
+        assert mod.foo() == ""
+
+    def test_fstring_conversion_unsupported(self):
+        src = """
+        def foo(x: i32) -> str:
+            return f"{x!r}"
+        """
+        errors = expect_errors(
+            "not implemented yet: `!r` conversion in f-strings",
+            ("this is not supported", "{x!r}"),
+        )
+        self.compile_raises(src, "foo", errors, error_reporting="eager")
+
+    def test_fstring_format_spec_unsupported(self):
+        src = """
+        def foo(x: f64) -> str:
+            return f"{x:.2f}"
+        """
+        errors = expect_errors(
+            "not implemented yet: format specs in f-strings",
+            ("this is not supported", ":.2f"),
+        )
+        self.compile_raises(src, "foo", errors, error_reporting="eager")
