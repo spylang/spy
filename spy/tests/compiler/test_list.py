@@ -219,9 +219,6 @@ class TestList(CompilerTest):
 
     @only_interp
     def test_splat_red_value_interp(self):
-        # under pure interpretation, `bar` is never redshifted: `xs` still
-        # has a concrete value at the point we splat it, even though it's
-        # a red-colored parameter, so this is expected to work.
         src = """
         def bar(xs: list[i32]) -> list[i32]:
             return [*xs]
@@ -234,8 +231,6 @@ class TestList(CompilerTest):
 
     @only_doppler
     def test_splat_red_value_doppler(self):
-        # here `bar` gets redshifted, so `xs`'s value is genuinely not
-        # known at compile time: splatting it must raise.
         src = """
         def bar(xs: list[i32]) -> list[i32]:
             return [*xs]
@@ -244,8 +239,7 @@ class TestList(CompilerTest):
             return bar([1, 2, 3])
         """
         errors = expect_errors(
-            "cannot splat a red value: `*expr` is currently supported "
-            "only for values known at compile time",
+            "cannot splat an expression without known value",
             ("this is not supported", "xs"),
         )
         self.compile_raises(src, "foo", errors)

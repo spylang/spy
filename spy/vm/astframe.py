@@ -5,15 +5,15 @@ from typing import TYPE_CHECKING, Never, Optional, Sequence
 from fixedint import Int8, Int32, Int64, UInt8, UInt32, UInt64
 
 from spy import ast
-from spy.analyze.sym import Color, FrameInfo, Symbol, maybe_blue
-from spy.errors import WIP, SPyError
+from spy.analyze.sym import Color, FrameInfo, maybe_blue
+from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.location import Loc
 from spy.util import magic_dispatch
 from spy.vm.b import B
 from spy.vm.cell import W_Cell
-from spy.vm.exc import W_NameError, W_TypeError
-from spy.vm.function import CLOSURE, FuncParam, LocalVar, W_ASTFunc, W_Func, W_FuncType
+from spy.vm.exc import W_TypeError
+from spy.vm.function import CLOSURE, FuncParam, LocalVar, W_ASTFunc, W_FuncType
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
 from spy.vm.modules.operator import OP, OP_from_token, OP_unary_from_token
@@ -1054,41 +1054,14 @@ class AbstractFrame:
     def _call_method_eager(
         self, op: ast.Starred, wam_obj: W_MetaArg, methname: str
     ) -> W_MetaArg:
-        """
-        `wam_obj.methname()`, evaluated eagerly, via the same
-        OP.w_CALL_METHOD dynamic-dispatch opcode that `x.method(...)`
-        expressions and the `for`-loop desugaring use (see
-        eval_expr_CallMethod and astcompile.py:compile_stmt_For).
-
-        This relies on eval_opimpl's own "do we actually have a value"
-        check (color == "red" and redshifting -> no concrete result): it is
-        only ever called with wam_obj/intermediate results that we already
-        know are concrete (see eval_starred_items), so it always produces a
-        w_val we can use, regardless of the color tag involved.
-
-        We deliberately do NOT use vm.lookup_global(w_T.fqn.join(methname))
-        here (unlike spy/vm/struct.py:unwrap_dict): that only works for
-        methods that happen to also be registered as plain globals (true of
-        compiled-from-.spy methods like dict's, but NOT of interp-level
-        @builtin_method-decorated methods like interp_tuple's __fastiter__,
-        which live only in the type's own method table). Going through
-        OP.w_CALL_METHOD works uniformly for both.
-        """
+        """`wam_obj.methname()`, evaluated eagerly."""
         wam_meth = W_MetaArg.from_w_obj(self.vm, self.vm.wrap(methname))
         w_opimpl = self.vm.call_OP(op.loc, OP.w_CALL_METHOD, [wam_obj, wam_meth])
         return self.eval_opimpl(op, w_opimpl, [wam_obj, wam_meth])
 
     def _eager_splat_items(self, op: ast.Starred, wam_seq: W_MetaArg) -> list[W_Object]:
         """
-        Eagerly drain a value through the __fastiter__ protocol -- the same
-        one that `for` loops desugar to (see
-        astcompile.py:compile_stmt_For) -- and collect every item into a
-        plain list. Used to implement `*expr` splats.
-
-        `wam_seq` must carry a concrete w_val: this deliberately does NOT
-        support splatting a red value during redshifting, since its length
-        is not known at compile time in that case (see eval_starred_items
-        below for the error raised then).
+        Eagerly drain a value through the __fastiter__ protocol.
         """
         assert wam_seq.has_value()
         w_T = wam_seq.w_static_T
@@ -1116,22 +1089,12 @@ class AbstractFrame:
     def eval_starred_items(self, op: ast.Starred) -> list[W_MetaArg]:
         """
         Evaluate a `*expr` splat and expand it into zero or more items.
-
-        This is currently supported only as an item of a `List` literal (see
-        eval_expr_List), for any value whose type implements the
-        __fastiter__ protocol (the same one `for` loops desugar to) -- this
-        includes, but is not limited to, the blue `interp_tuple` type which
-        backs variadic blue arguments, i.e. `*args_m` in a `@blue.metafunc`
-        definition. Returns one W_MetaArg per element.
-
-        Splatting a value with no concrete w_val is out of scope for now.
         """
         wam_seq = self.eval_expr(op.value)
         if not wam_seq.has_value():
             raise SPyError.simple(
                 "W_TypeError",
-                "cannot splat a red value: `*expr` is currently supported "
-                "only for values known at compile time",
+                "cannot splat an expression without known value",
                 "this is not supported",
                 op.value.loc,
             )
@@ -1141,10 +1104,7 @@ class AbstractFrame:
     def eval_expr_Starred(self, op: ast.Starred) -> W_MetaArg:
         """
         Generic fallback for a `*expr` splat appearing somewhere that
-        doesn't special-case ast.Starred before calling self.eval_expr(...)
-        on it (e.g. Call args, today). List/Tuple deliberately pre-check
-        `isinstance(item, ast.Starred)` and route to eval_starred_items
-        instead of going through here -- see eval_expr_List.
+        doesn't special-case ast.Starred.
         """
         raise SPyError.simple(
             "W_TypeError",

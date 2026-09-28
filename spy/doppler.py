@@ -652,16 +652,9 @@ class DopplerFrame(ASTFrame):
         return newlst
 
     def shift_expr_Starred(self, op: ast.Starred, wam: W_MetaArg) -> ast.Expr:
-        # Starred expressions (`*args_m`) are used to splat a blue
-        # interp_tuple into a list literal. interp_tuples are blue-only and
-        # cannot appear in compiled (red) code, so a Starred node should
-        # never reach the doppler: it is always fully consumed by
-        # ASTFrame.eval_expr_List while still blue. If we get here, it means
-        # a Starred expression escaped its supported context.
         raise SPyError.simple(
-            "W_TypeError",
-            "splat expressions are supported only inside a list literal, "
-            "to unpack a blue interp_tuple",
+            "W_WIP",
+            "splat expressions are supported only in blue code.",
             "not supported here",
             op.loc,
         )
