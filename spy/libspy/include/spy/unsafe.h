@@ -137,7 +137,7 @@ spy_gc_alloc_pointerless_fn(size_t size) {
 /* Unaligned access helpers.
  *
  * When a ptr type declares an alignment strictly less than the natural
- * alignment of its item type T (e.g. gc_ptr[i32, 1], where
+ * alignment of its item type T (e.g. gc_ptr[i32, align(1)], where
  * alignof(i32) == 4), a plain typed dereference/store is undefined
  * behavior. These helpers route the access through __builtin_memcpy,
  * which compilers lower to the most efficient unaligned access for the

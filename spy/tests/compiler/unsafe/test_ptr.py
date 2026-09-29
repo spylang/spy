@@ -5,7 +5,7 @@ from spy.tests.support import CompilerTest, expect_errors, only_C, only_interp
 from spy.tests.wasm_wrapper import WasmPtr
 from spy.vm.b import B
 from spy.vm.modules.unsafe import UNSAFE
-from spy.vm.modules.unsafe.misc import alignof
+from spy.vm.modules.unsafe.misc import W_Align, alignof
 from spy.vm.modules.unsafe.ptr import W_Ptr
 
 # Alignment value guaranteed to exceed SPY_BASE_ALIGNMENT on all targets
@@ -885,19 +885,19 @@ class TestUnsafePtr(CompilerTest):
     def test_default_alignment_matches_alignof(self):
         w_default = self.vm.fast_call(UNSAFE.w_gc_ptr, [B.w_f64])
         N = alignof(B.w_f64)
-        w_explicit = self.vm.fast_call(UNSAFE.w_gc_ptr, [B.w_f64, self.vm.wrap(N)])
+        w_explicit = self.vm.fast_call(UNSAFE.w_gc_ptr, [B.w_f64, W_Align(N)])
         assert w_default is w_explicit
         assert repr(w_default) == "<spy type 'unsafe::gc_ptr[f64]'>"
 
     @only_interp
     def test_explicit_alignment_in_fqn(self):
-        w_ptrtype = self.vm.fast_call(UNSAFE.w_gc_ptr, [B.w_i32, self.vm.wrap(8)])
-        assert repr(w_ptrtype) == "<spy type 'unsafe::gc_ptr[i32, 8]'>"
+        w_ptrtype = self.vm.fast_call(UNSAFE.w_gc_ptr, [B.w_i32, W_Align(8)])
+        assert repr(w_ptrtype) == "<spy type 'unsafe::gc_ptr[i32, align(8)]'>"
 
     @only_interp
     def test_different_alignments_are_different_types(self):
-        w_8 = self.vm.fast_call(UNSAFE.w_gc_ptr, [B.w_i32, self.vm.wrap(8)])
-        w_16 = self.vm.fast_call(UNSAFE.w_gc_ptr, [B.w_i32, self.vm.wrap(16)])
+        w_8 = self.vm.fast_call(UNSAFE.w_gc_ptr, [B.w_i32, W_Align(8)])
+        w_16 = self.vm.fast_call(UNSAFE.w_gc_ptr, [B.w_i32, W_Align(16)])
         assert w_8 is not w_16
 
     @only_interp
@@ -905,27 +905,40 @@ class TestUnsafePtr(CompilerTest):
         with pytest.raises(SPyError, match="accepts 1 or 2 arguments"):
             self.vm.fast_call(
                 UNSAFE.w_gc_ptr,
-                [B.w_i32, self.vm.wrap(8), self.vm.wrap(16)],
+                [B.w_i32, W_Align(8), W_Align(16)],
             )
+
+    @only_interp
+    def test_bare_int_is_not_an_alignment(self):
+        with pytest.raises(SPyError, match="alignment must be `align\\(N\\)`"):
+            self.vm.fast_call(UNSAFE.w_gc_ptr, [B.w_i32, self.vm.wrap(8)])
+
+    @only_interp
+    def test_align_builtin(self):
+        w_align = self.vm.fast_call(UNSAFE.w_align, [self.vm.wrap(8)])
+        assert isinstance(w_align, W_Align)
+        assert w_align.alignment == 8
+        w_ptrtype = self.vm.fast_call(UNSAFE.w_gc_ptr, [B.w_i32, w_align])
+        assert w_ptrtype is self.vm.fast_call(UNSAFE.w_gc_ptr, [B.w_i32, W_Align(8)])
 
     def test_default_equals_explicit_alignof(self):
         src = """
-            from unsafe import gc_ptr
+            from unsafe import gc_ptr, align
 
             def foo() -> bool:
-                return gc_ptr[i32] is gc_ptr[i32, 4]
+                return gc_ptr[i32] is gc_ptr[i32, align(4)]
             """
         mod = self.compile(src)
         assert mod.foo()
 
     def test_weakening_is_implicit(self):
         src = """
-            from unsafe import gc_alloc, gc_ptr
+            from unsafe import gc_alloc, gc_ptr, align
 
             def foo() -> i32:
-                p16: gc_ptr[i32, 16] = gc_alloc[i32, 16](1)
-                # implicit weakening: gc_ptr[i32, 16] -> gc_ptr[i32, 8]
-                p8: gc_ptr[i32, 8] = p16
+                p16: gc_ptr[i32, align(16)] = gc_alloc[i32, align(16)](1)
+                # implicit weakening: gc_ptr[i32, align(16)] -> gc_ptr[i32, align(8)]
+                p8: gc_ptr[i32, align(8)] = p16
                 p8[0] = 123
                 return p8[0]
             """
@@ -934,21 +947,21 @@ class TestUnsafePtr(CompilerTest):
 
     def test_strengthening_is_a_type_error(self):
         src = """
-        from unsafe import gc_alloc, gc_ptr
+        from unsafe import gc_alloc, gc_ptr, align
 
         def foo() -> None:
-            p8: gc_ptr[i32, 8] = gc_alloc[i32, 8](1)
-            p16: gc_ptr[i32, 16] = p8
+            p8: gc_ptr[i32, align(8)] = gc_alloc[i32, align(8)](1)
+            p16: gc_ptr[i32, align(16)] = p8
         """
         errors = expect_errors(
             "mismatched types",
             (
-                "expected `unsafe::gc_ptr[i32, 16]`, got `unsafe::gc_ptr[i32, 8]`",
+                "expected `unsafe::gc_ptr[i32, align(16)]`, got `unsafe::gc_ptr[i32, align(8)]`",
                 "p8",
             ),
             (
-                "expected `unsafe::gc_ptr[i32, 16]` because of type declaration",
-                "gc_ptr[i32, 16]",
+                "expected `unsafe::gc_ptr[i32, align(16)]` because of type declaration",
+                "gc_ptr[i32, align(16)]",
             ),
         )
         self.compile_raises(src, "foo", errors)
@@ -956,9 +969,9 @@ class TestUnsafePtr(CompilerTest):
     def test_under_aligned_roundtrip(self, memkind):
         k = memkind
         src = f"""
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, align
         def foo[T]() -> T:
-            p: k_ptr[T, 1] = k_alloc[T, 1](3)
+            p: k_ptr[T, align(1)] = k_alloc[T, align(1)](3)
             p[0] = 10; p[1] = 20; p[2] = 30
             return p[0] + p[1] + p[2]
 
@@ -971,10 +984,10 @@ class TestUnsafePtr(CompilerTest):
 
     def test_weaken_to_under_aligned(self):
         src = """
-        from unsafe import gc_alloc, gc_ptr
+        from unsafe import gc_alloc, gc_ptr, align
         def foo[T]() -> T:
             p_aligned: gc_ptr[T] = gc_alloc[T](2)
-            p1: gc_ptr[T, 1] = p_aligned
+            p1: gc_ptr[T, align(1)] = p_aligned
             p1[0] = 99; p1[1] = -7
             return p1[0] - p1[1]
 
@@ -987,13 +1000,13 @@ class TestUnsafePtr(CompilerTest):
 
     def test_struct_field_roundtrip(self):
         src = """
-        from unsafe import gc_alloc, gc_ptr
+        from unsafe import gc_alloc, gc_ptr, align
         @struct
         class Point:
             x: i32
             y: i32
         def foo() -> i32:
-            p: gc_ptr[Point, 1] = gc_alloc[Point, 1](2)
+            p: gc_ptr[Point, align(1)] = gc_alloc[Point, align(1)](2)
             p[0].x = 1; p[0].y = 2
             p[1].x = 3; p[1].y = 4
             return p[0].x + 10*p[0].y + 100*p[1].x + 1000*p[1].y
@@ -1003,14 +1016,14 @@ class TestUnsafePtr(CompilerTest):
 
     def test_struct_field_weakening(self):
         src = """
-        from unsafe import gc_alloc, gc_ptr
+        from unsafe import gc_alloc, gc_ptr, align
         @struct
         class Point:
             x: i32
             y: i32
         def foo() -> i32:
-            p32: gc_ptr[Point, 32] = gc_alloc[Point, 32](1)
-            p1: gc_ptr[Point, 1] = p32
+            p32: gc_ptr[Point, align(32)] = gc_alloc[Point, align(32)](1)
+            p1: gc_ptr[Point, align(1)] = p32
             p1[0].x = 100; p1[0].y = 200
             return p1[0].x + p1[0].y
         """
@@ -1022,10 +1035,10 @@ class TestUnsafePtr(CompilerTest):
     def test_ptr_address_is_aligned(self, memkind):
         k = memkind
         src = """
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, ptr_to_addr
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, ptr_to_addr, align
 
-        def alloc() -> k_ptr[i32, {N}]:
-            p = k_alloc[i32, {N}](4)
+        def alloc() -> k_ptr[i32, align({N})]:
+            p = k_alloc[i32, align({N})](4)
             assert ptr_to_addr(p) % {N} == 0
             return p
         """.format(k=k, N=OVER_ALIGNMENT)
@@ -1035,10 +1048,10 @@ class TestUnsafePtr(CompilerTest):
     def test_over_alloc_roundtrip(self, memkind):
         k = memkind
         src = """
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, align
 
         def foo() -> i32:
-            p: k_ptr[i32, {N}] = k_alloc[i32, {N}](3)
+            p: k_ptr[i32, align({N})] = k_alloc[i32, align({N})](3)
             p[0] = 10
             p[1] = 20
             p[2] = 30
@@ -1050,7 +1063,7 @@ class TestUnsafePtr(CompilerTest):
     def test_over_alloc_struct(self, memkind):
         k = memkind
         src = """
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, align
 
         @struct
         class Point:
@@ -1058,7 +1071,7 @@ class TestUnsafePtr(CompilerTest):
             y: i32
 
         def foo() -> i32:
-            p: k_ptr[Point, {N}] = k_alloc[Point, {N}](2)
+            p: k_ptr[Point, align({N})] = k_alloc[Point, align({N})](2)
             p[0].x = 1
             p[0].y = 2
             p[1].x = 3
@@ -1070,12 +1083,12 @@ class TestUnsafePtr(CompilerTest):
 
     def test_over_alloc_weakening(self):
         src = """
-        from unsafe import gc_alloc, gc_ptr
+        from unsafe import gc_alloc, gc_ptr, align
 
         def foo() -> i32:
-            p32: gc_ptr[i32, {N}] = gc_alloc[i32, {N}](1)
-            # implicit weakening: gc_ptr[i32, {N}] -> gc_ptr[i32, 8]
-            p8: gc_ptr[i32, 8] = p32
+            p32: gc_ptr[i32, align({N})] = gc_alloc[i32, align({N})](1)
+            # implicit weakening: gc_ptr[i32, align({N})] -> gc_ptr[i32, align(8)]
+            p8: gc_ptr[i32, align(8)] = p32
             p8[0] = 99
             return p8[0]
         """.format(N=OVER_ALIGNMENT)
@@ -1086,10 +1099,10 @@ class TestUnsafePtr(CompilerTest):
         # Multiple independent over-aligned allocations should all be
         # properly aligned (not just the first one)
         src = """
-        from unsafe import gc_alloc, gc_ptr, ptr_to_addr
+        from unsafe import gc_alloc, gc_ptr, ptr_to_addr, align
 
-        def alloc() -> gc_ptr[i32, {N}]:
-            p = gc_alloc[i32, {N}](1)
+        def alloc() -> gc_ptr[i32, align({N})]:
+            p = gc_alloc[i32, align({N})](1)
             assert ptr_to_addr(p) % {N} == 0
             return p
 
@@ -1110,10 +1123,10 @@ class TestUnsafePtr(CompilerTest):
 
     def test_over_alloc_f64(self):
         src = """
-        from unsafe import gc_alloc, gc_ptr
+        from unsafe import gc_alloc, gc_ptr, align
 
         def foo() -> f64:
-            p: gc_ptr[f64, {N}] = gc_alloc[f64, {N}](2)
+            p: gc_ptr[f64, align({N})] = gc_alloc[f64, align({N})](2)
             p[0] = 1.5
             p[1] = 2.5
             return p[0] + p[1]
@@ -1123,10 +1136,10 @@ class TestUnsafePtr(CompilerTest):
 
     def test_over_alloc_address_is_aligned_f64(self):
         src = """
-        from unsafe import gc_alloc, gc_ptr, ptr_to_addr
+        from unsafe import gc_alloc, gc_ptr, ptr_to_addr, align
 
-        def alloc() -> gc_ptr[f64, {N}]:
-            p = gc_alloc[f64, {N}](2)
+        def alloc() -> gc_ptr[f64, align({N})]:
+            p = gc_alloc[f64, align({N})](2)
             assert ptr_to_addr(p) % {N} == 0
             return p
         """.format(N=OVER_ALIGNMENT)

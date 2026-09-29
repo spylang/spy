@@ -119,7 +119,8 @@ class NSPart:
 
     @property
     def c_name(self) -> str:
-        name = self.name.replace(".", "_")
+        # '(' and ')' can appear e.g. in the `align(N)` qualifier
+        name = self.name.replace(".", "_").replace("(", "").replace(")", "")
         result = name
         if len(self.qualifiers) > 0:
             quals = "_".join(fqn.c_name_plain for fqn in self.qualifiers)

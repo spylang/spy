@@ -1,8 +1,8 @@
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from spy.errors import WIP, SPyError
 from spy.vm.b import B
-from spy.vm.object import W_Type
+from spy.vm.object import W_Object, W_Type
 from spy.vm.primitive import W_I32
 
 from . import UNSAFE
@@ -130,25 +130,54 @@ def w_alignof(vm: "SPyVM", w_T: W_Type) -> W_I32:
     return vm.wrap(alignof(w_T))
 
 
+@UNSAFE.builtin_type("Align")
+class W_Align(W_Object):
+    """
+    Interp-level only wrapper around an alignment (in bytes), as in
+    `gc_ptr[T, align(4)]`.
+    """
+
+    __spy_storage_category__ = "value"
+
+    def __init__(self, alignment: int) -> None:
+        self.alignment = alignment
+
+    def spy_key(self, vm: "SPyVM") -> Any:
+        return ("Align", self.alignment)
+
+    def __repr__(self) -> str:
+        return f"W_Align({self.alignment})"
+
+
+@UNSAFE.builtin_func(color="blue")
+def w_align(vm: "SPyVM", w_N: W_I32) -> W_Align:
+    """
+    The SPy-visible `align(N)` blue builtin.
+    """
+    return W_Align(int(vm.unwrap_i32(w_N)))
+
+
 def parse_optional_alignment(
     vm: "SPyVM", w_T: W_Type, args_w: tuple, funcname: str
 ) -> int:
     """
     Shared arg-parsing for the optional, defaulted alignment type param on
-    {raw,gc}_ptr[T, N=alignof(T)] / {raw,gc}_alloc[T, N=alignof(T)].
+    {raw,gc}_ptr[T, align(N)=align(alignof(T))] /
+    {raw,gc}_alloc[T, align(N)=align(alignof(T))].
     `args_w` is whatever extra positional blue args were
-    passed after `T`: zero (use the default) or one (an i32 `N`).
+    passed after `T`: zero (use the default) or one (a `W_Align`).
     """
     if len(args_w) == 0:
         return alignof(w_T)
     elif len(args_w) == 1:
-        w_N = args_w[0]
-        if not isinstance(w_N, W_I32):
-            t = vm.dynamic_type(w_N).fqn.human_name(vm)
+        w_align = args_w[0]
+        if not isinstance(w_align, W_Align):
+            t = vm.dynamic_type(w_align).fqn.human_name(vm)
             raise SPyError(
-                "W_TypeError", f"{funcname}: alignment must be i32, got `{t}`"
+                "W_TypeError",
+                f"{funcname}: alignment must be `align(N)`, got `{t}`",
             )
-        return int(vm.unwrap_i32(w_N))
+        return w_align.alignment
     else:
         n = len(args_w) + 1
         raise SPyError("W_TypeError", f"{funcname} accepts 1 or 2 arguments, got {n}")

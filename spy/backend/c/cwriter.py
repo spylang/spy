@@ -647,7 +647,7 @@ class CFuncWriter:
 
     def fmt_ptr_weaken_align(self, fqn: FQN, call: ast.Call) -> C.Expr:
         """
-        gc_ptr[T,N] -> gc_ptr[T,M] weakening conversion. Both types have
+        gc_ptr[T, align(N)] -> gc_ptr[T, align(M)] weakening conversion. Both types have
         byte-identical C layout ({T *p; length}), so this is just a
         relabeling.
         """

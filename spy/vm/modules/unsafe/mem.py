@@ -10,7 +10,7 @@ from spy.vm.struct import W_Struct, W_StructType
 from spy.vm.w import W_Object, W_Type
 
 from . import UNSAFE
-from .misc import parse_optional_alignment, sizeof
+from .misc import W_Align, parse_optional_alignment, sizeof
 from .ptr import W_Ptr, W_PtrType, w_gc_ptr, w_raw_ptr
 
 if TYPE_CHECKING:
@@ -35,7 +35,7 @@ def w_raw_alloc(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
         # the identical W_PtrType object back.
         #
         # If we instead resolved alignof(T) ourselves and called
-        # raw_ptr[T, alignof(T)], the blue-cache key would differ whenever
+        # raw_ptr[T, align(alignof(T))], the blue-cache key would differ whenever
         # T is a not-yet-defined (e.g. self-referential) struct: alignof(T)
         # is 1 during the struct body but its real value after definition.
         # That would create a second W_PtrType with the same FQN and trip
@@ -43,7 +43,7 @@ def w_raw_alloc(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
         w_ptrtype = vm.fast_call(w_raw_ptr, [w_T])
     else:
         alignment = parse_optional_alignment(vm, w_T, args_w, "raw_alloc")
-        w_N = vm.wrap(alignment)
+        w_N = W_Align(alignment)
         w_ptrtype = vm.fast_call(w_raw_ptr, [w_T, w_N])  # unsafe::raw_ptr[...]
     assert isinstance(w_ptrtype, W_PtrType)
     ITEMSIZE = sizeof(w_T)
@@ -75,7 +75,7 @@ def w_gc_alloc(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
         w_ptrtype = vm.fast_call(w_gc_ptr, [w_T])
     else:
         alignment = parse_optional_alignment(vm, w_T, args_w, "gc_alloc")
-        w_N = vm.wrap(alignment)
+        w_N = W_Align(alignment)
         w_ptrtype = vm.fast_call(w_gc_ptr, [w_T, w_N])  # unsafe::gc_ptr[...]
     assert isinstance(w_ptrtype, W_PtrType)
     ITEMSIZE = sizeof(w_T)

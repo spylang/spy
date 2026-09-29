@@ -42,7 +42,7 @@ from spy.vm.struct import W_StructType
 from spy.vm.w import W_Func, W_Object, W_Str, W_Type
 
 from . import UNSAFE
-from .misc import alignof, parse_optional_alignment, sizeof
+from .misc import W_Align, alignof, parse_optional_alignment, sizeof
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -54,16 +54,16 @@ MEMKIND = Literal["raw", "gc"]
 @UNSAFE.builtin_func(color="blue", kind="generic")
 def w_raw_ptr(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
     """
-    The raw_ptr[T] / raw_ptr[T, N] generic type
+    The raw_ptr[T] / raw_ptr[T, align(N)] generic type
     """
     if len(args_w) == 0:
-        # raw_ptr[T] is just a shortcut for raw_ptr[T, alignof(T)]
-        w_N = vm.wrap(alignof(w_T))
+        # raw_ptr[T] is just a shortcut for raw_ptr[T, align(alignof(T))]
+        w_N = W_Align(alignof(w_T))
         return vm.fast_call(w_raw_ptr, [w_T, w_N])
     alignment = parse_optional_alignment(vm, w_T, args_w, "raw_ptr")
     qualifiers: list = [w_T.fqn]
     if alignment != alignof(w_T):
-        qualifiers.append(str(alignment))
+        qualifiers.append(f"align({alignment})")
     fqn = FQN("unsafe").join("raw_ptr", qualifiers)
     w_ptrtype = W_PtrType.from_itemtype(fqn, "raw", w_T, alignment)
     return w_ptrtype
@@ -72,16 +72,16 @@ def w_raw_ptr(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
 @UNSAFE.builtin_func(color="blue", kind="generic")
 def w_gc_ptr(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
     """
-    The gc_ptr[T] / gc_ptr[T, N] generic type
+    The gc_ptr[T] / gc_ptr[T, align(N)] generic type
     """
     if len(args_w) == 0:
         # see the comment in w_raw_ptr above
-        w_N = vm.wrap(alignof(w_T))
+        w_N = W_Align(alignof(w_T))
         return vm.fast_call(w_gc_ptr, [w_T, w_N])
     alignment = parse_optional_alignment(vm, w_T, args_w, "gc_ptr")
     qualifiers: list = [w_T.fqn]
     if alignment != alignof(w_T):
-        qualifiers.append(str(alignment))
+        qualifiers.append(f"align({alignment})")
     fqn = FQN("unsafe").join("gc_ptr", qualifiers)
     w_ptrtype = W_PtrType.from_itemtype(fqn, "gc", w_T, alignment)
     return w_ptrtype
