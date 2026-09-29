@@ -12,8 +12,8 @@ EM_JS(JsRef, jsffi_debug, (const char *ptr), {
 });
 
 EM_JS(int32_t, jsffi_debug_n_jsrefs, (void), {
-    // subtract 7 for the reserved singleton slots (0-6)
-    let n = Object.keys(jsffi.objects).length - 7;
+    // number of live (non-singleton) JsRefs, see jsffi.to_jsref / jsffi_drop_ref
+    let n = jsffi.n_live;
     console.log("Number of live JsRef", n);
     return n;
 });
@@ -21,7 +21,8 @@ EM_JS(int32_t, jsffi_debug_n_jsrefs, (void), {
 EM_JS(void, jsffi_init, (void), {
     let jsffi = {
         objects: {},
-        next_id: 7  // 0-6 are reserved for well-known singletons
+        next_id: 7,  // 0-6 are reserved for well-known singletons
+        n_live: 0    // number of live JsRefs with id >= 7
     };
     globalThis.jsffi = jsffi;
     jsffi.objects[0] = globalThis;
@@ -33,12 +34,12 @@ EM_JS(void, jsffi_init, (void), {
     jsffi.objects[6] = false;
 
     jsffi.from_jsref = function(idval) {
-        if (idval in jsffi.objects) {
-            return jsffi.objects[idval];
+        let obj = jsffi.objects[idval];
+        if (idval >= 7 && (obj === undefined || obj === null)) {
+            console.error(`jsffi internal error: Undefined id ${ idval }`);
+            throw new Error(`Undefined id ${ idval }`);
         }
-        //console.log(jsffi.objects);
-        console.error(`jsffi internal error: Undefined id ${ idval }`);
-        throw new Error(`Undefined id ${ idval }`);
+        return obj;
     };
 
     jsffi.to_jsref = function(jsval) {
@@ -49,16 +50,17 @@ EM_JS(void, jsffi_init, (void), {
         let id = jsffi.next_id++;
         // console.log(`to_jsref, jsval: ${ jsval }`);
         jsffi.objects[id] = jsval;
+        jsffi.n_live++;
         return id;
     };
 
     jsffi.from_jsval = function(tag, val) {
         switch(tag) {
             case 0: return jsffi.from_jsref(val);  // JSVAL_JSREF
-            case 1: return val;                    // JSVAL_F64
+            case 1:                                // JSVAL_F64
             case 2: return val;                    // JSVAL_I32
             case 3: return UTF8ToString(val);      // JSVAL_STR
-            case 4: return val !== 0;              // JSVAL_BOOL
+            case 4: return !!val;                  // JSVAL_BOOL
             case 5: return wasmTable.get(val);     // JSVAL_FUNCPTR
         }
     };
@@ -71,7 +73,12 @@ EM_JS(JsRef, jsffi_i32, (int32_t x), { return jsffi.to_jsref(x); });
 EM_JS(JsRef, jsffi_f64, (double x), { return jsffi.to_jsref(x); });
 
 EM_JS(void, jsffi_drop_ref, (JsRef c_ref), {
-    delete jsffi.objects[c_ref];
+    // Singletons (ids 0-6) are never dropped.
+    let obj = jsffi.objects[c_ref];
+    if (c_ref >= 7 && obj !== undefined && obj !== null) {
+        jsffi.objects[c_ref] = null;
+        jsffi.n_live--;
+    }
 });
 
 EM_JS(JsRef, jsffi_getattr, (JsRef c_target, const char *c_name), {
