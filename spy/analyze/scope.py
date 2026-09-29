@@ -943,7 +943,7 @@ class ScopeAnalyzer:
             err.add("note", msg, sym.loc)
         return err
 
-    def lookup_and_bind(self, node: ast.Node, varname: str, use_loc: Loc) -> None:
+    def resolve_read(self, node: ast.Node, varname: str, use_loc: Loc) -> None:
         # NOTE: a not-found / used-before name resolves to a lazy SPyError (stored
         # in _resolved_nodes); astcompile turns it into an ast.PoisonExpr.
 
@@ -987,13 +987,11 @@ class ScopeAnalyzer:
             self.set_binding(node, self.scope, sym.replace(frame_depth=frame_depth))
             return
 
-    def lookup_and_bind_target(
-        self, node: ast.Node, varname: str, use_loc: Loc
-    ) -> None:
+    def resolve_write(self, node: ast.Node, varname: str, use_loc: Loc) -> None:
         """
         Bind an assignment target.
 
-        Like lookup_and_bind, but a target that resolves to a module-level binding is
+        Like resolve_read, but a target that resolves to a module-level binding is
         rejected unless there is an explicit `global` declaration [global.write]
         """
         res = self.scope.lookup(varname)
@@ -1012,13 +1010,13 @@ class ScopeAnalyzer:
             err.add("note", f"`{varname}` is declared here", sym.loc)
             self.set_binding(node, self.scope, err)
             return
-        self.lookup_and_bind(node, varname, use_loc)
+        self.resolve_read(node, varname, use_loc)
 
-    def lookup_and_bind_decl(self, node: ast.Node, varname: str) -> None:
+    def resolve_decl(self, node: ast.Node, varname: str) -> None:
         """
         Bind a declaration node (VarDef, FuncDef, ClassDef, etc.) to its symbol.
 
-        This is very similar to lookup_and_bind but:
+        This is very similar to resolve_read but:
 
           1. the Symbol MUST be found in the local frameinfo;
 
@@ -1036,7 +1034,7 @@ class ScopeAnalyzer:
         # NOTE: evaluate arg.type in the OUTER scope, arg in the INNER scope.
         #
         # The funcdef NAME is bound to the outer scope.
-        self.lookup_and_bind_decl(funcdef, funcdef.name)
+        self.resolve_decl(funcdef, funcdef.name)
 
         # outer scope: decorators and argument types
         for decorator in funcdef.decorators:
@@ -1051,7 +1049,7 @@ class ScopeAnalyzer:
         scope = self.scopes[funcdef]
         self.push_scope(scope)
         for arg in funcdef.args:
-            self.lookup_and_bind(arg, arg.name, arg.loc)
+            self.resolve_read(arg, arg.name, arg.loc)
         for stmt in funcdef.body.body:
             self.bind(stmt)
         self.pop_scope()
@@ -1064,7 +1062,7 @@ class ScopeAnalyzer:
 
     def bind_ClassDef(self, classdef: ast.ClassDef) -> None:
         # the classdef NAME is bound in the outer scope, the body in the inner scope
-        self.lookup_and_bind_decl(classdef, classdef.name)
+        self.resolve_decl(classdef, classdef.name)
         scope = self.scopes[classdef]
         self.push_scope(scope)
         for stmt in classdef.body.body:
@@ -1093,7 +1091,7 @@ class ScopeAnalyzer:
         # See the big comment in _collect_generic for a general overview of the steps
 
         # (1) bind the name of the generic in the outer scope
-        self.lookup_and_bind_decl(node, name)
+        self.resolve_decl(node, name)
 
         # bind arg types (still in the outer scope)
         for arg in args:
@@ -1104,7 +1102,7 @@ class ScopeAnalyzer:
         self.push_scope(scope)
         for arg in args:
             # (3) bind the generic arguments ("T")
-            self.lookup_and_bind(arg, arg.name, arg.loc)
+            self.resolve_read(arg, arg.name, arg.loc)
 
         # (4) bind the inner funcdef/classdef
         self.bind(inner)
@@ -1128,7 +1126,7 @@ class ScopeAnalyzer:
         body_scope = self.scopes[forstmt, "body"]
         self.push_scope(body_scope)
         tgt = forstmt.target
-        self.lookup_and_bind(tgt, tgt.value, tgt.loc)
+        self.resolve_read(tgt, tgt.value, tgt.loc)
         for stmt in forstmt.body.body:
             self.bind(stmt)
         self.pop_scope()
@@ -1153,19 +1151,19 @@ class ScopeAnalyzer:
     def bind_Assign(self, assign: ast.Assign) -> None:
         self.bind(assign.value)
         for tgt in assign.target.flatten():
-            self.lookup_and_bind_target(tgt, tgt.value, tgt.loc)
+            self.resolve_write(tgt, tgt.value, tgt.loc)
 
     def bind_AugAssign(self, node: ast.AugAssign) -> None:
         # [py.augassign]: the target is both read and written
         self.bind(node.value)
         tgt = node.target
-        self.lookup_and_bind_target(tgt, tgt.value, tgt.loc)
+        self.resolve_write(tgt, tgt.value, tgt.loc)
 
     def bind_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
         # walrus `x := E`
         self.bind(assignexpr.value)
         tgt = assignexpr.target
-        self.lookup_and_bind_target(tgt, tgt.value, tgt.loc)
+        self.resolve_write(tgt, tgt.value, tgt.loc)
 
     def bind_Name(self, name: ast.Name) -> None:
-        self.lookup_and_bind(name, name.id, name.loc)
+        self.resolve_read(name, name.id, name.loc)

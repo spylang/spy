@@ -737,7 +737,7 @@ class ASTCompiler:
         res = self.interactive_scope.lookup(name.id)
         if res.found:
             assert res.sym is not None
-            # this is the equivalent of what we do in ScopeAnalyzer.lookup_and_bind
+            # this is the equivalent of what we do in ScopeAnalyzer.resolve_read
             new_sym = res.sym.replace(frame_depth=res.frame_depth)
             return self._emit_name_node(name.loc, new_sym)
 
