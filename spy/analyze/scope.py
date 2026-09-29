@@ -678,7 +678,7 @@ class ScopeAnalyzer:
         forstmt.body.scope = body_scope
         target = forstmt.target
         res = self.scope.lookup(target.value)
-        if not res.found:
+        if not res.has_global_decl and not (res.found and res.frame_depth == 0):
             self.create_new_local(
                 target,
                 target.value,
@@ -1049,7 +1049,7 @@ class ScopeAnalyzer:
         scope = self.scopes[funcdef]
         self.push_scope(scope)
         for arg in funcdef.args:
-            self.resolve_read(arg, arg.name, arg.loc)
+            self.resolve_decl(arg, arg.name)
         for stmt in funcdef.body.body:
             self.bind(stmt)
         self.pop_scope()
@@ -1102,7 +1102,7 @@ class ScopeAnalyzer:
         self.push_scope(scope)
         for arg in args:
             # (3) bind the generic arguments ("T")
-            self.resolve_read(arg, arg.name, arg.loc)
+            self.resolve_decl(arg, arg.name)
 
         # (4) bind the inner funcdef/classdef
         self.bind(inner)
@@ -1126,7 +1126,7 @@ class ScopeAnalyzer:
         body_scope = self.scopes[forstmt, "body"]
         self.push_scope(body_scope)
         tgt = forstmt.target
-        self.resolve_read(tgt, tgt.value, tgt.loc)
+        self.resolve_write(tgt, tgt.value, tgt.loc)
         for stmt in forstmt.body.body:
             self.bind(stmt)
         self.pop_scope()
@@ -1140,10 +1140,7 @@ class ScopeAnalyzer:
         self.pop_scope()
 
     def bind_VarDef(self, vardef: ast.VarDef) -> None:
-        # a VarDef must have a local symbol in the current scope, get it
-        sym = self.scope.symbols[vardef.name.value]
-        assert sym.frame_depth == 0
-        self.set_binding(vardef, self.scope, sym)
+        self.resolve_decl(vardef, vardef.name.value)
         self.bind(vardef.type)
         if vardef.value is not None:
             self.bind(vardef.value)

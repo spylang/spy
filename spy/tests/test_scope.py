@@ -292,6 +292,29 @@ class TestScopeAnalyzer2:
         """
         self.assert_dump("test::foo", expected)
 
+    def test_scope_loop_target_shadows_global(self):
+        # [scope.loop-target-declare]: only a binding in the CURRENT frame is
+        # reused. A module-level `X` is not: the loop declares a fresh local.
+        src = """
+        var X: i32 = 0
+
+        def foo() -> None:
+            for X in range(3):
+                pass
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            X$0: Symbol("X", "var", "loop-target")
+
+            scope foo:
+                range -> range @ builtins (depth=2) => <ImportRef _range.range>
+                scope for.body:
+                    X -> X$0
+        """
+        self.assert_dump("test::foo", expected)
+
     def test_name_class_skip(self):
         # [name.class-skip]: class scopes are skipped by method bodies. A bare
         # reference to a field name inside a method resolves to NameError (the
