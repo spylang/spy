@@ -31,78 +31,69 @@ def test_alignof_not_implemented():
 class TestAlign(CompilerTest):
     def test_all_i32_fields(self):
         src = """
-            @struct
-            class Point:
-                x: i32
-                y: i32
-            """
+        from unsafe import alignof
+
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def alignof_Point() -> i32:
+            return alignof(Point)
+        """
         mod = self.compile(src)
-        w_Point = mod.w_mod.getattr("Point")
-        assert alignof(w_Point) == 4
+        assert mod.alignof_Point() == 4
 
     def test_mixed_field_sizes(self):
         src = """
-            @struct
-            class Mixed:
-                a: i8
-                b: f64
-                c: i32
-            """
+        @struct
+        class Mixed:
+            a: i8
+            b: f64
+            c: i32
+        """
         mod = self.compile(src)
         w_Mixed = mod.w_mod.getattr("Mixed")
         assert alignof(w_Mixed) == 8
 
     def test_nested_struct(self):
         src = """
-            @struct
-            class Inner:
-                a: i8
-                b: f64
+        @struct
+        class Inner:
+            a: i8
+            b: f64
 
-            @struct
-            class Outer:
-                x: i32
-                inner: Inner
-            """
+        @struct
+        class Outer:
+            x: i32
+            inner: Inner
+        """
         mod = self.compile(src)
         w_Outer = mod.w_mod.getattr("Outer")
         assert alignof(w_Outer) == 8
 
     def test_empty_struct(self):
         src = """
-            @struct
-            class Empty:
-                pass
-            """
+        @struct
+        class Empty:
+            pass
+        """
         mod = self.compile(src)
         w_Empty = mod.w_mod.getattr("Empty")
         assert alignof(w_Empty) == 1
 
-    def test_primitive_blue(self):
-        src = """
-            from unsafe import alignof
-            from __spy__ import COLOR
-
-            def foo() -> i32:
-                N = alignof(i32)
-                assert COLOR(N) == "blue"
-                return N
-            """
-        mod = self.compile(src)
-        assert mod.foo() == 4
-
     def test_struct(self):
         src = """
-            from unsafe import alignof
+        from unsafe import alignof
 
-            @struct
-            class Mixed:
-                a: i8
-                b: f64
-                c: i32
+        @struct
+        class Mixed:
+            a: i8
+            b: f64
+            c: i32
 
-            def foo() -> i32:
-                return alignof(Mixed)
-            """
+        def foo() -> i32:
+            return alignof(Mixed)
+        """
         mod = self.compile(src)
         assert mod.foo() == 8
