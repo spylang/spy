@@ -709,6 +709,7 @@ class DopplerFrame(ASTFrame):
         return newdict
 
     def shift_expr_GetItem(self, op: ast.GetItem, wam: W_MetaArg) -> ast.Expr:
+        self._check_no_starred_args(op.args)
         w_opimpl = self.opimpl[op]
         v = self.shifted_expr[op.value]
         args = [self.shifted_expr[arg] for arg in op.args]
@@ -728,7 +729,7 @@ class DopplerFrame(ASTFrame):
                 raise SPyError.simple(
                     "W_WIP",
                     "splat arguments (`*expr`) are supported only in calls "
-                    "to blue functions",
+                    "to blue functions and in blue subscripts",
                     "not supported here",
                     arg.loc,
                 )
