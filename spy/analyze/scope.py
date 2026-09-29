@@ -122,9 +122,24 @@ class ScopeAnalyzer:
         assert len(self.scope_stack) == 2
 
     def pp(self) -> None:
-        print(self.dump(use_colors=True))
+        print(self.dump(use_colors=True, show_seq=False))
+        ## print()
+        ## self.pp_seq()
 
-    def dump(self, *frame_names: str, use_colors: bool = False) -> str:
+    def pp_seq(self) -> None:
+        """
+        Debug dump of `self.seq`.
+        """
+        print("=== seq (node -> seq) ===")
+        for node, seq in sorted(self.seq.items(), key=lambda kv: kv[1]):
+            src = node.loc.get_src()
+            if "\n" in src:
+                src = src.splitlines()[0] + " ..."
+            print(f"{seq:4d}  {node.__class__.__name__:<15}  {src}")
+
+    def dump(
+        self, *frame_names: str, use_colors: bool = False, show_seq: bool = False
+    ) -> str:
         """
         Return a compact, human-readable dump of the computed frameinfos and the
         lexical scope nesting, including how each name resolves during the bind
@@ -132,6 +147,8 @@ class ScopeAnalyzer:
 
         If `frame_names` is given, dump only the listed frames (by frameinfo
         name, e.g. "test::foo"); otherwise dump all of them.
+
+        If `show_seq` is True, also show each symbol's `valid_from` seq.
         """
         b = TextBuilder(use_colors=use_colors)
         color = ColorFormatter(use_colors=use_colors)
@@ -154,7 +171,10 @@ class ScopeAnalyzer:
             with b.indent():
                 for slot_name, sym in frameinfo._symbols.items():
                     key = color.set(self._varkind_color(sym), slot_name)
-                    b.wl(f"{key}: {self._fmt_sym(sym)}")
+                    line = f"{key}: {self._fmt_sym(sym)}"
+                    if show_seq:
+                        line += f"  [valid_from={self.valid_from.get(sym)}]"
+                    b.wl(line)
 
         # `frames` are the enclosing runtime frames, innermost first: frames[0] is
         # the current frame, frames[1] the parent frame, etc.  A name resolved
@@ -430,7 +450,7 @@ class ScopeAnalyzer:
         scope.add(new_sym)
         frameinfo.add(new_sym)
         if valid_from is None:
-            valid_from = self.cur_seq  # remember when it was created
+            valid_from = self.cur_seq + 1  # remember when it was created
         self.valid_from[new_sym] = valid_from
         return new_sym
 
@@ -994,6 +1014,21 @@ class ScopeAnalyzer:
             return
         self.lookup_and_bind(node, varname, use_loc)
 
+    def lookup_and_bind_decl(self, node: ast.Node, varname: str) -> None:
+        """
+        Bind a declaration node (VarDef, FuncDef, ClassDef, etc.) to its symbol.
+
+        This is very similar to lookup_and_bind but:
+
+          1. the Symbol MUST be found in the local frameinfo;
+
+          2. we don't do a [decl.use-before] check, because this is the node which
+             INTRODUCES the node
+        """
+        res = self.scope.lookup(varname)
+        assert res.found and res.frame_depth == 0 and res.sym is not None
+        self.set_binding(node, self.scope, res.sym)
+
     def bind(self, node: ast.Node) -> None:
         return node.visit("bind", self)
 
@@ -1001,7 +1036,7 @@ class ScopeAnalyzer:
         # NOTE: evaluate arg.type in the OUTER scope, arg in the INNER scope.
         #
         # The funcdef NAME is bound to the outer scope.
-        self.lookup_and_bind(funcdef, funcdef.name, funcdef.prototype_loc)
+        self.lookup_and_bind_decl(funcdef, funcdef.name)
 
         # outer scope: decorators and argument types
         for decorator in funcdef.decorators:
@@ -1029,7 +1064,7 @@ class ScopeAnalyzer:
 
     def bind_ClassDef(self, classdef: ast.ClassDef) -> None:
         # the classdef NAME is bound in the outer scope, the body in the inner scope
-        self.lookup_and_bind(classdef, classdef.name, classdef.loc)
+        self.lookup_and_bind_decl(classdef, classdef.name)
         scope = self.scopes[classdef]
         self.push_scope(scope)
         for stmt in classdef.body.body:
@@ -1058,7 +1093,7 @@ class ScopeAnalyzer:
         # See the big comment in _collect_generic for a general overview of the steps
 
         # (1) bind the name of the generic in the outer scope
-        self.lookup_and_bind(node, name, inner.loc)
+        self.lookup_and_bind_decl(node, name)
 
         # bind arg types (still in the outer scope)
         for arg in args:

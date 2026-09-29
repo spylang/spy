@@ -653,24 +653,24 @@ class TestScopeAnalyzer2:
         self.assert_dump("test::foo", expected)
 
     def test_py_shadow_write_caught(self):
-        # [py.shadow-write-caught]: a bare `COUNT = COUNT + 1` implicitly declares a
-        # new local COUNT; the RHS read happens before that declaration, so it is
+        # [py.shadow-write-caught]: a bare `X = X` implicitly declares a
+        # new local X; the RHS read happens before that declaration, so it is
         # caught by [decl.use-before] (the read resolves to a NameError, NOT to the
-        # module-level COUNT).
+        # module-level X).
         src = """
-        var COUNT: i32 = 0
+        var X: i32 = 0
 
         def foo() -> None:
-            COUNT = COUNT + 1
+            X = X
         """
         self.analyze(src)
         expected = """
         frameinfo test::foo (function):
             @return: Symbol("@return", "var", "auto")
-            COUNT$0: Symbol("COUNT", "const", "auto")
+            X$0: Symbol("X", "const", "auto")
 
             scope foo:
-                COUNT -> NameError
+                X -> NameError
         """
         self.assert_dump("test::foo", expected)
 
