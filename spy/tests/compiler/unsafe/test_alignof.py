@@ -97,3 +97,13 @@ class TestAlign(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == 8
+
+    def test_undefined_struct_raises(self):
+        # `alignof` must not guess for a struct which is not defined yet
+        from spy.fqn import FQN
+        from spy.vm.struct import W_StructType
+
+        w_T = W_StructType.declare(FQN("test::Undefined"))
+        assert not w_T.is_defined()
+        with pytest.raises(SPyError, match="the struct is not defined yet"):
+            alignof(w_T)

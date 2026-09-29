@@ -42,7 +42,7 @@ from spy.vm.struct import W_StructType
 from spy.vm.w import W_Func, W_Object, W_Str, W_Type
 
 from . import UNSAFE
-from .misc import W_Align, alignof, parse_optional_alignment, sizeof
+from .misc import NATURAL_ALIGNMENT, W_Align, alignof, parse_optional_alignment, sizeof
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -54,15 +54,18 @@ MEMKIND = Literal["raw", "gc"]
 @UNSAFE.builtin_func(color="blue", kind="generic")
 def w_raw_ptr(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
     """
-    The raw_ptr[T] / raw_ptr[T, align(N)] generic type
+    The raw_ptr[T] / raw_ptr[T, align(N)] generic type.
+
+    `raw_ptr[T]` means "natural alignment" and is equivalent to
+    `raw_ptr[T, -1]` internally (see NATURAL_ALIGNMENT). It is a DIFFERENT
+    type than `raw_ptr[T, align(alignof(T))]`: the two are implicitly
+    convertible into each other, but they are not the same type. The reason
+    is that T might be a not-yet-defined struct (fwdecl), in which case
+    alignof(T) is not known yet. This might be revisited in the future.
     """
-    if len(args_w) == 0:
-        # raw_ptr[T] is just a shortcut for raw_ptr[T, align(alignof(T))]
-        w_N = W_Align(alignof(w_T))
-        return vm.fast_call(w_raw_ptr, [w_T, w_N])
     alignment = parse_optional_alignment(vm, w_T, args_w, "raw_ptr")
     qualifiers: list = [w_T.fqn]
-    if alignment != alignof(w_T):
+    if alignment != NATURAL_ALIGNMENT:
         qualifiers.append(f"align({alignment})")
     fqn = FQN("unsafe").join("raw_ptr", qualifiers)
     w_ptrtype = W_PtrType.from_itemtype(fqn, "raw", w_T, alignment)
@@ -72,15 +75,18 @@ def w_raw_ptr(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
 @UNSAFE.builtin_func(color="blue", kind="generic")
 def w_gc_ptr(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
     """
-    The gc_ptr[T] / gc_ptr[T, align(N)] generic type
+    The gc_ptr[T] / gc_ptr[T, align(N)] generic type.
+
+    `gc_ptr[T]` means "natural alignment" and is equivalent to
+    `gc_ptr[T, -1]` internally (see NATURAL_ALIGNMENT). It is a DIFFERENT
+    type than `gc_ptr[T, align(alignof(T))]`: the two are implicitly
+    convertible into each other, but they are not the same type. The reason
+    is that T might be a not-yet-defined struct (fwdecl), in which case
+    alignof(T) is not known yet. This might be revisited in the future.
     """
-    if len(args_w) == 0:
-        # see the comment in w_raw_ptr above
-        w_N = W_Align(alignof(w_T))
-        return vm.fast_call(w_gc_ptr, [w_T, w_N])
     alignment = parse_optional_alignment(vm, w_T, args_w, "gc_ptr")
     qualifiers: list = [w_T.fqn]
-    if alignment != alignof(w_T):
+    if alignment != NATURAL_ALIGNMENT:
         qualifiers.append(f"align({alignment})")
     fqn = FQN("unsafe").join("gc_ptr", qualifiers)
     w_ptrtype = W_PtrType.from_itemtype(fqn, "gc", w_T, alignment)
@@ -181,8 +187,18 @@ class W_MemLocType(W_Type):
 
     memkind: MEMKIND
     w_itemT: Annotated[W_Type, Member("itemtype")]
-    alignment: int
+    alignment: int  # in bytes, or NATURAL_ALIGNMENT
     is_ready: bool
+
+    def resolved_alignment(self) -> int:
+        """
+        The actual alignment in bytes: for the natural-alignment ptr types
+        (`gc_ptr[T]`) this is alignof(T), which raises if T is a struct not
+        defined yet.
+        """
+        if self.alignment == NATURAL_ALIGNMENT:
+            return alignof(self.w_itemT)
+        return self.alignment
 
     @classmethod
     def from_itemtype(
@@ -190,7 +206,7 @@ class W_MemLocType(W_Type):
         fqn: FQN,
         memkind: MEMKIND,
         w_itemT: W_Type,
-        alignment: Optional[int] = None,
+        alignment: int = NATURAL_ALIGNMENT,
     ) -> Self:
         if cls is W_PtrType:
             w_T = cls.from_pyclass(fqn, W_Ptr)
@@ -200,8 +216,6 @@ class W_MemLocType(W_Type):
             assert False
         w_T.memkind = memkind
         w_T.w_itemT = w_itemT
-        if alignment is None:
-            alignment = alignof(w_itemT)
         w_T.alignment = alignment
         w_T.is_ready = False
         if isinstance(w_itemT, W_StructType):
@@ -500,13 +514,21 @@ class W_Ptr(W_MemLoc):
             isinstance(w_T, W_PtrType)
             and w_T.memkind == w_ptrtype.memkind
             and w_T.w_itemT is w_ptrtype.w_itemT
-            and w_T.alignment <= w_ptrtype.alignment
+            and w_T.resolved_alignment() <= w_ptrtype.resolved_alignment()
         ):
-            # weakening conversion: gc_ptr[T,N] -> gc_ptr[T,M] is free whenever
-            # M <= N. The strengthening direction (M > N) is NOT handled here
-            # (needs align_cast).
+            # weakening conversion: gc_ptr[T, align(N)] -> gc_ptr[T, align(M)]
+            # is free whenever M <= N. The strengthening direction (M > N) is
+            # NOT handled here (needs align_cast).
+            #
+            # The natural-alignment type gc_ptr[T] counts as alignof(T), so
+            # this also covers the conversions between gc_ptr[T] and
+            # gc_ptr[T, align(N)]: the former is convertible to the latter if
+            # N <= alignof(T), and vice versa if N >= alignof(T).
             TARGET = Annotated[W_Ptr, w_T]
-            funcname = f"weaken_align_to_{w_T.alignment}"
+            if w_T.alignment == NATURAL_ALIGNMENT:
+                funcname = "weaken_align_to_natural"
+            else:
+                funcname = f"weaken_align_to_{w_T.alignment}"
             irtag = IRTag("ptr.weaken_align")
 
             @vm.register_builtin_func(w_ptrtype.fqn, funcname, irtag=irtag)

@@ -83,9 +83,22 @@ def contains_gc_ptr(w_T: W_Type) -> bool:
     raise NotImplementedError(f"{w_T=}")
 
 
+# Sentinel stored in W_PtrType.alignment for the "natural alignment" ptr types,
+# i.e. the ones spelled `gc_ptr[T]` (no explicit `align(N)`). The actual value,
+# alignof(T), is computed lazily by W_MemLocType.resolved_alignment(), because
+# T might be a not-yet-defined struct when the ptr type is created.
+#
+# NOTE: `gc_ptr[T]` is a DIFFERENT type than `gc_ptr[T, align(alignof(T))]`.
+# The two are implicitly convertible into each other, but they are not
+# identical. This might be revisited in the future if needed.
+NATURAL_ALIGNMENT = -1
+
+
 def alignof(w_T: W_Type) -> int:
     """
     The natural alignment of a type, in bytes.
+
+    Raises if `w_T` is a struct which is not defined yet: we cannot guess.
     """
     from spy.vm.modules.posix import POSIX
     from spy.vm.modules.unsafe.ptr import W_PtrType, W_RefType
@@ -105,14 +118,10 @@ def alignof(w_T: W_Type) -> int:
         return 4
     elif isinstance(w_T, W_StructType):
         if not w_T.is_defined():
-            # not-yet-defined struct (e.g. a struct that (transitively)
-            # points to itself, or one of the special bootstrapping
-            # struct types like _str::StrObject that this function may be
-            # asked about before its fields are populated -- see the
-            # analogous comment in W_MemLocType.from_itemtype). We can't
-            # look at fields that don't exist yet, so fall back to 1
-            # rather than crashing;
-            return 1
+            raise SPyError(
+                "W_TypeError",
+                f"alignof({w_T.fqn.debug_human_name}): the struct is not defined yet",
+            )
         # the usual "max of the fields' alignments" rule. A struct with no
         # fields has nothing to take the max over, so fall back to 1
         # (matching a struct of size 0) rather than raising.
@@ -154,7 +163,12 @@ def w_align(vm: "SPyVM", w_N: W_I32) -> W_Align:
     """
     The SPy-visible `align(N)` blue builtin.
     """
-    return W_Align(int(vm.unwrap_i32(w_N)))
+    N = int(vm.unwrap_i32(w_N))
+    if N <= 0 or (N & (N - 1)) != 0:
+        raise SPyError(
+            "W_ValueError", f"align({N}): the alignment must be a power of two"
+        )
+    return W_Align(N)
 
 
 def parse_optional_alignment(
@@ -162,13 +176,13 @@ def parse_optional_alignment(
 ) -> int:
     """
     Shared arg-parsing for the optional, defaulted alignment type param on
-    {raw,gc}_ptr[T, align(N)=align(alignof(T))] /
-    {raw,gc}_alloc[T, align(N)=align(alignof(T))].
+    {raw,gc}_ptr[T, align(N)] / {raw,gc}_alloc[T, align(N)].
     `args_w` is whatever extra positional blue args were
-    passed after `T`: zero (use the default) or one (a `W_Align`).
+    passed after `T`: zero (natural alignment, returned as NATURAL_ALIGNMENT)
+    or one (a `W_Align`).
     """
     if len(args_w) == 0:
-        return alignof(w_T)
+        return NATURAL_ALIGNMENT
     elif len(args_w) == 1:
         w_align = args_w[0]
         if not isinstance(w_align, W_Align):

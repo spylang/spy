@@ -202,7 +202,7 @@ class CStructWriter:
                 # to scan it. See spy/libspy/include/spy/unsafe.h.
                 alloc_func = "gc_alloc_pointerless"
 
-        alignment = w_ptrtype.alignment
+        alignment = w_ptrtype.resolved_alignment()
         self.tbh_ptrs_def.wb(f"""
         SPY_PTR_FUNCTIONS({alloc_func}, {c_ptrtype}, {c_itemT}, {alignment});
         #define {c_ptrtype}$NULL (({c_ptrtype}){{0}})
@@ -225,7 +225,7 @@ class CStructWriter:
             return
 
         c_ptrtype = C_Type(w_ptrtype.fqn.c_name)
-        ptr_align = w_ptrtype.alignment
+        ptr_align = w_ptrtype.resolved_alignment()
 
         for w_field in w_itemT.iterfields_w():
             field_align = alignof(w_field.w_T)

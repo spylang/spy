@@ -677,7 +677,7 @@ class CFuncWriter:
             return False
         for w_field in w_itemT.iterfields_w():
             if w_field.name == attr:
-                return w_ptr.alignment < alignof(w_field.w_T)
+                return w_ptr.resolved_alignment() < alignof(w_field.w_T)
         return False
 
     def fmt_ptr_getfield(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:

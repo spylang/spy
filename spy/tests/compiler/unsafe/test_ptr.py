@@ -5,8 +5,8 @@ from spy.tests.support import CompilerTest, expect_errors, only_C, only_interp
 from spy.tests.wasm_wrapper import WasmPtr
 from spy.vm.b import B
 from spy.vm.modules.unsafe import UNSAFE
-from spy.vm.modules.unsafe.misc import W_Align, alignof
-from spy.vm.modules.unsafe.ptr import W_Ptr
+from spy.vm.modules.unsafe.misc import NATURAL_ALIGNMENT, W_Align, alignof
+from spy.vm.modules.unsafe.ptr import W_Ptr, W_PtrType
 
 # Alignment value guaranteed to exceed SPY_BASE_ALIGNMENT on all targets
 # (16 on native-64, 8 on wasm).
@@ -882,12 +882,23 @@ class TestUnsafePtr(CompilerTest):
     # alignment
 
     @only_interp
-    def test_default_alignment_matches_alignof(self):
-        w_default = self.vm.fast_call(UNSAFE.w_gc_ptr, [B.w_f64])
+    def test_natural_alignment_is_a_different_type(self):
+        # gc_ptr[T] means "natural alignment" (internally -1): it is a
+        # DIFFERENT type than gc_ptr[T, align(alignof(T))]
+        w_natural = self.vm.fast_call(UNSAFE.w_gc_ptr, [B.w_f64])
+        assert w_natural is self.vm.fast_call(UNSAFE.w_gc_ptr, [B.w_f64])
         N = alignof(B.w_f64)
         w_explicit = self.vm.fast_call(UNSAFE.w_gc_ptr, [B.w_f64, W_Align(N)])
-        assert w_default is w_explicit
-        assert repr(w_default) == "<spy type 'unsafe::gc_ptr[f64]'>"
+        assert w_natural is not w_explicit
+
+        assert isinstance(w_natural, W_PtrType)
+        assert isinstance(w_explicit, W_PtrType)
+
+        assert w_natural.alignment == NATURAL_ALIGNMENT
+        assert w_natural.resolved_alignment() == N
+        assert w_explicit.resolved_alignment() == N
+        assert repr(w_natural) == "<spy type 'unsafe::gc_ptr[f64]'>"
+        assert repr(w_explicit) == "<spy type 'unsafe::gc_ptr[f64, align(8)]'>"
 
     @only_interp
     def test_explicit_alignment_in_fqn(self):
@@ -921,15 +932,94 @@ class TestUnsafePtr(CompilerTest):
         w_ptrtype = self.vm.fast_call(UNSAFE.w_gc_ptr, [B.w_i32, w_align])
         assert w_ptrtype is self.vm.fast_call(UNSAFE.w_gc_ptr, [B.w_i32, W_Align(8)])
 
-    def test_default_equals_explicit_alignof(self):
+    def test_natural_and_explicit_alignof_are_distinct_but_convertible(self):
         src = """
-            from unsafe import gc_ptr, align
+            from unsafe import gc_ptr, gc_alloc, align
 
-            def foo() -> bool:
+            def same_type() -> bool:
                 return gc_ptr[i32] is gc_ptr[i32, align(4)]
+
+            def foo() -> i32:
+                p: gc_ptr[i32] = gc_alloc[i32](1)
+                q: gc_ptr[i32, align(4)] = p   # natural -> explicit
+                q[0] = 42
+                r: gc_ptr[i32] = q             # explicit -> natural
+                return r[0]
             """
         mod = self.compile(src)
-        assert mod.foo()
+        assert not mod.same_type()
+        assert mod.foo() == 42
+
+    def test_natural_to_weaker_explicit(self):
+        src = """
+            from unsafe import gc_ptr, gc_alloc, align
+
+            def foo() -> i32:
+                p: gc_ptr[i32] = gc_alloc[i32](1)
+                q: gc_ptr[i32, align(1)] = p   # 1 <= alignof(i32)
+                q[0] = 7
+                return q[0]
+            """
+        mod = self.compile(src)
+        assert mod.foo() == 7
+
+    def test_explicit_to_natural_strengthening_is_a_type_error(self):
+        src = """
+            from unsafe import gc_ptr, gc_alloc, align
+
+            def foo() -> None:
+                p: gc_ptr[i32, align(2)] = gc_alloc[i32, align(2)](1)
+                q: gc_ptr[i32] = p   # 4 > 2: needs align_cast
+            """
+        errors = expect_errors(
+            "mismatched types",
+            (
+                "expected `unsafe::gc_ptr[i32]`, got `unsafe::gc_ptr[i32, align(2)]`",
+                "p",
+            ),
+            (
+                "expected `unsafe::gc_ptr[i32]` because of type declaration",
+                "gc_ptr[i32]",
+            ),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    def test_fwdecl_natural_alignment(self):
+        # a self-referential struct: when `gc_ptr[Point]` is created inside
+        # the body, Point is not defined yet, so we cannot know alignof(Point)
+        src = """
+            from unsafe import gc_ptr, gc_alloc, align
+
+            @struct
+            class Point:
+                x: i32
+                y: i32
+                next: gc_ptr[Point]
+
+            def same_as_align_1() -> bool:
+                return gc_ptr[Point] is gc_ptr[Point, align(1)]
+
+            def same_as_align_4() -> bool:
+                return gc_ptr[Point] is gc_ptr[Point, align(4)]
+
+            def foo() -> i32:
+                p: gc_ptr[Point] = gc_alloc[Point](2)
+                p[0].x = 1
+                p[0].next = p
+                p[0].next[0].y = 2
+                q: gc_ptr[Point, align(4)] = p
+                return q[0].x + 10 * q[0].y
+            """
+        mod = self.compile(src)
+        assert not mod.same_as_align_1()
+        assert not mod.same_as_align_4()
+        assert mod.foo() == 21
+
+    @only_interp
+    def test_align_must_be_power_of_two(self):
+        for bad in (0, -1, 3, 6):
+            with pytest.raises(SPyError, match="must be a power of two"):
+                self.vm.fast_call(UNSAFE.w_align, [self.vm.wrap(bad)])
 
     def test_weakening_is_implicit(self):
         src = """
