@@ -76,9 +76,10 @@ def draw_particle(p: Particle, radius: i32, ctx: JsRef) -> None:
     r_f: f64 = float(radius)
     hue_i: i32 = int(p.hue) % 360
     hue_s = str(hue_i)
-    glow_color = "hsla(" + hue_s + ", 100%, 60%, 0.6)"
-    core_color = "hsl(" + hue_s + ", 100%, 75%)"
-    transparent = "hsla(" + hue_s + ", 100%, 50%, 0)"
+    # HACK: null-terminated str to avoid a bug with UTF8ToString
+    glow_color = "hsla(" + hue_s + ", 100%, 60%, 0.6)\0"
+    core_color = "hsl(" + hue_s + ", 100%, 75%)\0"
+    transparent = "hsla(" + hue_s + ", 100%, 50%, 0)\0"
 
     grd = ctx.createRadialGradient(p.x, p.y, 0.0, p.x, p.y, r_f * 2.5)
     grd.addColorStop(0.0, glow_color)
