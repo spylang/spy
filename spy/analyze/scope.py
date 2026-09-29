@@ -122,9 +122,24 @@ class ScopeAnalyzer:
         assert len(self.scope_stack) == 2
 
     def pp(self) -> None:
-        print(self.dump(use_colors=True))
+        print(self.dump(use_colors=True, show_seq=False))
+        ## print()
+        ## self.pp_seq()
 
-    def dump(self, *frame_names: str, use_colors: bool = False) -> str:
+    def pp_seq(self) -> None:
+        """
+        Debug dump of `self.seq`.
+        """
+        print("=== seq (node -> seq) ===")
+        for node, seq in sorted(self.seq.items(), key=lambda kv: kv[1]):
+            src = node.loc.get_src()
+            if "\n" in src:
+                src = src.splitlines()[0] + " ..."
+            print(f"{seq:4d}  {node.__class__.__name__:<15}  {src}")
+
+    def dump(
+        self, *frame_names: str, use_colors: bool = False, show_seq: bool = False
+    ) -> str:
         """
         Return a compact, human-readable dump of the computed frameinfos and the
         lexical scope nesting, including how each name resolves during the bind
@@ -132,6 +147,8 @@ class ScopeAnalyzer:
 
         If `frame_names` is given, dump only the listed frames (by frameinfo
         name, e.g. "test::foo"); otherwise dump all of them.
+
+        If `show_seq` is True, also show each symbol's `valid_from` seq.
         """
         b = TextBuilder(use_colors=use_colors)
         color = ColorFormatter(use_colors=use_colors)
@@ -154,7 +171,10 @@ class ScopeAnalyzer:
             with b.indent():
                 for slot_name, sym in frameinfo._symbols.items():
                     key = color.set(self._varkind_color(sym), slot_name)
-                    b.wl(f"{key}: {self._fmt_sym(sym)}")
+                    line = f"{key}: {self._fmt_sym(sym)}"
+                    if show_seq:
+                        line += f"  [valid_from={self.valid_from.get(sym)}]"
+                    b.wl(line)
 
         # `frames` are the enclosing runtime frames, innermost first: frames[0] is
         # the current frame, frames[1] the parent frame, etc.  A name resolved
@@ -430,7 +450,7 @@ class ScopeAnalyzer:
         scope.add(new_sym)
         frameinfo.add(new_sym)
         if valid_from is None:
-            valid_from = self.cur_seq  # remember when it was created
+            valid_from = self.cur_seq + 1  # remember when it was created
         self.valid_from[new_sym] = valid_from
         return new_sym
 
@@ -658,7 +678,7 @@ class ScopeAnalyzer:
         forstmt.body.scope = body_scope
         target = forstmt.target
         res = self.scope.lookup(target.value)
-        if not res.found:
+        if not res.has_global_decl and not (res.found and res.frame_depth == 0):
             self.create_new_local(
                 target,
                 target.value,
@@ -902,6 +922,8 @@ class ScopeAnalyzer:
     # bind pass
 
     def set_binding(self, node: ast.Node, scope: Scope, res: "Resolution") -> None:
+        if isinstance(res, Symbol) and res.frame_depth > 0 and res.impref is not None:
+            self.implicit_imports.add(res.impref.modname)
         self._resolved_nodes[node] = (scope, res)
 
     def find_loop_target_maybe(self, varname: str) -> Optional[Symbol]:
@@ -923,7 +945,7 @@ class ScopeAnalyzer:
             err.add("note", msg, sym.loc)
         return err
 
-    def lookup_and_bind(self, node: ast.Node, varname: str, use_loc: Loc) -> None:
+    def resolve_read(self, node: ast.Node, varname: str, use_loc: Loc) -> None:
         # NOTE: a not-found / used-before name resolves to a lazy SPyError (stored
         # in _resolved_nodes); astcompile turns it into an ast.PoisonExpr.
 
@@ -941,6 +963,21 @@ class ScopeAnalyzer:
             if sym.is_local and node in self.seq:
                 seq = self.seq[node]
                 if seq < self.valid_from[sym]:
+                    # [class.read-outer]: make it possible to do this, like in Python:
+                    #     X = 1
+                    #     class Foo:
+                    #         X = X
+                    # See test_py_class_body_shadow_read.
+                    assert res.scope is not None and res.scope.parent is not None
+                    if res.scope.kind == "class":
+                        outer = res.scope.parent.lookup(varname)
+                        if outer.found:
+                            assert outer.sym is not None
+                            # +1 because we skip the class frame
+                            sym = outer.sym.replace(frame_depth=outer.frame_depth + 1)
+                            self.set_binding(node, self.scope, sym)
+                            return
+
                     # [decl.use-before]: the use happens before the name becomes valid;
                     # the node resolves to a lazy error (no usable Symbol here)
                     err = SPyError("W_NameError", f"name `{varname}` is not defined")
@@ -962,18 +999,14 @@ class ScopeAnalyzer:
         else:
             # found in an outer scope
             assert sym is not None
-            if sym.impref is not None:
-                self.implicit_imports.add(sym.impref.modname)
             self.set_binding(node, self.scope, sym.replace(frame_depth=frame_depth))
             return
 
-    def lookup_and_bind_target(
-        self, node: ast.Node, varname: str, use_loc: Loc
-    ) -> None:
+    def resolve_write(self, node: ast.Node, varname: str, use_loc: Loc) -> None:
         """
         Bind an assignment target.
 
-        Like lookup_and_bind, but a target that resolves to a module-level binding is
+        Like resolve_read, but a target that resolves to a module-level binding is
         rejected unless there is an explicit `global` declaration [global.write]
         """
         res = self.scope.lookup(varname)
@@ -992,7 +1025,22 @@ class ScopeAnalyzer:
             err.add("note", f"`{varname}` is declared here", sym.loc)
             self.set_binding(node, self.scope, err)
             return
-        self.lookup_and_bind(node, varname, use_loc)
+        self.resolve_read(node, varname, use_loc)
+
+    def resolve_decl(self, node: ast.Node, varname: str) -> None:
+        """
+        Bind a declaration node (VarDef, FuncDef, ClassDef, etc.) to its symbol.
+
+        This is very similar to resolve_read but:
+
+          1. the Symbol MUST be found in the local frameinfo;
+
+          2. we don't do a [decl.use-before] check, because this is the node which
+             INTRODUCES the node
+        """
+        res = self.scope.lookup(varname)
+        assert res.found and res.frame_depth == 0 and res.sym is not None
+        self.set_binding(node, self.scope, res.sym)
 
     def bind(self, node: ast.Node) -> None:
         return node.visit("bind", self)
@@ -1001,7 +1049,7 @@ class ScopeAnalyzer:
         # NOTE: evaluate arg.type in the OUTER scope, arg in the INNER scope.
         #
         # The funcdef NAME is bound to the outer scope.
-        self.lookup_and_bind(funcdef, funcdef.name, funcdef.prototype_loc)
+        self.resolve_decl(funcdef, funcdef.name)
 
         # outer scope: decorators and argument types
         for decorator in funcdef.decorators:
@@ -1016,7 +1064,7 @@ class ScopeAnalyzer:
         scope = self.scopes[funcdef]
         self.push_scope(scope)
         for arg in funcdef.args:
-            self.lookup_and_bind(arg, arg.name, arg.loc)
+            self.resolve_decl(arg, arg.name)
         for stmt in funcdef.body.body:
             self.bind(stmt)
         self.pop_scope()
@@ -1029,7 +1077,7 @@ class ScopeAnalyzer:
 
     def bind_ClassDef(self, classdef: ast.ClassDef) -> None:
         # the classdef NAME is bound in the outer scope, the body in the inner scope
-        self.lookup_and_bind(classdef, classdef.name, classdef.loc)
+        self.resolve_decl(classdef, classdef.name)
         scope = self.scopes[classdef]
         self.push_scope(scope)
         for stmt in classdef.body.body:
@@ -1058,7 +1106,7 @@ class ScopeAnalyzer:
         # See the big comment in _collect_generic for a general overview of the steps
 
         # (1) bind the name of the generic in the outer scope
-        self.lookup_and_bind(node, name, inner.loc)
+        self.resolve_decl(node, name)
 
         # bind arg types (still in the outer scope)
         for arg in args:
@@ -1069,7 +1117,7 @@ class ScopeAnalyzer:
         self.push_scope(scope)
         for arg in args:
             # (3) bind the generic arguments ("T")
-            self.lookup_and_bind(arg, arg.name, arg.loc)
+            self.resolve_decl(arg, arg.name)
 
         # (4) bind the inner funcdef/classdef
         self.bind(inner)
@@ -1093,7 +1141,7 @@ class ScopeAnalyzer:
         body_scope = self.scopes[forstmt, "body"]
         self.push_scope(body_scope)
         tgt = forstmt.target
-        self.lookup_and_bind(tgt, tgt.value, tgt.loc)
+        self.resolve_write(tgt, tgt.value, tgt.loc)
         for stmt in forstmt.body.body:
             self.bind(stmt)
         self.pop_scope()
@@ -1107,10 +1155,7 @@ class ScopeAnalyzer:
         self.pop_scope()
 
     def bind_VarDef(self, vardef: ast.VarDef) -> None:
-        # a VarDef must have a local symbol in the current scope, get it
-        sym = self.scope.symbols[vardef.name.value]
-        assert sym.frame_depth == 0
-        self.set_binding(vardef, self.scope, sym)
+        self.resolve_decl(vardef, vardef.name.value)
         self.bind(vardef.type)
         if vardef.value is not None:
             self.bind(vardef.value)
@@ -1118,19 +1163,19 @@ class ScopeAnalyzer:
     def bind_Assign(self, assign: ast.Assign) -> None:
         self.bind(assign.value)
         for tgt in assign.target.flatten():
-            self.lookup_and_bind_target(tgt, tgt.value, tgt.loc)
+            self.resolve_write(tgt, tgt.value, tgt.loc)
 
     def bind_AugAssign(self, node: ast.AugAssign) -> None:
         # [py.augassign]: the target is both read and written
         self.bind(node.value)
         tgt = node.target
-        self.lookup_and_bind_target(tgt, tgt.value, tgt.loc)
+        self.resolve_write(tgt, tgt.value, tgt.loc)
 
     def bind_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
         # walrus `x := E`
         self.bind(assignexpr.value)
         tgt = assignexpr.target
-        self.lookup_and_bind_target(tgt, tgt.value, tgt.loc)
+        self.resolve_write(tgt, tgt.value, tgt.loc)
 
     def bind_Name(self, name: ast.Name) -> None:
-        self.lookup_and_bind(name, name.id, name.loc)
+        self.resolve_read(name, name.id, name.loc)
