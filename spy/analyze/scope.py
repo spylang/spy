@@ -922,6 +922,8 @@ class ScopeAnalyzer:
     # bind pass
 
     def set_binding(self, node: ast.Node, scope: Scope, res: "Resolution") -> None:
+        if isinstance(res, Symbol) and res.frame_depth > 0 and res.impref is not None:
+            self.implicit_imports.add(res.impref.modname)
         self._resolved_nodes[node] = (scope, res)
 
     def find_loop_target_maybe(self, varname: str) -> Optional[Symbol]:
@@ -972,7 +974,8 @@ class ScopeAnalyzer:
                         if outer.found:
                             assert outer.sym is not None
                             # +1 because we skip the class frame
-                            self.bind_outer(node, outer.sym, outer.frame_depth + 1)
+                            sym = outer.sym.replace(frame_depth=outer.frame_depth + 1)
+                            self.set_binding(node, self.scope, sym)
                             return
 
                     # [decl.use-before]: the use happens before the name becomes valid;
@@ -996,13 +999,8 @@ class ScopeAnalyzer:
         else:
             # found in an outer scope
             assert sym is not None
-            self.bind_outer(node, sym, frame_depth)
+            self.set_binding(node, self.scope, sym.replace(frame_depth=frame_depth))
             return
-
-    def bind_outer(self, node: ast.Node, sym: Symbol, frame_depth: int) -> None:
-        if sym.impref is not None:
-            self.implicit_imports.add(sym.impref.modname)
-        self.set_binding(node, self.scope, sym.replace(frame_depth=frame_depth))
 
     def resolve_write(self, node: ast.Node, varname: str, use_loc: Loc) -> None:
         """
