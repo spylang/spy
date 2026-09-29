@@ -961,6 +961,20 @@ class ScopeAnalyzer:
             if sym.is_local and node in self.seq:
                 seq = self.seq[node]
                 if seq < self.valid_from[sym]:
+                    # [class.read-outer]: make it possible to do this, like in Python:
+                    #     X = 1
+                    #     class Foo:
+                    #         X = X
+                    # See test_py_class_body_shadow_read.
+                    assert res.scope is not None and res.scope.parent is not None
+                    if res.scope.kind == "class":
+                        outer = res.scope.parent.lookup(varname)
+                        if outer.found:
+                            assert outer.sym is not None
+                            # +1 because we skip the class frame
+                            self.bind_outer(node, outer.sym, outer.frame_depth + 1)
+                            return
+
                     # [decl.use-before]: the use happens before the name becomes valid;
                     # the node resolves to a lazy error (no usable Symbol here)
                     err = SPyError("W_NameError", f"name `{varname}` is not defined")
@@ -982,10 +996,13 @@ class ScopeAnalyzer:
         else:
             # found in an outer scope
             assert sym is not None
-            if sym.impref is not None:
-                self.implicit_imports.add(sym.impref.modname)
-            self.set_binding(node, self.scope, sym.replace(frame_depth=frame_depth))
+            self.bind_outer(node, sym, frame_depth)
             return
+
+    def bind_outer(self, node: ast.Node, sym: Symbol, frame_depth: int) -> None:
+        if sym.impref is not None:
+            self.implicit_imports.add(sym.impref.modname)
+        self.set_binding(node, self.scope, sym.replace(frame_depth=frame_depth))
 
     def resolve_write(self, node: ast.Node, varname: str, use_loc: Loc) -> None:
         """

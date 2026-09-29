@@ -390,6 +390,22 @@ class TestScoping(CompilerTest):
         )
         self.compile_raises(src, "bump", errors)
 
+    def test_py_class_body_shadow_read(self):
+        # like in Python, `X = X` in a class body reads the outer `X` and then
+        # declares a class attribute `X`.
+        src = """
+        X = 1
+
+        @struct
+        class Foo:
+            X = X
+
+        def foo() -> i32:
+            return Foo.X
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 1
+
     def test_py_scope_lifting(self):
         # [py.scope-lifting]: `y` is lifted to the function scope
         src = """
