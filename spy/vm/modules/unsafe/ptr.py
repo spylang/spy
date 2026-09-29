@@ -57,15 +57,14 @@ def w_raw_ptr(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
     The raw_ptr[T] / raw_ptr[T, N] generic type
     """
     if len(args_w) == 0:
-        # raw_ptr[T] is just the common-case spelling of
-        # raw_ptr[T, alignof(T)]. Type identity across calls comes purely
-        # from the blue-call cache, which keys on (func, args_w). So we
-        # recurse through the 2-arg call, landing on the same cache entry
-        # and therefore the same W_PtrType object.
+        # raw_ptr[T] is just a shortcut for raw_ptr[T, alignof(T)]
         w_N = vm.wrap(alignof(w_T))
         return vm.fast_call(w_raw_ptr, [w_T, w_N])
     alignment = parse_optional_alignment(vm, w_T, args_w, "raw_ptr")
-    fqn = _ptr_fqn("raw_ptr", w_T, alignment)
+    qualifiers: list = [w_T.fqn]
+    if alignment != alignof(w_T):
+        qualifiers.append(str(alignment))
+    fqn = FQN("unsafe").join("raw_ptr", qualifiers)
     w_ptrtype = W_PtrType.from_itemtype(fqn, "raw", w_T, alignment)
     return w_ptrtype
 
@@ -80,22 +79,12 @@ def w_gc_ptr(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
         w_N = vm.wrap(alignof(w_T))
         return vm.fast_call(w_gc_ptr, [w_T, w_N])
     alignment = parse_optional_alignment(vm, w_T, args_w, "gc_ptr")
-    fqn = _ptr_fqn("gc_ptr", w_T, alignment)
-    w_ptrtype = W_PtrType.from_itemtype(fqn, "gc", w_T, alignment)
-    return w_ptrtype
-
-
-def _ptr_fqn(funcname: str, w_T: W_Type, alignment: int) -> FQN:
-    """
-    unsafe::{raw,gc}_ptr[T] when `alignment` is T's natural alignment
-    (the default) else unsafe::{raw,gc}_ptr[T, N], so that an explicit,
-    non-default alignment is part of the type's identity
-    (gc_ptr[T,N] and gc_ptr[T,M] for N != M are distinct types).
-    """
     qualifiers: list = [w_T.fqn]
     if alignment != alignof(w_T):
         qualifiers.append(str(alignment))
-    return FQN("unsafe").join(funcname, qualifiers)
+    fqn = FQN("unsafe").join("gc_ptr", qualifiers)
+    w_ptrtype = W_PtrType.from_itemtype(fqn, "gc", w_T, alignment)
+    return w_ptrtype
 
 
 @UNSAFE.builtin_func(color="blue", kind="generic")
@@ -212,8 +201,6 @@ class W_MemLocType(W_Type):
         w_T.memkind = memkind
         w_T.w_itemT = w_itemT
         if alignment is None:
-            from .misc import alignof
-
             alignment = alignof(w_itemT)
         w_T.alignment = alignment
         w_T.is_ready = False
