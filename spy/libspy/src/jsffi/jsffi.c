@@ -3,6 +3,17 @@
 
 EM_JS_DEPS(jsffi, "$UTF8ToString,$wasmTable,$wasmMemory");
 
+/*
+ * EM_JS stringifies its body without macro expansion. Going through one more macro
+ * level expands the macros used in the JS body first (e.g. JSVAL_F64), so the JS
+ * code can share constants with the C code.
+ *
+ * Careful: every identifier of the body is expanded, including `true` and `false`
+ * (macros from <stdbool.h>). So only use EM_JS_MACROS for bodies that need C macros
+ * and do not contain such identifiers.
+ */
+#define EM_JS_MACROS(ret, name, args, body...) EM_JS(ret, name, args, body)
+
 // see the corresponding comment in jsffi.h
 void jsffi_force_include(void) {};
 
@@ -18,7 +29,7 @@ EM_JS(int32_t, jsffi_debug_n_jsrefs, (void), {
     return n;
 });
 
-EM_JS(void, jsffi_init, (void), {
+EM_JS(void, jsffi_init_objects, (void), {
     let jsffi = {
         objects: {},
         next_id: 7,  // 0-6 are reserved for well-known singletons
@@ -53,18 +64,25 @@ EM_JS(void, jsffi_init, (void), {
         jsffi.n_live++;
         return id;
     };
+});
 
+EM_JS_MACROS(void, jsffi_init_from_jsval, (void), {
     jsffi.from_jsval = function(tag, val) {
         switch(tag) {
-            case 0: return jsffi.from_jsref(val);  // JSVAL_JSREF
-            case 1:                                // JSVAL_F64
-            case 2: return val;                    // JSVAL_I32
-            case 3: return UTF8ToString(val);      // JSVAL_STR
-            case 4: return !!val;                  // JSVAL_BOOL
-            case 5: return wasmTable.get(val);     // JSVAL_FUNCPTR
+            case JSVAL_JSREF:   return jsffi.from_jsref(val);
+            case JSVAL_F64:
+            case JSVAL_I32:     return val;
+            case JSVAL_STR:     return UTF8ToString(val);
+            case JSVAL_BOOL:    return !!val;
+            case JSVAL_FUNCPTR: return wasmTable.get(val);
         }
     };
 });
+
+void jsffi_init(void) {
+    jsffi_init_objects();
+    jsffi_init_from_jsval();
+}
 
 EM_JS(JsRef, jsffi_string, (const char *ptr), { return jsffi.to_jsref(UTF8ToString(ptr)); });
 

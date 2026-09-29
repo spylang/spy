@@ -12,14 +12,14 @@ typedef struct {
 
 // Def JsVal, used for arguments
 
-typedef enum {
-    JSVAL_JSREF = 0,
-    JSVAL_F64   = 1,
-    JSVAL_I32   = 2,
-    JSVAL_STR   = 3,   // const char* into WASM memory, valid for call duration
-    JSVAL_BOOL  = 4,
-    JSVAL_FUNCPTR = 5,
-} JsValTag;
+#define JSVAL_JSREF   0
+#define JSVAL_F64     1
+#define JSVAL_I32     2
+#define JSVAL_STR     3   // const char* into WASM memory, valid for call duration
+#define JSVAL_BOOL    4
+#define JSVAL_FUNCPTR 5
+
+typedef int32_t JsValTag;
 
 typedef struct {
     JsValTag tag;
