@@ -1041,7 +1041,7 @@ class AbstractFrame:
 
     def eval_expr_GetItem(self, op: ast.GetItem) -> W_MetaArg:
         wam_obj = self.eval_expr(op.value)
-        args_wam = [self.eval_expr(arg) for arg in op.args]
+        args_wam = self.eval_args_with_starred(op.args)
         w_opimpl = self.vm.call_OP(op.loc, OP.w_GETITEM, [wam_obj] + args_wam)
         return self.eval_opimpl(op, w_opimpl, [wam_obj] + args_wam)
 
@@ -1135,7 +1135,8 @@ class AbstractFrame:
         raise SPyError.simple(
             "W_TypeError",
             "splat expressions (`*expr`) are supported only as items of "
-            "a list or tuple literal, or as arguments of a call",
+            "a list or tuple literal, as arguments of a call, or as "
+            "subscript arguments (e.g. `gfunc[*types]`)",
             "not supported here",
             op.loc,
         )
