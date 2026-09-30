@@ -24,6 +24,7 @@ on each:
     point to
 """
 
+from collections.abc import Iterator
 from typing import TYPE_CHECKING, Annotated, Any, Literal, Optional, Self
 
 import fixedint
@@ -38,7 +39,7 @@ from spy.vm.member import Member
 from spy.vm.modules.types import W_Loc
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_I32, W_Bool, W_Dynamic
-from spy.vm.struct import W_StructType
+from spy.vm.struct import W_StructField, W_StructType
 from spy.vm.w import W_Func, W_Object, W_Str, W_Type
 
 from . import UNSAFE
@@ -199,6 +200,30 @@ class W_MemLocType(W_Type):
         if self.alignment == NATURAL_ALIGNMENT:
             return alignof(self.w_itemT)
         return self.alignment
+
+    def iter_under_aligned_fields_w(self) -> Iterator[W_StructField]:
+        """
+        Yield the fields of the pointed-to struct whose natural alignment
+        exceeds the alignment of this ptr/ref type. A plain typed access to
+        such a field through this pointer would be undefined behavior, so
+        backends must access them with an unaligned load/store instead.
+
+        Yields nothing if the item type is not a defined struct.
+        """
+        w_itemT = self.w_itemT
+        if not isinstance(w_itemT, W_StructType) or not w_itemT.is_defined():
+            return
+        ptr_align = self.resolved_alignment()
+        for w_field in w_itemT.iterfields_w():
+            if ptr_align < alignof(w_field.w_T):
+                yield w_field
+
+    def is_under_aligned_field(self, name: str) -> bool:
+        """
+        True if `name` is a field of the pointed-to struct whose natural
+        alignment exceeds the alignment of this type.
+        """
+        return any(w_f.name == name for w_f in self.iter_under_aligned_fields_w())
 
     @classmethod
     def from_itemtype(

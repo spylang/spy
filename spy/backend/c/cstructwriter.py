@@ -7,7 +7,7 @@ from spy.backend.c.cffiwriter import CFFIWriter
 from spy.backend.c.context import C_Type, Context
 from spy.fqn import FQN
 from spy.textbuilder import TextBuilder
-from spy.vm.modules.unsafe.misc import alignof, contains_gc_ptr
+from spy.vm.modules.unsafe.misc import contains_gc_ptr
 from spy.vm.modules.unsafe.ptr import W_PtrType, W_RefType
 from spy.vm.object import W_Type
 from spy.vm.struct import W_StructType
@@ -220,18 +220,8 @@ class CStructWriter:
         in cwriter.py, which decide when to call these instead of a plain
         typed field access).
         """
-        w_itemT = w_ptrtype.w_itemT
-        if not isinstance(w_itemT, W_StructType) or not w_itemT.is_defined():
-            return
-
         c_ptrtype = C_Type(w_ptrtype.fqn.c_name)
-        ptr_align = w_ptrtype.resolved_alignment()
-
-        for w_field in w_itemT.iterfields_w():
-            field_align = alignof(w_field.w_T)
-            if ptr_align >= field_align:
-                continue
-
+        for w_field in w_ptrtype.iter_under_aligned_fields_w():
             c_fieldtype = self.ctx.w2c(w_field.w_T)
             c_fieldname = w_field.name
 
