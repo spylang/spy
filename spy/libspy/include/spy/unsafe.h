@@ -15,7 +15,6 @@ void WASM_EXPORT(_spy_memset)(void *dst, int value, size_t n);
 int32_t WASM_EXPORT(_spy_memcmp)(void *a, void *b, size_t n);
 
 // Aligned allocation wrappers used by the interp (vm.ll.call) path.
-// The C backend's $alloc macro calls spy_alloc_aligned_impl directly.
 void *WASM_EXPORT(spy_raw_alloc_aligned)(size_t size, size_t alignment);
 void *WASM_EXPORT(spy_nogc_alloc_aligned)(size_t size, size_t alignment);
 
@@ -35,29 +34,16 @@ void *WASM_EXPORT(spy_nogc_alloc_aligned)(size_t size, size_t alignment);
 #  define SPY_BASE_ALIGNMENT 8
 #endif
 
-// Allocate `n` bytes with at least `alignment`-byte alignment, using the
-// given `alloc_func` (one of spy_raw_alloc, spy_nogc_alloc, or the
-// GC_MALLOC-based helpers).  When `alignment <= SPY_BASE_ALIGNMENT` the
-// allocator already satisfies the request, so we delegate directly with
-// no over-allocation, rounding, or base-pointer discarding.  Otherwise we
-// over-allocate by `alignment` bytes, round the raw pointer up to the
-// next aligned address, and return that.
+// Round the pointer `p` up to the next multiple of `alignment` (which must be
+// a power of two), and return it as a `void *`.
 //
-// NOTE: this means the original base pointer is *lost* — the returned
-// pointer cannot be passed to free().  This is fine for SPy's GC-managed
-// and raw_alloc (never freed) allocators, but would be a problem for a
-// general-purpose allocator that needs to reclaim memory.  The over-
-// allocation "wastes" at most (alignment - 1) bytes.
-static inline void *
-spy_alloc_aligned_impl(size_t n, size_t alignment, void *(*alloc_func)(size_t)) {
-    if (alignment <= SPY_BASE_ALIGNMENT) {
-        // the allocator already guarantees this alignment.
-        return alloc_func(n);
-    }
-    char *raw = (char *)alloc_func(n + alignment);
-    uintptr_t a = ((uintptr_t)raw + alignment - 1) & ~(alignment - 1);
-    return (void *)a;
-}
+// NOTE: the original base pointer is *lost*, so the result cannot be passed to
+// free().  This is fine for SPy's GC-managed and raw_alloc (never freed)
+// allocators, but would be a problem for a general-purpose allocator that
+// needs to reclaim memory.
+#define SPY_ALIGN_UP(p, alignment)                                                     \
+    ((void *)(((uintptr_t)(p) + (uintptr_t)(alignment) - 1) &                          \
+              ~((uintptr_t)(alignment) - 1)))
 
 #ifdef SPY_GC_NONE
 #  define spy_gc_alloc(size) spy_nogc_alloc(size)
@@ -78,31 +64,19 @@ spy_gc_alloc_pointerless_bdwgc(size_t size) {
 #  error "no GC selected"
 #endif
 
-// spy_gc_alloc and spy_gc_alloc_pointerless (defined just above) are
-// function-like MACROS, not real functions: they only expand when
-// immediately followed by "(...)". spy_alloc_aligned_impl needs an
-// addressable function pointer, so a bare "spy_gc_alloc" (with no call
-// parens) does NOT expand and fails to compile. These thin static-inline
-// wrappers give us addressable symbols that simply forward to the macros.
 static inline void *
-spy_gc_alloc_fn(size_t size) {
-    return spy_gc_alloc(size);
+spy_gc_alloc_aligned(size_t size, size_t alignment) {
+    if (alignment <= SPY_BASE_ALIGNMENT)
+        return spy_gc_alloc(size);
+    return SPY_ALIGN_UP(spy_gc_alloc(size + alignment), alignment);
 }
 
 static inline void *
-spy_gc_alloc_pointerless_fn(size_t size) {
-    return spy_gc_alloc_pointerless(size);
+spy_gc_alloc_pointerless_aligned(size_t size, size_t alignment) {
+    if (alignment <= SPY_BASE_ALIGNMENT)
+        return spy_gc_alloc_pointerless(size);
+    return SPY_ALIGN_UP(spy_gc_alloc_pointerless(size + alignment), alignment);
 }
-
-// Map an ALLOC_FUNC token (as used by SPY_PTR_FUNCTIONS: raw_alloc,
-// gc_alloc, gc_alloc_pointerless) to the actual function symbol that can be
-// passed as a function pointer to spy_alloc_aligned_impl. raw_alloc is
-// already a real function (spy_raw_alloc), so it maps to itself; gc_alloc
-// and gc_alloc_pointerless are macros, so they map to the _fn wrappers
-// above instead.
-#define _SPY_ALLOC_FN_raw_alloc            spy_raw_alloc
-#define _SPY_ALLOC_FN_gc_alloc             spy_gc_alloc_fn
-#define _SPY_ALLOC_FN_gc_alloc_pointerless spy_gc_alloc_pointerless_fn
 
 /* Define the struct and accessor functions to represent a managed pointer to
    type T.
@@ -130,8 +104,9 @@ spy_gc_alloc_pointerless_fn(size_t size) {
                                 scanned; only for pointer-free T)
 
    ALIGNMENT is the requested alignment in bytes for the allocated
-   block.  When it exceeds SPY_BASE_ALIGNMENT, $alloc over-allocates and
-   adjusts the pointer via spy_alloc_aligned_impl.
+   block.  $alloc calls spy_<ALLOC_FUNC>_aligned (e.g. spy_gc_alloc_aligned),
+   which over-allocates and adjusts the pointer when ALIGNMENT exceeds
+   SPY_BASE_ALIGNMENT.
 */
 
 /* Unaligned access helpers.
@@ -181,8 +156,7 @@ spy_gc_alloc_pointerless_fn(size_t size) {
         return (PTR){p};                                                               \
     }                                                                                  \
     static inline PTR PTR##$alloc(size_t n) {                                          \
-        T *p = (T*)spy_alloc_aligned_impl(                                             \
-            sizeof(T) * n, (ALIGNMENT), _SPY_ALLOC_FN_##ALLOC_FUNC);                   \
+        T *p = (T*)spy_##ALLOC_FUNC##_aligned(sizeof(T) * n, (ALIGNMENT));             \
         return (PTR){p};                                                               \
     }                                                                                  \
     static inline T PTR##$deref(PTR p) {                                               \
@@ -229,8 +203,7 @@ spy_gc_alloc_pointerless_fn(size_t size) {
         return (PTR){p, length};                                                       \
     }                                                                                  \
     static inline PTR PTR##$alloc(size_t n) {                                          \
-        T *p = (T*)spy_alloc_aligned_impl(                                             \
-            sizeof(T) * n, (ALIGNMENT), _SPY_ALLOC_FN_##ALLOC_FUNC);                   \
+        T *p = (T*)spy_##ALLOC_FUNC##_aligned(sizeof(T) * n, (ALIGNMENT));             \
         return (PTR){p, (ptrdiff_t) n};                                                \
     }                                                                                  \
     static inline T PTR##$deref(PTR p) {                                               \

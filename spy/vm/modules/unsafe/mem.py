@@ -49,7 +49,7 @@ def w_raw_alloc(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
             # the allocator already guarantees this alignment
             addr = vm.ll.call("spy_raw_alloc", size)
         else:
-            # over-allocate and round up, mirroring spy_alloc_aligned_impl
+            # over-allocate and round up
             addr = vm.ll.call("spy_raw_alloc_aligned", size, ALIGNMENT)
         return W_Ptr(w_ptrtype, addr, n)  # type: ignore
 
@@ -80,7 +80,7 @@ def w_gc_alloc(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
             # the allocator already guarantees this alignment
             addr = vm.ll.call("spy_nogc_alloc", size)
         else:
-            # over-allocate and round up, mirroring spy_alloc_aligned_impl
+            # over-allocate and round up
             addr = vm.ll.call("spy_nogc_alloc_aligned", size, ALIGNMENT)
         return W_Ptr(w_ptrtype, addr, n)  # type: ignore
 

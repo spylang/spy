@@ -10,15 +10,18 @@ spy_raw_alloc(size_t size) {
     return malloc(size);
 }
 
-// Aligned variants for the interp (vm.ll.call) path.
 void *
 spy_raw_alloc_aligned(size_t size, size_t alignment) {
-    return spy_alloc_aligned_impl(size, alignment, spy_raw_alloc);
+    if (alignment <= SPY_BASE_ALIGNMENT)
+        return spy_raw_alloc(size);
+    return SPY_ALIGN_UP(spy_raw_alloc(size + alignment), alignment);
 }
 
 void *
 spy_nogc_alloc_aligned(size_t size, size_t alignment) {
-    return spy_alloc_aligned_impl(size, alignment, spy_nogc_alloc);
+    if (alignment <= SPY_BASE_ALIGNMENT)
+        return spy_nogc_alloc(size);
+    return SPY_ALIGN_UP(spy_nogc_alloc(size + alignment), alignment);
 }
 
 void
