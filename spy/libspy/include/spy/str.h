@@ -43,7 +43,12 @@ typedef struct spy_unsafe$gc_ptr___str$StrObject {
 #endif
 } spy_unsafe$gc_ptr___str$StrObject;
 
-SPY_PTR_FUNCTIONS(gc_alloc, spy_unsafe$gc_ptr___str$StrObject, spy_StrObject, 4)
+SPY_PTR_FUNCTIONS(
+    gc_alloc,
+    spy_unsafe$gc_ptr___str$StrObject,
+    spy_StrObject,
+    _Alignof(spy_StrObject)
+)
 #define spy_unsafe$gc_ptr___str$StrObject$NULL ((spy_unsafe$gc_ptr___str$StrObject){0})
 
 // short alias for manual use
