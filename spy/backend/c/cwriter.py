@@ -652,9 +652,10 @@ class CFuncWriter:
         assert len(call.args) == 1
         w_srcT = call.args[0].w_T
         assert w_srcT is not None
+        assert call.w_T is not None
         c_src = self.fmt_expr(call.args[0])
         c_srctype = self.ctx.w2c(w_srcT)
-        c_targettype = self.ctx.c_restype_by_fqn(fqn)
+        c_targettype = self.ctx.w2c(call.w_T)
         c_p = C.Literal(f"({c_src}).p")
         c_length = C.Call(f"{c_srctype}_get_length", [c_src])
         return C.Call(f"{c_targettype}_from_raw", [c_p, c_length])
