@@ -24,27 +24,26 @@ on each:
     point to
 """
 
+from collections.abc import Iterator
 from typing import TYPE_CHECKING, Annotated, Any, Literal, Optional, Self
 
 import fixedint
 
 from spy.errors import SPyError
 from spy.fqn import FQN
-from spy.location import Loc
 from spy.vm.b import B
 from spy.vm.builtin import builtin_method, builtin_property
 from spy.vm.bytes import W_Bytes
-from spy.vm.function import W_ASTFunc
 from spy.vm.irtag import IRTag
 from spy.vm.member import Member
 from spy.vm.modules.types import W_Loc
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_I32, W_Bool, W_Dynamic
-from spy.vm.struct import W_StructType
+from spy.vm.struct import W_StructField, W_StructType
 from spy.vm.w import W_Func, W_Object, W_Str, W_Type
 
 from . import UNSAFE
-from .misc import sizeof
+from .misc import NATURAL_ALIGNMENT, W_Align, alignof, parse_optional_alignment, sizeof
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -54,22 +53,36 @@ MEMKIND = Literal["raw", "gc"]
 
 
 @UNSAFE.builtin_func(color="blue", kind="generic")
-def w_raw_ptr(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
+def w_raw_ptr(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
     """
-    The raw_ptr[T] generic type
+    The raw_ptr[T] / raw_ptr[T, align(N)] generic type.
+
+    `raw_ptr[T]` is "naturally aligned". Note that this is a DIFFERENT type than
+    raw_ptr[T, alignof(T)].
     """
-    fqn = FQN("unsafe").join("raw_ptr", [w_T.fqn])  # unsafe::raw_ptr[i32]
-    w_ptrtype = W_PtrType.from_itemtype(fqn, "raw", w_T)
+    alignment = parse_optional_alignment(vm, w_T, args_w, "raw_ptr")
+    qualifiers: list = [w_T.fqn]
+    if alignment != NATURAL_ALIGNMENT:
+        qualifiers.append(f"align({alignment})")
+    fqn = FQN("unsafe").join("raw_ptr", qualifiers)
+    w_ptrtype = W_PtrType.from_itemtype(fqn, "raw", w_T, alignment)
     return w_ptrtype
 
 
 @UNSAFE.builtin_func(color="blue", kind="generic")
-def w_gc_ptr(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
+def w_gc_ptr(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
     """
-    The gc_ptr[T] generic type
+    The gc_ptr[T] / gc_ptr[T, align(N)] generic type.
+
+    `gc_ptr[T]` is "naturally aligned". Note that this is a DIFFERENT type than
+    gc_ptr[T, alignof(T)].
     """
-    fqn = FQN("unsafe").join("gc_ptr", [w_T.fqn])  # unsafe::gc_ptr[i32]
-    w_ptrtype = W_PtrType.from_itemtype(fqn, "gc", w_T)
+    alignment = parse_optional_alignment(vm, w_T, args_w, "gc_ptr")
+    qualifiers: list = [w_T.fqn]
+    if alignment != NATURAL_ALIGNMENT:
+        qualifiers.append(f"align({alignment})")
+    fqn = FQN("unsafe").join("gc_ptr", qualifiers)
+    w_ptrtype = W_PtrType.from_itemtype(fqn, "gc", w_T, alignment)
     return w_ptrtype
 
 
@@ -167,10 +180,51 @@ class W_MemLocType(W_Type):
 
     memkind: MEMKIND
     w_itemT: Annotated[W_Type, Member("itemtype")]
+    alignment: int  # in bytes, or NATURAL_ALIGNMENT
     is_ready: bool
 
+    def resolved_alignment(self) -> int:
+        """
+        The actual alignment in bytes: for the natural-alignment ptr types
+        (`gc_ptr[T]`) this is alignof(T), which raises if T is a struct not
+        defined yet.
+        """
+        if self.alignment == NATURAL_ALIGNMENT:
+            return alignof(self.w_itemT)
+        return self.alignment
+
+    def iter_under_aligned_fields_w(self) -> Iterator[W_StructField]:
+        """
+        Yield the fields of the pointed-to struct whose natural alignment
+        exceeds the alignment of this ptr/ref type. A plain typed access to
+        such a field through this pointer would be undefined behavior, so
+        backends must access them with an unaligned load/store instead.
+
+        Yields nothing if the item type is not a defined struct.
+        """
+        w_itemT = self.w_itemT
+        if not isinstance(w_itemT, W_StructType) or not w_itemT.is_defined():
+            return
+        ptr_align = self.resolved_alignment()
+        for w_field in w_itemT.iterfields_w():
+            if ptr_align < alignof(w_field.w_T):
+                yield w_field
+
+    def is_under_aligned_field(self, name: str) -> bool:
+        """
+        True if `name` is a field of the pointed-to struct whose natural
+        alignment exceeds the alignment of this type.
+        """
+        return any(w_f.name == name for w_f in self.iter_under_aligned_fields_w())
+
     @classmethod
-    def from_itemtype(cls, fqn: FQN, memkind: MEMKIND, w_itemT: W_Type) -> Self:
+    def from_itemtype(
+        cls,
+        fqn: FQN,
+        memkind: MEMKIND,
+        w_itemT: W_Type,
+        alignment: int = NATURAL_ALIGNMENT,
+    ) -> Self:
         if cls is W_PtrType:
             w_T = cls.from_pyclass(fqn, W_Ptr)
         elif cls is W_RefType:
@@ -179,6 +233,7 @@ class W_MemLocType(W_Type):
             assert False
         w_T.memkind = memkind
         w_T.w_itemT = w_itemT
+        w_T.alignment = alignment
         w_T.is_ready = False
         if isinstance(w_itemT, W_StructType):
             if w_itemT.is_defined():
@@ -472,6 +527,33 @@ class W_Ptr(W_MemLoc):
 
             return W_OpSpec(w_ptr_to_bool)
 
+        elif (
+            isinstance(w_T, W_PtrType)
+            and w_T.memkind == w_ptrtype.memkind
+            and w_T.w_itemT is w_ptrtype.w_itemT
+            and w_T.resolved_alignment() <= w_ptrtype.resolved_alignment()
+        ):
+            # weakening conversion: gc_ptr[T, align(N)] -> gc_ptr[T, align(M)]
+            # is free whenever M <= N. The strengthening direction (M > N) is
+            # NOT handled here (needs align_cast).
+            #
+            # The natural-alignment type gc_ptr[T] counts as alignof(T), so
+            # this also covers the conversions between gc_ptr[T] and
+            # gc_ptr[T, align(N)]: the former is convertible to the latter if
+            # N <= alignof(T), and vice versa if N >= alignof(T).
+            TARGET = Annotated[W_Ptr, w_T]
+            if w_T.alignment == NATURAL_ALIGNMENT:
+                funcname = "weaken_align_to_natural"
+            else:
+                funcname = f"weaken_align_to_{w_T.alignment}"
+            irtag = IRTag("ptr.weaken_align")
+
+            @vm.register_builtin_func(w_ptrtype.fqn, funcname, irtag=irtag)
+            def w_ptr_weaken_align(vm: "SPyVM", w_ptr: PTR) -> TARGET:
+                return W_Ptr(w_T, w_ptr.addr, w_ptr.length)  # type: ignore
+
+            return W_OpSpec(w_ptr_weaken_align)
+
         else:
             return W_OpSpec.NULL
 
@@ -584,6 +666,26 @@ def w_ptr_setfield(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
         vm.call_generic(UNSAFE.w_mem_write, [w_T], [vm.wrap(addr), w_val])
 
     return w_ptr_setfield_T
+
+
+@UNSAFE.builtin_func(color="blue", kind="metafunc")
+def w_ptr_to_addr(vm: "SPyVM", wam_p: W_MetaArg) -> W_OpSpec:
+    """
+    Return the address that a raw_ptr/gc_ptr points to, as an i32.
+
+    NOTE: like W_MemLoc.addr, this only works correctly for wasm32-like
+    targets where addresses fit in 32 bits. It's mostly meant for tests,
+    debugging, and assertions (e.g. checking alignment) -- not as a
+    general "pointer as integer" escape hatch.
+    """
+    w_ptrtype = W_Ptr._get_memlocT(wam_p)
+    PTR = Annotated[W_Ptr, w_ptrtype]
+
+    @vm.register_builtin_func(w_ptrtype.fqn, "to_addr")
+    def w_ptr_to_addr_impl(vm: "SPyVM", w_ptr: PTR) -> W_I32:
+        return vm.wrap(w_ptr.addr)
+
+    return W_OpSpec(w_ptr_to_addr_impl, [wam_p])
 
 
 @UNSAFE.builtin_func(color="blue", kind="metafunc")

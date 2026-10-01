@@ -1,6 +1,14 @@
-from spy.errors import WIP
+from typing import TYPE_CHECKING, Any
+
+from spy.errors import WIP, SPyError
 from spy.vm.b import B
-from spy.vm.object import W_Type
+from spy.vm.object import W_Object, W_Type
+from spy.vm.primitive import W_I32
+
+from . import UNSAFE
+
+if TYPE_CHECKING:
+    from spy.vm.vm import SPyVM
 
 
 def sizeof(w_T: W_Type) -> int:
@@ -73,3 +81,117 @@ def contains_gc_ptr(w_T: W_Type) -> bool:
         return True
 
     raise NotImplementedError(f"{w_T=}")
+
+
+# Sentinel stored in W_PtrType.alignment for the "natural alignment" ptr types,
+# i.e. the ones spelled `gc_ptr[T]` (no explicit `align(N)`). The actual value,
+# alignof(T), is computed lazily by W_MemLocType.resolved_alignment(), because
+# T might be a not-yet-defined struct when the ptr type is created.
+#
+# NOTE: `gc_ptr[T]` is a DIFFERENT type than `gc_ptr[T, align(alignof(T))]`.
+# The two are implicitly convertible into each other, but they are not
+# identical. This might be revisited in the future if needed.
+NATURAL_ALIGNMENT = -1
+
+
+def alignof(w_T: W_Type) -> int:
+    """
+    The natural alignment of a type, in bytes.
+
+    Raises if `w_T` is a struct which is not defined yet: we cannot guess.
+    """
+    from spy.vm.modules.posix import POSIX
+    from spy.vm.modules.unsafe.ptr import W_PtrType, W_RefType
+    from spy.vm.struct import W_StructType
+
+    # for every scalar type SPy has today, natural alignment == size
+    if w_T in (B.w_bool, B.w_i8, B.w_u8):
+        return 1
+    elif w_T in (B.w_i32, B.w_u32, B.w_f32):
+        return 4
+    elif w_T in (B.w_i64, B.w_u64, B.w_f64):
+        return 8
+    elif isinstance(w_T, (W_PtrType, W_RefType)) or w_T is B.w_str:
+        # pointers are 4 bytes on wasm32; see the comment in sizeof()
+        return 4
+    elif w_T is POSIX.w__FILE:
+        return 4
+    elif isinstance(w_T, W_StructType):
+        if not w_T.is_defined():
+            raise SPyError(
+                "W_TypeError",
+                f"alignof({w_T.fqn.debug_human_name}): the struct is not defined yet",
+            )
+        # the usual "max of the fields' alignments" rule. A struct with no
+        # fields has nothing to take the max over, so fall back to 1
+        # (matching a struct of size 0) rather than raising.
+        aligns = [alignof(w_field.w_T) for w_field in w_T.iterfields_w()]
+        return max(aligns, default=1)
+    else:
+        raise WIP(f"alignof({w_T}) not implemented")
+
+
+@UNSAFE.builtin_func(color="blue")
+def w_alignof(vm: "SPyVM", w_T: W_Type) -> W_I32:
+    """
+    The SPy-visible `alignof(T)` blue builtin.
+    """
+    return vm.wrap(alignof(w_T))
+
+
+@UNSAFE.builtin_type("Align")
+class W_Align(W_Object):
+    """
+    Interp-level only wrapper around an alignment (in bytes), as in
+    `gc_ptr[T, align(4)]`.
+    """
+
+    __spy_storage_category__ = "value"
+
+    def __init__(self, alignment: int) -> None:
+        self.alignment = alignment
+
+    def spy_key(self, vm: "SPyVM") -> Any:
+        return ("Align", self.alignment)
+
+    def __repr__(self) -> str:
+        return f"W_Align({self.alignment})"
+
+
+@UNSAFE.builtin_func(color="blue")
+def w_align(vm: "SPyVM", w_N: W_I32) -> W_Align:
+    """
+    The SPy-visible `align(N)` blue builtin.
+    """
+    N = int(vm.unwrap_i32(w_N))
+    if N <= 0 or (N & (N - 1)) != 0:
+        raise SPyError(
+            "W_ValueError", f"align({N}): the alignment must be a power of two"
+        )
+    return W_Align(N)
+
+
+def parse_optional_alignment(
+    vm: "SPyVM", w_T: W_Type, args_w: tuple, funcname: str
+) -> int:
+    """
+    Shared arg-parsing for the optional, defaulted alignment type param on
+    {raw,gc}_ptr[T, align(N)] / {raw,gc}_alloc[T, align(N)].
+    `args_w` is whatever extra positional blue args were
+    passed after `T`: zero (natural alignment, returned as NATURAL_ALIGNMENT)
+    or one (a `W_Align`).
+    """
+    if len(args_w) == 0:
+        return NATURAL_ALIGNMENT
+    elif len(args_w) == 1:
+        w_align = args_w[0]
+        if not isinstance(w_align, W_Align):
+            t = vm.dynamic_type(w_align).fqn.human_name(vm)
+            raise SPyError(
+                "W_TypeError",
+                f"{funcname}: alignment must be `align(N)`, got `{t}`",
+            )
+        return w_align.alignment
+    else:
+        n = len(args_w) + 1
+        raise SPyError("W_TypeError", f"{funcname} accepts 1 or 2 arguments, got {n}")
