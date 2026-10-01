@@ -57,12 +57,8 @@ def w_raw_ptr(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
     """
     The raw_ptr[T] / raw_ptr[T, align(N)] generic type.
 
-    `raw_ptr[T]` means "natural alignment" and is equivalent to
-    `raw_ptr[T, -1]` internally (see NATURAL_ALIGNMENT). It is a DIFFERENT
-    type than `raw_ptr[T, align(alignof(T))]`: the two are implicitly
-    convertible into each other, but they are not the same type. The reason
-    is that T might be a not-yet-defined struct (fwdecl), in which case
-    alignof(T) is not known yet. This might be revisited in the future.
+    `raw_ptr[T]` is "naturally aligned". Note that this is a DIFFERENT type than
+    raw_ptr[T, alignof(T)].
     """
     alignment = parse_optional_alignment(vm, w_T, args_w, "raw_ptr")
     qualifiers: list = [w_T.fqn]
@@ -78,12 +74,8 @@ def w_gc_ptr(vm: "SPyVM", w_T: W_Type, *args_w: W_Dynamic) -> W_Dynamic:
     """
     The gc_ptr[T] / gc_ptr[T, align(N)] generic type.
 
-    `gc_ptr[T]` means "natural alignment" and is equivalent to
-    `gc_ptr[T, -1]` internally (see NATURAL_ALIGNMENT). It is a DIFFERENT
-    type than `gc_ptr[T, align(alignof(T))]`: the two are implicitly
-    convertible into each other, but they are not the same type. The reason
-    is that T might be a not-yet-defined struct (fwdecl), in which case
-    alignof(T) is not known yet. This might be revisited in the future.
+    `gc_ptr[T]` is "naturally aligned". Note that this is a DIFFERENT type than
+    gc_ptr[T, alignof(T)].
     """
     alignment = parse_optional_alignment(vm, w_T, args_w, "gc_ptr")
     qualifiers: list = [w_T.fqn]
