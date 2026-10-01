@@ -840,16 +840,13 @@ class TestStr(CompilerTest):
         assert mod.empty() == ""
         assert mod.foo("answer", 42) == "The answer is 42"
 
-    def test_fstring_conversion_unsupported(self):
+    def test_fstring_conversion(self):
         src = """
-        def bar(x: i32) -> str:
-            return f"{x!r}"
-
-        def foo() -> None:
-            bar(42)
+        def foo(x: str) -> str:
+            return f"{x!r} -- {x!s}"
         """
-        errors = expect_errors("WIP: conversion not supported: r")
-        self.compile_raises(src, "foo", errors)
+        mod = self.compile(src)
+        assert mod.foo("hello") == "'hello' -- hello"
 
     def test_fstring_format_spec_unsupported(self):
         src = """

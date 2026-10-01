@@ -82,9 +82,17 @@ def f(m_val, m_conv, m_format_spec):
 def fmt(m_x):
     FMT = m_x.static_type
 
-    # XXX: we need to dispatch on `conv` here.
-    if FMT.conv != "":
-        raise StaticError("WIP: conversion not supported: " + FMT.conv)
+    if FMT.conv == "":
+        # XXX: call `format` when we have it
+        conv_fn = str
+    elif FMT.conv == "s":
+        conv_fn = str
+    elif FMT.conv == "r":
+        conv_fn = repr
+    elif FMT.conv == "a":
+        raise StaticError("WIP: !a conversion not supported")
+    else:
+        assert False, "invalid conv: " + FMT.conv
 
     # format_spec is a runtime value, so at the moment we can only detect it at
     # runtime. Eventually we should call __format__(format_spec), but for now we
@@ -93,6 +101,6 @@ def fmt(m_x):
     def impl(x: FMT) -> str:
         if len(x.format_spec) != 0:
             raise ValueError("WIP: format_spec not supported")
-        return str(x.val)
+        return conv_fn(x.val)
 
     return OpSpec(impl)
