@@ -1,9 +1,18 @@
+from operator import OpSpec
 from __spy__ import force_inline
-from strbuilder import StrBuilder
 
-# this module contains a small helper used by `__spy__::fstring`, which implements
-# f-string formatting.  The end goal is to write the full fstring() in SPy, but for now
-# we cannot because we don't support e.g. `UNROLL`.
+# this module contains the app-level helpers used by `__spy__::fstring`, which
+# implements f-string formatting.  The end goal is to write the full fstring() in SPy,
+# but for now we cannot because we don't support e.g. `UNROLL`.
+#
+# The astcompiler desugars f-strings like this:
+#
+#     f"A{x!r}B"   ==>   fstring("A", f(x, "r", ""), "B")
+#
+# `f` wraps a value into a transient `FormattedVal`: conv is attached to its *static
+# type*, so that it can be "transported" across metafunctions, while format_spec is a
+# normal runtime str. Both use "" to mean "absent", like in Python.
+# `fmt` then dispatches on the static type to convert each part to `str`.
 #
 # See also:
 #   - vm/modules/__spy__/fstring.py
@@ -11,16 +20,79 @@ from strbuilder import StrBuilder
 #   - stdlib/_print.spy
 
 
-@blue.generic
-def format1(T, conversion, format_spec):
-    if conversion is not None:
-        raise StaticError("WIP: conversion not supported: " + conversion)
+@struct
+class FormattedVal[T, conv]:
+    """
+    An f-string part: f"{val!conv:format_spec}"
 
-    if format_spec is not None:
-        raise StaticError("WIP: format_spec not supported: " + format_spec)
+    - `val` and `format_spec` are normal runtime/red fields;
+    - `conv` is always blue, so we store it as a class variable.
+
+    Note that in most cases, `format_spec` is actually known at compile time, e.g. in
+    "f{x:.2f}".  However this is not true in general because of nested interpolations,
+    e.g. f"{x:{width}}".
+
+    For the future, we _could_ think of an extended `__format__` protocol which
+    optionally handles blue format_specs, but for now it's easier to just keep
+    everything red.
+    """
+
+    # runtime red fields
+    val: T
+    format_spec: str
+
+    # comptime blue "fields"
+    conv = conv
+    _T = T  # this is a temp workaround because we cannot read "T" in any other way
+
+
+@blue.metafunc
+def f(m_val, m_conv, m_format_spec):
+    """
+    Just a helper to instantiate FormattedVal:
+
+    f"{val!conv:format_spec}" ==> f(val, "conv", "format_spec")
+    See ASTCompiler.compile_expr_JoinedStr.
+    """
+    conv = m_conv.blueval
+
+    if m_val.color == "blue":
+        assert False, "FIXME"
+        ## # like print(), eagerly str() blue values: this is needed to format e.g. types
+        ## s = str(m_val.blueval)
+        ## BLUE_FMT = FormattedVal[str, conv]
+
+        ## @force_inline
+        ## def blue_impl(format_spec: str) -> BLUE_FMT:
+        ##     return BLUE_FMT(s, format_spec)
+
+        ## return OpSpec(blue_impl, [m_format_spec])
+
+    T = m_val.static_type
+    FMT = FormattedVal[T, conv]
 
     @force_inline
-    def impl(x: T) -> str:
-        return str(x)
+    def impl(x: T, format_spec: str) -> FMT:
+        return FMT(x, format_spec)
 
-    return impl
+    return OpSpec(impl, [m_val, m_format_spec])
+
+
+@blue.metafunc
+def fmt(m_x):
+    FMT = m_x.static_type
+
+    # XXX: we need to dispatch on `conv` here.
+    if FMT.conv != "":
+        raise StaticError("WIP: conversion not supported: " + FMT.conv)
+
+    # format_spec is a runtime value, so at the moment we can only detect it at
+    # runtime. Eventually we should call __format__(format_spec), but for now we
+    # just call str()
+    @force_inline
+    def impl(x: FMT) -> str:
+        if len(x.format_spec) != 0:
+            raise ValueError("WIP: format_spec not supported")
+        return str(x.val)
+
+    return OpSpec(impl)

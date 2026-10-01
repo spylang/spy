@@ -641,52 +641,66 @@ class ASTCompiler:
 
     def compile_expr_JoinedStr(self, expr: ast.JoinedStr) -> ast.Expr:
         # The complete pipeline is more or less:
-        # source:
-        #     f"AAA {x} BBB {y}"
-        # parsed into:
+        # 1. source:
+        #     f"AAA {x!r} BBB {y}"
+        #
+        # 2. parsed into:
         #     ast.JoinedStr(...)
-        # astcompiled into a call to the metafunc:
-        #     `__spy__::fstring("AAA ", x, " BBB ", y)`
-        # which generates a @force_inline impl:
+        #
+        # 3. astcompiled into a call to this metafunc:
+        #     `__spy__::fstring("AAA ", f(x, "r", ""), " BBB ", f(y, "", ""))`
+        #
+        # 4. which generates a @force_inline impl:
         #     @force_inline
-        #     def impl(x: T0, y: T1) -> str:
-        #         s0 = _fstring::format1[T0, None, None](x)
-        #         s1 = _fstring::format1[T1, None, None](y)
-        #         cap = len(s0) + len(s1)
+        #     def impl(a0: str, a1: T0, a2: str, a3: T1) -> str:
+        #         s1 = fmt(a1)
+        #         s3 = fmt(a3)
+        #         cap = len(a0) + len(s1) + len(a2) + len(s3)
         #         sb = StrBuilder(cap)
-        #         sb.append(s0)
+        #         sb.append(a0)
         #         sb.append(s1)
+        #         ...
         #         return sb.build()
         #
-        # The sig of format1 is:
-        #     format1[T, conversion, format_spec](x: T) -> str
-        #
-        # However, at the moment we don't support `conversion` and/or format_spec, so we
-        # hardcode `None` for both.
+        # _fstring::f is a helper to instantiate a generic FormattedVal struct: the
+        # `conversion` is a blue param and stored as a class variable on the struct
+        # type, while `format_spec` is red and passed at runtime.  See
+        # stdlib/_fstring.spy.
         args: list[ast.Expr] = []
         for item in expr.items:
             if isinstance(item, ast.StrLiteral):
                 args.append(item)
             else:
                 assert isinstance(item, ast.FormattedExpr)
-                if item.conversion is not None:
-                    raise SPyError.simple(
-                        "W_WIP",
-                        f"not implemented yet: `!{item.conversion}` conversion "
-                        "in f-strings",
-                        "this is not supported",
-                        item.loc,
-                    )
-                if item.format_spec is not None:
-                    raise SPyError.simple(
-                        "W_WIP",
-                        "not implemented yet: format specs in f-strings",
-                        "this is not supported",
-                        item.format_spec.loc,
-                    )
-                args.append(self.compile_expr(item.value))
+                args.append(self.compile_FormattedExpr(item))
         func = ast.FQNConst(expr.loc, FQN("__spy__::fstring"))
         return ast.Call(expr.loc, func, args)
+
+    def compile_FormattedExpr(self, item: ast.FormattedExpr) -> ast.Expr:
+        loc = item.loc
+        return ast.Call(
+            loc=loc,
+            func=ast.FQNConst(loc, FQN("_fstring::f")),
+            args=[
+                self.compile_expr(item.value),
+                ast.StrLiteral(loc, item.conversion or ""),
+                self._format_spec_expr(item),
+            ],
+        )
+
+    def _format_spec_expr(self, item: ast.FormattedExpr) -> ast.Expr:
+        """
+        Compile the format spec into a str expression. The spec is always a runtime
+        value: it can contain nested interpolations, e.g. f"{x:{width}}". A missing
+        spec is the empty string, like in Python.
+        """
+        spec = item.format_spec
+        if spec is None:
+            return ast.StrLiteral(item.loc, "")
+        if all(isinstance(sub, ast.StrLiteral) for sub in spec.items):
+            text = "".join(sub.value for sub in spec.items)  # type: ignore
+            return ast.StrLiteral(spec.loc, text)
+        return self.compile_expr_JoinedStr(spec)
 
     def compile_expr_List(self, expr: ast.List) -> ast.Expr:
         return expr.replace(items=[self.compile_expr(item) for item in expr.items])

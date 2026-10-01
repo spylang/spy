@@ -830,38 +830,41 @@ class TestStr(CompilerTest):
 
     def test_fstring_simple(self):
         src = """
+        def empty() -> str:
+            return f""
+
         def foo(s: str, x: i32) -> str:
             return f"The {s} is {x}"
         """
         mod = self.compile(src)
+        assert mod.empty() == ""
         assert mod.foo("answer", 42) == "The answer is 42"
-
-    def test_fstring_empty(self):
-        src = """
-        def foo() -> str:
-            return f""
-        """
-        mod = self.compile(src)
-        assert mod.foo() == ""
 
     def test_fstring_conversion_unsupported(self):
         src = """
-        def foo(x: i32) -> str:
+        def bar(x: i32) -> str:
             return f"{x!r}"
+
+        def foo() -> None:
+            bar(42)
         """
-        errors = expect_errors(
-            "not implemented yet: `!r` conversion in f-strings",
-            ("this is not supported", "{x!r}"),
-        )
-        self.compile_raises(src, "foo", errors, error_reporting="eager")
+        errors = expect_errors("WIP: conversion not supported: r")
+        self.compile_raises(src, "foo", errors)
 
     def test_fstring_format_spec_unsupported(self):
         src = """
-        def foo(x: f64) -> str:
-            return f"{x:.2f}"
+        def foo(x: i32) -> str:
+            return f"{x:>5}"
         """
-        errors = expect_errors(
-            "not implemented yet: format specs in f-strings",
-            ("this is not supported", ":.2f"),
-        )
-        self.compile_raises(src, "foo", errors, error_reporting="eager")
+        mod = self.compile(src)
+        with pytest.raises(SPyError, match="WIP: format_spec not supported"):
+            mod.foo(42)
+
+    def test_fstring_nested_format_spec(self):
+        src = """
+        def foo(x: i32, width: i32) -> str:
+            return f"{x:{width}}"
+        """
+        mod = self.compile(src)
+        with pytest.raises(SPyError, match="WIP: format_spec not supported"):
+            mod.foo(42, 10)
