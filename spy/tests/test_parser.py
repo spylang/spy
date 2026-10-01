@@ -619,8 +619,6 @@ class TestParser:
         self.assert_dump(stmt, expected)
 
     def test_fstring_nested_format_spec(self):
-        # note: CPython's parser emits a trailing empty constant for format
-        # specs which end with an interpolation
         mod = self.parse("""
         def foo() -> None:
             f"{x:{width}}"
@@ -640,7 +638,6 @@ class TestParser:
                                     conversion=None,
                                     format_spec=None,
                                 ),
-                                StrLiteral(value=''),
                             ],
                         ),
                     ),

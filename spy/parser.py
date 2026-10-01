@@ -857,6 +857,11 @@ class Parser:
         for py_value in py_node.values:
             item = self.from_py_expr(py_value)
             assert isinstance(item, spy.ast.StrLiteral | spy.ast.FormattedExpr)
+            if isinstance(item, spy.ast.StrLiteral) and item.value == "":
+                # old CPython versions (e.g. 3.12.3) emit a trailing "" when the
+                # f-string ends with an interpolation.  Newer CPythons don't.  Let's
+                # remove them to make parser tests less fragile.
+                continue
             items.append(item)
         return spy.ast.JoinedStr(py_node.loc, items)
 
