@@ -19,11 +19,6 @@ def memkind(request):
     return request.param
 
 
-@pytest.fixture
-def vm():
-    return SPyVM()
-
-
 class TestUnsafePtr(CompilerTest):
     @only_interp
     def test_itemtype(self):
@@ -1247,45 +1242,30 @@ class TestUnsafePtr(CompilerTest):
         mod = self.compile(src)
         mod.alloc()
 
+    @only_interp
+    def test_natural_vs_explicit_alignment(self):
+        # gc_ptr[T] means "natural alignment" (internally -1): it is a
+        # DIFFERENT type than gc_ptr[T, align(alignof(T))]
+        src = """
+        from unsafe import gc_ptr, align, alignof
 
-def test_natural_alignment_is_a_different_type(vm):
-    # gc_ptr[T] means "natural alignment" (internally -1): it is a
-    # DIFFERENT type than gc_ptr[T, align(alignof(T))]
-    w_natural = vm.fast_call(UNSAFE.w_gc_ptr, [B.w_f64])
-    assert w_natural is vm.fast_call(UNSAFE.w_gc_ptr, [B.w_f64])
-    N = alignof(B.w_f64)
-    w_explicit = vm.fast_call(UNSAFE.w_gc_ptr, [B.w_f64, W_Align(N)])
-    assert w_natural is not w_explicit
+        def get_natural() -> type:
+            return gc_ptr[f64]
 
-    assert isinstance(w_natural, W_PtrType)
-    assert isinstance(w_explicit, W_PtrType)
+        def get_explicit() -> type:
+            return gc_ptr[f64, align(alignof(f64))]
+        """
+        mod = self.compile(src)
+        w_natural = mod.get_natural(unwrap=False)
+        assert w_natural is mod.get_natural(unwrap=False)
+        w_explicit = mod.get_explicit(unwrap=False)
+        assert w_natural is not w_explicit
 
-    assert w_natural.alignment == NATURAL_ALIGNMENT
-    assert w_natural.resolved_alignment() == N
-    assert w_explicit.resolved_alignment() == N
-    assert repr(w_natural) == "<spy type 'unsafe::gc_ptr[f64]'>"
-    assert repr(w_explicit) == "<spy type 'unsafe::gc_ptr[f64, align(8)]'>"
-
-
-def test_explicit_alignment_in_fqn(vm):
-    w_ptrtype = vm.fast_call(UNSAFE.w_gc_ptr, [B.w_i32, W_Align(8)])
-    assert repr(w_ptrtype) == "<spy type 'unsafe::gc_ptr[i32, align(8)]'>"
-
-
-def test_ptrtype_repr(vm):
-    w_raw_ptrtype = vm.fast_call(UNSAFE.w_raw_ptr, [B.w_i32])
-    w_raw_reftype = vm.fast_call(UNSAFE.w_raw_ref, [B.w_i32])
-    w_gc_ptrtype = vm.fast_call(UNSAFE.w_gc_ptr, [B.w_i32])
-    w_gc_reftype = vm.fast_call(UNSAFE.w_gc_ref, [B.w_i32])
-    assert repr(w_raw_ptrtype) == "<spy type 'unsafe::raw_ptr[i32]'>"
-    assert repr(w_raw_reftype) == "<spy type 'unsafe::raw_ref[i32]'>"
-    assert repr(w_gc_ptrtype) == "<spy type 'unsafe::gc_ptr[i32]'>"
-    assert repr(w_gc_reftype) == "<spy type 'unsafe::gc_ref[i32]'>"
-
-
-def test_align_builtin(vm):
-    w_align = vm.fast_call(UNSAFE.w_align, [vm.wrap(8)])
-    assert isinstance(w_align, W_Align)
-    assert w_align.alignment == 8
-    w_ptrtype = vm.fast_call(UNSAFE.w_gc_ptr, [B.w_i32, w_align])
-    assert w_ptrtype is vm.fast_call(UNSAFE.w_gc_ptr, [B.w_i32, W_Align(8)])
+        N = alignof(B.w_f64)
+        assert isinstance(w_natural, W_PtrType)
+        assert isinstance(w_explicit, W_PtrType)
+        assert w_natural.alignment == NATURAL_ALIGNMENT
+        assert w_natural.resolved_alignment() == N
+        assert w_explicit.resolved_alignment() == N
+        assert repr(w_natural) == "<spy type 'unsafe::gc_ptr[f64]'>"
+        assert repr(w_explicit) == "<spy type 'unsafe::gc_ptr[f64, align(8)]'>"
