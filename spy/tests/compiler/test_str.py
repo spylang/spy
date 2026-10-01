@@ -130,22 +130,26 @@ class TestStr(CompilerTest):
         assert mod.split_whitespace("\n\ta \t\r b \v ") == ["a", "b"]
 
     def test_join(self):
-        mod = self.compile("""
-            def join_words(sep: str) -> str:
-                return sep.join(["a", "b", "c"])
+        src = """
+        def join_words(sep: str) -> str:
+            return sep.join(["a", "b", "c"])
 
-            def join_single(sep: str) -> str:
-                return sep.join(["one"])
+        def join_single(sep: str) -> str:
+            return sep.join(["one"])
 
-            def join_empty(sep: str) -> str:
-                return sep.join([])
+        def join_empty(sep: str) -> str:
+            return sep.join([])
 
-            def join_empty_items(sep: str) -> str:
-                return sep.join(["", "a", "", "b", ""])
+        def join_empty_items(sep: str) -> str:
+            return sep.join(["", "a", "", "b", ""])
 
-            def split_then_join(s: str) -> str:
-                return " ".join(s.split())
-        """)
+        def split_then_join(s: str) -> str:
+            return " ".join(s.split())
+
+        def join_pair(sep: str, first: str, second: str) -> str:
+            return sep.join([first, second])
+        """
+        mod = self.compile(src)
 
         assert mod.join_words(" ") == "a b c"
         assert mod.join_words("") == "abc"
@@ -153,6 +157,9 @@ class TestStr(CompilerTest):
         assert mod.join_single("x") == "one"
         assert mod.join_empty("-") == ""
         assert mod.join_empty_items(",") == ",a,,b,"
+        assert mod.join_pair("🐍", "é", "界") == "é🐍界"
+        assert mod.join_pair("\x00", "a\x00", "b") == "a\x00\x00b"
+        assert mod.join_pair("", "", "") == ""
         assert mod.split_then_join("hello  world  from spy") == "hello world from spy"
 
     def test_find(self):
