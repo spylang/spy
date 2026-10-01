@@ -9,6 +9,7 @@ on:
       - 'docs/**'
     paths:
       - 'docs/**'
+      - 'examples/**'
       - 'spy/cli/**' # Rebuild cli docs when cli changes
   workflow_dispatch:  # Allows manual triggering
 

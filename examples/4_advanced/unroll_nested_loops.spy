@@ -1,12 +1,12 @@
 """
 Programmatically generate a nested loop of arbitrary depth.
 
-Given a SHAPE tuple of length N (known at compile time), we want to iterate
-over all the N-dimensional indices it describes, e.g. for SHAPE == (3, 2) the
-indices are (0,0), (0,1), (1,0), (1,1), (2,0), (2,1).
+Given a `SHAPE` tuple of length `N` (known at compile time), we want to iterate
+over all the N-dimensional indices it describes, e.g. for `SHAPE == (3, 2)` the
+indices are `(0,0), (0,1), (1,0), (1,1), (2,0), (2,1)`.
 
-The tricky part is that N is not fixed: we want to write the code once and let
-the compiler specialize it to a specific SHAPE. This example demonstrates how
+The tricky part is that `N` is not fixed: we want to write the code once and let
+the compiler specialize it to a specific `SHAPE`. This example demonstrates how
 to do that in SPy by combining two features:
 
   - `@blue.generic` for compile-time specialization on blue arguments;
@@ -20,7 +20,7 @@ return `inner`.
 Run `spy redshift examples/unroll_nested_loops.spy` to see the generated code.
 
 For SHAPE == (3, 2) is equivalent to:
-
+```python
     def ndindex() -> None:
         idx = []
         for i0 in range(3):
@@ -28,12 +28,13 @@ For SHAPE == (3, 2) is equivalent to:
             for i1 in range(2):
                 idx1 = idx0 + [i1]
                 print_idx(idx1)
-
+```
 The actual output is pretty ugly though. The following is a manually edited version to
 underline the important part, i.e. the two nested `while` loops:
 
 ❯ spy rs --linearize examples/unroll_nested_loops.spy
 
+```
 def ndindex() -> None:
     idx: ... = `_list::list[i32]::new`()
     [...]
@@ -44,6 +45,7 @@ def ndindex() -> None:
         while `_range::range_iterator::__continue_iteration__`(_$iter0$0$0):
             [...]
             `unroll_nested_loops::print_idx`(idx$0$0$0)
+```
 """
 
 from __spy__ import force_inline
