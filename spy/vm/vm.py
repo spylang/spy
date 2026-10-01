@@ -96,6 +96,7 @@ W_NoneType._w.define(W_NoneType)
 W_NotImplementedType._w.define(W_NotImplementedType)
 W_Str._w.define(W_Str)
 W_Bytes._w.define(W_Bytes)
+W_Loc._w.define(W_Loc)
 # note: W_Dynamic doesn't exist: the equivalent of W_Dynamic._w is
 # w_DynamicType. See "The <dynamic> type" comment in primitive.py
 w_DynamicType.define(W_Object)

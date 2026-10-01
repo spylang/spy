@@ -1,14 +1,6 @@
 import pytest
 
-from spy.errors import SPyError
-from spy.fqn import FQN
-from spy.tests.support import (
-    CompilerTest,
-    expect_errors,
-    no_C,
-    only_interp,
-    skip_backends,
-)
+from spy.tests.support import CompilerTest, expect_errors, no_C
 from spy.vm.b import B
 
 
@@ -153,3 +145,24 @@ class TestMetaFunc(CompilerTest):
         w_T = mod.foo(unwrap=False)
         assert w_T is B.w_i32
         assert mod.get_x() == 1
+
+    def test_loc_source(self):
+        src = """
+        from operator import OpSpec
+
+        @blue.metafunc
+        def meta(m_x):
+            filename = m_x.loc.filename
+            source = m_x.loc.get_src()
+            def impl(x: i32) -> tuple[str, str]:
+                return source, filename
+            return OpSpec(impl)
+
+        def foo() -> tuple[str, str]:
+            var x = 2
+            return meta(x + 2)
+        """
+        mod = self.compile(src)
+        result = mod.foo()
+        assert result[0] == "x + 2"
+        assert result[1].endswith("test.spy")
