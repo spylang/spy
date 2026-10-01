@@ -4,7 +4,7 @@ from textwrap import dedent
 import pytest
 
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest, only_interp, skip_backends
+from spy.tests.support import CompilerTest, expect_errors, only_interp, skip_backends
 
 
 class TestStr(CompilerTest):
@@ -827,3 +827,41 @@ class TestStr(CompilerTest):
         input = b"\xff"
         with pytest.raises(SPyError, match="invalid first utf-8 byte: 255"):
             mod.run_unicode_codepoints(input)
+
+    def test_fstring_simple(self):
+        src = """
+        def empty() -> str:
+            return f""
+
+        def foo(s: str, x: i32) -> str:
+            return f"The {s} is {x}"
+        """
+        mod = self.compile(src)
+        assert mod.empty() == ""
+        assert mod.foo("answer", 42) == "The answer is 42"
+
+    def test_fstring_conversion(self):
+        src = """
+        def foo(x: str) -> str:
+            return f"{x!r} -- {x!s}"
+        """
+        mod = self.compile(src)
+        assert mod.foo("hello") == "'hello' -- hello"
+
+    def test_fstring_format_spec_unsupported(self):
+        src = """
+        def foo(x: i32) -> str:
+            return f"{x:>5}"
+        """
+        mod = self.compile(src)
+        with pytest.raises(SPyError, match="WIP: format_spec not supported"):
+            mod.foo(42)
+
+    def test_fstring_nested_format_spec(self):
+        src = """
+        def foo(x: i32, width: i32) -> str:
+            return f"{x:{width}}"
+        """
+        mod = self.compile(src)
+        with pytest.raises(SPyError, match="WIP: format_spec not supported"):
+            mod.foo(42, 10)

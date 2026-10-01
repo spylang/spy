@@ -796,6 +796,10 @@ class ScopeAnalyzer:
         self.implicit_imports.add("_slice")
         self.collect_children(slc)
 
+    def collect_JoinedStr(self, fstring: ast.JoinedStr) -> None:
+        self.implicit_imports.add("_fstring")
+        self.collect_children(fstring)
+
     def collect_Assign(self, assign: ast.Assign) -> None:
         # FIRST collect the value, THEN (maybe) declare the target, like in VarDef.
         self.collect(assign.value)

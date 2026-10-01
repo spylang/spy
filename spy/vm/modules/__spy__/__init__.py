@@ -7,6 +7,7 @@ from spy.vm.registry import ModuleRegistry
 SPY = ModuleRegistry("__spy__")
 
 from . import (
+    fstring,  # noqa: F401 -- side effects
     interp_dict,  # noqa: F401 -- side effects
     interp_list,  # noqa: F401 -- side effects
     interp_tuple,  # noqa: F401 -- side effects
