@@ -44,6 +44,7 @@ def _ptrtype_like(
     w_ctor = w_raw_ptr if w_srcT.memkind == "raw" else w_gc_ptr
     w_dstT = vm.fast_call(w_ctor, [w_itemT, W_Align(alignment)])
     assert isinstance(w_dstT, W_PtrType)
+    vm.make_fqn_const(w_dstT)
     return w_dstT
 
 

@@ -108,13 +108,14 @@ class TestCastAlign(CompilerTest):
         src = f"""
         from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, cast, align
 
-        def foo() -> bool:
+        def foo() -> i32:
             p: k_ptr[i32, align(16)] = k_alloc[i32, align(16)](10)
-            q = cast[f32](p)
-            return type(q) is k_ptr[f32, align(16)]
+            # this would be a type error if `cast` lost the alignment
+            q: k_ptr[f32, align(16)] = cast[f32](p)
+            return q._debug_get_length()
         """
         mod = self.compile(src)
-        assert mod.foo()
+        assert mod.foo() == 10
 
     def test_cast_preserves_address(self, memkind):
         k = memkind
