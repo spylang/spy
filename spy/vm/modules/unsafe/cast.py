@@ -15,7 +15,7 @@ from spy.vm.primitive import W_I32, W_Dynamic
 from spy.vm.w import W_Type
 
 from . import UNSAFE
-from .misc import sizeof
+from .misc import W_Align, sizeof
 from .ptr import W_Ptr, W_PtrType, w_gc_ptr, w_raw_ptr
 
 if TYPE_CHECKING:
@@ -44,7 +44,7 @@ def _same_memkind_ptrtype(
     memkind of w_srcT.
     """
     w_ctor = w_raw_ptr if w_srcT.memkind == "raw" else w_gc_ptr
-    w_dstT = vm.fast_call(w_ctor, [w_itemT, vm.wrap(alignment)])
+    w_dstT = vm.fast_call(w_ctor, [w_itemT, W_Align(alignment)])
     assert isinstance(w_dstT, W_PtrType)
     return w_dstT
 
@@ -70,7 +70,9 @@ def w_cast(vm: "SPyVM", w_DstItemT: W_Type) -> W_Dynamic:
     @vm.register_builtin_func(ns, "impl", color="blue", kind="metafunc")
     def w_cast_dispatch(vm: "SPyVM", wam_ptr: W_MetaArg) -> W_OpSpec:
         w_srcT = _check_ptr_static(vm, wam_ptr, "cast")
-        w_dstT = _same_memkind_ptrtype(vm, w_srcT, w_DstItemT, w_srcT.alignment)
+        w_dstT = _same_memkind_ptrtype(
+            vm, w_srcT, w_DstItemT, w_srcT.resolved_alignment()
+        )
 
         src_size = sizeof(w_srcT.w_itemT)
         dst_size = sizeof(w_DstItemT)
@@ -114,7 +116,7 @@ def w_align_cast(vm: "SPyVM", w_N: W_I32) -> W_Dynamic:
     @vm.register_builtin_func(ns, "impl", color="blue", kind="metafunc")
     def w_align_cast_dispatch(vm: "SPyVM", wam_ptr: W_MetaArg) -> W_OpSpec:
         w_srcT = _check_ptr_static(vm, wam_ptr, "align_cast")
-        old_alignment = w_srcT.alignment
+        old_alignment = w_srcT.resolved_alignment()
         w_dstT = _same_memkind_ptrtype(vm, w_srcT, w_srcT.w_itemT, N)
 
         SRC = Annotated[W_Ptr, w_srcT]
