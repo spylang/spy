@@ -1,0 +1,15 @@
+@struct
+class i32_methods:
+    """
+    This is a special "fake" empty struct.
+
+    It is used solely as a container for str methods defined at applevel, which are
+    referenced by W_I32.lazy_attributes.
+
+    Because of that, the 'self' must be manually annotated with the `i32` type.
+    """
+
+    def __format__(self: i32, spec: str) -> str:
+        if spec == "" or spec == "d":
+            return str(self)
+        raise ValueError("unsupported format spec for i32")

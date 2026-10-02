@@ -77,3 +77,13 @@ class TestFormat(CompilerTest):
             ("this is red", 'as_red("x")'),
         )
         self.compile_raises(src, "foo", errors)
+
+    def test_i32(self):
+        mod = self.compile("""
+        def fmt(x: i32, spec: str) -> str:
+            return format(x, spec)
+
+        """)
+        assert mod.fmt(42, "d") == "42"
+        assert mod.fmt(-5, "d") == "-5"
+        assert mod.fmt(0, "") == "0"

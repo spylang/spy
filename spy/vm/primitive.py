@@ -63,6 +63,9 @@ B.add("None", W_NoneType.__new__(W_NoneType))
 @B.builtin_type("i32", lazy_definition=True)
 class W_I32(W_Object):
     __spy_storage_category__ = "value"
+    __spy_lazy_attributes__ = {
+        "__format__": FQN("_format::i32_methods::__format__"),
+    }
     value: fixedint.Int32
 
     def __init__(self, value: int | FixedInt) -> None:
