@@ -277,6 +277,34 @@ class W_Object:
 
         return W_OpSpec.NULL
 
+    @builtin_method("__format__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_FORMAT(
+        vm: "SPyVM", wam_self: "W_MetaArg", wam_spec: "W_MetaArg"
+    ) -> "W_OpSpec":
+        # default implementation: fallback to __str__, but ONLY if format_spec=="".
+        from spy.vm.irtag import IRTag
+        from spy.vm.opspec import W_OpSpec
+        from spy.vm.str import W_Str
+
+        w_T = wam_self.w_static_T
+        tname = w_T.fqn.human_name(vm)
+        T = Annotated[W_Object, w_T]
+        irtag = IRTag("object.format_fallback", w_T=w_T)
+
+        @vm.register_builtin_func(w_T.fqn, "format_fallback", irtag=irtag)
+        def w_format_fallback(vm: "SPyVM", w_obj: T, w_spec: W_Str) -> W_Str:
+            if vm.unwrap_str(w_spec) != "":
+                raise SPyError(
+                    "W_TypeError",
+                    f"unsupported format string passed to `{tname}`.__format__",
+                )
+            w_res = vm.str_w(w_obj)
+            assert isinstance(w_res, W_Str)
+            return w_res
+
+        return W_OpSpec(w_format_fallback, [wam_self, wam_spec])
+
     # ==== OPERATOR SUPPORT ====
     #
     # Operators are the central concept which drives the semantic of SPy
