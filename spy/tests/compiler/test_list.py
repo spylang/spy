@@ -1,5 +1,11 @@
 from spy.fqn import FQN
-from spy.tests.support import CompilerTest, expect_errors, no_C, only_interp
+from spy.tests.support import (
+    CompilerTest,
+    expect_errors,
+    no_C,
+    only_doppler,
+    only_interp,
+)
 from spy.vm.b import B
 from spy.vm.object import W_Type
 
@@ -210,3 +216,61 @@ class TestList(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == 2
+
+    @only_interp
+    def test_splat_red_value_interp(self):
+        src = """
+        def bar(xs: list[i32]) -> list[i32]:
+            return [*xs]
+
+        def foo() -> list[i32]:
+            return bar([1, 2, 3])
+        """
+        mod = self.compile(src)
+        assert mod.foo() == [1, 2, 3]
+
+    @only_doppler
+    def test_splat_red_value_doppler(self):
+        # here `bar` gets redshifted, so `xs`'s value is not known
+        src = """
+        def bar(xs: list[i32]) -> list[i32]:
+            return [*xs]
+
+        def foo() -> list[i32]:
+            return bar([1, 2, 3])
+        """
+        errors = expect_errors(
+            "cannot splat an expression without known value",
+            ("this is not supported", "xs"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    @only_interp
+    def test_splat_no_fastiter(self):
+        src = """
+        def foo() -> None:
+            x = [*42]
+        """
+        errors = expect_errors(
+            "cannot unpack `i32`: it does not support iteration, so it "
+            "cannot be splatted with `*`",
+            ("this is not supported", "*42"),
+        )
+        self.compile_raises(src, "foo", errors)
+
+    @only_interp
+    def test_splat_in_call_args(self):
+        src = """
+        def bar(x: i32) -> i32:
+            return x
+
+        def foo() -> i32:
+            args = (1,)
+            return bar(*args)
+        """
+        errors = expect_errors(
+            "cannot unpack `tuple[i32]`: it does not support iteration, "
+            "so it cannot be splatted with `*`",
+            ("this is not supported", "*args"),
+        )
+        self.compile_raises(src, "foo", errors)

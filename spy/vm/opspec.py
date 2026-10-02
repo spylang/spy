@@ -213,6 +213,12 @@ class W_MetaArg(W_Object):
     def is_blue(self) -> bool:
         return self.color == "blue"
 
+    def has_value(self) -> bool:
+        """
+        True if this MetaArg carries a concrete value right now.
+        """
+        return self._w_val is not None
+
     def as_red(self, vm: "SPyVM") -> "W_MetaArg":
         if self.color == "red":
             return self

@@ -919,6 +919,93 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
+    def test_Starred_in_List(self):
+        src = """
+        def foo() -> None:
+            return [*args_m]
+        """
+        mod = self.parse(src)
+        stmt = mod.get_funcdef("foo").body.body[0]
+        expected = """
+        Return(
+            value=List(
+                items=[
+                    Starred(
+                        value=Name(id='args_m'),
+                    ),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    def test_Starred_in_Tuple(self):
+        src = """
+        def foo() -> None:
+            return (*args_m,)
+        """
+        mod = self.parse(src)
+        stmt = mod.get_funcdef("foo").body.body[0]
+        expected = """
+        Return(
+            value=Tuple(
+                items=[
+                    Starred(
+                        value=Name(id='args_m'),
+                    ),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    def test_Starred_multiple_in_List(self):
+        src = """
+        def foo() -> None:
+            return [a, b, *c, *d, e]
+        """
+        mod = self.parse(src)
+        stmt = mod.get_funcdef("foo").body.body[0]
+        expected = """
+        Return(
+            value=List(
+                items=[
+                    Name(id='a'),
+                    Name(id='b'),
+                    Starred(
+                        value=Name(id='c'),
+                    ),
+                    Starred(
+                        value=Name(id='d'),
+                    ),
+                    Name(id='e'),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    def test_Starred_in_Call_args(self):
+        src = """
+        def foo() -> None:
+            bar(*args)
+        """
+        mod = self.parse(src)
+        stmt = mod.get_funcdef("foo").body.body[0]
+        expected = """
+        StmtExpr(
+            value=Call(
+                func=Name(id='bar'),
+                args=[
+                    Starred(
+                        value=Name(id='args'),
+                    ),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
     def test_Dict(self):
         mod = self.parse(
             """
