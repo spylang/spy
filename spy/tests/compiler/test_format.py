@@ -31,17 +31,22 @@ class TestFormat(CompilerTest):
             def w_format(vm: "SPyVM", w_self: "W_MyClass", w_spec: W_Str) -> W_Str:
                 prefix = vm.unwrap_str(w_self.w_prefix)
                 spec = vm.unwrap_str(w_spec)
-                return vm.wrap(prefix + spec)
+                return vm.wrap(prefix + "<" + spec + ">")
 
         # ========== /EXT module for this test =========
         self.vm.make_module(EXT)
         mod = self.compile("""
         from ext import MyClass
 
-        def foo(prefix: str, spec: str) -> str:
+        def with_spec(prefix: str, spec: str) -> str:
             obj = MyClass(prefix)
             return format(obj, spec)
+
+        def default_spec(prefix: str) -> str:
+            obj = MyClass(prefix)
+            return format(obj)
         """)
-        assert mod.foo("x", "") == "x"
-        assert mod.foo("x", "d") == "xd"
-        assert mod.foo("hello", "!") == "hello!"
+        assert mod.with_spec("x", "") == "x<>"
+        assert mod.with_spec("x", "d") == "x<d>"
+        assert mod.with_spec("hello", "!") == "hello<!>"
+        assert mod.default_spec("hello") == "hello<>"
