@@ -7,37 +7,17 @@ from spy.vm.vm import SPyVM
 from spy.vm.w import W_Object
 
 
-@no_C
 class TestFormat(CompilerTest):
     SKIP_SPY_BACKEND_SANITY_CHECK = True
 
     def test_simple(self):
-        # ========== EXT module for this test ==========
-        EXT = ModuleRegistry("ext")
-
-        @EXT.builtin_type("MyClass")
-        class W_MyClass(W_Object):
-            """A custom class which implements __format__ as func"""
-
-            def __init__(self, w_prefix: W_Str) -> None:
-                self.w_prefix = w_prefix
-
-            @builtin_method("__new__")
-            @staticmethod
-            def w_new(vm: "SPyVM", w_prefix: W_Str) -> "W_MyClass":
-                return W_MyClass(w_prefix)
-
-            @builtin_method("__format__")
-            @staticmethod
-            def w_format(vm: "SPyVM", w_self: "W_MyClass", w_spec: W_Str) -> W_Str:
-                prefix = vm.unwrap_str(w_self.w_prefix)
-                spec = vm.unwrap_str(w_spec)
-                return vm.wrap(f"{prefix}<{spec}>")
-
-        # ========== /EXT module for this test =========
-        self.vm.make_module(EXT)
         mod = self.compile("""
-        from ext import MyClass
+        @struct
+        class MyClass:
+            prefix: str
+
+            def __format__(self, spec: str) -> str:
+                return f"{self.prefix}<{spec}>"
 
         def with_spec(prefix: str, spec: str) -> str:
             obj = MyClass(prefix)
@@ -52,30 +32,15 @@ class TestFormat(CompilerTest):
         assert mod.with_spec("hello", "!") == "hello<!>"
         assert mod.default_spec("hello") == "hello<>"
 
+    @no_C
     def test_fallback_to_str(self):
-        # ========== EXT module for this test ==========
-        EXT = ModuleRegistry("ext")
-
-        @EXT.builtin_type("MyClass")
-        class W_MyClass(W_Object):
-            def __init__(self, w_s: W_Str) -> None:
-                self.w_s = w_s
-
-            @builtin_method("__new__")
-            @staticmethod
-            def w_new(vm: "SPyVM", w_s: W_Str) -> "W_MyClass":
-                return W_MyClass(w_s)
-
-            @builtin_method("__str__")
-            @staticmethod
-            def w_str(vm: "SPyVM", w_self: "W_MyClass") -> W_Str:
-                s = vm.unwrap_str(w_self.w_s)
-                return vm.wrap(f"<str>{s}")
-
-        # ========== /EXT module for this test =========
-        self.vm.make_module(EXT)
         mod = self.compile("""
-        from ext import MyClass
+        @struct
+        class MyClass:
+            s: str
+
+            def __str__(self) -> str:
+                return f"<str>{self.s}"
 
         def foo(s: str) -> str:
             obj = MyClass(s)
@@ -88,6 +53,6 @@ class TestFormat(CompilerTest):
         assert mod.foo("hello") == "<str>hello"
         with SPyError.raises(
             "W_TypeError",
-            match="unsupported format string passed to `ext::MyClass`.__format__",
+            match="unsupported format string passed to `test::MyClass`.__format__",
         ):
             mod.bar("hello")
