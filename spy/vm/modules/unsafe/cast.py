@@ -24,8 +24,7 @@ if TYPE_CHECKING:
 
 def _check_ptr_static(vm: "SPyVM", wam_ptr: W_MetaArg, opname: str) -> W_PtrType:
     """
-    Validate that wam_ptr is statically typed as ptr[T] (any memkind, any T).
-    Mirrors unsafe/mem.py::_check_ptr.
+    Validate that wam_ptr is statically typed as ptr[T].
     """
     w_T = wam_ptr.w_static_T
     if isinstance(w_T, W_PtrType):
@@ -36,12 +35,11 @@ def _check_ptr_static(vm: "SPyVM", wam_ptr: W_MetaArg, opname: str) -> W_PtrType
     raise err
 
 
-def _same_memkind_ptrtype(
+def _ptrtype_like(
     vm: "SPyVM", w_srcT: W_PtrType, w_itemT: W_Type, alignment: int
 ) -> W_PtrType:
     """
-    raw_ptr[w_itemT, alignment] or gc_ptr[w_itemT, alignment], matching the
-    memkind of w_srcT.
+    Return a ptr type like `w_srcT`, but with another item type and alignment.
     """
     w_ctor = w_raw_ptr if w_srcT.memkind == "raw" else w_gc_ptr
     w_dstT = vm.fast_call(w_ctor, [w_itemT, W_Align(alignment)])
@@ -49,18 +47,13 @@ def _same_memkind_ptrtype(
     return w_dstT
 
 
-# =============================================================================
-# cast[DstItemT](ptr)
-# =============================================================================
-
-
 @UNSAFE.builtin_func(color="blue", kind="generic")
 def w_cast(vm: "SPyVM", w_DstItemT: W_Type) -> W_Dynamic:
     """
-    cast[DstItemT] -> a metafunc, blue-cached per DstItemT.
+    cast[DstItemT](ptr)
 
-    Calling the metafunc with a ptr produces:
-        raw_ptr[DstItemT, N] or gc_ptr[DstItemT, N]
+    It produces:
+        raw_ptr[DstItemT, align(N)] or gc_ptr[DstItemT, align(N)]
     where N is the SOURCE ptr's alignment (preserved) and the memkind also
     matches the source. The length is recomputed from the byte size, with
     truncation. This operation is always safe and has zero runtime overhead.
@@ -70,9 +63,7 @@ def w_cast(vm: "SPyVM", w_DstItemT: W_Type) -> W_Dynamic:
     @vm.register_builtin_func(ns, "impl", color="blue", kind="metafunc")
     def w_cast_dispatch(vm: "SPyVM", wam_ptr: W_MetaArg) -> W_OpSpec:
         w_srcT = _check_ptr_static(vm, wam_ptr, "cast")
-        w_dstT = _same_memkind_ptrtype(
-            vm, w_srcT, w_DstItemT, w_srcT.resolved_alignment()
-        )
+        w_dstT = _ptrtype_like(vm, w_srcT, w_DstItemT, w_srcT.resolved_alignment())
 
         src_size = sizeof(w_srcT.w_itemT)
         dst_size = sizeof(w_DstItemT)
@@ -91,24 +82,18 @@ def w_cast(vm: "SPyVM", w_DstItemT: W_Type) -> W_Dynamic:
     return w_cast_dispatch
 
 
-# =============================================================================
-# align_cast[N](ptr)
-# =============================================================================
-
-
 @UNSAFE.builtin_func(color="blue", kind="generic")
 def w_align_cast(vm: "SPyVM", w_N: W_I32) -> W_Dynamic:
     """
-    align_cast[N] -> a metafunc, blue-cached per N.
+    align_cast[N](ptr)
 
-    Calling the metafunc with a ptr produces raw_ptr[T, N]/gc_ptr[T, N]
+    It produces raw_ptr[T, align(N)]/gc_ptr[T, align(N)]
     (same memkind and item type as the source, new alignment N):
 
     - Weakening (N <= old_alignment): free conversion, always safe. Note
       this is also handled implicitly by W_CONVERT_TO for plain assignment;
     - Strengthening (N > old_alignment): asserts addr % N == 0 in DEBUG
-      mode (both interp and C); trusts the claim in RELEASE mode (C only;
-      the interpreter always checks).
+      mode; trusts the claim in RELEASE mode.
     """
     N = vm.unwrap_i32(w_N)
     ns = UNSAFE.w_align_cast.fqn.with_qualifiers([str(N)])
@@ -117,7 +102,7 @@ def w_align_cast(vm: "SPyVM", w_N: W_I32) -> W_Dynamic:
     def w_align_cast_dispatch(vm: "SPyVM", wam_ptr: W_MetaArg) -> W_OpSpec:
         w_srcT = _check_ptr_static(vm, wam_ptr, "align_cast")
         old_alignment = w_srcT.resolved_alignment()
-        w_dstT = _same_memkind_ptrtype(vm, w_srcT, w_srcT.w_itemT, N)
+        w_dstT = _ptrtype_like(vm, w_srcT, w_srcT.w_itemT, N)
 
         SRC = Annotated[W_Ptr, w_srcT]
         DST = Annotated[W_Ptr, w_dstT]
