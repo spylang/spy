@@ -283,27 +283,20 @@ class W_Object:
         vm: "SPyVM", wam_self: "W_MetaArg", wam_spec: "W_MetaArg"
     ) -> "W_OpSpec":
         # default implementation: fallback to __str__, but ONLY if format_spec=="".
-        from spy.vm.irtag import IRTag
-        from spy.vm.opspec import W_OpSpec
-        from spy.vm.str import W_Str
-
+        spec = wam_spec.blue_unwrap_str(vm)
         w_T = wam_self.w_static_T
-        tname = w_T.fqn.human_name(vm)
-        T = Annotated[W_Object, w_T]
-        irtag = IRTag("object.format_fallback", w_T=w_T)
+        if spec != "":
+            tname = w_T.fqn.human_name(vm)
+            raise SPyError.simple(
+                "W_TypeError",
+                f"unsupported format string passed to `{tname}`.__format__",
+                "this is the format spec",
+                wam_spec.loc,
+            )
 
-        @vm.register_builtin_func(w_T.fqn, "format_fallback", irtag=irtag)
-        def w_format_fallback(vm: "SPyVM", w_obj: T, w_spec: W_Str) -> W_Str:
-            if vm.unwrap_str(w_spec) != "":
-                raise SPyError(
-                    "W_TypeError",
-                    f"unsupported format string passed to `{tname}`.__format__",
-                )
-            w_res = vm.str_w(w_obj)
-            assert isinstance(w_res, W_Str)
-            return w_res
-
-        return W_OpSpec(w_format_fallback, [wam_self, wam_spec])
+        w_str = w_T.lookup_func(vm, "__str__")
+        assert w_str is not None, "W_Object defines __str__"
+        return vm.fast_metacall(w_str, [wam_self])
 
     # ==== OPERATOR SUPPORT ====
     #

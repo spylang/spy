@@ -1,10 +1,4 @@
-from spy.errors import SPyError
-from spy.tests.support import CompilerTest, no_C
-from spy.vm.builtin import builtin_method
-from spy.vm.registry import ModuleRegistry
-from spy.vm.str import W_Str
-from spy.vm.vm import SPyVM
-from spy.vm.w import W_Object
+from spy.tests.support import CompilerTest, expect_errors
 
 
 class TestFormat(CompilerTest):
@@ -32,7 +26,6 @@ class TestFormat(CompilerTest):
         assert mod.with_spec("hello", "!") == "hello<!>"
         assert mod.default_spec("hello") == "hello<>"
 
-    @no_C
     def test_fallback_to_str(self):
         mod = self.compile("""
         @struct
@@ -45,14 +38,42 @@ class TestFormat(CompilerTest):
         def foo(s: str) -> str:
             obj = MyClass(s)
             return format(obj)
-
-        def bar(s: str) -> str:
-            obj = MyClass(s)
-            return format(obj, "x")
         """)
         assert mod.foo("hello") == "<str>hello"
-        with SPyError.raises(
-            "W_TypeError",
-            match="unsupported format string passed to `test::MyClass`.__format__",
-        ):
-            mod.bar("hello")
+
+    def test_fallback_non_empty_spec(self):
+        src = """
+        @struct
+        class MyClass:
+            s: str
+
+            def __str__(self) -> str:
+                return f"<str>{self.s}"
+
+        def bar() -> str:
+            obj = MyClass("hello")
+            return format(obj, "x")
+        """
+        errors = expect_errors(
+            "unsupported format string passed to `test::MyClass`.__format__",
+            ("this is the format spec", '"x"'),
+        )
+        self.compile_raises(src, "bar", errors)
+
+    def test_fallback_red_spec(self):
+        src = """
+        from __spy__ import as_red
+
+        @struct
+        class MyClass:
+            s: str
+
+        def foo() -> str:
+            obj = MyClass("hello")
+            return format(obj, as_red("x"))
+        """
+        errors = expect_errors(
+            "expected blue argument",
+            ("this is red", 'as_red("x")'),
+        )
+        self.compile_raises(src, "foo", errors)
