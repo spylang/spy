@@ -136,26 +136,23 @@ def str_format(self: str, spec: str) -> str:
     if align == "":
         align = "<"
 
-    body = self
-    # TODO: once StrBuilder has append_slice(), don't truncate here: keep
-    # `self` and append only self[0:precision], which avoids the
-    # intermediate string (and the second copy done by append()).
-    # Also, precision counts bytes, not code points: this is correct only
+    # NOTE: precision counts bytes, not code points: this is correct only
     # for ASCII.
-    if fs.precision != -1 and fs.precision < len(body):
-        body = body[0 : fs.precision]
+    body_len = len(self)
+    if fs.precision != -1 and fs.precision < body_len:
+        body_len = fs.precision
 
-    padding = _calc_padding(len(body), fs.width, align)
+    padding = _calc_padding(body_len, fs.width, align)
 
     # TODO: once StrBuilder has a growable mode (or a way to build() a partially
     # filled buffer), the capacity does not need to be exact.
-    sb = StrBuilder((padding.left + padding.right) * len(fill) + len(body))
+    sb = StrBuilder((padding.left + padding.right) * len(fill) + body_len)
     # TODO: use sb.append_repeat(fill, left) / sb.append_repeat(fill, right) once
     # it exists, instead of one append() per fill char (each one goes through
     # StrObject.from_str).
     for _ in range(padding.left):
         sb.append(fill)
-    sb.append(body)
+    sb.append_slice(self, 0, body_len)
     for _ in range(padding.right):
         sb.append(fill)
     return sb.build()
