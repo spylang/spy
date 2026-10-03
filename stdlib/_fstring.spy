@@ -1,5 +1,6 @@
 from operator import OpSpec
 from __spy__ import force_inline
+from _identity import identity
 
 # this module contains the app-level helpers used by `__spy__::fstring`, which
 # implements f-string formatting.  The end goal is to write the full fstring() in SPy,
@@ -82,8 +83,7 @@ def fmt(m_x):
     FMT = m_x.static_type
 
     if FMT.conv == "":
-        # XXX: call `format` when we have it
-        conv_fn = str
+        conv_fn = identity[FMT._T]
     elif FMT.conv == "s":
         conv_fn = str
     elif FMT.conv == "r":
@@ -98,8 +98,7 @@ def fmt(m_x):
     # just call str()
     @force_inline
     def impl(x: FMT) -> str:
-        if len(x.format_spec) != 0:
-            raise ValueError("WIP: format_spec not supported")
-        return conv_fn(x.val)
+        newval = conv_fn(x.val)
+        return format(newval, x.format_spec)
 
     return OpSpec(impl)

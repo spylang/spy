@@ -850,17 +850,15 @@ class TestStr(CompilerTest):
             return f"{x!r} -- {x!s}"
 
         def with_formath_spec(x: str) -> str:
-            return f"{x:>10}"
+            return f"{x:>8}"
 
         def nested_format_spec(x: str, width: i32) -> str:
-            return f"{x:{width}}"
+            return f"{x:<{width}}"
         """
         mod = self.compile(src)
         assert mod.empty() == ""
         assert mod.simple("answer", 42) == "The answer is 42"
         assert mod.blue_val() == "int is <spy type 'i32'>"
         assert mod.conv_r("hello") == "'hello' -- hello"
-        with pytest.raises(SPyError, match="WIP: format_spec not supported"):
-            mod.with_formath_spec("hello")
-        with pytest.raises(SPyError, match="WIP: format_spec not supported"):
-            mod.nested_format_spec("hello", 10)
+        assert mod.with_formath_spec("hello") == "   hello"
+        assert mod.nested_format_spec("hello", 10) == "hello     "
