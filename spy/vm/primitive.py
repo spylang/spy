@@ -352,6 +352,9 @@ class W_U8(W_Object):
 @B.builtin_type("f64", lazy_definition=True)
 class W_F64(W_Object):
     __spy_storage_category__ = "value"
+    __spy_lazy_attributes__ = {
+        "__format__": FQN("_format::f64_format"),
+    }
     value: float
 
     def __init__(self, value: float) -> None:
@@ -405,6 +408,9 @@ class W_F64(W_Object):
 @B.builtin_type("f32", lazy_definition=True)
 class W_F32(W_Object):
     __spy_storage_category__ = "value"
+    __spy_lazy_attributes__ = {
+        "__format__": FQN("_format::f32_format"),
+    }
     value: float32
 
     def __init__(self, value: float | float32) -> None:

@@ -13,6 +13,24 @@ def i32_format(self: i32, spec: str) -> str:
     raise ValueError("unsupported format spec for i32")
 
 
+def f64_format(self: f64, spec: str) -> str:
+    """
+    f64.__format__
+    """
+    if spec == "":
+        return str(self)
+    raise WIP("f64.__format__: format spec not supported")
+
+
+def f32_format(self: f32, spec: str) -> str:
+    """
+    f32.__format__
+    """
+    if spec == "":
+        return str(self)
+    raise WIP("f32.__format__: format spec not supported")
+
+
 def _is_align(c: str) -> bool:
     return c == "<" or c == ">" or c == "^"
 

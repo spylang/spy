@@ -132,6 +132,25 @@ class TestFormat(CompilerTest):
         assert mod.fmt(-5, "d") == "-5"
         assert mod.fmt(0, "") == "0"
 
+    def test_float(self):
+        mod = self.compile("""
+        def fmt_f64(x: f64, spec: str) -> str:
+            return format(x, spec)
+
+        def fmt_f32(x: f32, spec: str) -> str:
+            return format(x, spec)
+        """)
+        assert mod.fmt_f64(12.3, "") == "12.3"
+        assert mod.fmt_f32(12.3, "") == "12.3"
+        with SPyError.raises(
+            "W_WIP", match="f64.__format__: format spec not supported"
+        ):
+            mod.fmt_f64(12.3, ".2f")
+        with SPyError.raises(
+            "W_WIP", match="f32.__format__: format spec not supported"
+        ):
+            mod.fmt_f32(12.3, ".2f")
+
     def test_str(self):
         mod = self.compile("""
         def fmt(s: str, spec: str) -> str:
