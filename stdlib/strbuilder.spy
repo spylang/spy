@@ -41,8 +41,12 @@ class StrBuilder:
             raise ValueError("StrBuilder capacity exceeded")
         if length > 0:
             ptr_copy_slice(
-                state.buffer.utf8, state.position, state.position + length,
-                source.utf8, 0, length,
+                state.buffer.utf8,
+                state.position,
+                state.position + length,
+                source.utf8,
+                0,
+                length,
             )
             state.position = state.position + length
 
@@ -59,7 +63,8 @@ class StrBuilder:
             # single-byte chunk (e.g. a fill char): use memset instead of n copies
             ptr_setbytes_slice(
                 state.buffer.utf8,
-                state.position, state.position + n,
+                state.position,
+                state.position + n,
                 source.utf8[0],
             )
         else:
@@ -68,7 +73,9 @@ class StrBuilder:
                     state.buffer.utf8,
                     state.position + i * l,
                     state.position + (i + 1) * l,
-                    source.utf8, 0, l,
+                    source.utf8,
+                    0,
+                    l,
                 )
         state.position = state.position + total
 
@@ -82,8 +89,12 @@ class StrBuilder:
             raise ValueError("StrBuilder capacity exceeded")
         if length > 0:
             ptr_copy_slice(
-                state.buffer.utf8, state.position, state.position + length,
-                source.utf8, start, end,
+                state.buffer.utf8,
+                state.position,
+                state.position + length,
+                source.utf8,
+                start,
+                end,
             )
             state.position = state.position + length
 
