@@ -842,10 +842,14 @@ class TestStr(CompilerTest):
 
         def foo(s: str, x: i32) -> str:
             return f"The {s} is {x}"
+
+        def blue_val() -> str:
+            return f"int is {int}"
         """
         mod = self.compile(src)
         assert mod.empty() == ""
         assert mod.foo("answer", 42) == "The answer is 42"
+        assert mod.blue_val() == "int is <spy type 'i32'>"
 
     def test_fstring_conversion(self):
         src = """

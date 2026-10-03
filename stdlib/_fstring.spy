@@ -57,16 +57,15 @@ def f(m_val, m_conv, m_format_spec):
     conv = m_conv.blueval
 
     if m_val.color == "blue":
-        assert False, "FIXME"
-        ## # like print(), eagerly str() blue values: this is needed to format e.g. types
-        ## s = str(m_val.blueval)
-        ## BLUE_FMT = FormattedVal[str, conv]
+        # like print(), eagerly str() blue values: this is needed to format e.g. types
+        s = str(m_val.blueval)
+        BLUE_FMT = FormattedVal[str, conv]
 
-        ## @force_inline
-        ## def blue_impl(format_spec: str) -> BLUE_FMT:
-        ##     return BLUE_FMT(s, format_spec)
+        @force_inline
+        def blue_impl(format_spec: str) -> BLUE_FMT:
+            return BLUE_FMT(s, format_spec)
 
-        ## return OpSpec(blue_impl, [m_format_spec])
+        return OpSpec(blue_impl, [m_format_spec])
 
     T = m_val.static_type
     FMT = FormattedVal[T, conv]
