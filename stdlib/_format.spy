@@ -82,3 +82,80 @@ class FormatSpec:
         if i != end:
             raise ValueError("invalid format spec")
         return FormatSpec(fill, align, width, precision, type)
+
+
+@struct
+class Padding:
+    left: i32
+    right: i32
+    total_width: i32
+
+
+def _calc_padding(nchars: i32, width: i32, align: str) -> Padding:
+    """
+    Compute the padding needed to render nchars characters in a field of the given
+    width. Same logic as CPython's calc_padding() (Objects/unicode_formatter.c).
+
+    `total_width` is the total length of the field, padding included. It is useful
+    to preallocate a buffer of the exact size.
+    """
+    if width == -1 or nchars > width:
+        total_width = nchars
+    else:
+        total_width = width
+
+    left = 0
+    if align == ">":
+        left = total_width - nchars
+    elif align == "^":
+        left = (total_width - nchars) // 2
+    # '<' and '=': no left padding
+
+    right = total_width - nchars - left
+    return Padding(left, right, total_width)
+
+
+def str_format(self: str, spec: str) -> str:
+    """
+    str.__format__
+    """
+    fs = FormatSpec.parse(spec)
+    if fs.type != "" and fs.type != "s":
+        raise ValueError("invalid format spec for str")
+
+    # fast path: no padding and no truncation needed
+    if (fs.width == -1 or fs.width <= len(self)) and (
+        fs.precision == -1 or fs.precision >= len(self)
+    ):
+        return self
+
+    fill = fs.fill
+    if fill == "":
+        fill = " "
+    align = fs.align
+    if align == "":
+        align = "<"
+
+    body = self
+    # TODO: once StrBuilder has append_slice(), don't truncate here: keep
+    # `self` and append only self[0:precision], which avoids the
+    # intermediate string (and the second copy done by append()).
+    # Also, precision counts bytes, not code points: this is correct only
+    # for ASCII.
+    if fs.precision != -1 and fs.precision < len(body):
+        body = body[0 : fs.precision]
+
+    padding = _calc_padding(len(body), fs.width, align)
+
+    # TODO: once StrBuilder has a growable mode (or a way to build() a partially
+    # filled buffer), the capacity does not need to be exact.
+    sb = StrBuilder((padding.left + padding.right) * len(fill) + len(body))
+    # TODO: use sb.append_repeat(fill, left) / sb.append_repeat(fill, right) once
+    # it exists, instead of one append() per fill char (each one goes through
+    # StrObject.from_str).
+    for _ in range(padding.left):
+        sb.append(fill)
+    sb.append(body)
+    for _ in range(padding.right):
+        sb.append(fill)
+    return sb.build()

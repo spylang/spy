@@ -131,3 +131,49 @@ class TestFormat(CompilerTest):
         assert mod.fmt(42, "d") == "42"
         assert mod.fmt(-5, "d") == "-5"
         assert mod.fmt(0, "") == "0"
+
+    def test_str(self):
+        mod = self.compile("""
+        def fmt(s: str, spec: str) -> str:
+            return format(s, spec)
+        """)
+        # no formatting
+        assert mod.fmt("hi", "") == "hi"
+        assert mod.fmt("hi", "s") == "hi"
+
+        # width only: default align is '<'
+        assert mod.fmt("hi", "5") == "hi   "
+        assert mod.fmt("", "3") == "   "
+        # width smaller than the string: no padding, no truncation
+        assert mod.fmt("hello", "1") == "hello"
+
+        # explicit align, default fill
+        assert mod.fmt("hi", "<5") == "hi   "
+        assert mod.fmt("hi", ">5") == "   hi"
+        # '^' with an even and an odd amount of padding (extra char goes right)
+        assert mod.fmt("hi", "^6") == "  hi  "
+        assert mod.fmt("hi", "^7") == "  hi   "
+
+        # explicit fill
+        assert mod.fmt("hi", "x<4") == "hixx"
+        assert mod.fmt("hi", "->6") == "----hi"
+        assert mod.fmt("hi", "*^7") == "**hi***"
+
+        # the '0' flag sets the fill, with and without an explicit align
+        assert mod.fmt("hi", "05") == "hi000"
+        assert mod.fmt("hi", "<05") == "hi000"
+        # ... but an explicit fill wins
+        assert mod.fmt("hi", "x>05") == "xxxhi"
+
+        # precision truncates; it is a no-op if the string is shorter
+        assert mod.fmt("world", ".3") == "wor"
+        assert mod.fmt("hi", ".3") == "hi"
+        assert mod.fmt("world", ".0") == ""
+
+        # precision and width together: truncate first, then pad
+        assert mod.fmt("world", "8.3") == "wor     "
+        assert mod.fmt("world", ">8.3") == "     wor"
+        assert mod.fmt("world", "^9.2") == "   wo    "
+
+        with SPyError.raises("W_ValueError", match="invalid format spec for str"):
+            mod.fmt("hi", "d")

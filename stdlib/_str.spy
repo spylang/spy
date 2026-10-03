@@ -78,6 +78,10 @@ class methods:
     # each method defined here should also have a corresponding entry in
     # W_Str.__spy_lazy_attributes__.
 
+    # NOTE: this lives in _format::str_format
+    ## def __format__(self: str) -> i32:
+    ##     ...
+
     def __len__(self: str) -> i32:
         ll = StrObject.from_str(self)
         return ll.length
