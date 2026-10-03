@@ -1,21 +1,18 @@
 from strbuilder import StrBuilder
 
+# each of the T_format funcs is a __format__ method attached to a W_* class. See
+# e.g. W_I32.lazy_attributes, W_Str.lazy_attributes, etc.
 
-@struct
-class i32_methods:
+
+def i32_format(self: i32, spec: str) -> str:
     """
-    This is a special "fake" empty struct.
-
-    It is used solely as a container for str methods defined at applevel, which are
-    referenced by W_I32.lazy_attributes.
-
-    Because of that, the 'self' must be manually annotated with the `i32` type.
+    i32.__format__
     """
+    if spec == "" or spec == "d":
+        return str(self)
+    raise ValueError("unsupported format spec for i32")
 
-    def __format__(self: i32, spec: str) -> str:
-        if spec == "" or spec == "d":
-            return str(self)
-        raise ValueError("unsupported format spec for i32")
+
 def _is_align(c: str) -> bool:
     return c == "<" or c == ">" or c == "^"
 
