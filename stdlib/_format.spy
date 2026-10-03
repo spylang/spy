@@ -1,3 +1,6 @@
+from strbuilder import StrBuilder
+
+
 @struct
 class i32_methods:
     """
@@ -13,3 +16,72 @@ class i32_methods:
         if spec == "" or spec == "d":
             return str(self)
         raise ValueError("unsupported format spec for i32")
+def _is_align(c: str) -> bool:
+    return c == "<" or c == ">" or c == "^"
+
+
+def _is_digit(c: str) -> bool:
+    return ord(c) >= ord("0") and ord(c) <= ord("9")
+
+
+@struct
+class FormatSpec:
+    """
+    A parsed format spec: [[fill]align][0][width][.precision][type]
+
+    Absent fields are "" (fill, align, type) or -1 (width, precision), except that
+    fill and align get their generic default (" " and "") only in the consumer, since
+    the default align depends on the type being formatted.
+
+    TODO: add sign, alternate form ('#') and grouping, once int uses this parser.
+    """
+
+    fill: str
+    align: str
+    width: i32
+    precision: i32
+    type: str
+
+    @staticmethod
+    def parse(spec: str) -> FormatSpec:
+        end = len(spec)
+        i = 0
+        fill = ""
+        align = ""
+        if end >= 2 and _is_align(spec[1]):
+            fill = spec[0]
+            align = spec[1]
+            i = 2
+        elif end >= 1 and _is_align(spec[0]):
+            align = spec[0]
+            i = 1
+
+        # like CPython, the '0' flag sets the fill unless one was given explicitly
+        if i < end and spec[i] == "0" and fill == "":
+            fill = "0"
+
+        width = -1
+        while i < end and _is_digit(spec[i]):
+            if width == -1:
+                width = 0
+            width = width * 10 + ord(spec[i]) - ord("0")
+            i = i + 1
+
+        precision = -1
+        if i < end and spec[i] == ".":
+            i = i + 1
+            if i == end or not _is_digit(spec[i]):
+                raise ValueError("format specifier missing precision")
+            precision = 0
+            while i < end and _is_digit(spec[i]):
+                precision = precision * 10 + ord(spec[i]) - ord("0")
+                i = i + 1
+
+        type = ""
+        if i < end:
+            type = spec[i]
+            i = i + 1
+
+        if i != end:
+            raise ValueError("invalid format spec")
+        return FormatSpec(fill, align, width, precision, type)

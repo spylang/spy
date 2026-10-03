@@ -1,3 +1,4 @@
+from spy.errors import SPyError
 from spy.tests.support import CompilerTest, expect_errors
 
 
@@ -77,6 +78,49 @@ class TestFormat(CompilerTest):
             ("this is red", 'as_red("x")'),
         )
         self.compile_raises(src, "foo", errors)
+
+    def test_FormatSpec(self):
+        mod = self.compile("""
+        from _format import FormatSpec
+
+        def parse(spec: str) -> FormatSpec:
+            return FormatSpec.parse(spec)
+        """)
+        # FormatSpec ==> (fill, align, width, precision, type)
+        assert mod.parse("") == ("", "", -1, -1, "")
+
+        # type only
+        assert mod.parse("s") == ("", "", -1, -1, "s")
+
+        # width only
+        assert mod.parse("5") == ("", "", 5, -1, "")
+        assert mod.parse("42") == ("", "", 42, -1, "")
+
+        # align only, and fill+align
+        assert mod.parse("<5") == ("", "<", 5, -1, "")
+        assert mod.parse("x>6") == ("x", ">", 6, -1, "")
+
+        # the '0' flag sets the fill, unless one was given explicitly
+        assert mod.parse("05") == ("0", "", 5, -1, "")
+        assert mod.parse("<05") == ("0", "<", 5, -1, "")
+        assert mod.parse("0>5") == ("0", ">", 5, -1, "")
+
+        # precision
+        assert mod.parse(".3") == ("", "", -1, 3, "")
+        assert mod.parse(".0") == ("", "", -1, 0, "")
+
+        # everything at once
+        assert mod.parse("*^12.3s") == ("*", "^", 12, 3, "s")
+
+        with SPyError.raises("W_ValueError", match="missing precision"):
+            mod.parse(".")
+
+        # like CPython, a '.' not followed by digits is a missing precision
+        with SPyError.raises("W_ValueError", match="missing precision"):
+            mod.parse("5..2")
+
+        with SPyError.raises("W_ValueError", match="invalid format spec"):
+            mod.parse("5s3")
 
     def test_i32(self):
         mod = self.compile("""
