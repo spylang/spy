@@ -1,5 +1,5 @@
 from _str import StrObject
-from unsafe import gc_alloc, gc_ptr, ptr_copy_slice
+from unsafe import gc_alloc, gc_ptr, ptr_copy_slice, ptr_setbytes_slice
 
 
 @struct
@@ -45,6 +45,32 @@ class StrBuilder:
                 source.utf8, 0, length,
             )
             state.position = state.position + length
+
+    def append_repeat(self, chunk: str, n: i32) -> None:
+        state = self.__ll__
+        if state.buffer == gc_ptr[StrObject].NULL:
+            raise ValueError("StrBuilder is already sealed")
+        source = StrObject.from_str(chunk)
+        total = source.length * n
+        if total > state.buffer.length - state.position:
+            raise ValueError("StrBuilder capacity exceeded")
+        l = source.length
+        if l == 1:
+            # single-byte chunk (e.g. a fill char): use memset instead of n copies
+            ptr_setbytes_slice(
+                state.buffer.utf8,
+                state.position, state.position + n,
+                source.utf8[0],
+            )
+        else:
+            for i in range(n):
+                ptr_copy_slice(
+                    state.buffer.utf8,
+                    state.position + i * l,
+                    state.position + (i + 1) * l,
+                    source.utf8, 0, l,
+                )
+        state.position = state.position + total
 
     def append_slice(self, chunk: str, start: i32, end: i32) -> None:
         state = self.__ll__

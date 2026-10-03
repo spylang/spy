@@ -147,12 +147,7 @@ def str_format(self: str, spec: str) -> str:
     # TODO: once StrBuilder has a growable mode (or a way to build() a partially
     # filled buffer), the capacity does not need to be exact.
     sb = StrBuilder((padding.left + padding.right) * len(fill) + body_len)
-    # TODO: use sb.append_repeat(fill, left) / sb.append_repeat(fill, right) once
-    # it exists, instead of one append() per fill char (each one goes through
-    # StrObject.from_str).
-    for _ in range(padding.left):
-        sb.append(fill)
+    sb.append_repeat(fill, padding.left)
     sb.append_slice(self, 0, body_len)
-    for _ in range(padding.right):
-        sb.append(fill)
+    sb.append_repeat(fill, padding.right)
     return sb.build()
