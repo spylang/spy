@@ -46,6 +46,21 @@ class StrBuilder:
             )
             state.position = state.position + length
 
+    def append_slice(self, chunk: str, start: i32, end: i32) -> None:
+        state = self.__ll__
+        if state.buffer == gc_ptr[StrObject].NULL:
+            raise ValueError("StrBuilder is already sealed")
+        source = StrObject.from_str(chunk)
+        length = end - start
+        if length > state.buffer.length - state.position:
+            raise ValueError("StrBuilder capacity exceeded")
+        if length > 0:
+            ptr_copy_slice(
+                state.buffer.utf8, state.position, state.position + length,
+                source.utf8, start, end,
+            )
+            state.position = state.position + length
+
     def build(self) -> str:
         state = self.__ll__
         if state.buffer == gc_ptr[StrObject].NULL:
