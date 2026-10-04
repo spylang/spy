@@ -42,6 +42,7 @@ class W_Str(W_Object):
 
     __spy_storage_category__ = "value"
     __spy_lazy_attributes__ = {
+        "__format__": FQN("_format::str_format"),
         "isascii": FQN("_str::methods::isascii"),
         "upper": FQN("_str::methods::upper"),
         "_getitem_slice": FQN("_str::methods::_getitem_slice"),

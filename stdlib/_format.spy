@@ -1,0 +1,171 @@
+from strbuilder import StrBuilder
+
+# each of the T_format funcs is a __format__ method attached to a W_* class. See
+# e.g. W_I32.lazy_attributes, W_Str.lazy_attributes, etc.
+
+
+def i32_format(self: i32, spec: str) -> str:
+    """
+    i32.__format__
+    """
+    if spec == "" or spec == "d":
+        return str(self)
+    raise ValueError("unsupported format spec for i32")
+
+
+def f64_format(self: f64, spec: str) -> str:
+    """
+    f64.__format__
+    """
+    if spec == "":
+        return str(self)
+    raise WIP("f64.__format__: format spec not supported")
+
+
+def f32_format(self: f32, spec: str) -> str:
+    """
+    f32.__format__
+    """
+    if spec == "":
+        return str(self)
+    raise WIP("f32.__format__: format spec not supported")
+
+
+def _is_align(c: str) -> bool:
+    return c == "<" or c == ">" or c == "^"
+
+
+def _is_digit(c: str) -> bool:
+    return ord(c) >= ord("0") and ord(c) <= ord("9")
+
+
+@struct
+class FormatSpec:
+    """
+    A parsed format spec: [[fill]align][0][width][.precision][type]
+
+    Absent fields are "" (fill, align, type) or -1 (width, precision), except that
+    fill and align get their generic default (" " and "") only in the consumer, since
+    the default align depends on the type being formatted.
+
+    TODO: add sign, alternate form ('#') and grouping, once int uses this parser.
+    """
+
+    fill: str
+    align: str
+    width: i32
+    precision: i32
+    type: str
+
+    @staticmethod
+    def parse(spec: str) -> FormatSpec:
+        end = len(spec)
+        i = 0
+        fill = ""
+        align = ""
+        if end >= 2 and _is_align(spec[1]):
+            fill = spec[0]
+            align = spec[1]
+            i = 2
+        elif end >= 1 and _is_align(spec[0]):
+            align = spec[0]
+            i = 1
+
+        # like CPython, the '0' flag sets the fill unless one was given explicitly
+        if i < end and spec[i] == "0" and fill == "":
+            fill = "0"
+
+        width = -1
+        while i < end and _is_digit(spec[i]):
+            if width == -1:
+                width = 0
+            width = width * 10 + ord(spec[i]) - ord("0")
+            i = i + 1
+
+        precision = -1
+        if i < end and spec[i] == ".":
+            i = i + 1
+            if i == end or not _is_digit(spec[i]):
+                raise ValueError("format specifier missing precision")
+            precision = 0
+            while i < end and _is_digit(spec[i]):
+                precision = precision * 10 + ord(spec[i]) - ord("0")
+                i = i + 1
+
+        type = ""
+        if i < end:
+            type = spec[i]
+            i = i + 1
+
+        if i != end:
+            raise ValueError("invalid format spec")
+        return FormatSpec(fill, align, width, precision, type)
+
+
+@struct
+class Padding:
+    left: i32
+    right: i32
+    total_width: i32
+
+
+def _calc_padding(nchars: i32, width: i32, align: str) -> Padding:
+    """
+    Compute the padding needed to render nchars characters in a field of the given
+    width. Same logic as CPython's calc_padding() (Objects/unicode_formatter.c).
+
+    `total_width` is the total length of the field, padding included. It is useful
+    to preallocate a buffer of the exact size.
+    """
+    if width == -1 or nchars > width:
+        total_width = nchars
+    else:
+        total_width = width
+
+    left = 0
+    if align == ">":
+        left = total_width - nchars
+    elif align == "^":
+        left = (total_width - nchars) // 2
+    # '<' and '=': no left padding
+
+    right = total_width - nchars - left
+    return Padding(left, right, total_width)
+
+
+def str_format(self: str, spec: str) -> str:
+    """
+    str.__format__
+    """
+    fs = FormatSpec.parse(spec)
+    if fs.type != "" and fs.type != "s":
+        raise ValueError("invalid format spec for str")
+
+    # fast path: no padding and no truncation needed
+    if (fs.width == -1 or fs.width <= len(self)) and (
+        fs.precision == -1 or fs.precision >= len(self)
+    ):
+        return self
+
+    fill = fs.fill
+    if fill == "":
+        fill = " "
+    align = fs.align
+    if align == "":
+        align = "<"
+
+    # NOTE: precision counts bytes, not code points: this is correct only
+    # for ASCII.
+    body_len = len(self)
+    if fs.precision != -1 and fs.precision < body_len:
+        body_len = fs.precision
+
+    padding = _calc_padding(body_len, fs.width, align)
+
+    # TODO: once StrBuilder has a growable mode (or a way to build() a partially
+    # filled buffer), the capacity does not need to be exact.
+    sb = StrBuilder((padding.left + padding.right) * len(fill) + body_len)
+    sb.append_repeat(fill, padding.left)
+    sb.append_slice(self, 0, body_len)
+    sb.append_repeat(fill, padding.right)
+    return sb.build()

@@ -95,6 +95,77 @@ class TestStrBuilder(CompilerTest):
         with SPyError.raises("W_ValueError"):
             mod.append_after_build()
 
+    def test_append_slice(self):
+        src = """
+        from strbuilder import StrBuilder
+
+        def slice_of(capacity: int, chunk: str, start: int, end: int) -> str:
+            sb = StrBuilder(capacity)
+            sb.append_slice(chunk, start, end)
+            return sb.build()
+
+        def mix() -> str:
+            sb = StrBuilder(6)
+            sb.append("ab")
+            sb.append_slice("xxcdefyy", 2, 6)
+            return sb.build()
+
+        def append_slice_over_capacity() -> None:
+            sb = StrBuilder(2)
+            sb.append_slice("abcdef", 0, 3)
+        """
+        mod = self.compile(src)
+        # prefix, middle, suffix
+        assert mod.slice_of(3, "world", 0, 3) == "wor"
+        assert mod.slice_of(3, "world", 1, 4) == "orl"
+        assert mod.slice_of(2, "world", 3, 5) == "ld"
+        # empty slice, empty source
+        assert mod.slice_of(0, "abc", 1, 1) == ""
+        assert mod.slice_of(0, "", 0, 0) == ""
+        # UTF-8: "é" is 2 bytes, "🐍" is 4
+        assert mod.slice_of(2, "é🐍!", 0, 2) == "é"
+        assert mod.slice_of(4, "é🐍!", 2, 6) == "🐍"
+        assert mod.mix() == "abcdef"
+
+        with SPyError.raises(
+            "W_ValueError",
+            match="StrBuilder capacity exceeded",
+        ):
+            mod.append_slice_over_capacity()
+
+    def test_append_repeat(self):
+        src = """
+        from strbuilder import StrBuilder
+
+        def repeat_of(capacity: int, chunk: str, n: int) -> str:
+            sb = StrBuilder(capacity)
+            sb.append_repeat(chunk, n)
+            return sb.build()
+
+        def mix() -> str:
+            sb = StrBuilder(9)
+            sb.append_repeat("ab", 3)
+            sb.append("x")
+            sb.append_repeat("-", 2)
+            return sb.build()
+
+        def append_repeat_over_capacity() -> None:
+            sb = StrBuilder(5)
+            sb.append_repeat("ab", 3)
+        """
+        mod = self.compile(src)
+        assert mod.repeat_of(6, "ab", 3) == "ababab"
+        assert mod.repeat_of(2, "é", 1) == "é"
+        assert mod.repeat_of(0, "x", 0) == ""
+        assert mod.repeat_of(0, "", 5) == ""
+        assert mod.mix() == "abababx--"
+
+        with SPyError.raises(
+            "W_ValueError",
+            match="StrBuilder capacity exceeded",
+        ):
+            mod.append_repeat_over_capacity()
+
     def test_build_after_build(self):
         src = """
         from strbuilder import StrBuilder

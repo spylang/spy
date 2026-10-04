@@ -835,40 +835,30 @@ class TestStr(CompilerTest):
         with pytest.raises(SPyError, match="invalid first utf-8 byte: 255"):
             mod.run_unicode_codepoints(input)
 
-    def test_fstring_simple(self):
+    def test_fstring(self):
         src = """
         def empty() -> str:
             return f""
 
-        def foo(s: str, x: i32) -> str:
+        def simple(s: str, x: i32) -> str:
             return f"The {s} is {x}"
+
+        def blue_val() -> str:
+            return f"int is {int}"
+
+        def conv_r(x: str) -> str:
+            return f"{x!r} -- {x!s}"
+
+        def with_formath_spec(x: str) -> str:
+            return f"{x:>8}"
+
+        def nested_format_spec(x: str, width: i32) -> str:
+            return f"{x:<{width}}"
         """
         mod = self.compile(src)
         assert mod.empty() == ""
-        assert mod.foo("answer", 42) == "The answer is 42"
-
-    def test_fstring_conversion(self):
-        src = """
-        def foo(x: str) -> str:
-            return f"{x!r} -- {x!s}"
-        """
-        mod = self.compile(src)
-        assert mod.foo("hello") == "'hello' -- hello"
-
-    def test_fstring_format_spec_unsupported(self):
-        src = """
-        def foo(x: i32) -> str:
-            return f"{x:>5}"
-        """
-        mod = self.compile(src)
-        with pytest.raises(SPyError, match="WIP: format_spec not supported"):
-            mod.foo(42)
-
-    def test_fstring_nested_format_spec(self):
-        src = """
-        def foo(x: i32, width: i32) -> str:
-            return f"{x:{width}}"
-        """
-        mod = self.compile(src)
-        with pytest.raises(SPyError, match="WIP: format_spec not supported"):
-            mod.foo(42, 10)
+        assert mod.simple("answer", 42) == "The answer is 42"
+        assert mod.blue_val() == "int is <spy type 'i32'>"
+        assert mod.conv_r("hello") == "'hello' -- hello"
+        assert mod.with_formath_spec("hello") == "   hello"
+        assert mod.nested_format_spec("hello", 10) == "hello     "

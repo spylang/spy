@@ -171,6 +171,31 @@ def w_repr(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
     )
 
 
+@BUILTINS.builtin_func(color="blue", kind="metafunc")
+def w_format(vm: "SPyVM", wam_obj: W_MetaArg, *args_wam: W_MetaArg) -> W_OpSpec:
+    if len(args_wam) == 0:
+        wam_spec = W_MetaArg.from_w_obj(vm, vm.wrap(""))
+    elif len(args_wam) == 1:
+        wam_spec = args_wam[0]
+    else:
+        raise SPyError.simple(
+            "W_TypeError",
+            f"format: expected at most 2 arguments, got {1 + len(args_wam)}",
+            "too many arguments",
+            args_wam[1].loc,
+        )
+
+    w_T = wam_obj.w_static_T
+    if w_fn := w_T.lookup_func(vm, "__format__"):
+        w_opspec = vm.fast_metacall(w_fn, [wam_obj, wam_spec])
+        return w_opspec
+
+    t = w_T.fqn.human_name(vm)
+    raise SPyError.simple(
+        "W_TypeError", f"cannot call format(`{t}`)", f"this is `{t}`", wam_obj.loc
+    )
+
+
 @BUILTINS.builtin_func
 def w_hash_i8(vm: "SPyVM", w_x: W_I8) -> W_I32:
     x = vm.unwrap_i8(w_x)
