@@ -1,5 +1,5 @@
-from operator import OpSpec
-from __spy__ import force_inline
+from operator import OpSpec, MetaArg
+from __spy__ import force_inline, interp_list
 from _identity import identity
 
 # this module contains the app-level helpers used by `__spy__::fstring`, which
@@ -66,7 +66,8 @@ def f(m_val, m_conv, m_format_spec):
         def blue_impl(format_spec: str) -> BLUE_FMT:
             return BLUE_FMT(s, format_spec)
 
-        return OpSpec(blue_impl, [m_format_spec])
+        var spec = m_format_spec
+        return OpSpec(blue_impl, interp_list[MetaArg](spec))
 
     T = m_val.static_type
     FMT = FormattedVal[T, conv]
@@ -75,7 +76,11 @@ def f(m_val, m_conv, m_format_spec):
     def impl(x: T, format_spec: str) -> FMT:
         return FMT(x, format_spec)
 
-    return OpSpec(impl, [m_val, m_format_spec])
+    # Red locals prevent blue caching from substituting equal MetaArgs: OpSpec
+    # needs the original objects to map arguments back to the caller.
+    var val = m_val
+    var spec = m_format_spec
+    return OpSpec(impl, interp_list[MetaArg](val, spec))
 
 
 @blue.metafunc
