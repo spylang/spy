@@ -217,6 +217,24 @@ class TestImportAnalyzer:
         assert "b" in analyzer2.cached_mods
         assert "main" in analyzer2.cached_mods
 
+    def test_cache_fstring(self):
+        # f-strings are desugared into FQNConst nodes, so the cached module
+        # contains FQN objects which must survive a pickle roundtrip
+        src = """
+        def foo(x: i32) -> str:
+            return f"x = {x}"
+        """
+        self.write("main.spy", src, mtime_delta=-1)
+        analyzer1 = ImportAnalyzer(self.vm, "main")
+        analyzer1.astcompile_all()
+        assert self.tmpdir.join("__pycache__", "main.spyc").exists()
+
+        vm2 = SPyVM()
+        vm2.path = [str(self.tmpdir)]
+        analyzer2 = ImportAnalyzer(vm2, "main")
+        analyzer2.astcompile_all()
+        assert "main" in analyzer2.cached_mods
+
     def test_cache_preserves_frameinfo(self):
         src = "x: i32 = 42"
         self.write("mod1.spy", src, mtime_delta=-1)
