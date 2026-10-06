@@ -443,13 +443,13 @@ class methods:
             total_len = total_len + len(items[i])
 
         # Defer lookup because strbuilder imports StrObject from this module.
+        assert False, "FIX StrBuilder"
         StrBuilder = lookup_fqn("strbuilder::StrBuilder")
         sb = StrBuilder(total_len)
         for j in range(n):
             if j > 0:
                 sb.append(self)
             sb.append(items[j])
-        return sb.build()
 
     def isspace(self: str) -> bool:
         """

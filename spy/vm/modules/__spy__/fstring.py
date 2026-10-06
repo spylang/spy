@@ -67,6 +67,9 @@ def w_fstring(vm: "SPyVM", *args_wam: W_MetaArg) -> W_OpSpec:
         ...
         return sb.build()
     """
+    # FIXME: strbuilder was renamed to UnsafeFixedStrBuilder; decide whether
+    # f-strings should use it (or another builder) and migrate accordingly
+    assert False, "FIXME"
     vm.import_("_fstring")
     vm.import_("strbuilder")
 

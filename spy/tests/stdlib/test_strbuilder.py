@@ -1,118 +1,41 @@
-from spy.errors import SPyError
 from spy.tests.support import CompilerTest
 
 
 class TestStrBuilder(CompilerTest):
-    def test_build(self):
+    def test_unsafe_build(self):
         src = """
-        from strbuilder import StrBuilder
+        from strbuilder import UnsafeFixedStrBuilder
 
-        def concatenate(capacity: int, first: str, second: str, third: str) -> str:
-            sb = StrBuilder(capacity)
+        def concat(capacity: int, first: str, second: str, third: str) -> str:
+            sb = UnsafeFixedStrBuilder(capacity)
             for chunk in [first, second, third]:
                 sb.append(chunk)
             return sb.build()
         """
         mod = self.compile(src)
 
-        assert mod.concatenate(0, "", "", "") == ""
-        assert mod.concatenate(5, "", "hello", "") == "hello"
-        assert mod.concatenate(7, "abc", "def", "!") == "abcdef!"
-        assert mod.concatenate(7, "é", "🐍", "!") == "é🐍!"
-        assert mod.concatenate(4, "a\x00", "b", "\x00") == "a\x00b\x00"
+        assert mod.concat(0, "", "", "") == ""
+        assert mod.concat(5, "", "hello", "") == "hello"
+        assert mod.concat(7, "abc", "def", "!") == "abcdef!"
+        assert mod.concat(7, "é", "🐍", "!") == "é🐍!"
+        assert mod.concat(4, "a\x00", "b", "\x00") == "a\x00b\x00"
+        # underfill: we leak some memory but the string is valid
+        assert mod.concat(10, "ab", "cd", "e") == "abcde"
 
-    def test_negative_capacity(self):
+    def test_unsafe_append_slice(self):
         src = """
-        from strbuilder import StrBuilder
-
-        def negative_capacity() -> None:
-            sb = StrBuilder(-1)
-        """
-        mod = self.compile(src)
-        with SPyError.raises("W_ValueError"):
-            mod.negative_capacity()
-
-    def test_build_underfilled(self):
-        src = """
-        from strbuilder import StrBuilder
-
-        def build_underfilled() -> str:
-            sb = StrBuilder(6)
-            sb.append("hello")
-            return sb.build()
-        """
-        mod = self.compile(src)
-        with SPyError.raises(
-            "W_ValueError",
-            match="StrBuilder is not completely filled",
-        ):
-            mod.build_underfilled()
-
-    def test_append_over_capacity(self):
-        src = """
-        from strbuilder import StrBuilder
-
-        def append_over_capacity() -> None:
-            sb = StrBuilder(4)
-            sb.append("hello")
-        """
-        mod = self.compile(src)
-        with SPyError.raises(
-            "W_ValueError",
-            match="StrBuilder capacity exceeded",
-        ):
-            mod.append_over_capacity()
-
-    def test_shared_state(self):
-        src = """
-        from strbuilder import StrBuilder
-
-        def append_middle(sb: StrBuilder) -> None:
-            sb.append("middle")
-
-        def build() -> str:
-            sb = StrBuilder(15)
-            alias = sb
-            sb.append("left")
-            append_middle(alias)
-            sb.append("right")
-            return alias.build()
-        """
-        mod = self.compile(src)
-        assert mod.build() == "leftmiddleright"
-
-    def test_append_after_build(self):
-        src = """
-        from strbuilder import StrBuilder
-
-        def append_after_build() -> None:
-            sb = StrBuilder(5)
-            sb.append("hello")
-            sb.build()
-            sb.append("")
-        """
-        mod = self.compile(src)
-        with SPyError.raises("W_ValueError"):
-            mod.append_after_build()
-
-    def test_append_slice(self):
-        src = """
-        from strbuilder import StrBuilder
+        from strbuilder import UnsafeFixedStrBuilder
 
         def slice_of(capacity: int, chunk: str, start: int, end: int) -> str:
-            sb = StrBuilder(capacity)
+            sb = UnsafeFixedStrBuilder(capacity)
             sb.append_slice(chunk, start, end)
             return sb.build()
 
         def mix() -> str:
-            sb = StrBuilder(6)
+            sb = UnsafeFixedStrBuilder(6)
             sb.append("ab")
             sb.append_slice("xxcdefyy", 2, 6)
             return sb.build()
-
-        def append_slice_over_capacity() -> None:
-            sb = StrBuilder(2)
-            sb.append_slice("abcdef", 0, 3)
         """
         mod = self.compile(src)
         # prefix, middle, suffix
@@ -127,31 +50,21 @@ class TestStrBuilder(CompilerTest):
         assert mod.slice_of(4, "é🐍!", 2, 6) == "🐍"
         assert mod.mix() == "abcdef"
 
-        with SPyError.raises(
-            "W_ValueError",
-            match="StrBuilder capacity exceeded",
-        ):
-            mod.append_slice_over_capacity()
-
-    def test_append_repeat(self):
+    def test_unsafe_append_repeat(self):
         src = """
-        from strbuilder import StrBuilder
+        from strbuilder import UnsafeFixedStrBuilder
 
         def repeat_of(capacity: int, chunk: str, n: int) -> str:
-            sb = StrBuilder(capacity)
+            sb = UnsafeFixedStrBuilder(capacity)
             sb.append_repeat(chunk, n)
             return sb.build()
 
         def mix() -> str:
-            sb = StrBuilder(9)
+            sb = UnsafeFixedStrBuilder(9)
             sb.append_repeat("ab", 3)
             sb.append("x")
             sb.append_repeat("-", 2)
             return sb.build()
-
-        def append_repeat_over_capacity() -> None:
-            sb = StrBuilder(5)
-            sb.append_repeat("ab", 3)
         """
         mod = self.compile(src)
         assert mod.repeat_of(6, "ab", 3) == "ababab"
@@ -159,23 +72,3 @@ class TestStrBuilder(CompilerTest):
         assert mod.repeat_of(0, "x", 0) == ""
         assert mod.repeat_of(0, "", 5) == ""
         assert mod.mix() == "abababx--"
-
-        with SPyError.raises(
-            "W_ValueError",
-            match="StrBuilder capacity exceeded",
-        ):
-            mod.append_repeat_over_capacity()
-
-    def test_build_after_build(self):
-        src = """
-        from strbuilder import StrBuilder
-
-        def build_after_build() -> str:
-            sb = StrBuilder(5)
-            sb.append("hello")
-            sb.build()
-            return sb.build()
-        """
-        mod = self.compile(src)
-        with SPyError.raises("W_ValueError"):
-            mod.build_after_build()
