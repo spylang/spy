@@ -12,5 +12,6 @@ from . import (
     interp_list,  # noqa: F401 -- side effects
     interp_tuple,  # noqa: F401 -- side effects
     literals,  # noqa: F401 -- side effects
+    meta_args,  # noqa: F401 -- side effects
     misc,  # noqa: F401 -- side effects
 )
