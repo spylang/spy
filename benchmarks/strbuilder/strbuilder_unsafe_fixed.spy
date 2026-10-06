@@ -1,0 +1,42 @@
+"""
+UnsafeFixedStrBuilder: fixed capacity, no checks.
+
+    sb = UnsafeFixedStrBuilder(capacity)
+    sb = sb.append("hello ")        # NOTE: you must rebind
+    s = sb.build()
+
+The caller must make sure that:
+  - the appended pieces fit in `capacity` (an overflow panics only in debug
+    builds, and is memory-unsafe in release);
+  - old copies of the builder are not used after an append.
+
+If `capacity` is an overestimate, the slack is dropped by build().
+
+It is meant for code which knows the exact size in advance (join, f-strings,
+__format__). It is a 16 bytes value, so it is passed and returned in registers
+even when it is not inlined.
+"""
+
+from __spy__ import force_inline
+from _str import StrObject
+from unsafe import gc_ptr, ptr_copy_slice
+
+
+@struct
+class UnsafeFixedStrBuilder:
+    buf: gc_ptr[StrObject]
+    pos: i32
+
+    def __new__(capacity: i32) -> UnsafeFixedStrBuilder:
+        return UnsafeFixedStrBuilder.__make__(StrObject.alloc(capacity), 0)
+
+    @force_inline
+    def append(self, chunk: str) -> UnsafeFixedStrBuilder:
+        src = StrObject.from_str(chunk)
+        n = src.length
+        ptr_copy_slice(self.buf.utf8, self.pos, self.pos + n, src.utf8, 0, n)
+        return UnsafeFixedStrBuilder.__make__(self.buf, self.pos + n)
+
+    def build(self) -> str:
+        self.buf.length = self.pos
+        return StrObject.to_str(self.buf)

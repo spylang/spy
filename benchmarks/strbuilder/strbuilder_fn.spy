@@ -1,0 +1,165 @@
+"""
+FnStrBuilder: build a `str` piece by piece.
+
+FnStrBuilder is a plain *value*: every operation returns the new builder, so the
+fast path needs ONE allocation (the StrObject that becomes the result) and no
+state object:
+
+    sb = FnStrBuilder(capacity)
+    sb = sb.append("hello ")
+    sb = sb.append("world")
+    s = sb.build()
+
+How it works
+------------
+The builder is a chain of chunks, each one a StrObject. The chunk being filled
+is `buf`; the chunks which are already closed are a singly linked list of
+`Piece`, newest first, reachable from `prev` (every link points to the
+previous, i.e. older, piece):
+
+    FnStrBuilder.buf  --> [current chunk]
+    FnStrBuilder.prev --> Piece C --prev--> Piece B --prev--> Piece A --> NULL
+
+Growth never copies old data: the current chunk is closed and linked into the
+chain, and a new chunk is allocated. build() returns `buf` itself (a cast, no
+copy) if nothing ever overflowed the first chunk, else it concatenates the
+chain into a new str, back to front.
+
+Safety
+------
+SPy structs are immutable values, so copies of a builder are cheap but can
+diverge. The header of the current chunk is the single source of truth, and
+it is repurposed while building (nobody reads it before build()):
+
+    buf.length = capacity of this chunk
+    buf.hash   = (total bytes so far) + 1       0 means "sealed"
+
+A builder value is valid iff `used + prev_total + 1 == buf.hash`. Every
+operation advances buf.hash, so any older copy of the value fails the check
+and raises ValueError("stale FnStrBuilder"):
+
+    sb = sb.append("a")     # OK
+    sb.append("b")          # result dropped: `sb` is now stale...
+    sb = sb.append("c")     # ...raises ValueError
+
+A chunk is sealed (hash = 0) when it is closed by a growth and by build(), so
+neither a stale copy nor the finished str can be written to.
+
+NOTE: not thread safe. A builder must not be shared between threads.
+"""
+
+from __spy__ import force_inline
+from _str import StrObject
+from unsafe import gc_alloc, gc_ptr, ptr_copy_slice
+
+# new chunks are rounded up to a multiple of this
+CHUNK_ROUND = 64
+
+# a str at least this big which doesn't fit in the current chunk is linked as a
+# piece, instead of being copied
+ADOPT_THRESHOLD = 4096
+
+
+@struct
+class Piece:
+    buf: gc_ptr[StrObject]
+    used: i32
+    prev: gc_ptr[Piece]
+
+
+@struct
+class FnStrBuilder:
+    buf: gc_ptr[StrObject]
+    prev: gc_ptr[Piece]
+    used: i32  # bytes used in `buf`
+    prev_total: i32  # bytes stored in the chain starting at `prev`
+
+    def __new__(capacity: i32) -> FnStrBuilder:
+        """
+        `capacity` is the size in bytes of the first chunk. If it is at least
+        the final size of the string, build() is a zero-copy cast.
+        """
+        if capacity < 0:
+            raise ValueError("FnStrBuilder capacity must not be negative")
+        buf = StrObject.alloc(capacity)
+        buf.hash = 1
+        return FnStrBuilder.__make__(buf, gc_ptr[Piece].NULL, 0, 0)
+
+    def valid(self) -> bool:
+        return self.buf.hash == self.used + self.prev_total + 1
+
+    def _check(self) -> None:
+        if not self.valid():
+            raise ValueError("stale FnStrBuilder")
+
+    def length(self) -> i32:
+        self._check()
+        return self.used + self.prev_total
+
+    def _append_slow(self, src: gc_ptr[StrObject], n: i32) -> FnStrBuilder:
+        """
+        `src` doesn't fit in the current chunk.
+        """
+        total = self.used + self.prev_total
+        if n >= ADOPT_THRESHOLD and self.used == 0:
+            # link the source string itself as a piece: no copy at all. The
+            # current chunk is empty, so ordering is preserved.
+            piece = gc_alloc[Piece](1)
+            piece.buf = src
+            piece.used = n
+            piece.prev = self.prev
+            self.buf.hash = total + n + 1
+            return FnStrBuilder.__make__(self.buf, piece, 0, self.prev_total + n)
+        prev = self.prev
+        if self.used > 0:
+            prev = gc_alloc[Piece](1)
+            prev.buf = self.buf
+            prev.used = self.used
+            prev.prev = self.prev
+        self.buf.hash = 0
+        # the new chunk is as big as everything written so far, so the number
+        # of chunks is logarithmic in the size of the string
+        size = (total + n + CHUNK_ROUND - 1) // CHUNK_ROUND * CHUNK_ROUND
+        buf = StrObject.alloc(size)
+        ptr_copy_slice(buf.utf8, 0, n, src.utf8, 0, n)
+        buf.hash = total + n + 1
+        return FnStrBuilder.__make__(buf, prev, n, total)
+
+    @force_inline
+    def append(self, chunk: str) -> FnStrBuilder:
+        self._check()
+        src = StrObject.from_str(chunk)
+        n = src.length
+        sb = self
+        if n > self.buf.length - self.used:
+            sb = self._append_slow(src, n)
+        else:
+            ptr_copy_slice(self.buf.utf8, self.used, self.used + n, src.utf8, 0, n)
+            used = self.used + n
+            self.buf.hash = used + self.prev_total + 1
+            sb = FnStrBuilder.__make__(self.buf, self.prev, used, self.prev_total)
+        return sb
+
+    def build(self) -> str:
+        """
+        Return the string. The builder (and all its copies) are sealed.
+        """
+        self._check()
+        if self.prev == gc_ptr[Piece].NULL:
+            # nothing overflowed the first chunk: the chunk is the result
+            self.buf.length = self.used
+            self.buf.hash = 0
+            return StrObject.to_str(self.buf)
+        total = self.used + self.prev_total
+        result = StrObject.alloc(total)
+        dst = total - self.used
+        ptr_copy_slice(result.utf8, dst, total, self.buf.utf8, 0, self.used)
+        piece = self.prev
+        while piece != gc_ptr[Piece].NULL:
+            dst -= piece.used
+            ptr_copy_slice(
+                result.utf8, dst, dst + piece.used, piece.buf.utf8, 0, piece.used
+            )
+            piece = piece.prev
+        self.buf.hash = 0
+        return StrObject.to_str(result)
