@@ -1,0 +1,138 @@
+"""
+ChunkedListStrBuilder: like ChunkedStrBuilder, but the closed chunks are kept in
+a list[Piece] (oldest first) instead of a linked list.
+
+    sb = ChunkedListStrBuilder(capacity)
+    sb.append("hello ")
+    sb.append("world")
+    s = sb.build()
+
+Differences from the linked list version:
+  - build() copies the pieces in order, front to back;
+  - no per-piece allocation: the list grows geometrically and stores the Piece
+    structs inline (16 bytes each);
+  - the cost is the list itself: an empty list[T] already allocates its header
+    and its first items array. To keep the fast path (nothing overflows the
+    first chunk) at 2 allocations, the list is created lazily on the first
+    growth, behind a gc_ptr[PieceList].
+
+Same API and safety model as ChunkedStrBuilder: a wrapper around a
+gc_ptr[BuilderState] shared by all the copies, sealed by build().
+"""
+
+from __spy__ import force_inline
+from _str import StrObject
+from unsafe import gc_alloc, gc_ptr, ptr_copy_slice
+
+# new chunks are rounded up to a multiple of this
+CHUNK_ROUND = 64
+
+# a str at least this big which doesn't fit in the current chunk is linked as a
+# piece, instead of being copied
+ADOPT_THRESHOLD = 4096
+
+
+@struct
+class Piece:
+    buf: gc_ptr[StrObject]
+    used: i32  # bytes used in buf
+
+
+@struct
+class PieceList:
+    items: list[Piece]
+
+
+@struct
+class BuilderState:
+    cur: gc_ptr[StrObject]  # cur.length is the capacity; NULL when built
+    cur_pos: i32  # bytes used in cur
+    prev_total: i32  # bytes stored in the closed pieces
+    pieces: gc_ptr[PieceList]  # NULL until the first growth
+
+
+@struct
+class ChunkedListStrBuilder:
+    __ll__: gc_ptr[BuilderState]
+
+    def __new__(capacity: i32) -> ChunkedListStrBuilder:
+        if capacity < 0:
+            raise ValueError("StrBuilder capacity must not be negative")
+        state = gc_alloc[BuilderState](1)
+        state.cur = StrObject.alloc(capacity)
+        state.cur_pos = 0
+        state.prev_total = 0
+        state.pieces = gc_ptr[PieceList].NULL
+        return ChunkedListStrBuilder.__make__(state)
+
+    def is_built(self) -> bool:
+        return self.__ll__.cur == gc_ptr[StrObject].NULL
+
+    def length(self) -> i32:
+        state = self.__ll__
+        if state.cur == gc_ptr[StrObject].NULL:
+            raise ValueError("StrBuilder is already built")
+        return state.cur_pos + state.prev_total
+
+    def _append_slow(self, src: gc_ptr[StrObject], n: i32) -> None:
+        """
+        `src` (n bytes) doesn't fit in the current chunk.
+        """
+        state = self.__ll__
+        if state.pieces == gc_ptr[PieceList].NULL:
+            plist = gc_alloc[PieceList](1)
+            plist.items = list[Piece]()
+            state.pieces = plist
+        if n >= ADOPT_THRESHOLD and state.cur_pos == 0:
+            # the current chunk is empty, so we can link src itself as the
+            # newest piece without breaking the order
+            state.pieces.items.append(Piece(src, n))
+            state.prev_total += n
+            return
+        total = state.prev_total + state.cur_pos
+        if state.cur_pos > 0:
+            state.pieces.items.append(Piece(state.cur, state.cur_pos))
+        state.prev_total = total
+        size = (total + n + CHUNK_ROUND - 1) // CHUNK_ROUND * CHUNK_ROUND
+        state.cur = StrObject.alloc(size)
+        ptr_copy_slice(state.cur.utf8, 0, n, src.utf8, 0, n)
+        state.cur_pos = n
+
+    @force_inline
+    def append(self, chunk: str) -> None:
+        state = self.__ll__
+        if state.cur == gc_ptr[StrObject].NULL:
+            raise ValueError("StrBuilder is already built")
+        src = StrObject.from_str(chunk)
+        n = src.length
+        if n > state.cur.length - state.cur_pos:
+            self._append_slow(src, n)
+        else:
+            ptr_copy_slice(
+                state.cur.utf8, state.cur_pos, state.cur_pos + n, src.utf8, 0, n
+            )
+            state.cur_pos += n
+
+    def build(self) -> str:
+        """
+        Return the string and seal the builder.
+        """
+        state = self.__ll__
+        cur = state.cur
+        if cur == gc_ptr[StrObject].NULL:
+            raise ValueError("StrBuilder is already built")
+        state.cur = gc_ptr[StrObject].NULL
+        if state.pieces == gc_ptr[PieceList].NULL:
+            # nothing overflowed the first chunk: the chunk is the result
+            cur.length = state.cur_pos
+            return StrObject.to_str(cur)
+        total = state.prev_total + state.cur_pos
+        result = StrObject.alloc(total)
+        dst = 0
+        for piece in state.pieces.items:
+            ptr_copy_slice(
+                result.utf8, dst, dst + piece.used, piece.buf.utf8, 0, piece.used
+            )
+            dst += piece.used
+        ptr_copy_slice(result.utf8, dst, total, cur.utf8, 0, state.cur_pos)
+        return StrObject.to_str(result)
