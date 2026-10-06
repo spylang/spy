@@ -207,3 +207,46 @@ class TestMetaFunc(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == "ok"
+
+    @no_C
+    def test_args_m_static_type(self):
+        src = """
+        from operator import OpSpec, MetaArg
+
+        @blue.metafunc
+        def meta(*args_m):
+            assert STATIC_TYPE(args_m[0]) == MetaArg
+            m_x, m_y = args_m
+            assert STATIC_TYPE(m_x) == MetaArg
+            assert STATIC_TYPE(m_y) == MetaArg
+
+            def impl(x: i32, y: i32) -> i32:
+                return x + y
+
+            return OpSpec(impl, [m_x, m_y])
+
+        def foo(a: i32, b: i32) -> i32:
+            return meta(a, b)
+        """
+        mod = self.compile(src)
+        assert mod.foo(3, 4) == 7
+
+    @no_C
+    def test_args_m_iter(self):
+        src = """
+        from operator import OpSpec, MetaArg
+
+        @blue.metafunc
+        def meta(*args_m):
+            n = 0
+            for m in args_m:
+                assert STATIC_TYPE(m) == MetaArg
+                assert m.static_type == i32
+                n = n + 1
+            return OpSpec.const(n)
+
+        def foo() -> i32:
+            return meta(1, 2, 3)
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 3
