@@ -184,12 +184,18 @@ def _render_page(dirname: str, filenames: list[str], description: str | None) ->
 
     for filename in filenames:
         example = _load_example(dirname, filename)
-        rel_path = f"examples/{dirname}/{filename}"
+        rel_path = f"{dirname}/{filename}"
+        url = f"https://spylang.github.io/spy/#file={rel_path}"
+        href = f"<a href='{url}' style='color: #F5A700;'>▶ Open in the playground</a>"
 
         parts.append(f"## `{filename}`\n")
         if example.docstring:
             parts.append(f"{example.docstring}\n")
-        parts.append(f'```python title="{rel_path}"\n{example.code}\n```\n')
+        parts.append(
+            '```python title="'
+            f"examples/{rel_path} <span style='float: right;'>{href}</span>"
+            f'"\n{example.code}\n```\n'
+        )
         if example.output is not None:
             parts.append(f"Output:\n\n```text\n{example.output}```\n")
 
