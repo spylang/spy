@@ -3,42 +3,37 @@ from unsafe import gc_alloc, gc_ptr, ptr_copy_slice, ptr_setbytes_slice
 
 
 @struct
-class BuilderState:
+class UnsafeBuilderState:
     buffer: gc_ptr[StrObject]
     position: i32
 
 
 @struct
-class StrBuilder:
+class UnsafeFixedStrBuilder:
     """
     Build a string in a fixed-size buffer, with capacity measured in bytes.
 
-    Appended chunks must fill the buffer exactly before build() can return it
-    as an immutable string without copying. A successful build seals the shared
-    state, so further append() or build() calls through any alias raise ValueError.
+    This class is UNSAFE. No check is performed. It is up to the caller to ensure that
+    the appended chunks fit in the capacity. If the final string is shorter than the
+    capacity, build() just adjusts the length and the remaining bytes stay unused.
 
-    Negative capacity, appending beyond capacity, and building an underfilled
-    buffer also raise ValueError.
+    The main consumer is str.join(list[str]), which needs to be fast and where you can
+    easily precompute the exact capacity.  For a more general and safer way to build a
+    string whose length is not known, use StrBuilder.
     """
 
-    __ll__: gc_ptr[BuilderState]
+    __ll__: gc_ptr[UnsafeBuilderState]
 
-    def __new__(capacity: i32) -> StrBuilder:
-        if capacity < 0:
-            raise ValueError("StrBuilder capacity must not be negative")
-        state = gc_alloc[BuilderState](1)
+    def __new__(capacity: i32) -> UnsafeFixedStrBuilder:
+        state = gc_alloc[UnsafeBuilderState](1)
         state.buffer = StrObject.alloc(capacity)
         state.position = 0
-        return StrBuilder.__make__(state)
+        return UnsafeFixedStrBuilder.__make__(state)
 
     def append(self, chunk: str) -> None:
         state = self.__ll__
-        if state.buffer == gc_ptr[StrObject].NULL:
-            raise ValueError("StrBuilder is already sealed")
         source = StrObject.from_str(chunk)
         length = source.length
-        if length > state.buffer.length - state.position:
-            raise ValueError("StrBuilder capacity exceeded")
         if length > 0:
             ptr_copy_slice(
                 state.buffer.utf8,
@@ -52,12 +47,8 @@ class StrBuilder:
 
     def append_repeat(self, chunk: str, n: i32) -> None:
         state = self.__ll__
-        if state.buffer == gc_ptr[StrObject].NULL:
-            raise ValueError("StrBuilder is already sealed")
         source = StrObject.from_str(chunk)
         total = source.length * n
-        if total > state.buffer.length - state.position:
-            raise ValueError("StrBuilder capacity exceeded")
         l = source.length
         if l == 1:
             # single-byte chunk (e.g. a fill char): use memset instead of n copies
@@ -81,12 +72,8 @@ class StrBuilder:
 
     def append_slice(self, chunk: str, start: i32, end: i32) -> None:
         state = self.__ll__
-        if state.buffer == gc_ptr[StrObject].NULL:
-            raise ValueError("StrBuilder is already sealed")
         source = StrObject.from_str(chunk)
         length = end - start
-        if length > state.buffer.length - state.position:
-            raise ValueError("StrBuilder capacity exceeded")
         if length > 0:
             ptr_copy_slice(
                 state.buffer.utf8,
@@ -100,10 +87,5 @@ class StrBuilder:
 
     def build(self) -> str:
         state = self.__ll__
-        if state.buffer == gc_ptr[StrObject].NULL:
-            raise ValueError("StrBuilder is already sealed")
-        if state.position != state.buffer.length:
-            raise ValueError("StrBuilder is not completely filled")
-        result = StrObject.to_sealed_str(state.buffer)
-        state.buffer = gc_ptr[StrObject].NULL
-        return result
+        state.buffer.length = state.position
+        return StrObject.to_sealed_str(state.buffer)
