@@ -166,3 +166,44 @@ class TestMetaFunc(CompilerTest):
         result = mod.foo()
         assert result[0] == "x + 2"
         assert result[1].endswith("test.spy")
+
+    @no_C
+    def test_loc_args_m(self):
+        src = """
+        from operator import OpSpec
+
+        @blue.metafunc
+        def meta(*args_m):
+            filename = args_m.loc.filename
+            def impl() -> str:
+                return filename
+            return OpSpec(impl)
+
+        def foo() -> str:
+            return meta()
+        """
+        mod = self.compile(src)
+        filename = mod.foo()
+        assert filename.endswith("test.spy")
+
+    @no_C
+    def test_args_m_types(self):
+        src = """
+        from operator import OpSpec
+
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        @blue.metafunc
+        def meta(*args_m):
+            for i in range(len(args_m)):
+                assert args_m.types[i] == args_m[i].static_type
+            return OpSpec.const("ok")
+
+        def foo() -> str:
+            return meta(1, "a", Point(1, 2))
+        """
+        mod = self.compile(src)
+        assert mod.foo() == "ok"
