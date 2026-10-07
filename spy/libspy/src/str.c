@@ -23,7 +23,7 @@ spy_str_alloc(size_t length) {
     size_t size = sizeof(spy_StrObject) + length;
     spy_StrObject *res = (spy_StrObject *)spy_GcAlloc(size).p;
     res->length = length;
-    res->hash = 0;
+    res->hash = -1; // unsealed
 #ifdef SPY_DEBUG
     res->utf8 = (spy_gc_ptr_u8){(uint8_t *)(res + 1), (ptrdiff_t)length};
 #else
@@ -32,8 +32,16 @@ spy_str_alloc(size_t length) {
     return res;
 }
 
+void
+spy_str_seal(spy_StrObject *s) {
+    SPY_STR_ASSERT_UNSEALED(s);
+    s->hash = 0;
+}
+
 bool
 spy_str_eq(spy_StrObject *a, spy_StrObject *b) {
+    SPY_STR_ASSERT_SEALED(a);
+    SPY_STR_ASSERT_SEALED(b);
     if (a->length != b->length)
         return false;
     return memcmp(spy_StrObject_UTF8(a), spy_StrObject_UTF8(b), a->length) == 0;
@@ -41,15 +49,25 @@ spy_str_eq(spy_StrObject *a, spy_StrObject *b) {
 
 int32_t
 spy_str_hash(spy_StrObject *s) {
-    if (s->hash != 0)
-        return s->hash;
+    int32_t h = s->hash;
+    // NOTE: we cannot use SPY_STR_ASSERT_UNSEALED because we want to do the check also
+    // in release mode; spy_str_alloc sets hash == -1, we don't want to mistake it for
+    // "hash already computed".
+    //
+    // The assumption is that the extra check here is cheap enough to keep. If it turns
+    // out to be too costly, the solution is to modify spy_str_alloc to set hash=0 in
+    // SPY_RELEASE mode.
+    if (h == -1)
+        spy_panic("PanicError", "string is not sealed", __FILE__, __LINE__);
+    if (h != 0)
+        return h;
     // FNV-1a hash
-    uint32_t h = 2166136261u;
+    uint32_t x = 2166136261u;
     for (size_t i = 0; i < s->length; i++) {
-        h ^= (uint8_t)spy_StrObject_UTF8(s)[i];
-        h *= 16777619u;
+        x ^= (uint8_t)spy_StrObject_UTF8(s)[i];
+        x *= 16777619u;
     }
-    int32_t result = (int32_t)h;
+    int32_t result = (int32_t)x;
     if (result == -1)
         result = -2;
     if (result == 0)
@@ -72,6 +90,7 @@ spy_str_from_format(const char *fmt, ...) {
     spy_StrObject *res = spy_str_alloc(length);
     char *outbuf = (char *)spy_StrObject_UTF8(res);
     memcpy(outbuf, buf, length);
+    spy_str_seal(res);
     return res;
 }
 
@@ -208,6 +227,7 @@ spy_ryu_float_to_str(char *raw) {
     size_t length = spy_normalize_ryu_float(formatted, raw);
     spy_StrObject *res = spy_str_alloc(length);
     memcpy(spy_StrObject_UTF8(res), formatted, length);
+    spy_str_seal(res);
     return res;
 }
 

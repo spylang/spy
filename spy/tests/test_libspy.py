@@ -39,6 +39,7 @@ class TestLibSPy(CTest):
         spy_StrObject *mk_W(void) {
             spy_StrObject *s = spy_str_alloc(5);
             memcpy((void*)spy_StrObject_UTF8(s), "world", 5);
+            spy_str_seal(s);
             return s;
         }
         """

@@ -102,7 +102,6 @@ class methods:
         a = BytesObject.from_bytes(self)
         b = BytesObject.from_bytes(other)
         out = BytesObject.alloc(a.length + b.length)
-        out.hash = 0
         ptr_copy_slice(out.data, 0, a.length, a.data, 0, a.length)
         ptr_copy_slice(out.data, a.length, a.length + b.length, b.data, 0, b.length)
         return BytesObject.to_bytes(out)
@@ -110,7 +109,6 @@ class methods:
     def __mul__(self: bytes, n: i32) -> bytes:
         ll = BytesObject.from_bytes(self)
         out = BytesObject.alloc(ll.length * n)
-        out.hash = 0
         if ll.length == 1:
             memset(out.data, ll.data[0], n)
         else:
@@ -128,7 +126,6 @@ class methods:
             raise ValueError("only 'utf-8' encoding is supported")
         ll = BytesObject.from_bytes(self)
         out = StrObject.alloc(ll.length)
-        out.hash = 0
         if ll.length > 0:
             ptr_copy(out.utf8, ll.data, ll.length)
         return StrObject.to_str(out)
@@ -149,7 +146,6 @@ class methods:
                 out_len = out_len + 1
         # Second pass: fill the output buffer
         out = StrObject.alloc(out_len)
-        out.hash = 0
         j: i32 = 0
         out.utf8[j] = ord(b"b")
         j = j + 1

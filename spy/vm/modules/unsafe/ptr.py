@@ -729,15 +729,19 @@ def w__alloc_StrObject(vm: "SPyVM", wam_length: W_MetaArg) -> W_OpSpec:
     return W_OpSpec(w_impl, [wam_length])
 
 
+# XXX: rename to to_sealed_str
 @UNSAFE.builtin_func(color="blue", kind="metafunc")
 def w__StrObject_to_str(vm: "SPyVM", wam_p: W_MetaArg) -> W_OpSpec:
     """
     Convert a low-level `gc_ptr[StrObject]` back into a high-level `str`. The dual
     of `_str_to_StrObject`.
+
+    This seals the object, see spy/str.h.
     """
 
     @vm.register_builtin_func(UNSAFE.fqn.join("_StrObject_to_str"), "impl")
     def w_impl(vm: "SPyVM", w_p: W_Ptr) -> W_Str:
+        vm.ll.call("spy_str_seal", w_p.addr)
         return W_Str.from_ptr(vm, w_p.addr)
 
     return W_OpSpec(w_impl, [wam_p])

@@ -67,6 +67,7 @@ spy_posix$_fread(FILE *f, int32_t size) {
         memcpy((char *)spy_StrObject_UTF8(trimmed), spy_StrObject_UTF8(res), n);
         res = trimmed;
     }
+    spy_str_seal(res);
     return res;
 }
 
@@ -93,6 +94,7 @@ spy_posix$__freadall_chunked(FILE *f) {
     spy_StrObject *res = spy_str_alloc(total);
     memcpy((char *)spy_StrObject_UTF8(res), buf, total);
     free(buf);
+    spy_str_seal(res);
     return res;
 }
 
@@ -127,11 +129,13 @@ spy_posix$_freadall(FILE *f) {
         memcpy((char *)spy_StrObject_UTF8(trimmed), spy_StrObject_UTF8(res), n);
         res = trimmed;
     }
+    spy_str_seal(res);
     return res;
 }
 
 spy_StrObject *
 spy_posix$_freadline(FILE *f) {
+    spy_StrObject *res;
     char *line = NULL;
     size_t bufsize = 0;
     ssize_t n = getline(&line, &bufsize, f);
@@ -142,11 +146,14 @@ spy_posix$_freadline(FILE *f) {
             return NULL;
         }
         // EOF: return empty string
-        return spy_str_alloc(0);
+        res = spy_str_alloc(0);
+        spy_str_seal(res);
+        return res;
     }
-    spy_StrObject *res = spy_str_alloc(n);
+    res = spy_str_alloc(n);
     memcpy((char *)spy_StrObject_UTF8(res), line, n);
     free(line);
+    spy_str_seal(res);
     return res;
 }
 

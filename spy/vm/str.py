@@ -23,6 +23,7 @@ def ll_str_new(ll: LLSPyInstance, s: str) -> int:
     ptr = ll.call("spy_str_alloc", length)
     utf8_ptr = ll.mem.read_i32(ptr + ll.str_layout.utf8_offset)
     ll.mem.write(utf8_ptr, utf8)
+    ll.call("spy_str_seal", ptr)
     return ptr
 
 
@@ -36,8 +37,11 @@ class W_Str(W_Object):
         typedef struct {
             size_t length;
             int32_t hash;
-            const char utf8[];
+            spy_gc_ptr_u8 utf8;
         } spy_StrObject;
+
+    See str.h for the seal protocol of the `hash` field: an object returned by
+    ll_str_new is always sealed.
     """
 
     __spy_storage_category__ = "value"

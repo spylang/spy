@@ -22,6 +22,23 @@
    ADDR+14  'o'
 
    Note that "co-allocation" is just an optimization, not a requirement.
+
+   --- Sealing ---
+
+   spy_str_alloc returns an "unsealed" string: the user code never saw it and the
+   internal buffer can be modified.  After you fill the utf8 buffer you must call
+   spy_str_seal EXACTLY ONCE: the object then behaves as an immutable `str`. A seal of
+   an already sealed object is an error, and so is using the content of an unsealed
+   object.
+
+   Debug builds actively check that you don't call methods on an unsealed
+   string. Release builds don't.
+
+   The `hash` field doubles as a seal marker:
+
+   -1      unsealed: the object is still being built, its content may change
+   0       sealed, hash not computed yet
+   other   sealed, hash computed and cached
 */
 
 typedef struct {
@@ -33,6 +50,23 @@ typedef struct {
 // Convenience macros for accessing the utf8 buffer.
 #define spy_StrObject_UTF8(s) ((s)->utf8.p)
 #define spy_StrObject_CHARS(s) ((const char *)spy_StrObject_UTF8(s))
+
+/* Debug-only seal checks. No-ops in release. */
+#ifdef SPY_DEBUG
+#  define SPY_STR_ASSERT_SEALED(s)                                                     \
+      do {                                                                             \
+          if ((s)->hash == -1)                                                         \
+              spy_panic("PanicError", "string is not sealed", __FILE__, __LINE__);     \
+      } while (0)
+#  define SPY_STR_ASSERT_UNSEALED(s)                                                   \
+      do {                                                                             \
+          if ((s)->hash != -1)                                                         \
+              spy_panic("PanicError", "string already sealed", __FILE__, __LINE__);    \
+      } while (0)
+#else
+#  define SPY_STR_ASSERT_SEALED(s) ((void)0)
+#  define SPY_STR_ASSERT_UNSEALED(s) ((void)0)
+#endif
 
 /* gc_ptr[_str::StrObject] is predeclared here, see also
    cstructwriter.py:emit_PtrType. Make sure that they stay in sync. */
@@ -54,13 +88,19 @@ SPY_PTR_FUNCTIONS(
 // short alias for manual use
 typedef spy_unsafe$gc_ptr___str$StrObject spy_gc_ptr_StrObject;
 
+// Seal a StrObject
+void WASM_EXPORT(spy_str_seal)(spy_StrObject *s);
+
 static inline spy_gc_ptr_StrObject
 spy_unsafe$_str_to_StrObject$impl(spy_StrObject *s) {
+    SPY_STR_ASSERT_SEALED(s);
     return spy_unsafe$gc_ptr___str$StrObject_from_addr(s);
 }
 
+// XXX: rename to to_sealed_str
 static inline spy_StrObject *
 spy_unsafe$_StrObject_to_str$impl(spy_gc_ptr_StrObject p) {
+    spy_str_seal(p.p);
     return p.p;
 }
 

@@ -8,8 +8,10 @@ At interp level, the W_Str type is defined in vm/str.py.
 
 Finally, some of the methods are implemented at applevel in this file.
 
-The StrObject struct defined here MUST stay in sync with the one defined in C. It is
-possible to cast between str and gc_ptr[StrObject] using StrObject.{from,to}_str.
+StrObject.alloc() returns an "unsealed" string: the user code never saw it and the
+internal buffer can be modified.  After you fill the utf8 buffer, you can call
+StrObject.to_sealed_str(): this seals the buffer and returns the string as a high-level
+`str` object.
 """
 
 from unsafe import (
@@ -53,15 +55,16 @@ class StrObject:
         """
         return _str_to_StrObject(s)
 
+    # XXX rename to to_sealed_str
     @staticmethod
     def to_str(ll: gc_ptr[StrObject]) -> str:
         """
         Cast a `ll` into a high level `str`.
-
-        Once a newly-allocated StrObject is casted to `str`, it should be considered
-        "locked" and immutable.
         """
         return _StrObject_to_str(ll)
+
+    def is_sealed(self) -> bool:
+        return self.hash == -1
 
 
 @struct
@@ -99,7 +102,6 @@ class methods:
                 if i < 0 or i >= n:
                     raise IndexError("string index out of bound")
                 out = StrObject.alloc(1)
-                out.hash = 0
                 out.utf8[0] = ll.utf8[i]
                 return StrObject.to_str(out)
 
@@ -176,7 +178,6 @@ class methods:
         a = StrObject.from_str(self)
         b = StrObject.from_str(other)
         out = StrObject.alloc(a.length + b.length)
-        out.hash = 0
         ptr_copy_slice(out.utf8, 0, a.length, a.utf8, 0, a.length)
         ptr_copy_slice(out.utf8, a.length, a.length + b.length, b.utf8, 0, b.length)
         return StrObject.to_str(out)
@@ -184,7 +185,6 @@ class methods:
     def __mul__(self: str, n: i32) -> str:
         ll = StrObject.from_str(self)
         out = StrObject.alloc(ll.length * n)
-        out.hash = 0
         l = ll.length
         for i in range(n):
             ptr_copy_slice(out.utf8, i * l, (i + 1) * l, ll.utf8, 0, l)
@@ -210,7 +210,6 @@ class methods:
             raise ValueError("only 'utf-8' encoding is supported")
         ll = StrObject.from_str(self)
         out = _alloc_BytesObject(ll.length)
-        out.hash = 0
         if ll.length > 0:
             ptr_copy(out.data, ll.utf8, ll.length)
         return _BytesObject_to_bytes(out)
@@ -256,7 +255,6 @@ class methods:
 
         # Second pass: fill the buffer
         out = StrObject.alloc(out_len)
-        out.hash = 0
         j: i32 = 0
         out.utf8[j] = quote
         j = j + 1
@@ -346,7 +344,6 @@ class methods:
             # insert `new` before each byte and after the last
             result_len = orig_len + (orig_len + 1) * new_len
             res = StrObject.alloc(result_len)
-            res.hash = 0
             pos = 0
             for i in range(orig_len):
                 if new_len > 0:
@@ -376,7 +373,6 @@ class methods:
         if count == 0:
             # Return the original string when no occurrences are found
             res = StrObject.alloc(orig_len)
-            res.hash = 0
             if orig_len > 0:
                 ptr_copy(res.utf8, ll_orig.utf8, orig_len)
             return StrObject.to_str(res)
@@ -384,7 +380,6 @@ class methods:
         # Second pass: build the result
         result_len = orig_len + count * (new_len - old_len)
         res = StrObject.alloc(result_len)
-        res.hash = 0
         pos = 0
         i = 0
         while i <= orig_len - old_len:
@@ -412,7 +407,6 @@ class methods:
         # XXX: this works only for ASCII strings but it's good enough for now
         ll = StrObject.from_str(self)
         llnew = StrObject.alloc(ll.length)
-        llnew.hash = 0
         for i in range(ll.length):
             ch = ll.utf8[i]
             if ord(b"a") <= ch and ch <= ord(b"z"):
@@ -635,7 +629,6 @@ def _strip_whitespace(self: str) -> str:
     if new_len == length:
         return self
     out = StrObject.alloc(new_len)
-    out.hash = 0
     if new_len > 0:
         ptr_copy_slice(out.utf8, 0, new_len, ll.utf8, start, end)
     return StrObject.to_str(out)
@@ -672,7 +665,6 @@ def _strip_chars(self: str, chars: str) -> str:
     if new_len == length:
         return self
     out = StrObject.alloc(new_len)
-    out.hash = 0
     if new_len > 0:
         ptr_copy_slice(out.utf8, 0, new_len, ll.utf8, start, end)
     return StrObject.to_str(out)

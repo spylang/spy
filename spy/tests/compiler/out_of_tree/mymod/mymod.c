@@ -8,5 +8,6 @@ spy_StrObject *spy_mymod$get_name(void) {
     size_t n = sizeof(NAME) - 1;
     spy_StrObject *s = spy_str_alloc(n);
     memcpy(spy_StrObject_UTF8(s), NAME, n);
+    spy_str_seal(s);
     return s;
 }
