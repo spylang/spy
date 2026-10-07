@@ -42,7 +42,7 @@ class TestStr(CompilerTest):
 
         def double_seal(s: str) -> str:
             ll = StrObject.from_str(s)
-            return StrObject.to_str(ll)
+            return StrObject.to_sealed_str(ll)
         """
         mod = self.compile(src)
         with SPyError.raises("W_PanicError", match="string already sealed"):

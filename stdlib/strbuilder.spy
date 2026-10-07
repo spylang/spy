@@ -104,6 +104,6 @@ class StrBuilder:
             raise ValueError("StrBuilder is already sealed")
         if state.position != state.buffer.length:
             raise ValueError("StrBuilder is not completely filled")
-        result = StrObject.to_str(state.buffer)
+        result = StrObject.to_sealed_str(state.buffer)
         state.buffer = gc_ptr[StrObject].NULL
         return result

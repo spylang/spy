@@ -97,9 +97,8 @@ spy_unsafe$_str_to_StrObject$impl(spy_StrObject *s) {
     return spy_unsafe$gc_ptr___str$StrObject_from_addr(s);
 }
 
-// XXX: rename to to_sealed_str
 static inline spy_StrObject *
-spy_unsafe$_StrObject_to_str$impl(spy_gc_ptr_StrObject p) {
+spy_unsafe$_StrObject_to_sealed_str$impl(spy_gc_ptr_StrObject p) {
     spy_str_seal(p.p);
     return p.p;
 }

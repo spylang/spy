@@ -128,7 +128,7 @@ class methods:
         out = StrObject.alloc(ll.length)
         if ll.length > 0:
             ptr_copy(out.utf8, ll.data, ll.length)
-        return StrObject.to_str(out)
+        return StrObject.to_sealed_str(out)
 
     def __repr__(self: bytes) -> str:
         ll = BytesObject.from_bytes(self)
@@ -200,4 +200,4 @@ class methods:
                 out.utf8[j] = c2
                 j = j + 1
         out.utf8[j] = ord(b"'")
-        return StrObject.to_str(out)
+        return StrObject.to_sealed_str(out)

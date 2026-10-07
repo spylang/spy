@@ -712,7 +712,7 @@ def w__str_to_StrObject(vm: "SPyVM", wam_s: W_MetaArg) -> W_OpSpec:
 def w__alloc_StrObject(vm: "SPyVM", wam_length: W_MetaArg) -> W_OpSpec:
     """
     Allocate a fresh StrObject (with utf8 buffer of `length` bytes) and return a
-    `gc_ptr[StrObject]`. The dual of `_StrObject_to_str`.
+    `gc_ptr[StrObject]`. The dual of `_StrObject_to_sealed_str`.
     """
     w_StrObject = vm.lookup_global(FQN("_str::StrObject"))
     assert isinstance(w_StrObject, W_StructType)
@@ -729,17 +729,14 @@ def w__alloc_StrObject(vm: "SPyVM", wam_length: W_MetaArg) -> W_OpSpec:
     return W_OpSpec(w_impl, [wam_length])
 
 
-# XXX: rename to to_sealed_str
 @UNSAFE.builtin_func(color="blue", kind="metafunc")
-def w__StrObject_to_str(vm: "SPyVM", wam_p: W_MetaArg) -> W_OpSpec:
+def w__StrObject_to_sealed_str(vm: "SPyVM", wam_p: W_MetaArg) -> W_OpSpec:
     """
-    Convert a low-level `gc_ptr[StrObject]` back into a high-level `str`. The dual
-    of `_str_to_StrObject`.
-
-    This seals the object, see spy/str.h.
+    Seal a low-level `gc_ptr[StrObject]` and convert into a high-level `str`. The
+    dual of `_str_to_StrObject`.
     """
 
-    @vm.register_builtin_func(UNSAFE.fqn.join("_StrObject_to_str"), "impl")
+    @vm.register_builtin_func(UNSAFE.fqn.join("_StrObject_to_sealed_str"), "impl")
     def w_impl(vm: "SPyVM", w_p: W_Ptr) -> W_Str:
         vm.ll.call("spy_str_seal", w_p.addr)
         return W_Str.from_ptr(vm, w_p.addr)
