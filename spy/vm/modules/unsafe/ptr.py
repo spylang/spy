@@ -768,7 +768,7 @@ def w__bytes_to_BytesObject(vm: "SPyVM", wam_b: W_MetaArg) -> W_OpSpec:
 def w__alloc_BytesObject(vm: "SPyVM", wam_length: W_MetaArg) -> W_OpSpec:
     """
     Allocate a fresh BytesObject (with data buffer of `length` bytes) and return a
-    `gc_ptr[BytesObject]`. The dual of `_BytesObject_to_bytes`.
+    `gc_ptr[BytesObject]`. The dual of `_BytesObject_to_sealed_bytes`.
     """
     w_BytesObject = vm.lookup_global(FQN("_bytes::BytesObject"))
     assert isinstance(w_BytesObject, W_StructType)
@@ -786,14 +786,15 @@ def w__alloc_BytesObject(vm: "SPyVM", wam_length: W_MetaArg) -> W_OpSpec:
 
 
 @UNSAFE.builtin_func(color="blue", kind="metafunc")
-def w__BytesObject_to_bytes(vm: "SPyVM", wam_p: W_MetaArg) -> W_OpSpec:
+def w__BytesObject_to_sealed_bytes(vm: "SPyVM", wam_p: W_MetaArg) -> W_OpSpec:
     """
-    Convert a low-level `gc_ptr[BytesObject]` back into a high-level `bytes`. The
-    dual of `_bytes_to_BytesObject`.
+    Seal a low-level `gc_ptr[BytesObject]` and convert into a high-level `bytes`.
+    The dual of `_bytes_to_BytesObject`.
     """
 
-    @vm.register_builtin_func(UNSAFE.fqn.join("_BytesObject_to_bytes"), "impl")
+    @vm.register_builtin_func(UNSAFE.fqn.join("_BytesObject_to_sealed_bytes"), "impl")
     def w_impl(vm: "SPyVM", w_p: W_Ptr) -> W_Bytes:
+        vm.ll.call("spy_bytes_seal", w_p.addr)
         return W_Bytes.from_ptr(vm, w_p.addr)
 
     return W_OpSpec(w_impl, [wam_p])

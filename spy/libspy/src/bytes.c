@@ -18,7 +18,7 @@ spy_bytes_alloc(size_t length) {
     size_t size = sizeof(spy_BytesObject) + length;
     spy_BytesObject *res = (spy_BytesObject *)spy_GcAlloc(size).p;
     res->length = length;
-    res->hash = 0;
+    res->hash = -1; // unsealed
 #ifdef SPY_DEBUG
     res->data = (spy_gc_ptr_u8){(uint8_t *)(res + 1), (ptrdiff_t)length};
 #else
@@ -27,18 +27,34 @@ spy_bytes_alloc(size_t length) {
     return res;
 }
 
+void
+spy_bytes_seal(spy_BytesObject *b) {
+    SPY_BYTES_ASSERT_UNSEALED(b);
+    b->hash = 0;
+}
+
 int32_t
 spy_bytes_hash(spy_BytesObject *b) {
-    if (b->hash != 0)
-        return b->hash;
+    int32_t h = b->hash;
+    // NOTE: we cannot use SPY_BYTES_ASSERT_UNSEALED because we want to do the check
+    // also in release mode; spy_bytes_alloc sets hash == -1, we don't want to mistake
+    // it for "hash already computed".
+    //
+    // The assumption is that the extra check here is cheap enough to keep. If it turns
+    // out to be too costly, the solution is to modify spy_bytes_alloc to set hash=0 in
+    // SPY_RELEASE mode.
+    if (h == -1)
+        spy_panic("PanicError", "bytes is not sealed", __FILE__, __LINE__);
+    if (h != 0)
+        return h;
     // FNV-1a hash (same algorithm as str; hashes not required to match)
     // NOTE: must stay in C because applevel SPy has no wrapping i32 multiply yet
-    uint32_t h = 2166136261u;
+    uint32_t x = 2166136261u;
     for (size_t i = 0; i < b->length; i++) {
-        h ^= spy_BytesObject_DATA(b)[i];
-        h *= 16777619u;
+        x ^= spy_BytesObject_DATA(b)[i];
+        x *= 16777619u;
     }
-    int32_t result = (int32_t)h;
+    int32_t result = (int32_t)x;
     if (result == -1)
         result = -2;
     if (result == 0)

@@ -9,6 +9,11 @@ At interp level, the W_Bytes type is defined in vm/bytes.py.
 The BytesObject struct defined here MUST stay in sync with the one defined in C.
 It is possible to cast between bytes and gc_ptr[BytesObject] using
 BytesObject.{from,to}_bytes.
+
+BytesObject.alloc() returns an "unsealed" object: the user code never saw it and
+the internal buffer can be modified.  After you fill the data buffer, you can
+call BytesObject.to_sealed_bytes(): this seals the buffer and returns the bytes
+as a high-level `bytes` object.
 """
 
 from unsafe import (
@@ -19,7 +24,7 @@ from unsafe import (
     memset,
     _bytes_to_BytesObject,
     _alloc_BytesObject,
-    _BytesObject_to_bytes,
+    _BytesObject_to_sealed_bytes,
 )
 from _str import StrObject
 
@@ -40,8 +45,14 @@ class BytesObject:
         return _bytes_to_BytesObject(b)
 
     @staticmethod
-    def to_bytes(ll: gc_ptr[BytesObject]) -> bytes:
-        return _BytesObject_to_bytes(ll)
+    def to_sealed_bytes(ll: gc_ptr[BytesObject]) -> bytes:
+        """
+        Seal the `ll` bytes and cast into a high level `bytes`.
+        """
+        return _BytesObject_to_sealed_bytes(ll)
+
+    def is_sealed(self) -> bool:
+        return self.hash != -1
 
 
 def _bytes_cmp(a: bytes, b: bytes) -> i32:
@@ -104,7 +115,7 @@ class methods:
         out = BytesObject.alloc(a.length + b.length)
         ptr_copy_slice(out.data, 0, a.length, a.data, 0, a.length)
         ptr_copy_slice(out.data, a.length, a.length + b.length, b.data, 0, b.length)
-        return BytesObject.to_bytes(out)
+        return BytesObject.to_sealed_bytes(out)
 
     def __mul__(self: bytes, n: i32) -> bytes:
         ll = BytesObject.from_bytes(self)
@@ -115,7 +126,7 @@ class methods:
             l = ll.length
             for i in range(n):
                 ptr_copy_slice(out.data, i * l, (i + 1) * l, ll.data, 0, l)
-        return BytesObject.to_bytes(out)
+        return BytesObject.to_sealed_bytes(out)
 
     # XXX: __hash__ lives in C (spy_bytes_hash, called from W_Bytes.w_hash) because
     # FNV-1a requires wrapping i32 multiply, which is not yet available at applevel.

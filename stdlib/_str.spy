@@ -22,8 +22,9 @@ from unsafe import (
     _str_to_StrObject,
     _alloc_StrObject,
     _StrObject_to_sealed_str,
+    _alloc_BytesObject,
+    _BytesObject_to_sealed_bytes,
 )
-from unsafe import _alloc_BytesObject, _BytesObject_to_bytes
 from __spy__ import lookup_fqn
 from operator import OpSpec
 from types import NoneType
@@ -63,7 +64,7 @@ class StrObject:
         return _StrObject_to_sealed_str(ll)
 
     def is_sealed(self) -> bool:
-        return self.hash == -1
+        return self.hash != -1
 
 
 @struct
@@ -211,7 +212,7 @@ class methods:
         out = _alloc_BytesObject(ll.length)
         if ll.length > 0:
             ptr_copy(out.data, ll.utf8, ll.length)
-        return _BytesObject_to_bytes(out)
+        return _BytesObject_to_sealed_bytes(out)
 
     def isascii(self: str) -> bool:
         ll = StrObject.from_str(self)

@@ -75,6 +75,30 @@ class TestLibSPy(CTest):
         with SPyError.raises("W_PanicError", match="string already sealed"):
             ll.call("double_seal")
 
+    def test_bytes_seal_checks(self):
+        # spy_bytes_alloc returns an unsealed object: hashing it panics, and a
+        # double seal panics
+        src = r"""
+        #include <spy.h>
+
+        int32_t WASM_EXPORT(hash_unsealed)(void) {
+            spy_BytesObject *b = spy_bytes_alloc(3);
+            return spy_bytes_hash(b);
+        }
+
+        void WASM_EXPORT(double_seal)(void) {
+            spy_BytesObject *b = spy_bytes_alloc(3);
+            spy_bytes_seal(b);
+            spy_bytes_seal(b);
+        }
+        """
+        test_wasm = self.c_compile(src, exports=["hash_unsealed", "double_seal"])
+        ll = LLSPyInstance.from_file(test_wasm)
+        with SPyError.raises("W_PanicError", match="bytes is not sealed"):
+            ll.call("hash_unsealed")
+        with SPyError.raises("W_PanicError", match="bytes already sealed"):
+            ll.call("double_seal")
+
     def test_debug_log(self):
         src = r"""
         #include <spy.h>
