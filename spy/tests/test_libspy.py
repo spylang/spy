@@ -51,6 +51,30 @@ class TestLibSPy(CTest):
         ptr_W = ll.call("mk_W")
         assert ll.read_str(ptr_W) == (5, 0, b"world")
 
+    def test_str_seal_checks(self):
+        # spy_str_alloc returns an unsealed object: hashing it panics, and a
+        # double seal panics
+        src = r"""
+        #include <spy.h>
+
+        int32_t WASM_EXPORT(hash_unsealed)(void) {
+            spy_StrObject *s = spy_str_alloc(3);
+            return spy_str_hash(s);
+        }
+
+        void WASM_EXPORT(double_seal)(void) {
+            spy_StrObject *s = spy_str_alloc(3);
+            spy_str_seal(s);
+            spy_str_seal(s);
+        }
+        """
+        test_wasm = self.c_compile(src, exports=["hash_unsealed", "double_seal"])
+        ll = LLSPyInstance.from_file(test_wasm)
+        with SPyError.raises("W_PanicError", match="string is not sealed"):
+            ll.call("hash_unsealed")
+        with SPyError.raises("W_PanicError", match="string already sealed"):
+            ll.call("double_seal")
+
     def test_debug_log(self):
         src = r"""
         #include <spy.h>

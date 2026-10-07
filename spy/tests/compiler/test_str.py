@@ -36,6 +36,18 @@ class TestStr(CompilerTest):
         mod = self.compile(src)
         assert mod.get_length("") == 0
 
+    def test_to_str_already_sealed(self):
+        src = """
+        from _str import StrObject
+
+        def double_seal(s: str) -> str:
+            ll = StrObject.from_str(s)
+            return StrObject.to_str(ll)
+        """
+        mod = self.compile(src)
+        with SPyError.raises("W_PanicError", match="string already sealed"):
+            mod.double_seal("hello")
+
     def test_add(self):
         mod = self.compile("""
         def foo() -> str:
