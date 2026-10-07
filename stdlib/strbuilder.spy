@@ -3,6 +3,71 @@ from unsafe import gc_alloc, gc_ptr, ptr_copy_slice, ptr_setbytes_slice
 
 
 @struct
+class Chunk:
+    prev: gc_ptr[Chunk]
+    buf: gc_ptr[StrObject]
+    pos: i32  # bytes used in buf
+
+
+@struct
+class StrBuilder:
+    """
+    Build a string piece by piece, growing as needed.
+
+        sb = StrBuilder(initial_capacity)
+        sb.append("hello ")
+        sb.append("world")
+        s = sb.build()
+
+    `initial_capacity` is the size in bytes of the first chunk.
+    """
+
+    __ll__: gc_ptr[Chunk]
+
+    def __new__(initial_capacity: i32) -> StrBuilder:
+        if initial_capacity < 0:
+            raise ValueError("StrBuilder capacity must not be negative")
+
+        chunk = gc_alloc[Chunk](1)
+        chunk.prev = gc_ptr[Chunk].NULL
+        chunk.buf = StrObject.alloc(initial_capacity)
+        chunk.pos = 0
+        return StrBuilder.__make__(chunk)
+
+    def append(self, s: str) -> None:
+        chunk = self.__ll__
+        if chunk.buf == gc_ptr[StrObject].NULL:
+            raise ValueError("StrBuilder is already built")
+        lls = StrObject.from_str(s)
+        n = lls.length
+        assert chunk.pos + n <= chunk.buf.length, "TODO: implement growth"
+        ptr_copy_slice(chunk.buf.utf8, chunk.pos, chunk.pos + n, lls.utf8, 0, n)
+        chunk.pos += n
+
+    def build(self) -> str:
+        """
+        Return the string and seal the builder.
+        """
+        chunk = self.__ll__
+        if chunk.buf == gc_ptr[StrObject].NULL:
+            raise ValueError("StrBuilder is already built")
+
+        assert chunk.prev == gc_ptr[Chunk].NULL, "TODO: implement multi-chunk"
+        if chunk.pos < chunk.buf.length:
+            # underfill: we didn't use all the space in buf. Let's just pretend the
+            # StrObject is shorter. This leaks a bit of memory at the end, too bad.
+            chunk.buf.length = chunk.pos
+
+        # "steal" chunk.buf and turn it into a user-visible str
+        buf = chunk.buf
+        chunk.buf = gc_ptr[StrObject].NULL
+        return StrObject.to_str(buf)
+
+
+# ========== UnsafeFixedStrBuilder ==========
+
+
+@struct
 class UnsafeBuilderState:
     buffer: gc_ptr[StrObject]
     position: i32

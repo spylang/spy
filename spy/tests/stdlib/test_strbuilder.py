@@ -1,19 +1,31 @@
+import pytest
+
 from spy.tests.support import CompilerTest
 
 
-class TestStrBuilder(CompilerTest):
-    def test_unsafe_build(self):
-        src = """
-        from strbuilder import UnsafeFixedStrBuilder
+@pytest.fixture(params=["StrBuilder", "Unsafe"])
+def Builder(request):
+    if request.param == "StrBuilder":
+        return "StrBuilder"
+    elif request.param == "Unsafe":
+        return "UnsafeFixedStrBuilder"
+    else:
+        assert False
 
-        def concat(capacity: int, first: str, second: str, third: str) -> str:
-            sb = UnsafeFixedStrBuilder(capacity)
-            for chunk in [first, second, third]:
-                sb.append(chunk)
+
+class TestStrBuilder(CompilerTest):
+    def test_simple(self, Builder):
+        src = f"""
+        from strbuilder import {Builder}
+
+        def concat(cap: int, a: str, b: str, c: str) -> str:
+            sb = {Builder}(cap)
+            sb.append(a)
+            sb.append(b)
+            sb.append(c)
             return sb.build()
         """
         mod = self.compile(src)
-
         assert mod.concat(0, "", "", "") == ""
         assert mod.concat(5, "", "hello", "") == "hello"
         assert mod.concat(7, "abc", "def", "!") == "abcdef!"
