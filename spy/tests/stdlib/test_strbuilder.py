@@ -34,6 +34,23 @@ class TestStrBuilder(CompilerTest):
         # underfill: we leak some memory but the string is valid
         assert mod.concat(10, "ab", "cd", "e") == "abcde"
 
+    def test_growing(self):
+        src = f"""
+        from strbuilder import StrBuilder
+
+        def concat(cap: int, a: str, b: str, c: str) -> str:
+            sb = StrBuilder(cap)
+            sb.append(a)
+            sb.append(b)
+            sb.append(c)
+            return sb.build()
+        """
+        mod = self.compile(src)
+        # chunk is full -> grow
+        assert mod.concat(5, "hello", " ", "world") == "hello world"
+        # chunk is not full but it's not big enough: fill + grow + copy rest
+        assert mod.concat(8, "hello", " ", "world") == "hello world"
+
     def test_unsafe_append_slice(self):
         src = """
         from strbuilder import UnsafeFixedStrBuilder

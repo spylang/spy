@@ -4,9 +4,10 @@ from unsafe import gc_alloc, gc_ptr, ptr_copy_slice, ptr_setbytes_slice
 
 @struct
 class Chunk:
-    prev: gc_ptr[Chunk]
     buf: gc_ptr[StrObject]
     pos: i32  # bytes used in buf
+    prev: gc_ptr[Chunk]
+    prev_length: i32  # total bytes stored in the `prev` chain
 
 
 @struct
@@ -28,21 +29,59 @@ class StrBuilder:
         if initial_capacity < 0:
             raise ValueError("StrBuilder capacity must not be negative")
 
-        chunk = gc_alloc[Chunk](1)
-        chunk.prev = gc_ptr[Chunk].NULL
-        chunk.buf = StrObject.alloc(initial_capacity)
-        chunk.pos = 0
-        return StrBuilder.__make__(chunk)
+        head = gc_alloc[Chunk](1)
+        head.buf = StrObject.alloc(initial_capacity)
+        head.pos = 0
+        head.prev = gc_ptr[Chunk].NULL
+        head.prev_length = 0
+        return StrBuilder.__make__(head)
 
     def append(self, s: str) -> None:
-        chunk = self.__ll__
-        if chunk.buf == gc_ptr[StrObject].NULL:
+        head = self.__ll__
+        if head.buf == gc_ptr[StrObject].NULL:
             raise ValueError("StrBuilder is already built")
         lls = StrObject.from_str(s)
         n = lls.length
-        assert chunk.pos + n <= chunk.buf.length, "TODO: implement growth"
-        ptr_copy_slice(chunk.buf.utf8, chunk.pos, chunk.pos + n, lls.utf8, 0, n)
-        chunk.pos += n
+        room = head.buf.length - head.pos
+        if n <= room:
+            # fast path: we can copy into the current chunk
+            ptr_copy_slice(head.buf.utf8, head.pos, head.pos + n, lls.utf8, 0, n)
+            head.pos += n
+            return
+
+        # slow path: we need to grow
+        if room > 0:
+            # fill the remaining of the current buffer
+            ptr_copy_slice(head.buf.utf8, head.pos, head.pos + room, lls.utf8, 0, room)
+            head.pos += room
+        # grow and copy the rest
+        rest = n - room
+        self._grow(rest)
+        ptr_copy_slice(head.buf.utf8, 0, rest, lls.utf8, room, n)
+        head.pos = rest
+
+    def _grow(self, needed: i32) -> None:
+        """
+        The current buffer is full: seal it into the chain and allocate a bigger one.
+        """
+        head = self.__ll__
+
+        # move the existing buffer into a sealed chunk, and link it to the head
+        sealed = gc_alloc[Chunk](1)
+        sealed.buf = head.buf
+        sealed.pos = head.pos
+        sealed.prev = head.prev
+        sealed.prev_length = head.prev_length
+
+        head.prev = sealed
+        head.prev_length += head.pos
+
+        # allocate a new buffer for the head
+        new_capacity = head.buf.length * 2
+        if new_capacity < needed:
+            new_capacity = needed
+        head.buf = StrObject.alloc(new_capacity)
+        head.pos = 0
 
     def build(self) -> str:
         """
@@ -52,16 +91,32 @@ class StrBuilder:
         if chunk.buf == gc_ptr[StrObject].NULL:
             raise ValueError("StrBuilder is already built")
 
-        assert chunk.prev == gc_ptr[Chunk].NULL, "TODO: implement multi-chunk"
-        if chunk.pos < chunk.buf.length:
-            # underfill: we didn't use all the space in buf. Let's just pretend the
-            # StrObject is shorter. This leaks a bit of memory at the end, too bad.
-            chunk.buf.length = chunk.pos
+        if chunk.prev == gc_ptr[Chunk].NULL:
+            # nothing overflowed the first chunk, so the buffer already is the result
+            if chunk.pos < chunk.buf.length:
+                # underfill: we didn't use all the space in buf. Let's just pretend
+                # the StrObject is shorter. This leaks a bit of memory at the end,
+                # too bad.
+                chunk.buf.length = chunk.pos
+            buf = chunk.buf
+            chunk.buf = gc_ptr[StrObject].NULL
+            return StrObject.to_str(buf)
 
-        # "steal" chunk.buf and turn it into a user-visible str
-        buf = chunk.buf
+        # The pieces are stored newest-first in the chain and the current buffer is
+        # the newest of all, so we fill the fresh result from the end backwards.
+        total = chunk.prev_length + chunk.pos
+        result = StrObject.alloc(total)
+        dst = total - chunk.pos
+        ptr_copy_slice(result.utf8, dst, total, chunk.buf.utf8, 0, chunk.pos)
+
+        node = chunk.prev
+        while node != gc_ptr[Chunk].NULL:
+            dst -= node.pos
+            ptr_copy_slice(result.utf8, dst, dst + node.pos, node.buf.utf8, 0, node.pos)
+            node = node.prev
+
         chunk.buf = gc_ptr[StrObject].NULL
-        return StrObject.to_str(buf)
+        return StrObject.to_str(result)
 
 
 # ========== UnsafeFixedStrBuilder ==========
