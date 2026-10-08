@@ -1,18 +1,20 @@
 """
-This module implements the low-level internal ``_simd`` VM module, exposing ``SIMD``.
+This module implements the low-level internal `_simd` VM module, exposing `SIMD`.
 """
 
-from typing import TYPE_CHECKING, Annotated, Any
+from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.b import B
-from spy.vm.builtin import builtin_method
+from spy.vm.builtin import builtin_classmethod, builtin_method
+from spy.vm.function import W_Func
 from spy.vm.irtag import IRTag
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_I32, W_Dynamic
 from spy.vm.registry import ModuleRegistry
+from spy.vm.struct import W_StructType
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
@@ -37,7 +39,7 @@ SIMD_DTYPES = (
 @SIMD.builtin_type("SimdType")
 class W_SimdType(W_Type):
     """
-    The *type* of a SIMD vector, e.g. ``SIMD[f32, 4]``.
+    The *type* of a SIMD vector, e.g. `SIMD[f32, 4]`.
     """
 
     w_dtype: W_Type
@@ -47,22 +49,13 @@ class W_SimdType(W_Type):
         return super().repr_hints() + ["simd"]
 
     def is_struct(self, vm: "SPyVM") -> bool:
-        # SIMD vectors are not structs: ptr[SIMD[...]] loads/stores them
-        # *by value* (see W_Ptr.w_GETITEM), they never become a ref[T].
         return False
 
 
 @SIMD.builtin_type("Simd")
 class W_Simd(W_Object):
     """
-    A SIMD vector *value*, e.g. an instance of ``SIMD[f32, 4]``.
-
-    Interp-level representation: a plain Python list of ``size`` lane values
-    (each a ``W_Object`` of ``w_dtype``).  This is a *value* type: it is
-    immutable (only ``__getitem__``, no ``__setitem__``), compares by value,
-    and is passed/returned by value between SPy functions.  Mutation /
-    addressing of individual lanes exists only through ``ptr[SIMD[...]]``,
-    mirroring ``struct``.
+    A SIMD vector *value*, e.g. an instance of `SIMD[f32, 4]`.
     """
 
     __spy_storage_category__ = "value"
@@ -76,8 +69,6 @@ class W_Simd(W_Object):
         self.lanes_w = lanes_w
 
     def spy_get_w_type(self, vm: "SPyVM") -> W_Type:
-        # The app-level type is the concrete W_SimdType (e.g.
-        # `_simd::SIMD[f32, 4]`), NOT the `Simd` base type registered above.
         return self.w_simdtype
 
     def spy_key(self, vm: "SPyVM") -> Any:
@@ -89,18 +80,8 @@ class W_Simd(W_Object):
         fqn = self.w_simdtype.fqn
         return f"<spy simd {fqn}({self.lanes_w})>"
 
-    # ===== construction: SIMD[T, N](...) =====
-    #
-    # Calling a W_SimdType means "instantiate it".  W_Type.w_CALL dispatches to
-    # __new__; here we turn it into a `simd.make` builtin call (compound
-    # literal in C).  Two shapes are supported:
-    #   * broadcast:   SIMD[T, N](scalar)        -> {scalar, ..., scalar}
-    #   * per-element:  SIMD[T, N](v0, ..., vN-1) -> {v0, ..., vN-1}
-    #
-    # We build the lowering builtin explicitly (like struct's `_create_w_make`)
-    # with a fixed-arity W_FuncType, rather than deriving it from a Python
-    # signature: per-element make needs exactly `size` params, which we
-    # cannot spell as a static Python signature.
+    # ===== construction: SIMD[T, N](v0, ..., vN-1) =====
+
     @builtin_method("__new__", color="blue", kind="metafunc")
     @staticmethod
     def w_NEW(vm: "SPyVM", wam_self: W_MetaArg, *args_wam: W_MetaArg) -> W_OpSpec:
@@ -108,21 +89,81 @@ class W_Simd(W_Object):
         assert isinstance(w_simdtype, W_SimdType)
         size = w_simdtype.size
         nargs = len(args_wam)
+        t = w_simdtype.fqn.human_name(vm)
 
-        if nargs == 1:
-            # broadcast: SIMD[T, N](scalar)
-            w_make = _get_or_make_simd_make(vm, w_simdtype, broadcast=True)
-            return W_OpSpec(w_make, [args_wam[0]])
-
-        elif nargs == size:
-            # per-element: SIMD[T, N](v0, ..., v_{N-1})
-            w_make = _get_or_make_simd_make(vm, w_simdtype, broadcast=False)
+        if nargs == size:
+            w_make = _get_or_make_simd_make(vm, w_simdtype, "elements")
             return W_OpSpec(w_make, list(args_wam))
 
+        if nargs == 0:
+            err = SPyError("W_TypeError", "SIMD requires explicit initialization")
+            err.add(
+                "error",
+                f"use `{t}.zeros()`, `{t}.splat(x)` or pass {size} values",
+                wam_self.loc,
+            )
+            raise err
+
+        err = SPyError("W_TypeError", f"`{t}` expects {size} values, got {nargs}")
+        err.add("error", f"this is `{t}`", wam_self.loc)
+        raise err
+
+    # ===== constructors which don't take one value per lane =====
+
+    @builtin_classmethod("zeros", color="blue", kind="metafunc")
+    @staticmethod
+    def w_ZEROS(vm: "SPyVM", wam_self: W_MetaArg) -> W_OpSpec:
+        w_simdtype = wam_self.w_blueval
+        assert isinstance(w_simdtype, W_SimdType)
+        w_make = _get_or_make_simd_make(vm, w_simdtype, "zeros")
+        return W_OpSpec(w_make, [])
+
+    @builtin_classmethod("splat", color="blue", kind="metafunc")
+    @staticmethod
+    def w_SPLAT(vm: "SPyVM", wam_self: W_MetaArg, wam_x: W_MetaArg) -> W_OpSpec:
+        w_simdtype = wam_self.w_blueval
+        assert isinstance(w_simdtype, W_SimdType)
+        w_make = _get_or_make_simd_make(vm, w_simdtype, "splat")
+        return W_OpSpec(w_make, [wam_x])
+
+    # ===== conversion from a list or a tuple =====
+
+    @builtin_method("__convert_from__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_CONVERT_FROM(
+        vm: "SPyVM",
+        wam_expT: W_MetaArg,
+        wam_gotT: W_MetaArg,
+        wam_obj: W_MetaArg,
+    ) -> W_OpSpec:
+        w_simdtype = wam_expT.w_blueval
+        w_gotT = wam_gotT.w_blueval
+        assert isinstance(w_simdtype, W_SimdType)
+        assert isinstance(w_gotT, W_Type)
+        w_dtype = w_simdtype.w_dtype
+        size = w_simdtype.size
+
+        if vm.is_list_type(w_gotT):
+            converter = "from_list"
+        elif vm.is_tuple_type(w_gotT) and isinstance(w_gotT, W_StructType):
+            converter = "from_tuple"
+            nitems = len(list(w_gotT.iterfields_w()))
+            if nitems != size:
+                t = w_simdtype.fqn.human_name(vm)
+                got = w_gotT.fqn.human_name(vm)
+                err = SPyError(
+                    "W_TypeError", f"`{t}` expects {size} values, got {nitems}"
+                )
+                err.add("error", f"this is `{got}`", wam_obj.loc)
+                raise err
         else:
-            # Anything else (e.g. 2 args for a 4-wide vector): not supported in
-            # PR1.  Returning NULL yields a clear "cannot call" type error.
             return W_OpSpec.NULL
+
+        vm.import_("simd")
+        w_converter = vm.lookup_global(FQN(f"simd::{converter}"))
+        w_impl = vm.getitem_w(w_converter, w_dtype, vm.wrap(size), w_gotT)
+        assert isinstance(w_impl, W_Func)
+        return W_OpSpec(w_impl, [wam_obj])
 
     # ===== lane read: v[i] (red index) -> simd.getitem =====
     @builtin_method("__getitem__", color="blue", kind="metafunc")
@@ -146,13 +187,37 @@ class W_Simd(W_Object):
 
         return W_OpSpec(w_simd_getitem, [wam_self, wam_i])
 
-    # ===== lane write: v[i] = x â rejected (Â§4.5) =====
+    # ===== lane replace: v._with_lane(i, x) -> new vector =====
     #
-    # SIMD values are immutable: only __getitem__ is provided.  A bare
-    # `v[i] = x` is not supported in PR1 (simd.setitem is postponed to a later
-    # PR).  We implement __setitem__ as a metafunc that raises a precise error
-    # instead of letting the generic "cannot do `{0}[`{1}`] = ...` message
-    # through, so the diagnostic matches the value-semantics contract.
+    # SIMD values are immutable, so this returns a modified copy.  It is an
+    # internal building block (used by `__convert_from__`).
+    @builtin_method("_with_lane", color="blue", kind="metafunc")
+    @staticmethod
+    def w_WITH_LANE(
+        vm: "SPyVM", wam_self: W_MetaArg, wam_i: W_MetaArg, wam_x: W_MetaArg
+    ) -> W_OpSpec:
+        w_simdtype = wam_self.w_static_T
+        assert isinstance(w_simdtype, W_SimdType)
+        w_dtype = w_simdtype.w_dtype
+        size = w_simdtype.size
+
+        SIMD_T = Annotated[W_Simd, w_simdtype]
+        T = Annotated[W_Object, w_dtype]
+        irtag = IRTag("simd.with_lane")
+
+        @vm.register_builtin_func(w_simdtype.fqn, "with_lane", irtag=irtag)
+        def w_simd_with_lane(vm: "SPyVM", w_v: SIMD_T, w_i: W_I32, w_x: T) -> SIMD_T:
+            i = vm.unwrap_i32(w_i)
+            if not (0 <= i < size):
+                raise SPyError("W_PanicError", "SIMD index out of bounds")
+            lanes_w = list(w_v.lanes_w)
+            lanes_w[i] = w_x
+            return W_Simd(w_simdtype, lanes_w)
+
+        return W_OpSpec(w_simd_with_lane, [wam_self, wam_i, wam_x])
+
+    # ===== lane write: v[i] = x, rejected =====
+
     @builtin_method("__setitem__", color="blue", kind="metafunc")
     @staticmethod
     def w_SETITEM(
@@ -167,33 +232,36 @@ class W_Simd(W_Object):
 
 
 def _get_or_make_simd_make(
-    vm: "SPyVM", w_simdtype: W_SimdType, *, broadcast: bool
+    vm: "SPyVM",
+    w_simdtype: W_SimdType,
+    kind: Literal["elements", "splat", "zeros"],
 ) -> "W_BuiltinFunc":  # type: ignore[name-defined]
     """
-    Build (once per (W_SimdType, shape)) and register the red ``simd.make``
-    lowering builtin, returning the cached instance on subsequent calls.
-
-    This mirrors struct's ``W_StructType._create_w_make``: we construct the
-    ``W_BuiltinFunc`` directly with a fixed-arity ``W_FuncType`` rather than
-    deriving the functype from a Python signature (per-element make needs
-    exactly ``size`` params, which cannot be spelled statically).
-
-    The broadcast and per-element lowers share the ``simd.make`` irtag (the
-    C backend dispatches on the tag and inspects ``irtag.data['broadcast']``),
-    but live at distinct FQNs because they have different arities.
+    Build (once per (W_SimdType, kind)) and register the red lowering builtin
+    for a constructor, returning the cached instance on subsequent calls.
     """
     from spy.vm.function import FuncParam, W_BuiltinFunc, W_FuncType
 
     w_dtype = w_simdtype.w_dtype
     size = w_simdtype.size
 
-    if broadcast:
-        fqn = w_simdtype.fqn.join("__make_broadcast__")
+    if kind == "splat":
+        fqn = w_simdtype.fqn.join("__splat__")
         w_functype = W_FuncType.new([FuncParam(w_dtype, "simple")], w_simdtype)
-        irtag = IRTag("simd.make", broadcast=True)
+        irtag = IRTag("simd.splat")
 
         def w_make_impl(vm: "SPyVM", w_x: W_Object) -> W_Simd:
             return W_Simd(w_simdtype, [w_x] * size)
+
+    elif kind == "zeros":
+        fqn = w_simdtype.fqn.join("__zeros__")
+        w_functype = W_FuncType.new([], w_simdtype)
+        irtag = IRTag("simd.zeros")
+
+        def w_make_impl(vm: "SPyVM") -> W_Simd:  # type: ignore[misc]
+            zero = 0.0 if w_dtype in (B.w_f32, B.w_f64) else 0
+            lanes_w = [w_dtype.pyclass(zero) for _ in range(size)]  # type: ignore[call-arg]
+            return W_Simd(w_simdtype, lanes_w)
 
     else:
         fqn = w_simdtype.fqn.join("__make__")
@@ -207,8 +275,6 @@ def _get_or_make_simd_make(
 
     w_existing = vm.lookup_global_maybe(fqn)
     if w_existing is not None:
-        # Already registered by an earlier call site (or a re-typecheck).
-        # W_FuncType is interned, so the functype is the very same object.
         assert isinstance(w_existing, W_BuiltinFunc)
         assert w_existing.w_functype is w_functype
         return w_existing
@@ -221,27 +287,21 @@ def _get_or_make_simd_make(
 @SIMD.builtin_func(color="blue", kind="generic")
 def w_SIMD(vm: "SPyVM", w_dtype: W_Type, w_size: W_I32) -> W_Dynamic:
     """
-    The ``SIMD`` *generic* type constructor.
-
-    ``SIMD[dtype, size]`` is a blue ``getitem`` on the generic ``SIMD``
-    function: it calls ``w_SIMD`` with the (blue) ``dtype`` type and the
-    (blue) ``size`` integer, validates them, and returns â and registers â the
-    concrete ``W_SimdType`` for that ``(dtype, size)`` pair.
+    The `SIMD` *generic* type constructor.
 
     Validation (blue-time):
 
-      * ``size`` must be a *positive power of two* (1, 2, 4, 8, ...).
+      * `size` must be a *positive power of two* (1, 2, 4, 8, ...).
         - non-positive sizes (0, negative) report
-          ``"SIMD size must be a positive power of two, got <n>"``;
+          `"SIMD size must be a positive power of two, got <n>"`;
         - positive but non-power-of-two sizes report
-          ``"SIMD size must be a power of two, got <n>"``.
-      * ``dtype`` must be one of the v1 numeric primitives
+          `"SIMD size must be a power of two, got <n>"`.
+      * `dtype` must be one of the v1 numeric primitives
         (i8, u8, i32, u32, f32, i64, u64, f64), else
-        ``"SIMD element type must be a numeric primitive, got `<T>`"``.
+        `"SIMD element type must be a numeric primitive, got `<T>`"`.
     """
     size = int(vm.unwrap_i32(w_size))
 
-    # === validate size ===
     if size <= 0:
         raise SPyError(
             "W_TypeError", f"SIMD size must be a positive power of two, got {size}"
@@ -249,7 +309,6 @@ def w_SIMD(vm: "SPyVM", w_dtype: W_Type, w_size: W_I32) -> W_Dynamic:
     if size & (size - 1) != 0:
         raise SPyError("W_TypeError", f"SIMD size must be a power of two, got {size}")
 
-    # === validate dtype ===
     if w_dtype not in SIMD_DTYPES:
         t = w_dtype.fqn.human_name(vm)
         raise SPyError(
@@ -257,29 +316,9 @@ def w_SIMD(vm: "SPyVM", w_dtype: W_Type, w_size: W_I32) -> W_Dynamic:
             f"SIMD element type must be a numeric primitive, got `{t}`",
         )
 
-    # === register the human alias `_simd::SIMD` -> `SIMD` ===
-    #
-    # Unlike `list`/`dict`/`tuple`, `SIMD` is NOT re-exported from the builtins
-    # prelude (PR1 exposes only the low-level `_simd` module), so it does not
-    # get a seeded human alias.  We register one manually so that error
-    # messages render `SIMD[f32, 4]` instead of `_simd::SIMD[f32, 4]`.
-    # `_resolve_aliases` reattaches the qualifiers, so `_simd::SIMD[f32, 4]`
-    # resolves to `SIMD[f32, 4]`.
     vm.fqn_human_aliases[FQN("_simd::SIMD")] = FQN("SIMD")
-
-    # === build the concrete W_SimdType ===
-    #
-    # The FQN carries both the dtype and the size as qualifiers, so that
-    # `SIMD[f32, 4]` human-renders as `SIMD[f32, 4]` and C-mangles to a stable,
-    # distinct typedef name `spy__simd$SIMD__f32_4` (one typedef per
-    # (dtype, size) pair).  The size is encoded as a bare FQN qualifier, which
-    # fqn.c_name renders verbatim.
     fqn = FQN("_simd::SIMD").with_qualifiers([w_dtype.fqn, str(size)])
 
-    # The blue cache memoizes w_SIMD by (dtype spy_key, size spy_key), so
-    # repeated `SIMD[f32, 4]` evaluations return the *same* W_SimdType
-    # instance.  make_fqn_const then ensures the type is reachable as a global
-    # (needed by gc_ptr[SIMD[...]] and by the C backend).
     w_simdtype = W_SimdType.from_pyclass(fqn, W_Simd)
     w_simdtype.w_dtype = w_dtype
     w_simdtype.size = size

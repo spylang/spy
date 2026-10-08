@@ -595,8 +595,11 @@ class CFuncWriter:
         elif irtag.tag == "struct.getfield":
             return self.fmt_struct_getfield(fqn, call, irtag)
 
-        elif irtag.tag == "simd.make":
+        elif irtag.tag in ("simd.make", "simd.splat", "simd.zeros"):
             return self.fmt_simd_make(fqn, call, irtag)
+
+        elif irtag.tag == "simd.with_lane":
+            return self.fmt_simd_with_lane(fqn, call)
 
         elif irtag.tag == "simd.getitem":
             return self.fmt_simd_getitem(fqn, call)
@@ -684,15 +687,32 @@ class CFuncWriter:
         c_simdtype = self.ctx.w2c(w_simdtype)
 
         c_args = [self.fmt_expr(arg) for arg in call.args]
-        if irtag.data.get("broadcast"):
-            # SIMD[T, N](scalar) -> (T){scalar, scalar, ..., scalar}
+        if irtag.tag == "simd.zeros":
+            # SIMD[T, N].zeros() -> (V){ 0 }: a partial initializer zeroes
+            # all the remaining lanes
+            strargs = "0"
+        elif irtag.tag == "simd.splat":
+            # SIMD[T, N].splat(x) -> (V){x, x, ..., x}
             assert len(c_args) == 1
             s_arg = str(c_args[0])
             strargs = ", ".join([s_arg] * w_simdtype.size)
         else:
-            # SIMD[T, N](v0, ..., v_{N-1}) -> (T){v0, ..., v_{N-1}}
+            # SIMD[T, N](v0, ..., v_{N-1}) -> (V){v0, ..., v_{N-1}}
             strargs = ", ".join(map(str, c_args))
         return C.Cast(c_simdtype, C.Literal("{ %s }" % strargs))
+
+    def fmt_simd_with_lane(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        # v._with_lane(i, x): vectors are values, so we modify a copy. A
+        # GNU statement expression is the only way to do it in one expression.
+        assert len(call.args) == 3
+        c_v = self.fmt_expr(call.args[0])
+        c_i = self.fmt_expr(call.args[1])
+        c_x = self.fmt_expr(call.args[2])
+        assert call.w_T is not None
+        c_simdtype = self.ctx.w2c(call.w_T)
+        return C.Literal(
+            f"({{ {c_simdtype} _spy_v = {c_v}; _spy_v[{c_i}] = {c_x}; _spy_v; }})"
+        )
 
     def fmt_simd_getitem(self, fqn: FQN, call: ast.Call) -> C.Expr:
         assert len(call.args) == 2
