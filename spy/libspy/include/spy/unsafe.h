@@ -45,6 +45,21 @@ void *WASM_EXPORT(spy_nogc_alloc_aligned)(size_t size, size_t alignment);
     ((void *)(((uintptr_t)(p) + (uintptr_t)(alignment) - 1) &                          \
               ~((uintptr_t)(alignment) - 1)))
 
+#ifdef SPY_DEBUG
+static inline void *
+spy_check_align_impl(void *p, size_t alignment, const char *fname, int32_t lineno) {
+    if ((uintptr_t)p % alignment != 0) {
+        spy_panic("PanicError", "align_cast: address not aligned", fname, lineno);
+    }
+    return p;
+}
+
+#define spy_check_align(p, alignment)                                                \
+    spy_check_align_impl((p), (alignment), __FILE__, __LINE__)
+#else
+#  define spy_check_align(p, alignment) ((void *)(p))
+#endif
+
 #ifdef SPY_GC_NONE
 #  define spy_gc_alloc(size) spy_nogc_alloc(size)
 #  define spy_gc_alloc_pointerless(size) spy_nogc_alloc(size)
@@ -122,19 +137,21 @@ spy_gc_alloc_pointerless_aligned(size_t size, size_t alignment) {
  * is folded away at compile time: there is zero runtime overhead in the
  * (overwhelmingly common) case where the ptr is naturally aligned.
  */
-#define _SPY_PTR_LOAD(T, ALIGNMENT, addr) \
-    ((ALIGNMENT) >= _Alignof(T) \
-        ? *(addr) \
-        : ({ T _tmp; __builtin_memcpy(&_tmp, (const char *)(addr), sizeof(T)); _tmp; }))
+#define _SPY_PTR_LOAD(T, ALIGNMENT, addr)                                              \
+    ((ALIGNMENT) >= _Alignof(T) ? *(addr) : ({                                         \
+        T _tmp;                                                                        \
+        __builtin_memcpy(&_tmp, (const char *)(addr), sizeof(T));                      \
+        _tmp;                                                                          \
+    }))
 
-#define _SPY_PTR_STORE(T, ALIGNMENT, addr, rval) \
-    do { \
-        if ((ALIGNMENT) >= _Alignof(T)) { \
-            *(addr) = (rval); \
-        } else { \
-            T _tmp = (rval); \
-            __builtin_memcpy((char *)(addr), &_tmp, sizeof(T)); \
-        } \
+#define _SPY_PTR_STORE(T, ALIGNMENT, addr, rval)                                       \
+    do {                                                                               \
+        if ((ALIGNMENT) >= _Alignof(T)) {                                              \
+            *(addr) = (rval);                                                          \
+        } else {                                                                       \
+            T _tmp = (rval);                                                           \
+            __builtin_memcpy((char *)(addr), &_tmp, sizeof(T));                        \
+        }                                                                              \
     } while (0)
 
 #ifdef SPY_DEBUG

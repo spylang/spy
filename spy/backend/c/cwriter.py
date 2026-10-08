@@ -609,6 +609,9 @@ class CFuncWriter:
         elif irtag.tag == "ptr.weaken_align":
             return self.fmt_ptr_weaken_align(fqn, call)
 
+        elif irtag.tag == "unsafe.align_cast":
+            return self.fmt_align_cast(fqn, call, irtag)
+
         elif irtag.tag in ("ptr.getitem", "ptr.store"):
             # see unsafe/ptr.py::w_GETITEM and w_SETITEM there, we insert an
             # extra "w_loc" argument, which is not needed by the C backend
@@ -667,6 +670,29 @@ class CFuncWriter:
         c_p = C.Literal(f"({c_src}).p")
         c_length = C.Call(f"{c_srctype}_get_length", [c_src])
         return C.Call(f"{c_targettype}_from_raw", [c_p, c_length])
+
+    def fmt_align_cast(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
+        """
+        align_cast[N](ptr) -> ptr with a new alignment, same address and item type.
+        """
+        assert len(call.args) == 1
+        w_srcT = call.args[0].w_T
+        assert isinstance(w_srcT, W_PtrType)
+        c_src = self.fmt_expr(call.args[0])
+        c_srctype = self.ctx.w2c(w_srcT)
+        c_targettype = self.ctx.c_restype_by_fqn(fqn)
+
+        dst_align = irtag.data["dst_align"]
+        src_align = irtag.data["src_align"]
+
+        c_p = C.Literal(f"({c_src}).p")
+        c_length = C.Call(f"{c_srctype}_get_length", [c_src])
+
+        if dst_align > src_align:
+            c_checked_p = C.Call("spy_check_align", [c_p, C.Literal(str(dst_align))])
+            return C.Call(f"{c_targettype}_from_raw", [c_checked_p, c_length])
+        else:
+            return C.Call(f"{c_targettype}_from_raw", [c_p, c_length])
 
     def fmt_ptr_getfield(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         assert isinstance(call.args[1], ast.StrLiteral)
