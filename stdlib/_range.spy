@@ -38,10 +38,9 @@ class range:
             return OpSpec.NULL
 
     def __repr__(self) -> str:
-        result = "range(" + str(self.start) + ", " + str(self.stop)
-        if self.step != 1:
-            result = result + ", " + str(self.step)
-        return result + ")"
+        if self.step == 1:
+            return f"range({self.start}, {self.stop})"
+        return f"range({self.start}, {self.stop}, {self.step})"
 
     @blue.metafunc
     def __convert_to__(m_expT, m_gotT, m_self):
