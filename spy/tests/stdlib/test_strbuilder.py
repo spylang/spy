@@ -98,17 +98,24 @@ class TestStrBuilder(CompilerTest):
 
     def test_append_slice_growing(self):
         src = """
-        from strbuilder import StrBuilder
+        from strbuilder import StrBuilder, dump_builder
 
-        def slice_of(cap: int, chunk: str, start: int, end: int) -> str:
+        def slice_of(cap: int, chunk: str, start: int, end: int) -> tuple[str, str]:
             sb = StrBuilder(cap)
             sb.append_slice(chunk, start, end)
-            return sb.build()
+            dump = dump_builder(sb)
+            return sb.build(), dump
         """
         mod = self.compile(src)
-        # test the growing path
-        #                       01234567890ABCDEF
-        assert mod.slice_of(3, "aaa hello world !", 4, 15) == "hello world"
+        # test the growing path: fill the current chunk, grow, copy the rest
+        #                          01234567890ABCDEF
+        s, dump = mod.slice_of(4, "aaa hello world !", 4, 15)
+        assert s == "hello world"
+        expected = """
+        [unsealed] pos=7     cap=8     "o world."
+        [sealed  ] pos=4     cap=4     "hell"
+        """
+        self.assert_dump(dump, expected)
 
         # test out-of-bounds
         with pytest.raises(SPyError, match="IndexError"):
@@ -135,13 +142,38 @@ class TestStrBuilder(CompilerTest):
 
     def test_append_repeat_growing(self):
         src = """
-        from strbuilder import StrBuilder
+        from strbuilder import StrBuilder, dump_builder
 
-        def repeat_of(capacity: int, chunk: str, n: int) -> str:
-            sb = StrBuilder(capacity)
+        def repeat_of(cap: int, chunk: str, n: int) -> tuple[str, str]:
+            sb = StrBuilder(cap)
             sb.append_repeat(chunk, n)
-            return sb.build()
+            dump = dump_builder(sb)
+            return sb.build(), dump
         """
         mod = self.compile(src)
-        assert mod.repeat_of(4, "ab", 3) == "ababab"
-        assert mod.repeat_of(5, "ab", 3) == "ababab"
+        # the chunk is full after a whole number of repetitions
+        s, dump = mod.repeat_of(4, "ab", 3)
+        assert s == "ababab"
+        expected = """
+        [unsealed] pos=2     cap=8     "ab......"
+        [sealed  ] pos=4     cap=4     "abab"
+        """
+        self.assert_dump(dump, expected)
+
+        # the chunk is full in the middle of a repetition
+        s, dump = mod.repeat_of(5, "ab", 3)
+        assert s == "ababab"
+        expected = """
+        [unsealed] pos=1     cap=10    "b........."
+        [sealed  ] pos=5     cap=5     "ababa"
+        """
+        self.assert_dump(dump, expected)
+
+        # single-byte chunk
+        s, dump = mod.repeat_of(3, "x", 5)
+        assert s == "xxxxx"
+        expected = """
+        [unsealed] pos=2     cap=6     "xx...."
+        [sealed  ] pos=3     cap=3     "xxx"
+        """
+        self.assert_dump(dump, expected)
