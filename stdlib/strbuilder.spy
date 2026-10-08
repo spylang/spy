@@ -67,70 +67,72 @@ class UnsafeFixedStrBuilder:
     __ll__: gc_ptr[Chunk]
 
     def __new__(capacity: i32) -> UnsafeFixedStrBuilder:
-        state = gc_alloc[Chunk](1)
-        state.buf = StrObject.alloc(capacity)
-        state.pos = 0
-        return UnsafeFixedStrBuilder.__make__(state)
+        head = gc_alloc[Chunk](1)
+        head.buf = StrObject.alloc(capacity)
+        head.pos = 0
+        head.prev = gc_ptr[Chunk].NULL
+        head.prev_length = 0
+        return UnsafeFixedStrBuilder.__make__(head)
 
     def append(self, chunk: str) -> None:
-        state = self.__ll__
-        source = StrObject.from_str(chunk)
-        length = source.length
-        if length > 0:
+        head = self.__ll__
+        src = StrObject.from_str(chunk)
+        n = src.length
+        if n > 0:
             ptr_copy_slice(
-                state.buf.utf8,
-                state.pos,
-                state.pos + length,
-                source.utf8,
+                head.buf.utf8,
+                head.pos,
+                head.pos + n,
+                src.utf8,
                 0,
-                length,
+                n,
             )
-            state.pos = state.pos + length
+            head.pos = head.pos + n
 
     def append_repeat(self, chunk: str, n: i32) -> None:
-        state = self.__ll__
+        head = self.__ll__
         source = StrObject.from_str(chunk)
         total = source.length * n
         l = source.length
         if l == 1:
             # single-byte chunk (e.g. a fill char): use memset instead of n copies
             ptr_setbytes_slice(
-                state.buf.utf8,
-                state.pos,
-                state.pos + n,
+                head.buf.utf8,
+                head.pos,
+                head.pos + n,
                 source.utf8[0],
             )
         else:
             for i in range(n):
                 ptr_copy_slice(
-                    state.buf.utf8,
-                    state.pos + i * l,
-                    state.pos + (i + 1) * l,
+                    head.buf.utf8,
+                    head.pos + i * l,
+                    head.pos + (i + 1) * l,
                     source.utf8,
                     0,
                     l,
                 )
-        state.pos = state.pos + total
+        head.pos = head.pos + total
 
     def append_slice(self, chunk: str, start: i32, end: i32) -> None:
-        state = self.__ll__
+        head = self.__ll__
         source = StrObject.from_str(chunk)
         length = end - start
         if length > 0:
             ptr_copy_slice(
-                state.buf.utf8,
-                state.pos,
-                state.pos + length,
+                head.buf.utf8,
+                head.pos,
+                head.pos + length,
                 source.utf8,
                 start,
                 end,
             )
-            state.pos = state.pos + length
+            head.pos = head.pos + length
 
     def build(self) -> str:
-        state = self.__ll__
-        state.buf.length = state.pos
-        return StrObject.to_sealed_str(state.buf)
+        head = self.__ll__
+        head.buf.length = head.pos
+        return StrObject.to_sealed_str(head.buf)
 
 
 @struct
