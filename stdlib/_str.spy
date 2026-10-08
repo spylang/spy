@@ -19,6 +19,7 @@ from unsafe import (
     ptr_copy,
     ptr_copy_slice,
     ptr_cmp_slice,
+    ptr_setbytes_slice,
     _str_to_StrObject,
     _alloc_StrObject,
     _StrObject_to_sealed_str,
@@ -186,8 +187,13 @@ class methods:
         ll = StrObject.from_str(self)
         out = StrObject.alloc(ll.length * n)
         l = ll.length
-        for i in range(n):
-            ptr_copy_slice(out.utf8, i * l, (i + 1) * l, ll.utf8, 0, l)
+        if l == 1:
+            # single-byte string: use memset instead of n copies
+            if n > 0:
+                ptr_setbytes_slice(out.utf8, 0, n, ll.utf8[0])
+        else:
+            for i in range(n):
+                ptr_copy_slice(out.utf8, i * l, (i + 1) * l, ll.utf8, 0, l)
         return StrObject.to_sealed_str(out)
 
     def __lt__(self: str, other: str) -> bool:
