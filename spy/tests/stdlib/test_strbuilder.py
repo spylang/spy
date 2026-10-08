@@ -1,7 +1,10 @@
+import textwrap
+
 import pytest
 
 from spy.errors import SPyError
 from spy.tests.support import CompilerTest
+from spy.util import print_diff
 
 
 @pytest.fixture(params=["StrBuilder", "Unsafe"])
@@ -15,6 +18,12 @@ def Builder(request):
 
 
 class TestStrBuilder(CompilerTest):
+    def assert_dump(self, got: str, expected: str) -> None:
+        expected = textwrap.dedent(expected).strip()
+        if got != expected:
+            print_diff(expected, got, "expected", "got")
+            pytest.fail("assert_dump failed")
+
     def test_append(self, Builder):
         src = f"""
         from strbuilder import {Builder} as SB
@@ -37,20 +46,34 @@ class TestStrBuilder(CompilerTest):
 
     def test_append_growing(self):
         src = f"""
-        from strbuilder import StrBuilder
+        from strbuilder import StrBuilder, dump_builder
 
-        def concat(cap: int, a: str, b: str, c: str) -> str:
+        def concat(cap: int, a: str, b: str, c: str) -> tuple[str, str]:
             sb = StrBuilder(cap)
             sb.append(a)
             sb.append(b)
             sb.append(c)
-            return sb.build()
+            dump = dump_builder(sb)
+            return sb.build(), dump
         """
         mod = self.compile(src)
         # chunk is full -> grow
-        assert mod.concat(5, "hello", " ", "world") == "hello world"
+        s, dump = mod.concat(5, "hello", " ", "world")
+        assert s == "hello world"
+        expected = """
+        [unsealed] pos=6     cap=10    " world...."
+        [sealed  ] pos=5     cap=5     "hello"
+        """
+        self.assert_dump(dump, expected)
+
         # chunk is not full but it's not big enough: fill + grow + copy rest
-        assert mod.concat(8, "hello", " ", "world") == "hello world"
+        s, dump = mod.concat(8, "hello", " ", "world")
+        assert s == "hello world"
+        expected = """
+        [unsealed] pos=3     cap=16    "rld............."
+        [sealed  ] pos=8     cap=8     "hello wo"
+        """
+        self.assert_dump(dump, expected)
 
     def test_append_slice(self, Builder):
         src = f"""
