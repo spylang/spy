@@ -140,7 +140,7 @@ class StrBuilder:
                 chunk.buf.length = chunk.pos
             buf = chunk.buf
             chunk.buf = gc_ptr[StrObject].NULL
-            return StrObject.to_str(buf)
+            return StrObject.to_sealed_str(buf)
 
         # The pieces are stored newest-first in the chain and the current buffer is
         # the newest of all, so we fill the fresh result from the end backwards.
@@ -156,7 +156,7 @@ class StrBuilder:
             node = node.prev
 
         chunk.buf = gc_ptr[StrObject].NULL
-        return StrObject.to_str(result)
+        return StrObject.to_sealed_str(result)
 
 
 # ========== UnsafeFixedStrBuilder ==========
@@ -164,14 +164,14 @@ class StrBuilder:
 
 @struct
 class UnsafeBuilderState:
-    buffer: gc_ptr[StrObject]
-    position: i32
+    buf: gc_ptr[StrObject]
+    pos: i32
 
 
 @struct
 class UnsafeFixedStrBuilder:
     """
-    Build a string in a fixed-size buffer, with capacity measured in bytes.
+    Build a string in a fixed-size buf, with capacity measured in bytes.
 
     This class is UNSAFE. No check is performed. It is up to the caller to ensure that
     the appended chunks fit in the capacity. If the final string is shorter than the
@@ -186,8 +186,8 @@ class UnsafeFixedStrBuilder:
 
     def __new__(capacity: i32) -> UnsafeFixedStrBuilder:
         state = gc_alloc[UnsafeBuilderState](1)
-        state.buffer = StrObject.alloc(capacity)
-        state.position = 0
+        state.buf = StrObject.alloc(capacity)
+        state.pos = 0
         return UnsafeFixedStrBuilder.__make__(state)
 
     def append(self, chunk: str) -> None:
@@ -196,14 +196,14 @@ class UnsafeFixedStrBuilder:
         length = source.length
         if length > 0:
             ptr_copy_slice(
-                state.buffer.utf8,
-                state.position,
-                state.position + length,
+                state.buf.utf8,
+                state.pos,
+                state.pos + length,
                 source.utf8,
                 0,
                 length,
             )
-            state.position = state.position + length
+            state.pos = state.pos + length
 
     def append_repeat(self, chunk: str, n: i32) -> None:
         state = self.__ll__
@@ -213,22 +213,22 @@ class UnsafeFixedStrBuilder:
         if l == 1:
             # single-byte chunk (e.g. a fill char): use memset instead of n copies
             ptr_setbytes_slice(
-                state.buffer.utf8,
-                state.position,
-                state.position + n,
+                state.buf.utf8,
+                state.pos,
+                state.pos + n,
                 source.utf8[0],
             )
         else:
             for i in range(n):
                 ptr_copy_slice(
-                    state.buffer.utf8,
-                    state.position + i * l,
-                    state.position + (i + 1) * l,
+                    state.buf.utf8,
+                    state.pos + i * l,
+                    state.pos + (i + 1) * l,
                     source.utf8,
                     0,
                     l,
                 )
-        state.position = state.position + total
+        state.pos = state.pos + total
 
     def append_slice(self, chunk: str, start: i32, end: i32) -> None:
         state = self.__ll__
@@ -236,16 +236,16 @@ class UnsafeFixedStrBuilder:
         length = end - start
         if length > 0:
             ptr_copy_slice(
-                state.buffer.utf8,
-                state.position,
-                state.position + length,
+                state.buf.utf8,
+                state.pos,
+                state.pos + length,
                 source.utf8,
                 start,
                 end,
             )
-            state.position = state.position + length
+            state.pos = state.pos + length
 
     def build(self) -> str:
         state = self.__ll__
-        state.buffer.length = state.position
-        return StrObject.to_sealed_str(state.buffer)
+        state.buf.length = state.pos
+        return StrObject.to_sealed_str(state.buf)
