@@ -88,16 +88,8 @@ class UnsafeFixedStrBuilder:
         head = self.__ll__
         src = StrObject.from_str(chunk)
         n = src.length
-        if n > 0:
-            ptr_copy_slice(
-                head.buf.utf8,
-                head.pos,
-                head.pos + n,
-                src.utf8,
-                0,
-                n,
-            )
-            head.pos = head.pos + n
+        ptr_copy_slice(head.buf.utf8, head.pos, head.pos + n, src.utf8, 0, n)
+        head.pos = head.pos + n
 
     def append_repeat(self, chunk: str, n: i32) -> None:
         head = self.__ll__
@@ -129,16 +121,10 @@ class UnsafeFixedStrBuilder:
         head = self.__ll__
         source = StrObject.from_str(chunk)
         length = end - start
-        if length > 0:
-            ptr_copy_slice(
-                head.buf.utf8,
-                head.pos,
-                head.pos + length,
-                source.utf8,
-                start,
-                end,
-            )
-            head.pos = head.pos + length
+        ptr_copy_slice(
+            head.buf.utf8, head.pos, head.pos + length, source.utf8, start, end
+        )
+        head.pos = head.pos + length
 
     def build(self) -> str:
         head = self.__ll__
