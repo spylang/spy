@@ -1,3 +1,5 @@
+import pickle
+
 from spy.fqn import FQN, NSPart
 
 
@@ -148,3 +150,13 @@ def test_FQN_with_suffix():
 def test_FQN_parent():
     fqn = FQN("a::b::c")
     assert fqn.parent() == FQN("a::b")
+
+
+def test_FQN_pickle():
+    a = FQN("a::b::c")
+    b = pickle.loads(pickle.dumps(a))
+    assert b is not a
+    assert b == a
+    assert hash(b) == hash(a)
+    assert b.fullname == a.fullname
+    assert b.parts == a.parts
