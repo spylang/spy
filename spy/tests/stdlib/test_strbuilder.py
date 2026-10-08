@@ -1,5 +1,6 @@
 import pytest
 
+from spy.errors import SPyError
 from spy.tests.support import CompilerTest
 
 
@@ -14,12 +15,12 @@ def Builder(request):
 
 
 class TestStrBuilder(CompilerTest):
-    def test_simple(self, Builder):
+    def test_append(self, Builder):
         src = f"""
-        from strbuilder import {Builder}
+        from strbuilder import {Builder} as SB
 
         def concat(cap: int, a: str, b: str, c: str) -> str:
-            sb = {Builder}(cap)
+            sb = SB(cap)
             sb.append(a)
             sb.append(b)
             sb.append(c)
@@ -34,7 +35,7 @@ class TestStrBuilder(CompilerTest):
         # underfill: we leak some memory but the string is valid
         assert mod.concat(10, "ab", "cd", "e") == "abcde"
 
-    def test_growing(self):
+    def test_append_growing(self):
         src = f"""
         from strbuilder import StrBuilder
 
@@ -51,19 +52,13 @@ class TestStrBuilder(CompilerTest):
         # chunk is not full but it's not big enough: fill + grow + copy rest
         assert mod.concat(8, "hello", " ", "world") == "hello world"
 
-    def test_unsafe_append_slice(self):
-        src = """
-        from strbuilder import UnsafeFixedStrBuilder
+    def test_append_slice(self, Builder):
+        src = f"""
+        from strbuilder import {Builder} as SB
 
-        def slice_of(capacity: int, chunk: str, start: int, end: int) -> str:
-            sb = UnsafeFixedStrBuilder(capacity)
+        def slice_of(cap: int, chunk: str, start: int, end: int) -> str:
+            sb = SB(cap)
             sb.append_slice(chunk, start, end)
-            return sb.build()
-
-        def mix() -> str:
-            sb = UnsafeFixedStrBuilder(6)
-            sb.append("ab")
-            sb.append_slice("xxcdefyy", 2, 6)
             return sb.build()
         """
         mod = self.compile(src)
@@ -77,7 +72,28 @@ class TestStrBuilder(CompilerTest):
         # UTF-8: "é" is 2 bytes, "🐍" is 4
         assert mod.slice_of(2, "é🐍!", 0, 2) == "é"
         assert mod.slice_of(4, "é🐍!", 2, 6) == "🐍"
-        assert mod.mix() == "abcdef"
+
+    def test_append_slice_growing(self):
+        src = """
+        from strbuilder import StrBuilder
+
+        def slice_of(cap: int, chunk: str, start: int, end: int) -> str:
+            sb = StrBuilder(cap)
+            sb.append_slice(chunk, start, end)
+            return sb.build()
+        """
+        mod = self.compile(src)
+        # test the growing path
+        #                       01234567890ABCDEF
+        assert mod.slice_of(3, "aaa hello world !", 4, 15) == "hello world"
+
+        # test out-of-bounds
+        with pytest.raises(SPyError, match="IndexError"):
+            mod.slice_of(10, "abc", 2, 4)
+        with pytest.raises(SPyError, match="IndexError"):
+            mod.slice_of(10, "abc", -1, 2)
+        with pytest.raises(SPyError, match="IndexError"):
+            mod.slice_of(10, "abc", 2, 1)
 
     def test_unsafe_append_repeat(self):
         src = """
