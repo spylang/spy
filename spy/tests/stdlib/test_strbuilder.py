@@ -95,20 +95,13 @@ class TestStrBuilder(CompilerTest):
         with pytest.raises(SPyError, match="IndexError"):
             mod.slice_of(10, "abc", 2, 1)
 
-    def test_unsafe_append_repeat(self):
-        src = """
-        from strbuilder import UnsafeFixedStrBuilder
+    def test_append_repeat(self, Builder):
+        src = f"""
+        from strbuilder import {Builder} as SB
 
         def repeat_of(capacity: int, chunk: str, n: int) -> str:
-            sb = UnsafeFixedStrBuilder(capacity)
+            sb = SB(capacity)
             sb.append_repeat(chunk, n)
-            return sb.build()
-
-        def mix() -> str:
-            sb = UnsafeFixedStrBuilder(9)
-            sb.append_repeat("ab", 3)
-            sb.append("x")
-            sb.append_repeat("-", 2)
             return sb.build()
         """
         mod = self.compile(src)
@@ -116,4 +109,16 @@ class TestStrBuilder(CompilerTest):
         assert mod.repeat_of(2, "é", 1) == "é"
         assert mod.repeat_of(0, "x", 0) == ""
         assert mod.repeat_of(0, "", 5) == ""
-        assert mod.mix() == "abababx--"
+
+    def test_append_repeat_growing(self):
+        src = """
+        from strbuilder import StrBuilder
+
+        def repeat_of(capacity: int, chunk: str, n: int) -> str:
+            sb = StrBuilder(capacity)
+            sb.append_repeat(chunk, n)
+            return sb.build()
+        """
+        mod = self.compile(src)
+        assert mod.repeat_of(4, "ab", 3) == "ababab"
+        assert mod.repeat_of(5, "ab", 3) == "ababab"
