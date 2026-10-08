@@ -16,6 +16,7 @@ from spy.vm.exc import W_NameError, W_TypeError
 from spy.vm.function import CLOSURE, FuncParam, LocalVar, W_ASTFunc, W_Func, W_FuncType
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
+from spy.vm.modules.__spy__.meta_args import W_MetaArgs
 from spy.vm.modules.operator import OP, OP_from_token, OP_unary_from_token
 from spy.vm.modules.operator.convop import CONVERT_maybe
 from spy.vm.modules.types import TYPES
@@ -579,7 +580,7 @@ class AbstractFrame:
         wam_tup = self.eval_expr(assign.value)
         w_T = wam_tup.w_static_T
 
-        is_interp_tuple = w_T is SPY.w_interp_tuple
+        is_interp_tuple = self.vm.issubclass(w_T, SPY.w_interp_tuple)
         is_stdlib_tuple = self.vm.is_tuple_type(w_T)
         if not (is_interp_tuple or is_stdlib_tuple):
             t = wam_tup.w_static_T.fqn.human_name(self.vm)
@@ -1288,10 +1289,15 @@ class ASTFrame(AbstractFrame):
                 self.declare_local(slot_name, color, param.w_T, arg.loc)
 
             elif param.kind == "var_positional":
-                # XXX: we don't have typed tuples, for now we just use a
-                # generic untyped tuple as the type.
                 assert i == len(funcdef.args) - 1
-                self.declare_local(slot_name, color, SPY.w_interp_tuple, arg.loc)
+                if w_ft.kind == "metafunc":
+                    # *args_m: a special tuple of MetaArgs
+                    w_T = SPY.w_meta_args
+                else:
+                    # XXX: we don't have typed tuples, for now we just use a
+                    # generic untyped tuple as the type.
+                    w_T = SPY.w_interp_tuple
+                self.declare_local(slot_name, color, w_T, arg.loc)
 
             else:
                 assert False
@@ -1312,8 +1318,37 @@ class ASTFrame(AbstractFrame):
             elif param.kind == "var_positional":
                 assert i == len(self.funcdef.args) - 1
                 items_w = args_w[i:]
-                w_varargs = W_InterpTuple(list(items_w))
+                w_varargs: W_Object
+                if w_ft.kind == "metafunc":
+                    w_varargs = self.make_meta_args(items_w)
+                else:
+                    w_varargs = W_InterpTuple(list(items_w))
                 self.store_local(slot_name, w_varargs)
 
             else:
                 assert False
+
+    def make_meta_args(self, items_w: Sequence[W_Object]) -> W_MetaArgs:
+        """
+        Build the value of `*args_m` for a metafunc.
+
+        `loc` spans from the first to the last of the arguments. If there are no
+        arguments we don't know anything about the call site, so we fall back to
+        the location of the metafunc itself.
+        """
+        items_wam = []
+        for w_item in items_w:
+            assert isinstance(w_item, W_MetaArg), (
+                f"{self.w_func.fqn}: metafunc varargs must be MetaArgs, got {w_item}"
+            )
+            items_wam.append(w_item)
+
+        if items_wam:
+            first, last = items_wam[0].loc, items_wam[-1].loc
+            if first.filename == last.filename:
+                loc = Loc.combine(first, last)
+            else:
+                loc = first
+        else:
+            loc = self.w_func.def_loc
+        return W_MetaArgs(items_wam, loc)
