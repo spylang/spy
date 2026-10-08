@@ -177,3 +177,63 @@ class TestStrBuilder(CompilerTest):
         [sealed  ] pos=3     cap=3     "xxx"
         """
         self.assert_dump(dump, expected)
+
+    def test_adoption(self):
+        src = """
+        from strbuilder import StrBuilder, dump_builder
+
+        def concat(cap: int, a: str, b: str, c: str) -> tuple[str, str]:
+            sb = StrBuilder(cap)
+            sb.append(a)
+            sb.append(b)
+            sb.append(c)
+            dump = dump_builder(sb)
+            return sb.build(), dump
+
+        def slice_of(cap: int, a: str, start: int, end: int) -> tuple[str, str]:
+            sb = StrBuilder(cap)
+            sb.append_slice(a, start, end)
+            dump = dump_builder(sb)
+            return sb.build(), dump
+        """
+        mod = self.compile(src)
+        A = "A" * 2000
+        B = "B" * 2000
+
+        # A is adopted: head is untouched, and the next appends go in it
+        s, dump = mod.concat(4, A, "y", "z")
+        assert s == A + "yz"
+        expected = """
+        [unsealed] pos=2     cap=4     "yz.."
+        [sealed  ] pos=2000  cap=2000  "AAAAAAAAAAAA[...]AAAAAAAAAAAA"
+        """
+        self.assert_dump(dump, expected)
+
+        # two adopted chunks in a row
+        s, dump = mod.concat(4, A, B, "yz")
+        assert s == A + B + "yz"
+        expected = """
+        [unsealed] pos=2     cap=4     "yz.."
+        [sealed  ] pos=2000  cap=2000  "BBBBBBBBBBBB[...]BBBBBBBBBBBB"
+        [sealed  ] pos=2000  cap=2000  "AAAAAAAAAAAA[...]AAAAAAAAAAAA"
+        """
+        self.assert_dump(dump, expected)
+
+        # the head is not empty: A is copied, because we must preserve the order
+        s, dump = mod.concat(4, "x", A, "yz")
+        assert s == "x" + A + "yz"
+        expected = """
+        [unsealed] pos=2     cap=3994  "yz..........[...]............"
+        [sealed  ] pos=1997  cap=1997  "AAAAAAAAAAAA[...]AAAAAAAAAAAA"
+        [sealed  ] pos=4     cap=4     "xAAA"
+        """
+        self.assert_dump(dump, expected)
+
+        # only whole strings are adopted, not slices
+        s, dump = mod.slice_of(4, A, 1, 2000)
+        assert s == A[1:]
+        expected = """
+        [unsealed] pos=1995  cap=1995  "AAAAAAAAAAAA[...]AAAAAAAAAAAA"
+        [sealed  ] pos=4     cap=4     "AAAA"
+        """
+        self.assert_dump(dump, expected)

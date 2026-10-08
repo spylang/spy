@@ -24,6 +24,10 @@ from unsafe import gc_alloc, gc_ptr, ptr_copy_slice, ptr_setbytes_slice
 # allocate a new one, with a certain growth factor to keep number of reallocations
 # small.
 #
+# Adoption: if .append() receives a big enough str and the head buffer is still empty,
+# we don't copy it: the str itself is linked into the chain as a sealed chunk, and the
+# head is left untouched. This avoids a copy.
+#
 # .build() creates the final string; we support two different cases:
 #
 #   1. one chunk: we seal and return that StrObject. The unused capacity is kept alive,
@@ -40,6 +44,10 @@ from unsafe import gc_alloc, gc_ptr, ptr_copy_slice, ptr_setbytes_slice
 # There is also UnsafeFixedStrBuilder: this is only if you know in advance the exact
 # capacity, doesn't support growing and doesn't do any bound check. The typical use case
 # is something like `str.join(list[str])`.
+
+
+# See "Adoption" above. Same value as PyPy's rbuilder
+ADOPT_THRESHOLD = 1280
 
 
 @struct
@@ -170,6 +178,19 @@ class StrBuilder:
         if n <= room:
             # fast path: we can copy into the current chunk
             self.unsafe_sb.append_slice(s, start, end)
+            return
+
+        src = StrObject.from_str(s)
+        if n > ADOPT_THRESHOLD and head.pos == 0 and start == 0 and n == src.length:
+            # we can link the whole s as a chunk instead of copying it. This is
+            # possible only if head is empty, else we would break the order.
+            adopted = gc_alloc[Chunk](1)
+            adopted.buf = src
+            adopted.pos = n
+            adopted.prev = head.prev
+            adopted.prev_length = head.prev_length
+            head.prev = adopted
+            head.prev_length += n
             return
 
         # slow path: fill the current buf, then grow and copy the rest
