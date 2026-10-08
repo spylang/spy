@@ -145,23 +145,13 @@ class WasmFuncWrapper:
         # return fixedints for the integer types, to match what the interp
         # backend does (vm.unwrap -> spy_unwrap). For u64 this also takes care
         # of reinterpreting the signed i64 returned by WASM as unsigned.
-        elif w_T is B.w_i8:
-            return fixedint.Int8(res)
-        elif w_T is B.w_u8:
-            return fixedint.UInt8(res)
-        elif w_T is B.w_i32:
-            return fixedint.Int32(res)
-        elif w_T is B.w_u32:
-            return fixedint.UInt32(res)
-        elif w_T is B.w_i64:
-            return fixedint.Int64(res)
-        elif w_T is B.w_u64:
-            return fixedint.UInt64(res)
+        elif w_T in (B.w_i8, B.w_u8, B.w_i32, B.w_u32, B.w_i64, B.w_u64):
+            return int_from_wasm(w_T, res)
         elif w_T is B.w_complex128:
             real, imag = res
             return complex(real, imag)
         elif w_T is B.w_bool:
-            return bool(res)
+            return int_from_wasm(w_T, res)
         elif w_T is B.w_str:
             _, _, utf8 = self.ll.read_str(res)
             return utf8.decode("utf-8")
@@ -313,6 +303,27 @@ class WasmFuncWrapper:
         return self.to_py_result(w_T, res)
 
 
+def int_from_wasm(w_T: W_Type, res: Any) -> Any:
+    """
+    Convert a raw scalar coming out of WASM into the matching Python value.
+    """
+    if w_T is B.w_i8:
+        return fixedint.Int8(res)
+    elif w_T is B.w_u8:
+        return fixedint.UInt8(res)
+    elif w_T is B.w_i32:
+        return fixedint.Int32(res)
+    elif w_T is B.w_u32:
+        return fixedint.UInt32(res)
+    elif w_T is B.w_i64:
+        return fixedint.Int64(res)
+    elif w_T is B.w_u64:
+        return fixedint.UInt64(res)
+    elif w_T is B.w_bool:
+        return bool(res)
+    return res
+
+
 def unflatten_struct(
     ll: LLSPyInstance, w_T: W_StructType, flat_values: list[Any]
 ) -> UnwrappedStruct:
@@ -357,7 +368,7 @@ def unflatten_struct(
                         f"Not enough values to unflatten {w_T.fqn}: "
                         f"needed at least {idx + 1}, got {len(flat_values)}"
                     )
-                content[w_field.name] = flat_values[idx]
+                content[w_field.name] = int_from_wasm(w_field.w_T, flat_values[idx])
                 idx += 1
 
         return UnwrappedStruct(w_T.fqn, content), idx
