@@ -156,20 +156,26 @@ class StrBuilder:
         return StrBuilder.__make__(UnsafeFixedStrBuilder(initial_capacity))
 
     def append(self, s: str) -> None:
+        self.append_slice(s, 0, StrObject.from_str(s).length)
+
+    def append_slice(self, s: str, start: i32, end: i32) -> None:
         head = self.unsafe_sb.__ll__
         if head.buf == gc_ptr[StrObject].NULL:
             raise ValueError("StrBuilder is already built")
-        n = StrObject.from_str(s).length
+
+        if start < 0 or start > end or end > StrObject.from_str(s).length:
+            raise IndexError
+        n = end - start
         room = head.buf.length - head.pos
         if n <= room:
             # fast path: we can copy into the current chunk
-            self.unsafe_sb.append(s)
+            self.unsafe_sb.append_slice(s, start, end)
             return
 
         # slow path: fill the current buf, then grow and copy the rest
-        self.unsafe_sb.append_slice(s, 0, room)
+        self.unsafe_sb.append_slice(s, start, start + room)
         self._grow(n - room)
-        self.unsafe_sb.append_slice(s, room, n)
+        self.unsafe_sb.append_slice(s, start + room, end)
 
     def _grow(self, needed: i32) -> None:
         """
