@@ -177,6 +177,34 @@ class StrBuilder:
         self._grow(n - room)
         self.unsafe_sb.append_slice(s, start + room, end)
 
+    def append_repeat(self, s: str, n: i32) -> None:
+        head = self.unsafe_sb.__ll__
+        if head.buf == gc_ptr[StrObject].NULL:
+            raise ValueError("StrBuilder is already built")
+        if n < 0:
+            raise ValueError("StrBuilder.append_repeat: n must not be negative")
+
+        l = StrObject.from_str(s).length
+        total = l * n
+        room = head.buf.length - head.pos
+        if total <= room:
+            # fast path: we can copy into the current chunk
+            self.unsafe_sb.append_repeat(s, n)
+            return
+
+        # slow path: fill the current buf exactly, which might end in the middle of
+        # a repetition. Then grow and write the rest.
+        full = room // l
+        partial = room - full * l
+        self.unsafe_sb.append_repeat(s, full)
+        if partial > 0:
+            self.unsafe_sb.append_slice(s, 0, partial)
+        self._grow(total - room)
+        if partial > 0:
+            self.unsafe_sb.append_slice(s, partial, l)
+            full += 1
+        self.unsafe_sb.append_repeat(s, n - full)
+
     def _grow(self, needed: i32) -> None:
         """
         The current buffer is full: seal it into the chain and allocate a bigger one.
