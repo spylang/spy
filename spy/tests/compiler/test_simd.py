@@ -166,7 +166,13 @@ class TestSIMD(CompilerTest):
         def bad() -> None:
             v = VEC()
         """
-        errors = expect_errors("SIMD requires explicit initialization")
+        errors = expect_errors(
+            "SIMD requires explicit initialization",
+            (
+                "use `SIMD[i32, 4].zeros()`, `SIMD[i32, 4].splat(x)` or pass 4 values",
+                "VEC",
+            ),
+        )
         self.compile_raises(src, "bad", errors)
 
     def test_wrong_number_of_args(self):
@@ -176,18 +182,68 @@ class TestSIMD(CompilerTest):
         def bad() -> None:
             v = SIMD[i32, 4](1, 2)
         """
-        errors = expect_errors("cannot call objects of type `_simd::SimdType`")
+        errors = expect_errors(
+            "`SIMD[i32, 4]` expects 4 values, got 2",
+            ("this is `SIMD[i32, 4]`", "SIMD[i32, 4]"),
+        )
         self.compile_raises(src, "bad", errors)
 
-    def test_convert_from_wrong_length(self):
+    def test_convert_from_list_and_tuple(self):
+        # items are implicitly converted to the dtype: here i32 -> f64
+        src = """
+        from _simd import SIMD
+
+        VEC = SIMD[f64, 2]
+
+        def list_literal() -> tuple[f64, f64]:
+            v: VEC = [1, 2]
+            return v[0], v[1]
+
+        def tuple_literal() -> tuple[f64, f64]:
+            v: VEC = (1, 2)
+            return v[0], v[1]
+
+        def list_runtime(a: i32, b: i32) -> tuple[f64, f64]:
+            v: VEC = [a, b]
+            return v[0], v[1]
+
+        def tuple_runtime(a: i32, b: f64) -> tuple[f64, f64]:
+            v: VEC = (a, b)
+            return v[0], v[1]
+        """
+        mod = self.compile(src)
+        assert mod.list_literal() == (1.0, 2.0)
+        assert mod.tuple_literal() == (1.0, 2.0)
+        assert mod.list_runtime(1, 2) == (1.0, 2.0)
+        assert mod.tuple_runtime(1, 2.5) == (1.0, 2.5)
+
+    def test_convert_from_tuple_wrong_length(self):
+        # the length of a tuple is part of its type: this is a compile-time error
         src = """
         from _simd import SIMD
 
         def bad() -> None:
-            v: SIMD[i32, 4] = [1, 2, 3]
+            v: SIMD[f64, 2] = (1, 2, 3)
         """
-        errors = expect_errors("expected 4 elements, got 3")
+        errors = expect_errors(
+            "`SIMD[f64, 2]` expects 2 values, got 3",
+            ("this is `tuple[i32, i32, i32]`", "(1, 2, 3)"),
+        )
         self.compile_raises(src, "bad", errors)
+
+    def test_convert_from_wrong_length(self):
+        # the length of a list is known only at runtime
+        src = """
+        from _simd import SIMD
+
+        def bad(n: i32) -> i32:
+            lst = [1, 2, 3]
+            v: SIMD[i32, 4] = lst
+            return v[0]
+        """
+        mod = self.compile(src)
+        with SPyError.raises("W_ValueError", match="expected 4 elements"):
+            mod.bad(0)
 
     def test_runtime_index(self):
         src = """
