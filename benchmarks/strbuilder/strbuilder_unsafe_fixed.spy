@@ -39,4 +39,4 @@ class UnsafeFixedStrBuilder:
 
     def build(self) -> str:
         self.buf.length = self.pos
-        return StrObject.to_str(self.buf)
+        return StrObject.to_sealed_str(self.buf)

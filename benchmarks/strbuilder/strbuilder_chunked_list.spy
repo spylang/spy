@@ -125,7 +125,7 @@ class ChunkedListStrBuilder:
         if state.pieces == gc_ptr[PieceList].NULL:
             # nothing overflowed the first chunk: the chunk is the result
             cur.length = state.cur_pos
-            return StrObject.to_str(cur)
+            return StrObject.to_sealed_str(cur)
         total = state.prev_total + state.cur_pos
         result = StrObject.alloc(total)
         dst = 0
@@ -135,4 +135,4 @@ class ChunkedListStrBuilder:
             )
             dst += piece.used
         ptr_copy_slice(result.utf8, dst, total, cur.utf8, 0, state.cur_pos)
-        return StrObject.to_str(result)
+        return StrObject.to_sealed_str(result)
