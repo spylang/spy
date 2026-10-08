@@ -149,7 +149,7 @@ class FnStrBuilder:
             # nothing overflowed the first chunk: the chunk is the result
             self.buf.length = self.used
             self.buf.hash = 0
-            return StrObject.to_str(self.buf)
+            return StrObject.to_sealed_str(self.buf)
         total = self.used + self.prev_total
         result = StrObject.alloc(total)
         dst = total - self.used
@@ -162,4 +162,4 @@ class FnStrBuilder:
             )
             piece = piece.prev
         self.buf.hash = 0
-        return StrObject.to_str(result)
+        return StrObject.to_sealed_str(result)

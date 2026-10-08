@@ -7,6 +7,9 @@ Benchmark of the StrBuilder implementations in this directory. Columns:
   list           strbuilder_chunked_list.spy  chunk list stored in a list[Piece]
   fn             strbuilder_fn.spy            chunk list in a plain value, `sb = sb.append(x)`
   unsafe         strbuilder_unsafe_fixed.spy  fixed capacity (the exact size), no checks
+  std            stdlib/strbuilder.spy        StrBuilder, same capacity as `chunked`
+  std-exact      stdlib/strbuilder.spy        StrBuilder, created with the exact final size
+  std-unsafe     stdlib/strbuilder.spy        UnsafeFixedStrBuilder, exact size
 
 Run it with:
 
@@ -30,6 +33,7 @@ from strbuilder_chunked_list import ChunkedListStrBuilder
 from strbuilder_fn import FnStrBuilder
 from strbuilder_realloc import ReallocStrBuilder
 from strbuilder_unsafe_fixed import UnsafeFixedStrBuilder
+from strbuilder import StrBuilder, UnsafeFixedStrBuilder as StdUnsafeBuilder
 
 
 SIZE_BYTES = 1024 * 1024
@@ -48,10 +52,13 @@ def fmt(us: f64) -> str:
     return " " * (7 - len(s)) + s
 
 
-def row(label: str, r: f64, c: f64, ce: f64, l: f64, f: f64, u: f64) -> None:
+def row(
+    label: str, r: f64, c: f64, ce: f64, l: f64, f: f64, u: f64, s: f64, se: f64, su: f64
+) -> None:
     print(
         f"{label}: realloc {fmt(r)}   chunked {fmt(c)}   chunked-exact {fmt(ce)}"
         f"   list {fmt(l)}   fn {fmt(f)}   unsafe {fmt(u)}"
+        f"   std {fmt(s)}   std-exact {fmt(se)}   std-unsafe {fmt(su)}"
     )
 
 
@@ -122,6 +129,28 @@ def pattern_u(src: str) -> str:
     return b.build()
 
 
+def pattern_s(src: str, cap: i32) -> str:
+    b = StrBuilder(cap)
+    remaining = SIZE_BYTES
+    while remaining > len(src):
+        b.append(src)
+        remaining -= len(src)
+    if remaining > 0:
+        b.append(src[0:remaining])
+    return b.build()
+
+
+def pattern_su(src: str) -> str:
+    b = StdUnsafeBuilder(SIZE_BYTES)
+    remaining = SIZE_BYTES
+    while remaining > len(src):
+        b.append(src)
+        remaining -= len(src)
+    if remaining > 0:
+        b.append(src[0:remaining])
+    return b.build()
+
+
 def bench_pattern(name: str, append_size: i32) -> None:
     src = "x" * append_size
     best_r = 1e18
@@ -130,6 +159,9 @@ def bench_pattern(name: str, append_size: i32) -> None:
     best_l = 1e18
     best_f = 1e18
     best_u = 1e18
+    best_s = 1e18
+    best_se = 1e18
+    best_su = 1e18
     for rep in range(REPS):
         t0 = time()
         res_r = pattern_r(src)
@@ -144,6 +176,15 @@ def bench_pattern(name: str, append_size: i32) -> None:
         t5 = time()
         res_u = pattern_u(src)
         t6 = time()
+        res_s = pattern_s(src, DEFAULT_CAPACITY)
+        t7 = time()
+        res_se = pattern_s(src, SIZE_BYTES)
+        t8 = time()
+        res_su = pattern_su(src)
+        t9 = time()
+        assert res_c == res_s
+        assert res_c == res_se
+        assert res_c == res_su
         assert len(res_c) == SIZE_BYTES
         assert res_c == res_r
         assert res_c == res_ce
@@ -156,7 +197,21 @@ def bench_pattern(name: str, append_size: i32) -> None:
         best_l = min(best_l, t4 - t3)
         best_f = min(best_f, t5 - t4)
         best_u = min(best_u, t6 - t5)
-    row(name, best_r * 1e6, best_c * 1e6, best_ce * 1e6, best_l * 1e6, best_f * 1e6, best_u * 1e6)
+        best_s = min(best_s, t7 - t6)
+        best_se = min(best_se, t8 - t7)
+        best_su = min(best_su, t9 - t8)
+    row(
+        name,
+        best_r * 1e6,
+        best_c * 1e6,
+        best_ce * 1e6,
+        best_l * 1e6,
+        best_f * 1e6,
+        best_u * 1e6,
+        best_s * 1e6,
+        best_se * 1e6,
+        best_su * 1e6,
+    )
 
 
 def section_append_size() -> None:
@@ -297,6 +352,20 @@ def parts_u(parts: list[str], total: i32) -> str:
     return b.build()
 
 
+def parts_s(parts: list[str], cap: i32) -> str:
+    b = StrBuilder(cap)
+    for p in parts:
+        b.append(p)
+    return b.build()
+
+
+def parts_su(parts: list[str], total: i32) -> str:
+    b = StdUnsafeBuilder(total)
+    for p in parts:
+        b.append(p)
+    return b.build()
+
+
 def bench_parts(name: str, parts: list[str], reps: i32) -> None:
     total = total_len(parts)
     best_r = 1e18
@@ -305,6 +374,9 @@ def bench_parts(name: str, parts: list[str], reps: i32) -> None:
     best_l = 1e18
     best_f = 1e18
     best_u = 1e18
+    best_s = 1e18
+    best_se = 1e18
+    best_su = 1e18
     for rep in range(reps):
         t0 = time()
         res_r = parts_r(parts)
@@ -319,6 +391,15 @@ def bench_parts(name: str, parts: list[str], reps: i32) -> None:
         t5 = time()
         res_u = parts_u(parts, total)
         t6 = time()
+        res_s = parts_s(parts, DEFAULT_CAPACITY)
+        t7 = time()
+        res_se = parts_s(parts, total)
+        t8 = time()
+        res_su = parts_su(parts, total)
+        t9 = time()
+        assert res_c == res_s
+        assert res_c == res_se
+        assert res_c == res_su
         assert len(res_c) == total
         assert res_c == res_r
         assert res_c == res_ce
@@ -331,6 +412,9 @@ def bench_parts(name: str, parts: list[str], reps: i32) -> None:
         best_l = min(best_l, t4 - t3)
         best_f = min(best_f, t5 - t4)
         best_u = min(best_u, t6 - t5)
+        best_s = min(best_s, t7 - t6)
+        best_se = min(best_se, t8 - t7)
+        best_su = min(best_su, t9 - t8)
     row(
         f"{name} ({total} B, {len(parts)} appends)",
         best_r * 1e6,
@@ -339,6 +423,9 @@ def bench_parts(name: str, parts: list[str], reps: i32) -> None:
         best_l * 1e6,
         best_f * 1e6,
         best_u * 1e6,
+        best_s * 1e6,
+        best_se * 1e6,
+        best_su * 1e6,
     )
 
 
@@ -394,11 +481,21 @@ def list_l(n: i32) -> str:
     return b.build()
 
 
+def list_s(n: i32) -> str:
+    b = StrBuilder(DEFAULT_CAPACITY)
+    b.append("[")
+    for i in range(n):
+        b.append(f"{i}, ")
+    b.append("]")
+    return b.build()
+
+
 def bench_list(n: i32) -> None:
     best_r = 1e18
     best_c = 1e18
     best_l = 1e18
     best_f = 1e18
+    best_s = 1e18
     for rep in range(REPS * 100):
         t0 = time()
         res_r = list_r(n)
@@ -409,6 +506,9 @@ def bench_list(n: i32) -> None:
         t3 = time()
         res_f = list_f(n)
         t4 = time()
+        res_s = list_s(n)
+        t5 = time()
+        assert res_c == res_s
         assert res_c == res_r
         assert res_c == res_l
         assert res_c == res_f
@@ -416,7 +516,12 @@ def bench_list(n: i32) -> None:
         best_c = min(best_c, t2 - t1)
         best_l = min(best_l, t3 - t2)
         best_f = min(best_f, t4 - t3)
-    row(f"{n} items", best_r * 1e6, best_c * 1e6, -1.0, best_l * 1e6, best_f * 1e6, -1.0)
+        best_s = min(best_s, t5 - t4)
+    row(
+        f"{n} items",
+        best_r * 1e6, best_c * 1e6, -1.0, best_l * 1e6, best_f * 1e6, -1.0,
+        best_s * 1e6, -1.0, -1.0,
+    )
 
 
 def section_short() -> None:
@@ -475,6 +580,24 @@ def cap_float(mode: i32, n: i32) -> i32:
         return n * 16
 
 
+def int_s(n: i32, cap: i32) -> str:
+    b = StrBuilder(cap)
+    b.append("[")
+    for i in range(n):
+        b.append(f"{ival(i)}, ")
+    b.append("]")
+    return b.build()
+
+
+def int_su(n: i32, cap: i32) -> str:
+    b = StdUnsafeBuilder(cap)
+    b.append("[")
+    for i in range(n):
+        b.append(f"{ival(i)}, ")
+    b.append("]")
+    return b.build()
+
+
 def int_r(n: i32, cap: i32) -> str:
     b = ReallocStrBuilder(cap)
     b.append("[")
@@ -517,6 +640,24 @@ def int_u(n: i32, cap: i32) -> str:
     for i in range(n):
         b = b.append(f"{ival(i)}, ")
     b = b.append("]")
+    return b.build()
+
+
+def float_s(n: i32, cap: i32) -> str:
+    b = StrBuilder(cap)
+    b.append("[")
+    for i in range(n):
+        b.append(f"{fval(i)}, ")
+    b.append("]")
+    return b.build()
+
+
+def float_su(n: i32, cap: i32) -> str:
+    b = StdUnsafeBuilder(cap)
+    b.append("[")
+    for i in range(n):
+        b.append(f"{fval(i)}, ")
+    b.append("]")
     return b.build()
 
 
@@ -580,6 +721,8 @@ def bench_int(mode: i32, n: i32, expected: str) -> None:
     best_l = 1e18
     best_f = 1e18
     best_u = 1e18
+    best_s = 1e18
+    best_su = 1e18
     for rep in range(REPS * 20):
         t0 = time()
         res_r = int_r(n, cap_int(mode, n))
@@ -590,6 +733,9 @@ def bench_int(mode: i32, n: i32, expected: str) -> None:
         t3 = time()
         res_f = int_f(n, cap_int(mode, n))
         t4 = time()
+        res_s = int_s(n, cap_int(mode, n))
+        t4s = time()
+        assert res_s == expected
         assert res_r == expected
         assert res_c == expected
         assert res_l == expected
@@ -598,18 +744,26 @@ def bench_int(mode: i32, n: i32, expected: str) -> None:
         best_c = min(best_c, t2 - t1)
         best_l = min(best_l, t3 - t2)
         best_f = min(best_f, t4 - t3)
+        best_s = min(best_s, t4s - t4)
         if mode != EST_LOW:
             t5 = time()
             res_u = int_u(n, cap_int(mode, n))
             t6 = time()
             assert res_u == expected
             best_u = min(best_u, t6 - t5)
+            res_su = int_su(n, cap_int(mode, n))
+            t7 = time()
+            assert res_su == expected
+            best_su = min(best_su, t7 - t6)
     u = -1.0
+    su = -1.0
     if mode != EST_LOW:
         u = best_u * 1e6
+        su = best_su * 1e6
     row(
         f"int   n={n} {mode_name(mode)}",
         best_r * 1e6, best_c * 1e6, -1.0, best_l * 1e6, best_f * 1e6, u,
+        best_s * 1e6, -1.0, su,
     )
 
 
@@ -619,6 +773,8 @@ def bench_float(mode: i32, n: i32, expected: str) -> None:
     best_l = 1e18
     best_f = 1e18
     best_u = 1e18
+    best_s = 1e18
+    best_su = 1e18
     for rep in range(REPS * 20):
         t0 = time()
         res_r = float_r(n, cap_float(mode, n))
@@ -629,6 +785,9 @@ def bench_float(mode: i32, n: i32, expected: str) -> None:
         t3 = time()
         res_f = float_f(n, cap_float(mode, n))
         t4 = time()
+        res_s = float_s(n, cap_float(mode, n))
+        t4s = time()
+        assert res_s == expected
         assert res_r == expected
         assert res_c == expected
         assert res_l == expected
@@ -637,18 +796,26 @@ def bench_float(mode: i32, n: i32, expected: str) -> None:
         best_c = min(best_c, t2 - t1)
         best_l = min(best_l, t3 - t2)
         best_f = min(best_f, t4 - t3)
+        best_s = min(best_s, t4s - t4)
         if mode != EST_LOW:
             t5 = time()
             res_u = float_u(n, cap_float(mode, n))
             t6 = time()
             assert res_u == expected
             best_u = min(best_u, t6 - t5)
+            res_su = float_su(n, cap_float(mode, n))
+            t7 = time()
+            assert res_su == expected
+            best_su = min(best_su, t7 - t6)
     u = -1.0
+    su = -1.0
     if mode != EST_LOW:
         u = best_u * 1e6
+        su = best_su * 1e6
     row(
         f"float n={n} {mode_name(mode)}",
         best_r * 1e6, best_c * 1e6, -1.0, best_l * 1e6, best_f * 1e6, u,
+        best_s * 1e6, -1.0, su,
     )
 
 
