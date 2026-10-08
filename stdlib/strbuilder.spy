@@ -148,48 +148,34 @@ class StrBuilder:
     `initial_capacity` is the size in bytes of the first chunk.
     """
 
-    __ll__: gc_ptr[Chunk]
+    unsafe_sb: UnsafeFixedStrBuilder
 
     def __new__(initial_capacity: i32) -> StrBuilder:
         if initial_capacity < 0:
             raise ValueError("StrBuilder capacity must not be negative")
-
-        head = gc_alloc[Chunk](1)
-        head.buf = StrObject.alloc(initial_capacity)
-        head.pos = 0
-        head.prev = gc_ptr[Chunk].NULL
-        head.prev_length = 0
-        return StrBuilder.__make__(head)
+        return StrBuilder.__make__(UnsafeFixedStrBuilder(initial_capacity))
 
     def append(self, s: str) -> None:
-        head = self.__ll__
+        head = self.unsafe_sb.__ll__
         if head.buf == gc_ptr[StrObject].NULL:
             raise ValueError("StrBuilder is already built")
-        lls = StrObject.from_str(s)
-        n = lls.length
+        n = StrObject.from_str(s).length
         room = head.buf.length - head.pos
         if n <= room:
             # fast path: we can copy into the current chunk
-            ptr_copy_slice(head.buf.utf8, head.pos, head.pos + n, lls.utf8, 0, n)
-            head.pos += n
+            self.unsafe_sb.append(s)
             return
 
-        # slow path: we need to grow
-        if room > 0:
-            # fill the remaining of the current buffer
-            ptr_copy_slice(head.buf.utf8, head.pos, head.pos + room, lls.utf8, 0, room)
-            head.pos += room
-        # grow and copy the rest
-        rest = n - room
-        self._grow(rest)
-        ptr_copy_slice(head.buf.utf8, 0, rest, lls.utf8, room, n)
-        head.pos = rest
+        # slow path: fill the current buf, then grow and copy the rest
+        self.unsafe_sb.append_slice(s, 0, room)
+        self._grow(n - room)
+        self.unsafe_sb.append_slice(s, room, n)
 
     def _grow(self, needed: i32) -> None:
         """
         The current buffer is full: seal it into the chain and allocate a bigger one.
         """
-        head = self.__ll__
+        head = self.unsafe_sb.__ll__
 
         # move the existing buffer into a sealed chunk, and link it to the head
         sealed = gc_alloc[Chunk](1)
@@ -212,33 +198,29 @@ class StrBuilder:
         """
         Return the string and seal the builder.
         """
-        chunk = self.__ll__
-        if chunk.buf == gc_ptr[StrObject].NULL:
+        head = self.unsafe_sb.__ll__
+        if head.buf == gc_ptr[StrObject].NULL:
             raise ValueError("StrBuilder is already built")
 
-        if chunk.prev == gc_ptr[Chunk].NULL:
-            # nothing overflowed the first chunk, so the buffer already is the result
-            if chunk.pos < chunk.buf.length:
-                # underfill: we didn't use all the space in buf. Let's just pretend
-                # the StrObject is shorter. This leaks a bit of memory at the end,
-                # too bad.
-                chunk.buf.length = chunk.pos
-            buf = chunk.buf
-            chunk.buf = gc_ptr[StrObject].NULL
-            return StrObject.to_sealed_str(buf)
+        if head.prev == gc_ptr[Chunk].NULL:
+            # we have a single chunk, just seal&steal the StrObject.
+            # If it is underfilled, build() shrinks it and leaks a bit of memory.
+            res = self.unsafe_sb.build()
+            head.buf = gc_ptr[StrObject].NULL
+            return res
 
         # The pieces are stored newest-first in the chain and the current buffer is
         # the newest of all, so we fill the fresh result from the end backwards.
-        total = chunk.prev_length + chunk.pos
+        total = head.prev_length + head.pos
         result = StrObject.alloc(total)
-        dst = total - chunk.pos
-        ptr_copy_slice(result.utf8, dst, total, chunk.buf.utf8, 0, chunk.pos)
+        dst = total - head.pos
+        ptr_copy_slice(result.utf8, dst, total, head.buf.utf8, 0, head.pos)
 
-        node = chunk.prev
+        node = head.prev
         while node != gc_ptr[Chunk].NULL:
             dst -= node.pos
             ptr_copy_slice(result.utf8, dst, dst + node.pos, node.buf.utf8, 0, node.pos)
             node = node.prev
 
-        chunk.buf = gc_ptr[StrObject].NULL
+        head.buf = gc_ptr[StrObject].NULL
         return StrObject.to_sealed_str(result)
