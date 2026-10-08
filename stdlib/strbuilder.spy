@@ -213,6 +213,7 @@ class StrBuilder:
 
         # move the existing buffer into a sealed chunk, and link it to the head
         sealed = gc_alloc[Chunk](1)
+        StrObject.to_sealed_str(head.buf)
         sealed.buf = head.buf
         sealed.pos = head.pos
         sealed.prev = head.prev
@@ -258,3 +259,61 @@ class StrBuilder:
 
         head.buf = gc_ptr[StrObject].NULL
         return StrObject.to_sealed_str(result)
+
+
+# ========== debugging helpers ==========
+
+
+def _dump_byte(chunk: gc_ptr[Chunk], i: i32) -> u8:
+    if i >= chunk.pos:
+        return ord(b".")
+    c = chunk.buf.utf8[i]
+    if c < ord(b" ") or c > ord(b"~"):
+        return ord(b"?")
+    return c
+
+
+def _dump_buf(chunk: gc_ptr[Chunk]) -> str:
+    PP_EDGE = 12
+    cap = chunk.buf.length
+    if cap <= 2 * PP_EDGE:
+        out = StrObject.alloc(cap)
+        for i in range(cap):
+            out.utf8[i] = _dump_byte(chunk, i)
+        return StrObject.to_sealed_str(out)
+
+    out2 = StrObject.alloc(2 * PP_EDGE + 5)
+    for i in range(PP_EDGE):
+        out2.utf8[i] = _dump_byte(chunk, i)
+        out2.utf8[PP_EDGE + 5 + i] = _dump_byte(chunk, cap - PP_EDGE + i)
+    out2.utf8[PP_EDGE] = ord(b"[")
+    out2.utf8[PP_EDGE + 1] = ord(b".")
+    out2.utf8[PP_EDGE + 2] = ord(b".")
+    out2.utf8[PP_EDGE + 3] = ord(b".")
+    out2.utf8[PP_EDGE + 4] = ord(b"]")
+    return StrObject.to_sealed_str(out2)
+
+
+def dump_builder(sb: StrBuilder) -> str:
+    """
+    Return a human readable dump of the chunks of `sb`, newest first, one per line.
+    Unfilled bytes are shown as ".", non-printable and non-ASCII bytes as "?". Long
+    buffers are abbreviated as "first[...]last".
+
+        [unsealed] pos=3     cap=8     "abc....."
+        [sealed  ] pos=5     cap=5     "hello"
+    """
+    chunk = sb.unsafe_sb.__ll__
+    if chunk.buf == gc_ptr[StrObject].NULL:
+        return "<already built>"
+    lines: list[str] = []
+    while chunk != gc_ptr[Chunk].NULL:
+        kind = "unsealed"
+        if chunk.buf[0].is_sealed():
+            kind = "sealed  "
+        buf = _dump_buf(chunk)
+        lines.append(
+            f'[{kind}] pos={chunk.pos!s:<5} cap={chunk.buf.length!s:<5} "{buf}"'
+        )
+        chunk = chunk.prev
+    return "\n".join(lines)
