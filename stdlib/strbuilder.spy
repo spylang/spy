@@ -1,6 +1,46 @@
 from _str import StrObject
 from unsafe import gc_alloc, gc_ptr, ptr_copy_slice, ptr_setbytes_slice
 
+# A StrBuilder is a linked list of Chunks, newest first. The head is the Chunk being
+# filled; older sealed Chunks are reached via .prev. Graphically, for a builder that
+# contains "hello world!" split across three chunks:
+#
+#   StrBuilder.__ll__
+#       ↓
+#   [buf="!...",   pos=1, prev_length=11] unsealed, "..." are to be filled
+#       ↓
+#   [buf="world",  pos=5, prev_length=6 ] sealed
+#       ↓
+#   [buf="hello ", pos=6, prev_length=0 ] sealed
+#       ↓
+#      NULL
+#
+# The invariants are:
+#   1. the head contains an *unsealed* StrObject
+#   2. all the .prevs contain *sealed* StrObjects which cannot be modified.
+#   3. prev_length contains the total length of ALL the prev chunks
+#
+# On .append(), we fill the head buffer. When the buffer is full, we seal it and
+# allocate a new one, with a certain growth factor to keep number of reallocations
+# small.
+#
+# .build() creates the final string; we support two different cases:
+#
+#   1. one chunk: we seal and return that StrObject. The unused capacity is kept alive,
+#      so be careful with that. Allocating an initial capacity which is too big might
+#      result into unwanted memory consumption.
+#
+#   2. if we have multiple chunks, we allocate a fresh StrObject of the right size
+#      and fill it
+#
+# The best case scenario is when we give an exact capacity and we fill it completely. In
+# this case, we do only two allocations in total (one for the head chunk and one for the
+# StrBuilder) and we copy each byte only once, to fill the buffer.
+#
+# There is also UnsafeFixedStrBuilder: this is only if you know in advance the exact
+# capacity, doesn't support growing and doesn't do any bound check. The typical use case
+# is something like `str.join(list[str])`.
+
 
 @struct
 class Chunk:
