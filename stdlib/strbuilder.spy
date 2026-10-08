@@ -1,3 +1,4 @@
+from __spy__ import force_inline
 from _str import StrObject
 from unsafe import gc_alloc, gc_ptr, ptr_copy_slice, ptr_setbytes_slice
 
@@ -82,6 +83,7 @@ class UnsafeFixedStrBuilder:
         head.prev_length = 0
         return UnsafeFixedStrBuilder.__make__(head)
 
+    @force_inline
     def append(self, chunk: str) -> None:
         head = self.__ll__
         src = StrObject.from_str(chunk)
@@ -122,6 +124,7 @@ class UnsafeFixedStrBuilder:
                 )
         head.pos = head.pos + total
 
+    @force_inline
     def append_slice(self, chunk: str, start: i32, end: i32) -> None:
         head = self.__ll__
         source = StrObject.from_str(chunk)
@@ -163,9 +166,11 @@ class StrBuilder:
             raise ValueError("StrBuilder capacity must not be negative")
         return StrBuilder.__make__(UnsafeFixedStrBuilder(initial_capacity))
 
+    @force_inline
     def append(self, s: str) -> None:
         self.append_slice(s, 0, StrObject.from_str(s).length)
 
+    @force_inline
     def append_slice(self, s: str, start: i32, end: i32) -> None:
         head = self.unsafe_sb.__ll__
         if head.buf == gc_ptr[StrObject].NULL:
@@ -173,13 +178,21 @@ class StrBuilder:
 
         if start < 0 or start > end or end > StrObject.from_str(s).length:
             raise IndexError
-        n = end - start
-        room = head.buf.length - head.pos
-        if n <= room:
+
+        if end - start <= head.buf.length - head.pos:
             # fast path: we can copy into the current chunk
             self.unsafe_sb.append_slice(s, start, end)
-            return
+        else:
+            self._append_slice_slow(s, start, end)
 
+    def _append_slice_slow(self, s: str, start: i32, end: i32) -> None:
+        """
+        s[start:end] doesn't fit in the head buffer. It's a separate method to keep
+        append_slice small, as it is inlined.
+        """
+        head = self.unsafe_sb.__ll__
+        n = end - start
+        room = head.buf.length - head.pos
         src = StrObject.from_str(s)
         if n > ADOPT_THRESHOLD and head.pos == 0 and start == 0 and n == src.length:
             # we can link the whole s as a chunk instead of copying it. This is
@@ -193,7 +206,7 @@ class StrBuilder:
             head.prev_length += n
             return
 
-        # slow path: fill the current buf, then grow and copy the rest
+        # fill the current buf, then grow and copy the rest
         self.unsafe_sb.append_slice(s, start, start + room)
         self._grow(n - room)
         self.unsafe_sb.append_slice(s, start + room, end)
