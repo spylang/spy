@@ -29,6 +29,7 @@ static spy_StrObject *make_str(const char *s) {
     size_t n = strlen(s);
     spy_StrObject *res = spy_str_alloc(n);
     memcpy(spy_StrObject_UTF8(res), s, n);
+    spy_str_seal(res);
     return res;
 }
 

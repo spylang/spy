@@ -9,6 +9,11 @@ At interp level, the W_Bytes type is defined in vm/bytes.py.
 The BytesObject struct defined here MUST stay in sync with the one defined in C.
 It is possible to cast between bytes and gc_ptr[BytesObject] using
 BytesObject.{from,to}_bytes.
+
+BytesObject.alloc() returns an "unsealed" object: the user code never saw it and
+the internal buffer can be modified.  After you fill the data buffer, you can
+call BytesObject.to_sealed_bytes(): this seals the buffer and returns the bytes
+as a high-level `bytes` object.
 """
 
 from unsafe import (
@@ -19,7 +24,7 @@ from unsafe import (
     memset,
     _bytes_to_BytesObject,
     _alloc_BytesObject,
-    _BytesObject_to_bytes,
+    _BytesObject_to_sealed_bytes,
 )
 from _str import StrObject
 
@@ -40,8 +45,14 @@ class BytesObject:
         return _bytes_to_BytesObject(b)
 
     @staticmethod
-    def to_bytes(ll: gc_ptr[BytesObject]) -> bytes:
-        return _BytesObject_to_bytes(ll)
+    def to_sealed_bytes(ll: gc_ptr[BytesObject]) -> bytes:
+        """
+        Seal the `ll` bytes and cast into a high level `bytes`.
+        """
+        return _BytesObject_to_sealed_bytes(ll)
+
+    def is_sealed(self) -> bool:
+        return self.hash != -1
 
 
 def _bytes_cmp(a: bytes, b: bytes) -> i32:
@@ -102,22 +113,20 @@ class methods:
         a = BytesObject.from_bytes(self)
         b = BytesObject.from_bytes(other)
         out = BytesObject.alloc(a.length + b.length)
-        out.hash = 0
         ptr_copy_slice(out.data, 0, a.length, a.data, 0, a.length)
         ptr_copy_slice(out.data, a.length, a.length + b.length, b.data, 0, b.length)
-        return BytesObject.to_bytes(out)
+        return BytesObject.to_sealed_bytes(out)
 
     def __mul__(self: bytes, n: i32) -> bytes:
         ll = BytesObject.from_bytes(self)
         out = BytesObject.alloc(ll.length * n)
-        out.hash = 0
         if ll.length == 1:
             memset(out.data, ll.data[0], n)
         else:
             l = ll.length
             for i in range(n):
                 ptr_copy_slice(out.data, i * l, (i + 1) * l, ll.data, 0, l)
-        return BytesObject.to_bytes(out)
+        return BytesObject.to_sealed_bytes(out)
 
     # XXX: __hash__ lives in C (spy_bytes_hash, called from W_Bytes.w_hash) because
     # FNV-1a requires wrapping i32 multiply, which is not yet available at applevel.
@@ -128,10 +137,9 @@ class methods:
             raise ValueError("only 'utf-8' encoding is supported")
         ll = BytesObject.from_bytes(self)
         out = StrObject.alloc(ll.length)
-        out.hash = 0
         if ll.length > 0:
             ptr_copy(out.utf8, ll.data, ll.length)
-        return StrObject.to_str(out)
+        return StrObject.to_sealed_str(out)
 
     def __repr__(self: bytes) -> str:
         ll = BytesObject.from_bytes(self)
@@ -149,7 +157,6 @@ class methods:
                 out_len = out_len + 1
         # Second pass: fill the output buffer
         out = StrObject.alloc(out_len)
-        out.hash = 0
         j: i32 = 0
         out.utf8[j] = ord(b"b")
         j = j + 1
@@ -204,4 +211,4 @@ class methods:
                 out.utf8[j] = c2
                 j = j + 1
         out.utf8[j] = ord(b"'")
-        return StrObject.to_str(out)
+        return StrObject.to_sealed_str(out)

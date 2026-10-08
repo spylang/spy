@@ -14,6 +14,18 @@ class TestBytes(CompilerTest):
         assert mod.foo() == b"hello"
         assert mod.bar() == b""
 
+    def test_to_bytes_already_sealed(self):
+        src = """
+        from _bytes import BytesObject
+
+        def double_seal(b: bytes) -> bytes:
+            ll = BytesObject.from_bytes(b)
+            return BytesObject.to_sealed_bytes(ll)
+        """
+        mod = self.compile(src)
+        with SPyError.raises("W_PanicError", match="bytes already sealed"):
+            mod.double_seal(b"hello")
+
     def test_len(self):
         mod = self.compile("""
         def foo() -> i32:

@@ -22,6 +22,7 @@ def ll_bytes_new(ll: LLSPyInstance, b: bytes) -> int:
     ptr = ll.call("spy_bytes_alloc", length)
     data_ptr = ll.mem.read_i32(ptr + ll.bytes_layout.data_offset)
     ll.mem.write(data_ptr, b)
+    ll.call("spy_bytes_seal", ptr)
     return ptr
 
 
@@ -35,8 +36,11 @@ class W_Bytes(W_Object):
         typedef struct {
             size_t length;
             int32_t hash;
-            uint8_t *data;
+            spy_gc_ptr_u8 data;
         } spy_BytesObject;
+
+    See bytes.h for the seal protocol of the `hash` field: an object returned by
+    ll_bytes_new is always sealed.
     """
 
     __spy_storage_category__ = "value"

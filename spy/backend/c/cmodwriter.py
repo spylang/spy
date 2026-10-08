@@ -176,6 +176,7 @@ class CModuleWriter:
                             spy_StrObject *s = spy_str_alloc(length);
                             char *buf = (char *)spy_StrObject_UTF8(s);
                             memcpy(buf, argv[i], length);
+                            spy_str_seal(s);
                             lst = spy_list_str_push(lst, s);
                         }
                         return lst;

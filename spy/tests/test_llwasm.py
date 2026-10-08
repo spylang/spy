@@ -334,6 +334,7 @@ class TestLLWasm(CTest):
             size_t n = strlen(msg);
             spy_StrObject *s = spy_str_alloc(n);
             memcpy(spy_StrObject_UTF8(s), msg, n);
+            spy_str_seal(s);
             return s;
         }
         """
