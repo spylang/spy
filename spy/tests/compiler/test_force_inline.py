@@ -33,6 +33,19 @@ class TestForceInline(CompilerTest):
         """)
         assert mod.foo(10) == 22
 
+    def test_dont_redshift_twice(self):
+        mod = self.compile("""
+        from __spy__ import force_inline
+
+        def foo(x: i32) -> i32:
+            return inc(x) + inc(x)
+
+        @force_inline
+        def inc(x: i32) -> i32:
+            return x + 1
+        """)
+        assert mod.foo(10) == 22
+
     def test_arg_evaluated_once(self):
         # arg expressions are bound via VarDef so they run exactly once
         mod = self.compile("""

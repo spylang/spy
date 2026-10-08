@@ -250,6 +250,10 @@ class SPyVM:
         error_mode: ErrorMode,
     ) -> None:
         for fqn, w_func in funcs:
+            if not w_func.is_valid:
+                # this means that the function was ALREADY redshifted, very likely
+                # because it's a @force_inline function which was inlined into a caller
+                continue
             assert w_func.color != "blue"
             assert w_func.stage == "astcompiled"
             w_newfunc = redshift(self, w_func, error_mode)
