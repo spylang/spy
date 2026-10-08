@@ -5,8 +5,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 set -e
 
-
-LIBSPY="${SCRIPT_DIR}/../../spy/libspy/"
+LIBSPY="${SCRIPT_DIR}/../../../spy/libspy/"
 
 CFLAGS="
   $1
