@@ -195,6 +195,11 @@ class TestStrBuilder(CompilerTest):
             sb.append_slice(a, start, end)
             dump = dump_builder(sb)
             return sb.build(), dump
+
+        def adopt_only(cap: int, a: str) -> str:
+            sb = StrBuilder(cap)
+            sb.append(a)
+            return sb.build()
         """
         mod = self.compile(src)
         A = "A" * 2000
@@ -237,3 +242,7 @@ class TestStrBuilder(CompilerTest):
         [sealed  ] pos=4     cap=4     "AAAA"
         """
         self.assert_dump(dump, expected)
+
+        # a single adopted str and nothing else: build() returns it without copying
+        assert mod.adopt_only(4, A) == A
+        assert mod.adopt_only(0, A) == A

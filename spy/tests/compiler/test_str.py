@@ -36,7 +36,8 @@ class TestStr(CompilerTest):
         mod = self.compile(src)
         assert mod.get_length("") == 0
 
-    def test_to_str_already_sealed(self):
+    def test_double_seal(self):
+        # to_sealed_str is idempotent
         src = """
         from _str import StrObject
 
@@ -45,8 +46,7 @@ class TestStr(CompilerTest):
             return StrObject.to_sealed_str(ll)
         """
         mod = self.compile(src)
-        with SPyError.raises("W_PanicError", match="string already sealed"):
-            mod.double_seal("hello")
+        assert mod.double_seal("hello") == "hello"
 
     def test_add(self):
         mod = self.compile("""

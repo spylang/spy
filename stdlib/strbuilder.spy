@@ -264,10 +264,12 @@ class StrBuilder:
             head.buf = gc_ptr[StrObject].NULL
             return res
 
-        # TODO, optimization: if head is empty and the only sealed chunk is an
-        # adopted str, we could return it as-is instead of copying it. It needs a
-        # cast from StrObject to str which does NOT seal, since the buffer is
-        # already sealed (to_sealed_str would panic on an already-sealed string).
+        if head.pos == 0 and head.prev.prev == gc_ptr[Chunk].NULL:
+            # the only chunk is an adopted str (see "Adoption" above) and nothing was
+            # appended after it, so we return it as-is instead of copying it
+            adopted = head.prev
+            head.buf = gc_ptr[StrObject].NULL
+            return StrObject.to_sealed_str(adopted.buf)
 
         # The pieces are stored newest-first in the chain and the current buffer is
         # the newest of all, so we fill the fresh result from the end backwards.
