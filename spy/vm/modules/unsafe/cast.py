@@ -2,7 +2,7 @@
 Pointer type casting and alignment casting for the unsafe module.
 
 Provides:
-- cast[DstItemT](ptr): changes item type, preserves address and alignment
+- cast[DstItemT](ptr): T <-> SIMD[T, N] only; preserves address and alignment
 - align_cast[N](ptr): changes alignment tag, preserves address and item type
 """
 
@@ -35,6 +35,21 @@ def _check_ptr_static(vm: "SPyVM", wam_ptr: W_MetaArg, opname: str) -> W_PtrType
     raise err
 
 
+def _is_simd_cast(w_srcT: W_Type, w_dstT: W_Type) -> bool:
+    """
+    Return True for the only casts which are allowed: T <-> SIMD[T, N].
+    """
+    from spy.vm.modules.simd import W_SimdType
+
+    src_simd = isinstance(w_srcT, W_SimdType)
+    dst_simd = isinstance(w_dstT, W_SimdType)
+    if dst_simd and not src_simd:
+        return w_dstT.w_dtype is w_srcT  # type: ignore[attr-defined]
+    if src_simd and not dst_simd:
+        return w_srcT.w_dtype is w_dstT  # type: ignore[attr-defined]
+    return False
+
+
 def _ptrtype_like(
     vm: "SPyVM", w_srcT: W_PtrType, w_itemT: W_Type, alignment: int
 ) -> W_PtrType:
@@ -53,17 +68,30 @@ def w_cast(vm: "SPyVM", w_DstItemT: W_Type) -> W_Dynamic:
     """
     cast[DstItemT](ptr)
 
+    Only casts between T and SIMD[T, N] (in both directions) are allowed;
+    any other cast is a compile-time TypeError.
+
     It produces:
         raw_ptr[DstItemT, align(N)] or gc_ptr[DstItemT, align(N)]
     where N is the SOURCE ptr's alignment (preserved) and the memkind also
     matches the source. The length is recomputed from the byte size, with
-    truncation. This operation is always safe and has zero runtime overhead.
+    truncation. This operation has zero runtime overhead.
     """
     ns = UNSAFE.w_cast.compute_inner_ns([w_DstItemT])
 
     @vm.register_builtin_func(ns, "impl", color="blue", kind="metafunc")
     def w_cast_dispatch(vm: "SPyVM", wam_ptr: W_MetaArg) -> W_OpSpec:
         w_srcT = _check_ptr_static(vm, wam_ptr, "cast")
+        if not _is_simd_cast(w_srcT.w_itemT, w_DstItemT):
+            src_t = w_srcT.w_itemT.fqn.human_name(vm)
+            dst_t = w_DstItemT.fqn.human_name(vm)
+            err = SPyError("W_TypeError", "invalid cast")
+            err.add(
+                "error",
+                f"cannot cast `{src_t}` to `{dst_t}`: only T <-> SIMD[T, N] is allowed",
+                loc=wam_ptr.loc,
+            )
+            raise err
         w_dstT = _ptrtype_like(vm, w_srcT, w_DstItemT, w_srcT.resolved_alignment())
 
         src_size = sizeof(w_srcT.w_itemT)
