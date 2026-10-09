@@ -60,7 +60,7 @@ class StrObject:
     @staticmethod
     def to_sealed_str(ll: gc_ptr[StrObject]) -> str:
         """
-        Seal the `ll` string and cast into a high level `str`.
+        Seal the `ll` string if needed, and cast into a high level `str`.
         """
         return _StrObject_to_sealed_str(ll)
 
@@ -442,9 +442,8 @@ class methods:
         for i in range(n):
             total_len = total_len + len(items[i])
 
-        # Defer lookup because strbuilder imports StrObject from this module.
-        StrBuilder = lookup_fqn("strbuilder::StrBuilder")
-        sb = StrBuilder(total_len)
+        UnsafeFixedStrBuilder = lookup_fqn("strbuilder::UnsafeFixedStrBuilder")
+        sb = UnsafeFixedStrBuilder(total_len)
         for j in range(n):
             if j > 0:
                 sb.append(self)

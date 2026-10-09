@@ -1,118 +1,88 @@
+import textwrap
+
+import pytest
+
 from spy.errors import SPyError
 from spy.tests.support import CompilerTest
+from spy.util import print_diff
+
+
+@pytest.fixture(params=["StrBuilder", "Unsafe"])
+def Builder(request):
+    if request.param == "StrBuilder":
+        return "StrBuilder"
+    elif request.param == "Unsafe":
+        return "UnsafeFixedStrBuilder"
+    else:
+        assert False
 
 
 class TestStrBuilder(CompilerTest):
-    def test_build(self):
-        src = """
-        from strbuilder import StrBuilder
+    def assert_dump(self, got: str, expected: str) -> None:
+        expected = textwrap.dedent(expected).strip()
+        if got != expected:
+            print_diff(expected, got, "expected", "got")
+            pytest.fail("assert_dump failed")
 
-        def concatenate(capacity: int, first: str, second: str, third: str) -> str:
-            sb = StrBuilder(capacity)
-            for chunk in [first, second, third]:
-                sb.append(chunk)
+    def test_append(self, Builder):
+        src = f"""
+        from strbuilder import {Builder} as SB
+
+        def concat(cap: int, a: str, b: str, c: str) -> str:
+            sb = SB(cap)
+            sb.append(a)
+            sb.append(b)
+            sb.append(c)
             return sb.build()
         """
         mod = self.compile(src)
+        assert mod.concat(0, "", "", "") == ""
+        assert mod.concat(5, "", "hello", "") == "hello"
+        assert mod.concat(7, "abc", "def", "!") == "abcdef!"
+        assert mod.concat(7, "é", "🐍", "!") == "é🐍!"
+        assert mod.concat(4, "a\x00", "b", "\x00") == "a\x00b\x00"
+        # underfill: we leak some memory but the string is valid
+        assert mod.concat(10, "ab", "cd", "e") == "abcde"
 
-        assert mod.concatenate(0, "", "", "") == ""
-        assert mod.concatenate(5, "", "hello", "") == "hello"
-        assert mod.concatenate(7, "abc", "def", "!") == "abcdef!"
-        assert mod.concatenate(7, "é", "🐍", "!") == "é🐍!"
-        assert mod.concatenate(4, "a\x00", "b", "\x00") == "a\x00b\x00"
+    def test_append_growing(self):
+        src = f"""
+        from strbuilder import StrBuilder, dump_builder
 
-    def test_negative_capacity(self):
-        src = """
-        from strbuilder import StrBuilder
-
-        def negative_capacity() -> None:
-            sb = StrBuilder(-1)
+        def concat(cap: int, a: str, b: str, c: str) -> tuple[str, str]:
+            sb = StrBuilder(cap)
+            sb.append(a)
+            sb.append(b)
+            sb.append(c)
+            dump = dump_builder(sb)
+            return sb.build(), dump
         """
         mod = self.compile(src)
-        with SPyError.raises("W_ValueError"):
-            mod.negative_capacity()
-
-    def test_build_underfilled(self):
-        src = """
-        from strbuilder import StrBuilder
-
-        def build_underfilled() -> str:
-            sb = StrBuilder(6)
-            sb.append("hello")
-            return sb.build()
+        # chunk is full -> grow
+        s, dump = mod.concat(5, "hello", " ", "world")
+        assert s == "hello world"
+        expected = """
+        [unsealed] pos=6     cap=10    " world...."
+        [sealed  ] pos=5     cap=5     "hello"
         """
-        mod = self.compile(src)
-        with SPyError.raises(
-            "W_ValueError",
-            match="StrBuilder is not completely filled",
-        ):
-            mod.build_underfilled()
+        self.assert_dump(dump, expected)
 
-    def test_append_over_capacity(self):
-        src = """
-        from strbuilder import StrBuilder
-
-        def append_over_capacity() -> None:
-            sb = StrBuilder(4)
-            sb.append("hello")
+        # chunk is not full but it's not big enough: fill + grow + copy rest
+        s, dump = mod.concat(8, "hello", " ", "world")
+        assert s == "hello world"
+        expected = """
+        [unsealed] pos=3     cap=16    "rld............."
+        [sealed  ] pos=8     cap=8     "hello wo"
         """
-        mod = self.compile(src)
-        with SPyError.raises(
-            "W_ValueError",
-            match="StrBuilder capacity exceeded",
-        ):
-            mod.append_over_capacity()
+        self.assert_dump(dump, expected)
 
-    def test_shared_state(self):
-        src = """
-        from strbuilder import StrBuilder
+    def test_append_slice(self, Builder):
+        src = f"""
+        from strbuilder import {Builder} as SB
 
-        def append_middle(sb: StrBuilder) -> None:
-            sb.append("middle")
-
-        def build() -> str:
-            sb = StrBuilder(15)
-            alias = sb
-            sb.append("left")
-            append_middle(alias)
-            sb.append("right")
-            return alias.build()
-        """
-        mod = self.compile(src)
-        assert mod.build() == "leftmiddleright"
-
-    def test_append_after_build(self):
-        src = """
-        from strbuilder import StrBuilder
-
-        def append_after_build() -> None:
-            sb = StrBuilder(5)
-            sb.append("hello")
-            sb.build()
-            sb.append("")
-        """
-        mod = self.compile(src)
-        with SPyError.raises("W_ValueError"):
-            mod.append_after_build()
-
-    def test_append_slice(self):
-        src = """
-        from strbuilder import StrBuilder
-
-        def slice_of(capacity: int, chunk: str, start: int, end: int) -> str:
-            sb = StrBuilder(capacity)
+        def slice_of(cap: int, chunk: str, start: int, end: int) -> str:
+            sb = SB(cap)
             sb.append_slice(chunk, start, end)
             return sb.build()
-
-        def mix() -> str:
-            sb = StrBuilder(6)
-            sb.append("ab")
-            sb.append_slice("xxcdefyy", 2, 6)
-            return sb.build()
-
-        def append_slice_over_capacity() -> None:
-            sb = StrBuilder(2)
-            sb.append_slice("abcdef", 0, 3)
         """
         mod = self.compile(src)
         # prefix, middle, suffix
@@ -125,57 +95,154 @@ class TestStrBuilder(CompilerTest):
         # UTF-8: "é" is 2 bytes, "🐍" is 4
         assert mod.slice_of(2, "é🐍!", 0, 2) == "é"
         assert mod.slice_of(4, "é🐍!", 2, 6) == "🐍"
-        assert mod.mix() == "abcdef"
 
-        with SPyError.raises(
-            "W_ValueError",
-            match="StrBuilder capacity exceeded",
-        ):
-            mod.append_slice_over_capacity()
-
-    def test_append_repeat(self):
+    def test_append_slice_growing(self):
         src = """
-        from strbuilder import StrBuilder
+        from strbuilder import StrBuilder, dump_builder
+
+        def slice_of(cap: int, chunk: str, start: int, end: int) -> tuple[str, str]:
+            sb = StrBuilder(cap)
+            sb.append_slice(chunk, start, end)
+            dump = dump_builder(sb)
+            return sb.build(), dump
+        """
+        mod = self.compile(src)
+        # test the growing path: fill the current chunk, grow, copy the rest
+        #                          01234567890ABCDEF
+        s, dump = mod.slice_of(4, "aaa hello world !", 4, 15)
+        assert s == "hello world"
+        expected = """
+        [unsealed] pos=7     cap=8     "o world."
+        [sealed  ] pos=4     cap=4     "hell"
+        """
+        self.assert_dump(dump, expected)
+
+        # test out-of-bounds
+        with pytest.raises(SPyError, match="IndexError"):
+            mod.slice_of(10, "abc", 2, 4)
+        with pytest.raises(SPyError, match="IndexError"):
+            mod.slice_of(10, "abc", -1, 2)
+        with pytest.raises(SPyError, match="IndexError"):
+            mod.slice_of(10, "abc", 2, 1)
+
+    def test_append_repeat(self, Builder):
+        src = f"""
+        from strbuilder import {Builder} as SB
 
         def repeat_of(capacity: int, chunk: str, n: int) -> str:
-            sb = StrBuilder(capacity)
+            sb = SB(capacity)
             sb.append_repeat(chunk, n)
             return sb.build()
-
-        def mix() -> str:
-            sb = StrBuilder(9)
-            sb.append_repeat("ab", 3)
-            sb.append("x")
-            sb.append_repeat("-", 2)
-            return sb.build()
-
-        def append_repeat_over_capacity() -> None:
-            sb = StrBuilder(5)
-            sb.append_repeat("ab", 3)
         """
         mod = self.compile(src)
         assert mod.repeat_of(6, "ab", 3) == "ababab"
         assert mod.repeat_of(2, "é", 1) == "é"
         assert mod.repeat_of(0, "x", 0) == ""
         assert mod.repeat_of(0, "", 5) == ""
-        assert mod.mix() == "abababx--"
 
-        with SPyError.raises(
-            "W_ValueError",
-            match="StrBuilder capacity exceeded",
-        ):
-            mod.append_repeat_over_capacity()
-
-    def test_build_after_build(self):
+    def test_append_repeat_growing(self):
         src = """
-        from strbuilder import StrBuilder
+        from strbuilder import StrBuilder, dump_builder
 
-        def build_after_build() -> str:
-            sb = StrBuilder(5)
-            sb.append("hello")
-            sb.build()
+        def repeat_of(cap: int, chunk: str, n: int) -> tuple[str, str]:
+            sb = StrBuilder(cap)
+            sb.append_repeat(chunk, n)
+            dump = dump_builder(sb)
+            return sb.build(), dump
+        """
+        mod = self.compile(src)
+        # the chunk is full after a whole number of repetitions
+        s, dump = mod.repeat_of(4, "ab", 3)
+        assert s == "ababab"
+        expected = """
+        [unsealed] pos=2     cap=8     "ab......"
+        [sealed  ] pos=4     cap=4     "abab"
+        """
+        self.assert_dump(dump, expected)
+
+        # the chunk is full in the middle of a repetition
+        s, dump = mod.repeat_of(5, "ab", 3)
+        assert s == "ababab"
+        expected = """
+        [unsealed] pos=1     cap=10    "b........."
+        [sealed  ] pos=5     cap=5     "ababa"
+        """
+        self.assert_dump(dump, expected)
+
+        # single-byte chunk
+        s, dump = mod.repeat_of(3, "x", 5)
+        assert s == "xxxxx"
+        expected = """
+        [unsealed] pos=2     cap=6     "xx...."
+        [sealed  ] pos=3     cap=3     "xxx"
+        """
+        self.assert_dump(dump, expected)
+
+    def test_adoption(self):
+        src = """
+        from strbuilder import StrBuilder, dump_builder
+
+        def concat(cap: int, a: str, b: str, c: str) -> tuple[str, str]:
+            sb = StrBuilder(cap)
+            sb.append(a)
+            sb.append(b)
+            sb.append(c)
+            dump = dump_builder(sb)
+            return sb.build(), dump
+
+        def slice_of(cap: int, a: str, start: int, end: int) -> tuple[str, str]:
+            sb = StrBuilder(cap)
+            sb.append_slice(a, start, end)
+            dump = dump_builder(sb)
+            return sb.build(), dump
+
+        def adopt_only(cap: int, a: str) -> str:
+            sb = StrBuilder(cap)
+            sb.append(a)
             return sb.build()
         """
         mod = self.compile(src)
-        with SPyError.raises("W_ValueError"):
-            mod.build_after_build()
+        A = "A" * 2000
+        B = "B" * 2000
+
+        # A is adopted: head is untouched, and the next appends go in it
+        s, dump = mod.concat(4, A, "y", "z")
+        assert s == A + "yz"
+        expected = """
+        [unsealed] pos=2     cap=4     "yz.."
+        [sealed  ] pos=2000  cap=2000  "AAAAAAAAAAAA[...]AAAAAAAAAAAA"
+        """
+        self.assert_dump(dump, expected)
+
+        # two adopted chunks in a row
+        s, dump = mod.concat(4, A, B, "yz")
+        assert s == A + B + "yz"
+        expected = """
+        [unsealed] pos=2     cap=4     "yz.."
+        [sealed  ] pos=2000  cap=2000  "BBBBBBBBBBBB[...]BBBBBBBBBBBB"
+        [sealed  ] pos=2000  cap=2000  "AAAAAAAAAAAA[...]AAAAAAAAAAAA"
+        """
+        self.assert_dump(dump, expected)
+
+        # the head is not empty: A is copied, because we must preserve the order
+        s, dump = mod.concat(4, "x", A, "yz")
+        assert s == "x" + A + "yz"
+        expected = """
+        [unsealed] pos=2     cap=3994  "yz..........[...]............"
+        [sealed  ] pos=1997  cap=1997  "AAAAAAAAAAAA[...]AAAAAAAAAAAA"
+        [sealed  ] pos=4     cap=4     "xAAA"
+        """
+        self.assert_dump(dump, expected)
+
+        # only whole strings are adopted, not slices
+        s, dump = mod.slice_of(4, A, 1, 2000)
+        assert s == A[1:]
+        expected = """
+        [unsealed] pos=1995  cap=1995  "AAAAAAAAAAAA[...]AAAAAAAAAAAA"
+        [sealed  ] pos=4     cap=4     "AAAA"
+        """
+        self.assert_dump(dump, expected)
+
+        # a single adopted str and nothing else: build() returns it without copying
+        assert mod.adopt_only(4, A) == A
+        assert mod.adopt_only(0, A) == A

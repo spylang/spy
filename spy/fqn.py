@@ -153,6 +153,10 @@ class FQN:
     ##     if str(self) == 'test::Point#0':
     ##         breakpoint()
 
+    def __getnewargs__(self) -> tuple[tuple[NSPart, ...]]:
+        # needed by pickle
+        return (self.parts,)
+
     def with_suffix(self, suffix: str) -> "FQN":
         """
         Create a new FQN with the specified suffix on the last NSPart.

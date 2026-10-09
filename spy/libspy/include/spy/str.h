@@ -29,7 +29,7 @@
    internal buffer can be modified.  After you fill the utf8 buffer you must call
    spy_str_seal EXACTLY ONCE: the object then behaves as an immutable `str`. A seal of
    an already sealed object is an error, and so is using the content of an unsealed
-   object.
+   object. Use spy_str_seal_if_needed for the idempotent version.
 
    Debug builds actively check that you don't call methods on an unsealed
    string. Release builds don't.
@@ -90,6 +90,7 @@ typedef spy_unsafe$gc_ptr___str$StrObject spy_gc_ptr_StrObject;
 
 // Seal a StrObject
 void WASM_EXPORT(spy_str_seal)(spy_StrObject *s);
+void WASM_EXPORT(spy_str_seal_if_needed)(spy_StrObject *s); // idempotent
 
 static inline spy_gc_ptr_StrObject
 spy_unsafe$_str_to_StrObject$impl(spy_StrObject *s) {
@@ -99,7 +100,7 @@ spy_unsafe$_str_to_StrObject$impl(spy_StrObject *s) {
 
 static inline spy_StrObject *
 spy_unsafe$_StrObject_to_sealed_str$impl(spy_gc_ptr_StrObject p) {
-    spy_str_seal(p.p);
+    spy_str_seal_if_needed(p.p);
     return p.p;
 }
 

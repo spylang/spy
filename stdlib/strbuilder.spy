@@ -1,109 +1,350 @@
+from __spy__ import force_inline
 from _str import StrObject
 from unsafe import gc_alloc, gc_ptr, ptr_copy_slice, ptr_setbytes_slice
 
+# A StrBuilder is a linked list of Chunks, newest first. The head is the Chunk being
+# filled; older sealed Chunks are reached via .prev. Graphically, for a builder that
+# contains "hello world!" split across three chunks:
+#
+#   StrBuilder.__ll__
+#       ↓
+#   [buf="!...",   pos=1, prev_length=11] unsealed, "..." are to be filled
+#       ↓
+#   [buf="world",  pos=5, prev_length=6 ] sealed
+#       ↓
+#   [buf="hello ", pos=6, prev_length=0 ] sealed
+#       ↓
+#      NULL
+#
+# The invariants are:
+#   1. the head contains an *unsealed* StrObject
+#   2. all the .prevs contain *sealed* StrObjects which cannot be modified.
+#   3. prev_length contains the total length of ALL the prev chunks
+#
+# On .append(), we fill the head buffer. When the buffer is full, we seal it and
+# allocate a new one, with a certain growth factor to keep number of reallocations
+# small.
+#
+# Adoption: if .append() receives a big enough str and the head buffer is still empty,
+# we don't copy it: the str itself is linked into the chain as a sealed chunk, and the
+# head is left untouched. This avoids a copy.
+#
+# .build() creates the final string; we support two different cases:
+#
+#   1. one chunk: we seal and return that StrObject. The unused capacity is kept alive,
+#      so be careful with that. Allocating an initial capacity which is too big might
+#      result into unwanted memory consumption.
+#
+#   2. if we have multiple chunks, we allocate a fresh StrObject of the right size
+#      and fill it
+#
+# The best case scenario is when we give an exact capacity and we fill it completely. In
+# this case, we do only two allocations in total (one for the head chunk and one for the
+# StrBuilder) and we copy each byte only once, to fill the buffer.
+#
+# There is also UnsafeFixedStrBuilder: this is only if you know in advance the exact
+# capacity, doesn't support growing and doesn't do any bound check. The typical use case
+# is something like `str.join(list[str])`.
+#
+# This design has been chosen after benchmarking a bunch of different approaches. The
+# benchmarks have been deleted but are still available in the git history, see the
+# `benchmarks/strbuilder` directory at commit 9f6be820:
+# https://github.com/spylang/spy/tree/9f6be820/benchmarks/strbuilder
+
+# See "Adoption" above. Same value as PyPy's rbuilder
+ADOPT_THRESHOLD = 1280
+
 
 @struct
-class BuilderState:
-    buffer: gc_ptr[StrObject]
-    position: i32
+class Chunk:
+    buf: gc_ptr[StrObject]
+    pos: i32  # bytes used in buf
+    prev: gc_ptr[Chunk]
+    prev_length: i32  # total bytes stored in the `prev` chain
 
 
 @struct
-class StrBuilder:
+class UnsafeFixedStrBuilder:
     """
-    Build a string in a fixed-size buffer, with capacity measured in bytes.
+    Build a string in a fixed-size buf, with capacity measured in bytes.
 
-    Appended chunks must fill the buffer exactly before build() can return it
-    as an immutable string without copying. A successful build seals the shared
-    state, so further append() or build() calls through any alias raise ValueError.
+    This class is UNSAFE. No check is performed. It is up to the caller to ensure that
+    the appended chunks fit in the capacity. If the final string is shorter than the
+    capacity, build() just adjusts the length and the remaining bytes stay unused.
 
-    Negative capacity, appending beyond capacity, and building an underfilled
-    buffer also raise ValueError.
+    The main consumer is str.join(list[str]), which needs to be fast and where you can
+    easily precompute the exact capacity.  For a more general and safer way to build a
+    string whose length is not known, use StrBuilder.
     """
 
-    __ll__: gc_ptr[BuilderState]
+    __ll__: gc_ptr[Chunk]
 
-    def __new__(capacity: i32) -> StrBuilder:
-        if capacity < 0:
-            raise ValueError("StrBuilder capacity must not be negative")
-        state = gc_alloc[BuilderState](1)
-        state.buffer = StrObject.alloc(capacity)
-        state.position = 0
-        return StrBuilder.__make__(state)
+    def __new__(capacity: i32) -> UnsafeFixedStrBuilder:
+        head = gc_alloc[Chunk](1)
+        head.buf = StrObject.alloc(capacity)
+        head.pos = 0
+        head.prev = gc_ptr[Chunk].NULL
+        head.prev_length = 0
+        return UnsafeFixedStrBuilder.__make__(head)
 
+    @force_inline
     def append(self, chunk: str) -> None:
-        state = self.__ll__
-        if state.buffer == gc_ptr[StrObject].NULL:
-            raise ValueError("StrBuilder is already sealed")
-        source = StrObject.from_str(chunk)
-        length = source.length
-        if length > state.buffer.length - state.position:
-            raise ValueError("StrBuilder capacity exceeded")
-        if length > 0:
-            ptr_copy_slice(
-                state.buffer.utf8,
-                state.position,
-                state.position + length,
-                source.utf8,
-                0,
-                length,
-            )
-            state.position = state.position + length
+        head = self.__ll__
+        src = StrObject.from_str(chunk)
+        n = src.length
+        ptr_copy_slice(head.buf.utf8, head.pos, head.pos + n, src.utf8, 0, n)
+        head.pos = head.pos + n
 
     def append_repeat(self, chunk: str, n: i32) -> None:
-        state = self.__ll__
-        if state.buffer == gc_ptr[StrObject].NULL:
-            raise ValueError("StrBuilder is already sealed")
+        head = self.__ll__
         source = StrObject.from_str(chunk)
         total = source.length * n
-        if total > state.buffer.length - state.position:
-            raise ValueError("StrBuilder capacity exceeded")
         l = source.length
         if l == 1:
             # single-byte chunk (e.g. a fill char): use memset instead of n copies
             ptr_setbytes_slice(
-                state.buffer.utf8,
-                state.position,
-                state.position + n,
+                head.buf.utf8,
+                head.pos,
+                head.pos + n,
                 source.utf8[0],
             )
         else:
             for i in range(n):
                 ptr_copy_slice(
-                    state.buffer.utf8,
-                    state.position + i * l,
-                    state.position + (i + 1) * l,
+                    head.buf.utf8,
+                    head.pos + i * l,
+                    head.pos + (i + 1) * l,
                     source.utf8,
                     0,
                     l,
                 )
-        state.position = state.position + total
+        head.pos = head.pos + total
 
+    @force_inline
     def append_slice(self, chunk: str, start: i32, end: i32) -> None:
-        state = self.__ll__
-        if state.buffer == gc_ptr[StrObject].NULL:
-            raise ValueError("StrBuilder is already sealed")
+        head = self.__ll__
         source = StrObject.from_str(chunk)
         length = end - start
-        if length > state.buffer.length - state.position:
-            raise ValueError("StrBuilder capacity exceeded")
-        if length > 0:
-            ptr_copy_slice(
-                state.buffer.utf8,
-                state.position,
-                state.position + length,
-                source.utf8,
-                start,
-                end,
-            )
-            state.position = state.position + length
+        ptr_copy_slice(
+            head.buf.utf8, head.pos, head.pos + length, source.utf8, start, end
+        )
+        head.pos = head.pos + length
 
     def build(self) -> str:
-        state = self.__ll__
-        if state.buffer == gc_ptr[StrObject].NULL:
-            raise ValueError("StrBuilder is already sealed")
-        if state.position != state.buffer.length:
-            raise ValueError("StrBuilder is not completely filled")
-        result = StrObject.to_sealed_str(state.buffer)
-        state.buffer = gc_ptr[StrObject].NULL
-        return result
+        head = self.__ll__
+        head.buf.length = head.pos
+        return StrObject.to_sealed_str(head.buf)
+
+
+@struct
+class StrBuilder:
+    """
+    Build a string piece by piece, growing as needed.
+
+        sb = StrBuilder(initial_capacity)
+        sb.append("hello ")
+        sb.append("world")
+        s = sb.build()
+
+    `initial_capacity` is the size in bytes of the first chunk.
+    """
+
+    unsafe_sb: UnsafeFixedStrBuilder
+
+    def __new__(initial_capacity: i32) -> StrBuilder:
+        if initial_capacity < 0:
+            raise ValueError("StrBuilder capacity must not be negative")
+        return StrBuilder.__make__(UnsafeFixedStrBuilder(initial_capacity))
+
+    @force_inline
+    def append(self, s: str) -> None:
+        self.append_slice(s, 0, StrObject.from_str(s).length)
+
+    @force_inline
+    def append_slice(self, s: str, start: i32, end: i32) -> None:
+        head = self.unsafe_sb.__ll__
+        if head.buf == gc_ptr[StrObject].NULL:
+            raise ValueError("StrBuilder is already built")
+
+        if start < 0 or start > end or end > StrObject.from_str(s).length:
+            raise IndexError
+
+        if end - start <= head.buf.length - head.pos:
+            # fast path: we can copy into the current chunk
+            self.unsafe_sb.append_slice(s, start, end)
+        else:
+            self._append_slice_slow(s, start, end)
+
+    def _append_slice_slow(self, s: str, start: i32, end: i32) -> None:
+        """
+        s[start:end] doesn't fit in the head buffer. It's a separate method to keep
+        append_slice small, as it is inlined.
+        """
+        head = self.unsafe_sb.__ll__
+        n = end - start
+        room = head.buf.length - head.pos
+        src = StrObject.from_str(s)
+        if n > ADOPT_THRESHOLD and head.pos == 0 and start == 0 and n == src.length:
+            # we can link the whole s as a chunk instead of copying it. This is
+            # possible only if head is empty, else we would break the order.
+            adopted = gc_alloc[Chunk](1)
+            adopted.buf = src
+            adopted.pos = n
+            adopted.prev = head.prev
+            adopted.prev_length = head.prev_length
+            head.prev = adopted
+            head.prev_length += n
+            return
+
+        # fill the current buf, then grow and copy the rest
+        self.unsafe_sb.append_slice(s, start, start + room)
+        self._grow(n - room)
+        self.unsafe_sb.append_slice(s, start + room, end)
+
+    def append_repeat(self, s: str, n: i32) -> None:
+        head = self.unsafe_sb.__ll__
+        if head.buf == gc_ptr[StrObject].NULL:
+            raise ValueError("StrBuilder is already built")
+        if n < 0:
+            raise ValueError("StrBuilder.append_repeat: n must not be negative")
+
+        l = StrObject.from_str(s).length
+        total = l * n
+        room = head.buf.length - head.pos
+        if total <= room:
+            # fast path: we can copy into the current chunk
+            self.unsafe_sb.append_repeat(s, n)
+            return
+
+        # slow path: fill the current buf exactly, which might end in the middle of
+        # a repetition. Then grow and write the rest.
+        full = room // l
+        partial = room - full * l
+        self.unsafe_sb.append_repeat(s, full)
+        if partial > 0:
+            self.unsafe_sb.append_slice(s, 0, partial)
+        self._grow(total - room)
+        if partial > 0:
+            self.unsafe_sb.append_slice(s, partial, l)
+            full += 1
+        self.unsafe_sb.append_repeat(s, n - full)
+
+    def _grow(self, needed: i32) -> None:
+        """
+        The current buffer is full: seal it into the chain and allocate a bigger one.
+        """
+        head = self.unsafe_sb.__ll__
+
+        # move the existing buffer into a sealed chunk, and link it to the head
+        sealed = gc_alloc[Chunk](1)
+        StrObject.to_sealed_str(head.buf)
+        sealed.buf = head.buf
+        sealed.pos = head.pos
+        sealed.prev = head.prev
+        sealed.prev_length = head.prev_length
+
+        head.prev = sealed
+        head.prev_length += head.pos
+
+        # allocate a new buffer for the head
+        new_capacity = head.buf.length * 2
+        if new_capacity < needed:
+            new_capacity = needed
+        head.buf = StrObject.alloc(new_capacity)
+        head.pos = 0
+
+    def build(self) -> str:
+        """
+        Return the string and seal the builder.
+        """
+        head = self.unsafe_sb.__ll__
+        if head.buf == gc_ptr[StrObject].NULL:
+            raise ValueError("StrBuilder is already built")
+
+        if head.prev == gc_ptr[Chunk].NULL:
+            # we have a single chunk, just seal&steal the StrObject.
+            # If it is underfilled, build() shrinks it and leaks a bit of memory.
+            res = self.unsafe_sb.build()
+            head.buf = gc_ptr[StrObject].NULL
+            return res
+
+        if head.pos == 0 and head.prev.prev == gc_ptr[Chunk].NULL:
+            # the only chunk is an adopted str (see "Adoption" above) and nothing was
+            # appended after it, so we return it as-is instead of copying it
+            adopted = head.prev
+            head.buf = gc_ptr[StrObject].NULL
+            return StrObject.to_sealed_str(adopted.buf)
+
+        # The pieces are stored newest-first in the chain and the current buffer is
+        # the newest of all, so we fill the fresh result from the end backwards.
+        total = head.prev_length + head.pos
+        result = StrObject.alloc(total)
+        dst = total - head.pos
+        ptr_copy_slice(result.utf8, dst, total, head.buf.utf8, 0, head.pos)
+
+        node = head.prev
+        while node != gc_ptr[Chunk].NULL:
+            dst -= node.pos
+            ptr_copy_slice(result.utf8, dst, dst + node.pos, node.buf.utf8, 0, node.pos)
+            node = node.prev
+
+        head.buf = gc_ptr[StrObject].NULL
+        return StrObject.to_sealed_str(result)
+
+
+# ========== debugging helpers ==========
+
+
+def _dump_byte(chunk: gc_ptr[Chunk], i: i32) -> u8:
+    if i >= chunk.pos:
+        return ord(b".")
+    c = chunk.buf.utf8[i]
+    if c < ord(b" ") or c > ord(b"~"):
+        return ord(b"?")
+    return c
+
+
+def _dump_buf(chunk: gc_ptr[Chunk]) -> str:
+    PP_EDGE = 12
+    cap = chunk.buf.length
+    if cap <= 2 * PP_EDGE:
+        out = StrObject.alloc(cap)
+        for i in range(cap):
+            out.utf8[i] = _dump_byte(chunk, i)
+        return StrObject.to_sealed_str(out)
+
+    out2 = StrObject.alloc(2 * PP_EDGE + 5)
+    for i in range(PP_EDGE):
+        out2.utf8[i] = _dump_byte(chunk, i)
+        out2.utf8[PP_EDGE + 5 + i] = _dump_byte(chunk, cap - PP_EDGE + i)
+    out2.utf8[PP_EDGE] = ord(b"[")
+    out2.utf8[PP_EDGE + 1] = ord(b".")
+    out2.utf8[PP_EDGE + 2] = ord(b".")
+    out2.utf8[PP_EDGE + 3] = ord(b".")
+    out2.utf8[PP_EDGE + 4] = ord(b"]")
+    return StrObject.to_sealed_str(out2)
+
+
+def dump_builder(sb: StrBuilder) -> str:
+    """
+    Return a human readable dump of the chunks of `sb`, newest first, one per line.
+    Unfilled bytes are shown as ".", non-printable and non-ASCII bytes as "?". Long
+    buffers are abbreviated as "first[...]last".
+
+        [unsealed] pos=3     cap=8     "abc....."
+        [sealed  ] pos=5     cap=5     "hello"
+    """
+    chunk = sb.unsafe_sb.__ll__
+    if chunk.buf == gc_ptr[StrObject].NULL:
+        return "<already built>"
+    lines: list[str] = []
+    while chunk != gc_ptr[Chunk].NULL:
+        kind = "unsealed"
+        if chunk.buf[0].is_sealed():
+            kind = "sealed  "
+        buf = _dump_buf(chunk)
+        lines.append(
+            f'[{kind}] pos={chunk.pos!s:<5} cap={chunk.buf.length!s:<5} "{buf}"'
+        )
+        chunk = chunk.prev
+    return "\n".join(lines)

@@ -13,8 +13,8 @@ stdlib/_fstring.spy (which is implicitly imported, see ScopeAnalyzer.collect_Joi
   - _fstring::fmt converts one part to `str`, dispatching on its static type.
 
   - __spy__::fstring synthesizes a force-inline ASTFunc which converts each part with
-    fmt and assembles the result with a StrBuilder, similarly to what w_print does
-    for print().
+    fmt and assembles the result with an UnsafeFixedStrBuilder, similarly to what
+    w_print does for print().
 
 See also:
   - stdlib/_fstring.spy
@@ -61,7 +61,7 @@ def w_fstring(vm: "SPyVM", *args_wam: W_MetaArg) -> W_OpSpec:
     def impl(arg0: str, arg1: T1, ...) -> str:
         s1 = fmt(arg1)
         ...
-        sb = StrBuilder(len(arg0) + len(s1) + ...)
+        sb = UnsafeFixedStrBuilder(len(arg0) + len(s1) + ...)
         sb.append(arg0)
         sb.append(s1)
         ...
@@ -123,8 +123,8 @@ def w_fstring(vm: "SPyVM", *args_wam: W_MetaArg) -> W_OpSpec:
         for l in lens[1:]:
             capacity = ast.BinOp(loc, "+", capacity, l)
 
-    # sb = StrBuilder(capacity)
-    w_StrBuilder = vm.lookup_global(FQN("strbuilder::StrBuilder"))
+    # sb = UnsafeFixedStrBuilder(capacity)
+    w_StrBuilder = vm.lookup_global(FQN("strbuilder::UnsafeFixedStrBuilder"))
     assert isinstance(w_StrBuilder, W_Type)
     body.append(
         ast.Assign(

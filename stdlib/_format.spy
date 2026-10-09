@@ -1,4 +1,4 @@
-from strbuilder import StrBuilder
+from strbuilder import UnsafeFixedStrBuilder
 
 # each of the T_format funcs is a __format__ method attached to a W_* class. See
 # e.g. W_I32.lazy_attributes, W_Str.lazy_attributes, etc.
@@ -162,9 +162,7 @@ def str_format(self: str, spec: str) -> str:
 
     padding = _calc_padding(body_len, fs.width, align)
 
-    # TODO: once StrBuilder has a growable mode (or a way to build() a partially
-    # filled buffer), the capacity does not need to be exact.
-    sb = StrBuilder((padding.left + padding.right) * len(fill) + body_len)
+    sb = UnsafeFixedStrBuilder((padding.left + padding.right) * len(fill) + body_len)
     sb.append_repeat(fill, padding.left)
     sb.append_slice(self, 0, body_len)
     sb.append_repeat(fill, padding.right)
