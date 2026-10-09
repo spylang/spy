@@ -333,3 +333,18 @@ class Cast(Expr):
 
     def __str__(self) -> str:
         return f"({self.type}){self.expr}"
+
+
+@dataclass
+class Index(Expr):
+    expr: Expr
+    index: Expr
+
+    def precedence(self) -> int:
+        return 14
+
+    def __str__(self) -> str:
+        e = str(self.expr)
+        if self.expr.precedence() < self.precedence():
+            e = f"({e})"
+        return f"{e}[{self.index}]"

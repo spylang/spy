@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 
 def sizeof(w_T: W_Type) -> int:
     from spy.vm.modules.posix import POSIX
+    from spy.vm.modules.simd import W_SimdType
     from spy.vm.modules.unsafe.ptr import W_PtrType
     from spy.vm.struct import W_StructType
 
@@ -31,6 +32,8 @@ def sizeof(w_T: W_Type) -> int:
         # but for native it might be 8. Does it mean that we need to
         # preemptively choose the target platform BEFORE redshifting?
         return 4 + 4  # in debug mode we store both addr and length
+    elif isinstance(w_T, W_SimdType):
+        return sizeof(w_T.w_dtype) * w_T.size
     elif w_T is POSIX.w__FILE:
         return 4  # XXX
     else:
@@ -101,6 +104,7 @@ def alignof(w_T: W_Type) -> int:
     Raises if `w_T` is a struct which is not defined yet: we cannot guess.
     """
     from spy.vm.modules.posix import POSIX
+    from spy.vm.modules.simd import W_SimdType
     from spy.vm.modules.unsafe.ptr import W_PtrType, W_RefType
     from spy.vm.struct import W_StructType
 
@@ -127,6 +131,8 @@ def alignof(w_T: W_Type) -> int:
         # (matching a struct of size 0) rather than raising.
         aligns = [alignof(w_field.w_T) for w_field in w_T.iterfields_w()]
         return max(aligns, default=1)
+    elif isinstance(w_T, W_SimdType):
+        return sizeof(w_T.w_dtype) * w_T.size
     else:
         raise WIP(f"alignof({w_T}) not implemented")
 
