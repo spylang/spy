@@ -2,6 +2,7 @@
 Pointer type casting and alignment casting for the unsafe module.
 
 Provides:
+- cast[DstItemT](ptr): changes item type, preserves address and alignment
 - align_cast[N](ptr): changes alignment tag, preserves address and item type
 """
 
@@ -45,6 +46,41 @@ def _ptrtype_like(
     assert isinstance(w_dstT, W_PtrType)
     vm.make_fqn_const(w_dstT)
     return w_dstT
+
+
+@UNSAFE.builtin_func(color="blue", kind="generic")
+def w_cast(vm: "SPyVM", w_DstItemT: W_Type) -> W_Dynamic:
+    """
+    cast[DstItemT](ptr)
+
+    It produces:
+        raw_ptr[DstItemT, align(N)] or gc_ptr[DstItemT, align(N)]
+    where N is the SOURCE ptr's alignment (preserved) and the memkind also
+    matches the source. The length is recomputed from the byte size, with
+    truncation. This operation is always safe and has zero runtime overhead.
+    """
+    ns = UNSAFE.w_cast.compute_inner_ns([w_DstItemT])
+
+    @vm.register_builtin_func(ns, "impl", color="blue", kind="metafunc")
+    def w_cast_dispatch(vm: "SPyVM", wam_ptr: W_MetaArg) -> W_OpSpec:
+        w_srcT = _check_ptr_static(vm, wam_ptr, "cast")
+        w_dstT = _ptrtype_like(vm, w_srcT, w_DstItemT, w_srcT.resolved_alignment())
+
+        src_size = sizeof(w_srcT.w_itemT)
+        dst_size = sizeof(w_DstItemT)
+
+        SRC = Annotated[W_Ptr, w_srcT]
+        DST = Annotated[W_Ptr, w_dstT]
+        irtag = IRTag("unsafe.cast")
+
+        @vm.register_builtin_func(w_srcT.fqn, "cast", [w_DstItemT.fqn], irtag=irtag)
+        def w_cast_impl(vm: "SPyVM", w_ptr: SRC) -> DST:
+            new_length = (w_ptr.length * src_size) // dst_size
+            return W_Ptr(w_dstT, w_ptr.addr, new_length)  # type: ignore
+
+        return W_OpSpec(w_cast_impl, [wam_ptr])
+
+    return w_cast_dispatch
 
 
 @UNSAFE.builtin_func(color="blue", kind="generic")
