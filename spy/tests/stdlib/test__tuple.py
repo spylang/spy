@@ -8,14 +8,14 @@ class TestTange(CompilerTest):
         src = """
         from _tuple import tuple
 
-        def make_pair(a: str, b: i32) -> tuple[str, i32]:
-            return tuple[str, i32](a, b)
+        def make_tuple(a: str, b: i32, c: i8) -> tuple[str, i32, i8]:
+            return (a, b, c)
         """
         mod = self.compile(src)
-        p = mod.make_pair("hello", 42)
-        assert p == ("hello", 42)
-        assert p[0] == "hello"
-        assert p[1] == 42
+        t = mod.make_tuple("hello", 42, -5)
+        assert t == ("hello", 42, -5)
+        assert t[0] == "hello"
+        assert t[1] == 42
 
     def test_getitem(self):
         src = """
