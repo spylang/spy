@@ -14,11 +14,18 @@ Benchmark of several designs for building a `str` piece by piece, with Boehm GC
 | `strbuilder_fn.spy` | chunk list inside a plain value: `sb = sb.append(x)`, stale copies detected through the `StrObject` header |
 | `strbuilder_realloc.spy` | one growable `StrObject`, grown with `StrObject.realloc` (CPython style), doubling |
 | `strbuilder_unsafe_fixed.spy` | fixed capacity, no checks, 16 byte value: for code which knows the size |
+| `stdlib/strbuilder.spy` | the builders we actually ship: `StrBuilder` (growable, checked) and `UnsafeFixedStrBuilder` (fixed, unchecked) |
 
 All chunks are `StrObject`s: if nothing overflows the first one, `build()` is
 a length update plus a cast (no copy). `bench.spy` has one column per design,
 plus `chunked-exact`: the same builder as `chunked`, created with the exact
 final size (`unsafe` has it too).
+
+The last three columns are the stdlib builders: `std` is `StrBuilder` with the
+same capacity as `chunked`, `std-exact` is `StrBuilder` with the exact final
+size, and `std-unsafe` is `UnsafeFixedStrBuilder` with the exact size. They are
+the same designs as `chunked`, `chunked-exact` and `unsafe`, so they are the
+ones to compare against.
 
 ## Machine
 
@@ -38,6 +45,9 @@ applications running.
 Microseconds, median of 3 runs, lower is better. The 1 MB rows vary by up to
 1.6x between runs (e.g. `csv-1MB` chunked: 979 / 1077 / 1658), the others by
 less than 10%. Only large, repeatable differences should be trusted.
+
+This table predates the `std` / `std-exact` / `std-unsafe` columns, which were
+added when the stdlib builders were written; run `bench.spy` to get them.
 
 | row | realloc | chunked | chunked-exact | list | fn | unsafe |
 |---|---|---|---|---|---|---|
@@ -96,6 +106,12 @@ temporary `str` per item.
   capacity (16-1024) made no measurable difference. Adopting big appends as
   pieces must stay enabled for appends around 8 KB (2-3x slower without it);
   the threshold 4096 is fine. (The sweep script is not kept.)
+- **The stdlib builders match the best designs.** `std` and `std-exact` (the
+  growable `StrBuilder`) are within 5-10% of `chunked` and `chunked-exact`,
+  which are the same design; `std-unsafe` (`UnsafeFixedStrBuilder`) ties with
+  `unsafe`. Big appends are at parity because the stdlib version adopts them
+  too (before that the 4 KB row was 2x slower). The remaining small-append gap
+  is the bounds check, the "already built" check and the extra call.
 - **Benchmarking caveat:** the same code compiled with different constants
   varies by +-20% per row because of code layout. To compare variants,
   divide the time with the default capacity by the time with the exact

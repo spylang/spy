@@ -1,8 +1,8 @@
 diff --git a/spy/libspy/include/spy/str.h b/spy/libspy/include/spy/str.h
-index 4708bcb8..940c0cb9 100644
+index 22f653a1..c336d903 100644
 --- a/spy/libspy/include/spy/str.h
 +++ b/spy/libspy/include/spy/str.h
-@@ -94,10 +94,46 @@ typedef struct {
+@@ -133,10 +133,46 @@ typedef struct {
  _spy_StrObject_Layout WASM_EXPORT(_spy_StrObject_layout)(void);
 
  spy_StrObject *WASM_EXPORT(spy_str_alloc)(size_t length);
@@ -14,7 +14,7 @@ index 4708bcb8..940c0cb9 100644
 +static inline void
 +spy_str_init(spy_StrObject *res, size_t length) {
 +    res->length = length;
-+    res->hash = 0;
++    res->hash = -1; // unsealed
 +#ifdef SPY_DEBUG
 +    res->utf8 = (spy_gc_ptr_u8){(uint8_t *)(res + 1), (ptrdiff_t)length};
 +#else
@@ -153,7 +153,7 @@ index ff6350fd..4ee1e2f7 100644
          return _SPY_PTR_LOAD(T, ALIGNMENT, p.p);                                       \
      }                                                                                  \
 diff --git a/spy/libspy/src/str.c b/spy/libspy/src/str.c
-index 58bf1d87..b2d0184f 100644
+index cef35970..ef3c436a 100644
 --- a/spy/libspy/src/str.c
 +++ b/spy/libspy/src/str.c
 @@ -32,6 +32,20 @@ spy_str_alloc(size_t length) {
@@ -165,7 +165,7 @@ index 58bf1d87..b2d0184f 100644
 +    // only used by the interp (libspy is always SPY_GC_NONE): see str.h
 +    spy_StrObject *res = (spy_StrObject *)realloc(p, sizeof(spy_StrObject) + length);
 +    res->length = length;
-+    res->hash = 0;
++    res->hash = -1; // unsealed
 +#ifdef SPY_DEBUG
 +    res->utf8 = (spy_gc_ptr_u8){(uint8_t *)(res + 1), (ptrdiff_t)length};
 +#else
@@ -174,9 +174,9 @@ index 58bf1d87..b2d0184f 100644
 +    return res;
 +}
 +
- bool
- spy_str_eq(spy_StrObject *a, spy_StrObject *b) {
-     if (a->length != b->length)
+ void
+ spy_str_seal(spy_StrObject *s) {
+     SPY_STR_ASSERT_UNSEALED(s);
 diff --git a/spy/libspy/src/unsafe.c b/spy/libspy/src/unsafe.c
 index d5a5866f..5309bec8 100644
 --- a/spy/libspy/src/unsafe.c
@@ -232,7 +232,7 @@ index 691cb18d..3dc159ab 100644
      """
      Validate that a W_MetaArg is statically typed as ptr[T] (any memkind, any T).
 diff --git a/spy/vm/modules/unsafe/ptr.py b/spy/vm/modules/unsafe/ptr.py
-index 4c546718..1e50fa33 100644
+index c0c9b221..6e22ef72 100644
 --- a/spy/vm/modules/unsafe/ptr.py
 +++ b/spy/vm/modules/unsafe/ptr.py
 @@ -729,6 +729,30 @@ def w__alloc_StrObject(vm: "SPyVM", wam_length: W_MetaArg) -> W_OpSpec:
@@ -264,21 +264,21 @@ index 4c546718..1e50fa33 100644
 +
 +
  @UNSAFE.builtin_func(color="blue", kind="metafunc")
- def w__StrObject_to_str(vm: "SPyVM", wam_p: W_MetaArg) -> W_OpSpec:
+ def w__StrObject_to_sealed_str(vm: "SPyVM", wam_p: W_MetaArg) -> W_OpSpec:
      """
 diff --git a/stdlib/_str.spy b/stdlib/_str.spy
-index ca22ddfe..344264de 100644
+index 847a5d52..fcb27cdf 100644
 --- a/stdlib/_str.spy
 +++ b/stdlib/_str.spy
-@@ -19,6 +19,7 @@ from unsafe import (
-     ptr_cmp_slice,
+@@ -22,6 +22,7 @@ from unsafe import (
+     ptr_setbytes_slice,
      _str_to_StrObject,
      _alloc_StrObject,
 +    _realloc_StrObject,
-     _StrObject_to_str,
- )
- from unsafe import _alloc_BytesObject, _BytesObject_to_bytes
-@@ -42,6 +43,14 @@ class StrObject:
+     _StrObject_to_sealed_str,
+     _alloc_BytesObject,
+     _BytesObject_to_sealed_bytes,
+@@ -46,6 +47,14 @@ class StrObject:
          """
          return _alloc_StrObject(n)
 

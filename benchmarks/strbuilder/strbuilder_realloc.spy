@@ -12,8 +12,7 @@ first growth is exact, the following ones are geometric (see GROWTH_DIVISOR).
 Same API and safety model as ChunkedStrBuilder: a wrapper around a
 gc_ptr[State] shared by all the copies, sealed by build().
 
-NOTE: StrObject.realloc is not in upstream SPy, so growth is alloc + copy + drop the
-old buffer: with Boehm that is what most reallocs do anyway.
+NOTE: StrObject.realloc is not in upstream SPy yet, see gc_realloc.patch.
 """
 
 from __spy__ import force_inline
@@ -62,9 +61,7 @@ class ReallocStrBuilder:
             state.first_growth = False
         else:
             newcap += newcap // GROWTH_DIVISOR
-        newbuf = StrObject.alloc(newcap)
-        ptr_copy_slice(newbuf.utf8, 0, state.pos, state.buf.utf8, 0, state.pos)
-        state.buf = newbuf
+        state.buf = StrObject.realloc(state.buf, newcap)
 
     @force_inline
     def append(self, chunk: str) -> None:
