@@ -1,5 +1,34 @@
-
 from _simd import SIMD
+from operator import OpSpec
+from unsafe import ptr_to_addr, sizeof
+
+
+@blue.metafunc
+def align_offset(m_ptr, m_N, m_n):
+    """
+    align_offset(ptr, N, n) -> i32
+
+    Return how many elements of `ptr`'s item type must be skipped so that
+    `ptr + offset` is aligned to N bytes, clamped to `n`.  N must be a
+    power of two.
+
+    Meant for a scalar "peeling" loop that walks forward `offset` elements
+    before switching to a fast N-aligned path (e.g. SIMD) on a buffer
+    whose alignment isn't provable statically.
+    """
+    PTR = m_ptr.static_type
+    itemsize: i32 = sizeof(PTR.itemtype)
+
+    def impl(ptr: PTR, N: i32, n: i32) -> i32:
+        assert N > 0 and (N & (N - 1)) == 0  # N must be a power of two
+        addr: i32 = ptr_to_addr(ptr)
+        offset_bytes: i32 = (-addr) & (N - 1)
+        offset: i32 = offset_bytes // itemsize
+        if offset > n:
+            return n
+        return offset
+
+    return OpSpec(impl)
 
 
 @blue.generic
