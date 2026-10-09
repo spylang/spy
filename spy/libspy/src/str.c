@@ -38,6 +38,11 @@ spy_str_seal(spy_StrObject *s) {
     s->hash = 0;
 }
 
+void
+spy_str_seal_if_needed(spy_StrObject *s) {
+    s->hash = 0;
+}
+
 bool
 spy_str_eq(spy_StrObject *a, spy_StrObject *b) {
     SPY_STR_ASSERT_SEALED(a);
