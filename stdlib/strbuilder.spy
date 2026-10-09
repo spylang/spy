@@ -45,7 +45,11 @@ from unsafe import gc_alloc, gc_ptr, ptr_copy_slice, ptr_setbytes_slice
 # There is also UnsafeFixedStrBuilder: this is only if you know in advance the exact
 # capacity, doesn't support growing and doesn't do any bound check. The typical use case
 # is something like `str.join(list[str])`.
-
+#
+# This design has been chosen after benchmarking a bunch of different approaches. The
+# benchmarks have been deleted but are still available in the git history, see the
+# `benchmarks/strbuilder` directory at commit 9f6be820:
+# https://github.com/spylang/spy/tree/9f6be820/benchmarks/strbuilder
 
 # See "Adoption" above. Same value as PyPy's rbuilder
 ADOPT_THRESHOLD = 1280
