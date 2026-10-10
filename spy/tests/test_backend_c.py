@@ -90,6 +90,30 @@ class TestCBackend:
         assert str(sub(sub(a, b), c)) == "a - b - c"
         assert str(sub(a, BinOp("+", left=b, right=c))) == "a - (b + c)"
 
+    def test_BinOp_ambiguous_mix(self):
+        # gcc and clang warn (-Wparentheses family) when operators of some
+        # families are mixed without parens, e.g. `n + 127 << 23`.
+        n, c127, c23 = Literal("n"), Literal("127"), Literal("23")
+        a, b, c = Literal("a"), Literal("b"), Literal("c")
+
+        def op(o: str, l: Expr, r: Expr) -> str:
+            return str(BinOp(o, left=l, right=r))
+
+        assert op("<<", BinOp("+", n, c127), c23) == "(n + 127) << 23"
+        assert op("<<", n, BinOp("+", c127, c23)) == "n << (127 + 23)"
+        assert op("&", a, BinOp("==", b, c)) == "a & (b == c)"
+        assert op("|", a, BinOp("&", b, c)) == "a | (b & c)"
+        assert op("&", BinOp("^", a, b), c) == "(a ^ b) & c"
+        assert op("||", BinOp("&&", a, b), c) == "(a && b) || c"
+        assert op("||", a, BinOp("&&", b, c)) == "a || (b && c)"
+
+    def test_BinOp_no_useless_parens(self):
+        # families which gcc/clang do not warn about keep the minimal form
+        a, b, c = Literal("a"), Literal("b"), Literal("c")
+        assert str(BinOp("+", a, BinOp("*", b, c))) == "a + b * c"
+        assert str(BinOp("<", BinOp("+", a, b), c)) == "a + b < c"
+        assert str(BinOp("&&", BinOp("==", a, b), c)) == "a == b && c"
+
     def test_UnaryOp(self):
         # fmt: off
         expr = UnaryOp("-",
