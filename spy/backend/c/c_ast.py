@@ -143,6 +143,56 @@ class Void(Expr):
 Void._singleton = object.__new__(Void)
 
 
+# Operator "families", used to decide when to add redundant parentheses.
+#
+# Even when C precedence disambiguates two operators, gcc and clang warn
+# when some families are mixed without parens, e.g. `n + 127 << 23`.
+_FAMILY = {
+    "*": "arith",
+    "/": "arith",
+    "%": "arith",
+    "+": "arith",
+    "-": "arith",
+    "<<": "shift",
+    ">>": "shift",
+    "<": "rel",
+    "<=": "rel",
+    ">": "rel",
+    ">=": "rel",
+    "==": "eq",
+    "!=": "eq",
+    "&": "bitand",
+    "^": "bitxor",
+    "|": "bitor",
+    "&&": "and",
+    "||": "or",
+    "=": "assign",
+}
+
+# unordered pairs of families for which gcc/clang want explicit parens
+_AMBIGUOUS_FAMILY_PAIRS = {
+    frozenset({"arith", "shift"}),
+    frozenset({"bitand", "bitxor"}),
+    frozenset({"bitxor", "bitor"}),
+    frozenset({"bitand", "bitor"}),
+    frozenset({"bitand", "eq"}),
+    frozenset({"bitxor", "eq"}),
+    frozenset({"bitor", "eq"}),
+    frozenset({"and", "or"}),
+}
+
+
+def _ambiguous_mix(parent_op: str, child_op: str) -> bool:
+    """
+    Whether mixing parent_op and child_op without parens triggers a warning.
+    """
+    pf = _FAMILY.get(parent_op)
+    cf = _FAMILY.get(child_op)
+    if pf is None or cf is None or pf == cf:
+        return False
+    return frozenset({pf, cf}) in _AMBIGUOUS_FAMILY_PAIRS
+
+
 @dataclass
 class BinOp(Expr):
     op: str
@@ -184,9 +234,13 @@ class BinOp(Expr):
             l = f"({l})"
         elif self.left.precedence() == prec and assoc == "R":
             l = f"({l})"
+        elif isinstance(self.left, BinOp) and _ambiguous_mix(self.op, self.left.op):
+            l = f"({l})"
         if self.right.precedence() < prec:
             r = f"({r})"
         elif self.right.precedence() == prec and assoc == "L":
+            r = f"({r})"
+        elif isinstance(self.right, BinOp) and _ambiguous_mix(self.op, self.right.op):
             r = f"({r})"
         return f"{l} {self.op} {r}"
 
