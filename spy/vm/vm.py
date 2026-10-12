@@ -427,6 +427,7 @@ class SPyVM:
         kind: FuncKind = "plain",
         extra_types: dict = {},
         irtag: IRTag = IRTag.Empty,
+        w_functype: Optional[W_FuncType] = None,
     ) -> Callable:
         """
         Decorator to turn an interp-level function into a W_BuiltinFunc.
@@ -447,9 +448,9 @@ class SPyVM:
                 ...
             assert w_hello.fqn == FQN("mymodule::hello")
 
-        The w_functype of the wrapped function is automatically computed by
-        inspectng the signature of the interp-level function. The first
-        parameter MUST be 'vm'.
+        If w_functype is not explicitely given, the w_functype of the wrapped
+        function is automatically computed by inspectng the signature of the
+        interp-level function. The first parameter MUST be 'vm'.
 
         Note that the resulting object is a W_BuiltinFunc, which means that you
         cannot call it directly, but you need to use vm.call.
@@ -482,6 +483,7 @@ class SPyVM:
                 color=color,
                 kind=kind,
                 extra_types=extra_types,
+                w_functype=w_functype,
             )
 
             # check whether the fqn is already in use

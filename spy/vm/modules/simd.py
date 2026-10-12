@@ -8,7 +8,7 @@ from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.b import B
 from spy.vm.builtin import builtin_classmethod, builtin_method
-from spy.vm.function import W_Func
+from spy.vm.function import FuncParam, W_BuiltinFunc, W_Func, W_FuncType
 from spy.vm.irtag import IRTag
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opspec import W_MetaArg, W_OpSpec
@@ -92,7 +92,7 @@ class W_Simd(W_Object):
         t = w_simdtype.fqn.human_name(vm)
 
         if nargs == size:
-            w_make = _get_or_make_simd_make(vm, w_simdtype, "elements")
+            w_make = _register_simd_make(vm, w_simdtype, "elements")
             return W_OpSpec(w_make, list(args_wam))
 
         if nargs == 0:
@@ -115,7 +115,7 @@ class W_Simd(W_Object):
     def w_ZEROS(vm: "SPyVM", wam_self: W_MetaArg) -> W_OpSpec:
         w_simdtype = wam_self.w_blueval
         assert isinstance(w_simdtype, W_SimdType)
-        w_make = _get_or_make_simd_make(vm, w_simdtype, "zeros")
+        w_make = _register_simd_make(vm, w_simdtype, "zeros")
         return W_OpSpec(w_make, [])
 
     @builtin_classmethod("splat", color="blue", kind="metafunc")
@@ -123,7 +123,7 @@ class W_Simd(W_Object):
     def w_SPLAT(vm: "SPyVM", wam_self: W_MetaArg, wam_x: W_MetaArg) -> W_OpSpec:
         w_simdtype = wam_self.w_blueval
         assert isinstance(w_simdtype, W_SimdType)
-        w_make = _get_or_make_simd_make(vm, w_simdtype, "splat")
+        w_make = _register_simd_make(vm, w_simdtype, "splat")
         return W_OpSpec(w_make, [wam_x])
 
     # ===== conversion from a list or a tuple =====
@@ -231,57 +231,57 @@ class W_Simd(W_Object):
         raise err
 
 
-def _get_or_make_simd_make(
+def _register_simd_make(
     vm: "SPyVM",
     w_simdtype: W_SimdType,
     kind: Literal["elements", "splat", "zeros"],
-) -> "W_BuiltinFunc":  # type: ignore[name-defined]
+) -> W_BuiltinFunc:
     """
-    Build (once per (W_SimdType, kind)) and register the red lowering builtin
-    for a constructor, returning the cached instance on subsequent calls.
+    Create the SIMD constructor.
     """
-    from spy.vm.function import FuncParam, W_BuiltinFunc, W_FuncType
-
     w_dtype = w_simdtype.w_dtype
     size = w_simdtype.size
+    SIMD_T = Annotated[W_Simd, w_simdtype]
+    T = Annotated[W_Object, w_dtype]
 
     if kind == "splat":
-        fqn = w_simdtype.fqn.join("__splat__")
-        w_functype = W_FuncType.new([FuncParam(w_dtype, "simple")], w_simdtype)
-        irtag = IRTag("simd.splat")
 
-        def w_make_impl(vm: "SPyVM", w_x: W_Object) -> W_Simd:
+        @vm.register_builtin_func(
+            w_simdtype.fqn, "__splat__", irtag=IRTag("simd.splat")
+        )
+        def w_splat(vm: "SPyVM", w_x: T) -> SIMD_T:
             return W_Simd(w_simdtype, [w_x] * size)
 
-    elif kind == "zeros":
-        fqn = w_simdtype.fqn.join("__zeros__")
-        w_functype = W_FuncType.new([], w_simdtype)
-        irtag = IRTag("simd.zeros")
+        return w_splat
 
-        def w_make_impl(vm: "SPyVM") -> W_Simd:  # type: ignore[misc]
+    elif kind == "zeros":
+
+        @vm.register_builtin_func(
+            w_simdtype.fqn, "__zeros__", irtag=IRTag("simd.zeros")
+        )
+        def w_zeros(vm: "SPyVM") -> SIMD_T:
             zero = 0.0 if w_dtype in (B.w_f32, B.w_f64) else 0
             lanes_w = [w_dtype.pyclass(zero) for _ in range(size)]  # type: ignore[call-arg]
             return W_Simd(w_simdtype, lanes_w)
 
+        return w_zeros
+
     else:
-        fqn = w_simdtype.fqn.join("__make__")
+        # functype cannot be inferred from the Python function
         params = [FuncParam(w_dtype, "simple") for _ in range(size)]
         w_functype = W_FuncType.new(params, w_simdtype)
-        irtag = IRTag("simd.make")
 
-        def w_make_impl(vm: "SPyVM", *args_w: W_Object) -> W_Simd:  # type: ignore[misc]
+        @vm.register_builtin_func(
+            w_simdtype.fqn,
+            "__make__",
+            irtag=IRTag("simd.make"),
+            w_functype=w_functype,
+        )
+        def w_make(vm: "SPyVM", *args_w: W_Object) -> W_Simd:
             assert len(args_w) == size
             return W_Simd(w_simdtype, list(args_w))
 
-    w_existing = vm.lookup_global_maybe(fqn)
-    if w_existing is not None:
-        assert isinstance(w_existing, W_BuiltinFunc)
-        assert w_existing.w_functype is w_functype
-        return w_existing
-
-    w_func = W_BuiltinFunc(w_functype, fqn, w_make_impl)
-    vm.add_global(fqn, w_func, irtag=irtag)
-    return w_func
+        return w_make
 
 
 @SIMD.builtin_func(color="blue", kind="generic")
