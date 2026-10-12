@@ -38,6 +38,32 @@ class TestTuple(CompilerTest):
         assert self.vm.unwrap_i32(w_x) == 1
         assert w_T is B.w_i32
 
+    def test_variadic_starred(self):
+        src = """
+        from operator import OpSpec
+
+        @blue.metafunc
+        def foo(*args_m):
+            m_x = args_m[0]
+            m_y = args_m[1]
+            args2_m = (*args_m,)
+            assert args2_m[0] is m_x
+            assert args2_m[1] is m_y
+
+            T = m_x.static_type
+            assert m_y.static_type == T
+
+            def impl(x: T, y: T) -> T:
+                return x + y
+
+            return OpSpec(impl, [*args2_m])
+
+        def test(x: i32, y: i32) -> i32:
+            return foo(x, y)
+        """
+        mod = self.compile(src)
+        assert mod.test(1, 2) == 3
+
     def test_unpacking_blue(self):
         mod = self.compile("""
         @blue

@@ -651,6 +651,14 @@ class DopplerFrame(ASTFrame):
             )
         return newlst
 
+    def shift_expr_Starred(self, op: ast.Starred, wam: W_MetaArg) -> ast.Expr:
+        raise SPyError.simple(
+            "W_WIP",
+            "splat expressions are supported only in blue code.",
+            "not supported here",
+            op.loc,
+        )
+
     def shift_expr_Tuple(self, tup: ast.Tuple, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[tup]
         v_T = make_const(self.vm, tup.loc, wam.w_static_T)
@@ -701,6 +709,7 @@ class DopplerFrame(ASTFrame):
         return newdict
 
     def shift_expr_GetItem(self, op: ast.GetItem, wam: W_MetaArg) -> ast.Expr:
+        self._check_no_starred_args(op.args)
         w_opimpl = self.opimpl[op]
         v = self.shifted_expr[op.value]
         args = [self.shifted_expr[arg] for arg in op.args]
@@ -712,7 +721,21 @@ class DopplerFrame(ASTFrame):
         v_attr = self.shifted_expr[op.attr]
         return self.shift_opimpl(op, w_opimpl, [v, v_attr])
 
+    def _check_no_starred_args(self, args: list[ast.Expr]) -> None:
+        # Splats in call args are expanded eagerly by eval_args_with_starred.
+        # This point is reached only when the call is red.
+        for arg in args:
+            if isinstance(arg, ast.Starred):
+                raise SPyError.simple(
+                    "W_WIP",
+                    "splat arguments (`*expr`) are supported only in calls "
+                    "to blue functions and in blue subscripts",
+                    "not supported here",
+                    arg.loc,
+                )
+
     def shift_expr_Call(self, call: ast.Call, wam: W_MetaArg) -> ast.Expr:
+        self._check_no_starred_args(call.args)
         w_opimpl = self.opimpl[call]
         newfunc = self.shifted_expr[call.func]
         newargs = [self.shifted_expr[arg] for arg in call.args]
@@ -724,6 +747,7 @@ class DopplerFrame(ASTFrame):
             return self.shift_opimpl(call, w_opimpl, [newfunc] + newargs)
 
     def shift_expr_CallMethod(self, op: ast.CallMethod, wam: W_MetaArg) -> ast.Expr:
+        self._check_no_starred_args(op.args)
         w_opimpl = self.opimpl[op]
         v_obj = self.shifted_expr[op.target]
         v_meth = self.shifted_expr[op.method]
