@@ -122,7 +122,6 @@ class TestBuiltin:
 
     def test_explicit_functype(self):
         vm = SPyVM()
-
         w_functype = make_FuncType(B.w_i32, B.w_i32, w_restype=B.w_i32)
 
         @vm.register_builtin_func("_testing_helpers", w_functype=w_functype)
