@@ -733,12 +733,12 @@ def w__alloc_StrObject(vm: "SPyVM", wam_length: W_MetaArg) -> W_OpSpec:
 def w__StrObject_to_sealed_str(vm: "SPyVM", wam_p: W_MetaArg) -> W_OpSpec:
     """
     Seal a low-level `gc_ptr[StrObject]` and convert into a high-level `str`. The
-    dual of `_str_to_StrObject`.
+    dual of `_str_to_StrObject`. It is idempotent, works also on already sealed strings.
     """
 
     @vm.register_builtin_func(UNSAFE.fqn.join("_StrObject_to_sealed_str"), "impl")
     def w_impl(vm: "SPyVM", w_p: W_Ptr) -> W_Str:
-        vm.ll.call("spy_str_seal", w_p.addr)
+        vm.ll.call("spy_str_seal_if_needed", w_p.addr)
         return W_Str.from_ptr(vm, w_p.addr)
 
     return W_OpSpec(w_impl, [wam_p])
