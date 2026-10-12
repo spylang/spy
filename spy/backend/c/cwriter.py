@@ -14,6 +14,7 @@ from spy.vm.b import TYPES, B
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.irtag import IRTag
 from spy.vm.modules.posix import W__FILE
+from spy.vm.modules.simd import W_SimdType
 from spy.vm.modules.unsafe.ptr import W_Ptr, W_PtrType
 
 if TYPE_CHECKING:
@@ -704,8 +705,6 @@ class CFuncWriter:
             return C.Call(f"{c_targettype}_from_raw", [c_p, c_length])
 
     def fmt_simd_make(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
-        from spy.vm.modules.simd import W_SimdType
-
         w_func = self.ctx.vm.lookup_global(fqn)
         assert isinstance(w_func, W_Func)
         w_simdtype = w_func.w_functype.w_restype
@@ -721,10 +720,12 @@ class CFuncWriter:
             # SIMD[T, N].splat(x) -> (V){x, x, ..., x}
             assert len(c_args) == 1
             s_arg = str(c_args[0])
-            strargs = ", ".join([s_arg] * w_simdtype.size)
-        else:
+            strargs = ", ".join([s_arg] * w_simdtype.length)
+        elif irtag.tag == "simd.make":
             # SIMD[T, N](v0, ..., v_{N-1}) -> (V){v0, ..., v_{N-1}}
             strargs = ", ".join(map(str, c_args))
+        else:
+            assert False
         return C.Cast(c_simdtype, C.Literal("{ %s }" % strargs))
 
     def fmt_simd_with_lane(self, fqn: FQN, call: ast.Call) -> C.Expr:

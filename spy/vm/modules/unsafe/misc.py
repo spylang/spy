@@ -33,7 +33,7 @@ def sizeof(w_T: W_Type) -> int:
         # preemptively choose the target platform BEFORE redshifting?
         return 4 + 4  # in debug mode we store both addr and length
     elif isinstance(w_T, W_SimdType):
-        return sizeof(w_T.w_dtype) * w_T.size
+        return sizeof(w_T.w_dtype) * w_T.length
     elif w_T is POSIX.w__FILE:
         return 4  # XXX
     else:
@@ -132,7 +132,7 @@ def alignof(w_T: W_Type) -> int:
         aligns = [alignof(w_field.w_T) for w_field in w_T.iterfields_w()]
         return max(aligns, default=1)
     elif isinstance(w_T, W_SimdType):
-        return sizeof(w_T.w_dtype) * w_T.size
+        return sizeof(w_T.w_dtype) * w_T.length
     else:
         raise WIP(f"alignof({w_T}) not implemented")
 

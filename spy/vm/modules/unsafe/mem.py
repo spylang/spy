@@ -603,10 +603,11 @@ def generic_mem_read(vm: "SPyVM", addr: int, w_T: W_Type) -> W_Object:
             values_w[fname] = generic_mem_read(vm, addr + offset, w_field.w_T)
         return W_Struct(w_T, values_w)
     elif isinstance(w_T, W_SimdType):
+        # we don't do a real SIMD load in the interpreter; let's simulate by reading items one by one
         lane_size = sizeof(w_T.w_dtype)
         lanes_w = [
             generic_mem_read(vm, addr + i * lane_size, w_T.w_dtype)
-            for i in range(w_T.size)
+            for i in range(w_T.length)
         ]
         return W_Simd(w_T, lanes_w)
     else:
@@ -665,9 +666,10 @@ def generic_mem_write(vm: "SPyVM", addr: int, w_T: W_Type, w_val: W_Object) -> N
             offset = w_field.offset
             generic_mem_write(vm, addr + offset, w_field.w_T, w_val.values_w[fname])
     elif isinstance(w_T, W_SimdType):
+        # we don't do a real SIMD store in the interpreter; let's simulate by writing items one by one
         assert isinstance(w_val, W_Simd)
         lane_size = sizeof(w_T.w_dtype)
-        for i in range(w_T.size):
+        for i in range(w_T.length):
             generic_mem_write(vm, addr + i * lane_size, w_T.w_dtype, w_val.lanes_w[i])
     else:
         t = w_T.fqn.human_name(vm)

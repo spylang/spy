@@ -8,7 +8,7 @@ from spy.backend.c.context import C_Type, Context
 from spy.fqn import FQN
 from spy.textbuilder import TextBuilder
 from spy.vm.modules.simd import W_SimdType
-from spy.vm.modules.unsafe.misc import contains_gc_ptr
+from spy.vm.modules.unsafe.misc import contains_gc_ptr, sizeof
 from spy.vm.modules.unsafe.ptr import W_PtrType, W_RefType
 from spy.vm.object import W_Type
 from spy.vm.struct import W_StructType
@@ -160,11 +160,9 @@ class CStructWriter:
         tb.wl("")
 
     def emit_SimdType(self, fqn: FQN, w_simdtype: W_SimdType) -> None:
-        from spy.vm.modules.unsafe.misc import sizeof
-
         c_simdtype = C_Type(w_simdtype.fqn.c_name)
         c_basetype = self.ctx.w2c(w_simdtype.w_dtype)
-        nbytes = sizeof(w_simdtype.w_dtype) * w_simdtype.size
+        nbytes = sizeof(w_simdtype.w_dtype) * w_simdtype.length
         human = w_simdtype.fqn.human_name(self.ctx.vm)
         # GCC/Clang vector extension: a fixed-size vector
         self.tbh_fwdecl.wl(

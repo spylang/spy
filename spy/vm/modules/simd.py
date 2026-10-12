@@ -43,7 +43,7 @@ class W_SimdType(W_Type):
     """
 
     w_dtype: W_Type
-    size: int
+    length: int
 
     def repr_hints(self) -> list[str]:
         return super().repr_hints() + ["simd"]
@@ -61,10 +61,10 @@ class W_Simd(W_Object):
     __spy_storage_category__ = "value"
 
     w_simdtype: W_SimdType
-    lanes_w: list  # list[W_Object], length == w_simdtype.size
+    lanes_w: list  # list[W_Object], length == w_simdtype.length
 
     def __init__(self, w_simdtype: W_SimdType, lanes_w: list) -> None:
-        assert len(lanes_w) == w_simdtype.size
+        assert len(lanes_w) == w_simdtype.length
         self.w_simdtype = w_simdtype
         self.lanes_w = lanes_w
 
@@ -87,11 +87,11 @@ class W_Simd(W_Object):
     def w_NEW(vm: "SPyVM", wam_self: W_MetaArg, *args_wam: W_MetaArg) -> W_OpSpec:
         w_simdtype = wam_self.w_blueval
         assert isinstance(w_simdtype, W_SimdType)
-        size = w_simdtype.size
+        length = w_simdtype.length
         nargs = len(args_wam)
         t = w_simdtype.fqn.human_name(vm)
 
-        if nargs == size:
+        if nargs == length:
             w_make = _register_simd_make(vm, w_simdtype, "elements")
             return W_OpSpec(w_make, list(args_wam))
 
@@ -99,12 +99,12 @@ class W_Simd(W_Object):
             err = SPyError("W_TypeError", "SIMD requires explicit initialization")
             err.add(
                 "error",
-                f"use `{t}.zeros()`, `{t}.splat(x)` or pass {size} values",
+                f"use `{t}.zeros()`, `{t}.splat(x)` or pass {length} values",
                 wam_self.loc,
             )
             raise err
 
-        err = SPyError("W_TypeError", f"`{t}` expects {size} values, got {nargs}")
+        err = SPyError("W_TypeError", f"`{t}` expects {length} values, got {nargs}")
         err.add("error", f"this is `{t}`", wam_self.loc)
         raise err
 
@@ -141,18 +141,18 @@ class W_Simd(W_Object):
         assert isinstance(w_simdtype, W_SimdType)
         assert isinstance(w_gotT, W_Type)
         w_dtype = w_simdtype.w_dtype
-        size = w_simdtype.size
+        length = w_simdtype.length
 
         if vm.is_list_type(w_gotT):
             converter = "from_list"
         elif vm.is_tuple_type(w_gotT) and isinstance(w_gotT, W_StructType):
             converter = "from_tuple"
             nitems = len(list(w_gotT.iterfields_w()))
-            if nitems != size:
+            if nitems != length:
                 t = w_simdtype.fqn.human_name(vm)
                 got = w_gotT.fqn.human_name(vm)
                 err = SPyError(
-                    "W_TypeError", f"`{t}` expects {size} values, got {nitems}"
+                    "W_TypeError", f"`{t}` expects {length} values, got {nitems}"
                 )
                 err.add("error", f"this is `{got}`", wam_obj.loc)
                 raise err
@@ -161,7 +161,7 @@ class W_Simd(W_Object):
 
         vm.import_("simd")
         w_converter = vm.lookup_global(FQN(f"simd::{converter}"))
-        w_impl = vm.getitem_w(w_converter, w_dtype, vm.wrap(size), w_gotT)
+        w_impl = vm.getitem_w(w_converter, w_dtype, vm.wrap(length), w_gotT)
         assert isinstance(w_impl, W_Func)
         return W_OpSpec(w_impl, [wam_obj])
 
@@ -172,7 +172,7 @@ class W_Simd(W_Object):
         w_simdtype = wam_self.w_static_T
         assert isinstance(w_simdtype, W_SimdType)
         w_dtype = w_simdtype.w_dtype
-        size = w_simdtype.size
+        length = w_simdtype.length
 
         SIMD_T = Annotated[W_Simd, w_simdtype]
         T = Annotated[W_Object, w_dtype]
@@ -181,7 +181,7 @@ class W_Simd(W_Object):
         @vm.register_builtin_func(w_simdtype.fqn, "getitem", irtag=irtag)
         def w_simd_getitem(vm: "SPyVM", w_v: SIMD_T, w_i: W_I32) -> T:
             i = vm.unwrap_i32(w_i)
-            if not (0 <= i < size):
+            if not (0 <= i < length):
                 raise SPyError("W_PanicError", "SIMD index out of bounds")
             return w_v.lanes_w[i]
 
@@ -199,7 +199,7 @@ class W_Simd(W_Object):
         w_simdtype = wam_self.w_static_T
         assert isinstance(w_simdtype, W_SimdType)
         w_dtype = w_simdtype.w_dtype
-        size = w_simdtype.size
+        length = w_simdtype.length
 
         SIMD_T = Annotated[W_Simd, w_simdtype]
         T = Annotated[W_Object, w_dtype]
@@ -208,27 +208,13 @@ class W_Simd(W_Object):
         @vm.register_builtin_func(w_simdtype.fqn, "with_lane", irtag=irtag)
         def w_simd_with_lane(vm: "SPyVM", w_v: SIMD_T, w_i: W_I32, w_x: T) -> SIMD_T:
             i = vm.unwrap_i32(w_i)
-            if not (0 <= i < size):
+            if not (0 <= i < length):
                 raise SPyError("W_PanicError", "SIMD index out of bounds")
             lanes_w = list(w_v.lanes_w)
             lanes_w[i] = w_x
             return W_Simd(w_simdtype, lanes_w)
 
         return W_OpSpec(w_simd_with_lane, [wam_self, wam_i, wam_x])
-
-    # ===== lane write: v[i] = x, rejected =====
-
-    @builtin_method("__setitem__", color="blue", kind="metafunc")
-    @staticmethod
-    def w_SETITEM(
-        vm: "SPyVM", wam_self: W_MetaArg, wam_i: W_MetaArg, wam_v: W_MetaArg
-    ) -> W_OpSpec:
-        w_simdtype = wam_self.w_static_T
-        assert isinstance(w_simdtype, W_SimdType)
-        t = w_simdtype.fqn.human_name(vm)
-        err = SPyError("W_TypeError", f"type `{t}` does not support item assignment")
-        err.add("error", f"this is `{t}`", wam_self.loc)
-        raise err
 
 
 def _register_simd_make(
@@ -240,7 +226,7 @@ def _register_simd_make(
     Create the SIMD constructor.
     """
     w_dtype = w_simdtype.w_dtype
-    size = w_simdtype.size
+    length = w_simdtype.length
     SIMD_T = Annotated[W_Simd, w_simdtype]
     T = Annotated[W_Object, w_dtype]
 
@@ -250,7 +236,7 @@ def _register_simd_make(
             w_simdtype.fqn, "__splat__", irtag=IRTag("simd.splat")
         )
         def w_splat(vm: "SPyVM", w_x: T) -> SIMD_T:
-            return W_Simd(w_simdtype, [w_x] * size)
+            return W_Simd(w_simdtype, [w_x] * length)
 
         return w_splat
 
@@ -261,14 +247,14 @@ def _register_simd_make(
         )
         def w_zeros(vm: "SPyVM") -> SIMD_T:
             zero = 0.0 if w_dtype in (B.w_f32, B.w_f64) else 0
-            lanes_w = [w_dtype.pyclass(zero) for _ in range(size)]  # type: ignore[call-arg]
+            lanes_w = [w_dtype.pyclass(zero) for _ in range(length)]  # type: ignore[call-arg]
             return W_Simd(w_simdtype, lanes_w)
 
         return w_zeros
 
     else:
         # functype cannot be inferred from the Python function
-        params = [FuncParam(w_dtype, "simple") for _ in range(size)]
+        params = [FuncParam(w_dtype, "simple") for _ in range(length)]
         w_functype = W_FuncType.new(params, w_simdtype)
 
         @vm.register_builtin_func(
@@ -278,36 +264,32 @@ def _register_simd_make(
             w_functype=w_functype,
         )
         def w_make(vm: "SPyVM", *args_w: W_Object) -> W_Simd:
-            assert len(args_w) == size
+            assert len(args_w) == length
             return W_Simd(w_simdtype, list(args_w))
 
         return w_make
 
 
 @SIMD.builtin_func(color="blue", kind="generic")
-def w_SIMD(vm: "SPyVM", w_dtype: W_Type, w_size: W_I32) -> W_Dynamic:
+def w_SIMD(vm: "SPyVM", w_dtype: W_Type, w_length: W_I32) -> W_Dynamic:
     """
-    The `SIMD` *generic* type constructor.
+    The `SIMD` generic type constructor.
 
     Validation (blue-time):
 
-      * `size` must be a *positive power of two* (1, 2, 4, 8, ...).
-        - non-positive sizes (0, negative) report
-          `"SIMD size must be a positive power of two, got <n>"`;
-        - positive but non-power-of-two sizes report
-          `"SIMD size must be a power of two, got <n>"`.
-      * `dtype` must be one of the v1 numeric primitives
-        (i8, u8, i32, u32, f32, i64, u64, f64), else
-        `"SIMD element type must be a numeric primitive, got `<T>`"`.
+      * `length` must be a positive power of two
+      * `dtype` must be one of i8, u8, i32, u32, f32, i64, u64, f64
     """
-    size = int(vm.unwrap_i32(w_size))
+    length = int(vm.unwrap_i32(w_length))
 
-    if size <= 0:
+    if length <= 0:
         raise SPyError(
-            "W_TypeError", f"SIMD size must be a positive power of two, got {size}"
+            "W_TypeError", f"SIMD length must be a positive power of two, got {length}"
         )
-    if size & (size - 1) != 0:
-        raise SPyError("W_TypeError", f"SIMD size must be a power of two, got {size}")
+    if length & (length - 1) != 0:
+        raise SPyError(
+            "W_TypeError", f"SIMD length must be a power of two, got {length}"
+        )
 
     if w_dtype not in SIMD_DTYPES:
         t = w_dtype.fqn.human_name(vm)
@@ -317,10 +299,10 @@ def w_SIMD(vm: "SPyVM", w_dtype: W_Type, w_size: W_I32) -> W_Dynamic:
         )
 
     vm.fqn_human_aliases[FQN("_simd::SIMD")] = FQN("SIMD")
-    fqn = FQN("_simd::SIMD").with_qualifiers([w_dtype.fqn, str(size)])
+    fqn = FQN("_simd::SIMD").with_qualifiers([w_dtype.fqn, str(length)])
 
     w_simdtype = W_SimdType.from_pyclass(fqn, W_Simd)
     w_simdtype.w_dtype = w_dtype
-    w_simdtype.size = size
+    w_simdtype.length = length
     vm.make_fqn_const(w_simdtype)
     return w_simdtype

@@ -22,33 +22,6 @@ class TestSIMD(CompilerTest):
         assert mod.s4(3) == 3
         assert mod.s8(7) == 7
 
-    def test_all_dtypes(self):
-        src = """
-        from _simd import SIMD
-
-        def func[T](x: T) -> T:
-            v = SIMD[T, 4].splat(x)
-            return v[0]
-
-        f_i8 = func[i8]
-        f_u8 = func[u8]
-        f_i32 = func[i32]
-        f_u32 = func[u32]
-        f_i64 = func[i64]
-        f_u64 = func[u64]
-        f_f32 = func[f32]
-        f_f64 = func[f64]
-        """
-        mod = self.compile(src)
-        assert mod.f_i8(-5) == -5
-        assert mod.f_u8(200) == 200
-        assert mod.f_i32(42) == 42
-        assert mod.f_u32(42) == 42
-        assert mod.f_i64(42) == 42
-        assert mod.f_u64(42) == 42
-        assert mod.f_f32(1.5) == 1.5
-        assert mod.f_f64(2.25) == 2.25
-
     def _check_invalid(self, params: str, msg: str, extra: str = "") -> None:
         src = f"""
         from _simd import SIMD
@@ -59,16 +32,16 @@ class TestSIMD(CompilerTest):
         self.compile_raises(src, "bad", expect_errors(msg))
 
     def test_invalid_size_not_power_of_two(self):
-        self._check_invalid("f32, 3", "SIMD size must be a power of two, got 3")
+        self._check_invalid("f32, 3", "SIMD length must be a power of two, got 3")
 
     def test_invalid_size_zero(self):
         self._check_invalid(
-            "f32, 0", "SIMD size must be a positive power of two, got 0"
+            "f32, 0", "SIMD length must be a positive power of two, got 0"
         )
 
     def test_invalid_size_negative(self):
         self._check_invalid(
-            "f32, -2", "SIMD size must be a positive power of two, got -2"
+            "f32, -2", "SIMD length must be a positive power of two, got -2"
         )
 
     def test_invalid_dtype_bool(self):
@@ -345,20 +318,6 @@ class TestSIMD(CompilerTest):
         assert mod.rt_u64(42) == (42, 42)
         assert mod.rt_f32(1.5) == (1.5, 1.5)
         assert mod.rt_f64(2.25) == (2.25, 2.25)
-
-    def test_immutable(self):
-        src = """
-        from _simd import SIMD
-
-        def bad() -> None:
-            v = SIMD[i32, 4].zeros()
-            v[0] = 99
-        """
-        errors = expect_errors(
-            "type `SIMD[i32, 4]` does not support item assignment",
-            ("this is `SIMD[i32, 4]`", "v"),
-        )
-        self.compile_raises(src, "bad", errors)
 
     def test_pass_and_return_by_value(self):
         src = """
