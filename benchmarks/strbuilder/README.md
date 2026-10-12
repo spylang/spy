@@ -160,6 +160,62 @@ and 1.5x slower) are noisy and might be affected too, we don't know.
 To get reliable numbers from `bench.spy` itself, run one builder per process or
 force a collection (`GC_gcollect`) between the builders: neither is done yet.
 
+## Results (Apple M1 Pro, macOS)
+
+Measured on 2026-10-12, git `0bf57588`, on AC power, no CPU pinning, with the
+usual desktop applications running.
+
+- Apple M1 Pro, 32 GiB RAM, macOS 15.7.7, arm64
+- Apple clang 17.0.0, `spy build --release`; Boehm GC 8.2.12 (homebrew
+  `bdw-gc`), no tuning of the heap
+
+The `realloc` column is missing: `gc_realloc.patch` was not applied, so the
+benchmark was a copy of `bench.spy` with the `realloc` import and uses
+removed. Two macOS-specific notes:
+
+- `spy build --release` needs a Boehm GC; with no `bdw-gc` in the conda env it
+  falls back to homebrew only if `CONDA_PREFIX` is unset, so the build was run
+  as `env -u CONDA_PREFIX spy build --release bench_norealloc.spy`
+  (`spy/build/config.py`, `add_libgc`).
+- `--static` is not an option on macOS: the vendored libgc build uses
+  `zig cc --target=native-native-musl`, which is Linux-only.
+
+Microseconds, best of 5 runs (more for the small rows), lower is better. The
+1 KB rows (`json-1KB`, `csv-1KB`, the 10-items repr) are at or below the
+resolution of `time()` here, so all the builders tie at 0.0-0.9 us.
+
+| row | chunked | chunked-exact | list | fn | unsafe | std | std-exact | std-unsafe |
+|---|---|---|---|---|---|---|---|---|
+| 1 MB from 2 B appends | 1259 | 1159 | 1321 | 1401 | 1118 | 1221 | 1088 | 1083 |
+| 1 MB from 16 B appends | 365 | 279 | 378 | 412 | 277 | 384 | 278 | 270 |
+| 1 MB from 128 B appends | 210 | 109 | 195 | 210 | 97 | 217 | 109 | 114 |
+| 1 MB from 1 KB appends | 180 | 98 | 176 | 182 | 87 | 172 | 95 | 90 |
+| 1 MB from 4 KB appends | 127 | 103 | 118 | 122 | 113 | 117 | 113 | 101 |
+| json-64KB (19921 appends) | 76 | 69 | 75 | 77 | 64 | 77 | 69 | 63 |
+| json-1MB (303761 appends) | 1224 | 1079 | 1148 | 1189 | 985 | 1178 | 1076 | 987 |
+| csv-64KB (13418 appends) | 58 | 52 | 58 | 58 | 47 | 59 | 52 | 48 |
+| csv-1MB (204358 appends) | 945 | 831 | 918 | 958 | 775 | 955 | 790 | 736 |
+| repr of a 100 items list | 5 | - | 5 | 5 | - | 5 | - | - |
+| int n=1000 exact | 73 | - | 72 | 73 | 72 | 73 | - | 71 |
+| float n=1000 exact | 191 | - | 189 | 195 | 194 | 195 | - | 195 |
+
+What changes with respect to the x86/Linux machine:
+
+- **The qualitative picture is the same.** Exact capacity beats the default
+  one (`chunked-exact` vs `chunked`: 1.1-1.9x), `unsafe` / `std-unsafe` are
+  the fastest, and the stdlib builders are within a few % of the
+  hand-rolled designs they mirror (`std` vs `chunked`, `std-exact` vs
+  `chunked-exact`, `std-unsafe` vs `unsafe`).
+- **The M1 Pro is 1.5-2x faster** than the i7-8550U on the same rows (e.g.
+  2 B appends: 1259 vs 2476 us for `chunked`).
+- **`fn` is much closer to `chunked` here**: nearly tied on the JSON/CSV rows
+  (e.g. json-1MB 1189 vs 1224 us), where on x86 it stayed 10-25% slower even
+  after `@force_inline`. The by-value struct passing penalty is smaller on
+  this chip.
+- **`list` no longer loses on mid-size appends**: on 128 B - 1 KB appends it
+  ties with `chunked` (195/176 vs 210/180 us), where on x86 it was up to 2x
+  slower.
+
 ## The `gc_realloc.patch` patch
 
 `bench.spy` does not build on a plain checkout: `strbuilder_realloc.spy` needs
