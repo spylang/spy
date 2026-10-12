@@ -4,6 +4,7 @@ import pytest
 
 from spy.errors import SPyError
 from spy.fqn import FQN
+from spy.tests.vm.test_function import make_FuncType
 from spy.vm.b import B
 from spy.vm.builtin import (
     builtin_class_attr,
@@ -118,6 +119,25 @@ class TestBuiltin:
         w_x = vm.fast_call(w_foo, [vm.wrap(21)])
         w_y = vm.fast_call(w_foo, [vm.wrap(21)])
         assert w_x is w_y
+
+    def test_explicit_functype(self):
+        vm = SPyVM()
+
+        w_functype = make_FuncType(B.w_i32, B.w_i32, w_restype=B.w_i32)
+
+        @vm.register_builtin_func("_testing_helpers", w_functype=w_functype)
+        def w_add(vm: "SPyVM", *args_w: W_Object) -> W_Object:
+            assert len(args_w) == 2
+            w_a, w_b = args_w
+            a = vm.unwrap_i32(w_a)
+            b = vm.unwrap_i32(w_b)
+            return vm.wrap(a + b)
+
+        assert w_add.w_functype.fqn.debug_human_name == "def(i32, i32) -> i32"
+        w_a = vm.wrap(4)
+        w_b = vm.wrap(5)
+        w_res = vm.fast_call(w_add, [w_a, w_b])
+        assert vm.unwrap_i32(w_res) == 9
 
     def test_builtin_method(self):
         vm = SPyVM()

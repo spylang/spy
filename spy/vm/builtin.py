@@ -113,8 +113,8 @@ def make_builtin_func(
     Turn an interp-level function into a W_BuiltinFunc.
     See vm.register_builtin_func for additional docs.
 
-    If w_functype is given, it is used as-is instead of being inferred from
-    the signature of fn (needed e.g. for variadic implementations).
+    If not explicitly specified, the applevel w_functype is automatically inferred from
+    the interp-level Python signature.
     """
     if isinstance(namespace, str):
         namespace = FQN(namespace)
