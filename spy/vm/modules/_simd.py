@@ -91,10 +91,6 @@ class W_Simd(W_Object):
         nargs = len(args_wam)
         t = w_simdtype.fqn.human_name(vm)
 
-        if nargs == length:
-            w_make = _register_simd_make(vm, w_simdtype, "elements")
-            return W_OpSpec(w_make, list(args_wam))
-
         if nargs == 0:
             err = SPyError("W_TypeError", "SIMD requires explicit initialization")
             err.add(
@@ -104,9 +100,32 @@ class W_Simd(W_Object):
             )
             raise err
 
-        err = SPyError("W_TypeError", f"`{t}` expects {length} values, got {nargs}")
-        err.add("error", f"this is `{t}`", wam_self.loc)
-        raise err
+        elif nargs != length:
+            err = SPyError("W_TypeError", f"`{t}` expects {length} values, got {nargs}")
+            err.add("error", f"this is `{t}`", wam_self.loc)
+            raise err
+
+        # the applevel signature is this:
+        #     def __make__(v1: T, v2: T, ..., vN: T) -> SIMD[T, N]
+        #
+        # but the interp-level signature uses varargs for convenience, so we must
+        # compute w_functype explicitly.  See test_builtin::test_explicit_functype.
+
+        w_T = w_simdtype.w_dtype
+        params = [FuncParam(w_T, "simple") for _ in range(length)]
+        w_functype = W_FuncType.new(params, w_simdtype)
+
+        @vm.register_builtin_func(
+            w_simdtype.fqn,
+            "__make__",
+            irtag=IRTag("simd.make"),
+            w_functype=w_functype,
+        )
+        def w_make(vm: "SPyVM", *args_w: W_Object) -> W_Simd:
+            assert len(args_w) == w_simdtype.length
+            return W_Simd(w_simdtype, list(args_w))
+
+        return W_OpSpec(w_make, list(args_wam))
 
     # ===== constructors which don't take one value per lane =====
 
@@ -115,16 +134,32 @@ class W_Simd(W_Object):
     def w_ZEROS(vm: "SPyVM", wam_self: W_MetaArg) -> W_OpSpec:
         w_simdtype = wam_self.w_blueval
         assert isinstance(w_simdtype, W_SimdType)
-        w_make = _register_simd_make(vm, w_simdtype, "zeros")
-        return W_OpSpec(w_make, [])
+        w_dtype = w_simdtype.w_dtype
+        N = w_simdtype.length
+        SIMD_T = Annotated[W_Simd, w_simdtype]
+        T = Annotated[W_Object, w_dtype]
+
+        @vm.register_builtin_func(w_simdtype.fqn, "zeros", irtag=IRTag("simd.zeros"))
+        def w_zeros(vm: "SPyVM") -> SIMD_T:
+            zero = 0.0 if w_dtype in (B.w_f32, B.w_f64) else 0
+            lanes_w = [w_dtype.pyclass(zero) for _ in range(N)]  # type: ignore
+            return W_Simd(w_simdtype, lanes_w)
+
+        return W_OpSpec(w_zeros, [])
 
     @builtin_classmethod("splat", color="blue", kind="metafunc")
     @staticmethod
     def w_SPLAT(vm: "SPyVM", wam_self: W_MetaArg, wam_x: W_MetaArg) -> W_OpSpec:
         w_simdtype = wam_self.w_blueval
         assert isinstance(w_simdtype, W_SimdType)
-        w_make = _register_simd_make(vm, w_simdtype, "splat")
-        return W_OpSpec(w_make, [wam_x])
+        SIMD_T = Annotated[W_Simd, w_simdtype]
+        T = Annotated[W_Object, w_simdtype.w_dtype]
+
+        @vm.register_builtin_func(w_simdtype.fqn, "splat", irtag=IRTag("simd.splat"))
+        def w_splat(vm: "SPyVM", w_x: T) -> SIMD_T:
+            return W_Simd(w_simdtype, [w_x] * w_simdtype.length)
+
+        return W_OpSpec(w_splat, [wam_x])
 
     # ===== conversion from a list or a tuple =====
 
@@ -215,59 +250,6 @@ class W_Simd(W_Object):
             return W_Simd(w_simdtype, lanes_w)
 
         return W_OpSpec(w_simd_with_lane, [wam_self, wam_i, wam_x])
-
-
-def _register_simd_make(
-    vm: "SPyVM",
-    w_simdtype: W_SimdType,
-    kind: Literal["elements", "splat", "zeros"],
-) -> W_BuiltinFunc:
-    """
-    Create the SIMD constructor.
-    """
-    w_dtype = w_simdtype.w_dtype
-    length = w_simdtype.length
-    SIMD_T = Annotated[W_Simd, w_simdtype]
-    T = Annotated[W_Object, w_dtype]
-
-    if kind == "splat":
-
-        @vm.register_builtin_func(
-            w_simdtype.fqn, "__splat__", irtag=IRTag("simd.splat")
-        )
-        def w_splat(vm: "SPyVM", w_x: T) -> SIMD_T:
-            return W_Simd(w_simdtype, [w_x] * length)
-
-        return w_splat
-
-    elif kind == "zeros":
-
-        @vm.register_builtin_func(
-            w_simdtype.fqn, "__zeros__", irtag=IRTag("simd.zeros")
-        )
-        def w_zeros(vm: "SPyVM") -> SIMD_T:
-            zero = 0.0 if w_dtype in (B.w_f32, B.w_f64) else 0
-            lanes_w = [w_dtype.pyclass(zero) for _ in range(length)]  # type: ignore[call-arg]
-            return W_Simd(w_simdtype, lanes_w)
-
-        return w_zeros
-
-    else:
-        # functype cannot be inferred from the Python function
-        params = [FuncParam(w_dtype, "simple") for _ in range(length)]
-        w_functype = W_FuncType.new(params, w_simdtype)
-
-        @vm.register_builtin_func(
-            w_simdtype.fqn,
-            "__make__",
-            irtag=IRTag("simd.make"),
-            w_functype=w_functype,
-        )
-        def w_make(vm: "SPyVM", *args_w: W_Object) -> W_Simd:
-            assert len(args_w) == length
-            return W_Simd(w_simdtype, list(args_w))
-
-        return w_make
 
 
 @SIMD.builtin_func(color="blue", kind="generic")
