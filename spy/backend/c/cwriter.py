@@ -13,8 +13,8 @@ from spy.util import magic_dispatch, shortrepr
 from spy.vm.b import TYPES, B
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.irtag import IRTag
+from spy.vm.modules._simd import W_SimdType
 from spy.vm.modules.posix import W__FILE
-from spy.vm.modules.simd import W_SimdType
 from spy.vm.modules.unsafe.ptr import W_Ptr, W_PtrType
 
 if TYPE_CHECKING:

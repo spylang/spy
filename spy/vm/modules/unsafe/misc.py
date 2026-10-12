@@ -12,8 +12,8 @@ if TYPE_CHECKING:
 
 
 def sizeof(w_T: W_Type) -> int:
+    from spy.vm.modules._simd import W_SimdType
     from spy.vm.modules.posix import POSIX
-    from spy.vm.modules.simd import W_SimdType
     from spy.vm.modules.unsafe.ptr import W_PtrType
     from spy.vm.struct import W_StructType
 
@@ -103,8 +103,8 @@ def alignof(w_T: W_Type) -> int:
 
     Raises if `w_T` is a struct which is not defined yet: we cannot guess.
     """
+    from spy.vm.modules._simd import W_SimdType
     from spy.vm.modules.posix import POSIX
-    from spy.vm.modules.simd import W_SimdType
     from spy.vm.modules.unsafe.ptr import W_PtrType, W_RefType
     from spy.vm.struct import W_StructType
 

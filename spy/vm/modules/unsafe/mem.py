@@ -564,8 +564,8 @@ def w_mem_write(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
 
 
 def generic_mem_read(vm: "SPyVM", addr: int, w_T: W_Type) -> W_Object:
+    from spy.vm.modules._simd import W_Simd, W_SimdType
     from spy.vm.modules.posix import POSIX, W__FILE
-    from spy.vm.modules.simd import W_Simd, W_SimdType
 
     if w_T is B.w_bool:
         return vm.wrap(bool(vm.ll.mem.read_u8(addr)))
@@ -616,8 +616,8 @@ def generic_mem_read(vm: "SPyVM", addr: int, w_T: W_Type) -> W_Object:
 
 
 def generic_mem_write(vm: "SPyVM", addr: int, w_T: W_Type, w_val: W_Object) -> None:
+    from spy.vm.modules._simd import W_Simd, W_SimdType
     from spy.vm.modules.posix import POSIX, W__FILE
-    from spy.vm.modules.simd import W_Simd, W_SimdType
 
     if w_T is B.w_bool:
         vm.ll.mem.write_u8(addr, int(vm.unwrap_bool(w_val)))
