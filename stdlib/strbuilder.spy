@@ -154,14 +154,18 @@ class StrBuilder:
 
     @force_inline
     def append(self, s: str) -> None:
-        self.append_slice(s, 0, StrObject.from_str(s).length)
+        self._append_slice_unchecked(s, 0, StrObject.from_str(s).length)
 
     @force_inline
     def append_slice(self, s: str, start: i32, end: i32) -> None:
-        head = self.unsafe_sb.__ll__
         if start < 0 or start > end or end > StrObject.from_str(s).length:
             raise IndexError
+        self._append_slice_unchecked(s, start, end)
 
+    @force_inline
+    def _append_slice_unchecked(self, s: str, start: i32, end: i32) -> None:
+        # s[start:end] is assumed to be a valid slice
+        head = self.unsafe_sb.__ll__
         if end - start <= head.buf.length - head.pos:
             # fast path: we can copy into the current chunk
             self.unsafe_sb.append_slice(s, start, end)
