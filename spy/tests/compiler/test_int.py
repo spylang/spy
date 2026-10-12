@@ -1,7 +1,7 @@
 import pytest
 
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest, expect_errors, skip_backends
+from spy.tests.support import CompilerTest, expect_errors, only_C, skip_backends
 
 
 @pytest.fixture(params=["i32", "u32", "i8", "u8", "i64", "u64"])
@@ -283,6 +283,15 @@ class TestInt(CompilerTest):
         assert mod.b_or(127, 0) == 127 | 0
         assert mod.b_xor(16, 15) == 16 ^ 15
         assert mod.b_xor(16, 0) == 16 ^ 0
+
+    @only_C
+    def test_ambiguous_mix_no_warning(self):
+        # used to fail when SPY_WERROR=1 (as in the CI)
+        mod = self.compile("""
+        def foo(n: i32) -> i32:
+            return n + 127 << 23
+        """)
+        assert mod.foo(1) == (1 + 127) << 23
 
     def test_pow(self, int_type):
         mod = self.compile(f"""
