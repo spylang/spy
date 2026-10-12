@@ -29,9 +29,11 @@ ones to compare against.
 
 ## Machine
 
-Results below were measured on 2026-10-06, git `eb82f61c` plus the uncommitted
-changes of this work, on AC power, no CPU pinning, with the usual desktop
-applications running.
+Results below were measured on 2026-10-12, git `0bf57588` with
+`benchmarks/gc_realloc.patch` applied (so that the `realloc` column is a real
+realloc), on AC power, no CPU pinning, with the usual desktop applications
+running. All the builders run in the same process: see "GC and one process"
+below before trusting the `std` rows between 128 B and 4 KB.
 
 - Intel Core i7-8550U (Kaby Lake R laptop CPU): 4 cores / 8 threads, 1.8 GHz
   base, 4.0 GHz turbo, L2 1 MiB, L3 8 MiB; cpufreq governor `powersave`
@@ -42,27 +44,25 @@ applications running.
 
 ## Results
 
-Microseconds, median of 3 runs, lower is better. The 1 MB rows vary by up to
-1.6x between runs (e.g. `csv-1MB` chunked: 979 / 1077 / 1658), the others by
-less than 10%. Only large, repeatable differences should be trusted.
+Microseconds, median of 7 runs of the same executable, lower is better. The 1 MB
+rows vary a lot between runs (e.g. `csv-1MB` chunked: 1037 / 1093 / 1625; `std`:
+1559 / 1657 / 1833), the others by less than 10%. Only large, repeatable
+differences should be trusted.
 
-This table predates the `std` / `std-exact` / `std-unsafe` columns, which were
-added when the stdlib builders were written; run `bench.spy` to get them.
-
-| row | realloc | chunked | chunked-exact | list | fn | unsafe |
-|---|---|---|---|---|---|---|
-| 1 MB from 2 B appends | 2377 | 2476 | 1941 | 2124 | 2654 | 1721 |
-| 1 MB from 16 B appends | 347 | 280 | 172 | 283 | 302 | 188 |
-| 1 MB from 128 B appends | 168 | 120 | 67 | 193 | 169 | 111 |
-| 1 MB from 1 KB appends | 199 | 104 | 83 | 226 | 172 | 82 |
-| 1 MB from 4 KB appends | 214 | 48 | 52 | 120 | 113 | 119 |
-| json-1KB (321 appends) | 1.4 | 1.4 | 1.1 | 1.4 | 1.6 | 0.9 |
-| json-64KB (19921 appends) | 84 | 84 | 70 | 75 | 100 | 64 |
-| json-1MB (303761 appends) | 1420 | 1885 | 1189 | 1373 | 1808 | 1076 |
-| csv-1KB (228 appends) | 0.9 | 1.1 | 0.9 | 0.9 | 1.1 | 0.7 |
-| csv-64KB (13418 appends) | 62 | 60 | 50 | 56 | 71 | 46 |
-| csv-1MB (204358 appends) | 1559 | 1077 | 868 | 1559 | 1747 | 897 |
-| repr of a 100 items list | 11 | 11 | - | 11 | 11 | - |
+| row | realloc | chunked | chunked-exact | list | fn | unsafe | std | std-exact | std-unsafe |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 MB from 2 B appends | 2001 | 2450 | 2042 | 2416 | 2736 | 1820 | 2204 | 2228 | 1746 |
+| 1 MB from 16 B appends | 316 | 261 | 190 | 266 | 315 | 154 | 268 | 190 | 174 |
+| 1 MB from 128 B appends | 221 | 129 | 91 | 150 | 164 | 93 | 170 | 93 | 97 |
+| 1 MB from 1 KB appends | 220 | 181 | 72 | 163 | 177 | 85 | 197 | 86 | 69 |
+| 1 MB from 4 KB appends | 245 | 56 | 94 | 75 | 163 | 158 | 113 | 88 | 156 |
+| json-1KB (321 appends) | 1.4 | 1.6 | 1.1 | 1.6 | 1.9 | 1.4 | 1.6 | 1.4 | 1.1 |
+| json-64KB (19921 appends) | 74 | 87 | 69 | 88 | 97 | 76 | 81 | 77 | 66 |
+| json-1MB (303761 appends) | 1319 | 1507 | 1196 | 1502 | 2020 | 1299 | 1884 | 1370 | 1148 |
+| csv-1KB (228 appends) | 0.9 | 1.1 | 0.7 | 1.1 | 1.1 | 0.9 | 0.9 | 0.9 | 0.7 |
+| csv-64KB (13418 appends) | 56 | 64 | 50 | 66 | 71 | 54 | 62 | 56 | 46 |
+| csv-1MB (204358 appends) | 1093 | 1105 | 874 | 1602 | 1724 | 936 | 1657 | 992 | 790 |
+| repr of a 100 items list | 11 | 10 | - | 11 | 11 | - | 11 | - | - |
 
 The `repr` benchmarks of `list[int]` / `list[float]` (sections 3 and 4 of
 `bench.spy`) tie for all builders (within 3%): the time is spent formatting a
@@ -106,16 +106,59 @@ temporary `str` per item.
   capacity (16-1024) made no measurable difference. Adopting big appends as
   pieces must stay enabled for appends around 8 KB (2-3x slower without it);
   the threshold 4096 is fine. (The sweep script is not kept.)
-- **The stdlib builders match the best designs.** `std` and `std-exact` (the
-  growable `StrBuilder`) are within 5-10% of `chunked` and `chunked-exact`,
-  which are the same design; `std-unsafe` (`UnsafeFixedStrBuilder`) ties with
-  `unsafe`. Big appends are at parity because the stdlib version adopts them
-  too (before that the 4 KB row was 2x slower). The remaining small-append gap
-  is the bounds check, the "already built" check and the extra call.
+- **The stdlib builders match the best designs.** `std-unsafe`
+  (`UnsafeFixedStrBuilder`) ties with `unsafe` or beats it (0.8-1.1x). `std-exact`
+  is 0.9-1.3x of `chunked-exact` (about 1.1x on the JSON/CSV rows): the cost is the
+  bounds check and the extra work of the safe `append`. `std` is within 10% of
+  `chunked` on most rows, but the 128 B - 4 KB rows of the table look 1.3-2x slower:
+  that is a measurement artefact, see "GC and one process" below. Big appends are
+  adopted by the stdlib builder too (the 4 KB row was 2x slower without it).
 - **Benchmarking caveat:** the same code compiled with different constants
   varies by +-20% per row because of code layout. To compare variants,
   divide the time with the default capacity by the time with the exact
   capacity of the same executable, and interleave the runs.
+
+## GC and one process
+
+`bench.spy` runs all the builders one after the other, in the same process. With
+`gc_realloc.patch` applied every `StrObject` is allocated by Boehm GC, and a
+collection is triggered by the garbage of whoever ran before: its cost is charged
+to the builder which happens to run next. So the order of the columns biases the
+results, especially for rows which allocate and drop 1 MB at every run (the 128 B,
+1 KB and 4 KB rows). We saw it in three ways:
+
+- In the table above `std` is 1.3-2x slower than `chunked` on the 128 B - 4 KB
+  rows. A plausible reason is that `std` is the first of the stdlib columns, so it
+  runs right after `unsafe`; we did not prove it.
+- The same two builders in the same loop: with `chunked` first the `append` phase
+  at 1 KB took 41 us (`chunked`) and 46 us (`std`); with `std` first it took 120 us
+  (`std`) and 46 us (`chunked`). Only the order changed.
+- Counting instructions (`valgrind --tool=callgrind`, 128 B appends): `chunked`
+  72.5 M, `std` 70.6 M, and the same 48.5 M in `memcpy`. They do the same work.
+
+Without the patch nothing is freed, so there are no collections, but then every
+run touches fresh pages and page faults dominate: the 4 KB row of `chunked`
+takes about 446 us instead of about 43 us, and `realloc` can't be built.
+
+The fair comparison is one executable per builder, with the builders run
+alternately. Results for the 1 MB from equal appends rows, with the patch applied,
+3000 builds per run, 8 alternating runs, user time per build (us):
+
+| append size | chunked (min / mean) | std (min / mean) | std / chunked (min / mean) |
+|---|---|---|---|
+| 128 B | 130 / 151 | 127 / 149 | 0.97 / 0.99 |
+| 1 KB | 113 / 133 | 107 / 122 | 0.94 / 0.92 |
+| 4 KB | 40 / 48 | 47 / 50 | 1.17 / 1.03 |
+
+So `std` and `chunked` are the same speed (the 4 KB row is 3-17% slower, the only
+one which might be real). The script used for this is not kept: it is
+`bench.spy` reduced to one builder, selected by a constant at compile time.
+We did not repeat this for the other rows. The 1 KB and 64 KB JSON/CSV rows and the
+`repr` rows agree with `chunked` within noise; the 1 MB JSON/CSV rows (`std` 1.25x
+and 1.5x slower) are noisy and might be affected too, we don't know.
+
+To get reliable numbers from `bench.spy` itself, run one builder per process or
+force a collection (`GC_gcollect`) between the builders: neither is done yet.
 
 ## The `gc_realloc.patch` patch
 
