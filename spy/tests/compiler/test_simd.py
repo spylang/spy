@@ -22,49 +22,54 @@ class TestSIMD(CompilerTest):
         assert mod.s4(3) == 3
         assert mod.s8(7) == 7
 
-    def _check_invalid(self, params: str, msg: str, extra: str = "") -> None:
-        src = f"""
+    @only_interp
+    def test_invalid_params(self):
+        src = """
         from _simd import SIMD
-        {extra}
-        def bad() -> None:
-            v = SIMD[{params}]
-        """
-        self.compile_raises(src, "bad", expect_errors(msg))
 
-    def test_invalid_size_not_power_of_two(self):
-        self._check_invalid("f32, 3", "SIMD length must be a power of two, got 3")
-
-    def test_invalid_size_zero(self):
-        self._check_invalid(
-            "f32, 0", "SIMD length must be a positive power of two, got 0"
-        )
-
-    def test_invalid_size_negative(self):
-        self._check_invalid(
-            "f32, -2", "SIMD length must be a positive power of two, got -2"
-        )
-
-    def test_invalid_dtype_bool(self):
-        self._check_invalid(
-            "bool, 4", "SIMD element type must be a numeric primitive, got `bool`"
-        )
-
-    def test_invalid_dtype_str(self):
-        self._check_invalid(
-            "str, 4", "SIMD element type must be a numeric primitive, got `str`"
-        )
-
-    def test_invalid_dtype_struct(self):
-        extra = """
         @struct
         class Point:
             x: i32
             y: i32
+
+        def length_not_power_of_two() -> None:
+            v = SIMD[f32, 3]
+
+        def length_zero() -> None:
+            v = SIMD[f32, 0]
+
+        def length_negative() -> None:
+            v = SIMD[f32, -2]
+
+        def dtype_bool() -> None:
+            v = SIMD[bool, 4]
+
+        def dtype_str() -> None:
+            v = SIMD[str, 4]
+
+        def dtype_struct() -> None:
+            v = SIMD[Point, 4]
         """
-        self._check_invalid(
-            "Point, 4",
+
+        def check_error(funcname: str, msg: str) -> None:
+            self.compile_raises(src, funcname, expect_errors(msg))
+
+        check_error(
+            "length_not_power_of_two", "SIMD length must be a power of two, got 3"
+        )
+        check_error("length_zero", "SIMD length must be a positive power of two, got 0")
+        check_error(
+            "length_negative", "SIMD length must be a positive power of two, got -2"
+        )
+        check_error(
+            "dtype_bool", "SIMD element type must be a numeric primitive, got `bool`"
+        )
+        check_error(
+            "dtype_str", "SIMD element type must be a numeric primitive, got `str`"
+        )
+        check_error(
+            "dtype_struct",
             "SIMD element type must be a numeric primitive, got `test::Point`",
-            extra,
         )
 
     def test_constructors(self):
