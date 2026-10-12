@@ -1,0 +1,57 @@
+
+from _simd import SIMD
+
+
+@blue.generic
+def from_list(T, N, L):
+    """
+    Implementation of `v: SIMD[T, N] = [a, b, ...]`, where `L` is the type of
+    the list.
+    """
+
+    # exception messages must be blue, so we build it here and not in impl
+    # (so it cannot contain len(items))
+    msg = "SIMD: expected " + str(N) + " elements in the list"
+
+    def impl(items: L) -> SIMD[T, N]:
+        if len(items) != N:
+            raise ValueError(msg)
+        v = SIMD[T, N].zeros()
+        for i in range(N):
+            v = v._with_lane(i, items[i])
+        return v
+
+    return impl
+
+
+@blue.generic
+def from_tuple(T, N, TUP):
+    """
+    Implementation of `v: SIMD[T, N] = (a, b, ...)`, where `TUP` is the type of
+    the tuple.
+    """
+
+    # tuple indices must be blue, so `build` unrolls the loop at compile time
+    # by recursion (same technique as in _tuple.spy)
+    @blue
+    def build(idx):
+        if idx == N:
+
+            def done(v: SIMD[T, N], t: TUP) -> SIMD[T, N]:
+                return v
+
+            return done
+
+        rest = build(idx + 1)
+
+        def step(v: SIMD[T, N], t: TUP) -> SIMD[T, N]:
+            return rest(v._with_lane(idx, t[idx]), t)
+
+        return step
+
+    fill = build(0)
+
+    def impl(t: TUP) -> SIMD[T, N]:
+        return fill(SIMD[T, N].zeros(), t)
+
+    return impl

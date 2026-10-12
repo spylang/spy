@@ -38,6 +38,7 @@ from spy.vm.irtag import IRTag
 from spy.vm.member import W_Member
 from spy.vm.module import W_Module
 from spy.vm.modules.__spy__ import SPY
+from spy.vm.modules._simd import SIMD
 from spy.vm.modules._testing_helpers import _TESTING_HELPERS
 from spy.vm.modules.builtins import BUILTINS
 from spy.vm.modules.jsffi import JSFFI
@@ -173,6 +174,7 @@ class SPyVM:
         self.make_module(TYPES)
         self.make_module(MATH)
         self.make_module(UNSAFE)
+        self.make_module(SIMD)
         self.make_module(RAW_BUFFER)
         self.make_module(JSFFI)
         self.make_module(POSIX)
@@ -425,6 +427,7 @@ class SPyVM:
         kind: FuncKind = "plain",
         extra_types: dict = {},
         irtag: IRTag = IRTag.Empty,
+        w_functype: Optional[W_FuncType] = None,
     ) -> Callable:
         """
         Decorator to turn an interp-level function into a W_BuiltinFunc.
@@ -445,9 +448,9 @@ class SPyVM:
                 ...
             assert w_hello.fqn == FQN("mymodule::hello")
 
-        The w_functype of the wrapped function is automatically computed by
-        inspectng the signature of the interp-level function. The first
-        parameter MUST be 'vm'.
+        If w_functype is not explicitely given, the w_functype of the wrapped
+        function is automatically computed by inspectng the signature of the
+        interp-level function. The first parameter MUST be 'vm'.
 
         Note that the resulting object is a W_BuiltinFunc, which means that you
         cannot call it directly, but you need to use vm.call.
@@ -480,6 +483,7 @@ class SPyVM:
                 color=color,
                 kind=kind,
                 extra_types=extra_types,
+                w_functype=w_functype,
             )
 
             # check whether the fqn is already in use
