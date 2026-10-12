@@ -246,3 +246,42 @@ class TestStrBuilder(CompilerTest):
         # a single adopted str and nothing else: build() returns it without copying
         assert mod.adopt_only(4, A) == A
         assert mod.adopt_only(0, A) == A
+
+    def test_build_then_append(self):
+        src = """
+        from strbuilder import StrBuilder
+
+        def two(cap: int, a: str, b: str) -> tuple[str, str]:
+            sb = StrBuilder(cap)
+            sb.append(a)
+            s1 = sb.build()
+            sb.append(b)
+            s2 = sb.build()
+            return s1, s2
+        """
+        mod = self.compile(src)
+
+        # single chunk: build() shrinks it, and the next append grows it
+        s1, s2 = mod.two(8, "hello ", "world")
+        assert s1 == "hello "
+        assert s2 == "hello world"
+
+        # exact capacity, filled: the chunk is sealed and full, so the next append grows
+        s1, s2 = mod.two(6, "hello ", "world")
+        assert s1 == "hello "
+        assert s2 == "hello world"
+
+        # zero capacity: the first append fills the empty buffer exactly
+        s1, s2 = mod.two(0, "", "world")
+        assert s1 == ""
+        assert s2 == "world"
+
+        # multiple chunks, with an adopted one in the middle
+        A = "A" * 2000
+        s1, s2 = mod.two(4, A, "world")
+        assert s1 == A
+        assert s2 == A + "world"
+
+        s1, s2 = mod.two(4, "x", A)
+        assert s1 == "x"
+        assert s2 == "x" + A

@@ -159,9 +159,6 @@ class StrBuilder:
     @force_inline
     def append_slice(self, s: str, start: i32, end: i32) -> None:
         head = self.unsafe_sb.__ll__
-        if head.buf == gc_ptr[StrObject].NULL:
-            raise ValueError("StrBuilder is already built")
-
         if start < 0 or start > end or end > StrObject.from_str(s).length:
             raise IndexError
 
@@ -199,8 +196,6 @@ class StrBuilder:
 
     def append_repeat(self, s: str, n: i32) -> None:
         head = self.unsafe_sb.__ll__
-        if head.buf == gc_ptr[StrObject].NULL:
-            raise ValueError("StrBuilder is already built")
         if n < 0:
             raise ValueError("StrBuilder.append_repeat: n must not be negative")
 
@@ -251,25 +246,20 @@ class StrBuilder:
 
     def build(self) -> str:
         """
-        Return the string and seal the builder.
+        Return the current string and seal the chunks used so far.
+        This seals the head. Subsequent appends trigger a growth.
         """
         head = self.unsafe_sb.__ll__
-        if head.buf == gc_ptr[StrObject].NULL:
-            raise ValueError("StrBuilder is already built")
 
         if head.prev == gc_ptr[Chunk].NULL:
             # we have a single chunk, just seal&steal the StrObject.
             # If it is underfilled, build() shrinks it and leaks a bit of memory.
-            res = self.unsafe_sb.build()
-            head.buf = gc_ptr[StrObject].NULL
-            return res
+            return self.unsafe_sb.build()
 
         if head.pos == 0 and head.prev.prev == gc_ptr[Chunk].NULL:
             # the only chunk is an adopted str (see "Adoption" above) and nothing was
             # appended after it, so we return it as-is instead of copying it
-            adopted = head.prev
-            head.buf = gc_ptr[StrObject].NULL
-            return StrObject.to_sealed_str(adopted.buf)
+            return StrObject.to_sealed_str(head.prev.buf)
 
         # The pieces are stored newest-first in the chain and the current buffer is
         # the newest of all, so we fill the fresh result from the end backwards.
@@ -284,7 +274,6 @@ class StrBuilder:
             ptr_copy_slice(result.utf8, dst, dst + node.pos, node.buf.utf8, 0, node.pos)
             node = node.prev
 
-        head.buf = gc_ptr[StrObject].NULL
         return StrObject.to_sealed_str(result)
 
 
