@@ -79,8 +79,8 @@ class TestTuple(CompilerTest):
         def nested() -> tuple[i32, tuple[i32, i32]]:
             return 1, (2, 3)
 
-        def mixed_type() -> tuple[i32, f64, bool, str]:
-            return 1, 2.5, True, "hello"
+        def mixed_type() -> tuple[i32, f64, bool, str, complex128]:
+            return 1, 2.5, True, "hello", 2j
         """
         mod = self.compile(src)
         tup = mod.foo()
@@ -90,7 +90,7 @@ class TestTuple(CompilerTest):
         assert tup == (1, (2, 3))
 
         tup = mod.mixed_type()
-        assert tup == (1, 2.5, True, "hello")
+        assert tup == (1, 2.5, True, "hello", 2j)
 
     def test_unpacking_wrong_number(self):
         src = """
