@@ -148,11 +148,11 @@ Void._singleton = object.__new__(Void)
 # Even when C precedence disambiguates two operators, gcc and clang warn
 # when some families are mixed without parens, e.g. `n + 127 << 23`.
 _FAMILY = {
-    "*": "arith",
-    "/": "arith",
-    "%": "arith",
-    "+": "arith",
-    "-": "arith",
+    "*": "mul",
+    "/": "mul",
+    "%": "mul",
+    "+": "add",
+    "-": "add",
     "<<": "shift",
     ">>": "shift",
     "<": "rel",
@@ -171,10 +171,17 @@ _FAMILY = {
 
 # unordered pairs of families for which gcc/clang want explicit parens
 _AMBIGUOUS_FAMILY_PAIRS = {
-    frozenset({"arith", "shift"}),
+    frozenset({"add", "shift"}),
+    frozenset({"rel", "eq"}),
     frozenset({"bitand", "bitxor"}),
     frozenset({"bitxor", "bitor"}),
     frozenset({"bitand", "bitor"}),
+    frozenset({"bitand", "add"}),
+    frozenset({"bitxor", "add"}),
+    frozenset({"bitor", "add"}),
+    frozenset({"bitand", "rel"}),
+    frozenset({"bitxor", "rel"}),
+    frozenset({"bitor", "rel"}),
     frozenset({"bitand", "eq"}),
     frozenset({"bitxor", "eq"}),
     frozenset({"bitor", "eq"}),
