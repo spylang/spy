@@ -106,6 +106,13 @@ class TestCBackend:
         assert op("&", BinOp("^", a, b), c) == "(a ^ b) & c"
         assert op("||", BinOp("&&", a, b), c) == "(a && b) || c"
         assert op("||", a, BinOp("&&", b, c)) == "a || (b && c)"
+        assert op("&", a, BinOp("+", b, c)) == "a & (b + c)"
+        assert op("|", BinOp("-", a, b), c) == "(a - b) | c"
+        assert op("^", a, BinOp("+", b, c)) == "a ^ (b + c)"
+        assert op("&", a, BinOp("<", b, c)) == "a & (b < c)"
+        assert op("|", BinOp(">=", a, b), c) == "(a >= b) | c"
+        assert op("==", a, BinOp("<", b, c)) == "a == (b < c)"
+        assert op("!=", BinOp(">", a, b), c) == "(a > b) != c"
 
     def test_BinOp_no_useless_parens(self):
         # families which gcc/clang do not warn about keep the minimal form
@@ -113,6 +120,10 @@ class TestCBackend:
         assert str(BinOp("+", a, BinOp("*", b, c))) == "a + b * c"
         assert str(BinOp("<", BinOp("+", a, b), c)) == "a + b < c"
         assert str(BinOp("&&", BinOp("==", a, b), c)) == "a == b && c"
+        assert str(BinOp("<<", BinOp("*", a, b), c)) == "a * b << c"
+        assert str(BinOp("<<", a, BinOp("/", b, c))) == "a << b / c"
+        assert str(BinOp("|", BinOp("*", a, b), c)) == "a * b | c"
+        assert str(BinOp("<", BinOp("<<", a, b), c)) == "a << b < c"
 
     def test_UnaryOp(self):
         # fmt: off
