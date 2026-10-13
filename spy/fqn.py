@@ -148,6 +148,10 @@ class FQN:
             fqn.parts = get_parts(x)
             return fqn
 
+    def __getnewargs__(self) -> tuple[PARTS]:
+        # needed to unpickle FQNs from .spyc files
+        return (self.parts,)
+
     # uncomment this to understand who creates a specific FQN
     ## def __init__(self, *args) -> None:
     ##     if str(self) == 'test::Point#0':
