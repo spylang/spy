@@ -58,6 +58,7 @@ class W_Bytes(W_Object):
         "__repr__": FQN("_bytes::methods::__repr__"),
         "decode": FQN("_bytes::methods::decode"),
         "lower": FQN("_bytes::methods::lower"),
+        "upper": FQN("_bytes::methods::upper"),
     }
 
     vm: "SPyVM"
