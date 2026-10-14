@@ -39,7 +39,7 @@ def _is_simd_cast(w_srcT: W_Type, w_dstT: W_Type) -> bool:
     """
     Return True for the only casts which are allowed: T <-> SIMD[T, N].
     """
-    from spy.vm.modules.simd import W_SimdType
+    from spy.vm.modules._simd import W_SimdType
 
     src_simd = isinstance(w_srcT, W_SimdType)
     dst_simd = isinstance(w_dstT, W_SimdType)
@@ -71,11 +71,8 @@ def w_cast(vm: "SPyVM", w_DstItemT: W_Type) -> W_Dynamic:
     Only casts between T and SIMD[T, N] (in both directions) are allowed;
     any other cast is a compile-time TypeError.
 
-    It produces:
-        raw_ptr[DstItemT, align(N)] or gc_ptr[DstItemT, align(N)]
-    where N is the SOURCE ptr's alignment (preserved) and the memkind also
-    matches the source. The length is recomputed from the byte size, with
-    truncation. This operation has zero runtime overhead.
+    The source ptr's alignment and memkind are preserved. The length is
+    recomputed from the byte size, with truncation.
     """
     ns = UNSAFE.w_cast.compute_inner_ns([w_DstItemT])
 
