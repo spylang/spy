@@ -23,6 +23,8 @@ def sizeof(w_T: W_Type) -> int:
         return 4
     elif w_T in (B.w_i64, B.w_u64, B.w_f64):
         return 8
+    elif w_T is B.w_complex128:
+        return 16
     elif isinstance(w_T, W_StructType):
         return w_T.size
     elif isinstance(w_T, W_PtrType) or w_T is B.w_str:
@@ -115,6 +117,8 @@ def alignof(w_T: W_Type) -> int:
         return 4
     elif w_T in (B.w_i64, B.w_u64, B.w_f64):
         return 8
+    elif w_T is B.w_complex128:
+        return 16
     elif isinstance(w_T, (W_PtrType, W_RefType)) or w_T is B.w_str:
         # pointers are 4 bytes on wasm32; see the comment in sizeof()
         return 4

@@ -1,3 +1,4 @@
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from typing import Any
 
@@ -74,197 +75,190 @@ class WasmModuleWrapper:
         return self.ll.read_global(w_cell.fqn.c_name, deref=t)
 
 
-class WasmFuncWrapper:
+SCALAR_FROM_WASM: dict[W_Type, Callable[[Any], Any]] = {
+    B.w_i8: fixedint.Int8,
+    B.w_u8: fixedint.UInt8,
+    B.w_i32: fixedint.Int32,
+    B.w_u32: fixedint.UInt32,
+    B.w_i64: fixedint.Int64,
+    B.w_u64: fixedint.UInt64,
+    B.w_bool: bool,
+    B.w_f32: float,
+    B.w_f64: float,
+}
+
+
+class WasmConverter:
+    """
+    Convert values between Python and WASM.
+
+    On the WASM side, every value is represented as a *flat* sequence of
+    scalars ("slots"). Most types take one slot, but some take more:
+
+      - complex128: 2 slots (real, imag)
+      - ptr[T]:     2 slots (addr, length), because we assume that libspy was
+                    compiled with SPY_DEBUG
+      - structs:    the concatenation of the slots of their fields.
+    """
+
     vm: SPyVM
     ll: LLSPyInstance
-    c_name: str
-    w_functype: W_FuncType
 
-    def __init__(
-        self, vm: SPyVM, ll: LLSPyInstance, c_name: str, w_functype: W_FuncType
-    ) -> None:
+    def __init__(self, vm: SPyVM, ll: LLSPyInstance) -> None:
         self.vm = vm
         self.ll = ll
-        self.c_name = c_name
-        self.w_functype = w_functype
 
-    def py2wasm(self, pyval: Any, w_T: W_Type) -> Any:
-        if w_T in (B.w_i32, B.w_u32, B.w_i8, B.w_u8, B.w_f64, B.w_bool):
-            return pyval
+    def to_wasm(self, w_T: W_Type, pyval: Any) -> list[Any]:
+        """
+        Convert a Python value into the flat list of WASM slots.
+        """
+        if w_T is TYPES.w_NoneType:
+            return []  # None takes no slots
+        elif w_T in (B.w_i32, B.w_u32, B.w_i8, B.w_u8, B.w_f64, B.w_bool):
+            return [pyval]
         elif w_T in (B.w_i64, B.w_u64):
-            return int(pyval)
-        elif w_T is B.w_complex128:
-            return (pyval.real, pyval.imag)
+            return [int(pyval)]
         elif w_T is B.w_f32:
-            return float(pyval)
+            return [float(pyval)]
+        elif w_T is B.w_complex128:
+            return [pyval.real, pyval.imag]
         elif w_T is B.w_str:
             # XXX: with the GC, we need to think how to keep this alive
-            return ll_str_new(self.ll, pyval)
+            return [ll_str_new(self.ll, pyval)]
         elif w_T is B.w_bytes:
             # XXX: with the GC, we need to think how to keep this alive
-            return ll_bytes_new(self.ll, pyval)
+            return [ll_bytes_new(self.ll, pyval)]
         elif isinstance(w_T, W_PtrType):
             assert isinstance(pyval, WasmPtr)
-            return (pyval.addr, pyval.length)
+            return [pyval.addr, pyval.length]
         elif isinstance(w_T, W_StructType):
-            # the function accepts a struct by value; wasmtime allows to pass
-            # a flat sequence of fields. This is the opposite of what we do in
-            # to_py_result. It works only for flat structs with simple types.
             if isinstance(pyval, slice):
                 # convert slice into the equivalent UnwrappedStruct
                 pyval = self.vm.unwrap(self.vm.wrap(pyval))
             assert isinstance(pyval, UnwrappedStruct)
-            return tuple(pyval._content.values())
+            slots: list[Any] = []
+            for w_field in w_T.iterfields_w():
+                slots += self.to_wasm(w_field.w_T, pyval._content[w_field.name])
+            return slots
         else:
             assert False, f"Unsupported type: {w_T}"
 
-    def from_py_args(self, py_args: Any) -> Any:
-        a = len(py_args)
-        b = self.w_functype.arity
-        if a != b:
-            raise TypeError(f"{self.c_name}: expected {b} arguments, got {a}")
-        #
-        wasm_args: list[Any] = []
-        for py_arg, param in zip(py_args, self.w_functype.params):
-            if param.w_T == TYPES.w_NoneType:
-                continue  # don't emit arguments of only type None
-            wasm_arg = self.py2wasm(py_arg, param.w_T)
-            if type(wasm_arg) is tuple:
-                # special case for multivalue
-                wasm_args += wasm_arg
-            else:
-                wasm_args.append(wasm_arg)
-        return wasm_args
+    def result_from_wasm(self, w_T: W_Type, res: Any) -> Any:
+        """
+        Convert the value returned by wasmtime into a Python value.
 
-    def to_py_result(self, w_T: W_Type, res: Any) -> Any:
+        wasmtime returns None for no values, a bare scalar for a single value
+        and a list for multivalue: normalize everything into a list of slots.
+        """
+        if res is None:
+            slots = []
+        elif isinstance(res, (list, tuple)):
+            slots = list(res)
+        else:
+            slots = [res]
+        it = iter(slots)
+        pyres = self.from_wasm(w_T, it)
+        leftover = list(it)
+        if leftover:
+            raise ValueError(
+                f"Wrong number of values for {w_T.fqn}: "
+                f"expected {len(slots) - len(leftover)}, got {len(slots)}"
+            )
+        if isinstance(w_T, W_StructType):
+            return self.struct_to_pyobject(w_T, pyres)
+        return pyres
+
+    def from_wasm(self, w_T: W_Type, it: Iterator[Any]) -> Any:
+        """
+        Read a value of type w_T, consuming the needed slots from `it`.
+        """
         if w_T is TYPES.w_NoneType:
-            assert res is None
             return None
-        elif w_T in (B.w_f64, B.w_f32):
-            return res
-        # return fixedints for the integer types, to match what the interp
-        # backend does (vm.unwrap -> spy_unwrap). For u64 this also takes care
-        # of reinterpreting the signed i64 returned by WASM as unsigned.
-        elif w_T in (B.w_i8, B.w_u8, B.w_i32, B.w_u32, B.w_i64, B.w_u64):
-            return int_from_wasm(w_T, res)
+        elif w_T in SCALAR_FROM_WASM:
+            return SCALAR_FROM_WASM[w_T](self._next(w_T, it))
         elif w_T is B.w_complex128:
-            real, imag = res
+            real = self._next(w_T, it)
+            imag = self._next(w_T, it)
             return complex(real, imag)
-        elif w_T is B.w_bool:
-            return int_from_wasm(w_T, res)
         elif w_T is B.w_str:
-            _, _, utf8 = self.ll.read_str(res)
+            # str is a spy_StrObject*; read it from WASM memory
+            _, _, utf8 = self.ll.read_str(self._next(w_T, it))
             return utf8.decode("utf-8")
         elif w_T is B.w_bytes:
-            _, _, data = self.ll.read_bytes(res)
+            _, _, data = self.ll.read_bytes(self._next(w_T, it))
             return data
         elif w_T is RB.w_RawBuffer:
-            # res is a  spy_RawBuffer*
-            # On wasm32, it looks like this:
+            # a spy_RawBuffer*. On wasm32, it looks like this:
             # struct {
             #     size_t length;
             #     /* 4 bytes of alignment */
             #     char buf[];
             # };
-            addr = res
+            addr = self._next(w_T, it)
             length = self.ll.mem.read_i32(addr)
-            buf = self.ll.mem.read(addr + 8, length)
-            return buf
+            return self.ll.mem.read(addr + 8, length)
         elif isinstance(w_T, W_PtrType):
-            # this assumes that we compiled libspy with SPY_DEBUG:
-            #   - checked ptrs are represented as a struct { addr; length }
-            #   - res contains a a list [addr, length] (because of WASM
-            #     multivalue)
-            addr, length = res
+            addr = self._next(w_T, it)
+            length = self._next(w_T, it)
             return WasmPtr(addr, length)
         elif isinstance(w_T, W_StructType):
-            # when you return struct-by-val from C, wasmtime automatically
-            # converts them into a list, flattening nested structs. However,
-            # for a struct with a single flat field, wasmtime returns a bare
-            # scalar instead of a one-element list.
-            if not isinstance(res, list):
-                res = [res]
-            pyres = unflatten_struct(self.ll, w_T, res)
-
-            if self.vm.is_tuple_type(w_T):
-                return tuple(pyres._content.values())
-            elif w_T.fqn == FQN(
-                "_list::list[i32]::_ListImpl"
-            ):  # reading list[i32] for tests
-                return self._to_pylist_i32(pyres)
-            elif w_T.fqn == FQN(
-                "_list::list[str]::_ListImpl"
-            ):  # reading list[str] for tests
-                return self._to_pylist_str(pyres)
-            elif self.vm.is_list_type(w_T):
-                raise NotImplementedError(f"Reading {w_T.fqn} out of WASM memory")
-            elif w_T.fqn == FQN("_dict::dict[i32, i32]::_dict"):
-                # we support only reading dict[i32, i32] for test
-                return self._to_pydict_i32(pyres)
-            else:
-                return pyres
+            content = {
+                w_field.name: self.from_wasm(w_field.w_T, it)
+                for w_field in w_T.iterfields_w()
+            }
+            return UnwrappedStruct(w_T.fqn, content)
         else:
             assert False, f"Don't know how to read {w_T} from WASM"
 
-    def _to_pylist_i32(self, pyres: UnwrappedStruct) -> list[Any]:
-        assert "__ll__" in pyres._content
-        ll_ptr = pyres._content["__ll__"]
-        assert isinstance(ll_ptr, WasmPtr)
+    def _next(self, w_T: W_Type, it: Iterator[Any]) -> Any:
+        try:
+            return next(it)
+        except StopIteration:
+            raise ValueError(f"Not enough values to read {w_T.fqn} from WASM") from None
 
-        # Read ListData struct from memory
+    def struct_to_pyobject(self, w_T: W_StructType, pyres: UnwrappedStruct) -> Any:
+        if self.vm.is_tuple_type(w_T):
+            return tuple(pyres._content.values())
+        elif w_T.fqn == FQN("_list::list[i32]::_ListImpl"):
+            return self._to_pylist_i32(pyres)
+        elif w_T.fqn == FQN("_list::list[str]::_ListImpl"):
+            return self._to_pylist_str(pyres)
+        elif self.vm.is_list_type(w_T):
+            raise NotImplementedError(f"Reading {w_T.fqn} out of WASM memory")
+        elif w_T.fqn == FQN("_dict::dict[i32, i32]::_dict"):
+            # we support only reading dict[i32, i32] for test
+            return self._to_pydict_i32(pyres)
+        else:
+            return pyres
+
+    def _to_pylist_i32(self, pyres: UnwrappedStruct) -> list[Any]:
         # struct ListData {
         #     i32 length;
         #     i32 capacity;
         #     ptr[i32] items;  // represented as {addr, length} in debug mode
         # }
-        addr = ll_ptr.addr
+        addr = self._ll_addr(pyres)
         length = self.ll.mem.read_i32(addr)
-        capacity = self.ll.mem.read_i32(addr + 4)
-
-        # Read the items pointer (starts at addr + 8)
         items_addr = self.ll.mem.read_i32(addr + 8)
-        items_length = self.ll.mem.read_i32(addr + 12)
-
-        # Read the actual i32 items
-        result = []
-        for i in range(length):
-            item_addr = items_addr + i * 4
-            item = self.ll.mem.read_i32(item_addr)
-            result.append(item)
-
-        return result
+        return [self.ll.mem.read_i32(items_addr + i * 4) for i in range(length)]
 
     def _to_pylist_str(self, pyres: UnwrappedStruct) -> list[Any]:
-        assert "__ll__" in pyres._content
-        ll_ptr = pyres._content["__ll__"]
-        assert isinstance(ll_ptr, WasmPtr)
-
-        # Read ListData struct from memory
         # struct ListData {
         #     i32 length;
         #     i32 capacity;
         #     ptr[StrObject] items;  // represented as {addr, length} in debug mode
         # }
-
-        addr = ll_ptr.addr
-        list_length = self.ll.mem.read_i32(addr)
+        addr = self._ll_addr(pyres)
+        length = self.ll.mem.read_i32(addr)
         items_addr = self.ll.mem.read_i32(addr + 8)
-
         result = []
-        for i in range(list_length):
-            item_addr = items_addr + i * 4
-            str_data_addr = self.ll.mem.read_i32(item_addr)
-            _, _, b = self.ll.read_str(str_data_addr)
-            result.append(b.decode())
-
+        for i in range(length):
+            str_addr = self.ll.mem.read_i32(items_addr + i * 4)
+            _, _, utf8 = self.ll.read_str(str_addr)
+            result.append(utf8.decode())
         return result
 
     def _to_pydict_i32(self, pyres: UnwrappedStruct) -> dict[Any, Any]:
-        assert "__ll__" in pyres._content
-        ll_ptr = pyres._content["__ll__"]
-        assert isinstance(ll_ptr, WasmPtr)
-
-        # Read DictData struct from memory
         # struct DictData {
         #     ptr[i32] index;  // ptr is 8 bytes (4 for ptr + 4 for length)
         #     i32 log_size;
@@ -277,14 +271,11 @@ class WasmFuncWrapper:
         #     i32 key;
         #     i32 value;
         # };
-        addr = ll_ptr.addr
-        index = self.ll.mem.read_i32(addr)
-        log_size = self.ll.mem.read_i32(addr + 8)
+        addr = self._ll_addr(pyres)
         length = self.ll.mem.read_i32(addr + 12)
         entries = self.ll.mem.read_i32(addr + 16)
-
-        result = {}
         entry_size = 12  # for dict[i32, i32]
+        result = {}
         for i in range(1, length + 1):
             entry_addr = entries + i * entry_size
             empty = self.ll.mem.read_i32(entry_addr + 0)
@@ -292,91 +283,46 @@ class WasmFuncWrapper:
             value = self.ll.mem.read_i32(entry_addr + 8)
             if not empty:
                 result[key] = value
-
         return result
+
+    @staticmethod
+    def _ll_addr(pyres: UnwrappedStruct) -> int:
+        """
+        Address of the ListData/DictData pointed by the __ll__ field
+        """
+        ll_ptr = pyres._content["__ll__"]
+        assert isinstance(ll_ptr, WasmPtr)
+        return ll_ptr.addr
+
+
+class WasmFuncWrapper:
+    vm: SPyVM
+    ll: LLSPyInstance
+    c_name: str
+    w_functype: W_FuncType
+    conv: WasmConverter
+
+    def __init__(
+        self, vm: SPyVM, ll: LLSPyInstance, c_name: str, w_functype: W_FuncType
+    ) -> None:
+        self.vm = vm
+        self.ll = ll
+        self.c_name = c_name
+        self.w_functype = w_functype
+        self.conv = WasmConverter(vm, ll)
+
+    def from_py_args(self, py_args: Any) -> list[Any]:
+        a = len(py_args)
+        b = self.w_functype.arity
+        if a != b:
+            raise TypeError(f"{self.c_name} takes exactly {b} arguments, got {a}")
+        wasm_args: list[Any] = []
+        for py_arg, param in zip(py_args, self.w_functype.params):
+            wasm_args += self.conv.to_wasm(param.w_T, py_arg)
+        return wasm_args
 
     def __call__(self, *py_args: Any, unwrap: bool = True) -> Any:
         assert unwrap, "unwrap=False is not supported by the C backend"
         wasm_args = self.from_py_args(py_args)
         res = self.ll.call(self.c_name, *wasm_args)
-        w_T = self.w_functype.w_restype
-        return self.to_py_result(w_T, res)
-
-
-def int_from_wasm(w_T: W_Type, res: Any) -> Any:
-    """
-    Convert a raw scalar coming out of WASM into the matching Python value.
-    """
-    if w_T is B.w_i8:
-        return fixedint.Int8(res)
-    elif w_T is B.w_u8:
-        return fixedint.UInt8(res)
-    elif w_T is B.w_i32:
-        return fixedint.Int32(res)
-    elif w_T is B.w_u32:
-        return fixedint.UInt32(res)
-    elif w_T is B.w_i64:
-        return fixedint.Int64(res)
-    elif w_T is B.w_u64:
-        return fixedint.UInt64(res)
-    elif w_T is B.w_bool:
-        return bool(res)
-    return res
-
-
-def unflatten_struct(
-    ll: LLSPyInstance, w_T: W_StructType, flat_values: list[Any]
-) -> UnwrappedStruct:
-    """
-    Unflatten a struct from a flat list of values.
-
-    When returning struct-by-val from C, wasmtime flattens nested structs
-    into a single list. This function reconstructs the nested structure.
-    """
-
-    def unflatten(w_T: W_StructType, start_idx: int) -> tuple[UnwrappedStruct, int]:
-        content: dict[str, Any] = {}
-        idx = start_idx
-
-        for w_field in w_T.iterfields_w():
-            if isinstance(w_field.w_T, W_StructType):
-                nested_result, idx = unflatten(w_field.w_T, idx)
-                content[w_field.name] = nested_result
-            elif isinstance(w_field.w_T, W_PtrType):
-                # pointers are represented as {addr, length} in C/WASM
-                if idx + 1 >= len(flat_values):
-                    raise ValueError(
-                        f"Not enough values to unflatten {w_T.fqn}: "
-                        f"needed at least {idx + 2} for ptr field, got {len(flat_values)}"
-                    )
-                addr = flat_values[idx]
-                length = flat_values[idx + 1]
-                content[w_field.name] = WasmPtr(addr, length)
-                idx += 2
-            elif w_field.w_T is B.w_str:
-                # str fields are spy_StrObject* pointers; read from WASM memory
-                addr = flat_values[idx]
-                if ll is not None:
-                    _, _, utf8 = ll.read_str(addr)
-                    content[w_field.name] = utf8.decode("utf-8")
-                else:
-                    content[w_field.name] = addr
-                idx += 1
-            else:
-                if idx >= len(flat_values):
-                    raise ValueError(
-                        f"Not enough values to unflatten {w_T.fqn}: "
-                        f"needed at least {idx + 1}, got {len(flat_values)}"
-                    )
-                content[w_field.name] = int_from_wasm(w_field.w_T, flat_values[idx])
-                idx += 1
-
-        return UnwrappedStruct(w_T.fqn, content), idx
-
-    result, consumed = unflatten(w_T, 0)
-    if consumed != len(flat_values):
-        raise ValueError(
-            f"Wrong number of values for {w_T.fqn}: "
-            f"expected {consumed}, got {len(flat_values)}"
-        )
-    return result
+        return self.conv.result_from_wasm(self.w_functype.w_restype, res)
