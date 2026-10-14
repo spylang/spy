@@ -10,15 +10,6 @@ def memkind(request):
 
 
 class TestCastAlign(CompilerTest):
-    # =========================================================================
-    # cast[DstItemT](ptr)
-    #
-    # Only the casts which are useful for SIMD are allowed:
-    #     ptr[T]          -> ptr[SIMD[T, N]]
-    #     ptr[SIMD[T, N]] -> ptr[T]
-    # Everything else is a compile-time error.
-    # =========================================================================
-
     def test_cast_simd(self, memkind):
         k = memkind
         src = f"""
@@ -26,17 +17,16 @@ class TestCastAlign(CompilerTest):
         from _simd import SIMD
 
         def foo() -> tuple[f32, f32, i32, f32, i32]:
-            p: k_ptr[f32, align(16)] = k_alloc[f32, align(16)](10)
+            p = k_alloc[f32, align(16)](10)
             for i in range(10):
                 p[i] = f32(i)
 
-            # f32 -> SIMD[f32, 4]: 10 f32 = 40 bytes; a vector is 16 bytes
-            # -> new length = 40 // 16 = 2 (the last 2 f32 are unreachable)
+            # q.length = p.length // 4 = 2 (the last 2 f32 are unreachable)
             q: k_ptr[SIMD[f32, 4], align(16)] = cast[SIMD[f32, 4]](p)
             v = q[1]  # p[4:8]
             q[0] = SIMD[f32, 4].splat(9.0)
 
-            # SIMD[f32, 4] -> f32: 2 vectors = 32 bytes -> new length = 8
+            # r.length r = q.length * 4 = 8
             r: k_ptr[f32, align(16)] = cast[f32](q)
             return v[0], v[3], q._debug_get_length(), r[2], r._debug_get_length()
         """
@@ -46,11 +36,11 @@ class TestCastAlign(CompilerTest):
     def test_cast_simd_all_dtypes(self, memkind):
         k = memkind
         src = f"""
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, cast, align
+        from unsafe import {k}_alloc as k_alloc, cast, align
         from _simd import SIMD
 
         def func[T](x: T) -> tuple[T, i32]:
-            p: k_ptr[T, align(16)] = k_alloc[T, align(16)](4)
+            p = k_alloc[T, align(16)](4)
             q = cast[SIMD[T, 2]](p)
             q[1] = SIMD[T, 2].splat(x)
             return p[3], q._debug_get_length()
@@ -96,8 +86,8 @@ class TestCastAlign(CompilerTest):
         from _simd import SIMD
 
         def foo() -> tuple[i32, i32]:
-            p: k_ptr[f32, align(16)] = k_ptr[f32, align(16)].NULL
-            q: k_ptr[SIMD[f32, 4], align(16)] = cast[SIMD[f32, 4]](p)
+            p = k_ptr[f32, align(16)].NULL
+            q = cast[SIMD[f32, 4]](p)
             return ptr_to_addr(q), q._debug_get_length()
         """
         mod = self.compile(src)
@@ -121,10 +111,6 @@ class TestCastAlign(CompilerTest):
         assert mod.length() == 0
         with SPyError.raises("W_PanicError"):
             mod.foo()
-
-    # -------------------------------------------------------------------------
-    # forbidden casts
-    # -------------------------------------------------------------------------
 
     @pytest.mark.parametrize(
         "src_T, dst_T",
@@ -153,11 +139,11 @@ class TestCastAlign(CompilerTest):
     def test_cast_forbidden(self, memkind, src_T, dst_T):
         k = memkind
         src = f"""
-        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, cast, align
+        from unsafe import {k}_alloc as k_alloc, cast, align
         from _simd import SIMD
 
         def bad() -> None:
-            p: k_ptr[{src_T}, align(16)] = k_alloc[{src_T}, align(16)](8)
+            p = k_alloc[{src_T}, align(16)](8)
             q = cast[{dst_T}](p)
         """
         self.compile_raises(src, "bad", expect_errors("invalid cast"))
@@ -187,10 +173,6 @@ class TestCastAlign(CompilerTest):
             x = cast[f32](42)
         """
         self.compile_raises(src, "bad", expect_errors("mismatched types"))
-
-    # =========================================================================
-    # align_cast[N](ptr)
-    # =========================================================================
 
     def test_align_cast(self, memkind):
         k = memkind
