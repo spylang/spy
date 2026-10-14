@@ -315,7 +315,7 @@ class WasmFuncWrapper:
         a = len(py_args)
         b = self.w_functype.arity
         if a != b:
-            raise TypeError(f"{self.c_name}: expected {b} arguments, got {a}")
+            raise TypeError(f"{self.c_name} takes exactly {b} arguments, got {a}")
         wasm_args: list[Any] = []
         for py_arg, param in zip(py_args, self.w_functype.params):
             wasm_args += self.conv.to_wasm(param.w_T, py_arg)

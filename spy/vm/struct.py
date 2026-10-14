@@ -392,7 +392,7 @@ class UnwrappedStruct:
     Return value of vm.unwrap(w_some_struct). Mostly useful for tests.
 
     The logic to convert WASM values into UnwrappedStruct is in
-    spy.tests.wasm_wrapper.WasmFuncWrapper.to_py_result.
+    spy.tests.wasm_wrapper.WasmConverter.from_wasm.
 
     NOTE: the WASM version works only for flat structs with simple types. This
     is good enough for most tests.
