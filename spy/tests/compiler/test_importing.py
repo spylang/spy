@@ -7,7 +7,7 @@ class TestImporting(CompilerTest):
 
     def test_import(self):
         mod = self.compile("""
-        from math import cos as my_cos
+        from _math import cos as my_cos
 
         def foo(x: f64) -> f64:
             return my_cos(x)
