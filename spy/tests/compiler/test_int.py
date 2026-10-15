@@ -455,3 +455,14 @@ class TestInt(CompilerTest):
             ("integer literal out of range", "2147483648"),
         )
         self.compile_raises(src, "foo", errors)
+
+    def test_i64_mul_multi_object_build(self):
+        # A tuple return type pulls in more modules, so the C backend builds
+        # several .o files and links them in a separate step.
+        src = """
+        def mul(a: i64, b: i64) -> tuple[i64, i64]:
+            return a * b, a
+        """
+        mod = self.compile(src)
+        assert mod.mul(6, 7) == (42, 6)
+        assert mod.mul(-6, 7) == (-42, -6)
