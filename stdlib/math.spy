@@ -1,0 +1,17 @@
+from operator import OpSpec
+
+import _math
+
+pi = _math.pi
+tau = _math.tau
+e = _math.e
+
+
+@blue.metafunc
+def sqrt(m_x):
+    T = m_x.static_type
+    if T == f64:
+        return OpSpec(_math.sqrt)
+
+    # this should signal that this case is not supported
+    return OpSpec.NULL

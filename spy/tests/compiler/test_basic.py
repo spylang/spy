@@ -1349,10 +1349,10 @@ class TestBasic(CompilerTest):
 
     def test_call_module_attr(self):
         mod = self.compile("""
-        import math
+        import _math
 
         def foo(x: f64) -> f64:
-            return math.fabs(x)
+            return _math.fabs(x)
         """)
         assert mod.foo(-3.5) == 3.5
 
