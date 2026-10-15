@@ -340,3 +340,94 @@ class TestSIMD(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.entry() == (1.0, 2.0, 3.0, 4.0)
+
+    def test_iota(self):
+        src = """
+        from _simd import SIMD
+
+        VEC = SIMD[i32, 4]
+
+        def lanes(v: VEC) -> tuple[i32, i32, i32, i32]:
+            return v[0], v[1], v[2], v[3]
+
+        def iota() -> tuple[i32, i32, i32, i32]:
+            return lanes(VEC.iota())
+
+        def iota_start(start: i32) -> tuple[i32, i32, i32, i32]:
+            return lanes(VEC.iota(start))
+
+        def iota_start_step(start: i32, step: i32) -> tuple[i32, i32, i32, i32]:
+            return lanes(VEC.iota(start, step))
+
+        def iota_literals() -> tuple[i32, i32, i32, i32]:
+            return lanes(VEC.iota(10, 2))
+
+        def last[N]() -> i32:
+            return SIMD[i32, N].iota()[N - 1]
+
+        def last_start_step[N](start: i32, step: i32) -> i32:
+            return SIMD[i32, N].iota(start, step)[N - 1]
+
+        l1 = last[1]
+        l2 = last[2]
+        l8 = last[8]
+        l16 = last[16]
+        s1 = last_start_step[1]
+        s8 = last_start_step[8]
+
+        def default[T]() -> tuple[T, T, T, T]:
+            v = SIMD[T, 4].iota()
+            return v[0], v[1], v[2], v[3]
+
+        def start_step[T](start: T, step: T) -> tuple[T, T, T, T]:
+            v = SIMD[T, 4].iota(start, step)
+            return v[0], v[1], v[2], v[3]
+
+        d_i8 = default[i8]
+        d_u8 = default[u8]
+        d_i32 = default[i32]
+        d_u32 = default[u32]
+        d_i64 = default[i64]
+        d_u64 = default[u64]
+        d_f32 = default[f32]
+        d_f64 = default[f64]
+
+        t_i8 = start_step[i8]
+        t_u8 = start_step[u8]
+        t_i32 = start_step[i32]
+        t_u32 = start_step[u32]
+        t_i64 = start_step[i64]
+        t_u64 = start_step[u64]
+        t_f32 = start_step[f32]
+        t_f64 = start_step[f64]
+        """
+        mod = self.compile(src)
+
+        # i32, default and explicit start/step
+        assert mod.iota() == (0, 1, 2, 3)
+        assert mod.iota_start(10) == (10, 11, 12, 13)
+        assert mod.iota_start(-2) == (-2, -1, 0, 1)
+        assert mod.iota_start_step(10, 2) == (10, 12, 14, 16)
+        assert mod.iota_start_step(0, -1) == (0, -1, -2, -3)
+        assert mod.iota_start_step(5, 0) == (5, 5, 5, 5)
+        assert mod.iota_literals() == (10, 12, 14, 16)
+
+        # sizes
+        assert mod.l1() == 0
+        assert mod.l2() == 1
+        assert mod.l8() == 7
+        assert mod.l16() == 15
+        assert mod.s1(100, 3) == 100
+        assert mod.s8(100, 3) == 121
+
+        # all dtypes
+        for name in ("i8", "u8", "i32", "u32", "i64", "u64"):
+            assert getattr(mod, f"d_{name}")() == (0, 1, 2, 3)
+            assert getattr(mod, f"t_{name}")(10, 3) == (10, 13, 16, 19)
+        assert mod.d_f32() == (0.0, 1.0, 2.0, 3.0)
+        assert mod.d_f64() == (0.0, 1.0, 2.0, 3.0)
+        assert mod.t_f32(0.5, 0.25) == (0.5, 0.75, 1.0, 1.25)
+        assert mod.t_f64(0.5, -0.25) == (0.5, 0.25, 0.0, -0.25)
+        # negative step (signed dtypes only)
+        assert mod.t_i8(-100, -5) == (-100, -105, -110, -115)
+        assert mod.t_i64(0, -1) == (0, -1, -2, -3)
