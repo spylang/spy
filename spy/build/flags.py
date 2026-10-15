@@ -62,6 +62,8 @@ _TARGET_CFLAGS: dict[str, list[str]] = {
 _TARGET_LDFLAGS: dict[str, list[str]] = {
     "wasi": [
         "--target=wasm32-wasi-musl",
+        # The link step must use the same ABI as the compile step.
+        *_WASM_CFLAGS,
     ],
     "emscripten": [],
     "native": [],
