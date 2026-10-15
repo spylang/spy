@@ -2,6 +2,7 @@
 This module implements the low-level internal `_simd` VM module, exposing `SIMD`.
 """
 
+from ctypes import c_float as float32
 from typing import TYPE_CHECKING, Annotated, Any, Literal
 
 from spy.errors import SPyError
@@ -160,6 +161,56 @@ class W_Simd(W_Object):
             return W_Simd(w_simdtype, [w_x] * w_simdtype.length)
 
         return W_OpSpec(w_splat, [wam_x])
+
+    @builtin_classmethod("iota", color="blue", kind="metafunc")
+    @staticmethod
+    def w_IOTA(vm: "SPyVM", wam_self: W_MetaArg, *args_wam: W_MetaArg) -> W_OpSpec:
+        # SIMD[T, N].iota(start=0, step=1) -> (start, start + step, ...)
+        w_simdtype = wam_self.w_blueval
+        assert isinstance(w_simdtype, W_SimdType)
+        w_dtype = w_simdtype.w_dtype
+        N = w_simdtype.length
+        SIMD_T = Annotated[W_Simd, w_simdtype]
+        T = Annotated[W_Object, w_dtype]
+
+        if len(args_wam) > 2:
+            t = w_simdtype.fqn.human_name(vm)
+            err = SPyError(
+                "W_TypeError",
+                f"`{t}.iota` expects at most 2 arguments (start, step), "
+                f"got {len(args_wam)}",
+            )
+            err.add("error", f"this is `{t}`", wam_self.loc)
+            raise err
+
+        defaults: list[int | float] = [0, 1]
+        if w_dtype in (B.w_f32, B.w_f64):
+            defaults = [0.0, 1.0]
+        args_wam_full = list(args_wam)
+        for default in defaults[len(args_wam) :]:
+            w_default = w_dtype.pyclass(default)  # type: ignore
+            args_wam_full.append(W_MetaArg.from_w_obj(vm, w_default, loc=wam_self.loc))
+
+        @vm.register_builtin_func(w_simdtype.fqn, "iota", irtag=IRTag("simd.iota"))
+        def w_iota(vm: "SPyVM", w_start: T, w_step: T) -> SIMD_T:
+            start = w_start.value  # type: ignore
+            step = w_step.value  # type: ignore
+            if w_dtype is B.w_f32:
+                # like C
+                items = [
+                    float32(start.value + float32(step.value * i).value)
+                    for i in range(N)
+                ]
+            elif w_dtype is B.w_f64:
+                items = [start + step * i for i in range(N)]
+            else:
+                # fixed-width ints: wraps around
+                cls = type(start)
+                items = [start + step * cls(i) for i in range(N)]
+            lanes_w = [w_dtype.pyclass(x) for x in items]  # type: ignore
+            return W_Simd(w_simdtype, lanes_w)
+
+        return W_OpSpec(w_iota, args_wam_full)
 
     # ===== conversion from a list or a tuple =====
 
