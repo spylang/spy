@@ -596,7 +596,7 @@ class CFuncWriter:
         elif irtag.tag == "struct.getfield":
             return self.fmt_struct_getfield(fqn, call, irtag)
 
-        elif irtag.tag in ("simd.make", "simd.splat", "simd.zeros"):
+        elif irtag.tag in ("simd.make", "simd.splat", "simd.zeros", "simd.iota"):
             return self.fmt_simd_make(fqn, call, irtag)
 
         elif irtag.tag == "simd.with_lane":
@@ -704,6 +704,15 @@ class CFuncWriter:
         else:
             return C.Call(f"{c_targettype}_from_raw", [c_p, c_length])
 
+    SIMD_IOTA_UTYPE = {
+        B.w_i8: "uint8_t",
+        B.w_u8: "uint8_t",
+        B.w_i32: "uint32_t",
+        B.w_u32: "uint32_t",
+        B.w_i64: "uint64_t",
+        B.w_u64: "uint64_t",
+    }
+
     def fmt_simd_make(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         w_func = self.ctx.vm.lookup_global(fqn)
         assert isinstance(w_func, W_Func)
@@ -721,6 +730,21 @@ class CFuncWriter:
             assert len(c_args) == 1
             s_arg = str(c_args[0])
             strargs = ", ".join([s_arg] * w_simdtype.length)
+        elif irtag.tag == "simd.iota":
+            # SIMD[T, N].iota(start, step) -> (V){start + 0 * step, start + 1 * step, ...}
+            assert len(c_args) == 2
+            s_start, s_step = str(c_args[0]), str(c_args[1])
+            c_dtype = self.ctx.w2c(w_simdtype.w_dtype)
+            if w_simdtype.w_dtype in (B.w_f32, B.w_f64):
+                strargs = ", ".join(
+                    f"({s_start}) + ({s_step}) * {i}" for i in range(w_simdtype.length)
+                )
+            else:
+                c_utype = self.SIMD_IOTA_UTYPE[w_simdtype.w_dtype]
+                strargs = ", ".join(
+                    f"({c_dtype})(({c_utype})({s_start}) + ({c_utype})({s_step}) * {i})"
+                    for i in range(w_simdtype.length)
+                )
         elif irtag.tag == "simd.make":
             # SIMD[T, N](v0, ..., v_{N-1}) -> (V){v0, ..., v_{N-1}}
             strargs = ", ".join(map(str, c_args))
