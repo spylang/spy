@@ -375,6 +375,15 @@ class TestSIMD(CompilerTest):
         s1 = last_start_step[1]
         s8 = last_start_step[8]
 
+        def max_u8() -> u8:
+            return SIMD[u8, 256].iota()[255]
+
+        def min_i8() -> i8:
+            return SIMD[i8, 256].iota(-128)[0]
+
+        def max_i8() -> i8:
+            return SIMD[i8, 256].iota(-128)[255]
+
         def default[T]() -> tuple[T, T, T, T]:
             v = SIMD[T, 4].iota()
             return v[0], v[1], v[2], v[3]
@@ -431,3 +440,67 @@ class TestSIMD(CompilerTest):
         # negative step (signed dtypes only)
         assert mod.t_i8(-100, -5) == (-100, -105, -110, -115)
         assert mod.t_i64(0, -1) == (0, -1, -2, -3)
+
+        # red arguments: lanes wrap around
+        assert mod.t_i8(120, 5) == (120, 125, -126, -121)
+        assert mod.t_u8(250, 3) == (250, 253, 0, 3)
+
+    @only_interp
+    def test_iota_overflow(self):
+        # when start and step are blue, we know all the lanes at compile time
+        src = """
+        from _simd import SIMD
+
+        def default_u8() -> None:
+            v = SIMD[u8, 1024].iota()
+
+        def default_i8() -> None:
+            v = SIMD[i8, 256].iota()
+
+        def start_u8() -> None:
+            v = SIMD[u8, 4].iota(254)
+
+        def start_i8() -> None:
+            v = SIMD[i8, 256].iota(-129)
+
+        def negative_step_u8() -> None:
+            v = SIMD[u8, 4].iota(2, -1)
+
+        def big_step_i32() -> None:
+            v = SIMD[i32, 4].iota(0, 1_000_000_000)
+        """
+
+        def check_error(funcname: str, msg: str, t: str) -> None:
+            errors = expect_errors(msg, (f"this is `{t}`", t))
+            self.compile_raises(src, funcname, errors)
+
+        check_error(
+            "default_u8",
+            "`SIMD[u8, 1024].iota` overflows `u8`: lane 256 would be 256",
+            "SIMD[u8, 1024]",
+        )
+        check_error(
+            "default_i8",
+            "`SIMD[i8, 256].iota` overflows `i8`: lane 128 would be 128",
+            "SIMD[i8, 256]",
+        )
+        check_error(
+            "start_u8",
+            "`SIMD[u8, 4].iota` overflows `u8`: lane 2 would be 256",
+            "SIMD[u8, 4]",
+        )
+        check_error(
+            "start_i8",
+            "`SIMD[i8, 256].iota` overflows `i8`: lane 0 would be -129",
+            "SIMD[i8, 256]",
+        )
+        check_error(
+            "negative_step_u8",
+            "`SIMD[u8, 4].iota` overflows `u8`: lane 3 would be -1",
+            "SIMD[u8, 4]",
+        )
+        check_error(
+            "big_step_i32",
+            "`SIMD[i32, 4].iota` overflows `i32`: lane 3 would be 3000000000",
+            "SIMD[i32, 4]",
+        )
