@@ -92,8 +92,7 @@ class TestMath(CompilerTest):
             print(sqrt(4))
         """
         errors = expect_errors(
-            "`sqrt` does not support arguments of type `i32`",
-            ("this is `i32`", "4"),
-            ("metafunc defined here", "def sqrt(m_x):"),
+            "math.sqrt() does not support arguments of type i32",
+            ("operator::CALL called here", "sqrt(4)"),
         )
         self.compile_raises(src, "foo", errors)
