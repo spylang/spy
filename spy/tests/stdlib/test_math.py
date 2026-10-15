@@ -1,6 +1,6 @@
 import math
 
-from spy.tests.support import CompilerTest
+from spy.tests.support import CompilerTest, expect_errors, only_interp
 
 
 class TestMath(CompilerTest):
@@ -26,3 +26,18 @@ class TestMath(CompilerTest):
         mod = self.compile(src)
         assert mod.constants() == (math.pi, math.tau, math.e)
         assert mod.f_sqrt(4.0) == 2.0
+
+    @only_interp
+    def test_sqrt_unsupported_type(self):
+        src = """
+        from math import sqrt
+
+        def foo() -> None:
+            print(sqrt(4))
+        """
+        errors = expect_errors(
+            "`sqrt` does not support arguments of type `i32`",
+            ("this is `i32`", "4"),
+            ("metafunc defined here", "def sqrt(m_x):"),
+        )
+        self.compile_raises(src, "foo", errors)
