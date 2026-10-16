@@ -24,6 +24,10 @@ class BuildConfig:
     warning_as_error: bool = False
     gc: GCOption = "none"
     static: bool = False
+    # Value passed as `-march=<march>` to the C compiler.
+    # None means "don't pass -march at all".
+    # Only meaningful for --target native[-static].
+    march: Optional[str] = None
 
     def __post_init__(self) -> None:
         if self.kind == "testlib" and self.target not in ("wasi", "emscripten"):
@@ -60,15 +64,31 @@ class CompilerConfig:
         else:
             flags_target = config.target
 
+        if config.march is not None:
+            # Only asserted here as a last-resort check in case BuildConfig
+            # is constructed directly (e.g. from tests) rather than via the
+            # CLI, which already validates --march against --target.
+            assert config.target == "native", (
+                f"--march is only supported for --target native "
+                f"(including --static), got target={config.target!r}"
+            )
+
         self.CC = get_cc(flags_target)
         self.cflags += get_cflags(
-            flags_target, config.build_type, config.kind, config.warning_as_error
+            flags_target,
+            config.build_type,
+            config.kind,
+            config.warning_as_error,
+            config.march,
         )
         self.cflags += EXTRA_CFLAGS
 
         self.ldflags += get_ldflags(flags_target, config.build_type)
 
-        libdir = get_libdir(flags_target, config.build_type, config.kind)
+        libdir = get_libdir(flags_target, config.build_type, config.kind, config.march)
+        self._ensure_libspy_built(
+            flags_target, config.build_type, config.kind, config.march
+        )
         if config.target == "wasi" and config.kind == "testlib":
             # WASM testlibs are used by tests: in this case we want to make sure to
             # include the whole libspy.a, so that helper functions such as spy_str_alloc
@@ -187,6 +207,35 @@ class CompilerConfig:
 
         # 4. fallback, let's hope libgc is installed system-wide
         self.ldflags += ["-lgc"]
+
+    @staticmethod
+    def _ensure_libspy_built(
+        target: str, build_type: BuildType, kind: OutputKind, march: Optional[str]
+    ) -> None:
+        if march is None:
+            return
+        libdir = py.path.local(get_libdir(target, build_type, kind, march))
+        libspy_a = libdir.join("libspy.a")
+        if libspy_a.check(file=True):
+            return
+        libspy_dir = str(spy.libspy.BUILD.dirpath())
+        subprocess.run(
+            [
+                "make",
+                "-C",
+                libspy_dir,
+                f"TARGET={target}",
+                f"BUILD_TYPE={build_type}",
+                f"OUTPUT_KIND={kind}",
+                f"MARCH={march}",
+            ],  # fmt: skip
+            check=True,
+        )
+        if not libspy_a.check(file=True):
+            raise WIP(
+                f"expected {libspy_a} to exist after building libspy with "
+                f"MARCH={march}, but it doesn't. Check the `make` output above."
+            )
 
     @staticmethod
     def _build_bdwgc_static() -> None:

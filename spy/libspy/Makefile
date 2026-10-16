@@ -24,6 +24,9 @@ RYU_CFLAGS := -I $(CURDIR)/vendored/ryu -DRYU_FLOAT_FULL_TABLE -DRYU_ONLY_64_BIT
 # Add BUILD_TYPE with a default value
 BUILD_TYPE ?= release
 OUTPUT_KIND ?= exe
+# Optional: value for -march=<MARCH> (e.g. "native"). When set, objects are
+# compiled with -march=$(MARCH) and cached under a dedicated BUILD_DIR.
+MARCH ?=
 
 ifeq ($(filter $(BUILD_TYPE),debug release),)
   $(error Invalid BUILD_TYPE: '$(BUILD_TYPE)'. Valid: debug, release)
@@ -38,12 +41,18 @@ ifeq ($(OUTPUT_KIND), testlib)
 else
   BUILD_DIR := build/$(TARGET)/$(BUILD_TYPE)
 endif
+ifneq ($(MARCH),)
+  BUILD_DIR := $(BUILD_DIR)-march-$(MARCH)
+  MARCH_ARG := --march=$(MARCH)
+else
+  MARCH_ARG :=
+endif
 
 # don't bother invoking spy.build.flags if we don't have a TARGET
 ifneq ($(TARGET),)
 	CC             := $(shell python -m spy.build.flags --cc     --target=$(TARGET))
 	AR             := $(shell python -m spy.build.flags --ar     --target=$(TARGET))
-	CFLAGS         := $(shell python -m spy.build.flags --cflags --target=$(TARGET) --build-type=$(BUILD_TYPE) --output-kind=$(OUTPUT_KIND)) $(RYU_CFLAGS)
+	CFLAGS         := $(shell python -m spy.build.flags --cflags --target=$(TARGET) --build-type=$(BUILD_TYPE) --output-kind=$(OUTPUT_KIND) $(MARCH_ARG)) $(RYU_CFLAGS)
 endif
 
 # ------- no target specified -------
