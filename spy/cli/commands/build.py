@@ -155,6 +155,7 @@ async def build(args: Build_Args) -> None:
         warning_as_error=args.warning_as_error,
         gc=gc,
         static=args.static,
+        simd_width=args.simd_width,
     )
 
     cwd = py.path.local(".")
