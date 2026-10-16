@@ -50,6 +50,14 @@ class Base_Args:
         Option("--no-spy-toml", help="Ignore spy.toml project manifest"),
     ] = False
 
+    simd_width: Annotated[
+        Optional[int],
+        Option(
+            "--simd-width",
+            help="SIMD vector width in bytes (default: 16; native: 16/32/64)",
+        ),
+    ] = None
+
 
 def filename_callback(value: Path) -> Path:
     # filename is required for almost all commands; it must be a file
