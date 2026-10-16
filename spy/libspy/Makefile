@@ -27,6 +27,9 @@ OUTPUT_KIND ?= exe
 # Optional: value for -march=<MARCH> (e.g. "native"). When set, objects are
 # compiled with -march=$(MARCH) and cached under a dedicated BUILD_DIR.
 MARCH ?=
+# MARCH comes from the user and ends up in a shell command and in a directory
+# name, so we validate it before using it (see spy.build.flags.validate_march).
+MARCH_RAW := $(value MARCH)
 
 ifeq ($(filter $(BUILD_TYPE),debug release),)
   $(error Invalid BUILD_TYPE: '$(BUILD_TYPE)'. Valid: debug, release)
@@ -41,9 +44,15 @@ ifeq ($(OUTPUT_KIND), testlib)
 else
   BUILD_DIR := build/$(TARGET)/$(BUILD_TYPE)
 endif
-ifneq ($(MARCH),)
-  BUILD_DIR := $(BUILD_DIR)-march-$(MARCH)
-  MARCH_ARG := --march=$(MARCH)
+ifneq ($(MARCH_RAW),)
+  # single-quote it for the shell: ' -> '\''
+  MARCH_Q := $(subst ','\'',$(MARCH_RAW))
+  # `--march=...` alone validates (exit status != 0 and a message on stderr)
+  ifneq ($(shell python -m spy.build.flags --march='$(MARCH_Q)' && echo ok),ok)
+    $(error Invalid MARCH: '$(MARCH_RAW)')
+  endif
+  BUILD_DIR := $(BUILD_DIR)-march-$(MARCH_RAW)
+  MARCH_ARG := --march='$(MARCH_Q)'
 else
   MARCH_ARG :=
 endif

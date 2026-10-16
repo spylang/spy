@@ -15,6 +15,7 @@ from spy.analyze.importing import ImportAnalyzer
 from spy.backend.c.cbackend import CBackend
 from spy.build.build_info import BuildTarget
 from spy.build.config import BuildConfig, GCOption, OutputKind
+from spy.build.flags import check_march
 from spy.cli._runners import init_vm, nullcontext, timer
 from spy.cli.commands.shared_args import (
     Base_Args,
@@ -161,6 +162,14 @@ async def build(args: Build_Args) -> None:
         raise click.UsageError(
             f"--march can only be used with --target native, got --target={args.target}"
         )
+
+    if args.march is not None:
+        # fail early (before generating any C and building libspy) and with a
+        # clear message: gcc/clang and zig (--static) don't accept the same names
+        try:
+            check_march("native-static" if args.static else "native", args.march)
+        except ValueError as e:
+            raise click.UsageError(str(e))
 
     config = BuildConfig(
         target=args.target,

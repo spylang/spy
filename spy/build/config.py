@@ -216,8 +216,7 @@ class CompilerConfig:
             return
         libdir = py.path.local(get_libdir(target, build_type, kind, march))
         libspy_a = libdir.join("libspy.a")
-        if libspy_a.check(file=True):
-            return
+        # for now, always use make to check libspy build is up-to-date
         libspy_dir = str(spy.libspy.BUILD.dirpath())
         subprocess.run(
             [
