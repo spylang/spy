@@ -165,8 +165,8 @@ def get_ldflags(target: str, build_type: BuildType) -> list[str]:
 # A -march value ends up on a shell command line (libspy/Makefile) and in the name
 # of a directory (see get_build_dirname). Rather than trying to quote/sanitize it,
 # we accept only what real values look like: 'native', 'x86-64-v3', 'x86_64_v3',
-# 'armv8.2-a+crc', 'znver4', ... libspy/Makefile relies on this check too: it
-# runs `python -m spy.build.flags --march=...` to validate MARCH.
+# 'armv8.2-a+crc', 'znver4', ... This is checked on the Python side, before
+# calling make (get_libdir does it): libspy/Makefile doesn't validate MARCH.
 _MARCH_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]*")
 
 
@@ -337,8 +337,7 @@ def main(argv: Optional[list[str]] = None) -> None:
     args = parser.parse_args(argv)
 
     if args.march is not None:
-        # this is also how libspy/Makefile checks MARCH: `--march=...` alone
-        # validates and prints nothing
+        # fail early, with a clean argparse error
         try:
             validate_march(args.march)
         except ValueError as e:
