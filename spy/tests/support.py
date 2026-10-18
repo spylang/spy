@@ -87,6 +87,10 @@ def only_interp(func):
     return parametrize_compiler_backend(["interp"], func)
 
 
+def only_doppler(func):
+    return parametrize_compiler_backend(["doppler"], func)
+
+
 def only_C(func):
     return parametrize_compiler_backend(["C"], func)
 
