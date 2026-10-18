@@ -85,9 +85,10 @@ class CompilerConfig:
 
         self.ldflags += get_ldflags(flags_target, config.build_type)
 
-        libdir = get_libdir(flags_target, config.build_type, config.kind, config.march)
-        self._ensure_libspy_built(
-            flags_target, config.build_type, config.kind, config.march
+        libdir = str(
+            self._ensure_libspy_built(
+                flags_target, config.build_type, config.kind, config.march
+            )
         )
         if config.target == "wasi" and config.kind == "testlib":
             # WASM testlibs are used by tests: in this case we want to make sure to
@@ -211,30 +212,20 @@ class CompilerConfig:
     @staticmethod
     def _ensure_libspy_built(
         target: str, build_type: BuildType, kind: OutputKind, march: Optional[str]
-    ) -> None:
+    ) -> py.path.local:
+        """
+        Return the directory containing the libspy.a to link against.
+
+        Without --march it is the one built by `make -C spy/libspy`. With
+        --march, libspy has to be compiled for the same ISA as the module
+        (libspy is built with -flto): it is built on demand and cached, under
+        a name which includes a hash of everything which influences the build.
+        """
         if march is None:
-            return
-        libdir = py.path.local(get_libdir(target, build_type, kind, march))
-        libspy_a = libdir.join("libspy.a")
-        # for now, always use make to check libspy build is up-to-date
-        libspy_dir = str(spy.libspy.BUILD.dirpath())
-        subprocess.run(
-            [
-                "make",
-                "-C",
-                libspy_dir,
-                f"TARGET={target}",
-                f"BUILD_TYPE={build_type}",
-                f"OUTPUT_KIND={kind}",
-                f"MARCH={march}",
-            ],  # fmt: skip
-            check=True,
-        )
-        if not libspy_a.check(file=True):
-            raise WIP(
-                f"expected {libspy_a} to exist after building libspy with "
-                f"MARCH={march}, but it doesn't. Check the `make` output above."
-            )
+            return py.path.local(get_libdir(target, build_type, kind))
+        from spy.libspy_build import ensure_libspy
+
+        return ensure_libspy(target, build_type, kind, march)
 
     @staticmethod
     def _build_bdwgc_static() -> None:

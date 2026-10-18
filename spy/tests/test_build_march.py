@@ -4,9 +4,9 @@ Tests for `spy build --march` and for the per-march libspy build.
 They are organized from the cheapest to the most expensive:
 
   1. pure functions in spy.build.flags (no subprocess, no compiler)
-  2. consistency between spy.build.flags and libspy/Makefile (`make -n`)
-  3. CompilerConfig wiring, with the `make` step stubbed out
-  4. CompilerConfig._ensure_libspy_built, with subprocess.run faked
+  2. the libspy cache key (spy.libspy_build.cache_key)
+  3. CompilerConfig wiring, with the libspy build stubbed out
+  4. CompilerConfig._ensure_libspy_built and ensure_libspy, with ninja faked
   5. CLI validation (no compilation)
   6. real end-to-end builds (they compile libspy and a tiny program, ~1s each)
 
@@ -27,6 +27,7 @@ import pytest
 from typer.testing import CliRunner
 
 import spy.libspy
+from spy import libspy_build
 from spy.build.config import BuildConfig, CompilerConfig
 from spy.build.flags import (
     check_march,
@@ -35,9 +36,9 @@ from spy.build.flags import (
     get_libdir,
     validate_march,
 )
-from spy.build.flags import main as flags_main
 from spy.cli import app
 from spy.errors import SPyError
+from spy.libspy_build import cache_key, ensure_libspy
 
 IS_DARWIN = sys.platform == "darwin"
 
@@ -112,18 +113,15 @@ class TestFlags:
         assert march_flags(get_cflags(target, build_type)) == []
 
     @pytest.mark.parametrize(
-        "build_type, kind, march, expected",
+        "build_type, kind, expected",
         [
-            ("release", "exe", None, "release"),
-            ("debug", "exe", None, "debug"),
-            ("debug", "testlib", None, "debug-testlib"),
-            ("release", "exe", "native", "release-march-native"),
-            ("debug", "exe", "x86-64-v3", "debug-march-x86-64-v3"),
-            ("debug", "testlib", "native", "debug-testlib-march-native"),
+            ("release", "exe", "release"),
+            ("debug", "exe", "debug"),
+            ("debug", "testlib", "debug-testlib"),
         ],
     )
-    def test_build_dirname(self, build_type, kind, march, expected):
-        assert get_build_dirname(build_type, kind, march) == expected
+    def test_build_dirname(self, build_type, kind, expected):
+        assert get_build_dirname(build_type, kind) == expected
 
     @pytest.mark.parametrize("march", VALID_MARCHES)
     def test_validate_march_accepts(self, march):
@@ -136,106 +134,12 @@ class TestFlags:
 
     @pytest.mark.parametrize("march", INVALID_MARCHES)
     def test_invalid_march_is_rejected_everywhere(self, march):
-        # we never try to "sanitize" a value: the dirname computed here must be
-        # the one computed by the Makefile, and the cflags must not be able to
-        # smuggle anything
+        # we never try to "sanitize" a value: the cflags and the name of the
+        # build dir must not be able to smuggle anything
         with pytest.raises(ValueError, match="invalid --march value"):
             get_cflags("native", "release", march=march)
         with pytest.raises(ValueError, match="invalid --march value"):
-            get_build_dirname("release", "exe", march)
-        with pytest.raises(ValueError, match="invalid --march value"):
-            get_libdir("native", "release", "exe", march)
-
-    def test_flags_cli_rejects_invalid_march(self, capsys):
-        with pytest.raises(SystemExit) as exc:
-            flags_main(["--cflags", "--target=native", "--march=a b"])
-        assert exc.value.code == 2
-        assert "invalid --march value" in capsys.readouterr().err
-
-    def test_different_march_different_libdir(self):
-        d_none = get_libdir("native", "release")
-        d_native = get_libdir("native", "release", march="native")
-        d_v3 = get_libdir("native", "release", march="x86-64-v3")
-        assert len({d_none, d_native, d_v3}) == 3
-        # a march-less libdir is the historical one
-        assert d_none.endswith("/native/release")
-
-    def test_flags_cli(self, capsys):
-        # this is the interface used by libspy/Makefile
-        flags_main(["--cflags", "--target=native", "--march=native"])
-        assert "-march=native" in capsys.readouterr().out
-
-        flags_main(
-            ["--libdir", "--target=native", "--build-type=release", "--march=native"]
-        )
-        assert capsys.readouterr().out.strip().endswith("release-march-native")
-
-
-# ======================================================================
-# 2. spy.build.flags <-> libspy/Makefile
-# ======================================================================
-
-
-class TestPythonMakefileConsistency:
-    """
-    The build dir name is computed twice: by get_build_dirname() in Python and
-    by libspy/Makefile. If they disagree, Python looks for libspy.a where make
-    never put it. Ask make where it is going to put things.
-    """
-
-    @pytest.mark.parametrize("march", [None, "native", "x86-64-v3", "armv8.2-a+crc"])
-    def test_make_builddir_matches_get_libdir(self, march):
-        cmd = [
-            "make", "-n", "-B",  # -n: dry-run, -B: pretend everything is stale
-            "-C", str(spy.libspy.BUILD.dirpath()),
-            "TARGET=native",
-            "BUILD_TYPE=release",
-            "OUTPUT_KIND=exe",
-        ]  # fmt: skip
-        if march is not None:
-            cmd.append(f"MARCH={march}")
-        out = subprocess.run(cmd, capture_output=True, text=True, check=True).stdout
-        expected = get_libdir("native", "release", "exe", march)
-        # make prints paths relative to libspy/: e.g. build/native/release/libspy.a
-        rel = py.path.local(expected).relto(spy.libspy.BUILD.dirpath())
-        assert f"{rel}/libspy.a" in out
-
-
-class TestMakefileMarch:
-    @staticmethod
-    def make(*assignments: str) -> "subprocess.CompletedProcess[str]":
-        cmd = [
-            "make", "-n",
-            "-C", str(spy.libspy.BUILD.dirpath()),
-            "TARGET=native", "BUILD_TYPE=debug", "OUTPUT_KIND=exe",
-            *assignments,
-        ]  # fmt: skip
-        return subprocess.run(cmd, capture_output=True, text=True)
-
-    @pytest.mark.parametrize(
-        "march",
-        [
-            "x; touch {marker}",
-            "x `touch {marker}`",
-            "x $(touch {marker})",
-            "x' ; touch {marker} ; '",
-            'x" ; touch {marker} ; "',
-        ],
-    )
-    def test_march_is_not_evaluated(self, tmpdir, march):
-        marker = tmpdir.join("pwned")
-        self.make("MARCH=" + march.format(marker=marker))
-        assert not marker.check()
-
-    def test_valid_march(self):
-        res = self.make("MARCH=x86-64-v3")
-        assert res.returncode == 0, res.stderr
-        assert "-march=x86-64-v3" in res.stdout
-
-    def test_no_march(self):
-        res = self.make()
-        assert res.returncode == 0, res.stderr
-        assert "-march" not in res.stdout
+            cache_key("native", "release", "exe", march)
 
 
 class TestCheckMarch:
@@ -289,23 +193,94 @@ class TestCheckMarch:
 
 
 # ======================================================================
-# 3. CompilerConfig wiring (the make step is stubbed out)
+# 2. the libspy cache key
 # ======================================================================
 
 
 @pytest.fixture
-def ensure_calls(monkeypatch):
+def libspy_copy(monkeypatch, tmpdir):
+    """
+    Work on a copy of the libspy sources, so that tests can edit them.
+    """
+    src = spy.libspy.BUILD.dirpath()
+    dst = py.path.local(tmpdir).join("libspy")
+    for subdir in ("src", "include", "vendored"):
+        shutil.copytree(src.join(subdir), dst.join(subdir))
+    monkeypatch.setattr(spy.libspy, "BUILD", dst.join("build"))
+    return dst
+
+
+class TestCacheKey:
+    def test_deterministic(self):
+        k1 = cache_key("native", "release", "exe", "native")
+        k2 = cache_key("native", "release", "exe", "native")
+        assert k1 == k2
+        assert re.fullmatch(r"[0-9a-f]{16}", k1)
+
+    def test_depends_on_the_variant(self):
+        keys = {
+            cache_key("native", "release", "exe", "native"),
+            cache_key("native", "debug", "exe", "native"),
+            cache_key("native", "release", "exe", "x86-64-v3"),
+            cache_key("native", "release", "exe", "x86-64-v2"),
+        }
+        assert len(keys) == 4
+
+    @pytest.mark.parametrize("filename", ["src/str.c", "include/spy.h"])
+    def test_depends_on_the_sources(self, libspy_copy, filename):
+        k1 = cache_key("native", "release", "exe", "native")
+        with libspy_copy.join(filename).open("a") as f:
+            f.write("\n/* changed */\n")
+        assert cache_key("native", "release", "exe", "native") != k1
+
+    def test_ignores_other_files(self, libspy_copy):
+        # e.g. the build/ and deps/ directories, which are not inputs
+        k1 = cache_key("native", "release", "exe", "native")
+        libspy_copy.join("build", "native", "x.c").write("int x;", ensure=True)
+        libspy_copy.join("src", "README").write("hello")
+        assert cache_key("native", "release", "exe", "native") == k1
+
+    def test_depends_on_the_compiler_version(self, monkeypatch):
+        k1 = cache_key("native", "release", "exe", "native")
+        real_run = subprocess.run
+
+        def fake_run(cmdline, *args, **kwargs):
+            if cmdline[-1] == "--version":
+                return subprocess.CompletedProcess(cmdline, 0, b"cc 99.9", b"")
+            return real_run(cmdline, *args, **kwargs)
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+        assert cache_key("native", "release", "exe", "native") != k1
+
+
+# ======================================================================
+# 3. CompilerConfig wiring (the libspy build is stubbed out)
+# ======================================================================
+
+
+@pytest.fixture
+def ensure_calls(monkeypatch, tmpdir):
     """
     Replace CompilerConfig._ensure_libspy_built with a recorder, so that we can
-    inspect the flags without ever invoking make.
+    inspect the flags without ever building libspy.
     """
-    calls: list[tuple] = []
+
+    class Calls(list):
+        libdir = py.path.local(tmpdir).join("fake-libdir")
+
+    calls = Calls()
+    libdir = calls.libdir
 
     def fake(*args):
         calls.append(args)
+        return libdir
 
     monkeypatch.setattr(CompilerConfig, "_ensure_libspy_built", staticmethod(fake))
     return calls
+
+
+def linked_libdir(comp: CompilerConfig) -> str:
+    return comp.ldflags[comp.ldflags.index("-L") + 1]
 
 
 class TestCompilerConfig:
@@ -319,17 +294,15 @@ class TestCompilerConfig:
         )
         comp = CompilerConfig(cfg)
         assert march_flags(comp.cflags) == ["-march=x86-64-v3"]
-        # we link against the libspy built for this march, not the default one
-        libdir = comp.ldflags[comp.ldflags.index("-L") + 1]
-        assert libdir == get_libdir("native", "release", "exe", "x86-64-v3")
+        # we link against the libspy returned by _ensure_libspy_built
+        assert linked_libdir(comp) == str(ensure_calls.libdir)
         assert ensure_calls == [("native", "release", "exe", "x86-64-v3")]
 
     def test_no_march(self, ensure_calls):
         cfg = BuildConfig(target="native", kind="exe", build_type="release", gc="none")
         comp = CompilerConfig(cfg)
         assert march_flags(comp.cflags) == []
-        libdir = comp.ldflags[comp.ldflags.index("-L") + 1]
-        assert libdir == get_libdir("native", "release", "exe")
+        assert ensure_calls == [("native", "release", "exe", None)]
 
     @pytest.mark.skipif(IS_DARWIN, reason="--static is not supported on macOS")
     def test_static(self, ensure_calls):
@@ -343,8 +316,6 @@ class TestCompilerConfig:
         )
         comp = CompilerConfig(cfg)
         assert march_flags(comp.cflags) == ["-march=native"]
-        libdir = comp.ldflags[comp.ldflags.index("-L") + 1]
-        assert libdir == get_libdir("native-static", "release", "exe", "native")
         assert ensure_calls == [("native-static", "release", "exe", "native")]
 
     @pytest.mark.parametrize("target", ["wasi", "emscripten"])
@@ -359,101 +330,168 @@ class TestCompilerConfig:
 
 
 # ======================================================================
-# 4. CompilerConfig._ensure_libspy_built
+# 4. CompilerConfig._ensure_libspy_built and ensure_libspy (ninja is faked)
 # ======================================================================
 
 
-class FakeMake:
+class FakeNinja:
     """
-    Fake subprocess.run: records the make invocations and, like the real make,
-    leaves a libspy.a in the libdir.
+    Fake subprocess.run for ninja: records the invocations and, like the real
+    one, leaves a libspy.a in the build dir. Other commands (the compiler
+    version) are really run.
     """
 
-    def __init__(self, libdir: py.path.local, *, creates_libspy_a: bool = True):
-        self.libdir = libdir
-        self.creates_libspy_a = creates_libspy_a
+    def __init__(self) -> None:
         self.cmdlines: list[list[str]] = []
+        self.creates_libspy_a = True
+        self.real_run = subprocess.run
 
-    def __call__(self, cmdline: list[str], **kwargs: Any) -> None:
+    def __call__(self, cmdline: list[str], *args: Any, **kwargs: Any) -> Any:
+        if "ninja" not in cmdline:
+            return self.real_run(cmdline, *args, **kwargs)
         assert kwargs.get("check") is True
         self.cmdlines.append(cmdline)
+        builddir = py.path.local(cmdline[cmdline.index("-C") + 1])
         if self.creates_libspy_a:
-            self.libdir.ensure("libspy.a")
+            builddir.ensure("libspy.a")
+        return subprocess.CompletedProcess(cmdline, 0)
 
 
 @pytest.fixture
-def fake_make(monkeypatch, tmpdir):
-    libdir = py.path.local(tmpdir).join("libdir")
-    monkeypatch.setattr("spy.build.config.get_libdir", lambda *args: str(libdir))
-    fake = FakeMake(libdir)
+def fake_ninja(monkeypatch, libspy_copy, tmpdir):
+    # a private build dir, so that we never touch the real cache
+    monkeypatch.setattr(
+        spy.libspy, "BUILD", py.path.local(tmpdir).join("libspy", "build")
+    )
+    monkeypatch.setattr(
+        "spy.libspy_build.get_libdir",
+        lambda target, build_type, kind: str(
+            spy.libspy.BUILD.join(target, get_build_dirname(build_type, kind))
+        ),
+    )
+    fake = FakeNinja()
     monkeypatch.setattr(subprocess, "run", fake)
     return fake
 
 
 class TestEnsureLibspyBuilt:
-    def test_no_march_does_nothing(self, fake_make):
+    def test_no_march_does_nothing(self, fake_ninja):
         # without --march we keep using the libspy built by `make -C spy/libspy`
-        CompilerConfig._ensure_libspy_built("native", "release", "exe", None)
-        assert fake_make.cmdlines == []
+        libdir = CompilerConfig._ensure_libspy_built("native", "release", "exe", None)
+        assert libdir == py.path.local(get_libdir("native", "release", "exe"))
+        assert fake_ninja.cmdlines == []
 
-    def test_make_args(self, fake_make):
-        CompilerConfig._ensure_libspy_built("native", "release", "exe", "x86-64-v3")
-        assert len(fake_make.cmdlines) == 1
-        cmdline = fake_make.cmdlines[0]
-        assert cmdline[0] == "make"
-        assert str(spy.libspy.BUILD.dirpath()) in cmdline
-        for arg in [
-            "TARGET=native",
-            "BUILD_TYPE=release",
-            "OUTPUT_KIND=exe",
-            "MARCH=x86-64-v3",
-        ]:
-            assert arg in cmdline
+    def test_build_and_cache(self, fake_ninja):
+        libdir = CompilerConfig._ensure_libspy_built(
+            "native", "release", "exe", "x86-64-v3"
+        )
+        key = cache_key("native", "release", "exe", "x86-64-v3")
+        assert libdir.basename == f"release-march-x86-64-v3-{key}"
+        assert libdir.join("libspy.a").check(file=True)
+        assert len(fake_ninja.cmdlines) == 1
+        assert fake_ninja.cmdlines[0][:3] == [sys.executable, "-m", "ninja"]
 
-    def test_static_target_is_forwarded(self, fake_make):
-        CompilerConfig._ensure_libspy_built("native-static", "debug", "exe", "native")
-        assert "TARGET=native-static" in fake_make.cmdlines[0]
+        # the second time it is found in the cache
+        libdir2 = CompilerConfig._ensure_libspy_built(
+            "native", "release", "exe", "x86-64-v3"
+        )
+        assert libdir2 == libdir
+        assert len(fake_ninja.cmdlines) == 1
 
-    def test_rebuild_if_libspy_a_already_exists(self, fake_make):
+    def test_build_ninja(self, fake_ninja, monkeypatch):
+        # look at the generated build.ninja before it is renamed
+        seen = []
+        orig = fake_ninja.__call__
+
+        def spying(cmdline, *args, **kwargs):
+            if "ninja" in cmdline:
+                builddir = py.path.local(cmdline[cmdline.index("-C") + 1])
+                seen.append(builddir.join("build.ninja").read())
+            return orig(cmdline, *args, **kwargs)
+
+        monkeypatch.setattr(subprocess, "run", spying)
+        ensure_libspy("native", "release", "exe", "x86-64-v3")
+        (build_ninja,) = seen
+        assert "-march=x86-64-v3" in build_ninja
+        assert "-flto" in build_ninja
+        assert "RYU_ONLY_64_BIT_OPS" in build_ninja
+        assert "build libspy.a: ar" in build_ninja
+        assert "str.c" in build_ninja
+        assert "jsffi" not in build_ninja
+
+    def test_rebuild_if_the_sources_change(self, fake_ninja, libspy_copy):
         """
-        libspy.a already being there does NOT mean that it is up to date: the
-        libspy sources (or headers) might have changed since.  The only one who
-        knows is make, which is a no-op when everything is up to date.
-
-        Regression test: we used to return early if libspy.a existed, and
-        silently link against a stale libspy.a.
+        Regression test: libspy.a already being there does NOT mean that it is
+        up to date. The sources are part of the cache key, so a change in
+        libspy gives a new directory and a rebuild.
         """
-        fake_make.libdir.ensure("libspy.a")
-        CompilerConfig._ensure_libspy_built("native", "release", "exe", "native")
-        assert len(fake_make.cmdlines) == 1
+        libdir1 = ensure_libspy("native", "release", "exe", "native")
+        with libspy_copy.join("src", "str.c").open("a") as f:
+            f.write("\n/* changed */\n")
+        libdir2 = ensure_libspy("native", "release", "exe", "native")
+        assert libdir1 != libdir2
+        assert len(fake_ninja.cmdlines) == 2
+        # the old one is left in place: cleaning the cache is a separate matter
+        assert libdir1.check(dir=True)
+
+    def test_different_march_different_dir(self, fake_ninja):
+        d1 = ensure_libspy("native", "release", "exe", "native")
+        d2 = ensure_libspy("native", "release", "exe", "x86-64-v3")
+        assert d1 != d2
+        assert d1.dirpath() == d2.dirpath()
+
+    def test_static_target_is_forwarded(self, fake_ninja):
+        libdir = ensure_libspy("native-static", "debug", "exe", "native")
+        assert libdir.dirpath().basename == "native-static"
+
+    def test_concurrent_build_finished_first(self, fake_ninja, monkeypatch):
+        # another process renames its own build to the final dir while ours is
+        # running: we must use the result of the other one, not fail
+        orig = fake_ninja.__call__
+        final = []
+
+        def racing(cmdline, *args, **kwargs):
+            res = orig(cmdline, *args, **kwargs)
+            if "ninja" in cmdline:
+                key = cache_key("native", "release", "exe", "native")
+                d = py.path.local(libspy_build.get_libdir("native", "release", "exe"))
+                other = d.dirpath().join(f"{d.basename}-march-native-{key}")
+                other.ensure("libspy.a")
+                other.join("from-other-process").write("")
+                final.append(other)
+            return res
+
+        monkeypatch.setattr(subprocess, "run", racing)
+        libdir = ensure_libspy("native", "release", "exe", "native")
+        assert libdir == final[0]
+        assert libdir.join("from-other-process").check()
+        # and no temporary directory is left behind
+        assert [p.basename for p in libdir.dirpath().listdir()] == [libdir.basename]
 
     @pytest.mark.parametrize("march", INVALID_MARCHES)
-    def test_invalid_march_never_reaches_make(self, monkeypatch, march):
-        # libspy/Makefile doesn't validate MARCH: this is the guard
-        def no_make(*args, **kwargs):
-            raise AssertionError("make must not be called with an invalid march")
-
-        monkeypatch.setattr(subprocess, "run", no_make)
+    def test_invalid_march_never_reaches_ninja(self, fake_ninja, march):
         with pytest.raises(ValueError, match="invalid --march value"):
             CompilerConfig._ensure_libspy_built("native", "release", "exe", march)
+        assert fake_ninja.cmdlines == []
 
-    def test_make_does_not_produce_libspy_a(self, monkeypatch, fake_make):
-        fake_make.creates_libspy_a = False
-        with pytest.raises(SPyError, match="expected .*libspy.a to exist") as exc:
+    def test_ninja_does_not_produce_libspy_a(self, fake_ninja):
+        fake_ninja.creates_libspy_a = False
+        with pytest.raises(SPyError, match="did not produce .*libspy.a") as exc:
             CompilerConfig._ensure_libspy_built("native", "release", "exe", "native")
         assert exc.value.etype == "W_WIP"
 
-    def test_make_failure_propagates(self, monkeypatch, tmpdir):
-        monkeypatch.setattr(
-            "spy.build.config.get_libdir", lambda *args: str(tmpdir.join("libdir"))
-        )
+    def test_ninja_failure_propagates(self, monkeypatch, fake_ninja):
+        def failing(cmdline, *args, **kwargs):
+            if "ninja" in cmdline:
+                raise subprocess.CalledProcessError(1, cmdline)
+            return fake_ninja.real_run(cmdline, *args, **kwargs)
 
-        def failing_make(cmdline, **kwargs):
-            raise subprocess.CalledProcessError(2, cmdline)
-
-        monkeypatch.setattr(subprocess, "run", failing_make)
+        monkeypatch.setattr(subprocess, "run", failing)
         with pytest.raises(subprocess.CalledProcessError):
             CompilerConfig._ensure_libspy_built("native", "release", "exe", "native")
+        # nothing is left in the cache
+        d = py.path.local(libspy_build.get_libdir("native", "release", "exe")).dirpath()
+        assert not d.check() or d.listdir() == []
 
 
 # ======================================================================
@@ -551,7 +589,7 @@ class TestEndToEnd:
         assert "hello world" in out
 
         # the libspy built for this march is the one which has been used...
-        libdir = py.path.local(get_libdir("native", "release", "exe", march))
+        libdir = ensure_libspy("native", "release", "exe", march)  # cached
         assert libdir.join("libspy.a").check(file=True)
         # ... and the executable actually links to it
         ninja = tmpdir.join("build.ninja").read()
@@ -569,7 +607,7 @@ class TestEndToEnd:
         assert res.exit_code == 0, res.exception
         out, err = capfd.readouterr()
         assert "hello world" in out
-        libdir = py.path.local(get_libdir("native-static", "debug", "exe", "native"))
+        libdir = ensure_libspy("native-static", "debug", "exe", "native")  # cached
         assert libdir.join("libspy.a").check(file=True)
 
     def test_without_march_is_unchanged(self, tmpdir, main_spy):
@@ -585,12 +623,7 @@ class TestEndToEnd:
         # a bogus value must make the build fail early, and it must not leave
         # anything behind in libspy/build
         bogus = "not-a-real-arch"
-        libdir = py.path.local(get_libdir("native", "debug", "exe", bogus))
-        # don't depend on (or leak) leftovers of other runs
-        shutil.rmtree(libdir, ignore_errors=True)
-        try:
-            res = invoke_build(tmpdir, main_spy, "--gc", "none", "--march", bogus)
-            assert res.exit_code == 2
-            assert not libdir.check()
-        finally:
-            shutil.rmtree(libdir, ignore_errors=True)
+        parent = py.path.local(get_libdir("native", "debug", "exe")).dirpath()
+        res = invoke_build(tmpdir, main_spy, "--gc", "none", "--march", bogus)
+        assert res.exit_code == 2
+        assert not parent.check() or not parent.listdir(f"*-march-{bogus}-*")
