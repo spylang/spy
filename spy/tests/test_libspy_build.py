@@ -6,12 +6,13 @@ from typing import Any
 
 import py.path
 import pytest
+from typer.testing import CliRunner
 
 import spy.libspy
 from spy import libspy_build
-from spy.build.flags import get_build_dirname
+from spy.cli import app
 from spy.errors import SPyError
-from spy.libspy_build import cache_key, ensure_libspy
+from spy.libspy_build import cache_key, clear_cache, ensure_libspy
 
 IS_DARWIN = sys.platform == "darwin"
 
@@ -29,13 +30,6 @@ def libspy_copy(monkeypatch, tmpdir):
     for subdir in ("src", "include", "vendored"):
         shutil.copytree(src.join(subdir), dst.join(subdir))
     monkeypatch.setattr(spy.libspy, "BUILD", dst.join("build"))
-    # the cache lives in the private copy too: we never touch the real one
-    monkeypatch.setattr(
-        "spy.libspy_build.get_libdir",
-        lambda target, build_type, kind: str(
-            spy.libspy.BUILD.join(target, get_build_dirname(build_type, kind))
-        ),
-    )
     return dst
 
 
@@ -182,8 +176,9 @@ class TestEnsureLibspy:
             res = orig(cmdline, *args, **kwargs)
             if "ninja" in cmdline:
                 key = cache_key("native", "release", "exe", "native")
-                d = py.path.local(libspy_build.get_libdir("native", "release", "exe"))
-                other = d.dirpath().join(f"{d.basename}-march-native-{key}")
+                other = libspy_build.cache_dir().join(
+                    "native", f"release-march-native-{key}"
+                )
                 other.ensure("libspy.a")
                 other.join("from-other-process").write("")
                 final.append(other)
@@ -218,7 +213,7 @@ class TestEnsureLibspy:
         with pytest.raises(subprocess.CalledProcessError):
             ensure_libspy("native", "release", "exe", "native")
         # nothing is left in the cache
-        d = py.path.local(libspy_build.get_libdir("native", "release", "exe")).dirpath()
+        d = libspy_build.cache_dir().join("native")
         assert not d.check() or d.listdir() == []
 
 
@@ -246,3 +241,47 @@ class TestRealBuild:
     def test_invalid_march_is_rejected_by_cache_key(self):
         with pytest.raises(ValueError, match="invalid --march value"):
             cache_key("native", "release", "exe", "a b")
+
+
+class TestClearCache:
+    def populate(self) -> py.path.local:
+        """
+        Two builds in the cache, and one libspy built by `make`, which is not
+        part of the cache.
+        """
+        ensure_libspy("native", "release", "exe", "native")
+        ensure_libspy("native-static", "debug", "exe", "x86_64_v3")
+        made_by_make = spy.libspy.BUILD.join("native", "release", "libspy.a")
+        made_by_make.ensure()
+        return made_by_make
+
+    def test_nothing_to_clear(self, libspy_copy):
+        assert clear_cache() == 0
+
+    def test_clear(self, fake_ninja):
+        made_by_make = self.populate()
+        assert clear_cache() == 2
+        assert not libspy_build.cache_dir().check()
+        assert made_by_make.check(file=True)
+        # and it can be built again
+        libdir = ensure_libspy("native", "release", "exe", "native")
+        assert libdir.join("libspy.a").check(file=True)
+        assert len(fake_ninja.cmdlines) == 3
+
+    def test_cli(self, fake_ninja):
+        made_by_make = self.populate()
+        runner = CliRunner()
+        res = runner.invoke(app, ["cache", "clear"])
+        assert res.exit_code == 0, res.output
+        assert "Removed 2 libspy build(s)" in res.output
+        assert not libspy_build.cache_dir().check()
+        assert made_by_make.check(file=True)
+
+        res = runner.invoke(app, ["cache", "clear"])
+        assert res.exit_code == 0, res.output
+        assert "Nothing to remove" in res.output
+
+    def test_cli_help(self):
+        res = CliRunner().invoke(app, ["cache", "--help"])
+        assert res.exit_code == 0
+        assert "clear" in res.output

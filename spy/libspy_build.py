@@ -21,7 +21,6 @@ from spy.build.flags import (
     get_build_dirname,
     get_cc,
     get_cflags,
-    get_libdir,
     validate_march,
 )
 from spy.build.ninja import fmt_flags
@@ -121,6 +120,29 @@ def _gen_build_ninja(target: str, cflags: list[str]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def cache_dir() -> py.path.local:
+    """
+    Where the variants built by ensure_libspy() are stored, as
+    <cache_dir>/<target>/<name>-<key>. The libspy built by `make` is not here.
+    """
+    return spy.libspy.BUILD.join("cache")
+
+
+def clear_cache() -> int:
+    """
+    Delete all the variants built by ensure_libspy(). Return how many there
+    were.
+    """
+    root = cache_dir()
+    if not root.check(dir=True):
+        return 0
+    n = sum(
+        len(target.listdir()) for target in root.listdir() if target.check(dir=True)
+    )
+    shutil.rmtree(root)
+    return n
+
+
 def ensure_libspy(
     target: str, build_type: BuildType, kind: OutputKind, march: Optional[str]
 ) -> py.path.local:
@@ -129,9 +151,9 @@ def ensure_libspy(
     first if it is not in the cache.
     """
     assert march is not None, "only the --march variants are built here for now"
-    base = py.path.local(get_libdir(target, build_type, kind))
     key = cache_key(target, build_type, kind, march)
-    final = base.dirpath().join(f"{base.basename}-march-{march}-{key}")
+    name = f"{get_build_dirname(build_type, kind)}-march-{march}-{key}"
+    final = cache_dir().join(target, name)
     if final.join("libspy.a").check(file=True):
         return final
 

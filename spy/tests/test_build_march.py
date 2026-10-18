@@ -22,6 +22,7 @@ import py.path
 import pytest
 from typer.testing import CliRunner
 
+from spy import libspy_build
 from spy.build.config import BuildConfig, CompilerConfig
 from spy.build.flags import (
     check_march,
@@ -412,7 +413,7 @@ class TestEndToEnd:
         # a bogus value must make the build fail early, and it must not leave
         # anything behind in libspy/build
         bogus = "not-a-real-arch"
-        parent = py.path.local(get_libdir("native", "debug", "exe")).dirpath()
+        cache = libspy_build.cache_dir()
         res = invoke_build(tmpdir, main_spy, "--gc", "none", "--march", bogus)
         assert res.exit_code == 2
-        assert not parent.check() or not parent.listdir(f"*-march-{bogus}-*")
+        assert not cache.check() or not list(cache.visit(f"*-march-{bogus}-*"))
