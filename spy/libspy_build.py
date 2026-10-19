@@ -6,12 +6,15 @@ For now this is used only for the host-dependent variants (native with
 """
 
 import hashlib
+import os
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
 from typing import Optional
 
+import platformdirs
 import py.path
 
 import spy.libspy
@@ -120,12 +123,62 @@ def _gen_build_ninja(target: str, cflags: list[str]) -> str:
     return "\n".join(lines) + "\n"
 
 
+# how many builds are kept for each variant, see prune_cache()
+KEEP_PER_VARIANT = 3
+
+# <build type>-march-<march>-<key>, see ensure_libspy()
+_BUILD_DIRNAME = re.compile(r"(?P<variant>.+)-[0-9a-f]{16}")
+
+
+def cache_root() -> py.path.local:
+    """
+    The user cache directory of SPy: $SPY_CACHE_DIR if it is set, else the
+    standard one of the platform (~/.cache/spy on Linux, honoring
+    $XDG_CACHE_HOME).
+    """
+    env = os.environ.get("SPY_CACHE_DIR")
+    if env:
+        return py.path.local(env)
+    return py.path.local(platformdirs.user_cache_dir("spy"))
+
+
 def cache_dir() -> py.path.local:
     """
     Where the variants built by ensure_libspy() are stored, as
     <cache_dir>/<target>/<name>-<key>. The libspy built by `make` is not here.
     """
-    return spy.libspy.BUILD.join("cache")
+    return cache_root().join("libspy")
+
+
+def _mtime(path: py.path.local) -> float:
+    try:
+        return path.mtime()
+    except OSError:  # removed by another process
+        return 0.0
+
+
+def prune_cache(keep: int = KEEP_PER_VARIANT) -> int:
+    """
+    For each variant (same target, build type, kind and march, whatever the
+    key), keep only the `keep` most recently used builds and delete the others.
+    Return how many were deleted.
+    """
+    removed = 0
+    root = cache_dir()
+    if not root.check(dir=True):
+        return 0
+    for target in root.listdir():
+        variants: dict[str, list[py.path.local]] = {}
+        for d in target.listdir():
+            m = _BUILD_DIRNAME.fullmatch(d.basename)
+            if m and d.check(dir=True):
+                variants.setdefault(m["variant"], []).append(d)
+        for builds in variants.values():
+            builds.sort(key=_mtime, reverse=True)
+            for old in builds[keep:]:
+                shutil.rmtree(old, ignore_errors=True)
+                removed += 1
+    return removed
 
 
 def clear_cache() -> int:
@@ -143,6 +196,14 @@ def clear_cache() -> int:
     return n
 
 
+def _touch(path: py.path.local) -> None:
+    """Record that this build has just been used."""
+    try:
+        os.utime(path)
+    except OSError:
+        pass
+
+
 def ensure_libspy(
     target: str, build_type: BuildType, kind: OutputKind, march: Optional[str]
 ) -> py.path.local:
@@ -155,6 +216,7 @@ def ensure_libspy(
     name = f"{get_build_dirname(build_type, kind)}-march-{march}-{key}"
     final = cache_dir().join(target, name)
     if final.join("libspy.a").check(file=True):
+        _touch(final)
         return final
 
     # Build in a temporary directory, then rename it: a rename is atomic, so
@@ -174,4 +236,5 @@ def ensure_libspy(
             pass  # another process finished first
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+    prune_cache()
     return final

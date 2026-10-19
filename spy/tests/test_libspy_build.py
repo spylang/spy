@@ -1,3 +1,4 @@
+import os
 import re
 import shutil
 import subprocess
@@ -12,7 +13,7 @@ import spy.libspy
 from spy import libspy_build
 from spy.cli import app
 from spy.errors import SPyError
-from spy.libspy_build import cache_key, clear_cache, ensure_libspy
+from spy.libspy_build import cache_key, clear_cache, ensure_libspy, prune_cache
 
 IS_DARWIN = sys.platform == "darwin"
 
@@ -30,6 +31,8 @@ def libspy_copy(monkeypatch, tmpdir):
     for subdir in ("src", "include", "vendored"):
         shutil.copytree(src.join(subdir), dst.join(subdir))
     monkeypatch.setattr(spy.libspy, "BUILD", dst.join("build"))
+    # and a private cache: we never touch the real one
+    monkeypatch.setenv("SPY_CACHE_DIR", str(py.path.local(tmpdir).join("spy-cache")))
     return dst
 
 
@@ -285,3 +288,115 @@ class TestClearCache:
         res = CliRunner().invoke(app, ["cache", "--help"])
         assert res.exit_code == 0
         assert "clear" in res.output
+
+
+class TestCacheLocation:
+    def test_env_variable(self, monkeypatch, tmpdir):
+        monkeypatch.setenv("SPY_CACHE_DIR", str(tmpdir))
+        assert libspy_build.cache_root() == py.path.local(tmpdir)
+        assert libspy_build.cache_dir() == py.path.local(tmpdir).join("libspy")
+
+    def test_user_cache_dir(self, monkeypatch, tmpdir):
+        monkeypatch.delenv("SPY_CACHE_DIR", raising=False)
+        monkeypatch.setenv("XDG_CACHE_HOME", str(tmpdir))
+        if sys.platform.startswith("linux"):
+            assert libspy_build.cache_root() == py.path.local(tmpdir).join("spy")
+        assert libspy_build.cache_root().basename.lower() == "spy"
+        assert libspy_build.cache_dir().basename == "libspy"
+
+
+KEYS = [f"{i:016x}" for i in range(1, 8)]
+
+
+def make_build(target: str, variant: str, key: str, age: int) -> py.path.local:
+    """
+    Create a fake build, last used `age` seconds ago.
+    """
+    d = libspy_build.cache_dir().join(target, f"{variant}-{key}")
+    d.join("libspy.a").ensure()
+    t = 1_700_000_000 - age
+    os.utime(d, (t, t))
+    return d
+
+
+class TestPruneCache:
+    def basenames(self, target: str = "native") -> set[str]:
+        return {d.basename for d in libspy_build.cache_dir().join(target).listdir()}
+
+    def test_nothing_to_prune(self, libspy_copy):
+        assert prune_cache() == 0
+
+    def test_keep_the_most_recently_used(self, libspy_copy):
+        # the creation order does not matter, only the date of last use
+        for key, age in zip(KEYS[:5], [30, 10, 50, 20, 40]):
+            make_build("native", "release-march-native", key, age)
+        assert prune_cache(keep=2) == 3
+        assert self.basenames() == {
+            f"release-march-native-{KEYS[1]}",  # age 10
+            f"release-march-native-{KEYS[3]}",  # age 20
+        }
+
+    def test_default_keeps_three(self, libspy_copy):
+        for i, key in enumerate(KEYS[:5]):
+            make_build("native", "release-march-native", key, age=i)
+        assert prune_cache() == 2
+        assert len(self.basenames()) == libspy_build.KEEP_PER_VARIANT == 3
+
+    def test_each_variant_is_pruned_separately(self, libspy_copy):
+        for variant in ["release-march-native", "release-march-x86-64-v3"]:
+            for i, key in enumerate(KEYS[:3]):
+                make_build("native", variant, key, age=i)
+        make_build("native-static", "release-march-native", KEYS[0], age=0)
+        make_build("native-static", "release-march-native", KEYS[1], age=1)
+        assert prune_cache(keep=1) == 5
+        assert self.basenames() == {
+            f"release-march-native-{KEYS[0]}",
+            f"release-march-x86-64-v3-{KEYS[0]}",
+        }
+        # the same variant on another target is a different variant
+        assert self.basenames("native-static") == {f"release-march-native-{KEYS[0]}"}
+
+    def test_ignores_what_is_not_a_build(self, libspy_copy):
+        # a build in progress (see ensure_libspy), and unrelated files
+        root = libspy_build.cache_dir()
+        tmp = root.join("native", "tmpab12cd34").ensure(dir=True)
+        other = root.join("native", "release-march-native-notakey").ensure(dir=True)
+        readme = root.join("native", "README").ensure()
+        for d in (tmp, other, readme):
+            os.utime(d, (1, 1))
+        for i, key in enumerate(KEYS[:3]):
+            make_build("native", "release-march-native", key, age=i)
+        assert prune_cache(keep=1) == 2
+        assert tmp.check() and other.check() and readme.check()
+
+    def test_use_refreshes_the_date(self, fake_ninja):
+        # a build which is used often is not pruned because it is old
+        libdir = ensure_libspy("native", "release", "exe", "native")
+        os.utime(libdir, (1, 1))
+        assert libdir.mtime() == 1
+        assert ensure_libspy("native", "release", "exe", "native") == libdir
+        assert libdir.mtime() > 1_000_000
+        assert len(fake_ninja.cmdlines) == 1
+
+    def test_a_new_build_prunes_the_old_ones(self, fake_ninja, libspy_copy):
+        for i, key in enumerate(KEYS[:4]):
+            make_build("native", "release-march-native", key, age=100 + i)
+        libdir = ensure_libspy("native", "release", "exe", "native")
+        names = self.basenames()
+        assert libdir.basename in names
+        # the new one, and the two most recently used of the old ones
+        assert names == {
+            libdir.basename,
+            f"release-march-native-{KEYS[0]}",
+            f"release-march-native-{KEYS[1]}",
+        }
+
+    def test_the_build_just_used_is_never_pruned(self, fake_ninja, libspy_copy):
+        # even if the clock of the machine is wrong and everything else looks
+        # more recent
+        libdir = ensure_libspy("native", "release", "exe", "native")
+        for i, key in enumerate(KEYS[:4]):
+            make_build("native", "release-march-native", key, age=-1000 - i)
+        os.utime(libdir, (1, 1))
+        assert ensure_libspy("native", "release", "exe", "native") == libdir
+        assert libdir.check(dir=True)

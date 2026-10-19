@@ -86,6 +86,19 @@ def flat(output: str) -> str:
     return " ".join(output.split())
 
 
+@pytest.fixture(autouse=True, scope="module")
+def private_cache(tmp_path_factory):
+    """
+    The libspy variants built by these tests go to a private cache, not to the
+    one of the user. It is shared by all the tests of the module, so that each
+    variant is compiled only once.
+    """
+    mp = pytest.MonkeyPatch()
+    mp.setenv("SPY_CACHE_DIR", str(tmp_path_factory.mktemp("spy-cache")))
+    yield
+    mp.undo()
+
+
 # ======================================================================
 # 1. spy.build.flags: pure functions
 # ======================================================================
