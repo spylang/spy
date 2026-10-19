@@ -100,7 +100,7 @@ def cleanup_spyc_files_fixture(request):
     Remove all .spyc cache files from stdlib if --cleanup option is used.
     """
     if request.config.getoption("--cleanup"):
-        stdlib_dir = ROOT.join("..", "..", "stdlib")
+        stdlib_dir = ROOT.join("..", "..", "spy", "stdlib")
         if stdlib_dir.check(dir=True):
             cleanup_spyc_files(stdlib_dir)
 
