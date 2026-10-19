@@ -13,6 +13,7 @@ dependencies = [
     "ninja==1.13.2; sys_platform != 'emscripten'",
     "py==1.11.0",
     "typer==0.15.1",
+    "platformdirs==4.10.0",
     "pexpect==4.9.0; sys_platform != 'emscripten'",
     "wasmtime==48.0.0; sys_platform != 'emscripten'",
     "ziglang==0.13.0; sys_platform != 'emscripten'",
