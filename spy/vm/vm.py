@@ -103,7 +103,7 @@ W_Loc._w.define(W_Loc)
 w_DynamicType.define(W_Object)
 
 
-STDLIB = ROOT.join("..", "stdlib")
+STDLIB = ROOT.join("stdlib")
 
 
 class SPyVM:
