@@ -22,7 +22,6 @@ import py.path
 import pytest
 from typer.testing import CliRunner
 
-from spy import libspy_build
 from spy.build.config import BuildConfig, CompilerConfig
 from spy.build.flags import (
     check_march,
@@ -32,7 +31,8 @@ from spy.build.flags import (
     validate_march,
 )
 from spy.cli import app
-from spy.libspy_build import ensure_libspy
+from spy.libspy import builder as libspy_builder
+from spy.libspy.builder import ensure_libspy
 
 IS_DARWIN = sys.platform == "darwin"
 
@@ -278,7 +278,7 @@ class TestEnsureLibspyBuilt:
         def no_build(*args):
             raise AssertionError("libspy must not be built without --march")
 
-        monkeypatch.setattr("spy.libspy_build.ensure_libspy", no_build)
+        monkeypatch.setattr("spy.libspy.builder.ensure_libspy", no_build)
         libdir = CompilerConfig._ensure_libspy_built("native", "release", "exe", None)
         assert libdir == py.path.local(get_libdir("native", "release", "exe"))
 
@@ -289,7 +289,7 @@ class TestEnsureLibspyBuilt:
             calls.append(args)
             return py.path.local(tmpdir)
 
-        monkeypatch.setattr("spy.libspy_build.ensure_libspy", fake)
+        monkeypatch.setattr("spy.libspy.builder.ensure_libspy", fake)
         libdir = CompilerConfig._ensure_libspy_built(
             "native-static", "debug", "exe", "native"
         )
@@ -426,7 +426,7 @@ class TestEndToEnd:
         # a bogus value must make the build fail early, and it must not leave
         # anything behind in libspy/build
         bogus = "not-a-real-arch"
-        cache = libspy_build.cache_dir()
+        cache = libspy_builder.cache_dir()
         res = invoke_build(tmpdir, main_spy, "--gc", "none", "--march", bogus)
         assert res.exit_code == 2
         assert not cache.check() or not list(cache.visit(f"*-march-{bogus}-*"))

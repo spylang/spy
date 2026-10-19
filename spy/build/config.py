@@ -223,7 +223,7 @@ class CompilerConfig:
         """
         if march is None:
             return py.path.local(get_libdir(target, build_type, kind))
-        from spy.libspy_build import ensure_libspy
+        from spy.libspy.builder import ensure_libspy
 
         return ensure_libspy(target, build_type, kind, march)
 

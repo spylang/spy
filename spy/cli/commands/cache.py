@@ -1,6 +1,6 @@
 import typer
 
-from spy.libspy_build import cache_dir, clear_cache
+from spy.libspy.builder import cache_dir, clear_cache
 
 cache_app = typer.Typer(
     help="Manage the libspy variants which are built on demand",

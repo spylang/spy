@@ -163,7 +163,7 @@ def get_ldflags(target: str, build_type: BuildType) -> list[str]:
 
 
 # A -march value ends up on a command line and in the name of a directory (see
-# spy.libspy_build.ensure_libspy). Rather than trying to quote/sanitize it, we
+# spy.libspy.builder.ensure_libspy). Rather than trying to quote/sanitize it, we
 # accept only what real values look like: 'native', 'x86-64-v3', 'x86_64_v3',
 # 'armv8.2-a+crc', 'znver4', ...
 _MARCH_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]*")

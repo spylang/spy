@@ -10,10 +10,10 @@ import pytest
 from typer.testing import CliRunner
 
 import spy.libspy
-from spy import libspy_build
 from spy.cli import app
 from spy.errors import SPyError
-from spy.libspy_build import cache_key, clear_cache, ensure_libspy, prune_cache
+from spy.libspy import builder as libspy_builder
+from spy.libspy.builder import cache_key, clear_cache, ensure_libspy, prune_cache
 
 IS_DARWIN = sys.platform == "darwin"
 
@@ -179,7 +179,7 @@ class TestEnsureLibspy:
             res = orig(cmdline, *args, **kwargs)
             if "ninja" in cmdline:
                 key = cache_key("native", "release", "exe", "native")
-                other = libspy_build.cache_dir().join(
+                other = libspy_builder.cache_dir().join(
                     "native", f"release-march-native-{key}"
                 )
                 other.ensure("libspy.a")
@@ -216,7 +216,7 @@ class TestEnsureLibspy:
         with pytest.raises(subprocess.CalledProcessError):
             ensure_libspy("native", "release", "exe", "native")
         # nothing is left in the cache
-        d = libspy_build.cache_dir().join("native")
+        d = libspy_builder.cache_dir().join("native")
         assert not d.check() or d.listdir() == []
 
 
@@ -264,7 +264,7 @@ class TestClearCache:
     def test_clear(self, fake_ninja):
         made_by_make = self.populate()
         assert clear_cache() == 2
-        assert not libspy_build.cache_dir().check()
+        assert not libspy_builder.cache_dir().check()
         assert made_by_make.check(file=True)
         # and it can be built again
         libdir = ensure_libspy("native", "release", "exe", "native")
@@ -277,7 +277,7 @@ class TestClearCache:
         res = runner.invoke(app, ["cache", "clear"])
         assert res.exit_code == 0, res.output
         assert "Removed 2 libspy build(s)" in res.output
-        assert not libspy_build.cache_dir().check()
+        assert not libspy_builder.cache_dir().check()
         assert made_by_make.check(file=True)
 
         res = runner.invoke(app, ["cache", "clear"])
@@ -293,16 +293,16 @@ class TestClearCache:
 class TestCacheLocation:
     def test_env_variable(self, monkeypatch, tmpdir):
         monkeypatch.setenv("SPY_CACHE_DIR", str(tmpdir))
-        assert libspy_build.cache_root() == py.path.local(tmpdir)
-        assert libspy_build.cache_dir() == py.path.local(tmpdir).join("libspy")
+        assert libspy_builder.cache_root() == py.path.local(tmpdir)
+        assert libspy_builder.cache_dir() == py.path.local(tmpdir).join("libspy")
 
     def test_user_cache_dir(self, monkeypatch, tmpdir):
         monkeypatch.delenv("SPY_CACHE_DIR", raising=False)
         monkeypatch.setenv("XDG_CACHE_HOME", str(tmpdir))
         if sys.platform.startswith("linux"):
-            assert libspy_build.cache_root() == py.path.local(tmpdir).join("spy")
-        assert libspy_build.cache_root().basename.lower() == "spy"
-        assert libspy_build.cache_dir().basename == "libspy"
+            assert libspy_builder.cache_root() == py.path.local(tmpdir).join("spy")
+        assert libspy_builder.cache_root().basename.lower() == "spy"
+        assert libspy_builder.cache_dir().basename == "libspy"
 
 
 KEYS = [f"{i:016x}" for i in range(1, 8)]
@@ -312,7 +312,7 @@ def make_build(target: str, variant: str, key: str, age: int) -> py.path.local:
     """
     Create a fake build, last used `age` seconds ago.
     """
-    d = libspy_build.cache_dir().join(target, f"{variant}-{key}")
+    d = libspy_builder.cache_dir().join(target, f"{variant}-{key}")
     d.join("libspy.a").ensure()
     t = 1_700_000_000 - age
     os.utime(d, (t, t))
@@ -321,7 +321,7 @@ def make_build(target: str, variant: str, key: str, age: int) -> py.path.local:
 
 class TestPruneCache:
     def basenames(self, target: str = "native") -> set[str]:
-        return {d.basename for d in libspy_build.cache_dir().join(target).listdir()}
+        return {d.basename for d in libspy_builder.cache_dir().join(target).listdir()}
 
     def test_nothing_to_prune(self, libspy_copy):
         assert prune_cache() == 0
@@ -340,7 +340,7 @@ class TestPruneCache:
         for i, key in enumerate(KEYS[:5]):
             make_build("native", "release-march-native", key, age=i)
         assert prune_cache() == 2
-        assert len(self.basenames()) == libspy_build.KEEP_PER_VARIANT == 3
+        assert len(self.basenames()) == libspy_builder.KEEP_PER_VARIANT == 3
 
     def test_each_variant_is_pruned_separately(self, libspy_copy):
         for variant in ["release-march-native", "release-march-x86-64-v3"]:
@@ -358,7 +358,7 @@ class TestPruneCache:
 
     def test_ignores_what_is_not_a_build(self, libspy_copy):
         # a build in progress (see ensure_libspy), and unrelated files
-        root = libspy_build.cache_dir()
+        root = libspy_builder.cache_dir()
         tmp = root.join("native", "tmpab12cd34").ensure(dir=True)
         other = root.join("native", "release-march-native-notakey").ensure(dir=True)
         readme = root.join("native", "README").ensure()
