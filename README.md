@@ -256,11 +256,14 @@ ways:
   - `spy/libspy/src` is a small runtime library written in C, which must be
     statically linked to any spy executable
 
-  - `make -C spy/libspy` creates a `libspy.a` for each supported target, which
-    currently are `native`, `emscripten` and `wasi`. For `emscripten` and `wasi`
-    it also creates a second `libspy.a` used by llwasm which expects the
-    WebAssembly host to provide debug helpers as WASM imports. The normal
-    `libspy.a` implements them in `debug.c`.
+  - `uv sync` (or `pip install -e .`) builds a `libspy.a` for each supported
+    target, which currently are `native`, `emscripten` and `wasi`, into the user
+    cache (see `spy cache clear`); `make -C spy/libspy` rebuilds them. For
+    `emscripten` and `wasi` it also creates a second `libspy.a` used by llwasm
+    which expects the WebAssembly host to provide debug helpers as WASM
+    imports. The normal `libspy.a` implements them in `debug.c`. Variants
+    which are missing are built on first use. A wheel contains only the `wasi`
+    testlib variant.
 
   - `spy/libspy/__init__.py` contains some support code to be able to load the
     WASM version of libspy in the interpreter.
