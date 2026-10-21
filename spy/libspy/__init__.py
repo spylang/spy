@@ -29,6 +29,8 @@ ROOT = spy.ROOT.join("libspy")
 SRC = ROOT.join("src")
 INCLUDE = ROOT.join("include")
 DEPS = ROOT.join("deps")
+# variants built when the package is built (wheels only), see builder.py
+PREBUILT = ROOT.join("prebuilt")
 
 _LAZY = {
     "BytesLayout": "spy.libspy.host",

@@ -71,6 +71,10 @@ STANDARD_VARIANTS = [
     ("emscripten", "debug", "testlib"),
 ]
 
+# the only variant shipped in the wheel: it is portable (wasm) and it is the
+# one used by the interpreter
+PREBUILT_VARIANT = ("wasi", "debug", "testlib")
+
 
 def get_srcs(target: str) -> list[str]:
     if target == "emscripten":
@@ -265,6 +269,13 @@ def _touch(path: py.path.local) -> None:
         pass
 
 
+def _find_prebuilt(
+    target: str, build_type: BuildType, kind: OutputKind
+) -> Optional[py.path.local]:
+    d = spy.libspy.PREBUILT.join(target, get_build_dirname(build_type, kind))
+    if d.join("libspy.a").check(file=True):
+        return d
+    return None
 
 
 def build_variant(
@@ -305,6 +316,10 @@ def ensure_libspy(
     shipped in the wheel if there is one, else a build in the cache, which is
     built first if needed.
     """
+    if march is None:
+        prebuilt = _find_prebuilt(target, build_type, kind)
+        if prebuilt is not None:
+            return prebuilt
     key = cache_key(target, build_type, kind, march)
     final = cache_dir().join(target, f"{_dirname(build_type, kind, march)}-{key}")
     if final.join("libspy.a").check(file=True):
@@ -325,6 +340,22 @@ def build_standard_variants() -> None:
         if target == "native" and shutil.which("cc") is None:
             continue
         ensure_libspy(target, build_type, kind, None)  # type: ignore[arg-type]
+
+
+def build_prebuilt(dest: py.path.local) -> None:
+    """
+    Build the variants shipped in the wheel into `dest`, as
+    <dest>/<target>/<build type>[-testlib]/libspy.{a,wasm}.
+    """
+    target, build_type, kind = PREBUILT_VARIANT
+    out = dest.join(target, get_build_dirname(build_type, kind))  # type: ignore[arg-type]
+    if out.check():
+        shutil.rmtree(out)
+    build_variant(target, build_type, kind, None, out)  # type: ignore[arg-type]
+    # keep only what is used at run time, not the ninja files and the objects
+    for p in out.listdir():
+        if p.basename not in ("libspy.a", "libspy.wasm"):
+            shutil.rmtree(p) if p.check(dir=True) else p.remove()
 
 
 def main(argv: Optional[list[str]] = None) -> None:

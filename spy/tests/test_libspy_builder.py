@@ -460,3 +460,41 @@ class TestBuildNinja:
         assert "default libspy.mjs" in s
         assert "jsffi.c" in s
         assert "jsffi.c" not in self.gen("native")
+
+
+class TestPrebuilt:
+    def test_prebuilt_is_used_without_building(self, fake_ninja, monkeypatch, tmpdir):
+        prebuilt = py.path.local(tmpdir).join("prebuilt")
+        prebuilt.join("wasi", "debug-testlib", "libspy.a").ensure()
+        monkeypatch.setattr(spy.libspy, "PREBUILT", prebuilt)
+        libdir = ensure_libspy("wasi", "debug", "testlib", None)
+        assert libdir == prebuilt.join("wasi", "debug-testlib")
+        assert fake_ninja.cmdlines == []
+
+    def test_prebuilt_is_ignored_with_march(self, fake_ninja, monkeypatch, tmpdir):
+        prebuilt = py.path.local(tmpdir).join("prebuilt")
+        prebuilt.join("native", "release", "libspy.a").ensure()
+        monkeypatch.setattr(spy.libspy, "PREBUILT", prebuilt)
+        libdir = ensure_libspy("native", "release", "exe", "native")
+        assert libdir != prebuilt.join("native", "release")
+        assert len(fake_ninja.cmdlines) == 1
+
+    def test_build_prebuilt_keeps_only_what_is_used(self, monkeypatch, tmpdir):
+        real_run = subprocess.run
+
+        def fake_run(cmdline, *args, **kwargs):
+            if "ninja" not in cmdline:
+                return real_run(cmdline, *args, **kwargs)
+            d = py.path.local(cmdline[cmdline.index("-C") + 1])
+            for name in ("libspy.a", "libspy.wasm", "build.ninja", "obj/x.o"):
+                d.ensure(name)
+            return subprocess.CompletedProcess(cmdline, 0)
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+        dest = py.path.local(tmpdir).join("prebuilt")
+        libspy_builder.build_prebuilt(dest)
+        out = dest.join("wasi", "debug-testlib")
+        assert sorted(p.basename for p in out.listdir()) == [
+            "libspy.a",
+            "libspy.wasm",
+        ]
