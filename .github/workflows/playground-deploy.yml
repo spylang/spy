@@ -41,7 +41,9 @@ jobs:
         uses: mymindstorm/setup-emsdk@v14
 
       - name: Build libspy
-        run: uv run make -C spy/libspy TARGET=emscripten BUILD_TYPE=debug
+        run: |
+          LIBSPY_DIR=$(uv run python -m spy.libspy.builder --target emscripten --build-type debug)
+          echo "LIBSPY_DIR=$LIBSPY_DIR" >> "$GITHUB_ENV"
 
       - name: Build Python wheel
         run: |
@@ -55,8 +57,8 @@ jobs:
 
       - name: Copy built files to playground
         run: |
-          cp spy/libspy/build/emscripten/debug/libspy.mjs playground/
-          cp spy/libspy/build/emscripten/debug/libspy.wasm playground/
+          cp "$LIBSPY_DIR/libspy.mjs" playground/
+          cp "$LIBSPY_DIR/libspy.wasm" playground/
           cp dist/spylang-*.whl playground/
           cp -r assets playground/
           mkdir playground/examples
