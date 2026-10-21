@@ -402,6 +402,26 @@ class TestPruneCache:
         assert libdir.check(dir=True)
 
 
+class TestImports:
+    def test_builder_does_not_need_wasmtime(self):
+        # the build hook imports spy.libspy.builder in an environment where
+        # wasmtime is not installed
+        code = (
+            "import sys, spy.libspy.builder\n"
+            "assert 'wasmtime' not in sys.modules\n"
+            "assert 'spy.llwasm' not in sys.modules\n"
+        )
+        subprocess.run([sys.executable, "-c", code], check=True)
+
+    def test_lazy_names(self):
+        from spy.libspy import LLSPyInstance
+        from spy.libspy.host import LLSPyInstance as LLSPyInstance2
+
+        assert LLSPyInstance is LLSPyInstance2
+        with pytest.raises(AttributeError):
+            spy.libspy.does_not_exist  # type: ignore[attr-defined]
+
+
 class TestTools:
     def test_zig_and_ninja_use_the_current_interpreter(self):
         from spy.build.flags import get_ar, get_cc, get_ninja, get_zig
