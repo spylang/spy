@@ -25,7 +25,6 @@ from spy.build.build_info import BuildType, OutputKind
 
 _LIBSPY = spy.ROOT.join("libspy")
 _INCLUDE = _LIBSPY.join("include")
-_BUILD = _LIBSPY.join("build")
 
 
 def get_zig() -> list[str]:
@@ -296,12 +295,17 @@ def get_libdir(
     it is neither shipped in the package nor in the cache.
     """
     _check_target(target)
-    return str(_BUILD.join(target, get_build_dirname(build_type, output_kind)))
+    from spy.libspy.builder import ensure_libspy
+
+    return str(ensure_libspy(target, build_type, output_kind, march))
 
 
 def get_cc(target: str) -> str:
     _check_target(target)
-    return _TARGET_CC[target]
+    cc = _TARGET_CC[target]
+    if cc is None:
+        return shlex.join([*get_zig(), "cc"])
+    return cc
 
 
 def get_ar(target: str) -> str:

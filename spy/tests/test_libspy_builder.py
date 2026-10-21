@@ -26,11 +26,11 @@ def libspy_copy(monkeypatch, tmpdir):
     """
     Work on a copy of the libspy sources, so that tests can edit them.
     """
-    src = spy.libspy.BUILD.dirpath()
+    src = spy.libspy.ROOT
     dst = py.path.local(tmpdir).join("libspy")
     for subdir in ("src", "include", "vendored"):
         shutil.copytree(src.join(subdir), dst.join(subdir))
-    monkeypatch.setattr(spy.libspy, "BUILD", dst.join("build"))
+    monkeypatch.setattr(spy.libspy, "ROOT", dst)
     # and a private cache: we never touch the real one
     monkeypatch.setenv("SPY_CACHE_DIR", str(py.path.local(tmpdir).join("spy-cache")))
     return dst
@@ -254,7 +254,7 @@ class TestClearCache:
         """
         ensure_libspy("native", "release", "exe", "native")
         ensure_libspy("native-static", "debug", "exe", "x86_64_v3")
-        made_by_make = spy.libspy.BUILD.join("native", "release", "libspy.a")
+        made_by_make = spy.libspy.ROOT.join("build", "native", "release", "libspy.a")
         made_by_make.ensure()
         return made_by_make
 
@@ -430,3 +430,33 @@ class TestTools:
         assert get_ninja() == [sys.executable, "-m", "ninja"]
         assert get_cc("wasi") == f"{sys.executable} -m ziglang cc"
         assert get_ar("native-static") == f"{sys.executable} -m ziglang ar"
+
+
+class TestBuildNinja:
+    def gen(self, target: str, kind: str = "exe") -> str:
+        return libspy_builder._gen_build_ninja(target, ["-O0"], kind)  # type: ignore[arg-type]
+
+    def test_native_has_only_the_archive(self):
+        s = self.gen("native")
+        assert "default libspy.a" in s
+        assert "rule link" not in s
+
+    def test_wasi_testlib_links_libspy_wasm(self):
+        s = self.gen("wasi", "testlib")
+        assert "build libspy.wasm: link libspy.a" in s
+        assert "default libspy.wasm" in s
+        assert "-mexec-model=reactor" in s
+        assert "--whole-archive" in s
+
+    def test_wasi_exe_has_only_the_archive(self):
+        s = self.gen("wasi", "exe")
+        assert "default libspy.a" in s
+        assert "libspy.wasm" not in s
+
+    @pytest.mark.parametrize("kind", ["exe", "testlib"])
+    def test_emscripten_links_libspy_mjs_and_has_jsffi(self, kind: str) -> None:
+        s = self.gen("emscripten", kind)
+        assert "build libspy.mjs | libspy.wasm: link libspy.a" in s
+        assert "default libspy.mjs" in s
+        assert "jsffi.c" in s
+        assert "jsffi.c" not in self.gen("native")

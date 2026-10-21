@@ -1,13 +1,20 @@
 """
-Build libspy variants on demand, in a cache directory.
+Build libspy variants, and find them at run time.
 
-For now this is used only for the host-dependent variants (native with
---march). Everything else is still built by `make -C spy/libspy`.
+A variant is (target, build type, kind, march). ensure_libspy() returns the
+directory containing its libspy.a (plus libspy.wasm/libspy.mjs where relevant):
+
+  1. a prebuilt variant shipped in the wheel (spy/libspy/prebuilt), if any;
+  2. else a build in the user cache, built on first use.
+
+Importing this module must not need wasmtime: the build hook uses it.
 """
 
+import argparse
 import hashlib
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -20,17 +27,16 @@ import py.path
 import spy.libspy
 from spy.build.build_info import BuildType, OutputKind
 from spy.build.flags import (
+    fmt_flags,
     get_ar,
     get_build_dirname,
     get_cc,
     get_cflags,
+    get_ninja,
     validate_march,
 )
-from spy.build.ninja import fmt_flags
 from spy.errors import WIP
 
-# same as SRCS in libspy/Makefile (without src/jsffi/jsffi.c, which is for
-# emscripten only)
 SRCS = [
     "src/str.c",
     "src/bytes.c",
@@ -43,19 +49,43 @@ SRCS = [
     "vendored/ryu/ryu/d2s.c",
 ]
 
-# see RYU_CFLAGS in libspy/Makefile
+# RYU_FLOAT_FULL_TABLE makes f2s use its dedicated binary32 powers-of-five
+# tables instead of depending on the larger d2s tables.
+#
+# RYU_ONLY_64_BIT_OPS disables d2s's __uint128_t path. Zig lowers those
+# operations to compiler runtime helpers whose signatures conflict under the
+# WASM multivalue ABI, so use Ryu's portable 64-bit implementation instead.
 RYU_CFLAGS = ["-DRYU_FLOAT_FULL_TABLE", "-DRYU_ONLY_64_BIT_OPS"]
 
+# the variants built by `python -m spy.libspy.builder`
+STANDARD_VARIANTS = [
+    ("native", "release", "exe"),
+    ("native", "debug", "exe"),
+    ("native-static", "release", "exe"),
+    ("native-static", "debug", "exe"),
+    ("wasi", "release", "exe"),
+    ("wasi", "debug", "exe"),
+    ("wasi", "debug", "testlib"),
+    ("emscripten", "release", "exe"),
+    ("emscripten", "debug", "exe"),
+    ("emscripten", "debug", "testlib"),
+]
 
-def get_ninja() -> list[str]:
-    # `ninja` is not necessarily on PATH (e.g. `uv tool install`)
-    return [sys.executable, "-m", "ninja"]
+
+def get_srcs(target: str) -> list[str]:
+    if target == "emscripten":
+        return SRCS + ["src/jsffi/jsffi.c"]
+    return SRCS
 
 
 def variant_name(
     target: str, build_type: BuildType, kind: OutputKind, march: Optional[str]
 ) -> str:
-    name = f"{target}/{get_build_dirname(build_type, kind)}"
+    return f"{target}/{_dirname(build_type, kind, march)}"
+
+
+def _dirname(build_type: BuildType, kind: OutputKind, march: Optional[str]) -> str:
+    name = get_build_dirname(build_type, kind)
     if march is not None:
         name += f"-march-{validate_march(march)}"
     return name
@@ -64,8 +94,7 @@ def variant_name(
 def get_cflags_for_variant(
     target: str, build_type: BuildType, kind: OutputKind, march: Optional[str]
 ) -> list[str]:
-    libspy_dir = spy.libspy.BUILD.dirpath()
-    ryu = ["-I", str(libspy_dir.join("vendored", "ryu"))] + RYU_CFLAGS
+    ryu = ["-I", str(spy.libspy.ROOT.join("vendored", "ryu"))] + RYU_CFLAGS
     return get_cflags(target, build_type, kind, False, march) + ryu
 
 
@@ -80,7 +109,7 @@ def cache_key(
     The inputs are the libspy sources and headers, the variant (target, build
     type, kind, march), the compiler version and the flags.
     """
-    libspy_dir = spy.libspy.BUILD.dirpath()
+    libspy_dir = spy.libspy.ROOT
     h = hashlib.sha256()
     for subdir in ("src", "include", "vendored"):
         for p in sorted(libspy_dir.join(subdir).visit(rec=True)):
@@ -89,14 +118,31 @@ def cache_key(
                 h.update(p.read_binary())
     h.update(variant_name(target, build_type, kind, march).encode())
     h.update(" ".join(get_cflags_for_variant(target, build_type, kind, march)).encode())
-    cc = get_cc(target).split()
+    cc = shlex.split(get_cc(target))
     res = subprocess.run([*cc, "--version"], capture_output=True)
     h.update(res.stdout + res.stderr)
     return h.hexdigest()[:16]
 
 
-def _gen_build_ninja(target: str, cflags: list[str]) -> str:
-    libspy_dir = spy.libspy.BUILD.dirpath()
+# how to link libspy.a into a loadable module. wasi: only testlibs, which are
+# loaded by the interpreter (a reactor, i.e. a library without main, with the
+# whole libspy.a so that all functions are available to the host).
+_LINK_RULES = {
+    "wasi": (
+        "libspy.wasm",
+        "$cc --target=wasm32-wasi-musl -mexec-model=reactor "
+        "-Wl,--whole-archive $in -o $out",
+    ),
+    "emscripten": (
+        "libspy.mjs",
+        "$cc -sWASM_BIGINT -sEXPORTED_RUNTIME_METHODS=HEAP8 "
+        "-Wl,--whole-archive $in -o $out",
+    ),
+}
+
+
+def _gen_build_ninja(target: str, cflags: list[str], kind: OutputKind = "exe") -> str:
+    libspy_dir = spy.libspy.ROOT
     lines = [
         f"cc = {get_cc(target)}",
         f"ar = {get_ar(target)}",
@@ -113,13 +159,28 @@ def _gen_build_ninja(target: str, cflags: list[str]) -> str:
         "  description = AR $out",
         "",
     ]
+    if target in _LINK_RULES:
+        lines += [
+            "rule link",
+            f"  command = {_LINK_RULES[target][1]}",
+            "  description = LINK $out",
+            "",
+        ]
     objs = []
-    for src in SRCS:
+    for src in get_srcs(target):
         obj = "obj/" + src[:-2] + ".o"
         objs.append(obj)
         lines.append(f"build {obj}: cc {libspy_dir.join(src)}")
     lines.append(f"build libspy.a: ar {fmt_flags(objs)}")
-    lines.append("default libspy.a")
+    default = "libspy.a"
+    if target == "emscripten":
+        # emcc also writes libspy.wasm next to the .mjs
+        lines.append("build libspy.mjs | libspy.wasm: link libspy.a")
+        default = "libspy.mjs"
+    elif target == "wasi" and kind == "testlib":
+        lines.append("build libspy.wasm: link libspy.a")
+        default = "libspy.wasm"
+    lines.append(f"default {default}")
     return "\n".join(lines) + "\n"
 
 
@@ -204,37 +265,96 @@ def _touch(path: py.path.local) -> None:
         pass
 
 
-def ensure_libspy(
-    target: str, build_type: BuildType, kind: OutputKind, march: Optional[str]
-) -> py.path.local:
-    """
-    Return the directory containing libspy.a for this variant, building it
-    first if it is not in the cache.
-    """
-    assert march is not None, "only the --march variants are built here for now"
-    key = cache_key(target, build_type, kind, march)
-    name = f"{get_build_dirname(build_type, kind)}-march-{march}-{key}"
-    final = cache_dir().join(target, name)
-    if final.join("libspy.a").check(file=True):
-        _touch(final)
-        return final
 
-    # Build in a temporary directory, then rename it: a rename is atomic, so
-    # nobody ever sees a half-built library, and several processes (e.g.
-    # pytest-xdist workers) can start together without corrupting the cache.
-    final.dirpath().ensure(dir=True)
-    tmp = py.path.local(tempfile.mkdtemp(dir=str(final.dirpath())))
+
+def build_variant(
+    target: str,
+    build_type: BuildType,
+    kind: OutputKind,
+    march: Optional[str],
+    dest: py.path.local,
+) -> None:
+    """
+    Build a variant into the directory `dest`, which must not exist. The build
+    happens in a temporary sibling directory which is then renamed: a rename is
+    atomic, so nobody ever sees a half-built library, and several processes
+    (e.g. pytest-xdist workers) can start together without corrupting the
+    cache. If the rename fails, another process finished first.
+    """
+    dest.dirpath().ensure(dir=True)
+    tmp = py.path.local(tempfile.mkdtemp(dir=str(dest.dirpath())))
     try:
         cflags = get_cflags_for_variant(target, build_type, kind, march)
-        tmp.join("build.ninja").write(_gen_build_ninja(target, cflags))
+        tmp.join("build.ninja").write(_gen_build_ninja(target, cflags, kind))
         subprocess.run([*get_ninja(), "-C", str(tmp)], check=True)
         if not tmp.join("libspy.a").check(file=True):
-            raise WIP(f"ninja did not produce {final}/libspy.a")
+            raise WIP(f"ninja did not produce {dest}/libspy.a")
         try:
-            tmp.rename(final)
+            tmp.rename(dest)
         except OSError:
             pass  # another process finished first
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+def ensure_libspy(
+    target: str, build_type: BuildType, kind: OutputKind, march: Optional[str] = None
+) -> py.path.local:
+    """
+    Return the directory containing libspy.a for this variant: the prebuilt one
+    shipped in the wheel if there is one, else a build in the cache, which is
+    built first if needed.
+    """
+    key = cache_key(target, build_type, kind, march)
+    final = cache_dir().join(target, f"{_dirname(build_type, kind, march)}-{key}")
+    if final.join("libspy.a").check(file=True):
+        _touch(final)
+        return final
+    build_variant(target, build_type, kind, march, final)
     prune_cache()
     return final
+
+
+def build_standard_variants() -> None:
+    """Fill the cache with the standard variants (see `make -C spy/libspy`)."""
+    for target, build_type, kind in STANDARD_VARIANTS:
+        if target == "emscripten" and shutil.which("emcc") is None:
+            continue
+        if target == "native-static" and sys.platform == "darwin":
+            continue
+        if target == "native" and shutil.which("cc") is None:
+            continue
+        ensure_libspy(target, build_type, kind, None)  # type: ignore[arg-type]
+
+
+def main(argv: Optional[list[str]] = None) -> None:
+    parser = argparse.ArgumentParser(
+        description="Build libspy into the cache. Without arguments, build all "
+        "the standard variants. With --target, build one variant and print "
+        "its directory."
+    )
+    parser.add_argument("--target")
+    parser.add_argument("--build-type", default="debug")
+    parser.add_argument("--output-kind", default="exe")
+    parser.add_argument("--march")
+    args = parser.parse_args(argv)
+    if args.target is None:
+        build_standard_variants()
+    else:
+        # the build output goes to stderr, so that stdout contains only the
+        # directory (e.g. to be used as `$(python -m spy.libspy.builder ...)`)
+        sys.stdout.flush()
+        saved = os.dup(1)
+        os.dup2(2, 1)
+        try:
+            libdir = ensure_libspy(
+                args.target, args.build_type, args.output_kind, args.march
+            )
+        finally:
+            os.dup2(saved, 1)
+            os.close(saved)
+        print(libdir)
+
+
+if __name__ == "__main__":
+    main()

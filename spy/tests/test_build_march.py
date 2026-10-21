@@ -27,7 +27,6 @@ from spy.build.flags import (
     check_march,
     get_build_dirname,
     get_cflags,
-    get_libdir,
     validate_march,
 )
 from spy.cli import app
@@ -274,13 +273,17 @@ class TestCompilerConfig:
 
 
 class TestEnsureLibspyBuilt:
-    def test_no_march_uses_the_libspy_built_by_make(self, monkeypatch):
-        def no_build(*args):
-            raise AssertionError("libspy must not be built without --march")
+    def test_no_march_uses_ensure_libspy(self, monkeypatch, tmpdir):
+        calls = []
 
-        monkeypatch.setattr("spy.libspy.builder.ensure_libspy", no_build)
+        def fake(*args):
+            calls.append(args)
+            return py.path.local(tmpdir)
+
+        monkeypatch.setattr("spy.libspy.builder.ensure_libspy", fake)
         libdir = CompilerConfig._ensure_libspy_built("native", "release", "exe", None)
-        assert libdir == py.path.local(get_libdir("native", "release", "exe"))
+        assert libdir == py.path.local(tmpdir)
+        assert calls == [("native", "release", "exe", None)]
 
     def test_march_uses_ensure_libspy(self, monkeypatch, tmpdir):
         calls = []

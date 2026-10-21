@@ -16,10 +16,6 @@ from spy.build.flags import get_libdir
 from spy.errors import SPyError
 from spy.platform import IS_BROWSER, IS_DOCS_BUILD, IS_NODE, IS_PYODIDE
 
-SRC = spy.ROOT.join("libspy", "src")
-INCLUDE = spy.ROOT.join("libspy", "include")
-BUILD = spy.ROOT.join("libspy", "build")
-DEPS = spy.ROOT.join("libspy", "deps")
 if TYPE_CHECKING:
     from spy.libspy.host import (  # noqa: F401
         BytesLayout,
@@ -29,6 +25,10 @@ if TYPE_CHECKING:
     )
     from spy.llwasm import LLWasmModule, WasmTrap  # noqa: F401
 
+ROOT = spy.ROOT.join("libspy")
+SRC = ROOT.join("src")
+INCLUDE = ROOT.join("include")
+DEPS = ROOT.join("deps")
 
 _LAZY = {
     "BytesLayout": "spy.libspy.host",
