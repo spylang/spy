@@ -22,6 +22,7 @@ import subprocess
 import py.path
 
 import spy
+from spy.build.flags import get_zig
 from spy.util import robust_run
 
 BUNDLE_CACHE_DIR = spy.ROOT.dirpath("build", "wasm-bundles")
@@ -44,9 +45,7 @@ def link_bundle(
         out:      output .wasm path
     """
     cmdline = [
-        "python",
-        "-m",
-        "ziglang",
+        *get_zig(),
         "cc",
         "--target=wasm32-wasi-musl",
         "-mexec-model=reactor",
@@ -61,7 +60,7 @@ def link_bundle(
 
 def _zig_version() -> str:
     result = subprocess.run(
-        ["python", "-m", "ziglang", "version"],
+        [*get_zig(), "version"],
         capture_output=True,
         text=True,
         check=True,

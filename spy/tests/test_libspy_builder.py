@@ -400,3 +400,13 @@ class TestPruneCache:
         os.utime(libdir, (1, 1))
         assert ensure_libspy("native", "release", "exe", "native") == libdir
         assert libdir.check(dir=True)
+
+
+class TestTools:
+    def test_zig_and_ninja_use_the_current_interpreter(self):
+        from spy.build.flags import get_ar, get_cc, get_ninja, get_zig
+
+        assert get_zig() == [sys.executable, "-m", "ziglang"]
+        assert get_ninja() == [sys.executable, "-m", "ninja"]
+        assert get_cc("wasi") == f"{sys.executable} -m ziglang cc"
+        assert get_ar("native-static") == f"{sys.executable} -m ziglang ar"

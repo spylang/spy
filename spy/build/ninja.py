@@ -4,30 +4,9 @@ from typing import Optional
 import py.path
 
 from spy.build.config import BuildConfig, CompilerConfig
+from spy.build.flags import fmt_flags, get_ninja  # noqa: F401  (fmt_flags re-exported)
 from spy.textbuilder import TextBuilder
 from spy.util import robust_run
-
-
-def fmt_flags(flags: list[str]) -> str:
-    """
-    Format a list of CFLAGS/LDFLAGS into ninja-compatible format:
-
-      - space-separated string of its items
-      - individual items are escaped for ninja syntax
-      - individual items are escaped ALSO for shell syntax.
-
-    E.g.:
-        >>> fmt_flags(["a", "b", "c"])
-        "a b c"
-
-        >>> fmt_flags(["spy_foo$bar"])
-        "'spy_foo$$bar'"
-    """
-
-    def escape(s: str) -> str:
-        return shlex.quote(s.replace("$", "$$"))
-
-    return " ".join([escape(item) for item in flags])
 
 
 class NinjaWriter:
@@ -141,7 +120,7 @@ class NinjaWriter:
 
     def build(self) -> py.path.local:
         assert self.out is not None
-        cmdline = ["ninja", "-C", str(self.build_dir)]
+        cmdline = [*get_ninja(), "-C", str(self.build_dir)]
         # unbuffer run to get gcc to emit color codes
         robust_run(cmdline, unbuffer=True)
         return self.build_dir.join(self.out)

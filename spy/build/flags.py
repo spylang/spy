@@ -28,6 +28,47 @@ _INCLUDE = _LIBSPY.join("include")
 _BUILD = _LIBSPY.join("build")
 
 
+def get_zig() -> list[str]:
+    """
+    Command line to start zig. `python` is not necessarily the interpreter
+    which runs SPy (e.g. `uv tool install`), so we use sys.executable.
+    """
+    try:
+        import ziglang  # type: ignore  # noqa: F401
+    except ImportError:
+        raise RuntimeError(
+            "zig is required for this operation: pip install ziglang"
+        ) from None
+    return [sys.executable, "-m", "ziglang"]
+
+
+def get_ninja() -> list[str]:
+    # the `ninja` executable is not necessarily on PATH (e.g. `uv tool install`)
+    return [sys.executable, "-m", "ninja"]
+
+
+def fmt_flags(flags: list[str]) -> str:
+    """
+    Format a list of CFLAGS/LDFLAGS into ninja-compatible format:
+
+      - space-separated string of its items
+      - individual items are escaped for ninja syntax
+      - individual items are escaped ALSO for shell syntax.
+
+    E.g.:
+        >>> fmt_flags(["a", "b", "c"])
+        "a b c"
+
+        >>> fmt_flags(["spy_foo$bar"])
+        "'spy_foo$$bar'"
+    """
+
+    def escape(s: str) -> str:
+        return shlex.quote(s.replace("$", "$$"))
+
+    return " ".join([escape(item) for item in flags])
+
+
 # Base CFLAGS shared by all targets (mirrors spy/libspy/Makefile)
 _BASE_CFLAGS: list[str] = [
     "-fvisibility=hidden",
@@ -95,18 +136,18 @@ _BUILD_TYPE_LDFLAGS: dict[str, list[str]] = {
     "debug": [],
 }
 
-_TARGET_CC: dict[str, str] = {
-    "wasi": "python -m ziglang cc",
+_TARGET_CC: dict[str, Optional[str]] = {
+    "wasi": None,  # zig cc, see get_cc()
     "emscripten": "emcc",
     "native": "cc",
-    "native-static": "python -m ziglang cc",
+    "native-static": None,
 }
 
-_TARGET_AR: dict[str, str] = {
-    "wasi": "python -m ziglang ar",
+_TARGET_AR: dict[str, Optional[str]] = {
+    "wasi": None,  # zig ar, see get_ar()
     "emscripten": "emar",
     "native": "ar",
-    "native-static": "python -m ziglang ar",
+    "native-static": None,
 }
 
 
@@ -248,7 +289,12 @@ def get_libdir(
     target: str,
     build_type: BuildType,
     output_kind: OutputKind = "exe",
+    march: Optional[str] = None,
 ) -> str:
+    """
+    The directory containing libspy.a for this variant. It is built first if
+    it is neither shipped in the package nor in the cache.
+    """
     _check_target(target)
     return str(_BUILD.join(target, get_build_dirname(build_type, output_kind)))
 
@@ -260,7 +306,10 @@ def get_cc(target: str) -> str:
 
 def get_ar(target: str) -> str:
     _check_target(target)
-    return _TARGET_AR[target]
+    ar = _TARGET_AR[target]
+    if ar is None:
+        return shlex.join([*get_zig(), "ar"])
+    return ar
 
 
 def main(argv: Optional[list[str]] = None) -> None:
