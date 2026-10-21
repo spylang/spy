@@ -78,11 +78,7 @@ path = "hatch_build.py"
 # Python C headers (e.g. `python3-dev` package not installed).
 # See: https://github.com/spylang/spy/issues/621
 python-preference = "only-managed"
-cache-keys = [
-    { file = "pyproject.toml" },
-    { file = "spy/libspy/**/*.c" },
-    { file = "spy/libspy/**/*.h" },
-]
+reinstall-package = ["spylang"]
 
 [tool.pytest.ini_options]
 testpaths = ["spy"]
