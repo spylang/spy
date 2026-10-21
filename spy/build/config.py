@@ -9,7 +9,7 @@ import py.path
 
 import spy.libspy
 from spy.build.build_info import BuildTarget, BuildType, OutputKind
-from spy.build.flags import get_cc, get_cflags, get_ldflags, get_libdir
+from spy.build.flags import get_cc, get_cflags, get_ldflags
 from spy.errors import WIP, SPyError
 
 GCOption = Literal["none", "bdwgc"]
@@ -214,15 +214,11 @@ class CompilerConfig:
         target: str, build_type: BuildType, kind: OutputKind, march: Optional[str]
     ) -> py.path.local:
         """
-        Return the directory containing the libspy.a to link against.
-
-        Without --march it is the one built by `make -C spy/libspy`. With
-        --march, libspy has to be compiled for the same ISA as the module
-        (libspy is built with -flto): it is built on demand and cached, under
-        a name which includes a hash of everything which influences the build.
+        Return the directory containing the libspy.a to link against: the one
+        shipped in the package, else a build in the cache (built on first use).
+        With --march, libspy has to be compiled for the same ISA as the module
+        (libspy is built with -flto).
         """
-        if march is None:
-            return py.path.local(get_libdir(target, build_type, kind))
         from spy.libspy.builder import ensure_libspy
 
         return ensure_libspy(target, build_type, kind, march)
