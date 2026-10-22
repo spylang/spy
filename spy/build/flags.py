@@ -11,7 +11,12 @@ Usage:
 """
 
 import argparse
+import os
+import re
+import shlex
+import subprocess
 import sys
+import tempfile
 from os import getenv
 from typing import Optional
 
@@ -20,7 +25,47 @@ from spy.build.build_info import BuildType, OutputKind
 
 _LIBSPY = spy.ROOT.join("libspy")
 _INCLUDE = _LIBSPY.join("include")
-_BUILD = _LIBSPY.join("build")
+
+
+def get_zig() -> list[str]:
+    """
+    Command line to start zig. `python` is not necessarily the interpreter
+    which runs SPy (e.g. `uv tool install`), so we use sys.executable.
+    """
+    try:
+        import ziglang  # type: ignore  # noqa: F401
+    except ImportError:
+        raise RuntimeError(
+            "zig is required for this operation: pip install ziglang"
+        ) from None
+    return [sys.executable, "-m", "ziglang"]
+
+
+def get_ninja() -> list[str]:
+    # the `ninja` executable is not necessarily on PATH (e.g. `uv tool install`)
+    return [sys.executable, "-m", "ninja"]
+
+
+def fmt_flags(flags: list[str]) -> str:
+    """
+    Format a list of CFLAGS/LDFLAGS into ninja-compatible format:
+
+      - space-separated string of its items
+      - individual items are escaped for ninja syntax
+      - individual items are escaped ALSO for shell syntax.
+
+    E.g.:
+        >>> fmt_flags(["a", "b", "c"])
+        "a b c"
+
+        >>> fmt_flags(["spy_foo$bar"])
+        "'spy_foo$$bar'"
+    """
+
+    def escape(s: str) -> str:
+        return shlex.quote(s.replace("$", "$$"))
+
+    return " ".join([escape(item) for item in flags])
 
 
 # Base CFLAGS shared by all targets (mirrors spy/libspy/Makefile)
@@ -90,18 +135,18 @@ _BUILD_TYPE_LDFLAGS: dict[str, list[str]] = {
     "debug": [],
 }
 
-_TARGET_CC: dict[str, str] = {
-    "wasi": "python -m ziglang cc",
+_TARGET_CC: dict[str, Optional[str]] = {
+    "wasi": None,  # zig cc, see get_cc()
     "emscripten": "emcc",
     "native": "cc",
-    "native-static": "python -m ziglang cc",
+    "native-static": None,
 }
 
-_TARGET_AR: dict[str, str] = {
-    "wasi": "python -m ziglang ar",
+_TARGET_AR: dict[str, Optional[str]] = {
+    "wasi": None,  # zig ar, see get_ar()
     "emscripten": "emar",
     "native": "ar",
-    "native-static": "python -m ziglang ar",
+    "native-static": None,
 }
 
 
@@ -129,6 +174,7 @@ def get_cflags(
     build_type: BuildType,
     output_kind: OutputKind = "exe",
     warning_as_error: bool = False,
+    march: Optional[str] = None,
 ) -> list[str]:
     _check_target(target)
     _check_build_type(build_type)
@@ -138,6 +184,7 @@ def get_cflags(
     else:
         warning_flags = _WARNING_CFLAGS
     include = ["-I", str(_INCLUDE)]
+    march_flags = [f"-march={validate_march(march)}"] if march is not None else []
     return (
         _BASE_CFLAGS
         + _TARGET_CFLAGS[target]
@@ -145,6 +192,7 @@ def get_cflags(
         + _OUTPUT_KIND_CFLAGS[output_kind]
         + warning_flags
         + include
+        + march_flags
     )
 
 
@@ -152,6 +200,73 @@ def get_ldflags(target: str, build_type: BuildType) -> list[str]:
     _check_target(target)
     _check_build_type(build_type)
     return _TARGET_LDFLAGS[target] + _BUILD_TYPE_LDFLAGS[build_type]
+
+
+# A -march value ends up on a command line and in the name of a directory (see
+# spy.libspy.builder.ensure_libspy). Rather than trying to quote/sanitize it, we
+# accept only what real values look like: 'native', 'x86-64-v3', 'x86_64_v3',
+# 'armv8.2-a+crc', 'znver4', ...
+_MARCH_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]*")
+
+
+def validate_march(march: str) -> str:
+    """
+    Return `march` unchanged if it is syntactically a sane -march value, else
+    raise ValueError. This does NOT check that the compiler knows it: see
+    check_march for that.
+    """
+    if not _MARCH_RE.fullmatch(march):
+        raise ValueError(
+            f"invalid --march value {march!r}: it must start with a letter or "
+            f"a digit, and contain only letters, digits and '.', '_', '+', '-'"
+        )
+    return march
+
+
+def check_march(target: str, march: str) -> None:
+    """
+    Check that `march` is a valid value for `-march=` for the C compiler of
+    `target`, by asking the compiler itself (it takes a few ms).
+
+    Raise ValueError with a short, user-friendly message if it is not: this is
+    nicer than letting the build fail with the raw compiler output (zig
+    prints the list of all the CPUs it knows).
+
+    Note that gcc/clang and zig don't agree on the names: e.g. 'x86-64-v3' is
+    fine for gcc but not for `zig cc`, which wants 'x86_64_v3'.
+    """
+    validate_march(march)
+    _check_target(target)
+    cc = get_cc(target)
+    target_flags = [f for f in _TARGET_CFLAGS[target] if f.startswith("--target=")]
+    with tempfile.TemporaryDirectory() as tmpdir:
+        cmd = [
+            *shlex.split(cc),
+            *target_flags,
+            f"-march={march}",
+            "-x", "c", "-c", "-",
+            "-o", os.path.join(tmpdir, "probe.o"),
+        ]  # fmt: skip
+        try:
+            res = subprocess.run(cmd, input="", capture_output=True, text=True)
+        except FileNotFoundError:
+            # no compiler at all: the build will complain by itself
+            return
+    if res.returncode == 0:
+        return
+
+    # zig prints "info: available CPUs ..." before the actual error: look for it
+    lines = [line.strip() for line in res.stderr.splitlines() if line.strip()]
+    errors = [line for line in lines if "error" in line]
+    reason = errors[0] if errors else (lines[0] if lines else "unknown error")
+    msg = f"{march!r} is not a valid -march value for {cc!r}: {reason}"
+    if target == "native-static":
+        msg += (
+            "\n--static builds use zig cc, which has its own CPU names (e.g. "
+            "'x86_64_v3' instead of 'x86-64-v3'; list them with "
+            "`python -m ziglang targets`). 'native' works everywhere."
+        )
+    raise ValueError(msg)
 
 
 def get_build_dirname(build_type: BuildType, output_kind: OutputKind = "exe") -> str:
@@ -170,20 +285,35 @@ def get_build_dirname(build_type: BuildType, output_kind: OutputKind = "exe") ->
 
 
 def get_libdir(
-    target: str, build_type: BuildType, output_kind: OutputKind = "exe"
+    target: str,
+    build_type: BuildType,
+    output_kind: OutputKind = "exe",
+    march: Optional[str] = None,
 ) -> str:
+    """
+    The directory containing libspy.a for this variant. It is built first if
+    it is neither shipped in the package nor in the cache.
+    """
     _check_target(target)
-    return str(_BUILD.join(target, get_build_dirname(build_type, output_kind)))
+    from spy.libspy.builder import ensure_libspy
+
+    return str(ensure_libspy(target, build_type, output_kind, march))
 
 
 def get_cc(target: str) -> str:
     _check_target(target)
-    return _TARGET_CC[target]
+    cc = _TARGET_CC[target]
+    if cc is None:
+        return shlex.join([*get_zig(), "cc"])
+    return cc
 
 
 def get_ar(target: str) -> str:
     _check_target(target)
-    return _TARGET_AR[target]
+    ar = _TARGET_AR[target]
+    if ar is None:
+        return shlex.join([*get_zig(), "ar"])
+    return ar
 
 
 def main(argv: Optional[list[str]] = None) -> None:

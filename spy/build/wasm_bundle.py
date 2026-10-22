@@ -3,16 +3,15 @@ Link multiple .a archives into a single WASM reactor module, with a
 content-addressed cache.
 
 Cache layout:
-    <spy-root>/../build/wasm-bundles/<hash>/bundle.wasm
-    <spy-root>/../build/wasm-bundles/<hash>/manifest.json
+    <cache_root>/wasm-bundles/<hash>/bundle.wasm
+    <cache_root>/wasm-bundles/<hash>/manifest.json
 
 The cache key is a SHA-256 hash of:
 - the content of each input .a archive
 - the toolchain version (zig version string)
 
-The cache lives project-local (next to the spy package root) so that
-`git clean -fdx` cleans it along with other build artefacts, and so that
-it stays aligned with the current checkout's libspy version.
+The cache is in the user cache directory of SPy, see
+spy.libspy.builder.cache_root().
 """
 
 import hashlib
@@ -21,10 +20,9 @@ import subprocess
 
 import py.path
 
-import spy
+from spy.build.flags import get_zig
+from spy.libspy.builder import cache_root
 from spy.util import robust_run
-
-BUNDLE_CACHE_DIR = spy.ROOT.dirpath("build", "wasm-bundles")
 
 
 def link_bundle(
@@ -44,9 +42,7 @@ def link_bundle(
         out:      output .wasm path
     """
     cmdline = [
-        "python",
-        "-m",
-        "ziglang",
+        *get_zig(),
         "cc",
         "--target=wasm32-wasi-musl",
         "-mexec-model=reactor",
@@ -61,7 +57,7 @@ def link_bundle(
 
 def _zig_version() -> str:
     result = subprocess.run(
-        ["python", "-m", "ziglang", "version"],
+        [*get_zig(), "version"],
         capture_output=True,
         text=True,
         check=True,
@@ -93,7 +89,7 @@ def get_or_build_bundle(
         force_rebuild: bypass cache lookup and always rebuild
     """
     cache_key = _compute_cache_key(archives)
-    cache_dir = BUNDLE_CACHE_DIR.join(cache_key)
+    cache_dir = cache_root().join("wasm-bundles", cache_key)
     bundle_path = cache_dir.join("bundle.wasm")
     manifest_path = cache_dir.join("manifest.json")
 

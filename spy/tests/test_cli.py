@@ -1,5 +1,6 @@
 import json
 import re
+import shutil
 import subprocess
 import sys
 import textwrap
@@ -11,6 +12,7 @@ from typer.testing import CliRunner
 
 import spy
 from spy.cli import app
+from spy.libspy.builder import export_for_pyodide
 
 PYODIDE_EXE = spy.ROOT.dirpath().join("pyodide", "venv", "bin", "python")
 if not PYODIDE_EXE.exists():
@@ -357,8 +359,12 @@ class TestMain:
         assert "seconds" not in out
 
     @pytest.mark.skipif(PYODIDE_EXE is None, reason="./pyodide/venv not found")
+    @pytest.mark.skipif(shutil.which("emcc") is None, reason="emcc not found")
     @pytest.mark.pyodide
     def test_execute_pyodide(self):
+        # pyodide cannot build libspy: export what it needs into the checkout,
+        # which it can see
+        export_for_pyodide()
         # pyodide under node cannot access /tmp/, so we cannot try to execute
         # files which we wrote to self.tmpdir. Instead, let's try to execute
         # examples/hello.spy

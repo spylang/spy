@@ -1,41 +1,82 @@
-from dataclasses import dataclass
-from typing import Any, Optional
+"""
+libspy: the C runtime of SPy.
+
+This package must stay light to import (no wasmtime): the build hook imports
+spy.libspy.builder. The runtime classes live in spy.libspy.host and are
+loaded lazily, see __getattr__.
+"""
+
+import importlib
+from typing import TYPE_CHECKING, Any
 
 import py.path
 
 import spy
 from spy.build.flags import get_libdir
-from spy.build.wasm_bundle import get_or_build_bundle
 from spy.errors import SPyError
-from spy.llwasm import HostModule, LLWasmInstance, LLWasmModule, WasmTrap
-from spy.location import Loc
 from spy.platform import IS_BROWSER, IS_DOCS_BUILD, IS_NODE, IS_PYODIDE
 
-SRC = spy.ROOT.join("libspy", "src")
-INCLUDE = spy.ROOT.join("libspy", "include")
-BUILD = spy.ROOT.join("libspy", "build")
-DEPS = spy.ROOT.join("libspy", "deps")
+if TYPE_CHECKING:
+    from spy.libspy.host import (  # noqa: F401
+        BytesLayout,
+        LibSPyHost,
+        LLSPyInstance,
+        StrLayout,
+    )
+    from spy.llwasm import LLWasmModule, WasmTrap  # noqa: F401
 
-# the VM provides the debug helpers as WASM imports, so it always wants the
-# testlib flavor of libspy (e.g. build/wasi/debug-testlib)
-WASI_TESTLIB = py.path.local(get_libdir("wasi", "debug", "testlib"))
-EMSCRIPTEN_TESTLIB = py.path.local(get_libdir("emscripten", "debug", "testlib"))
+ROOT = spy.ROOT.join("libspy")
+SRC = ROOT.join("src")
+INCLUDE = ROOT.join("include")
+DEPS = ROOT.join("deps")
+# variants built when the package is built (wheels only), see builder.py
+PREBUILT = ROOT.join("prebuilt")
+# variants exported for Pyodide, which cannot build them (no compiler, no
+# subprocess), see builder.export_for_pyodide()
+EXPORTED = ROOT.join("pyodide-libs")
+
+_LAZY = {
+    "BytesLayout": "spy.libspy.host",
+    "LibSPyHost": "spy.libspy.host",
+    "LLSPyInstance": "spy.libspy.host",
+    "StrLayout": "spy.libspy.host",
+    "LLWasmModule": "spy.llwasm",
+    "WasmTrap": "spy.llwasm",
+}
 
 
-if IS_NODE:
-    LIBSPY_WASM = EMSCRIPTEN_TESTLIB.join("libspy.mjs")
-    LLMOD = None
-elif IS_BROWSER or IS_DOCS_BUILD:
-    LIBSPY_WASM = None  # type: ignore    # needs to be set by the embedder
-    LLMOD = None
-else:
-    assert not IS_PYODIDE
-    # "normal" python, we can preload LLMOD
-    LIBSPY_WASM = WASI_TESTLIB.join("libspy.wasm")
-    LLMOD = LLWasmModule(LIBSPY_WASM)  # type: ignore
+def __getattr__(name: str) -> Any:
+    if name in _LAZY:
+        return getattr(importlib.import_module(_LAZY[name]), name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
-# XXX ^^^^
-# is it correct to always use debug/libspy.wasm? For tests it's surely fine
+
+# Where to load libspy.wasm (or libspy.mjs) from. In the browser it needs to be
+# set by the embedder; else it is computed on first use, so that importing
+# spy never builds anything.
+LIBSPY_WASM: Any = None
+LLMOD: "LLWasmModule | None" = None
+
+
+def _wasi_testlib() -> py.path.local:
+    # the VM provides the debug helpers as WASM imports, so it always wants
+    # the testlib flavor of libspy (e.g. wasi/debug-testlib)
+    return py.path.local(get_libdir("wasi", "debug", "testlib"))
+
+
+def _get_libspy_wasm() -> Any:
+    if LIBSPY_WASM is not None:
+        return LIBSPY_WASM
+    if IS_NODE:
+        return py.path.local(get_libdir("emscripten", "debug", "testlib")).join(
+            "libspy.mjs"
+        )
+    if IS_BROWSER or IS_DOCS_BUILD:
+        raise RuntimeError("libspy.LIBSPY_WASM needs to be set by the embedder")
+    return _wasi_testlib().join("libspy.wasm")
+
+
+# XXX is it correct to always use debug/libspy.wasm? For tests it's surely fine
 # since we always compile them with SPY_DEBUG, but we need to double check
 # what to do when we do e.g. spy build --release fine sine
 
@@ -44,16 +85,22 @@ def get_LLMOD(
     extra_archives: list[py.path.local] = [],
     *,
     force_rebuild: bool = False,
-) -> LLWasmModule:
+) -> "LLWasmModule":
     """
     Return a LLWasmModule for libspy, optionally bundled with extra .a archives.
 
-    When extra_archives is empty, returns the prebuilt LLMOD (no build step).
+    When extra_archives is empty, returns the (lazily created) LLMOD.
     When extra_archives is non-empty, links libspy.a + each extra archive into
     a single bundle (cached by content hash) and returns a LLWasmModule for it.
     """
+    global LLMOD
+    from spy.build.wasm_bundle import get_or_build_bundle
+    from spy.llwasm import LLWasmModule
+
     if not extra_archives:
-        assert LLMOD is not None
+        assert not IS_PYODIDE
+        if LLMOD is None:
+            LLMOD = LLWasmModule(str(_get_libspy_wasm()))
         return LLMOD
 
     for archive in extra_archives:
@@ -64,135 +111,20 @@ def get_LLMOD(
                 f"Did you forget to build the spyvm extension module?",
             )
 
-    libspy_a = WASI_TESTLIB.join("libspy.a")
+    libspy_a = _wasi_testlib().join("libspy.a")
     all_archives = [libspy_a] + list(extra_archives)
     bundle_path = get_or_build_bundle(all_archives, force_rebuild=force_rebuild)
     return LLWasmModule(str(bundle_path))
 
 
-async def async_get_LLMOD() -> LLWasmModule:
+async def async_get_LLMOD() -> "LLWasmModule":
     global LLMOD
+    from spy.llwasm import LLWasmModule
+
     if LLMOD is None:
-        LLMOD = await LLWasmModule.async_new(str(LIBSPY_WASM))
+        if IS_PYODIDE:
+            LLMOD = await LLWasmModule.async_new(str(_get_libspy_wasm()))
+        else:
+            # wasmtime has no async constructor
+            LLMOD = LLWasmModule(str(_get_libspy_wasm()))
     return LLMOD
-
-
-class LibSPyHost(HostModule):
-    log: list[str]
-    panic_message: Optional[str]
-    panic_filename: Optional[str]
-    panic_lineno: int
-
-    def __init__(self) -> None:
-        self.log = []
-        self.panic_message = None
-        self.panic_filename = None
-        self.panic_lineno = 0
-
-    def _read_cstr(self, ptr: int) -> str:
-        # ptr is const char*
-        ba = self.ll.mem.read_cstr(ptr)
-        return ba.decode("utf-8")
-
-    # ========== WASM imports ==========
-
-    def env_spy_debug_log(self, ptr: int) -> None:
-        s = self._read_cstr(ptr)
-        self.log.append(s)
-        print("[log]", s)
-
-    def env_spy_debug_log_i32(self, ptr: int, n: int) -> None:
-        s = self._read_cstr(ptr)
-        msg = f"{s} {n}"
-        self.log.append(msg)
-        print("[log]", msg)
-
-    def env_spy_debug_set_panic_message(
-        self, ptr_etype: int, ptr_msg: int, ptr_fname: int, lineno: int
-    ) -> None:
-        # ptr_* are const char*
-        assert ptr_etype != 0
-        assert ptr_msg != 0
-        assert ptr_fname != 0
-        self.panic_etype = self._read_cstr(ptr_etype)
-        self.panic_message = self._read_cstr(ptr_msg)
-        self.panic_filename = self._read_cstr(ptr_fname)
-        self.panic_lineno = lineno
-
-
-@dataclass
-class StrLayout:
-    # See also the struct _spy_StrObject_layout in str.h
-    size: int
-    length_offset: int
-    hash_offset: int
-    utf8_offset: int
-
-
-@dataclass
-class BytesLayout:
-    # See also the struct _spy_BytesObject_layout in bytes.h
-    size: int
-    length_offset: int
-    hash_offset: int
-    data_offset: int
-
-
-class LLSPyInstance(LLWasmInstance):
-    """
-    A specialized version of LLWasmInstance which automatically link against
-    LibSPyHost()
-    """
-
-    def __init__(
-        self,
-        llmod: LLWasmModule,
-        hostmods: list[HostModule] = [],
-        *,
-        instance: Any = None,
-    ) -> None:
-        self.libspy = LibSPyHost()
-        hostmods = [self.libspy] + hostmods
-        super().__init__(llmod, hostmods, instance=instance)
-        layout = self.call("_spy_StrObject_layout")
-        self.str_layout = StrLayout(*layout)
-        blayout = self.call("_spy_BytesObject_layout")
-        self.bytes_layout = BytesLayout(*blayout)
-
-    def read_bytes(self, ptr: int) -> tuple[int, int, bytes]:
-        """
-        Read a spy_BytesObject at ptr from linear memory.
-        Returns (length, hash, data_bytes).
-        """
-        layout = self.bytes_layout
-        length = self.mem.read_i32(ptr + layout.length_offset)
-        hash_ = self.mem.read_i32(ptr + layout.hash_offset)
-        data_ptr = self.mem.read_i32(ptr + layout.data_offset)
-        data = bytes(self.mem.read(data_ptr, length))
-        return length, hash_, data
-
-    def read_str(self, ptr: int) -> tuple[int, int, bytes]:
-        """
-        Read a spy_StrObject at ptr from linear memory.
-        Returns (length, hash, utf8_bytes).
-        """
-        layout = self.str_layout
-        length = self.mem.read_i32(ptr + layout.length_offset)
-        hash_ = self.mem.read_i32(ptr + layout.hash_offset)
-        utf8_ptr = self.mem.read_i32(ptr + layout.utf8_offset)
-        utf8 = bytes(self.mem.read(utf8_ptr, length))
-        return length, hash_, utf8
-
-    def call(self, name: str, *args: Any) -> Any:
-        try:
-            return super().call(name, *args)
-        except WasmTrap:
-            if self.libspy.panic_message is not None:
-                assert self.libspy.panic_filename is not None
-                etype = "W_" + self.libspy.panic_etype
-                message = self.libspy.panic_message
-                fname = self.libspy.panic_filename
-                lineno = self.libspy.panic_lineno
-                loc = Loc(fname, lineno, lineno, 1, -1)
-                raise SPyError.simple(etype, message, "", loc)
-            raise

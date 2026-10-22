@@ -13,7 +13,7 @@ CFLAGS="
   -D SPY_DEBUG
   -D SPY_TARGET_EMSCRIPTEN
   -I ${LIBSPY}/include/
-  -L ${LIBSPY}/build/emscripten/debug
+  $(python -m spy.build.flags --libdir --target=emscripten --build-type=debug)
   -lspy
 "
 

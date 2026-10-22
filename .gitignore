@@ -26,6 +26,7 @@ examples/jsffi/lldemo.wasm
 examples/jsffi/lldemo.c
 
 pyodide/.pyodide-xbuildenv-*
+spy/libspy/pyodide-libs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

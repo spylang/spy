@@ -34,6 +34,16 @@ emscripten
 $ ./venv/bin/pip install -e ..
 ```
 
+Pyodide cannot build libspy (no compiler, no subprocess), so it only uses the
+variants which the host exported into `spy/libspy/pyodide-libs/` (needs `emcc`):
+
+```
+$ python -m spy.libspy.builder --export-pyodide
+```
+
+`test_cli::test_execute_pyodide` does it itself. Re-export after changing
+anything in `spy/libspy`.
+
 Once `spy` is installed, you can run spy under pyodide-node like this:
 
 ```
