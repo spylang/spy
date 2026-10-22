@@ -299,26 +299,29 @@ def _find_exported(
     return None
 
 
+def _log(msg: str) -> None:
+    print(msg, flush=True)
+
+
 def build_variant(
     target: str,
     build_type: BuildType,
     kind: OutputKind,
     march: Optional[str],
     dest: py.path.local,
+    verbose: bool = False,
 ) -> None:
     """
-    Build a variant into the directory `dest`, which must not exist. The build
-    happens in a temporary sibling directory which is then renamed: a rename is
-    atomic, so nobody ever sees a half-built library, and several processes
-    (e.g. pytest-xdist workers) can start together without corrupting the
-    cache. If the rename fails, another process finished first.
+    Build a variant into the directory `dest`, which must not exist. If
+    `verbose`, ninja prints the full command lines.
     """
     dest.dirpath().ensure(dir=True)
     tmp = py.path.local(tempfile.mkdtemp(dir=str(dest.dirpath())))
     try:
         cflags = get_cflags_for_variant(target, build_type, kind, march)
         tmp.join("build.ninja").write(_gen_build_ninja(target, cflags, kind))
-        subprocess.run([*get_ninja(), "-C", str(tmp)], check=True)
+        ninja = [*get_ninja(), "-v"] if verbose else get_ninja()
+        subprocess.run([*ninja, "-C", str(tmp)], check=True)
         if not tmp.join("libspy.a").check(file=True):
             raise WIP(f"ninja did not produce {dest}/libspy.a")
         try:
@@ -330,16 +333,26 @@ def build_variant(
 
 
 def ensure_libspy(
-    target: str, build_type: BuildType, kind: OutputKind, march: Optional[str] = None
+    target: str,
+    build_type: BuildType,
+    kind: OutputKind,
+    march: Optional[str] = None,
+    verbose: bool = False,
 ) -> py.path.local:
     """
     Return the directory containing libspy.a for this variant: the prebuilt one
     shipped in the wheel if there is one, else a build in the cache, which is
     built first if needed.
+
+    If `verbose`, say on stdout what is done for this variant and show the full
+    build command lines.
     """
+    name = variant_name(target, build_type, kind, march)
     if march is None:
         prebuilt = _find_prebuilt(target, build_type, kind)
         if prebuilt is not None:
+            if verbose:
+                _log(f"==> {name}: using the prebuilt variant {prebuilt}")
             return prebuilt
     if IS_PYODIDE:
         # no compiler, no subprocess: only look for what the host exported
@@ -355,22 +368,36 @@ def ensure_libspy(
     final = cache_dir().join(target, f"{_dirname(build_type, kind, march)}-{key}")
     if final.join("libspy.a").check(file=True):
         _touch(final)
+        if verbose:
+            _log(f"==> {name}: up to date, nothing to build ({final})")
         return final
-    build_variant(target, build_type, kind, march, final)
-    prune_cache()
+    if verbose:
+        _log(f"==> {name}: building {final}")
+    build_variant(target, build_type, kind, march, final, verbose)
+    n_pruned = prune_cache()
+    if verbose:
+        _log(f"==> {name}: built {final}")
+        if n_pruned:
+            _log(f"==> removed {n_pruned} old build(s) from the cache")
     return final
 
 
-def build_standard_variants() -> None:
+def build_standard_variants(verbose: bool = False) -> None:
     """Fill the cache with the standard variants (see `make -C spy/libspy`)."""
     for target, build_type, kind in STANDARD_VARIANTS:
+        name = variant_name(target, build_type, kind, None)  # type: ignore[arg-type]
+        skip = None
         if target == "emscripten" and shutil.which("emcc") is None:
+            skip = "emcc not found"
+        elif target == "native-static" and sys.platform == "darwin":
+            skip = "not supported on macOS"
+        elif target == "native" and shutil.which("cc") is None:
+            skip = "cc not found"
+        if skip is not None:
+            if verbose:
+                _log(f"==> {name}: skipped ({skip})")
             continue
-        if target == "native-static" and sys.platform == "darwin":
-            continue
-        if target == "native" and shutil.which("cc") is None:
-            continue
-        ensure_libspy(target, build_type, kind, None)  # type: ignore[arg-type]
+        ensure_libspy(target, build_type, kind, None, verbose)  # type: ignore[arg-type]
 
 
 def export_for_pyodide(dest: Optional[py.path.local] = None) -> py.path.local:
@@ -430,11 +457,19 @@ def main(argv: Optional[list[str]] = None) -> None:
         help="build the variants needed by Pyodide-under-node and copy them to "
         "spy/libspy/pyodide-libs",
     )
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="do not show what is done for each variant, nor the full compiler "
+        "and linker command lines",
+    )
     args = parser.parse_args(argv)
+    verbose = not args.quiet
     if args.export_pyodide:
         print(export_for_pyodide())
     elif args.target is None:
-        build_standard_variants()
+        build_standard_variants(verbose)
     else:
         # the build output goes to stderr, so that stdout contains only the
         # directory (e.g. to be used as `$(python -m spy.libspy.builder ...)`)
@@ -443,7 +478,11 @@ def main(argv: Optional[list[str]] = None) -> None:
         os.dup2(2, 1)
         try:
             libdir = ensure_libspy(
-                args.target, args.build_type, args.output_kind, args.march
+                args.target,
+                args.build_type,
+                args.output_kind,
+                args.march,
+                verbose,
             )
         finally:
             os.dup2(saved, 1)
