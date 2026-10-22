@@ -498,3 +498,81 @@ class TestPrebuilt:
             "libspy.a",
             "libspy.wasm",
         ]
+
+
+class TestPyodide:
+    """
+    Under Pyodide there is no compiler and no subprocess: ensure_libspy must
+    only look up what the host exported, and never compute a cache key.
+    """
+
+    @pytest.fixture
+    def under_pyodide(self, monkeypatch, tmpdir):
+        monkeypatch.setattr(libspy_builder, "IS_PYODIDE", True)
+        exported = py.path.local(tmpdir).join("exported")
+        monkeypatch.setattr(spy.libspy, "EXPORTED", exported)
+        # prebuilt is empty, and anything which tries to build or hash fails
+        monkeypatch.setattr(spy.libspy, "PREBUILT", py.path.local(tmpdir).join("nope"))
+
+        def boom(*args, **kwargs):
+            raise AssertionError("must not run a subprocess under Pyodide")
+
+        monkeypatch.setattr(subprocess, "run", boom)
+        return exported
+
+    def test_uses_exported_without_building(self, under_pyodide):
+        under_pyodide.join("emscripten", "debug-testlib", "libspy.a").ensure()
+        libdir = ensure_libspy("emscripten", "debug", "testlib", None)
+        assert libdir == under_pyodide.join("emscripten", "debug-testlib")
+
+    def test_prebuilt_still_has_priority(self, under_pyodide, monkeypatch, tmpdir):
+        prebuilt = py.path.local(tmpdir).join("prebuilt")
+        prebuilt.join("wasi", "debug-testlib", "libspy.a").ensure()
+        monkeypatch.setattr(spy.libspy, "PREBUILT", prebuilt)
+        under_pyodide.join("wasi", "debug-testlib", "libspy.a").ensure()
+        libdir = ensure_libspy("wasi", "debug", "testlib", None)
+        assert libdir == prebuilt.join("wasi", "debug-testlib")
+
+    def test_missing_explains_how_to_export(self, under_pyodide):
+        with pytest.raises(SPyError, match="--export-pyodide"):
+            ensure_libspy("emscripten", "debug", "testlib", None)
+
+    def test_march_is_never_exported(self, under_pyodide):
+        under_pyodide.join("emscripten", "debug-testlib", "libspy.a").ensure()
+        with pytest.raises(SPyError, match="not available under Pyodide"):
+            ensure_libspy("emscripten", "debug", "testlib", "native")
+
+
+class TestExportForPyodide:
+    def test_copies_only_what_is_used(self, monkeypatch, tmpdir):
+        built = py.path.local(tmpdir).join("cache", "emscripten", "debug-testlib-abc")
+        for name in ("libspy.a", "libspy.mjs", "libspy.wasm", "build.ninja", "obj/x.o"):
+            built.ensure(name)
+        calls = []
+
+        def fake_ensure(target, build_type, kind, march):
+            calls.append((target, build_type, kind, march))
+            return built
+
+        monkeypatch.setattr(libspy_builder, "ensure_libspy", fake_ensure)
+        dest = py.path.local(tmpdir).join("exported")
+        assert libspy_builder.export_for_pyodide(dest) == dest
+        assert calls == [("emscripten", "debug", "testlib", None)]
+        out = dest.join("emscripten", "debug-testlib")
+        assert sorted(p.basename for p in out.listdir()) == [
+            "libspy.a",
+            "libspy.mjs",
+            "libspy.wasm",
+        ]
+        # they are copies: the cache can be pruned without breaking pyodide
+        assert not out.join("libspy.a").islink()
+
+    def test_replaces_a_previous_export(self, monkeypatch, tmpdir):
+        built = py.path.local(tmpdir).join("cache", "b")
+        built.ensure("libspy.a")
+        monkeypatch.setattr(libspy_builder, "ensure_libspy", lambda *a: built)
+        dest = py.path.local(tmpdir).join("exported")
+        dest.join("emscripten", "debug-testlib", "stale.mjs").ensure()
+        libspy_builder.export_for_pyodide(dest)
+        names = [p.basename for p in dest.join("emscripten", "debug-testlib").listdir()]
+        assert names == ["libspy.a"]

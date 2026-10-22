@@ -31,6 +31,9 @@ INCLUDE = ROOT.join("include")
 DEPS = ROOT.join("deps")
 # variants built when the package is built (wheels only), see builder.py
 PREBUILT = ROOT.join("prebuilt")
+# variants exported for Pyodide, which cannot build them (no compiler, no
+# subprocess), see builder.export_for_pyodide()
+EXPORTED = ROOT.join("pyodide-libs")
 
 _LAZY = {
     "BytesLayout": "spy.libspy.host",

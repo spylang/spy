@@ -5,7 +5,10 @@ A variant is (target, build type, kind, march). ensure_libspy() returns the
 directory containing its libspy.a (plus libspy.wasm/libspy.mjs where relevant):
 
   1. a prebuilt variant shipped in the wheel (spy/libspy/prebuilt), if any;
-  2. else a build in the user cache, built on first use.
+  2. under Pyodide, a variant exported by the host (spy/libspy/pyodide-libs),
+     see export_for_pyodide(): Pyodide can neither hash the sources with a
+     compiler version nor run ninja, so it never builds anything;
+  3. else a build in the user cache, built on first use.
 
 Importing this module must not need wasmtime: the build hook uses it.
 """
@@ -36,6 +39,7 @@ from spy.build.flags import (
     validate_march,
 )
 from spy.errors import WIP
+from spy.platform import IS_PYODIDE
 
 SRCS = [
     "src/str.c",
@@ -74,6 +78,14 @@ STANDARD_VARIANTS = [
 # the only variant shipped in the wheel: it is portable (wasm) and it is the
 # one used by the interpreter
 PREBUILT_VARIANT = ("wasi", "debug", "testlib")
+
+
+# the variants which the host exports for Pyodide-under-node (the interpreter
+# loads libspy.mjs), see export_for_pyodide()
+PYODIDE_VARIANTS = [("emscripten", "debug", "testlib")]
+
+# what is needed at run time in an exported variant
+_EXPORTED_FILES = ("libspy.a", "libspy.mjs", "libspy.wasm")
 
 
 def get_srcs(target: str) -> list[str]:
@@ -278,6 +290,15 @@ def _find_prebuilt(
     return None
 
 
+def _find_exported(
+    target: str, build_type: BuildType, kind: OutputKind
+) -> Optional[py.path.local]:
+    d = spy.libspy.EXPORTED.join(target, get_build_dirname(build_type, kind))
+    if d.join("libspy.a").check(file=True):
+        return d
+    return None
+
+
 def build_variant(
     target: str,
     build_type: BuildType,
@@ -320,6 +341,16 @@ def ensure_libspy(
         prebuilt = _find_prebuilt(target, build_type, kind)
         if prebuilt is not None:
             return prebuilt
+    if IS_PYODIDE:
+        # no compiler, no subprocess: only look for what the host exported
+        exported = _find_exported(target, build_type, kind) if march is None else None
+        if exported is None:
+            raise WIP(
+                f"libspy {variant_name(target, build_type, kind, march)} is not "
+                f"available under Pyodide: it cannot be built here. Build it on the "
+                f"host with `python -m spy.libspy.builder --export-pyodide`"
+            )
+        return exported
     key = cache_key(target, build_type, kind, march)
     final = cache_dir().join(target, f"{_dirname(build_type, kind, march)}-{key}")
     if final.join("libspy.a").check(file=True):
@@ -340,6 +371,31 @@ def build_standard_variants() -> None:
         if target == "native" and shutil.which("cc") is None:
             continue
         ensure_libspy(target, build_type, kind, None)  # type: ignore[arg-type]
+
+
+def export_for_pyodide(dest: Optional[py.path.local] = None) -> py.path.local:
+    """
+    Run on the host, never under Pyodide: make sure the variants in
+    PYODIDE_VARIANTS are built (in the cache, as usual, so they are fresh with
+    respect to the sources) and copy them to `dest` (default: spy/libspy/
+    pyodide-libs) as <dest>/<target>/<build type>[-testlib]/libspy.*.
+
+    Pyodide-under-node sees the checkout (it is mounted) but not the user
+    cache, and it cannot compute cache keys. Files are copied, not symlinked,
+    because symlinks into the cache would be dangling for the mounted FS.
+    """
+    assert not IS_PYODIDE
+    dest = dest if dest is not None else spy.libspy.EXPORTED
+    for target, build_type, kind in PYODIDE_VARIANTS:
+        src = ensure_libspy(target, build_type, kind, None)  # type: ignore[arg-type]
+        out = dest.join(target, get_build_dirname(build_type, kind))  # type: ignore[arg-type]
+        if out.check():
+            shutil.rmtree(out)
+        out.ensure(dir=True)
+        for name in _EXPORTED_FILES:
+            if src.join(name).check(file=True):
+                src.join(name).copy(out.join(name))
+    return dest
 
 
 def build_prebuilt(dest: py.path.local) -> None:
@@ -368,8 +424,16 @@ def main(argv: Optional[list[str]] = None) -> None:
     parser.add_argument("--build-type", default="debug")
     parser.add_argument("--output-kind", default="exe")
     parser.add_argument("--march")
+    parser.add_argument(
+        "--export-pyodide",
+        action="store_true",
+        help="build the variants needed by Pyodide-under-node and copy them to "
+        "spy/libspy/pyodide-libs",
+    )
     args = parser.parse_args(argv)
-    if args.target is None:
+    if args.export_pyodide:
+        print(export_for_pyodide())
+    elif args.target is None:
         build_standard_variants()
     else:
         # the build output goes to stderr, so that stdout contains only the
