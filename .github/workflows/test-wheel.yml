@@ -1,0 +1,82 @@
+name: Test wheel
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+  workflow_dispatch:
+
+jobs:
+  test-wheel:
+    name: test-wheel-${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update && sudo apt-get install -y libgc-dev
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            brew install bdw-gc
+          fi
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Build wheel
+        run: |
+          uv build --wheel --out-dir dist
+          ls -l dist
+
+      - name: Create venv and install the wheel
+        # The venv lives outside the checkout so that `import spy` can only
+        # find the installed wheel, never the source tree.
+        run: |
+          uv venv "$RUNNER_TEMP/venv" --python 3.12
+          echo "VIRTUAL_ENV=$RUNNER_TEMP/venv" >> "$GITHUB_ENV"
+          echo "$RUNNER_TEMP/venv/bin" >> "$GITHUB_PATH"
+          uv pip install --python "$RUNNER_TEMP/venv/bin/python" dist/*.whl
+
+      - name: Check that spy comes from the wheel
+        working-directory: examples
+        run: |
+          which spy
+          python -c "import spy; print(spy.__file__); assert 'site-packages' in spy.__file__"
+
+      - name: Check spy commands
+        working-directory: examples/1_high_level
+        run: |
+          spy build hello.spy
+          ./build/hello
+          spy hello.spy
+          spy build --target wasi hello.spy
+
+      - name: Check spy build --static
+        # --static is not supported on macOS
+        if: runner.os == 'Linux'
+        working-directory: examples/1_high_level
+        run: |
+          spy build --static hello.spy
+          ./build/hello
+
+      - name: Run examples tests
+        working-directory: examples
+        # `-o addopts=` because the addopts of pyproject.toml use an option
+        # (--dist-dir) provided by pytest-pyodide, not installed in this venv
+        run: |
+          uv pip install --python "$RUNNER_TEMP/venv/bin/python" pytest
+          pytest -o addopts= test_examples.py
