@@ -8,7 +8,7 @@ from spy.vm.b import B
 from spy.vm.modules.unsafe import UNSAFE
 from spy.vm.object import W_Type
 from spy.vm.registry import ModuleRegistry
-from spy.vm.struct import UnwrappedStruct
+from spy.vm.struct import UnwrappedStruct, W_StructType
 
 
 def test_UnwrappedStruct():
@@ -644,3 +644,36 @@ class TestStructOnStack(CompilerTest):
         mod = self.compile(src)
         p = mod.func()
         assert p.x == 42
+
+    @only_interp
+    def test_layout_follows_C_rules(self):
+        src = """
+        from unsafe import gc_ptr
+
+        @struct
+        class WithPtr:
+            n: i32
+            p: gc_ptr[i32]
+
+        @struct
+        class Padded:
+            x: f64
+            y: i8
+        """
+        self.compile(src)
+
+        def layout(name: str) -> tuple[int, dict[str, int]]:
+            w_st = self.vm.lookup_global(FQN(f"test::{name}"))
+            assert isinstance(w_st, W_StructType)
+            offsets = {
+                key: w_obj.offset
+                for key, w_obj in w_st.dict_w.items()
+                if hasattr(w_obj, "offset")
+            }
+            return w_st.size, offsets
+
+        # in debug mode a ptr is {addr: i32, length: i32}: 8 bytes, but only
+        # 4-byte aligned, as in C on wasm32.
+        assert layout("WithPtr") == (12, {"n": 0, "p": 4})
+        # the size is padded to the alignment of the struct (8, due to f64)
+        assert layout("Padded") == (16, {"x": 0, "y": 8})
