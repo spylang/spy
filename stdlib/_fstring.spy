@@ -76,11 +76,7 @@ def f(m_val, m_conv, m_format_spec):
     def impl(x: T, format_spec: str) -> FMT:
         return FMT(x, format_spec)
 
-    # Red locals prevent blue caching from substituting equal MetaArgs: OpSpec
-    # needs the original objects to map arguments back to the caller.
-    var val = m_val
-    var spec = m_format_spec
-    return OpSpec(impl, interp_list[MetaArg](val, spec))
+    return OpSpec(impl, interp_list[MetaArg](m_val, m_format_spec))
 
 
 @blue.metafunc
