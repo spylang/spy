@@ -153,7 +153,8 @@ class TestList(CompilerTest):
         # "special" (and probably buggy in this sense) and thus the interp-level
         # identity matters.
         #
-        # The solution is to add a special case interp_list[MetaArg]
+        # The solution is to never cache "meta-MetaArgs". See the "UGLY WORKAROUND"
+        # comment in SPyVM.call_OP.
         src = """
         from __spy__ import interp_list, interp_tuple
         from operator import MetaArg
