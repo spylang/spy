@@ -30,6 +30,10 @@ jobs:
         run: |
           uv sync --locked
 
+      - name: Run playground test_examples_included
+        run: |
+          uv run pytest playground/tests/test_examples_included.py
+
       - name: Build libspy
         run: |
           cd spy/libspy
@@ -37,7 +41,7 @@ jobs:
 
       - name: Run playground tests
         run: |
-          uv run pytest playground/tests/ -v
+          uv run pytest playground/tests/ -v --ignore=playground/tests/test_examples_included.py
 
       - name: Run examples
         run: |

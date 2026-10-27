@@ -152,7 +152,7 @@ class TestCBackend:
 
     def test_topo_sort(self, vm):
         # `Inner` is created lazily by Vec2[i32], so it ends up in
-        # vm.globals_w AFTER `Outer` even though `Outer` has it as a
+        # vm._globals_w AFTER `Outer` even though `Outer` has it as a
         # by-value field. Without the topo sort, the C backend would emit
         # Outer before Inner and produce broken code.
         src = """

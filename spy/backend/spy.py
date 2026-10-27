@@ -492,7 +492,7 @@ class SPyBackend:
         # hack hack hack: in case of prebuilt exceptions, let's emit a more
         # readable form. This is needed because for now raise supports only
         # blue exceptions, and so all of them are turned into FQNConst.
-        w_val = self.vm.lookup_global(const.fqn)
+        w_val = self.vm.lookup_global_maybe(const.fqn)
         if isinstance(w_val, W_Exception):
             t = self.vm.dynamic_type(w_val).fqn.symbol_name  # e.g. 'Exception'
             m = w_val.message

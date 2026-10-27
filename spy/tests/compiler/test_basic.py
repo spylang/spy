@@ -1127,7 +1127,7 @@ class TestBasic(CompilerTest):
         vm = self.vm
         assert mod.get_x() == 42
         fqn = FQN("test::x")
-        assert vm.unwrap(self.vm.globals_w[fqn]) == 42
+        assert vm.unwrap(self.vm.globals_get(fqn)) == 42
 
     @pytest.mark.skip(reason="think better about __INIT__")
     def test_wrong__INIT__(self):

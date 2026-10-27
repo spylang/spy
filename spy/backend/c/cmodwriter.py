@@ -153,8 +153,8 @@ class CModuleWriter:
         self.tbc_content = self.tbc.make_nested_builder()
 
         fqn_main = FQN([self.c_mod.modname, "main"])
-        if self.is_main_mod and fqn_main in self.ctx.vm.globals_w:
-            w_main = self.ctx.vm.globals_w[fqn_main]
+        if self.is_main_mod and self.ctx.vm.globals_contains(fqn_main):
+            w_main = self.ctx.vm.globals_get(fqn_main)
             assert isinstance(w_main, W_ASTFunc)
 
             w_restype, has_argv = self.ctx.vm.typecheck_main(w_main)
@@ -176,6 +176,7 @@ class CModuleWriter:
                             spy_StrObject *s = spy_str_alloc(length);
                             char *buf = (char *)spy_StrObject_UTF8(s);
                             memcpy(buf, argv[i], length);
+                            spy_str_seal(s);
                             lst = spy_list_str_push(lst, s);
                         }
                         return lst;
@@ -268,7 +269,7 @@ class CModuleWriter:
                 self.tbh_globals.wl(f"extern {c_type} {fqn.c_name};")
                 self.tbc_globals.wl(f"{c_type} {fqn.c_name} = {{0}};")
             else:
-                raise WIP("var type `{w_T}` not supported")
+                raise WIP(f"var type `{w_T}` not supported")
 
         else:
             raise NotImplementedError("WIP")

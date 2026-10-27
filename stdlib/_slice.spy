@@ -173,6 +173,18 @@ class Slice:
 
         return OpSpec.NULL
 
+    def __repr__(self) -> str:
+        start = "None"
+        if not self.start_is_none:
+            start = str(self.start)
+        stop = "None"
+        if not self.stop_is_none:
+            stop = str(self.stop)
+        step = "None"
+        if not self.step_is_none:
+            step = str(self.step)
+        return "slice(" + start + ", " + stop + ", " + step + ")"
+
     def indices(self, length: i32) -> tuple3:
         _step: i32 = 1
         if not self.step_is_none:

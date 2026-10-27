@@ -46,6 +46,7 @@ from spy.vm.primitive import W_Bool
 from spy.vm.property import W_Property
 
 if TYPE_CHECKING:
+    from spy.vm.modules.types import W_Loc
     from spy.vm.primitive import W_Dynamic
     from spy.vm.str import W_Str
     from spy.vm.vm import SPyVM
@@ -311,6 +312,16 @@ class W_MetaArg(W_Object):
         if w_self.color != "blue":
             raise SPyError("W_ValueError", "oparg is not blue")
         return w_self.w_blueval
+
+    @builtin_property("loc")
+    @staticmethod
+    def w_get_loc(vm: "SPyVM", w_self: "W_MetaArg") -> "W_Loc":
+        """
+        Applevel property to get the source location.
+        """
+        from spy.vm.modules.types import W_Loc
+
+        return W_Loc(w_self.loc)
 
 
 @OPERATOR.builtin_type("OpSpec", lazy_definition=True)

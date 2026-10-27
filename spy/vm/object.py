@@ -277,6 +277,27 @@ class W_Object:
 
         return W_OpSpec.NULL
 
+    @builtin_method("__format__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_FORMAT(
+        vm: "SPyVM", wam_self: "W_MetaArg", wam_spec: "W_MetaArg"
+    ) -> "W_OpSpec":
+        # default implementation: fallback to __str__, but ONLY if format_spec=="".
+        spec = wam_spec.blue_unwrap_str(vm)
+        w_T = wam_self.w_static_T
+        if spec != "":
+            tname = w_T.fqn.human_name(vm)
+            raise SPyError.simple(
+                "W_TypeError",
+                f"unsupported format string passed to `{tname}`.__format__",
+                "this is the format spec",
+                wam_spec.loc,
+            )
+
+        w_str = w_T.lookup_func(vm, "__str__")
+        assert w_str is not None, "W_Object defines __str__"
+        return vm.fast_metacall(w_str, [wam_self])
+
     # ==== OPERATOR SUPPORT ====
     #
     # Operators are the central concept which drives the semantic of SPy
@@ -611,7 +632,11 @@ class W_Type(W_Object):
         Turn @builtin_method into a W_BuiltinFunc and @builtin_property
         into a W_Property
         """
+        # NOTE: if you get a circular import error when importing one of the
+        # W_Something, it's very likely that the fix is to use:
+        #     @MOD.builtin_type("Something", lazy_definition=True)
         from spy.vm.builtin import make_builtin_func
+        from spy.vm.modules.types import W_Loc
         from spy.vm.opspec import W_MetaArg, W_OpSpec
         from spy.vm.primitive import W_Bool, W_Dynamic
         from spy.vm.property import W_ClassMethod, W_Property, W_StaticMethod
@@ -630,6 +655,7 @@ class W_Type(W_Object):
             "W_Str": W_Str,
             "W_Bool": W_Bool,
             "W_Dynamic": W_Dynamic,
+            "W_Loc": W_Loc,
         }
         w_func = make_builtin_func(
             pyfunc,

@@ -13,8 +13,9 @@ from spy.util import magic_dispatch, shortrepr
 from spy.vm.b import TYPES, B
 from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.irtag import IRTag
+from spy.vm.modules._simd import W_SimdType
 from spy.vm.modules.posix import W__FILE
-from spy.vm.modules.unsafe.ptr import W_Ptr
+from spy.vm.modules.unsafe.ptr import W_Ptr, W_PtrType
 
 if TYPE_CHECKING:
     from spy.backend.c.cmodwriter import CModuleWriter
@@ -307,6 +308,14 @@ class CFuncWriter:
         elif w_T is TYPES.w_NoneType:
             assert w_val is B.w_None
             return C.Void()
+        elif w_T is TYPES.w_Loc:
+            raise SPyError.simple(
+                "W_WIP",
+                "cannot use a `Loc` value at runtime",
+                "this value has type `Loc`, which only exists at redshift "
+                "time and has no C-level representation",
+                const.loc,
+            )
         else:
             raise NotImplementedError(f"WIP: {w_T}")
 
@@ -360,6 +369,13 @@ class CFuncWriter:
         comment = shortrepr(utf8.decode("utf-8"), 15)
         v = f"{v} /* {comment} */"
         return C.UnaryOp("&", C.Literal(v))
+
+    def fmt_expr_Tuple(self, tup: ast.Tuple) -> C.Expr:
+        assert tup.w_T is not None
+        c_structtype = self.ctx.w2c(tup.w_T)
+        c_items = [self.fmt_expr(item) for item in tup.items]
+        stritems = ", ".join(map(str, c_items))
+        return C.Cast(c_structtype, C.Literal("{ %s }" % stritems))
 
     def fmt_expr_FQNConst(self, const: ast.FQNConst) -> C.Expr:
         w_obj = self.ctx.vm.lookup_global(const.fqn)
@@ -580,6 +596,15 @@ class CFuncWriter:
         elif irtag.tag == "struct.getfield":
             return self.fmt_struct_getfield(fqn, call, irtag)
 
+        elif irtag.tag in ("simd.make", "simd.splat", "simd.zeros"):
+            return self.fmt_simd_make(fqn, call, irtag)
+
+        elif irtag.tag == "simd.with_lane":
+            return self.fmt_simd_with_lane(fqn, call)
+
+        elif irtag.tag == "simd.getitem":
+            return self.fmt_simd_getitem(fqn, call)
+
         elif irtag.tag == "ptr.getfield":
             return self.fmt_ptr_getfield(fqn, call, irtag)
 
@@ -590,6 +615,12 @@ class CFuncWriter:
             # this is not strictly necessary as it's just a generic call, but
             # we handle ptr.deref explicitly for extra clarity
             return self.fmt_generic_call(fqn, call)
+
+        elif irtag.tag == "ptr.weaken_align":
+            return self.fmt_ptr_weaken_align(fqn, call)
+
+        elif irtag.tag == "unsafe.align_cast":
+            return self.fmt_align_cast(fqn, call, irtag)
 
         elif irtag.tag in ("ptr.getitem", "ptr.store"):
             # see unsafe/ptr.py::w_GETITEM and w_SETITEM there, we insert an
@@ -633,11 +664,100 @@ class CFuncWriter:
         name = irtag.data["name"]
         return C.Dot(c_struct, name)
 
+    def fmt_ptr_weaken_align(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        """
+        gc_ptr[T, align(N)] -> gc_ptr[T, align(M)] weakening conversion. Both types have
+        byte-identical C layout ({T *p; length}), so this is just a
+        relabeling.
+        """
+        assert len(call.args) == 1
+        w_srcT = call.args[0].w_T
+        assert w_srcT is not None
+        assert call.w_T is not None
+        c_src = self.fmt_expr(call.args[0])
+        c_srctype = self.ctx.w2c(w_srcT)
+        c_targettype = self.ctx.w2c(call.w_T)
+        c_p = C.Literal(f"({c_src}).p")
+        c_length = C.Call(f"{c_srctype}_get_length", [c_src])
+        return C.Call(f"{c_targettype}_from_raw", [c_p, c_length])
+
+    def fmt_align_cast(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
+        """
+        align_cast[N](ptr) -> ptr with a new alignment, same address and item type.
+        """
+        assert len(call.args) == 1
+        w_srcT = call.args[0].w_T
+        assert isinstance(w_srcT, W_PtrType)
+        c_src = self.fmt_expr(call.args[0])
+        c_srctype = self.ctx.w2c(w_srcT)
+        c_targettype = self.ctx.c_restype_by_fqn(fqn)
+
+        dst_align = irtag.data["dst_align"]
+        src_align = irtag.data["src_align"]
+
+        c_p = C.Literal(f"({c_src}).p")
+        c_length = C.Call(f"{c_srctype}_get_length", [c_src])
+
+        if dst_align > src_align:
+            c_checked_p = C.Call("spy_check_align", [c_p, C.Literal(str(dst_align))])
+            return C.Call(f"{c_targettype}_from_raw", [c_checked_p, c_length])
+        else:
+            return C.Call(f"{c_targettype}_from_raw", [c_p, c_length])
+
+    def fmt_simd_make(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_simdtype = w_func.w_functype.w_restype
+        assert isinstance(w_simdtype, W_SimdType)
+        c_simdtype = self.ctx.w2c(w_simdtype)
+
+        c_args = [self.fmt_expr(arg) for arg in call.args]
+        if irtag.tag == "simd.zeros":
+            # SIMD[T, N].zeros() -> (V){ 0 }: a partial initializer zeroes
+            # all the remaining lanes
+            strargs = "0"
+        elif irtag.tag == "simd.splat":
+            # SIMD[T, N].splat(x) -> (V){x, x, ..., x}
+            assert len(c_args) == 1
+            s_arg = str(c_args[0])
+            strargs = ", ".join([s_arg] * w_simdtype.length)
+        elif irtag.tag == "simd.make":
+            # SIMD[T, N](v0, ..., v_{N-1}) -> (V){v0, ..., v_{N-1}}
+            strargs = ", ".join(map(str, c_args))
+        else:
+            assert False
+        return C.Cast(c_simdtype, C.Literal("{ %s }" % strargs))
+
+    def fmt_simd_with_lane(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        # v._with_lane(i, x): vectors are values, so we modify a copy. A
+        # GNU statement expression is the only way to do it in one expression.
+        assert len(call.args) == 3
+        c_v = self.fmt_expr(call.args[0])
+        c_i = self.fmt_expr(call.args[1])
+        c_x = self.fmt_expr(call.args[2])
+        assert call.w_T is not None
+        c_simdtype = self.ctx.w2c(call.w_T)
+        return C.Literal(
+            f"({{ {c_simdtype} _spy_v = {c_v}; _spy_v[{c_i}] = {c_x}; _spy_v; }})"
+        )
+
+    def fmt_simd_getitem(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        assert len(call.args) == 2
+        c_v = self.fmt_expr(call.args[0])
+        c_i = self.fmt_expr(call.args[1])
+        return C.Index(c_v, c_i)
+
     def fmt_ptr_getfield(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         assert isinstance(call.args[1], ast.StrLiteral)
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value
         offset = call.args[2]  # ignored
+
+        w_ptr = call.args[0].w_T
+        if isinstance(w_ptr, W_PtrType) and w_ptr.is_under_aligned_field(attr):
+            c_ptrtype = self.ctx.w2c(w_ptr)
+            return C.Call(f"{c_ptrtype}$getfield_{attr}_unaligned", [c_ptr])
+
         c_field = C.PtrField(c_ptr, attr)
         if irtag.data["by"] == "byref":
             c_restype = self.ctx.c_restype_by_fqn(fqn)
@@ -650,8 +770,14 @@ class CFuncWriter:
         c_ptr = self.fmt_expr(call.args[0])
         attr = call.args[1].value
         offset = call.args[2]  # ignored
-        c_lval = C.PtrField(c_ptr, attr)
         c_rval = self.fmt_expr(call.args[3])
+
+        w_ptr = call.args[0].w_T
+        if isinstance(w_ptr, W_PtrType) and w_ptr.is_under_aligned_field(attr):
+            c_ptrtype = self.ctx.w2c(w_ptr)
+            return C.Call(f"{c_ptrtype}$setfield_{attr}_unaligned", [c_ptr, c_rval])
+
+        c_lval = C.PtrField(c_ptr, attr)
         return C.BinOp("=", c_lval, c_rval)
 
     def fmt_memop(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:

@@ -107,10 +107,14 @@ def make_builtin_func(
     kind: FuncKind = "plain",
     extra_types: dict = {},
     is_pure: bool = False,
+    w_functype: Optional[W_FuncType] = None,
 ) -> W_BuiltinFunc:
     """
     Turn an interp-level function into a W_BuiltinFunc.
     See vm.register_builtin_func for additional docs.
+
+    If not explicitly specified, the applevel w_functype is automatically inferred from
+    the interp-level Python signature.
     """
     if isinstance(namespace, str):
         namespace = FQN(namespace)
@@ -125,7 +129,8 @@ def make_builtin_func(
         msg = f"wrong color for metafunc `{fqn.debug_human_name}`: expected `blue`, got `{color}`"
         raise SPyError("W_TypeError", msg)
 
-    w_functype = functype_from_sig(fn, color, kind, extra_types=extra_types)
+    if w_functype is None:
+        w_functype = functype_from_sig(fn, color, kind, extra_types=extra_types)
     return W_BuiltinFunc(w_functype, fqn, fn, is_pure=is_pure)
 
 

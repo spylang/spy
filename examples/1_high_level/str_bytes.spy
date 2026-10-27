@@ -25,6 +25,10 @@ def demo_str() -> None:
     # comparison
     print(s == "Hello")
     print(s != "World")
+    print(s <= "World")
+    print(s >= "World")
+    print(s < "World")
+    print(s > "World")
 
     # methods
     print(s.upper())

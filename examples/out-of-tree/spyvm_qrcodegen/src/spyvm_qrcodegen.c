@@ -42,13 +42,16 @@ spy_BytesObject *WASM_EXPORT(spy_qrcodegen$encode)(spy_StrObject *text) {
     free(ctext);
 
     if (!ok) {
-        return spy_bytes_alloc(0);
+        spy_BytesObject *res = spy_bytes_alloc(0);
+        spy_bytes_seal(res);
+        return res;
     }
 
     // qrcodegen functions read at most qrcodegen_getSize()-derived bytes from
     // qrbuf, but we copy the whole worst-case buffer for simplicity.
     spy_BytesObject *res = spy_bytes_alloc(qrcodegen_BUFFER_LEN_MAX);
     memcpy(spy_BytesObject_DATA(res), qrbuf, qrcodegen_BUFFER_LEN_MAX);
+    spy_bytes_seal(res);
     return res;
 }
 

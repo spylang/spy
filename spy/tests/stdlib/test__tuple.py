@@ -8,14 +8,14 @@ class TestTange(CompilerTest):
         src = """
         from _tuple import tuple
 
-        def make_pair(a: str, b: i32) -> tuple[str, i32]:
-            return tuple[str, i32](a, b)
+        def make_tuple(a: str, b: i32, c: i8) -> tuple[str, i32, i8]:
+            return (a, b, c)
         """
         mod = self.compile(src)
-        p = mod.make_pair("hello", 42)
-        assert p == ("hello", 42)
-        assert p._item0 == "hello"
-        assert p._item1 == 42
+        t = mod.make_tuple("hello", 42, -5)
+        assert t == ("hello", 42, -5)
+        assert t[0] == "hello"
+        assert t[1] == 42
 
     def test_getitem(self):
         src = """
@@ -56,6 +56,33 @@ class TestTange(CompilerTest):
         """)
         x = mod.foo()
         assert x == 2
+
+    def test_repr_str(self):
+        mod = self.compile("""
+        def repr_empty() -> str:
+            return repr(())
+
+        def repr_singleton(item: int) -> str:
+            return repr((item,))
+
+        def repr_pair(first: int, second: int) -> str:
+            return repr((first, second))
+
+        def repr_heterogeneous(first: str, second: int) -> str:
+            return repr((first, second))
+
+        def repr_nested(first: int, second: int, third: int) -> str:
+            return repr((first, (second, third)))
+
+        def str_pair(first: int, second: int) -> str:
+            return str((first, second))
+        """)
+        assert mod.repr_empty() == "()"
+        assert mod.repr_singleton(1) == "(1,)"
+        assert mod.repr_pair(1, 2) == "(1, 2)"
+        assert mod.repr_heterogeneous("hello", 42) == "('hello', 42)"
+        assert mod.repr_nested(1, 2, 3) == "(1, (2, 3))"
+        assert mod.str_pair(1, 2) == "(1, 2)"
 
     def test_eq(self):
         mod = self.compile("""

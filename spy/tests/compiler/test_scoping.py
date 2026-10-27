@@ -372,23 +372,39 @@ class TestScoping(CompilerTest):
         assert mod.foo() == 15
 
     def test_py_shadow_write_caught(self):
-        # [py.shadow-write-caught]: a bare `COUNT = COUNT + 1` implicitly declares a
-        # new local COUNT; the RHS read happens before that declaration, so it is
+        # [py.shadow-write-caught]: a bare `X = X` implicitly declares a
+        # new local X; the RHS read happens before that declaration, so it is
         # caught by [decl.use-before].
         src = """
-        var COUNT: i32 = 0
+        var X: i32 = 0
 
         def bump() -> None:
-            COUNT = COUNT + 1
+            X = X
         """
         errors = expect_errors(
-            "name `COUNT` is not defined",
-            ("used before its declaration", "COUNT"),
-            ("declared later here", "COUNT"),
-            ("help: shadowing this `COUNT`", "var COUNT: i32 = 0"),
-            ("help: add `global COUNT` earlier", "COUNT"),
+            "name `X` is not defined",
+            ("used before its declaration", "X"),
+            ("declared later here", "X"),
+            ("help: shadowing this `X`", "var X: i32 = 0"),
+            ("help: add `global X` earlier", "X"),
         )
         self.compile_raises(src, "bump", errors)
+
+    def test_py_class_body_shadow_read(self):
+        # like in Python, `X = X` in a class body reads the outer `X` and then
+        # declares a class attribute `X`.
+        src = """
+        X = 1
+
+        @struct
+        class Foo:
+            X = X
+
+        def foo() -> i32:
+            return Foo.X
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 1
 
     def test_py_scope_lifting(self):
         # [py.scope-lifting]: `y` is lifted to the function scope

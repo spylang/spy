@@ -221,29 +221,6 @@ class SPdb(cmd.Cmd):
     do_l = do_longlist
     do_ll = do_longlist
 
-    def _resolution_scope(self, spyframe: "AbstractFrame") -> Scope:
-        """
-        Return the lexical Scope to use for interactive compilation at the current
-        breakpoint.
-
-        XXX: in post-mortem, block_stack is empty (the blocks were already popped while
-        the exception unwound), so we fall back to the frame's top-level body
-        scope. This loses the exact nested block, but function-level and outer names
-        still resolve correctly.  We should probably fix by attaching the scope to the
-        traceback.
-        """
-        for block in reversed(spyframe.block_stack):
-            if block.scope is not None:
-                return block.scope
-        if isinstance(spyframe, ASTFrame) and spyframe.funcdef.body.scope is not None:
-            return spyframe.funcdef.body.scope
-        raise SPyError.simple(
-            "W_WIP",
-            "cannot resolve names in this frame",
-            "no lexical scope available here",
-            spyframe.loc,
-        )
-
     def do_print(self, arg: str) -> None:
         try:
             # eval "arg" in the current frame
@@ -262,9 +239,8 @@ class SPdb(cmd.Cmd):
             f = self.get_curframe()
             # the parser produces a "parsed"-stage expression, but the frame can only
             # evaluate astcompiled nodes: run the astcompile pass on the fly, resolving
-            # names against the scope of the currently active block in the frame
-            scope = self._resolution_scope(f.spyframe)
-            expr = astcompile_interactive(stmt.value, scope)
+            # names against the scope which is/was active in th frame
+            expr = astcompile_interactive(stmt.value, f.scope)
             wam = f.spyframe.eval_expr(expr)
             print_wam(self.vm, wam, file=self.stdout, use_colors=self.use_colors)
 

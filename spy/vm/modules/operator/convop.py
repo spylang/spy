@@ -149,6 +149,12 @@ def w_i32_to_bool(vm: "SPyVM", w_x: W_I32) -> W_Bool:
 
 
 @OP.builtin_func
+def w_u32_to_bool(vm: "SPyVM", w_x: W_U32) -> W_Bool:
+    val = vm.unwrap_u32(w_x)
+    return vm.wrap(bool(val))
+
+
+@OP.builtin_func
 def w_i32_to_i8(vm: "SPyVM", w_x: W_I32) -> W_I8:
     return W_I8(w_x.value)
 
@@ -346,6 +352,7 @@ MM.register("convert", "f32", "f64", OP.w_f32_to_f64)
 MM.register("convert", "f64", "f32", OP.w_f64_to_f32)
 MM.register("convert", "i32", "f32", OP.w_i32_to_f32)
 MM.register("convert", "i32", "bool", OP.w_i32_to_bool)
+MM.register("convert", "u32", "bool", OP.w_u32_to_bool)
 MM.register("convert", "i32", "complex128", OP.w_i32_to_complex128)
 MM.register("convert", "f64", "complex128", OP.w_f64_to_complex128)
 MM.register("convert", "str", "complex128", OP.w_str_to_complex128)

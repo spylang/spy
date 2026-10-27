@@ -4,7 +4,7 @@ from textwrap import dedent
 import pytest
 
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest, only_interp, skip_backends
+from spy.tests.support import CompilerTest, expect_errors, only_interp, skip_backends
 
 
 class TestStr(CompilerTest):
@@ -35,6 +35,18 @@ class TestStr(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.get_length("") == 0
+
+    def test_double_seal(self):
+        # to_sealed_str is idempotent
+        src = """
+        from _str import StrObject
+
+        def double_seal(s: str) -> str:
+            ll = StrObject.from_str(s)
+            return StrObject.to_sealed_str(ll)
+        """
+        mod = self.compile(src)
+        assert mod.double_seal("hello") == "hello"
 
     def test_add(self):
         mod = self.compile("""
@@ -128,6 +140,39 @@ class TestStr(CompilerTest):
         assert mod.split_whitespace("  a    b   ") == ["a", "b"]
         assert mod.split_whitespace("  a    b   c   ") == ["a", "b", "c"]
         assert mod.split_whitespace("\n\ta \t\r b \v ") == ["a", "b"]
+
+    def test_join(self):
+        src = """
+        def join_words(sep: str) -> str:
+            return sep.join(["a", "b", "c"])
+
+        def join_single(sep: str) -> str:
+            return sep.join(["one"])
+
+        def join_empty(sep: str) -> str:
+            return sep.join([])
+
+        def join_empty_items(sep: str) -> str:
+            return sep.join(["", "a", "", "b", ""])
+
+        def split_then_join(s: str) -> str:
+            return " ".join(s.split())
+
+        def join_pair(sep: str, first: str, second: str) -> str:
+            return sep.join([first, second])
+        """
+        mod = self.compile(src)
+
+        assert mod.join_words(" ") == "a b c"
+        assert mod.join_words("") == "abc"
+        assert mod.join_words("-") == "a-b-c"
+        assert mod.join_single("x") == "one"
+        assert mod.join_empty("-") == ""
+        assert mod.join_empty_items(",") == ",a,,b,"
+        assert mod.join_pair("🐍", "é", "界") == "é🐍界"
+        assert mod.join_pair("\x00", "a\x00", "b") == "a\x00\x00b"
+        assert mod.join_pair("", "", "") == ""
+        assert mod.split_then_join("hello  world  from spy") == "hello world from spy"
 
     def test_find(self):
         mod = self.compile("""
@@ -234,11 +279,45 @@ class TestStr(CompilerTest):
 
         def ne(a: str, b: str) -> bool:
             return a != b
+
+        def lt(a: str, b: str) -> bool:
+            return a < b
+
+        def le(a: str, b: str) -> bool:
+            return a <= b
+
+        def gt(a: str, b: str) -> bool:
+            return a > b
+
+        def ge(a: str, b: str) -> bool:
+            return a >= b
         """)
         assert mod.eq("aaa", "aaa")
         assert not mod.eq("aaa", "bbb")
         assert mod.ne("aaa", "bbb")
         assert not mod.ne("aaa", "aaa")
+        # less than
+        assert mod.lt("aaa", "bbb")
+        assert not mod.lt("bbb", "aaa")
+        assert not mod.lt("aaa", "aaa")
+        assert mod.lt("aaa", "aaaa")
+        assert mod.lt("", "a")
+        # less than or equal
+        assert mod.le("aaa", "bbb")
+        assert mod.le("aaa", "aaa")
+        assert not mod.le("bbb", "aaa")
+        assert mod.le("aaa", "aaaa")
+        # greater than
+        assert mod.gt("bbb", "aaa")
+        assert not mod.gt("aaa", "bbb")
+        assert not mod.gt("aaa", "aaa")
+        assert mod.gt("aaaa", "aaa")
+        assert mod.gt("a", "")
+        # greater than or equal
+        assert mod.ge("bbb", "aaa")
+        assert mod.ge("aaa", "aaa")
+        assert not mod.ge("aaa", "bbb")
+        assert mod.ge("aaaa", "aaa")
 
     def test_len(self):
         src = """
@@ -767,3 +846,31 @@ class TestStr(CompilerTest):
         input = b"\xff"
         with pytest.raises(SPyError, match="invalid first utf-8 byte: 255"):
             mod.run_unicode_codepoints(input)
+
+    def test_fstring(self):
+        src = """
+        def empty() -> str:
+            return f""
+
+        def simple(s: str, x: i32) -> str:
+            return f"The {s} is {x}"
+
+        def blue_val() -> str:
+            return f"int is {int}"
+
+        def conv_r(x: str) -> str:
+            return f"{x!r} -- {x!s}"
+
+        def with_formath_spec(x: str) -> str:
+            return f"{x:>8}"
+
+        def nested_format_spec(x: str, width: i32) -> str:
+            return f"{x:<{width}}"
+        """
+        mod = self.compile(src)
+        assert mod.empty() == ""
+        assert mod.simple("answer", 42) == "The answer is 42"
+        assert mod.blue_val() == "int is <spy type 'i32'>"
+        assert mod.conv_r("hello") == "'hello' -- hello"
+        assert mod.with_formath_spec("hello") == "   hello"
+        assert mod.nested_format_spec("hello", 10) == "hello     "

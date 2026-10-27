@@ -570,6 +570,83 @@ class TestParser:
         """
         self.assert_dump(stmt, expected)
 
+    def test_fstring_simple(self):
+        mod = self.parse("""
+        def foo() -> None:
+            f"A{x}B"
+        """)
+        stmt = mod.get_funcdef("foo").body.body[0]
+        expected = """
+        StmtExpr(
+            value=JoinedStr(
+                items=[
+                    StrLiteral(value='A'),
+                    FormattedExpr(
+                        value=Name(id='x'),
+                        conversion=None,
+                        format_spec=None,
+                    ),
+                    StrLiteral(value='B'),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    def test_fstring_full(self):
+        mod = self.parse("""
+        def foo() -> None:
+            f"{x!r:.2f}"
+        """)
+        stmt = mod.get_funcdef("foo").body.body[0]
+        expected = """
+        StmtExpr(
+            value=JoinedStr(
+                items=[
+                    FormattedExpr(
+                        value=Name(id='x'),
+                        conversion='r',
+                        format_spec=JoinedStr(
+                            items=[
+                                StrLiteral(value='.2f'),
+                            ],
+                        ),
+                    ),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    def test_fstring_nested_format_spec(self):
+        mod = self.parse("""
+        def foo() -> None:
+            f"{x:{width}}"
+        """)
+        stmt = mod.get_funcdef("foo").body.body[0]
+        expected = """
+        StmtExpr(
+            value=JoinedStr(
+                items=[
+                    FormattedExpr(
+                        value=Name(id='x'),
+                        conversion=None,
+                        format_spec=JoinedStr(
+                            items=[
+                                FormattedExpr(
+                                    value=Name(id='width'),
+                                    conversion=None,
+                                    format_spec=None,
+                                ),
+                            ],
+                        ),
+                    ),
+                ],
+            ),
+        )
+        """
+        self.assert_dump(stmt, expected)
+
     def test_GetItem(self):
         mod = self.parse("""
         def foo() -> None:

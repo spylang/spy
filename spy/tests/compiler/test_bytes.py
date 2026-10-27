@@ -14,6 +14,18 @@ class TestBytes(CompilerTest):
         assert mod.foo() == b"hello"
         assert mod.bar() == b""
 
+    def test_to_bytes_already_sealed(self):
+        src = """
+        from _bytes import BytesObject
+
+        def double_seal(b: bytes) -> bytes:
+            ll = BytesObject.from_bytes(b)
+            return BytesObject.to_sealed_bytes(ll)
+        """
+        mod = self.compile(src)
+        with SPyError.raises("W_PanicError", match="bytes already sealed"):
+            mod.double_seal(b"hello")
+
     def test_len(self):
         mod = self.compile("""
         def foo() -> i32:
@@ -65,6 +77,43 @@ class TestBytes(CompilerTest):
         assert mod.eq(b"abc", b"aaa") is False
         assert mod.ne(b"abc", b"abc") is False
         assert mod.ne(b"abc", b"aaa") is True
+
+    def test_ordering(self):
+        mod = self.compile("""
+        def lt(a: bytes, b: bytes) -> bool:
+            return a < b
+
+        def le(a: bytes, b: bytes) -> bool:
+            return a <= b
+
+        def gt(a: bytes, b: bytes) -> bool:
+            return a > b
+
+        def ge(a: bytes, b: bytes) -> bool:
+            return a >= b
+        """)
+        # less than
+        assert mod.lt(b"abc", b"abd") is True
+        assert not mod.lt(b"abd", b"abc") is True
+        assert mod.lt(b"abc", b"abc") is False
+        assert mod.lt(b"abc", b"abcd") is True
+        assert mod.lt(b"", b"a") is True
+        # less than or equal
+        assert mod.le(b"abc", b"abd") is True
+        assert mod.le(b"abc", b"abc") is True
+        assert mod.le(b"abd", b"abc") is False
+        assert mod.le(b"abc", b"abcd") is True
+        # greater than
+        assert mod.gt(b"abd", b"abc") is True
+        assert mod.gt(b"abc", b"abd") is False
+        assert mod.gt(b"abc", b"abc") is False
+        assert mod.gt(b"abcd", b"abc") is True
+        assert mod.gt(b"a", b"") is True
+        # greater than or equal
+        assert mod.ge(b"abd", b"abc") is True
+        assert mod.ge(b"abc", b"abc") is True
+        assert mod.ge(b"abc", b"abd") is False
+        assert mod.ge(b"abcd", b"abc") is True
 
     def test_repr_str(self):
         mod = self.compile("""

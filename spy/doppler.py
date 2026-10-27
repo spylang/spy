@@ -16,6 +16,7 @@ from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
 from spy.vm.modules.types import TYPES
+from spy.vm.modules.unsafe.misc import W_Align
 from spy.vm.object import W_Object
 from spy.vm.opimpl import ArgSpec, W_OpImpl
 from spy.vm.opspec import W_MetaArg
@@ -82,6 +83,11 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
         res = ast.Tuple(loc, items, w_T=w_T)
 
     elif w_T is TYPES.w_Loc:
+        res = ast.Const(loc, w_val, w_T=w_T)
+
+    elif isinstance(w_val, W_Align):
+        # interp-level only: it can appear as an argument of a blue call such
+        # as gc_ptr[T, align(N)], but it never survives redshifting
         res = ast.Const(loc, w_val, w_T=w_T)
 
     elif isinstance(w_val, W_Exception):

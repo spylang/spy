@@ -19,8 +19,8 @@ class TestFile(CompilerTest):
         mod = self.compile(src)
         f = self.write_file("foo.txt", "hello")
         tup = mod.foo(str(f))
-        s0 = tup._item0
-        s1 = tup._item1
+        s0 = tup[0]
+        s1 = tup[1]
         assert s0 == f"<spy open file '{f}', mode 'r'>"
         assert s1 == f"<spy closed file '{f}', mode 'r'>"
 

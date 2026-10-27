@@ -28,6 +28,7 @@ packages = [ "micropip"]
 "./examples/4_advanced/generic_types.spy" = "examples/4_advanced/"
 "./examples/4_advanced/myarray.spy" = "examples/4_advanced/"
 "./examples/4_advanced/convert.spy" = "examples/4_advanced/"
+"./examples/4_advanced/mytuple_contains.spy" = "examples/4_advanced/"
 "./examples/4_advanced/type_name_and_fqn.spy" = "examples/4_advanced/"
 "./examples/4_advanced/annotated.spy" = "examples/4_advanced/"
 "./examples/4_advanced/unroll_nested_loops.spy" = "examples/4_advanced/"

@@ -114,10 +114,34 @@ def load_shared_code_from_url() -> None:
             console.log(f"[Python] Failed to decode shared code from URL: {e}")
 
 
+def load_file_from_url() -> str | None:
+    """Check if the URL hash contains a file parameter and return the matching file path."""
+    hash_str = str(window.location.hash)
+    if not hash_str.startswith("#file="):
+        return None
+
+    file_path = hash_str[len("#file=") :]
+    for category, files in CATEGORIES.items():
+        for long_path in files:
+            # long_path is something like ./examples/1_high_level/hello.spy
+            short_path = long_path[11:]
+            if short_path == file_path:
+                return long_path
+    error_msg = f"Error: File '{file_path}' not found in available examples."
+    terminal = ltk.find("#terminal")
+    if terminal.length > 0:
+        terminal.append(ltk.Div(error_msg).addClass("error-message"))
+    else:
+        ltk.window.alert(error_msg)
+
+
 load_shared_code_from_url()
 
+file_from_url = load_file_from_url()
 # Currently selected file path
-current_file: str = next(iter(CATEGORIES.values()))[0]
+current_file: str = (
+    file_from_url if file_from_url else next(iter(CATEGORIES.values()))[0]
+)
 
 console.log(f"[Python] Creating editor with initial file: {current_file}")
 editor = Editor(Path(current_file).read_text())

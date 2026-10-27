@@ -340,6 +340,8 @@ class W_Struct(W_Object):
         fqn = self.w_structtype.fqn
 
         fields = {key: w_obj.spy_unwrap(vm) for key, w_obj in self.values_w.items()}
+        if vm.is_tuple_type(self.w_structtype):
+            return tuple(fields.values())
         return UnwrappedStruct(fqn, fields)
 
     def __repr__(self) -> str:

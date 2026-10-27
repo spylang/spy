@@ -42,7 +42,7 @@ class TestDoppler:
         b = SPyBackend(self.vm, fqn_format=fqn_format)
         if funcname is not None:
             fqn = FQN(f"test::{funcname}")
-            w_func = self.vm.globals_w[fqn]
+            w_func = self.vm.globals_get(fqn)
             assert isinstance(w_func, W_ASTFunc)
             b.modname = "test"
             b.dump_w_func(fqn, w_func)

@@ -8,8 +8,10 @@ At interp level, the W_Str type is defined in vm/str.py.
 
 Finally, some of the methods are implemented at applevel in this file.
 
-The StrObject struct defined here MUST stay in sync with the one defined in C. It is
-possible to cast between str and gc_ptr[StrObject] using StrObject.{from,to}_str.
+StrObject.alloc() returns an "unsealed" string: the user code never saw it and the
+internal buffer can be modified.  After you fill the utf8 buffer, you can call
+StrObject.to_sealed_str(): this seals the buffer and returns the string as a high-level
+`str` object.
 """
 
 from unsafe import (
@@ -17,11 +19,13 @@ from unsafe import (
     ptr_copy,
     ptr_copy_slice,
     ptr_cmp_slice,
+    ptr_setbytes_slice,
     _str_to_StrObject,
     _alloc_StrObject,
-    _StrObject_to_str,
+    _StrObject_to_sealed_str,
+    _alloc_BytesObject,
+    _BytesObject_to_sealed_bytes,
 )
-from unsafe import _alloc_BytesObject, _BytesObject_to_bytes
 from __spy__ import lookup_fqn
 from operator import OpSpec
 from types import NoneType
@@ -54,14 +58,14 @@ class StrObject:
         return _str_to_StrObject(s)
 
     @staticmethod
-    def to_str(ll: gc_ptr[StrObject]) -> str:
+    def to_sealed_str(ll: gc_ptr[StrObject]) -> str:
         """
-        Cast a `ll` into a high level `str`.
+        Seal the `ll` string if needed, and cast into a high level `str`.
+        """
+        return _StrObject_to_sealed_str(ll)
 
-        Once a newly-allocated StrObject is casted to `str`, it should be considered
-        "locked" and immutable.
-        """
-        return _StrObject_to_str(ll)
+    def is_sealed(self) -> bool:
+        return self.hash != -1
 
 
 @struct
@@ -77,6 +81,10 @@ class methods:
 
     # each method defined here should also have a corresponding entry in
     # W_Str.__spy_lazy_attributes__.
+
+    # NOTE: this lives in _format::str_format
+    ## def __format__(self: str) -> i32:
+    ##     ...
 
     def __len__(self: str) -> i32:
         ll = StrObject.from_str(self)
@@ -95,9 +103,8 @@ class methods:
                 if i < 0 or i >= n:
                     raise IndexError("string index out of bound")
                 out = StrObject.alloc(1)
-                out.hash = 0
                 out.utf8[0] = ll.utf8[i]
-                return StrObject.to_str(out)
+                return StrObject.to_sealed_str(out)
 
             return OpSpec(_getitem_int, [self, wam_i])
 
@@ -126,7 +133,7 @@ class methods:
                         return ""
                     llnew = StrObject.alloc(length)
                     ptr_copy_slice(llnew.utf8, 0, length, ll.utf8, start, stop)
-                    return StrObject.to_str(llnew)
+                    return StrObject.to_sealed_str(llnew)
 
                 # Calculate the length of the final string
                 # Note that step cannot be zero thanks to trap in slice.__new__
@@ -162,7 +169,7 @@ class methods:
                         current += step
                         i += 1
 
-                return StrObject.to_str(llnew)
+                return StrObject.to_sealed_str(llnew)
 
             return OpSpec(_getitem_slice, [self, wam_i])
 
@@ -172,19 +179,34 @@ class methods:
         a = StrObject.from_str(self)
         b = StrObject.from_str(other)
         out = StrObject.alloc(a.length + b.length)
-        out.hash = 0
         ptr_copy_slice(out.utf8, 0, a.length, a.utf8, 0, a.length)
         ptr_copy_slice(out.utf8, a.length, a.length + b.length, b.utf8, 0, b.length)
-        return StrObject.to_str(out)
+        return StrObject.to_sealed_str(out)
 
     def __mul__(self: str, n: i32) -> str:
         ll = StrObject.from_str(self)
         out = StrObject.alloc(ll.length * n)
-        out.hash = 0
         l = ll.length
-        for i in range(n):
-            ptr_copy_slice(out.utf8, i * l, (i + 1) * l, ll.utf8, 0, l)
-        return StrObject.to_str(out)
+        if l == 1:
+            # single-byte string: use memset instead of n copies
+            if n > 0:
+                ptr_setbytes_slice(out.utf8, 0, n, ll.utf8[0])
+        else:
+            for i in range(n):
+                ptr_copy_slice(out.utf8, i * l, (i + 1) * l, ll.utf8, 0, l)
+        return StrObject.to_sealed_str(out)
+
+    def __lt__(self: str, other: str) -> bool:
+        return _str_cmp(self, other) < 0
+
+    def __le__(self: str, other: str) -> bool:
+        return _str_cmp(self, other) <= 0
+
+    def __gt__(self: str, other: str) -> bool:
+        return _str_cmp(self, other) > 0
+
+    def __ge__(self: str, other: str) -> bool:
+        return _str_cmp(self, other) >= 0
 
     def encode(self: str, encoding: str) -> bytes:
         # we don't support circular imports and function-level imports. This is a hacky
@@ -194,10 +216,9 @@ class methods:
             raise ValueError("only 'utf-8' encoding is supported")
         ll = StrObject.from_str(self)
         out = _alloc_BytesObject(ll.length)
-        out.hash = 0
         if ll.length > 0:
             ptr_copy(out.data, ll.utf8, ll.length)
-        return _BytesObject_to_bytes(out)
+        return _BytesObject_to_sealed_bytes(out)
 
     def isascii(self: str) -> bool:
         ll = StrObject.from_str(self)
@@ -240,7 +261,6 @@ class methods:
 
         # Second pass: fill the buffer
         out = StrObject.alloc(out_len)
-        out.hash = 0
         j: i32 = 0
         out.utf8[j] = quote
         j = j + 1
@@ -293,7 +313,7 @@ class methods:
                 out.utf8[j] = c2
                 j = j + 1
         out.utf8[j] = quote
-        return StrObject.to_str(out)
+        return StrObject.to_sealed_str(out)
 
     def __contains__(self: str, target: str) -> bool:
         ll_orig = StrObject.from_str(self)
@@ -330,7 +350,6 @@ class methods:
             # insert `new` before each byte and after the last
             result_len = orig_len + (orig_len + 1) * new_len
             res = StrObject.alloc(result_len)
-            res.hash = 0
             pos = 0
             for i in range(orig_len):
                 if new_len > 0:
@@ -342,7 +361,7 @@ class methods:
                 pos = pos + 1
             if new_len > 0:
                 ptr_copy_slice(res.utf8, pos, pos + new_len, ll_new.utf8, 0, new_len)
-            return StrObject.to_str(res)
+            return StrObject.to_sealed_str(res)
 
         # First pass: count occurrences
         count: i32 = 0
@@ -360,15 +379,13 @@ class methods:
         if count == 0:
             # Return the original string when no occurrences are found
             res = StrObject.alloc(orig_len)
-            res.hash = 0
             if orig_len > 0:
                 ptr_copy(res.utf8, ll_orig.utf8, orig_len)
-            return StrObject.to_str(res)
+            return StrObject.to_sealed_str(res)
 
         # Second pass: build the result
         result_len = orig_len + count * (new_len - old_len)
         res = StrObject.alloc(result_len)
-        res.hash = 0
         pos = 0
         i = 0
         while i <= orig_len - old_len:
@@ -390,20 +407,19 @@ class methods:
             ptr_copy_slice(
                 res.utf8, pos, pos + remaining, ll_orig.utf8, i, i + remaining
             )
-        return StrObject.to_str(res)
+        return StrObject.to_sealed_str(res)
 
     def upper(self: str) -> str:
         # XXX: this works only for ASCII strings but it's good enough for now
         ll = StrObject.from_str(self)
         llnew = StrObject.alloc(ll.length)
-        llnew.hash = 0
         for i in range(ll.length):
             ch = ll.utf8[i]
             if ord(b"a") <= ch and ch <= ord(b"z"):
                 llnew.utf8[i] = ch - (ord(b"a") - ord(b"A"))
             else:
                 llnew.utf8[i] = ch
-        return StrObject.to_str(llnew)
+        return StrObject.to_sealed_str(llnew)
 
     @blue.metafunc
     def split(m_self, *args_m):
@@ -414,6 +430,25 @@ class methods:
             return OpSpec(_split_whitespace)
 
         return OpSpec.NULL
+
+    def join(self: str, items: list[str]) -> str:
+        n = len(items)
+        if n == 0:
+            return ""
+        ll_sep = StrObject.from_str(self)
+        sep_len = ll_sep.length
+
+        total_len: i32 = (n - 1) * sep_len
+        for i in range(n):
+            total_len = total_len + len(items[i])
+
+        UnsafeFixedStrBuilder = lookup_fqn("strbuilder::UnsafeFixedStrBuilder")
+        sb = UnsafeFixedStrBuilder(total_len)
+        for j in range(n):
+            if j > 0:
+                sb.append(self)
+            sb.append(items[j])
+        return sb.build()
 
     def isspace(self: str) -> bool:
         """
@@ -464,6 +499,22 @@ class methods:
         elif nargs == 3:
             return OpSpec(_count_3)
         return OpSpec.NULL
+
+
+def _str_cmp(a: str, b: str) -> i32:
+    # lexicographic comparison of the UTF-8 representations. Byte-wise order
+    # matches code-point order for UTF-8.
+    lla = StrObject.from_str(a)
+    llb = StrObject.from_str(b)
+    n = lla.length
+    if llb.length < n:
+        n = llb.length
+    res: i32 = 0
+    if n > 0:
+        res = ptr_cmp_slice(lla.utf8, 0, n, llb.utf8, 0, n)
+    if res != 0:
+        return res
+    return lla.length - llb.length
 
 
 def _ll_isspace(ch: u8) -> bool:
@@ -583,10 +634,9 @@ def _strip_whitespace(self: str) -> str:
     if new_len == length:
         return self
     out = StrObject.alloc(new_len)
-    out.hash = 0
     if new_len > 0:
         ptr_copy_slice(out.utf8, 0, new_len, ll.utf8, start, end)
-    return StrObject.to_str(out)
+    return StrObject.to_sealed_str(out)
 
 
 def _strip_chars(self: str, chars: str) -> str:
@@ -620,10 +670,9 @@ def _strip_chars(self: str, chars: str) -> str:
     if new_len == length:
         return self
     out = StrObject.alloc(new_len)
-    out.hash = 0
     if new_len > 0:
         ptr_copy_slice(out.utf8, 0, new_len, ll.utf8, start, end)
-    return StrObject.to_str(out)
+    return StrObject.to_sealed_str(out)
 
 
 def _split_sep(self: str, sep: str) -> list[str]:
@@ -690,7 +739,7 @@ def _split_sep(self: str, sep: str) -> list[str]:
                 start_of_chunk + new_len,
             )
 
-            result.append(StrObject.to_str(llnew))
+            result.append(StrObject.to_sealed_str(llnew))
             start_of_chunk = search_position + sep_len
             search_position += sep_len
         else:
@@ -702,7 +751,7 @@ def _split_sep(self: str, sep: str) -> list[str]:
         final_len = len_self - start_of_chunk
         final = StrObject.alloc(final_len)
         ptr_copy_slice(final.utf8, 0, final_len, llself.utf8, start_of_chunk, len_self)
-        result.append(StrObject.to_str(final))
+        result.append(StrObject.to_sealed_str(final))
     else:
         # If the final characters were a separator, append an empty string
         result.append("")
@@ -745,7 +794,7 @@ def _split_whitespace(self: str) -> list[str]:
         ptr_copy_slice(
             llnew.utf8, 0, llnew_len, llself.utf8, rear_pointer, lead_pointer
         )
-        result.append(StrObject.to_str(llnew))
+        result.append(StrObject.to_sealed_str(llnew))
 
     return result
 

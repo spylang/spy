@@ -5,6 +5,10 @@ HelloHelloHello
 e
 True
 True
+True
+False
+True
+False
 HELLO
 True
 Herro

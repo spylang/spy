@@ -23,6 +23,7 @@ def ll_str_new(ll: LLSPyInstance, s: str) -> int:
     ptr = ll.call("spy_str_alloc", length)
     utf8_ptr = ll.mem.read_i32(ptr + ll.str_layout.utf8_offset)
     ll.mem.write(utf8_ptr, utf8)
+    ll.call("spy_str_seal", ptr)
     return ptr
 
 
@@ -36,12 +37,16 @@ class W_Str(W_Object):
         typedef struct {
             size_t length;
             int32_t hash;
-            const char utf8[];
+            spy_gc_ptr_u8 utf8;
         } spy_StrObject;
+
+    See str.h for the seal protocol of the `hash` field: an object returned by
+    ll_str_new is always sealed.
     """
 
     __spy_storage_category__ = "value"
     __spy_lazy_attributes__ = {
+        "__format__": FQN("_format::str_format"),
         "isascii": FQN("_str::methods::isascii"),
         "upper": FQN("_str::methods::upper"),
         "_getitem_slice": FQN("_str::methods::_getitem_slice"),
@@ -49,6 +54,7 @@ class W_Str(W_Object):
         "replace": FQN("_str::methods::replace"),
         "__contains__": FQN("_str::methods::__contains__"),
         "split": FQN("_str::methods::split"),
+        "join": FQN("_str::methods::join"),
         "isspace": FQN("_str::methods::isspace"),
         "strip": FQN("_str::methods::strip"),
         "find": FQN("_str::methods::find"),
@@ -58,6 +64,10 @@ class W_Str(W_Object):
         "__getitem__": FQN("_str::methods::__getitem__"),
         "__add__": FQN("_str::methods::__add__"),
         "__mul__": FQN("_str::methods::__mul__"),
+        "__lt__": FQN("_str::methods::__lt__"),
+        "__le__": FQN("_str::methods::__le__"),
+        "__gt__": FQN("_str::methods::__gt__"),
+        "__ge__": FQN("_str::methods::__ge__"),
     }
 
     vm: "SPyVM"

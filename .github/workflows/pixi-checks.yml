@@ -54,3 +54,8 @@ jobs:
       - name: Check spy build -x
         run: |
           pixi run spy build -x examples/1_high_level/hello.spy
+
+      # check that we can run the executable OUTSIDE the pixi env. See PR 695
+      - name: Run build/hello standalone
+        run: |
+          examples/1_high_level/build/hello

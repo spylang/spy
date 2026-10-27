@@ -35,4 +35,9 @@ This documentation is currently being written. Contributions are welcome!
 
 **Source Code**: [https://github.com/spylang/spy](https://github.com/spylang/spy)
 
+**Using an LLM to write SPy code?** The curated
+<a href="SPY_EXAMPLES.md">examples</a> and the
+<a href="SPY_REFERENCE.md">language/API reference</a> are also available as
+plain Markdown, generated from this documentation.
+
 <!-- Testing deployment workflow -->

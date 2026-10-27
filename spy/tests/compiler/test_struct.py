@@ -630,3 +630,17 @@ class TestStructOnStack(CompilerTest):
             ("expected `__spy__::interp_dict[str, type]`, got `i32`", "42"),
         )
         self.compile_raises(src, "", errors, error_reporting="eager")
+
+    def test_single_field_struct(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+
+        def func() -> Point:
+            p: Point = Point(42)
+            return p
+        """
+        mod = self.compile(src)
+        p = mod.func()
+        assert p.x == 42
