@@ -125,7 +125,10 @@ def typecheck_opspec(
             # calling .index we are relying on the interp-level identity of W_MetaArg
             # objects, which is conceptually wrong. We should probably make W_MetaArg
             # reference types, but this likely introduces other problems.
-            # See also test_list::test_list_MetaArg_identity.
+            # See also:
+            #   - SPyVM.call_OP, comment "THIS IS AN UGLY WORKAROUND"
+            #   - test_list::test_list_MetaArg_identity.
+            #   - test_list::test_interp_list_MetaArg_ctor
             #
             # red W_MetaArg MUST come from in_args_wam
             i = in_args_wam.index(wam_out_arg)

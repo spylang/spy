@@ -152,3 +152,21 @@ class TestOpSpec(CompilerTest):
         w_opimpl = mod.foo(unwrap=False)
         assert isinstance(w_opimpl, W_OpImpl)
         assert w_opimpl.w_func is OP.w_i32_add
+
+    def test_MetaArg_not_indexed_by_identity(self):
+        src = """
+        from operator import OpSpec, MetaArg
+        from __spy__ import interp_list
+
+        @blue.metafunc
+        def wrap(m_a, m_tag):
+            def impl(a: i32) -> i32:
+                return a
+            return OpSpec(impl, interp_list[MetaArg](m_a))
+
+        def foo(x: i32) -> i32:
+            wrap(x, 1)
+            return wrap(x, 2)
+        """
+        mod = self.compile(src)
+        assert mod.foo(42) == 42
