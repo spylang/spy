@@ -448,7 +448,7 @@ class SPyVM:
                 ...
             assert w_hello.fqn == FQN("mymodule::hello")
 
-        If w_functype is not explicitely given, the w_functype of the wrapped
+        If w_functype is not explicitly given, the w_functype of the wrapped
         function is automatically computed by inspectng the signature of the
         interp-level function. The first parameter MUST be 'vm'.
 
@@ -929,6 +929,37 @@ class SPyVM:
         `loc` points to the source code location which triggered the invocation of the
         operator. E.g., if we have `a + b`, it should point to ast.BinOp.loc.
         """
+        # THIS IS AN UGLY WORKAROUND for the bug described in
+        # typechecker.py::typecheck_opspec; grep for "THIS IS PROBABLY A BUG".
+        #
+        # TL;DR: W_MetaArg are theoretically value types, but we rely on their
+        # interp-level identity inside typecheck_opspec.
+        #
+        # The problem happens when we have a "meta-MetaArg", i.e. a MetaArg whose type
+        # is a MetaArg. Let's trace the problem:
+        #   1. we call an OP and we pass wam_meta1, which has a blueval
+        #   2. we return an OpImpl; the OpImpl captures wam_meta1.blueval as
+        #      ArgSpec.Const
+        #   3. the OpImpl is stored in the bluecache
+        #   4. we do ANOTHER call_OP with wam_meta2
+        #   5. wam_meta2.blueval == wam_meta1.blueval: we have a bluecache hit and
+        #      return the cached OpImpl of point 2
+        #   6. The OpImpl references wam_meta1.blueval, NOT wam_meta2.blueval. This is
+        #      fine for pure value types, but it's not fine for metaargs because of the
+        #      bug above
+        #
+        # The workaround is to force "meta-MetaArg" to be red. The proper fix would be
+        # to fix the MetaArg-identity problem.
+        #
+        # See also:
+        #   - test_list::test_list_MetaArg_identity.
+        #   - test_list::test_interp_list_MetaArg_ctor
+        args_wam = [
+            wam.as_red(self) if isinstance(wam._w_val, W_MetaArg) else wam
+            for wam in args_wam
+        ]
+        # /UGLY WORKAROUND
+
         try:
             w_opimpl = self.fast_call(w_OP, args_wam)
             assert isinstance(w_opimpl, W_OpImpl)
