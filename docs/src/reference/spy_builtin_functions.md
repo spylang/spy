@@ -24,7 +24,7 @@ For a deeper explanation of the current state of SPy's coloring nomenclature, se
 
 ### __@struct__
 
-:   Used to create a struct from a class definition. See the [low level memory section on structs](../llmem.md#stack-allocated-structs) for more details.
+:   Used to create a struct from a class definition. See the [low level memory section on structs](../explanation/low-level-memory.md#stack-allocated-structs) for more details.
 
 ### __@blue__
 :   Declares that a function should be executed at [redshift time](https://antocuni.eu/2025/10/29/inside-spy-part-1-motivations-and-goals/#redshifting); that is, at the point when method and function lookups are resolved, and prior to compilation to C or WASM, if any.

@@ -22,6 +22,7 @@ theme:
         icon: material/brightness-4
         name: Switch to light mode
   features:
+    - navigation.tabs
     - navigation.sections
     - navigation.expand
     - navigation.top
@@ -35,7 +36,14 @@ markdown_extensions:
       anchor_linenums: true
       line_spans: __span
       pygments_lang_class: true
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
   - pymdownx.snippets:
       base_path: ['..']
   - pymdownx.inlinehilite
@@ -56,44 +64,32 @@ plugins:
 
 nav:
   - Home: index.md
-  - contributing.md
-  - Language features:
+  - Tutorials:
+    - tutorials/getting-started.md
+    - Examples:
+      - examples/1_high_level.md
+      - examples/2_metaprogramming.md
+      - examples/3_low_level.md
+      - examples/4_advanced.md
+  - How-to guides:
     - howto/main_function.md
     - howto/generics.md
-  - Examples:
-    - examples/1_high_level.md
-    - examples/2_metaprogramming.md
-    - examples/3_low_level.md
-    - examples/4_advanced.md
   - Reference:
     - reference/python_builtins.md
     - reference/spy_builtin_functions.md
     - reference/builtin_types.md
     - reference/spy_module.md
+    - reference/scoping.md
     - reference/cli.md
     - reference/environment.md
-    - reference/scoping.md
-  - Unsorted notes:
-      - Low-level memory model: llmem.md
-  - AI-generated docs:
-      - ai-generated/index.md
-      - llwasm, the low-level WASM layer: ai-generated/llwasm.md
-
-# Example navigation structure with subsections:
-# nav:
-#   - Home: index.md
-#   - Getting Started:
-#       - Introduction: getting-started/intro.md
-#       - Installation: getting-started/installation.md
-#       - Quick Start: getting-started/quickstart.md
-#   - User Guide:
-#       - Overview: user-guide/overview.md
-#       - Basic Concepts: user-guide/concepts.md
-#       - Advanced Topics: user-guide/advanced.md
-#   - API Reference:
-#       - Functions: api/functions.md
-#       - Classes: api/classes.md
-#   - FAQ: faq.md
+  - Explanation:
+    - explanation/index.md
+    - explanation/compilation-pipeline.md
+    - explanation/low-level-memory.md
+    - llwasm, the low-level WASM layer (AI-generated): explanation/llwasm.md
+  - Contributing:
+    - contributing/index.md
+    - contributing/docs.md
 
 extra:
   version:
