@@ -15,6 +15,7 @@ from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.irtag import IRTag
 from spy.vm.modules._simd import W_SimdType
 from spy.vm.modules.posix import W__FILE
+from spy.vm.modules.unsafe.misc import sizeof
 from spy.vm.modules.unsafe.ptr import W_Ptr, W_PtrType
 
 if TYPE_CHECKING:
@@ -619,6 +620,9 @@ class CFuncWriter:
         elif irtag.tag == "ptr.weaken_align":
             return self.fmt_ptr_weaken_align(fqn, call)
 
+        elif irtag.tag == "unsafe.cast":
+            return self.fmt_cast(fqn, call)
+
         elif irtag.tag == "unsafe.align_cast":
             return self.fmt_align_cast(fqn, call, irtag)
 
@@ -680,6 +684,31 @@ class CFuncWriter:
         c_p = C.Literal(f"({c_src}).p")
         c_length = C.Call(f"{c_srctype}_get_length", [c_src])
         return C.Call(f"{c_targettype}_from_raw", [c_p, c_length])
+
+    def fmt_cast(self, fqn: FQN, call: ast.Call) -> C.Expr:
+        """
+        cast[DstItemT](ptr) -> ptr with a new item type, same address and alignment.
+        """
+        assert len(call.args) == 1
+        w_srcT = call.args[0].w_T
+        assert isinstance(w_srcT, W_PtrType)
+        c_src = self.fmt_expr(call.args[0])
+        c_srctype = self.ctx.w2c(w_srcT)
+        c_targettype = self.ctx.c_restype_by_fqn(fqn)
+
+        w_func = self.ctx.vm.lookup_global(fqn)
+        assert isinstance(w_func, W_Func)
+        w_dstT = w_func.w_functype.w_restype
+        assert isinstance(w_dstT, W_PtrType)
+
+        src_size = sizeof(w_srcT.w_itemT)
+        dst_size = sizeof(w_dstT.w_itemT)
+
+        c_itemtype = self.ctx.w2c(w_dstT.w_itemT)
+        c_p = C.Literal(f"({c_itemtype} *)({c_src}).p")
+        c_old_length = C.Call(f"{c_srctype}_get_length", [c_src])
+        c_new_length = C.Literal(f"(({c_old_length}) * {src_size} / {dst_size})")
+        return C.Call(f"{c_targettype}_from_raw", [c_p, c_new_length])
 
     def fmt_align_cast(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         """

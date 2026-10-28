@@ -165,6 +165,14 @@ class W_Align(W_Object):
 
 
 @UNSAFE.builtin_func(color="blue")
+def w_sizeof(vm: "SPyVM", w_T: W_Type) -> W_I32:
+    """
+    The SPy-visible `sizeof(T)` blue builtin.
+    """
+    return vm.wrap(sizeof(w_T))
+
+
+@UNSAFE.builtin_func(color="blue")
 def w_align(vm: "SPyVM", w_N: W_I32) -> W_Align:
     """
     The SPy-visible `align(N)` blue builtin.

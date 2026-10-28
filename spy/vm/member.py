@@ -69,6 +69,12 @@ class W_Member(W_Object):
         assert isinstance(w_self, W_Member)
         w_T = wam_obj.w_static_T
         field = w_self.field  # the interp-level name of the attr (e.g, 'w_x')
+
+        if wam_obj.color == "blue":
+            w_obj = wam_obj.w_blueval
+            w_val = getattr(w_obj, field)
+            return W_OpSpec.const(w_val)
+
         T = Annotated[W_Object, w_T]  # type of the object
         V = Annotated[W_Object, w_self.w_type]  # type of the attribute
 
