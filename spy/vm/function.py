@@ -361,6 +361,21 @@ class W_Func(W_Object):
             err.add("note", "metafunc defined here", w_func.def_loc)
             raise err
 
+        if w_opspec.is_null():
+            name = w_func.fqn.human_symbol_name(vm)
+            human_arg_types = [wam.w_static_T.fqn.human_name(vm) for wam in args_wam]
+            err = SPyError(
+                "W_TypeError",
+                f"`{name}` does not support arguments of type "
+                + ", ".join(f"`{t}`" for t in human_arg_types),
+            )
+            for wam in args_wam:
+                t = wam.w_static_T.fqn.human_name(vm)
+                if wam.loc:
+                    err.add("error", f"this is `{t}`", wam.loc)
+            err.add("note", "metafunc defined here", w_func.def_loc)
+            raise err
+
         # if we return a simple opspec, it will be called with arguments
         # [wam_func, *args_wam]. But what we want is to call it with just
         # *args_wam. This is the equivalent of passing "list(args_wam)" in

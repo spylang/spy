@@ -6,7 +6,7 @@ from spy.tests.support import CompilerTest
 class TestMath(CompilerTest):
     def test_sqrt(self):
         mod = self.compile("""
-        from math import sqrt
+        from _math import sqrt
 
         def foo(x: f64) -> f64:
             return sqrt(x)
@@ -16,7 +16,7 @@ class TestMath(CompilerTest):
 
     def test_constants(self):
         mod = self.compile("""
-        from math import pi, e, tau
+        from _math import pi, e, tau
 
         def get_pi() -> f64:
             return pi
@@ -33,7 +33,7 @@ class TestMath(CompilerTest):
 
     def test_cos(self):
         mod = self.compile("""
-        from math import cos
+        from _math import cos
 
         def foo(x: f64) -> f64:
             return cos(x)
@@ -43,7 +43,7 @@ class TestMath(CompilerTest):
 
     def test_sin(self):
         mod = self.compile("""
-        from math import sin
+        from _math import sin
 
         def foo(x: f64) -> f64:
             return sin(x)
@@ -53,7 +53,7 @@ class TestMath(CompilerTest):
 
     def test_tan(self):
         mod = self.compile("""
-        from math import tan
+        from _math import tan
 
         def foo(x: f64) -> f64:
             return tan(x)
@@ -63,7 +63,7 @@ class TestMath(CompilerTest):
 
     def test_log(self):
         mod = self.compile("""
-        from math import log
+        from _math import log
 
         def foo(x: f64) -> f64:
             return log(x)
@@ -73,7 +73,7 @@ class TestMath(CompilerTest):
 
     def test_log10(self):
         mod = self.compile("""
-        from math import log10
+        from _math import log10
 
         def foo(x: f64) -> f64:
             return log10(x)
@@ -83,7 +83,7 @@ class TestMath(CompilerTest):
 
     def test_exp(self):
         mod = self.compile("""
-        from math import exp
+        from _math import exp
 
         def foo(x: f64) -> f64:
             return exp(x)
@@ -93,7 +93,7 @@ class TestMath(CompilerTest):
 
     def test_acos(self):
         mod = self.compile("""
-        from math import acos
+        from _math import acos
 
         def foo(x: f64) -> f64:
             return acos(x)
@@ -103,7 +103,7 @@ class TestMath(CompilerTest):
 
     def test_asin(self):
         mod = self.compile("""
-        from math import asin
+        from _math import asin
 
         def foo(x: f64) -> f64:
             return asin(x)
@@ -113,7 +113,7 @@ class TestMath(CompilerTest):
 
     def test_atan(self):
         mod = self.compile("""
-        from math import atan
+        from _math import atan
 
         def foo(x: f64) -> f64:
             return atan(x)
@@ -123,7 +123,7 @@ class TestMath(CompilerTest):
 
     def test_atan2(self):
         mod = self.compile("""
-        from math import atan2
+        from _math import atan2
 
         def foo(y: f64, x: f64) -> f64:
             return atan2(y, x)
@@ -133,7 +133,7 @@ class TestMath(CompilerTest):
 
     def test_ceil(self):
         mod = self.compile("""
-        from math import ceil
+        from _math import ceil
 
         def foo(x: f64) -> f64:
             return ceil(x)
@@ -144,7 +144,7 @@ class TestMath(CompilerTest):
 
     def test_floor(self):
         mod = self.compile("""
-        from math import floor
+        from _math import floor
 
         def foo(x: f64) -> f64:
             return floor(x)
@@ -155,7 +155,7 @@ class TestMath(CompilerTest):
 
     def test_pow(self):
         mod = self.compile("""
-        from math import pow
+        from _math import pow
 
         def foo(x: f64, y: f64) -> f64:
             return pow(x, y)
@@ -166,7 +166,7 @@ class TestMath(CompilerTest):
 
     def test_fabs(self):
         mod = self.compile("""
-        from math import fabs
+        from _math import fabs
 
         def foo(x: f64) -> f64:
             return fabs(x)
