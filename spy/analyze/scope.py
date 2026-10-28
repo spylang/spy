@@ -156,13 +156,13 @@ class ScopeAnalyzer:
         # Group the resolved occurrences (bind pass) by the scope they occurred in.
         # For poison (SPyError) resolutions there is no Symbol, so the display name
         # is taken from the node's source text.
-        uses_by_scope: dict[str, list[tuple[str, Resolution]]] = {}
+        uses_by_scope: dict[Scope, list[tuple[str, Resolution]]] = {}
         for node, (scope, res) in self._resolved_nodes.items():
             src_name = res.src_name if isinstance(res, Symbol) else node.loc.get_src()
-            uses_by_scope.setdefault(scope.name, []).append((src_name, res))
+            uses_by_scope.setdefault(scope, []).append((src_name, res))
 
         def scope_is_empty(scope: Scope) -> bool:
-            if uses_by_scope.get(scope.name):
+            if uses_by_scope.get(scope):
                 return False
             return all(scope_is_empty(child) for child in scope.children)
 
@@ -188,7 +188,7 @@ class ScopeAnalyzer:
                         b.wl(color.set("red", f"global {sym.src_name}"))
                 # names USED in this scope (resolved during the bind pass)
                 seen: set[str] = set()
-                for src_name, res in uses_by_scope.get(scope.name, []):
+                for src_name, res in uses_by_scope.get(scope, []):
                     if src_name in seen:
                         continue
                     seen.add(src_name)
