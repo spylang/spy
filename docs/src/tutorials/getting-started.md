@@ -54,6 +54,29 @@ $ spy examples/hello.spy
 Hello world!
 ```
 
+/// note | Interpreter performance
+The interpreter is itself written in Python, so it is currently very slow:
+every operation of your program is executed by Python. It is meant for
+quick experiments, for testing and for debugging. It will become at least as
+fast as Python thanks to two improvements: compiling the interpreter itself
+(self-hosting) and precompiling the standard library.
+
+The speed of SPy comes from compilation, which is the subject of the next
+section.
+///
+
+/// note | Debugging
+The interpreter is also what runs your program under the debugger. If an error
+occurs, two options of the `spy` command start a post-mortem session:
+
+  - `--spdb` opens `spdb`, the debugger for SPy code: you inspect your SPy
+    program (its functions and variables).
+  - `--pdb` opens the standard Python debugger on the interpreter itself. It
+    is useful to debug SPy, not your own program.
+
+For example: `spy --spdb my_program.spy`.
+///
+
 ## Build an executable
 
 ```console
@@ -91,6 +114,17 @@ index silently reads or writes the wrong memory.
 The performance difference between the two modes is huge. Use the debug build
 while developing, and the release build for benchmarks and final executables.
 
+///
+
+/// admonition | Three levels of compromise
+Together with the interpreter, the two build modes give three ways to run a
+program, with different trade-offs between usability, safety and performance:
+
+| Level               | Usability                  | Safety          | Performance                                   |
+| ------------------- | -------------------------- | --------------- | --------------------------------------------- |
+| interpreter         | no build step, debugger    | checks          | very slow today, later fast compared to Python |
+| compiled, debug     | build step                 | checks          | fast                                          |
+| compiled, release   | build step, slowest build  | no checks       | fastest                                       |
 ///
 
 `--target` also accepts `wasi` and `emscripten` to produce WebAssembly. `wasi`
