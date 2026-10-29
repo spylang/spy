@@ -58,6 +58,7 @@ Hello world!
 
 ```console
 $ spy build examples/hello.spy
+[debug] examples/build/hello
 $ ./examples/build/hello
 Hello world!
 ```
@@ -69,14 +70,28 @@ Two options are worth knowing from the start:
 
   - `--release` builds an optimized executable (`-O3`, link-time optimization)
     without the debug checks. Without it, you get a debug build (`-O0 -g`),
-    which is faster to compile. The command prints `[debug]` or `[release]` to
-    tell you which one you got.
+    which is faster to compile.
   - `--static` produces a statically linked executable, which does not depend
     on shared libraries (native target only, not supported on macOS).
 
 ```console
 $ spy build --release --static examples/hello.spy
+[release] examples/build/hello
 ```
+
+/// admonition | Debug and release modes
+
+The two modes differ in more than compiler flags. In debug mode, a pointer
+also stores the length of the memory it points to (such a pointer is often
+called a *fat pointer*). This lets every indexing operation check that the
+index is in range, and raise an `IndexError` if it is not. In release mode,
+pointers are plain addresses and these checks are removed: an out-of-range
+index silently reads or writes the wrong memory.
+
+The performance difference between the two modes is huge. Use the debug build
+while developing, and the release build for benchmarks and final executables.
+
+///
 
 `--target` also accepts `wasi` and `emscripten` to produce WebAssembly. `wasi`
 works out of the box, but `emscripten` needs the
