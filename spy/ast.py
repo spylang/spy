@@ -1149,6 +1149,18 @@ class For(Stmt):
 
 
 @astnode
+class ForUnroll(Stmt):
+    target: StrLiteral
+    iter: Expr
+    body: Block
+    # set by astcompile (None at 'parsed')
+    target_sym: Optional[Symbol] = field(repr=False, default=None)
+    # all the locals of this frame which are declared inside the body (excluding the
+    # target): doppler alpha-renames them for each unrolled copy of the body
+    body_syms: list[Symbol] = field(repr=False, default_factory=list)
+
+
+@astnode
 class Raise(Stmt):
     exc: Expr
 

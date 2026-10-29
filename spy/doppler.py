@@ -12,7 +12,7 @@ from spy.vm.astframe import ASTFrame
 from spy.vm.b import B
 from spy.vm.cell import W_Cell
 from spy.vm.exc import W_Exception, W_StaticError
-from spy.vm.function import W_ASTFunc, W_Func
+from spy.vm.function import LocalVar, W_ASTFunc, W_Func
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
 from spy.vm.modules.types import TYPES
@@ -365,6 +365,40 @@ class DopplerFrame(ASTFrame):
             new_msg = self.shifted_expr[assert_node.msg]
 
         return [assert_node.replace(test=new_test, msg=new_msg)]
+
+    def shift_stmt_ForUnroll(self, stmt: ast.ForUnroll) -> list[ast.Stmt]:
+        from spy.force_inline import rename_syms
+
+        assert stmt.target_sym is not None
+        wam_iter = self.eval_expr(stmt.iter)
+        if wam_iter.color != "blue":
+            err = SPyError("W_TypeError", "unroll() requires a blue iterable")
+            err.add("error", "this is red", stmt.iter.loc)
+            raise err
+
+        result: list[ast.Stmt] = []
+        target_slot = stmt.target_sym.slot_name
+        for w_item in self.vm.unroll_wam(wam_iter):
+            # every copy of the body gets its own fresh locals
+            rename: dict[Symbol, Symbol] = {}
+            for sym in stmt.body_syms:
+                new_slot = self._new_frameinfo.get_fresh_slot(sym.src_name)
+                new_sym = sym.replace(slot_name=new_slot)
+                self._new_frameinfo.add(new_sym)
+                self.frameinfo.add(new_sym)  # declare_local looks it up here
+                rename[sym] = new_sym
+            body = rename_syms(stmt.body, rename)
+
+            # the target is a blue const: reads of it are folded into constants
+            self.locals[target_slot] = LocalVar(
+                varname=target_slot,
+                decl_loc=stmt.target.loc,
+                color="blue",
+                w_T=self.vm.dynamic_type(w_item),
+                w_val=w_item,
+            )
+            result += self.shift_block(body).body
+        return result
 
     # ==== expressions ====
 

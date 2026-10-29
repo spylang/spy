@@ -1490,6 +1490,70 @@ class TestBasic(CompilerTest):
         mod = self.compile(src)
         assert mod.factorial(4) == 2 * 3 * 4
 
+    def test_for_unroll(self):
+        src = """
+        from __spy__ import interp_tuple
+
+        TUP = interp_tuple(1, 2, 3)
+
+        def foo() -> i32:
+            total = 0
+            for i in unroll(TUP):
+                y = i * 2
+                total = total + y
+            return total
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 12
+
+    def test_for_unroll_target_is_blue(self):
+        src = """
+        from __spy__ import COLOR, interp_tuple
+
+        TUP = interp_tuple(1, 2, 3)
+
+        def foo() -> i32:
+            n = 0
+            for i in unroll(TUP):
+                if COLOR(i) == "blue":
+                    n = n + 1
+            return n
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 3
+
+    def test_for_unroll_body_locals_change_type(self):
+        src = """
+        from __spy__ import interp_tuple
+
+        TUP = interp_tuple(1, 2.5, "hello")
+
+        def foo() -> i32:
+            n = 0
+            for i in unroll(TUP):
+                item = i
+                n = n + 1
+            return n
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 3
+
+    def test_for_unroll_red_iterable(self):
+        src = """
+        from __spy__ import as_red
+
+        def foo() -> i32:
+            total = 0
+            for i in unroll(range(as_red(3))):
+                total = total + i
+            return total
+        """
+        errors = expect_errors(
+            "unroll() requires a blue iterable",
+            ("this is red", "range(as_red(3))"),
+        )
+        self.compile_raises(src, "foo", errors)
+
     def test_two_for_loops(self):
         # two sibling `for` loops in the same frame must each get their own hidden
         # iterator temp; they must not clobber each other.

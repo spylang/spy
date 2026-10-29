@@ -760,7 +760,7 @@ class Parser:
             body=self.from_py_body_block(py_node.loc, py_node.body),
         )
 
-    def from_py_stmt_For(self, py_node: py_ast.For) -> spy.ast.For:
+    def from_py_stmt_For(self, py_node: py_ast.For) -> spy.ast.For | spy.ast.ForUnroll:
         if py_node.orelse:
             # ideally, we would like to point to the 'else:' line, but we
             # cannot easily get it from the ast. Too bad, let's point at the
@@ -775,12 +775,30 @@ class Parser:
         if not isinstance(py_node.target, py_ast.Name):
             self.unsupported(py_node.target, "complex for loop targets")
 
+        target = spy.ast.StrLiteral(py_node.target.loc, py_node.target.id)
+
+        # detect the special `for x in unroll(seq)` pattern
+        py_iter = py_node.iter
+        if (
+            isinstance(py_iter, py_ast.Call)
+            and isinstance(py_iter.func, py_ast.Name)
+            and py_iter.func.id == "unroll"
+            and len(py_iter.args) == 1
+            and not py_iter.keywords
+        ):
+            return spy.ast.ForUnroll(
+                loc=py_node.loc,
+                target=target,
+                iter=self.from_py_expr(py_iter.args[0]),
+                body=self.from_py_body_block(py_node.loc, py_node.body),
+            )
+
         seq = self.for_loop_seq
         self.for_loop_seq += 1
         return spy.ast.For(
             loc=py_node.loc,
             seq=seq,
-            target=spy.ast.StrLiteral(py_node.target.loc, py_node.target.id),
+            target=target,
             iter=self.from_py_expr(py_node.iter),
             body=self.from_py_body_block(py_node.loc, py_node.body),
         )

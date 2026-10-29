@@ -2,7 +2,8 @@
 Helpers for @force_inline: validation and inlining mechanics.
 """
 
-from typing import TYPE_CHECKING
+import dataclasses
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from spy import ast
 from spy.analyze.sym import FrameInfo, Symbol
@@ -191,6 +192,51 @@ class AlphaRenamer:
             body=self._rename_stmts(expr.body),
             value=self.rename_expr(expr.value),
         )
+
+
+N = TypeVar("N", bound=ast.Node)
+
+
+def rename_syms(node: N, rename: dict[Symbol, Symbol]) -> N:
+    """
+    Return a deep copy of `node` in which every Symbol in `rename` is replaced by
+    its new Symbol.
+
+    Contrarily to AlphaRenamer, this works on any tree (in particular on astcompiled
+    ones) because it is generic: it swaps all the Symbol-valued fields, and fixes the
+    few nodes which also store the slot name as a string. All the nodes are
+    re-created, so that the copy has a fresh identity.
+
+    Nested FuncDefs and ClassDefs are not visited: they have their own frameinfo.
+    """
+    slots = {old.slot_name: new.slot_name for old, new in rename.items()}
+
+    def visit(value: Any) -> Any:
+        if isinstance(value, Symbol):
+            return rename.get(value, value)
+        elif isinstance(value, list):
+            return [visit(x) for x in value]
+        elif isinstance(value, (ast.FuncDef, ast.ClassDef)):
+            return value
+        elif isinstance(value, ast.Node):
+            changes = {
+                f.name: visit(getattr(value, f.name)) for f in dataclasses.fields(value)
+            }
+            new = value.replace(**changes)
+            # nodes which refer to the slot by name, in addition to the Symbol
+            if isinstance(new, ast.AssignUnpack):
+                new.targets = [
+                    t.replace(value=slots.get(t.value, t.value)) for t in new.targets
+                ]
+            elif isinstance(new, ast.VarDef) and new._sym is not None:
+                new.name = new.name.replace(value=new._sym.slot_name)
+            elif isinstance(new, ast.AssignExprLocal):
+                new.target = new.target.replace(value=new.sym.slot_name)
+            return new
+        else:
+            return value
+
+    return visit(node)  # type: ignore[no-any-return]
 
 
 class InlineResult:

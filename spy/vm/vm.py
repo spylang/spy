@@ -868,6 +868,29 @@ class SPyVM:
     def is_list_of_str_type(w_T: W_Type) -> bool:
         return w_T.fqn == FQN("_list::list[str]::_ListImpl")
 
+    def unroll_wam(self, wam_iterable: W_MetaArg) -> list[W_Object]:
+        """
+        Iterate over wam_iterable using the __fastiter__ protocol and return the
+        list of its items. Meant to be used at compile time (blue) by doppler to
+        unroll a `for x in unroll(seq)` loop.
+        """
+        color = wam_iterable.color
+        loc = wam_iterable.loc
+
+        def call_method(wam_obj: W_MetaArg, meth: str) -> W_MetaArg:
+            wam_meth = W_MetaArg(self, color, B.w_str, self.wrap(meth), loc)
+            w_opimpl = self.call_OP(loc, OP.w_CALL_METHOD, [wam_obj, wam_meth])
+            return self.eval_opimpl(
+                w_opimpl, [wam_obj, wam_meth], loc=loc, redshifting=False
+            )
+
+        wam_it = call_method(wam_iterable, "__fastiter__")
+        items_w: list[W_Object] = []
+        while self.unwrap_bool(call_method(wam_it, "__continue_iteration__").w_val):
+            items_w.append(call_method(wam_it, "__item__").w_val)
+            wam_it = call_method(wam_it, "__next__")
+        return items_w
+
     def fast_call(self, w_func: W_Func, args_w: Sequence[W_Object]) -> W_Object:
         """
         fast_call is a simpler calling convention which works only on

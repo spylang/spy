@@ -692,6 +692,34 @@ class AbstractFrame:
             except Continue:
                 continue
 
+    def exec_stmt_ForUnroll(self, node: ast.ForUnroll) -> None:
+        # Mirror FuncDoppler.shift_stmt_ForUnroll: the iterable is blue, and each
+        # item is bound to the target as a blue const. We cannot run the iterator
+        # protocol step by step, because the iterator would be a red local and
+        # then `__item__()` would return a red value.
+        target_sym = node.target_sym
+        assert target_sym is not None
+        wam_iter = self.eval_expr(node.iter)
+        if wam_iter.color != "blue":
+            err = SPyError("W_TypeError", "unroll() requires a blue iterable")
+            err.add("error", "this is red", node.iter.loc)
+            raise err
+
+        target_slot = target_sym.slot_name
+        for w_item in self.vm.unroll_wam(wam_iter):
+            # each iteration has its own locals, which can even have different
+            # types: see [py.scope-lifting-unroll]
+            for sym in node.body_syms:
+                self.locals.pop(sym.slot_name, None)
+            self.locals[target_slot] = LocalVar(
+                varname=target_slot,
+                decl_loc=node.target.loc,
+                color="blue",
+                w_T=self.vm.dynamic_type(w_item),
+                w_val=w_item,
+            )
+            self.exec_Block(node.body)
+
     def exec_stmt_Raise(self, raise_node: ast.Raise) -> None:
         wam_exc = self.eval_expr(raise_node.exc)
         w_opimpl = self.vm.call_OP(raise_node.loc, OP.w_RAISE, [wam_exc])

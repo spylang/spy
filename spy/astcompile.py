@@ -422,6 +422,40 @@ class ASTCompiler:
         compiled_while = self.compile_stmt(while_loop)
         return compiled_init + compiled_while
 
+    def compile_stmt_ForUnroll(self, stmt: ast.ForUnroll) -> list[ast.Stmt]:
+        # NOTE: contrarily to a normal `for`, we do NOT desugar ForUnroll into a
+        # `while`: it must survive to the runtime so that the backends can handle
+        # it specially. We only resolve names.
+        assert self.sa is not None
+        target_sym = self.sa.get_resolved_sym(stmt.target)
+        new_iter = self.compile_expr(stmt.iter)
+
+        # locals declared inside the body: the ones known to ScopeAnalyzer (the
+        # symbols of the body scopes) plus the hidden temps which are created while
+        # compiling the body (e.g. the `_$iter` of a nested `for`).
+        fi = self.frameinfo
+        syms_before = set(fi._symbols.values())
+        new_body = self.compile_block(stmt.body)
+        body_syms: list[ast.Symbol] = []
+        for block in stmt.body.walk(ast.Block):
+            assert isinstance(block, ast.Block) and block.scope is not None
+            for sym in block.scope.symbols.values():
+                # skip the symbols which belong to nested funcdefs/classdefs
+                # TODO: the target is currently shared by all unrolled copies, with
+                # doppler rebinding it for each item. We want a fresh target symbol
+                # per copy instead, which also means including it in body_syms.
+                if fi.lookup_maybe(sym.slot_name) is sym and sym is not target_sym:
+                    body_syms.append(sym)
+        body_syms += [s for s in fi._symbols.values() if s not in syms_before]
+        return [
+            stmt.replace(
+                iter=new_iter,
+                body=new_body,
+                target_sym=target_sym,
+                body_syms=body_syms,
+            )
+        ]
+
     def compile_stmt_AugAssign(self, stmt: ast.AugAssign) -> list[ast.Stmt]:
         # desugar "x += 1" into "x = x + 1" and compile the result.
         # use non-colorize locs for synthetic nodes, to avoid painting over user nodes

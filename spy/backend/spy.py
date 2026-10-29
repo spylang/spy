@@ -401,6 +401,14 @@ class SPyBackend:
             for stmt in while_node.body.body:
                 self.emit_stmt(stmt)
 
+    def emit_stmt_ForUnroll(self, for_node: ast.ForUnroll) -> None:
+        target = for_node.target.value
+        iter_expr = self.fmt_expr(for_node.iter)
+        self.wl(f"for {target} in unroll({iter_expr}):")
+        with self.out.indent():
+            for stmt in for_node.body.body:
+                self.emit_stmt(stmt)
+
     def emit_stmt_For(self, for_node: ast.For) -> None:
         target = for_node.target.value
         iter_expr = self.fmt_expr(for_node.iter)
