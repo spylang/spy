@@ -1,3 +1,8 @@
+---
+hide:
+  - navigation
+---
+
 # <img src="assets/logo.svg" width="60" style="vertical-align: middle;"> SPy
 
 SPy is a variant of Python designed to be statically compilable **while**
