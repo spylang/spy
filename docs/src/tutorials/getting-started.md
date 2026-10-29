@@ -98,6 +98,23 @@ works out of the box, but `emscripten` needs the
 [Emscripten SDK](https://github.com/emscripten-core/emsdk) (`emcc`), see the
 [development setup](../contributing/index.md#development-setup).
 
+
+For example, to build the hello world example for WASI:
+
+```console
+$ spy build -t wasi --release examples/1_high_level/hello.spy
+[release] examples/1_high_level/build/hello.wasm
+```
+
+The result is a `.wasm` file, which needs a WebAssembly runtime to be executed.
+[Wasmtime](https://wasmtime.dev/) is one possible choice (see its
+[installation instructions](https://docs.wasmtime.dev/cli-install.html)).
+
+```console
+$ wasmtime run examples/1_high_level/build/hello.wasm
+Hello world!
+```
+
 ## See what the compiler does
 
 Before generating code, the compiler *redshifts* the program: it runs all the
