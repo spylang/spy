@@ -17,7 +17,7 @@ The SPy compiler works by translating `*.spy` code into `*.c` code (after
 which is then compiled by e.g. `gcc` or `clang`.  In the next sections, we will also
 explain how SPy types are translated into C.
 
-## Save vs unsafe code
+## Safe vs unsafe code
 
 By default, SPy code is **safe**, meanging that:
 
