@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 
 def sizeof(w_T: W_Type) -> int:
     from spy.vm.modules._simd import W_SimdType
+    from spy.vm.modules.jsffi import W_JsRef
     from spy.vm.modules.posix import POSIX
     from spy.vm.modules.unsafe.ptr import W_PtrType
     from spy.vm.struct import W_StructType
@@ -36,6 +37,8 @@ def sizeof(w_T: W_Type) -> int:
         return sizeof(w_T.w_dtype) * w_T.length
     elif w_T is POSIX.w__FILE:
         return 4  # XXX
+    elif w_T.pyclass is W_JsRef:
+        return 4
     else:
         raise WIP(f"sizeof({w_T}) not implemented")
 
@@ -104,6 +107,7 @@ def alignof(w_T: W_Type) -> int:
     Raises if `w_T` is a struct which is not defined yet: we cannot guess.
     """
     from spy.vm.modules._simd import W_SimdType
+    from spy.vm.modules.jsffi import W_JsRef
     from spy.vm.modules.posix import POSIX
     from spy.vm.modules.unsafe.ptr import W_PtrType, W_RefType
     from spy.vm.struct import W_StructType
@@ -133,6 +137,8 @@ def alignof(w_T: W_Type) -> int:
         return max(aligns, default=1)
     elif isinstance(w_T, W_SimdType):
         return sizeof(w_T.w_dtype) * w_T.length
+    elif w_T.pyclass is W_JsRef:
+        return 4
     else:
         raise WIP(f"alignof({w_T}) not implemented")
 

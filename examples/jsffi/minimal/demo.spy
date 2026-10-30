@@ -4,11 +4,14 @@ from jsffi import init as js_init, get_GlobalThis, get_Console
 
 var counter: i32 = 0
 
+
 def onclick() -> None:
+    global counter
     counter = counter + 1
     window = get_GlobalThis()
     message = window.document.getElementById("message")
     message.innerText = "onclick " + str(counter)
+
 
 def main() -> None:
     # initialization
@@ -26,10 +29,6 @@ def main() -> None:
     #
     div_title.innerText = "Hello HTML from SPy"
     btn.onclick = onclick
-
-
-
-
 
 
 # Currently JsRef is implemented as a builtin, but ideally we should be able
