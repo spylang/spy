@@ -65,6 +65,7 @@ plugins:
 
 nav:
   - Home: index.md
+  - Install: install.md
   - Tutorials:
     - tutorials/getting-started.md
     - Examples:

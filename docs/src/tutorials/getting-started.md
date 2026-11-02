@@ -4,38 +4,12 @@ title: Getting started
 
 # Getting started
 
-In this tutorial you install SPy, run your first program in the interpreter,
-build a native executable, and look at what the compiler does to your program.
+In this tutorial you run your first program in the interpreter, build a native
+executable, and look at what the compiler does to your program.
 
-/// note | Installation status
-At the moment, the only supported way to install SPy is an editable install of
-a Git checkout. Installing with `uv tool install spylang --prerelease allow`
-will soon be supported.
+/// note | Prerequisite
+SPy must be installed first: see [Install](../install.md).
 ///
-
-## Install SPy
-
-You need [uv](https://docs.astral.sh/uv/), a C compiler (e.g. `build-essential`
-on Debian/Ubuntu) and the [bdw-gc](https://www.hboehm.info/gc/) garbage
-collector (`libgc-dev` on Debian/Ubuntu, `brew install bdw-gc` on macOS).
-
-```bash
-git clone https://github.com/spylang/spy
-cd spy
-uv sync
-. .venv/bin/activate
-make -C spy/libspy
-```
-
-`make -C spy/libspy` builds `libspy`, the small C runtime library that every
-SPy program is linked against.
-
-/// note
-The `make -C spy/libspy` step will soon not be needed anymore.
-///
-
-For the other installation methods (pip, Pixi) and the optional build
-dependencies, see the [development setup](../contributing/index.md#development-setup).
 
 ## Run a program in the interpreter
 

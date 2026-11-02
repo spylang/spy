@@ -12,6 +12,7 @@ retaining many of the "useful" dynamic parts of Python. It comes with:
   2. a **compiler**, for speed: it targets native executables and WebAssembly.
 
 [Try it in your browser :material-arrow-right:](https://spylang.github.io/spy){ .md-button .md-button--primary }
+[Install :material-arrow-right:](install.md){ .md-button }
 [Get started :material-arrow-right:](tutorials/getting-started.md){ .md-button }
 [Source code :fontawesome-brands-github:](https://github.com/spylang/spy){ .md-button }
 

@@ -32,8 +32,13 @@ requirements are in the
 Run all the commands below from the root of the repository, without an active
 virtual environment.
 
+To install bdw-gc yourself (the uv and pip methods):
+
+  - Debian/Ubuntu: `sudo apt install libgc-dev`
+  - macOS, with [Homebrew](https://brew.sh/): `brew install bdw-gc`
+
 === "uv"
-    Prerequisite: bdw-gc (`libgc-dev` on Debian/Ubuntu).
+    Prerequisite: bdw-gc (see above).
 
     ```bash
     uv sync
@@ -42,7 +47,7 @@ virtual environment.
     ```
 === "pip"
     Prerequisites: Python 3.12, pip >= 25.1 (for PEP 735 dependency groups) and
-    bdw-gc (`libgc-dev` on Debian/Ubuntu).
+    bdw-gc (see above).
 
     ```bash
     python3 -m venv .venv
