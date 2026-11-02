@@ -77,14 +77,10 @@ class Parser:
 
     src: str
     filename: str
-    for_loop_seq: int  # counter for for loops within the current function
-    augassign_seq: int  # counter for complex augassigns within the current function
 
     def __init__(self, src: str, filename: str) -> None:
         self.src = src
         self.filename = filename
-        self.for_loop_seq = 0
-        self.augassign_seq = 0
         self.scoping_rules_stack: list[spy.ast.ScopingRules] = ["pythonic"]
 
     @classmethod
@@ -366,16 +362,9 @@ class Parser:
         pragmas = self.get_spy_pragmas(py_body)
         scoping_rules = self.get_scoping_rules(pragmas)
 
-        # by doing this "saved_seq" dance, we ensure that nested functions "continue"
-        # the numbering from the their parent, but sibling functions reset the
-        # numbering. See test_scope::test_for_loop_nested_funcs
-        saved_for_loop_seq = self.for_loop_seq
-        saved_augassign_seq = self.augassign_seq
         self.scoping_rules_stack.append(scoping_rules)
         body = self.from_py_body_block(py_funcdef.loc, py_body)
         self.scoping_rules_stack.pop()
-        self.for_loop_seq = saved_for_loop_seq
-        self.augassign_seq = saved_augassign_seq
 
         return spy.ast.FuncDef(
             loc=py_funcdef.loc,
@@ -710,11 +699,8 @@ class Parser:
             )
         elif isinstance(py_target, py_ast.Attribute):
             # Attribute access: a.b += 1
-            seq = self.augassign_seq
-            self.augassign_seq += 1
             return spy.ast.AugSetAttr(
                 loc=py_node.loc,
-                seq=seq,
                 op=op,
                 target=self.from_py_expr(py_target.value),
                 attr=spy.ast.StrLiteral(py_target.loc, py_target.attr),
@@ -722,8 +708,6 @@ class Parser:
             )
         elif isinstance(py_target, py_ast.Subscript):
             # Subscript access: arr[i] += 1
-            seq = self.augassign_seq
-            self.augassign_seq += 1
             target = self.from_py_expr(py_target.value)
             index = self.from_py_expr(py_target.slice)
 
@@ -734,7 +718,6 @@ class Parser:
 
             return spy.ast.AugSetItem(
                 loc=py_node.loc,
-                seq=seq,
                 op=op,
                 target=target,
                 args=args,
@@ -775,11 +758,8 @@ class Parser:
         if not isinstance(py_node.target, py_ast.Name):
             self.unsupported(py_node.target, "complex for loop targets")
 
-        seq = self.for_loop_seq
-        self.for_loop_seq += 1
         return spy.ast.For(
             loc=py_node.loc,
-            seq=seq,
             target=spy.ast.StrLiteral(py_node.target.loc, py_node.target.id),
             iter=self.from_py_expr(py_node.iter),
             body=self.from_py_body_block(py_node.loc, py_node.body),

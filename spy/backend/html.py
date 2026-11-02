@@ -25,7 +25,6 @@ FIELDS_TO_IGNORE = frozenset(
         "_implicit_imports",
         "w_T",
         "docstring",
-        "seq",
         "scope",
     }
 )
