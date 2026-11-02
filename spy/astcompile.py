@@ -338,12 +338,23 @@ class ASTCompiler:
         else:
             assert False
 
-    def compile_stmt_AssignTemp(self, stmt: ast.AssignTemp) -> list[ast.Stmt]:
-        # a write to a hidden compiler temp; lower directly to AssignLocal, no lookup.
-        value = self.compile_expr(stmt.value)
-        target = ast.StrLiteral(stmt.loc, stmt.sym.slot_name)
-        assign_expr = ast.AssignExprLocal(stmt.loc, target, stmt.sym, value)
-        return [ast.AssignLocal(stmt.loc, assign_expr)]
+    def make_assign_temp(self, sym: Symbol, loc: Loc, val: ast.Expr) -> ast.AssignLocal:
+        """
+        Build an AssignLocal to assign to a hidden temporary.
+        """
+        target = ast.StrLiteral(loc, sym.slot_name)
+        assign_expr = ast.AssignExprLocal(loc, target, sym, self.compile_expr(val))
+        return ast.AssignLocal(loc, assign_expr)
+
+    def compile_stmt_AssignLocal(self, stmt: ast.AssignLocal) -> list[ast.Stmt]:
+        # this is needed when we compile the 'while' body of a desugared For, which
+        # contains nodes produced by make_assign_temp.
+        return [stmt]
+
+    def compile_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> ast.Expr:
+        # this is needed when we compile the 'while' body of a desugared For, which
+        # contains synthetic ast.NameLocalDirect
+        return name
 
     def compile_stmt_ClassDef(self, stmt: ast.ClassDef) -> list[ast.Stmt]:
         return [self.compile_classdef(stmt)]
@@ -377,10 +388,10 @@ class ASTCompiler:
         target_loc = stmt.target.loc.replace(colorize=False)
         iter_sym = self.sa.get_resolved_sym((stmt, "_$iter"))
 
-        init_iter = ast.AssignTemp(
+        init_iter = self.make_assign_temp(
             loc=iter_loc,
             sym=iter_sym,
-            value=ast.CallMethod(
+            val=ast.CallMethod(
                 loc=iter_loc,
                 target=stmt.iter,
                 method=ast.StrLiteral(iter_loc, "__fastiter__"),
@@ -392,17 +403,17 @@ class ASTCompiler:
             target=ast.SingleTarget(target_loc, stmt.target),
             value=ast.CallMethod(
                 loc=target_loc,
-                target=ast.NameTemp(iter_loc, iter_sym),
+                target=ast.NameLocalDirect(iter_loc, iter_sym),
                 method=ast.StrLiteral(target_loc, "__item__"),
                 args=[],
             ),
         )
-        advance_iter = ast.AssignTemp(
+        advance_iter = self.make_assign_temp(
             loc=iter_loc,
             sym=iter_sym,
-            value=ast.CallMethod(
+            val=ast.CallMethod(
                 loc=iter_loc,
-                target=ast.NameTemp(iter_loc, iter_sym),
+                target=ast.NameLocalDirect(iter_loc, iter_sym),
                 method=ast.StrLiteral(iter_loc, "__next__"),
                 args=[],
             ),
@@ -412,7 +423,7 @@ class ASTCompiler:
             loc=loc,
             test=ast.CallMethod(
                 loc=iter_loc,
-                target=ast.NameTemp(iter_loc, iter_sym),
+                target=ast.NameLocalDirect(iter_loc, iter_sym),
                 method=ast.StrLiteral(iter_loc, "__continue_iteration__"),
                 args=[],
             ),
@@ -461,17 +472,17 @@ class ASTCompiler:
         target_sym = self.sa.get_resolved_sym((stmt, "_$t"))
 
         desugared: list[ast.Stmt] = [
-            ast.AssignTemp(loc=target_loc, sym=target_sym, value=stmt.target),
+            self.make_assign_temp(loc=target_loc, sym=target_sym, val=stmt.target),
             ast.SetAttr(
                 loc=stmt.loc,
-                target=ast.NameTemp(target_loc, target_sym),
+                target=ast.NameLocalDirect(target_loc, target_sym),
                 attr=stmt.attr,
                 value=ast.BinOp(
                     loc=value_loc,
                     op=stmt.op,
                     left=ast.GetAttr(
                         loc=target_loc,
-                        value=ast.NameTemp(target_loc, target_sym),
+                        value=ast.NameLocalDirect(target_loc, target_sym),
                         attr=stmt.attr,
                     ),
                     right=stmt.value,
@@ -495,29 +506,33 @@ class ASTCompiler:
         target_sym = self.sa.get_resolved_sym((stmt, "_$t"))
 
         desugared: list[ast.Stmt] = [
-            ast.AssignTemp(loc=target_loc, sym=target_sym, value=stmt.target)
+            self.make_assign_temp(loc=target_loc, sym=target_sym, val=stmt.target)
         ]
         arg_syms = []
         for arg in stmt.args:
             arg_loc = arg.loc.replace(colorize=False)
             arg_sym = self.sa.get_resolved_sym((arg, "_$a"))
             arg_syms.append((arg_sym, arg_loc))
-            desugared.append(ast.AssignTemp(loc=arg_loc, sym=arg_sym, value=arg))
+            desugared.append(self.make_assign_temp(loc=arg_loc, sym=arg_sym, val=arg))
 
-        lhs_args: list[ast.Expr] = [ast.NameTemp(loc, sym) for sym, loc in arg_syms]
-        rhs_args: list[ast.Expr] = [ast.NameTemp(loc, sym) for sym, loc in arg_syms]
+        lhs_args: list[ast.Expr] = [
+            ast.NameLocalDirect(loc, sym) for sym, loc in arg_syms
+        ]
+        rhs_args: list[ast.Expr] = [
+            ast.NameLocalDirect(loc, sym) for sym, loc in arg_syms
+        ]
 
         desugared.append(
             ast.SetItem(
                 loc=stmt.loc,
-                target=ast.NameTemp(target_loc, target_sym),
+                target=ast.NameLocalDirect(target_loc, target_sym),
                 args=lhs_args,
                 value=ast.BinOp(
                     loc=value_loc,
                     op=stmt.op,
                     left=ast.GetItem(
                         loc=target_loc,
-                        value=ast.NameTemp(target_loc, target_sym),
+                        value=ast.NameLocalDirect(target_loc, target_sym),
                         args=rhs_args,
                     ),
                     right=stmt.value,
@@ -767,10 +782,6 @@ class ASTCompiler:
 
         else:
             assert False, f"unexpected storage: {sym.storage!r}"
-
-    def compile_expr_NameTemp(self, name: ast.NameTemp) -> ast.Expr:
-        # a hidden compiler temp carries its own Symbol; lower directly, no lookup.
-        return ast.NameLocalDirect(name.loc, name.sym)
 
     def compile_expr_Name(self, name: ast.Name) -> ast.Expr:
         if self.interactive_scope is not None:
