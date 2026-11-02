@@ -256,9 +256,11 @@ class TestScopeAnalyzer2:
         frameinfo test::foo (function):
             @return: Symbol("@return", "var", "auto")
             i$0: Symbol("i", "var", "loop-target")
+            _$iter$0: Symbol("_$iter$0", "var", "auto")
 
             scope foo:
                 range -> range @ builtins (depth=2) => <ImportRef _range.range>
+                _$iter$0 -> _$iter$0
                 i -> NameError
                 scope for.body:
                     i -> i$0
@@ -283,10 +285,12 @@ class TestScopeAnalyzer2:
         frameinfo test::foo (function):
             @return: Symbol("@return", "var", "auto")
             i$0: Symbol("i", "var", "explicit")
+            _$iter$0: Symbol("_$iter$0", "var", "auto")
 
             scope foo:
                 i -> i$0
                 range -> range @ builtins (depth=2) => <ImportRef _range.range>
+                _$iter$0 -> _$iter$0
                 scope for.body:
                     i -> i$0
         """
@@ -307,9 +311,11 @@ class TestScopeAnalyzer2:
         frameinfo test::foo (function):
             @return: Symbol("@return", "var", "auto")
             X$0: Symbol("X", "var", "loop-target")
+            _$iter$0: Symbol("_$iter$0", "var", "auto")
 
             scope foo:
                 range -> range @ builtins (depth=2) => <ImportRef _range.range>
+                _$iter$0 -> _$iter$0
                 scope for.body:
                     X -> X$0
         """
@@ -748,9 +754,11 @@ class TestScopeAnalyzer2:
             @return: Symbol("@return", "var", "auto")
             i$0: Symbol("i", "var", "loop-target")
             total$0: Symbol("total", "const", "auto")
+            _$iter$0: Symbol("_$iter$0", "var", "auto")
 
             scope foo:
                 range -> range @ builtins (depth=2) => <ImportRef _range.range>
+                _$iter$0 -> _$iter$0
                 total -> NameError
                 scope for.body:
                     i -> i$0
@@ -909,9 +917,11 @@ class TestScopeAnalyzer2:
             @return: Symbol("@return", "var", "auto")
             i$0: Symbol("i", "var", "loop-target")
             x$0: Symbol("x", "const", "auto")
+            _$iter$0: Symbol("_$iter$0", "var", "auto")
 
             scope foo:
                 range -> range @ builtins (depth=2) => <ImportRef _range.range>
+                _$iter$0 -> _$iter$0
                 x -> NameError
                 scope for.body:
                     i -> i$0

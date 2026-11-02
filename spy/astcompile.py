@@ -372,9 +372,10 @@ class ASTCompiler:
         #       body
         loc = stmt.loc
         # use non-colorize locs for synthetic nodes, to avoid painting over user nodes
+        assert self.sa is not None
         iter_loc = stmt.iter.loc.replace(colorize=False)
         target_loc = stmt.target.loc.replace(colorize=False)
-        iter_sym = self.frameinfo.make_temp_symbol("_$iter", iter_loc)  # e.g. _$iter$0
+        iter_sym = self.sa.get_resolved_sym((stmt, "_$iter"))
 
         init_iter = ast.AssignTemp(
             loc=iter_loc,

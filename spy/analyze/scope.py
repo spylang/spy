@@ -494,6 +494,18 @@ class ScopeAnalyzer:
         self.valid_from[new_sym] = valid_from
         return new_sym
 
+    def create_new_temp_local(self, node: ast.Node, basename: str) -> Symbol:
+        """
+        Create a new temporary local variable.  Find an unique name based on basename.
+        """
+        n = 0
+        while (name := f"{basename}${n}") in self.scope.symbols:
+            n += 1
+        loc = node.loc.replace(colorize=False)
+        sym = self.create_new_local(node, name, "explicit", "var", "auto", loc, loc)
+        self.set_binding((node, basename), self.scope, sym)
+        return sym
+
     def collect(self, node: ast.Node) -> None:
         # like ast.Node.visit(), but keeps track of seq numbers
         self.seq[node] = self.cur_seq = len(self.seq)
@@ -1183,6 +1195,8 @@ class ScopeAnalyzer:
 
     def bind_For(self, forstmt: ast.For) -> None:
         self.bind(forstmt.iter)
+        # the iterator lives in the outer scope
+        self.create_new_temp_local(forstmt, "_$iter")
         body_scope = self.scopes[forstmt, "body"]
         self.push_scope(body_scope)
         tgt = forstmt.target
