@@ -466,14 +466,6 @@ class Name(Expr):
         return self.id
 
 
-@astnode("parsed")
-class NameTemp(Expr):
-    # read a temp var. This is a transient node created by astcompiler when desugaring.
-    # It is lowered to NameLocalDirect by compile_expr.  See also AssignTemp.
-    precedence = 100  # the highest
-    sym: Symbol
-
-
 @astnode(">= astcompiled")
 class NameLocalDirect(Expr):
     precedence = 100  # the highest
@@ -1064,14 +1056,6 @@ class AugAssign(Stmt):
         return self.op
 
 
-@astnode("parsed")
-class AssignTemp(Stmt):
-    # write to temp var. This is a transient node created by astcompiler when desugaring.
-    # It is lowered to AssignLocal by compile_expr.  See also NameTemp.
-    sym: Symbol
-    value: Expr
-
-
 @astnode(">= astcompiled")
 class AssignLocal(Stmt):
     expr: AssignExprLocal
@@ -1100,7 +1084,6 @@ class SetAttr(Stmt):
 
 @astnode("parsed")
 class AugSetAttr(Stmt):
-    seq: int  # unique id within a funcdef
     target: Expr
     attr: StrLiteral
     op: str
@@ -1116,7 +1099,6 @@ class SetItem(Stmt):
 
 @astnode("parsed")
 class AugSetItem(Stmt):
-    seq: int  # unique id within a funcdef
     target: Expr
     args: list[Expr]
     op: str
@@ -1142,7 +1124,6 @@ class While(Stmt):
 
 @astnode("parsed")
 class For(Stmt):
-    seq: int  # unique id within a funcdef
     target: StrLiteral
     iter: Expr
     body: Block

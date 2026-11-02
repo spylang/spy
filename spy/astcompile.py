@@ -176,7 +176,7 @@ class ASTCompiler:
         new_args = [
             arg.replace(
                 type=self.compile_expr(arg.type),
-                _sym=self.sa.get_resolved_sym(arg),
+                _sym=self.sa.get_resolved_sym((arg, "param")),
             )
             for arg in args
         ]
@@ -185,7 +185,8 @@ class ASTCompiler:
         new_inner = self.compile_stmt(inner)
         assert len(new_inner) == 1
         # synthesize `return <inner>`
-        inner_sym = self.sa.get_resolved_sym(inner)
+        inner_tag = "classname" if isinstance(inner, ast.ClassDef) else "funcname"
+        inner_sym = self.sa.get_resolved_sym((inner, inner_tag))
         return_stmt = ast.Return(
             loc=loc,
             value=ast.NameLocalDirect(loc=loc, sym=inner_sym),
@@ -209,7 +210,7 @@ class ASTCompiler:
             body=body,
             decorators=[],
             _frameinfo=outer_frameinfo,
-            _sym=self.sa.get_resolved_sym(node),
+            _sym=self.sa.get_resolved_sym((node, "name")),
         )
 
     def compile_decl_GlobalVarDef(self, decl: ast.GlobalVarDef) -> ast.Decl:
@@ -235,7 +236,7 @@ class ASTCompiler:
         new_args = [
             arg.replace(
                 type=self.compile_expr(arg.type),
-                _sym=self.sa.get_resolved_sym(arg),
+                _sym=self.sa.get_resolved_sym((arg, "param")),
             )
             for arg in funcdef.args
         ]
@@ -246,7 +247,7 @@ class ASTCompiler:
         self.push_frameinfo(inner_frameinfo)
         new_body = self.compile_block(funcdef.body)
         self.pop_frameinfo()
-        new_sym = self.sa.get_resolved_sym(funcdef)
+        new_sym = self.sa.get_resolved_sym((funcdef, "funcname"))
         return funcdef.replace(
             stage="astcompiled",
             decorators=new_decorators,
@@ -290,7 +291,7 @@ class ASTCompiler:
         new_value = self.compile_expr(stmt.value) if stmt.value is not None else None
         # scope resolves every VarDef to a Symbol; fill it in so that the
         # runtime indexes the frame by sym.slot_name.
-        sym = self.sa.get_resolved_sym_maybe(stmt)
+        sym = self.sa.get_resolved_sym_maybe((stmt, "target"))
         assert sym is not None
         return [stmt.replace(type=new_type, value=new_value, _sym=sym)]
 
@@ -323,7 +324,7 @@ class ASTCompiler:
                     raise WIP("nested unpack targets are not supported yet")
                 name = t.name
                 assert self.sa is not None
-                sym = self.sa.get_resolved_sym(name)
+                sym = self.sa.get_resolved_sym((name, "target"))
                 name = ast.StrLiteral(name.loc, sym.slot_name)
                 targets.append(name)
             return [
@@ -337,12 +338,23 @@ class ASTCompiler:
         else:
             assert False
 
-    def compile_stmt_AssignTemp(self, stmt: ast.AssignTemp) -> list[ast.Stmt]:
-        # a write to a hidden compiler temp; lower directly to AssignLocal, no lookup.
-        value = self.compile_expr(stmt.value)
-        target = ast.StrLiteral(stmt.loc, stmt.sym.slot_name)
-        assign_expr = ast.AssignExprLocal(stmt.loc, target, stmt.sym, value)
-        return [ast.AssignLocal(stmt.loc, assign_expr)]
+    def make_assign_temp(self, sym: Symbol, loc: Loc, val: ast.Expr) -> ast.AssignLocal:
+        """
+        Build an AssignLocal to assign to a hidden temporary.
+        """
+        target = ast.StrLiteral(loc, sym.slot_name)
+        assign_expr = ast.AssignExprLocal(loc, target, sym, self.compile_expr(val))
+        return ast.AssignLocal(loc, assign_expr)
+
+    def compile_stmt_AssignLocal(self, stmt: ast.AssignLocal) -> list[ast.Stmt]:
+        # this is needed when we compile the 'while' body of a desugared For, which
+        # contains nodes produced by make_assign_temp.
+        return [stmt]
+
+    def compile_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> ast.Expr:
+        # this is needed when we compile the 'while' body of a desugared For, which
+        # contains synthetic ast.NameLocalDirect
+        return name
 
     def compile_stmt_ClassDef(self, stmt: ast.ClassDef) -> list[ast.Stmt]:
         return [self.compile_classdef(stmt)]
@@ -350,7 +362,7 @@ class ASTCompiler:
     def compile_classdef(self, classdef: ast.ClassDef) -> ast.ClassDef:
         assert self.sa is not None
         inner_frameinfo = self.sa.get_frameinfo(classdef)
-        new_sym = self.sa.get_resolved_sym(classdef)
+        new_sym = self.sa.get_resolved_sym((classdef, "classname"))
         self.push_frameinfo(inner_frameinfo)
         new_body = self.compile_block(classdef.body)
         self.pop_frameinfo()
@@ -371,14 +383,15 @@ class ASTCompiler:
         #       body
         loc = stmt.loc
         # use non-colorize locs for synthetic nodes, to avoid painting over user nodes
+        assert self.sa is not None
         iter_loc = stmt.iter.loc.replace(colorize=False)
         target_loc = stmt.target.loc.replace(colorize=False)
-        iter_sym = self.frameinfo.make_temp_symbol("_$iter", iter_loc)  # e.g. _$iter$0
+        iter_sym = self.sa.get_resolved_sym((stmt, "_$iter"))
 
-        init_iter = ast.AssignTemp(
+        init_iter = self.make_assign_temp(
             loc=iter_loc,
             sym=iter_sym,
-            value=ast.CallMethod(
+            val=ast.CallMethod(
                 loc=iter_loc,
                 target=stmt.iter,
                 method=ast.StrLiteral(iter_loc, "__fastiter__"),
@@ -390,17 +403,17 @@ class ASTCompiler:
             target=ast.SingleTarget(target_loc, stmt.target),
             value=ast.CallMethod(
                 loc=target_loc,
-                target=ast.NameTemp(iter_loc, iter_sym),
+                target=ast.NameLocalDirect(iter_loc, iter_sym),
                 method=ast.StrLiteral(target_loc, "__item__"),
                 args=[],
             ),
         )
-        advance_iter = ast.AssignTemp(
+        advance_iter = self.make_assign_temp(
             loc=iter_loc,
             sym=iter_sym,
-            value=ast.CallMethod(
+            val=ast.CallMethod(
                 loc=iter_loc,
-                target=ast.NameTemp(iter_loc, iter_sym),
+                target=ast.NameLocalDirect(iter_loc, iter_sym),
                 method=ast.StrLiteral(iter_loc, "__next__"),
                 args=[],
             ),
@@ -410,7 +423,7 @@ class ASTCompiler:
             loc=loc,
             test=ast.CallMethod(
                 loc=iter_loc,
-                target=ast.NameTemp(iter_loc, iter_sym),
+                target=ast.NameLocalDirect(iter_loc, iter_sym),
                 method=ast.StrLiteral(iter_loc, "__continue_iteration__"),
                 args=[],
             ),
@@ -430,8 +443,9 @@ class ASTCompiler:
         read_name = ast.Name(loc=target_loc, id=stmt.target.value)
         assert self.sa is not None
         # we must bind the synthetic node
-        scope = self.sa.get_resolved_scope(stmt.target)
-        res = self.sa.get_resolution(stmt.target)
+        target_key = (stmt.target, "target")
+        scope = self.sa.get_resolved_scope(target_key)
+        res = self.sa.get_resolution(target_key)
         self.sa.bind_synthetic_node(read_name, scope, res)
         desugared = ast.Assign(
             loc=stmt.loc,
@@ -454,20 +468,21 @@ class ASTCompiler:
         #   _$t.attr = _$t.attr OP v
         target_loc = stmt.target.loc.replace(colorize=False)
         value_loc = stmt.loc.replace(colorize=False)
-        target_sym = self.frameinfo.make_temp_symbol("_$t", target_loc)
+        assert self.sa is not None
+        target_sym = self.sa.get_resolved_sym((stmt, "_$t"))
 
         desugared: list[ast.Stmt] = [
-            ast.AssignTemp(loc=target_loc, sym=target_sym, value=stmt.target),
+            self.make_assign_temp(loc=target_loc, sym=target_sym, val=stmt.target),
             ast.SetAttr(
                 loc=stmt.loc,
-                target=ast.NameTemp(target_loc, target_sym),
+                target=ast.NameLocalDirect(target_loc, target_sym),
                 attr=stmt.attr,
                 value=ast.BinOp(
                     loc=value_loc,
                     op=stmt.op,
                     left=ast.GetAttr(
                         loc=target_loc,
-                        value=ast.NameTemp(target_loc, target_sym),
+                        value=ast.NameLocalDirect(target_loc, target_sym),
                         attr=stmt.attr,
                     ),
                     right=stmt.value,
@@ -487,32 +502,37 @@ class ASTCompiler:
         #   _$t[_$a0, _$a1, ...] = _$t[_$a0, _$a1, ...] OP v
         target_loc = stmt.target.loc.replace(colorize=False)
         value_loc = stmt.loc.replace(colorize=False)
-        target_sym = self.frameinfo.make_temp_symbol("_$t", target_loc)
+        assert self.sa is not None
+        target_sym = self.sa.get_resolved_sym((stmt, "_$t"))
 
         desugared: list[ast.Stmt] = [
-            ast.AssignTemp(loc=target_loc, sym=target_sym, value=stmt.target)
+            self.make_assign_temp(loc=target_loc, sym=target_sym, val=stmt.target)
         ]
         arg_syms = []
         for arg in stmt.args:
             arg_loc = arg.loc.replace(colorize=False)
-            arg_sym = self.frameinfo.make_temp_symbol("_$a", arg_loc)
+            arg_sym = self.sa.get_resolved_sym((arg, "_$a"))
             arg_syms.append((arg_sym, arg_loc))
-            desugared.append(ast.AssignTemp(loc=arg_loc, sym=arg_sym, value=arg))
+            desugared.append(self.make_assign_temp(loc=arg_loc, sym=arg_sym, val=arg))
 
-        lhs_args: list[ast.Expr] = [ast.NameTemp(loc, sym) for sym, loc in arg_syms]
-        rhs_args: list[ast.Expr] = [ast.NameTemp(loc, sym) for sym, loc in arg_syms]
+        lhs_args: list[ast.Expr] = [
+            ast.NameLocalDirect(loc, sym) for sym, loc in arg_syms
+        ]
+        rhs_args: list[ast.Expr] = [
+            ast.NameLocalDirect(loc, sym) for sym, loc in arg_syms
+        ]
 
         desugared.append(
             ast.SetItem(
                 loc=stmt.loc,
-                target=ast.NameTemp(target_loc, target_sym),
+                target=ast.NameLocalDirect(target_loc, target_sym),
                 args=lhs_args,
                 value=ast.BinOp(
                     loc=value_loc,
                     op=stmt.op,
                     left=ast.GetItem(
                         loc=target_loc,
-                        value=ast.NameTemp(target_loc, target_sym),
+                        value=ast.NameLocalDirect(target_loc, target_sym),
                         args=rhs_args,
                     ),
                     right=stmt.value,
@@ -726,9 +746,10 @@ class ASTCompiler:
     def compile_expr_AssignExpr(self, expr: ast.AssignExpr) -> ast.Expr:
         target = expr.target
         assert self.sa is not None
-        if (err := self.sa.get_poison_error_maybe(target)) is not None:
+        target_key = (target, "target")
+        if (err := self.sa.get_poison_error_maybe(target_key)) is not None:
             return ast.PoisonExpr(expr.loc, err)
-        sym = self.sa.get_resolved_sym(target)
+        sym = self.sa.get_resolved_sym(target_key)
 
         value = self.compile_expr(expr.value)
 
@@ -761,10 +782,6 @@ class ASTCompiler:
 
         else:
             assert False, f"unexpected storage: {sym.storage!r}"
-
-    def compile_expr_NameTemp(self, name: ast.NameTemp) -> ast.Expr:
-        # a hidden compiler temp carries its own Symbol; lower directly, no lookup.
-        return ast.NameLocalDirect(name.loc, name.sym)
 
     def compile_expr_Name(self, name: ast.Name) -> ast.Expr:
         if self.interactive_scope is not None:

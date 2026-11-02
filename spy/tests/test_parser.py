@@ -1025,7 +1025,6 @@ class TestParser:
         stmt = mod.get_funcdef("foo").body.body[1]
         expected = f"""
         AugSetAttr(
-            seq=0,
             target=Name(id='a'),
             attr=StrLiteral(value='b'),
             op='{op}',
@@ -1044,7 +1043,6 @@ class TestParser:
         stmt = mod.get_funcdef("foo").body.body[1]
         expected = f"""
         AugSetItem(
-            seq=0,
             target=Name(id='arr'),
             args=[
                 Literal(value=1),
@@ -1067,7 +1065,6 @@ class TestParser:
         stmt = mod.get_funcdef("foo").body.body[3]
         expected = f"""
         AugSetItem(
-            seq=0,
             target=Name(id='matrix'),
             args=[
                 Name(id='i'),
@@ -1078,22 +1075,6 @@ class TestParser:
         )
         """
         self.assert_dump(stmt, expected)
-
-    def test_complex_AugAssign_unique_seq(self):
-        mod = self.parse("""
-        def foo() -> None:
-            obj().x += 1
-            items()[index()] += 2
-            obj().y += 3
-        """)
-        body = mod.get_funcdef("foo").body.body
-        assert all(isinstance(stmt, (ast.AugSetAttr, ast.AugSetItem)) for stmt in body)
-        seqs = [
-            stmt.seq
-            for stmt in body
-            if isinstance(stmt, ast.AugSetAttr | ast.AugSetItem)
-        ]
-        assert seqs == [0, 1, 2]
 
     @pytest.mark.parametrize("op", "+ - ~ not".split())
     def test_UnaryOp(self, op):
@@ -1514,7 +1495,6 @@ class TestParser:
         stmt = mod.get_funcdef("foo").body.body[0]
         expected = """
         For(
-            seq=0,
             target=StrLiteral(value='i'),
             iter=Call(
                 func=Name(id='range'),
@@ -1571,12 +1551,10 @@ class TestParser:
         # first for loop
         expected0 = """
         For(
-            seq=0,
             target=StrLiteral(value='i'),
             iter=Name(id='x'),
             body=[
                 For(
-                    seq=1,
                     target=StrLiteral(value='j'),
                     iter=Name(id='x'),
                     body=[
@@ -1590,7 +1568,6 @@ class TestParser:
         # second for loop
         expected1 = """
         For(
-            seq=2,
             target=StrLiteral(value='z'),
             iter=Name(id='x'),
             body=[
@@ -2264,7 +2241,6 @@ class TestParser:
         for_stmt = mod.get_funcdef("foo").body.body[0]
         expected = """
         For(
-            seq=0,
             target=StrLiteral(value='i'),
             iter=Call(
                 func=Name(id='range'),
@@ -2299,7 +2275,6 @@ class TestParser:
         for_stmt = mod.get_funcdef("foo").body.body[0]
         expected = """
         For(
-            seq=0,
             target=StrLiteral(value='i'),
             iter=Call(
                 func=Name(id='range'),
