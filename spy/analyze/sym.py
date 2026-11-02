@@ -374,25 +374,6 @@ class FrameInfo:
         assert sym.slot_name not in self._symbols
         self._symbols[sym.slot_name] = sym
 
-    def make_temp_symbol(self, base: str, loc: Loc) -> Symbol:
-        """
-        Allocate and register a hidden compiler temporary (e.g. `_$iter`) in this
-        frame, returning its Symbol.  It's a "var/auto/direct".
-        """
-        slot_name = self.get_fresh_slot(base)
-        sym = Symbol(
-            base,
-            "var",
-            "auto",
-            "direct",
-            slot_name=slot_name,
-            loc=loc,
-            type_loc=loc,
-            frame_depth=0,
-        )
-        self.add(sym)
-        return sym
-
     def get_fresh_slot(self, src_name: str) -> str:
         """
         Get a fresh, unique slot name for the given src_name, in the form `x$0`,

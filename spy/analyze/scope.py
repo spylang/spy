@@ -1230,6 +1230,32 @@ class ScopeAnalyzer:
         tgt = node.target
         self.resolve_write((tgt, "target"), tgt.value, tgt.loc)
 
+    def bind_AugSetAttr(self, stmt: ast.AugSetAttr) -> None:
+        # we have:
+        #   obj.attr OP= v
+        #
+        # we want to evaluate `obj` only once. We desugar into:
+        #   _$t = obj
+        #   _$t.attr = _$t.attr OP v
+        self.create_new_temp_local(stmt, "_$t")
+        for child in stmt.get_children():
+            self.bind(child)
+
+    def bind_AugSetItem(self, stmt: ast.AugSetItem) -> None:
+        # we have:
+        #   obj[arg0, arg1, ...] OP= v
+        #
+        # we want to evaluate `obj` and each `arg` only once. We desugar into:
+        #   _$t = obj
+        #   _$a0 = arg0
+        #   _$a1 = arg1
+        #   _$t[_$a0, _$a1, ...] = _$t[_$a0, _$a1, ...] OP v
+        self.create_new_temp_local(stmt, "_$t")
+        for arg in stmt.args:
+            self.create_new_temp_local(arg, "_$a")
+        for child in stmt.get_children():
+            self.bind(child)
+
     def bind_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
         # walrus `x := E`
         self.bind(assignexpr.value)

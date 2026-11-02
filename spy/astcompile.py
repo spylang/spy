@@ -457,7 +457,8 @@ class ASTCompiler:
         #   _$t.attr = _$t.attr OP v
         target_loc = stmt.target.loc.replace(colorize=False)
         value_loc = stmt.loc.replace(colorize=False)
-        target_sym = self.frameinfo.make_temp_symbol("_$t", target_loc)
+        assert self.sa is not None
+        target_sym = self.sa.get_resolved_sym((stmt, "_$t"))
 
         desugared: list[ast.Stmt] = [
             ast.AssignTemp(loc=target_loc, sym=target_sym, value=stmt.target),
@@ -490,7 +491,8 @@ class ASTCompiler:
         #   _$t[_$a0, _$a1, ...] = _$t[_$a0, _$a1, ...] OP v
         target_loc = stmt.target.loc.replace(colorize=False)
         value_loc = stmt.loc.replace(colorize=False)
-        target_sym = self.frameinfo.make_temp_symbol("_$t", target_loc)
+        assert self.sa is not None
+        target_sym = self.sa.get_resolved_sym((stmt, "_$t"))
 
         desugared: list[ast.Stmt] = [
             ast.AssignTemp(loc=target_loc, sym=target_sym, value=stmt.target)
@@ -498,7 +500,7 @@ class ASTCompiler:
         arg_syms = []
         for arg in stmt.args:
             arg_loc = arg.loc.replace(colorize=False)
-            arg_sym = self.frameinfo.make_temp_symbol("_$a", arg_loc)
+            arg_sym = self.sa.get_resolved_sym((arg, "_$a"))
             arg_syms.append((arg_sym, arg_loc))
             desugared.append(ast.AssignTemp(loc=arg_loc, sym=arg_sym, value=arg))
 
