@@ -17,6 +17,39 @@ from spy.errors import SPyError
 from spy.location import Loc
 from spy.textbuilder import ColorFormatter, TextBuilder
 
+# The ultimate goal of ScopeAnalyzer is to bind names to Symbols.
+
+# A name is something as it's written by the user, a Symbol is the compiler
+# representation. Because of lexical scoping, the same name binds to different Symbols,
+# depending on where it is located in the source code. Trivial example:
+#
+#     const x = 1
+#     print(x)  # binds to the outer x
+#     if cond:
+#         const x = 2
+#         print(x)  # binds to the inner x
+#
+# Ultimately, ScopeAnalyzer maintains a mapping between NameKey and Resolution:
+#
+#   - NameKey identifies a name in the source code; it can be a bare ast.Name, or a pair
+#     (ast.Node, tag)
+#
+#   - Resolution is usually a Symbol, but can be a SPyError in case we cannot find the
+#     binding for it.
+#
+# The form (ast.Node, tag) is needed because some nodes can introduce/refer to multiple
+# names. For example, take `for i in it`. The node ast.For introduces two names:
+#
+#   - the target `i`
+#   - the temporary `_$iter` which holds the result of `iter(it)`
+
+NameKey = ast.Name | tuple[ast.Node, str]
+
+# What a node resolves to during the bind pass: a real Symbol, or a lazy static
+# error (poison) that astcompile turns into an ast.PoisonExpr.
+Resolution = Symbol | SPyError
+
+
 # FrameInfo and Scope are similar but conceptually different:
 #
 #   - `Scope` are created during the collect pass of ScopeAnalyzer, they are nested and
@@ -24,15 +57,21 @@ from spy.textbuilder import ColorFormatter, TextBuilder
 #
 #   - `FrameInfo` is a runtime concept: it's a flat per-function namespace, which
 #     contains its local variables
+#
+# A FrameInfo is more or less a flattened version of the hierarchy of nested scopes
+# rooted in a FuncDef.
 
 # Key used to look up Scopes in ScopeAnalyzer.scopes
 # Usually a single node (ast.Module, ast.FuncDef, ...); the tuple case is for
 # nodes with multiple blocks, like `(ast.If, "then")` and `(ast.If, "else")`.
 ScopeKey = ast.Node | tuple[ast.Node, str]
 
-# What a node resolves to during the bind pass: a real Symbol, or a lazy static
-# error (poison) that astcompile turns into an ast.PoisonExpr.
-Resolution = Symbol | SPyError
+
+def _key_node(key: NameKey) -> ast.Node:
+    """
+    Return the node which carries the binding referenced by `key`.
+    """
+    return key if isinstance(key, ast.Node) else key[0]
 
 
 class ScopeAnalyzer:
@@ -73,8 +112,7 @@ class ScopeAnalyzer:
     cur_seq: int
     valid_from: dict[Symbol, int]  # seq number after Sym is valid
 
-    # A node resolves either to a Symbol or to a lazy SPyError
-    _resolved_nodes: dict[ast.Node, tuple[Scope, "Resolution"]]
+    _resolutions: dict[NameKey, tuple[Scope, Resolution]]
 
     # modules implicitly imported by `mod` (e.g. `_list` for a list literal)
     implicit_imports: set[str]
@@ -99,7 +137,7 @@ class ScopeAnalyzer:
         self.seq = {}
         self.valid_from = {}
         self.cur_seq = 0
-        self._resolved_nodes = {}
+        self._resolutions = {}
         self.implicit_imports = set()
 
     # ===============
@@ -157,8 +195,12 @@ class ScopeAnalyzer:
         # For poison (SPyError) resolutions there is no Symbol, so the display name
         # is taken from the node's source text.
         uses_by_scope: dict[str, list[tuple[str, Resolution]]] = {}
-        for node, (scope, res) in self._resolved_nodes.items():
-            src_name = res.src_name if isinstance(res, Symbol) else node.loc.get_src()
+        for key, (scope, res) in self._resolutions.items():
+            src_name = (
+                res.src_name
+                if isinstance(res, Symbol)
+                else _key_node(key).loc.get_src()
+            )
             uses_by_scope.setdefault(scope.name, []).append((src_name, res))
 
         def scope_is_empty(scope: Scope) -> bool:
@@ -286,49 +328,47 @@ class ScopeAnalyzer:
     def get_frameinfo(self, node: ast.Node) -> FrameInfo:
         return self.scopes[node].frameinfo
 
-    def get_resolution(self, node: ast.Node) -> "Resolution":
+    def get_resolution(self, key: NameKey) -> Resolution:
         """
-        Return what `node` resolved to: a real Symbol or a lazy poison (SPyError).
+        Return what `key` resolved to: a real Symbol or a lazy poison (SPyError).
         """
-        scope, res = self._resolved_nodes[node]
+        scope, res = self._resolutions[key]
         return res
 
-    def get_resolved_sym(self, node: ast.Node) -> Symbol:
+    def get_resolved_sym(self, key: NameKey) -> Symbol:
         """
-        Return the Symbol that `node` resolved to.
+        Return the Symbol that `key` resolved to.
         """
-        res = self.get_resolution(node)
+        res = self.get_resolution(key)
         assert isinstance(res, Symbol)
         return res
 
-    def get_resolved_sym_maybe(self, node: ast.Node) -> Optional[Symbol]:
-        if node in self._resolved_nodes:
-            scope, res = self._resolved_nodes[node]
+    def get_resolved_sym_maybe(self, key: NameKey) -> Optional[Symbol]:
+        if key in self._resolutions:
+            scope, res = self._resolutions[key]
             if isinstance(res, Symbol):
                 return res
         return None
 
-    def get_poison_error_maybe(self, node: ast.Node) -> Optional[SPyError]:
-        if node in self._resolved_nodes:
-            scope, res = self._resolved_nodes[node]
+    def get_poison_error_maybe(self, key: NameKey) -> Optional[SPyError]:
+        if key in self._resolutions:
+            scope, res = self._resolutions[key]
             if isinstance(res, SPyError):
                 return res
         return None
 
-    def bind_synthetic_node(
-        self, node: ast.Node, scope: Scope, res: "Resolution"
-    ) -> None:
+    def bind_synthetic_node(self, key: NameKey, scope: Scope, res: Resolution) -> None:
         """
         This is exactly like set_binding, but it's a public API which can be used by
         astcompiler to bind the node it synthethizes (e.g. when desugaring a For)
         """
-        self.set_binding(node, scope, res)
+        self.set_binding(key, scope, res)
 
-    def get_resolved_scope(self, node: ast.Node) -> Scope:
+    def get_resolved_scope(self, key: NameKey) -> Scope:
         """
-        Return the lexical Scope in which `node` was resolved.
+        Return the lexical Scope in which `key` was resolved.
         """
-        scope, sym = self._resolved_nodes[node]
+        scope, res = self._resolutions[key]
         return scope
 
     # =====
@@ -925,10 +965,10 @@ class ScopeAnalyzer:
     # ====
     # bind pass
 
-    def set_binding(self, node: ast.Node, scope: Scope, res: "Resolution") -> None:
+    def set_binding(self, key: NameKey, scope: Scope, res: Resolution) -> None:
         if isinstance(res, Symbol) and res.frame_depth > 0 and res.impref is not None:
             self.implicit_imports.add(res.impref.modname)
-        self._resolved_nodes[node] = (scope, res)
+        self._resolutions[key] = (scope, res)
 
     def find_loop_target_maybe(self, varname: str) -> Optional[Symbol]:
         """
@@ -949,16 +989,17 @@ class ScopeAnalyzer:
             err.add("note", msg, sym.loc)
         return err
 
-    def resolve_read(self, node: ast.Node, varname: str, use_loc: Loc) -> None:
+    def resolve_read(self, key: NameKey, varname: str, use_loc: Loc) -> None:
         # NOTE: a not-found / used-before name resolves to a lazy SPyError (stored
-        # in _resolved_nodes); astcompile turns it into an ast.PoisonExpr.
+        # in _resolutions); astcompile turns it into an ast.PoisonExpr.
 
+        node = _key_node(key)
         res = self.scope.lookup(varname)
         frame_depth, sym = res.frame_depth, res.sym
 
         if not res.found:
             # name not found: the node resolves to a lazy NameError (no Symbol)
-            self.set_binding(node, self.scope, self.make_NameError(varname, use_loc))
+            self.set_binding(key, self.scope, self.make_NameError(varname, use_loc))
             return
 
         elif frame_depth == 0:
@@ -979,7 +1020,7 @@ class ScopeAnalyzer:
                             assert outer.sym is not None
                             # +1 because we skip the class frame
                             sym = outer.sym.replace(frame_depth=outer.frame_depth + 1)
-                            self.set_binding(node, self.scope, sym)
+                            self.set_binding(key, self.scope, sym)
                             return
 
                     # [decl.use-before]: the use happens before the name becomes valid;
@@ -994,19 +1035,19 @@ class ScopeAnalyzer:
                         err.add("note", f"help: shadowing this `{varname}`", glob.loc)
                         msg = f"help: add `global {varname}` earlier"
                         err.add("note", msg, use_loc)
-                    self.set_binding(node, self.scope, err)
+                    self.set_binding(key, self.scope, err)
                     return
 
-            self.set_binding(node, self.scope, sym)
+            self.set_binding(key, self.scope, sym)
             return
 
         else:
             # found in an outer scope
             assert sym is not None
-            self.set_binding(node, self.scope, sym.replace(frame_depth=frame_depth))
+            self.set_binding(key, self.scope, sym.replace(frame_depth=frame_depth))
             return
 
-    def resolve_write(self, node: ast.Node, varname: str, use_loc: Loc) -> None:
+    def resolve_write(self, key: NameKey, varname: str, use_loc: Loc) -> None:
         """
         Bind an assignment target.
 
@@ -1027,11 +1068,11 @@ class ScopeAnalyzer:
             err.add("error", f"`{varname}` is a global", use_loc)
             err.add("note", f"help: add `global {varname}` earlier", use_loc)
             err.add("note", f"`{varname}` is declared here", sym.loc)
-            self.set_binding(node, self.scope, err)
+            self.set_binding(key, self.scope, err)
             return
-        self.resolve_read(node, varname, use_loc)
+        self.resolve_read(key, varname, use_loc)
 
-    def resolve_decl(self, node: ast.Node, varname: str) -> None:
+    def resolve_decl(self, key: NameKey, varname: str) -> None:
         """
         Bind a declaration node (VarDef, FuncDef, ClassDef, etc.) to its symbol.
 
@@ -1044,7 +1085,7 @@ class ScopeAnalyzer:
         """
         res = self.scope.lookup(varname)
         assert res.found and res.frame_depth == 0 and res.sym is not None
-        self.set_binding(node, self.scope, res.sym)
+        self.set_binding(key, self.scope, res.sym)
 
     def bind(self, node: ast.Node) -> None:
         return node.visit("bind", self)
@@ -1053,7 +1094,7 @@ class ScopeAnalyzer:
         # NOTE: evaluate arg.type in the OUTER scope, arg in the INNER scope.
         #
         # The funcdef NAME is bound to the outer scope.
-        self.resolve_decl(funcdef, funcdef.name)
+        self.resolve_decl((funcdef, "funcname"), funcdef.name)
 
         # outer scope: decorators and argument types
         for decorator in funcdef.decorators:
@@ -1068,7 +1109,7 @@ class ScopeAnalyzer:
         scope = self.scopes[funcdef]
         self.push_scope(scope)
         for arg in funcdef.args:
-            self.resolve_decl(arg, arg.name)
+            self.resolve_decl((arg, "param"), arg.name)
         for stmt in funcdef.body.body:
             self.bind(stmt)
         self.pop_scope()
@@ -1081,7 +1122,7 @@ class ScopeAnalyzer:
 
     def bind_ClassDef(self, classdef: ast.ClassDef) -> None:
         # the classdef NAME is bound in the outer scope, the body in the inner scope
-        self.resolve_decl(classdef, classdef.name)
+        self.resolve_decl((classdef, "classname"), classdef.name)
         scope = self.scopes[classdef]
         self.push_scope(scope)
         for stmt in classdef.body.body:
@@ -1110,7 +1151,7 @@ class ScopeAnalyzer:
         # See the big comment in _collect_generic for a general overview of the steps
 
         # (1) bind the name of the generic in the outer scope
-        self.resolve_decl(node, name)
+        self.resolve_decl((node, "name"), name)
 
         # bind arg types (still in the outer scope)
         for arg in args:
@@ -1121,7 +1162,7 @@ class ScopeAnalyzer:
         self.push_scope(scope)
         for arg in args:
             # (3) bind the generic arguments ("T")
-            self.resolve_decl(arg, arg.name)
+            self.resolve_decl((arg, "param"), arg.name)
 
         # (4) bind the inner funcdef/classdef
         self.bind(inner)
@@ -1145,7 +1186,7 @@ class ScopeAnalyzer:
         body_scope = self.scopes[forstmt, "body"]
         self.push_scope(body_scope)
         tgt = forstmt.target
-        self.resolve_write(tgt, tgt.value, tgt.loc)
+        self.resolve_write((tgt, "target"), tgt.value, tgt.loc)
         for stmt in forstmt.body.body:
             self.bind(stmt)
         self.pop_scope()
@@ -1159,7 +1200,7 @@ class ScopeAnalyzer:
         self.pop_scope()
 
     def bind_VarDef(self, vardef: ast.VarDef) -> None:
-        self.resolve_decl(vardef, vardef.name.value)
+        self.resolve_decl((vardef, "target"), vardef.name.value)
         self.bind(vardef.type)
         if vardef.value is not None:
             self.bind(vardef.value)
@@ -1167,19 +1208,19 @@ class ScopeAnalyzer:
     def bind_Assign(self, assign: ast.Assign) -> None:
         self.bind(assign.value)
         for tgt in assign.target.flatten():
-            self.resolve_write(tgt, tgt.value, tgt.loc)
+            self.resolve_write((tgt, "target"), tgt.value, tgt.loc)
 
     def bind_AugAssign(self, node: ast.AugAssign) -> None:
         # [py.augassign]: the target is both read and written
         self.bind(node.value)
         tgt = node.target
-        self.resolve_write(tgt, tgt.value, tgt.loc)
+        self.resolve_write((tgt, "target"), tgt.value, tgt.loc)
 
     def bind_AssignExpr(self, assignexpr: ast.AssignExpr) -> None:
         # walrus `x := E`
         self.bind(assignexpr.value)
         tgt = assignexpr.target
-        self.resolve_write(tgt, tgt.value, tgt.loc)
+        self.resolve_write((tgt, "target"), tgt.value, tgt.loc)
 
     def bind_Name(self, name: ast.Name) -> None:
         self.resolve_read(name, name.id, name.loc)

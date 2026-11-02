@@ -176,7 +176,7 @@ class ASTCompiler:
         new_args = [
             arg.replace(
                 type=self.compile_expr(arg.type),
-                _sym=self.sa.get_resolved_sym(arg),
+                _sym=self.sa.get_resolved_sym((arg, "param")),
             )
             for arg in args
         ]
@@ -185,7 +185,8 @@ class ASTCompiler:
         new_inner = self.compile_stmt(inner)
         assert len(new_inner) == 1
         # synthesize `return <inner>`
-        inner_sym = self.sa.get_resolved_sym(inner)
+        inner_tag = "classname" if isinstance(inner, ast.ClassDef) else "funcname"
+        inner_sym = self.sa.get_resolved_sym((inner, inner_tag))
         return_stmt = ast.Return(
             loc=loc,
             value=ast.NameLocalDirect(loc=loc, sym=inner_sym),
@@ -209,7 +210,7 @@ class ASTCompiler:
             body=body,
             decorators=[],
             _frameinfo=outer_frameinfo,
-            _sym=self.sa.get_resolved_sym(node),
+            _sym=self.sa.get_resolved_sym((node, "name")),
         )
 
     def compile_decl_GlobalVarDef(self, decl: ast.GlobalVarDef) -> ast.Decl:
@@ -235,7 +236,7 @@ class ASTCompiler:
         new_args = [
             arg.replace(
                 type=self.compile_expr(arg.type),
-                _sym=self.sa.get_resolved_sym(arg),
+                _sym=self.sa.get_resolved_sym((arg, "param")),
             )
             for arg in funcdef.args
         ]
@@ -246,7 +247,7 @@ class ASTCompiler:
         self.push_frameinfo(inner_frameinfo)
         new_body = self.compile_block(funcdef.body)
         self.pop_frameinfo()
-        new_sym = self.sa.get_resolved_sym(funcdef)
+        new_sym = self.sa.get_resolved_sym((funcdef, "funcname"))
         return funcdef.replace(
             stage="astcompiled",
             decorators=new_decorators,
@@ -290,7 +291,7 @@ class ASTCompiler:
         new_value = self.compile_expr(stmt.value) if stmt.value is not None else None
         # scope resolves every VarDef to a Symbol; fill it in so that the
         # runtime indexes the frame by sym.slot_name.
-        sym = self.sa.get_resolved_sym_maybe(stmt)
+        sym = self.sa.get_resolved_sym_maybe((stmt, "target"))
         assert sym is not None
         return [stmt.replace(type=new_type, value=new_value, _sym=sym)]
 
@@ -323,7 +324,7 @@ class ASTCompiler:
                     raise WIP("nested unpack targets are not supported yet")
                 name = t.name
                 assert self.sa is not None
-                sym = self.sa.get_resolved_sym(name)
+                sym = self.sa.get_resolved_sym((name, "target"))
                 name = ast.StrLiteral(name.loc, sym.slot_name)
                 targets.append(name)
             return [
@@ -350,7 +351,7 @@ class ASTCompiler:
     def compile_classdef(self, classdef: ast.ClassDef) -> ast.ClassDef:
         assert self.sa is not None
         inner_frameinfo = self.sa.get_frameinfo(classdef)
-        new_sym = self.sa.get_resolved_sym(classdef)
+        new_sym = self.sa.get_resolved_sym((classdef, "classname"))
         self.push_frameinfo(inner_frameinfo)
         new_body = self.compile_block(classdef.body)
         self.pop_frameinfo()
@@ -430,8 +431,9 @@ class ASTCompiler:
         read_name = ast.Name(loc=target_loc, id=stmt.target.value)
         assert self.sa is not None
         # we must bind the synthetic node
-        scope = self.sa.get_resolved_scope(stmt.target)
-        res = self.sa.get_resolution(stmt.target)
+        target_key = (stmt.target, "target")
+        scope = self.sa.get_resolved_scope(target_key)
+        res = self.sa.get_resolution(target_key)
         self.sa.bind_synthetic_node(read_name, scope, res)
         desugared = ast.Assign(
             loc=stmt.loc,
@@ -726,9 +728,10 @@ class ASTCompiler:
     def compile_expr_AssignExpr(self, expr: ast.AssignExpr) -> ast.Expr:
         target = expr.target
         assert self.sa is not None
-        if (err := self.sa.get_poison_error_maybe(target)) is not None:
+        target_key = (target, "target")
+        if (err := self.sa.get_poison_error_maybe(target_key)) is not None:
             return ast.PoisonExpr(expr.loc, err)
-        sym = self.sa.get_resolved_sym(target)
+        sym = self.sa.get_resolved_sym(target_key)
 
         value = self.compile_expr(expr.value)
 
