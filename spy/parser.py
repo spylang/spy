@@ -743,7 +743,7 @@ class Parser:
             body=self.from_py_body_block(py_node.loc, py_node.body),
         )
 
-    def from_py_stmt_For(self, py_node: py_ast.For) -> spy.ast.For:
+    def from_py_stmt_For(self, py_node: py_ast.For) -> spy.ast.For | spy.ast.ForUnroll:
         if py_node.orelse:
             # ideally, we would like to point to the 'else:' line, but we
             # cannot easily get it from the ast. Too bad, let's point at the
@@ -758,11 +758,72 @@ class Parser:
         if not isinstance(py_node.target, py_ast.Name):
             self.unsupported(py_node.target, "complex for loop targets")
 
+        # `for x in unroll(seq)` is special cased
+        if for_unroll := self.from_py_ForUnroll_maybe(py_node):
+            return for_unroll
+
         return spy.ast.For(
             loc=py_node.loc,
             target=spy.ast.StrLiteral(py_node.target.loc, py_node.target.id),
             iter=self.from_py_expr(py_node.iter),
             body=self.from_py_body_block(py_node.loc, py_node.body),
+        )
+
+    def from_py_ForUnroll_maybe(self, py_node: py_ast.For) -> spy.ast.ForUnroll | None:
+        """
+        Parse the special `for x in unroll(seq)` pattern, if present.
+        """
+        py_call = py_node.iter
+        if not (
+            isinstance(py_call, py_ast.Call)
+            and isinstance(py_call.func, py_ast.Name)
+            and py_call.func.id == "unroll"
+        ):
+            return None
+
+        assert isinstance(py_node.target, py_ast.Name)
+        target = spy.ast.StrLiteral(py_node.target.loc, py_node.target.id)
+
+        if len(py_call.args) != 1 or py_call.keywords:
+            n = len(py_call.args) + len(py_call.keywords)
+            self.error(
+                "`unroll()` takes exactly one argument",
+                f"got {n} arguments",
+                py_call.loc,
+            )
+
+        body = self.from_py_body_block(py_node.loc, py_node.body)
+
+        def check_no_break_continue(node: spy.ast.Node) -> None:
+            # break and continue are allowed inside these nested blocks, don't recurse
+            # into them
+            boundaries = (
+                spy.ast.While,
+                spy.ast.For,
+                spy.ast.ForUnroll,
+                spy.ast.FuncDef,
+                spy.ast.ClassDef,
+            )
+
+            for child in node.get_children():
+                if isinstance(child, boundaries):
+                    continue
+                if isinstance(child, (spy.ast.Break, spy.ast.Continue)):
+                    kw = "break" if isinstance(child, spy.ast.Break) else "continue"
+                    self.error(
+                        f"not implemented yet: `{kw}` inside `unroll` loops",
+                        "this is not supported",
+                        child.loc,
+                    )
+                check_no_break_continue(child)
+
+        check_no_break_continue(body)
+
+        return spy.ast.ForUnroll(
+            loc=py_node.loc,
+            target=target,
+            iter=self.from_py_expr(py_call.args[0]),
+            body=body,
         )
 
     def from_py_stmt_Raise(self, py_node: py_ast.Raise) -> spy.ast.Raise:

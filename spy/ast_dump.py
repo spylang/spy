@@ -126,15 +126,18 @@ class Dumper(TextBuilder):
             for field, value in zip(fields, values):
                 # print w_T, sym, frameinfo and implicit_imports only if not None
                 if (
-                    field in ("w_T", "_sym", "_frameinfo", "_implicit_imports")
+                    field
+                    in ("w_T", "_sym", "_target_sym", "_frameinfo", "_implicit_imports")
                     and value is None
                 ):
                     continue
                 is_last = field is fields[-1]
-                # `_sym`/`_frameinfo`/`_implicit_imports` are private fields exposed
-                # via public properties; dump them under the public name.
+                # `_sym`/`_target_sym`/`_frameinfo`/`_implicit_imports` are private
+                # fields exposed via public properties; dump them under the public
+                # name.
                 label = {
                     "_sym": "sym",
+                    "_target_sym": "target_sym",
                     "_frameinfo": "frameinfo",
                     "_implicit_imports": "implicit_imports",
                 }.get(field, field)

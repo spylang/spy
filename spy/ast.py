@@ -1129,6 +1129,21 @@ class For(Stmt):
     body: Block
 
 
+@astnode("<= astcompiled")
+class ForUnroll(Stmt):
+    target: StrLiteral
+    iter: Expr
+    body: Block
+    _target_sym: Optional[Symbol] = (
+        None  # None when "parsed", present when "astcompiled"
+    )
+
+    @property
+    def target_sym(self) -> Symbol:
+        assert self._target_sym is not None
+        return self._target_sym
+
+
 @astnode
 class Raise(Stmt):
     exc: Expr
