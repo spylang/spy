@@ -1,8 +1,31 @@
-## SPy Source
+---
+title: Contributing to the documentation
+---
 
-For guidelines on setting up your machine to build and contribute to SPy, see [CONTRIBUTING.md](https://github.com/spylang/spy/blob/main/CONTRIBUTING.md)
+# Contributing to the documentation
 
-## Documentation
+This documentation follows the [Diátaxis](https://diataxis.fr/) framework, which
+splits documentation into four kinds of pages. Before writing a page, decide
+which one it is:
+
+| Kind | Directory | Purpose |
+|------|-----------|---------|
+| Tutorial | `docs/src/tutorials/` | A lesson that takes a beginner by the hand and ends with something that works. |
+| How-to guide | `docs/src/howto/` | Steps to solve a specific problem, for someone who already knows the basics. |
+| Reference | `docs/src/reference/` | Accurate, complete, neutral description of the language and tools. |
+| Explanation | `docs/src/explanation/` | Background, design rationale and discussion. |
+
+AI-generated pages are allowed but must start with the "AI-generated document"
+admonition (see `docs/src/explanation/llwasm.md`) and be reviewed by a human
+before being committed.
+
+The example pages under `examples/` are generated from the `.spy` files in the
+`examples/` directory at the root of the repository: edit those files, not the
+generated pages.
+
+## Setup and workflow
+
+To set up your machine to build and contribute to SPy, see [Contributing to SPy](index.md).
 
 /// note | Cloning the Repo
 The first two steps below (forking and cloning the repo) are the same as for the steps for contributing to SPy's source code. You do not need a separate fork and clone for documentation.
