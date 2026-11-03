@@ -149,6 +149,10 @@ def foo():
   unless it's necessary. Prefer adding tests to the existing class. The general rule is
   one `Test*` class per `test_*.py` file.
 
+- when writing tests, never use `pytest.mark.parametrize` unless there is already an
+  accepted pattern for it in the test suite (e.g. in the same file or in similar test
+  files). Otherwise, write separate tests.
+
 - do NOT pass triple-quoted strings directly as function arguments. Assign them to a
   named variable first (typically `src` and `expected`) and pass the variable. This
   keeps the call site readable. E.g. with the dump/expected/print_diff pattern (see
