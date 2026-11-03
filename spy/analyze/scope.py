@@ -745,6 +745,30 @@ class ScopeAnalyzer:
         self.pop_scope()
         self.scopes[forstmt, "body"] = body_scope
 
+    def collect_ForUnroll(self, forstmt: ast.ForUnroll) -> None:
+        self.collect(forstmt.iter)
+        body_scope = self.new_Scope("for.body", self.scope.color, "block")
+        self.push_scope(body_scope)
+        forstmt.body.scope = body_scope
+        # Unlike a normal `for`, the target is always a fresh block-local `const`,
+        # even if the same name exists in an enclosing scope: each unrolled copy of
+        # the body sees it as a blue constant, so it can neither be reassigned nor
+        # outlive the loop.
+        target = forstmt.target
+        self.create_new_local(
+            target,
+            target.value,
+            "explicit",
+            "const",
+            "loop-target",
+            target.loc,
+            forstmt.iter.loc,
+        )
+        for stmt in forstmt.body.body:
+            self.collect(stmt)
+        self.pop_scope()
+        self.scopes[forstmt, "body"] = body_scope
+
     def collect_While(self, whilestmt: ast.While) -> None:
         # The condition is evaluated in the enclosing scope.
         self.collect(whilestmt.test)
@@ -1197,6 +1221,16 @@ class ScopeAnalyzer:
         self.bind(forstmt.iter)
         # the iterator lives in the outer scope
         self.create_new_temp_local(forstmt, "_$iter")
+        body_scope = self.scopes[forstmt, "body"]
+        self.push_scope(body_scope)
+        tgt = forstmt.target
+        self.resolve_write((tgt, "target"), tgt.value, tgt.loc)
+        for stmt in forstmt.body.body:
+            self.bind(stmt)
+        self.pop_scope()
+
+    def bind_ForUnroll(self, forstmt: ast.ForUnroll) -> None:
+        self.bind(forstmt.iter)
         body_scope = self.scopes[forstmt, "body"]
         self.push_scope(body_scope)
         tgt = forstmt.target

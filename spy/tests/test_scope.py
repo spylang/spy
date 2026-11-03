@@ -295,6 +295,63 @@ class TestScopeAnalyzer2:
         """
         self.assert_dump("test::foo", expected)
 
+    def test_scope_unroll_target(self):
+        # the target of `unroll` is a block-local `const` of the loop body, and there
+        # is no `_$iter` temporary because the loop is not desugared to a `while`.
+        src = """
+        from __spy__ import strict_scoping
+
+        const TUP: i32 = 0
+
+        def foo() -> None:
+            for i in unroll(TUP):
+                pass
+            i
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            i$0: Symbol("i", "const", "loop-target")
+
+            scope foo:
+                TUP -> TUP @ test (depth=1)
+                i -> NameError
+                scope for.body:
+                    i -> i$0
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_scope_unroll_target_does_not_reuse_outer_binding(self):
+        # unlike a normal `for` ([scope.loop-target-declare]), the target of `unroll`
+        # is always a fresh local: it must be a blue constant, even if the outer `i`
+        # is a red variable.
+        src = """
+        from __spy__ import strict_scoping
+
+        const TUP: i32 = 0
+
+        def foo() -> None:
+            var i: auto
+            for i in unroll(TUP):
+                pass
+            i
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            i$0: Symbol("i", "var", "explicit")
+            i$1: Symbol("i", "const", "loop-target")
+
+            scope foo:
+                i -> i$0
+                TUP -> TUP @ test (depth=1)
+                scope for.body:
+                    i -> i$1
+        """
+        self.assert_dump("test::foo", expected)
+
     def test_scope_loop_target_declare(self):
         # [scope.loop-target-declare]: if a binding of the same name already
         # exists in an enclosing block, the loop target reuses it (i$0) instead
