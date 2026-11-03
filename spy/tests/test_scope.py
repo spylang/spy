@@ -83,6 +83,34 @@ class TestScopeAnalyzer2:
         """
         self.assert_dump(expected)
 
+    def test_dump_sibling_scopes_with_same_name(self):
+        src = """
+        def foo() -> None:
+            if True:
+                const i = 0
+                print(i)
+
+            if True:
+                const i = 1
+                print(i)
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            i$0: Symbol("i", "const", "explicit")
+            i$1: Symbol("i", "const", "explicit")
+
+            scope foo:
+                scope if.then:
+                    i -> i$0
+                    print -> print @ builtins (depth=2) => <ImportRef builtins.print>
+                scope if.then:
+                    i -> i$1
+                    print -> print @ builtins (depth=2) => <ImportRef builtins.print>
+        """
+        self.assert_dump("test::foo", expected)
+
     # ======= strict scoping tests =======
 
     def test_decl_forms(self):
