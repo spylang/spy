@@ -309,6 +309,9 @@ class CFuncWriter:
         elif w_T is TYPES.w_NoneType:
             assert w_val is B.w_None
             return C.Void()
+        elif isinstance(w_val, W_Ptr):
+            assert w_val.addr == 0, "only NULL ptrs can be constants"
+            return C.Literal(w_val.w_T.fqn.join("NULL").c_name)
         elif w_T is TYPES.w_Loc:
             raise SPyError.simple(
                 "W_WIP",

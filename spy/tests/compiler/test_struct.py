@@ -49,6 +49,78 @@ class TestStructOnStack(CompilerTest):
         assert mod.foo(3, 4) == 7
         assert mod.bar(5, 6) == 11
 
+    def test_make_blue(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        @blue
+        def sum_fields(p: Point) -> i32:
+            return p.x + p.y
+
+        def foo() -> i32:
+            return sum_fields(Point(1, 2))
+
+        def bar() -> i32:
+            return sum_fields(Point.__make__(3, 4))
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 3
+        assert mod.bar() == 7
+
+    def test_make_mixed_args(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo(x: i32) -> Point:
+            return Point(x, 2)
+
+        def bar(y: i32) -> Point:
+            return Point.__make__(1, y)
+        """
+        mod = self.compile(src)
+        assert mod.foo(3) == (3, 2)
+        assert mod.foo(5) == (5, 2)
+        assert mod.bar(4) == (1, 4)
+        assert mod.bar(6) == (1, 6)
+
+    def test_blue_nested_struct(self):
+        src = """
+        from unsafe import gc_ptr, raw_ptr
+
+        @struct
+        class Inner:
+            value: i32
+            name: str
+            gc: gc_ptr[i32]
+            raw: raw_ptr[i32]
+
+        @struct
+        class Outer:
+            inner: Inner
+            value: i32
+
+        @blue
+        def assert_blue(value):
+            return value
+
+        def foo() -> i32:
+            inner = Inner(42, "hello", gc_ptr[i32].NULL, raw_ptr[i32].NULL)
+            outer = assert_blue(Outer(inner, 7))
+            if outer.inner.gc != gc_ptr[i32].NULL:
+                return -1
+            if outer.inner.raw != raw_ptr[i32].NULL:
+                return -2
+            return outer.inner.value + outer.value + len(outer.inner.name)
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 54
+
     def test_str_field(self):
         mod = self.compile("""
         @struct

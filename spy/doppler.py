@@ -19,6 +19,7 @@ from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
 from spy.vm.modules.types import TYPES
 from spy.vm.modules.unsafe.misc import W_Align
+from spy.vm.modules.unsafe.ptr import W_Ptr
 from spy.vm.object import W_Object
 from spy.vm.opimpl import ArgSpec, W_OpImpl
 from spy.vm.opspec import W_MetaArg
@@ -105,6 +106,17 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
         items_w = [w_val.values_w[f"_item{i}"] for i in range(n)]
         items = [make_const(vm, loc, w_item) for w_item in items_w]
         res = ast.Tuple(loc, items, w_T=w_T)
+
+    elif isinstance(w_val, W_Struct):
+        w_make = vm.lookup_global(w_T.fqn.join("__make__"))
+        args = [
+            make_const(vm, loc, w_val.values_w[w_field.name])
+            for w_field in w_val.w_structtype.iterfields_w()
+        ]
+        res = ast.Call(loc, make_const(vm, loc, w_make), args, w_T=w_T)
+
+    elif isinstance(w_val, W_Ptr):
+        res = ast.Const(loc, w_val, w_T=w_T)
 
     elif w_T is TYPES.w_Loc:
         res = ast.Const(loc, w_val, w_T=w_T)
