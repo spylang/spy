@@ -692,6 +692,23 @@ class AbstractFrame:
             except Continue:
                 continue
 
+    def exec_stmt_ForUnroll(self, node: ast.ForUnroll) -> None:
+        # The whole node is `for x in unroll(seq)`
+        # node.iter is `unroll(seq)`
+        wam_items = self.eval_expr(node.iter)
+        w_items = wam_items.w_val
+        assert isinstance(w_items, W_InterpTuple)
+        target_slot = node.target_sym.slot_name
+        for w_item in w_items.items_w:
+            self.locals[target_slot] = LocalVar(
+                varname=target_slot,
+                decl_loc=node.target.loc,
+                color="blue",
+                w_T=self.vm.dynamic_type(w_item),
+                w_val=w_item,
+            )
+            self.exec_Block(node.body)
+
     def exec_stmt_Raise(self, raise_node: ast.Raise) -> None:
         wam_exc = self.eval_expr(raise_node.exc)
         w_opimpl = self.vm.call_OP(raise_node.loc, OP.w_RAISE, [wam_exc])

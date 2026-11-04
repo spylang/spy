@@ -315,6 +315,7 @@ class TestScopeAnalyzer2:
             i$0: Symbol("i", "const", "loop-target")
 
             scope foo:
+                unroll -> unroll @ builtins (depth=2) => <ImportRef builtins.unroll>
                 TUP -> TUP @ test (depth=1)
                 i -> NameError
                 scope for.body:
@@ -346,6 +347,7 @@ class TestScopeAnalyzer2:
 
             scope foo:
                 i -> i$0
+                unroll -> unroll @ builtins (depth=2) => <ImportRef builtins.unroll>
                 TUP -> TUP @ test (depth=1)
                 scope for.body:
                     i -> i$1
