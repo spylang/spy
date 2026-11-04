@@ -419,7 +419,8 @@ class SPyBackend:
 
     def emit_stmt_If(self, if_node: ast.If) -> None:
         test = self.fmt_expr(if_node.test)
-        self.wl(f"if {test}:")
+        comment = f"  # {if_node.comment}" if if_node.comment else ""
+        self.wl(f"if {test}:{comment}")
         with self.out.indent():
             for stmt in if_node.then.body:
                 self.emit_stmt(stmt)

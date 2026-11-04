@@ -430,12 +430,22 @@ class DopplerFrame(ASTFrame):
         #   1. evaluate `unroll(seq)`
         #   2. it is guaranteed to return a blue interp_tuple with all the items of seq
         #   3. for each item, emit a copy of the loop body
+        #
+        # Each unrolled copy gets its own block, for scoping reasons:
+        #     for x in unroll(range(2)): ...
+        # becomes:
+        #    if True:  # unrolled #0
+        #        i = 0
+        #        ...
+        #    if True:  # unrolled #1
+        #        i = 1
+        #        ...
         wam_items = self.eval_expr(stmt.iter)
         w_items = wam_items.w_val
         assert isinstance(w_items, W_InterpTuple)
         declared_syms = self.all_declared_syms(stmt)
         result: list[ast.Stmt] = []
-        for w_item in w_items.items_w:
+        for i, w_item in enumerate(w_items.items_w):
             # every copy of the body gets its own fresh locals
             rename: dict[Symbol, Symbol] = {}
             for sym in declared_syms:
@@ -455,7 +465,18 @@ class DopplerFrame(ASTFrame):
                 w_T=self.vm.dynamic_type(w_item),
                 w_val=w_item,
             )
-            result += self.shift_body(body.body)
+            new_body = self.shift_block(body)
+
+            loc = stmt.loc.replace(colorize=False)
+            result.append(
+                ast.If(
+                    loc=loc,
+                    test=ast.Const(loc=loc, w_val=B.w_True, w_T=B.w_bool),
+                    then=new_body,
+                    else_=ast.Block(loc=loc, body=[], scope=new_body.scope),
+                    comment=f"unrolled #{i}",
+                )
+            )
         return result
 
     def shift_stmt_Raise(self, raise_node: ast.Raise) -> list[ast.Stmt]:

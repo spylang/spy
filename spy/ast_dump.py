@@ -127,7 +127,14 @@ class Dumper(TextBuilder):
                 # print w_T, sym, frameinfo and implicit_imports only if not None
                 if (
                     field
-                    in ("w_T", "_sym", "_target_sym", "_frameinfo", "_implicit_imports")
+                    in (
+                        "w_T",
+                        "_sym",
+                        "_target_sym",
+                        "_frameinfo",
+                        "_implicit_imports",
+                        "comment",
+                    )
                     and value is None
                 ):
                     continue

@@ -1110,6 +1110,8 @@ class If(Stmt):
     test: Expr
     then: Block
     else_: Block
+    # optional comment printed by the backends. Used to hold e.g. "unrolled #0"
+    comment: Optional[str] = None
 
     @property
     def has_else(self) -> bool:
