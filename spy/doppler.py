@@ -12,7 +12,7 @@ from spy.vm.astframe import ASTFrame
 from spy.vm.b import B
 from spy.vm.cell import W_Cell
 from spy.vm.exc import W_Exception, W_StaticError
-from spy.vm.function import W_ASTFunc, W_Func
+from spy.vm.function import LocalVar, W_ASTFunc, W_Func
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
 from spy.vm.modules.types import TYPES
@@ -341,6 +341,27 @@ class DopplerFrame(ASTFrame):
         newtest = self.eval_and_shift(while_node.test, varname="@while")
         newbody = self.shift_block(while_node.body)
         return [while_node.replace(test=newtest, body=newbody)]
+
+    def shift_stmt_ForUnroll(self, stmt: ast.ForUnroll) -> list[ast.Stmt]:
+        # This is the actual logic to unroll a `for x in unroll(seq)`:
+        #   1. evaluate `unroll(seq)`
+        #   2. it is guaranteed to return a blue interp_tuple with all the items of seq
+        #   3. for each item, emit a copy of the loop body
+        wam_items = self.eval_expr(stmt.iter)
+        w_items = wam_items.w_val
+        assert isinstance(w_items, W_InterpTuple)
+        target_slot = stmt.target_sym.slot_name
+        result: list[ast.Stmt] = []
+        for w_item in w_items.items_w:
+            self.locals[target_slot] = LocalVar(
+                varname=target_slot,
+                decl_loc=stmt.target.loc,
+                color="blue",
+                w_T=self.vm.dynamic_type(w_item),
+                w_val=w_item,
+            )
+            result += self.shift_body(stmt.body.body)
+        return result
 
     def shift_stmt_Raise(self, raise_node: ast.Raise) -> list[ast.Stmt]:
         self.exec_stmt(raise_node)
