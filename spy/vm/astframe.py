@@ -699,7 +699,20 @@ class AbstractFrame:
         w_items = wam_items.w_val
         assert isinstance(w_items, W_InterpTuple)
         target_slot = node.target_sym.slot_name
+        outer_locals = self.locals
         for w_item in w_items.items_w:
+            # let's create a copy of outer_locals for each iteration:
+            #
+            #   - the mutable state lives inside LocalVar(), so modifications are
+            #     reflected automatically in outer_locals;
+            #
+            #   - on body exit, we restore the old outer_locals, thus we implicitly
+            #     forget all locals declared inside the unrolled body. This is important
+            #     because subsequent iterations can potentially redeclare a local with a
+            #     different type, see [py.scope-lifting-unroll];
+            #
+            #   - closures capture the values at the time of definition
+            self.locals = dict(outer_locals)
             self.locals[target_slot] = LocalVar(
                 varname=target_slot,
                 decl_loc=node.target.loc,
@@ -708,6 +721,7 @@ class AbstractFrame:
                 w_val=w_item,
             )
             self.exec_Block(node.body)
+        self.locals = outer_locals
 
     def exec_stmt_Raise(self, raise_node: ast.Raise) -> None:
         wam_exc = self.eval_expr(raise_node.exc)

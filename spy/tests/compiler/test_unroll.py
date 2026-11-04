@@ -49,3 +49,19 @@ class TestUnroll(CompilerTest):
             ("this is red", "range(n)"),
         )
         self.compile_raises(src, "foo", errors)
+
+    def test_for_unroll_body_locals_change_type(self):
+        src = """
+        from __spy__ import interp_tuple
+
+        TUP = interp_tuple(1, 2.5, "hello")
+
+        def foo() -> i32:
+            n = 0
+            for i in unroll(TUP):
+                item = i
+                n = n + 1
+            return n
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 3
