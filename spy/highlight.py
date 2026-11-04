@@ -27,7 +27,7 @@ def _highlight_spy(code: str) -> str:
     # Color names must match ColorFormatter attributes
     patterns = [
         # Comments
-        (r"#[^\n]*", "darkgray"),
+        (r"#[^\n]*", "teal"),
         # Strings (triple-quoted first, then single/double)
         (r'"""(?:[^\\"]|\\.|"(?!""))*"""', "green"),
         (r"'''(?:[^\\']|\\.|'(?!''))*'''", "green"),
@@ -75,8 +75,8 @@ def _highlight_c(code: str) -> str:
     # Color names must match ColorFormatter attributes
     patterns = [
         # Comments (single-line and multi-line)
-        (r"//[^\n]*", "darkgray"),
-        (r"/\*(?:[^*]|\*(?!/))*\*/", "darkgray"),
+        (r"//[^\n]*", "teal"),
+        (r"/\*(?:[^*]|\*(?!/))*\*/", "teal"),
         # Strings
         (r'"(?:[^\\"\n]|\\.)*"', "green"),
         (r"'(?:[^\\'\n]|\\.)*'", "green"),
