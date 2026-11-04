@@ -1535,6 +1535,54 @@ class TestParser:
             ("this is not supported", "i, j"),
         )
 
+    def test_ForUnroll(self):
+        mod = self.parse("""
+        def foo() -> None:
+            for i in unroll(TUP):
+                pass
+        """)
+        stmt = mod.get_funcdef("foo").body.body[0]
+        expected = """
+        ForUnroll(
+            target=StrLiteral(value='i'),
+            iter=Call(
+                func=Name(id='unroll'),
+                args=[
+                    Name(id='TUP'),
+                ],
+            ),
+            body=[
+                Pass(),
+            ],
+        )
+        """
+        self.assert_dump(stmt, expected)
+
+    @pytest.mark.parametrize("keyword", ["break", "continue"])
+    def test_ForUnroll_break_continue_unsupported(self, keyword):
+        src = f"""
+        def foo() -> None:
+            for i in unroll(TUP):
+                {keyword}
+        """
+        self.expect_errors(
+            src,
+            f"not implemented yet: `{keyword}` inside `unroll` loops",
+            ("this is not supported", keyword),
+        )
+
+    def test_ForUnroll_break_continue_in_nested_loop_is_ok(self):
+        mod = self.parse("""
+        def foo() -> None:
+            for i in unroll(TUP):
+                while True:
+                    break
+                for j in range(3):
+                    continue
+        """)
+        stmt = mod.get_funcdef("foo").body.body[0]
+        assert isinstance(stmt, ast.ForUnroll)
+
     def test_multiple_For(self):
         mod = self.parse("""
         def foo(x: dynamic) -> None:

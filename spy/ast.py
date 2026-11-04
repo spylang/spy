@@ -1110,6 +1110,8 @@ class If(Stmt):
     test: Expr
     then: Block
     else_: Block
+    # optional comment printed by the backends. Used to hold e.g. "unrolled #0"
+    comment: Optional[str] = None
 
     @property
     def has_else(self) -> bool:
@@ -1127,6 +1129,21 @@ class For(Stmt):
     target: StrLiteral
     iter: Expr
     body: Block
+
+
+@astnode("<= astcompiled")
+class ForUnroll(Stmt):
+    target: StrLiteral
+    iter: Expr
+    body: Block
+    _target_sym: Optional[Symbol] = (
+        None  # None when "parsed", present when "astcompiled"
+    )
+
+    @property
+    def target_sym(self) -> Symbol:
+        assert self._target_sym is not None
+        return self._target_sym
 
 
 @astnode

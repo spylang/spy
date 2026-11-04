@@ -277,6 +277,15 @@ class TestSPyBackend(CompilerTest):
         self.compile(src)
         self.assert_dump(src)
 
+    def test_for_unroll(self):
+        src = """
+        def foo() -> None:
+            for i in unroll(TUP):
+                pass
+        """
+        self.compile(src)
+        self.assert_dump(src)
+
     def test_FuncDef(self):
         src = """
         def outer() -> None:

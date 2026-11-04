@@ -83,6 +83,34 @@ class TestScopeAnalyzer2:
         """
         self.assert_dump(expected)
 
+    def test_dump_sibling_scopes_with_same_name(self):
+        src = """
+        def foo() -> None:
+            if True:
+                const i = 0
+                print(i)
+
+            if True:
+                const i = 1
+                print(i)
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            i$0: Symbol("i", "const", "explicit")
+            i$1: Symbol("i", "const", "explicit")
+
+            scope foo:
+                scope if.then:
+                    i -> i$0
+                    print -> print @ builtins (depth=2) => <ImportRef builtins.print>
+                scope if.then:
+                    i -> i$1
+                    print -> print @ builtins (depth=2) => <ImportRef builtins.print>
+        """
+        self.assert_dump("test::foo", expected)
+
     # ======= strict scoping tests =======
 
     def test_decl_forms(self):
@@ -264,6 +292,65 @@ class TestScopeAnalyzer2:
                 i -> NameError
                 scope for.body:
                     i -> i$0
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_scope_unroll_target(self):
+        # the target of `unroll` is a block-local `const` of the loop body, and there
+        # is no `_$iter` temporary because the loop is not desugared to a `while`.
+        src = """
+        from __spy__ import strict_scoping
+
+        const TUP: i32 = 0
+
+        def foo() -> None:
+            for i in unroll(TUP):
+                pass
+            i
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            i$0: Symbol("i", "const", "loop-target")
+
+            scope foo:
+                unroll -> unroll @ builtins (depth=2) => <ImportRef builtins.unroll>
+                TUP -> TUP @ test (depth=1)
+                i -> NameError
+                scope for.body:
+                    i -> i$0
+        """
+        self.assert_dump("test::foo", expected)
+
+    def test_scope_unroll_target_does_not_reuse_outer_binding(self):
+        # unlike a normal `for` ([scope.loop-target-declare]), the target of `unroll`
+        # is always a fresh local: it must be a blue constant, even if the outer `i`
+        # is a red variable.
+        src = """
+        from __spy__ import strict_scoping
+
+        const TUP: i32 = 0
+
+        def foo() -> None:
+            var i: auto
+            for i in unroll(TUP):
+                pass
+            i
+        """
+        self.analyze(src)
+        expected = """
+        frameinfo test::foo (function):
+            @return: Symbol("@return", "var", "auto")
+            i$0: Symbol("i", "var", "explicit")
+            i$1: Symbol("i", "const", "loop-target")
+
+            scope foo:
+                i -> i$0
+                unroll -> unroll @ builtins (depth=2) => <ImportRef builtins.unroll>
+                TUP -> TUP @ test (depth=1)
+                scope for.body:
+                    i -> i$1
         """
         self.assert_dump("test::foo", expected)
 

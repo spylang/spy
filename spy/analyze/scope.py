@@ -194,17 +194,17 @@ class ScopeAnalyzer:
         # Group the resolved occurrences (bind pass) by the scope they occurred in.
         # For poison (SPyError) resolutions there is no Symbol, so the display name
         # is taken from the node's source text.
-        uses_by_scope: dict[str, list[tuple[str, Resolution]]] = {}
+        uses_by_scope: dict[Scope, list[tuple[str, Resolution]]] = {}
         for key, (scope, res) in self._resolutions.items():
             src_name = (
                 res.src_name
                 if isinstance(res, Symbol)
                 else _key_node(key).loc.get_src()
             )
-            uses_by_scope.setdefault(scope.name, []).append((src_name, res))
+            uses_by_scope.setdefault(scope, []).append((src_name, res))
 
         def scope_is_empty(scope: Scope) -> bool:
-            if uses_by_scope.get(scope.name):
+            if uses_by_scope.get(scope):
                 return False
             return all(scope_is_empty(child) for child in scope.children)
 
@@ -230,7 +230,7 @@ class ScopeAnalyzer:
                         b.wl(color.set("red", f"global {sym.src_name}"))
                 # names USED in this scope (resolved during the bind pass)
                 seen: set[str] = set()
-                for src_name, res in uses_by_scope.get(scope.name, []):
+                for src_name, res in uses_by_scope.get(scope, []):
                     if src_name in seen:
                         continue
                     seen.add(src_name)
@@ -745,6 +745,30 @@ class ScopeAnalyzer:
         self.pop_scope()
         self.scopes[forstmt, "body"] = body_scope
 
+    def collect_ForUnroll(self, forstmt: ast.ForUnroll) -> None:
+        self.collect(forstmt.iter)
+        body_scope = self.new_Scope("for.body", self.scope.color, "block")
+        self.push_scope(body_scope)
+        forstmt.body.scope = body_scope
+        # Unlike a normal `for`, the target is always a fresh block-local `const`,
+        # even if the same name exists in an enclosing scope: each unrolled copy of
+        # the body sees it as a blue constant, so it can neither be reassigned nor
+        # outlive the loop.
+        target = forstmt.target
+        self.create_new_local(
+            target,
+            target.value,
+            "explicit",
+            "const",
+            "loop-target",
+            target.loc,
+            forstmt.iter.loc,
+        )
+        for stmt in forstmt.body.body:
+            self.collect(stmt)
+        self.pop_scope()
+        self.scopes[forstmt, "body"] = body_scope
+
     def collect_While(self, whilestmt: ast.While) -> None:
         # The condition is evaluated in the enclosing scope.
         self.collect(whilestmt.test)
@@ -1197,6 +1221,16 @@ class ScopeAnalyzer:
         self.bind(forstmt.iter)
         # the iterator lives in the outer scope
         self.create_new_temp_local(forstmt, "_$iter")
+        body_scope = self.scopes[forstmt, "body"]
+        self.push_scope(body_scope)
+        tgt = forstmt.target
+        self.resolve_write((tgt, "target"), tgt.value, tgt.loc)
+        for stmt in forstmt.body.body:
+            self.bind(stmt)
+        self.pop_scope()
+
+    def bind_ForUnroll(self, forstmt: ast.ForUnroll) -> None:
+        self.bind(forstmt.iter)
         body_scope = self.scopes[forstmt, "body"]
         self.push_scope(body_scope)
         tgt = forstmt.target

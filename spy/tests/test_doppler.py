@@ -625,3 +625,64 @@ class TestDoppler:
         def foo() -> str:
             raise TypeError('Invalid cast. Expected `str`, got `i32`') # /.../test.spy:4
         """)
+
+    def test_unroll_simple(self):
+        src = """
+        from __spy__ import interp_tuple
+
+        TUP = interp_tuple(1, 2, 3)
+
+        def foo() -> i32:
+            total = 0
+            for i in unroll(TUP):
+                y = i * 2
+                total = total + y
+            return total
+        """
+        self.redshift(src)
+        expected = """
+        def foo() -> i32:
+            total$0: i32 = 0
+            if True:  # unrolled #0
+                total$0 = total$0 + 2
+            if True:  # unrolled #1
+                total$0 = total$0 + 4
+            if True:  # unrolled #2
+                total$0 = total$0 + 6
+            return total$0
+        """
+        self.assert_dump(expected, funcname="foo")
+
+    def test_unroll_nested(self):
+        src = """
+        from __spy__ import interp_tuple
+
+        A = interp_tuple(1, 2)
+        B = interp_tuple(10, 20)
+
+        def foo() -> i32:
+            total = 0
+            for i in unroll(A):
+                x = i * 100
+                for j in unroll(B):
+                    y = x + j
+                    total = total + y
+            return total
+        """
+        self.redshift(src)
+        expected = """
+        def foo() -> i32:
+            total$0: i32 = 0
+            if True:  # unrolled #0
+                if True:  # unrolled #0
+                    total$0 = total$0 + 110
+                if True:  # unrolled #1
+                    total$0 = total$0 + 120
+            if True:  # unrolled #1
+                if True:  # unrolled #0
+                    total$0 = total$0 + 210
+                if True:  # unrolled #1
+                    total$0 = total$0 + 220
+            return total$0
+        """
+        self.assert_dump(expected, funcname="foo")

@@ -21,6 +21,8 @@ from spy.vm.modules.__spy__.interp_list import (
     make_str_interp_list,
     w_str_interp_list_type,
 )
+from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
+from spy.vm.modules.operator import OP
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_F64, W_I8, W_I32, W_I64, W_U8, W_U32, W_U64, W_Bool
@@ -298,6 +300,34 @@ def w_dir(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
     names_w = [vm.wrap(name) for name in sorted(names)]
     w_names = make_str_interp_list(names_w)
     return W_OpSpec.const(w_names)
+
+
+@BUILTINS.builtin_func(color="blue", kind="metafunc")
+def w_unroll(vm: "SPyVM", wam_iterable: W_MetaArg) -> W_OpSpec:
+    """
+    Return an interp_tuple containing all the items of the given iterable.
+
+    It is meant to be used as: `for x in unroll(iterable)`, which is special-cased by
+    the parser and the astcompiler; `iterable` must be blue.
+    """
+    if wam_iterable.color != "blue":
+        err = SPyError("W_TypeError", "unroll() requires a blue iterable")
+        err.add("error", "this is red", wam_iterable.loc)
+        raise err
+
+    loc = wam_iterable.loc
+
+    def call_method(wam_obj: W_MetaArg, meth: str) -> W_MetaArg:
+        wam_meth = W_MetaArg(vm, "blue", B.w_str, vm.wrap(meth), loc)
+        w_opimpl = vm.call_OP(loc, OP.w_CALL_METHOD, [wam_obj, wam_meth])
+        return vm.eval_opimpl(w_opimpl, [wam_obj, wam_meth], loc=loc, redshifting=False)
+
+    wam_it = call_method(wam_iterable, "__fastiter__")
+    items_w: list[W_Object] = []
+    while vm.unwrap_bool(call_method(wam_it, "__continue_iteration__").w_val):
+        items_w.append(call_method(wam_it, "__item__").w_val)
+        wam_it = call_method(wam_it, "__next__")
+    return W_OpSpec.const(W_InterpTuple(items_w))
 
 
 @BUILTINS.builtin_func(color="blue", kind="metafunc")

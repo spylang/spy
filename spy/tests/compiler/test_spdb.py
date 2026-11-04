@@ -453,3 +453,29 @@ class TestSPdb(CompilerTest):
         except SPyError as e:
             w_tb = e.add_traceback()
             spdb_expect(self.vm, w_tb, session, post_mortem=True)
+
+    def test_unroll(self):
+        self.backend = "doppler"
+        src = """
+        from __spy__ import interp_tuple
+        from _test import spdb_interact
+
+        TUP = interp_tuple(1, 2)
+
+        def foo(n: int, session: str) -> None:
+            for i in unroll(TUP):
+                k: int = n
+                spdb_interact(session)
+        """
+        session = f"""
+        --- entering applevel debugger ---
+           [0] test::foo at {self.filename}:10
+            |         spdb_interact(session)
+            |         |____________________|
+        (spdb) k
+        type: i32
+        42
+        (spdb) continue
+        """
+        mod = self.compile(src)
+        mod.foo(42, session)

@@ -435,6 +435,17 @@ class ASTCompiler:
         compiled_while = self.compile_stmt(while_loop)
         return compiled_init + compiled_while
 
+    def compile_stmt_ForUnroll(self, stmt: ast.ForUnroll) -> list[ast.Stmt]:
+        assert self.sa is not None
+        target_sym = self.sa.get_resolved_sym((stmt.target, "target"))
+        return [
+            stmt.replace(
+                iter=self.compile_expr(stmt.iter),
+                body=self.compile_block(stmt.body),
+                _target_sym=target_sym,
+            )
+        ]
+
     def compile_stmt_AugAssign(self, stmt: ast.AugAssign) -> list[ast.Stmt]:
         # desugar "x += 1" into "x = x + 1" and compile the result.
         # use non-colorize locs for synthetic nodes, to avoid painting over user nodes
