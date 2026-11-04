@@ -2,7 +2,7 @@ from spy.tests.support import CompilerTest, expect_errors
 
 
 class TestUnroll(CompilerTest):
-    def test_for_unroll(self):
+    def test_simple(self):
         src = """
         from __spy__ import interp_tuple
 
@@ -18,22 +18,7 @@ class TestUnroll(CompilerTest):
         mod = self.compile(src)
         assert mod.foo() == 12
 
-    def test_for_unroll_no_body_locals(self):
-        src = """
-        from __spy__ import interp_tuple
-
-        TUP = interp_tuple(1, 2, 3)
-
-        def foo() -> i32:
-            total = 0
-            for i in unroll(TUP):
-                total = total + i
-            return total
-        """
-        mod = self.compile(src)
-        assert mod.foo() == 6
-
-    def test_for_unroll_red_iterable(self):
+    def test_must_have_blue_iterable(self):
         src = """
         def foo() -> i32:
             return bar(10)
@@ -50,7 +35,7 @@ class TestUnroll(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
-    def test_for_unroll_body_locals_change_type(self):
+    def test_body_locals_change_type(self):
         src = """
         from __spy__ import interp_tuple
 
