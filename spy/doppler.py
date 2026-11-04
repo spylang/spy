@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Any, Literal, Optional
 from fixedint import FixedInt
 
 from spy import ast
-from spy.analyze.sym import Color, Symbol
+from spy.analyze.sym import Color, Scope, Symbol
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.location import Loc
@@ -123,19 +123,42 @@ def rename_syms(node: ast.Node, rename: dict[Symbol, Symbol]) -> ast.Node:
     Return a deep copy of `node` in which every Symbol in `rename` is replaced by
     its new Symbol.  Used by shift_stmt_ForUnroll.
 
-    Nested FuncDefs and ClassDefs are not visited: they have their own frameinfo.
-    We should investigate whether we can re-implement AlphaRenamer on top of this.
+    `Scope` objects attached to `ast.Block` nodes are copied by calling
+    `block.scope.clone(rename)`.  This is needed to make sure that Block.scope info are
+    up to date, which is needed for astcompile_interactive and SPdb.
+
+    Nodes of type ast.FuncDef and ast.ClassDef are not visited: they have their own
+    frameinfo.
+
+    XXX: we should investigate whether we can re-implement AlphaRenamer on top of this.
     """
     slots = {old.slot_name: new.slot_name for old, new in rename.items()}
+    scopes: dict[Scope, Scope] = {}
+
+    def clone_scope(scope: Scope) -> Scope:
+        # The scope of the root of the cloned scope keeps the original parent, the
+        # nested ones are attached to the clone of their parent.
+        if scope not in scopes:
+            parent = scope.parent
+            if parent is not None:
+                parent = scopes.get(parent, parent)
+            scopes[scope] = scope.clone(parent, rename)
+        return scopes[scope]
 
     def visit(value: Any) -> Any:
         if isinstance(value, Symbol):
             return rename.get(value, value)
+        elif isinstance(value, Scope):
+            return clone_scope(value)
         elif isinstance(value, list):
             return [visit(x) for x in value]
         elif isinstance(value, (ast.FuncDef, ast.ClassDef)):
             return value
         elif isinstance(value, ast.Node):
+            if isinstance(value, ast.Block) and value.scope is not None:
+                # Block.body comes before Block.scope: clone the scope first, else the
+                # nested blocks would be attached to the original parent.
+                clone_scope(value.scope)
             changes = {
                 f.name: visit(getattr(value, f.name)) for f in dataclasses.fields(value)
             }

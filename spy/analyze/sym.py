@@ -294,6 +294,26 @@ class Scope:
     def remove(self, name: str) -> None:
         del self.symbols[name]
 
+    def clone(self, parent: Optional["Scope"], rename: dict[Symbol, Symbol]) -> "Scope":
+        """
+        Clone this scope and rename its symbols according to the given `rename` map.
+
+        NOTE: `parent.children` is NOT modified, so the cloned scope won't be visible
+        there: `.children` is used only by ScopeAnalyzer to dump its own tree of scopes,
+        and clones must not show up there. A clone is reachable only from the Block
+        which refers to it.
+        """
+        new = Scope(
+            self.name,
+            self.color,
+            self.kind,
+            frameinfo=self.frameinfo,
+            parent=None,  # set to None, else it modifies parent.children
+        )
+        new.parent = parent
+        new.symbols = {name: rename.get(sym, sym) for name, sym in self.symbols.items()}
+        return new
+
     def lookup(self, name: str) -> LookupResult:
         """
         Resolve `name` using the full scoping rules: start from this scope and walk

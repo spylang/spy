@@ -83,3 +83,22 @@ class TestUnroll(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == 15
+
+    def test_nested_unroll(self):
+        src = """
+        from __spy__ import interp_tuple
+
+        A = interp_tuple(1, 2)
+        B = interp_tuple(10, 20)
+
+        def foo() -> i32:
+            total = 0
+            for i in unroll(A):
+                x = i * 100
+                for j in unroll(B):
+                    y = x + j
+                    total = total + y
+            return total
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 660
