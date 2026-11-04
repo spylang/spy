@@ -1,5 +1,41 @@
-
 from _simd import SIMD
+from operator import OpSpec
+from unsafe import ptr_to_addr, sizeof
+
+
+@blue.metafunc
+def align_offset(m_ptr, m_align, m_n):
+    """
+    align_offset(ptr, align, n) -> i32
+
+    Return how many elements of `ptr`'s item type must be skipped so that
+    `ptr + offset` is aligned to `align` bytes, clamped to `n`.
+    `align` must be a power of two.
+    """
+    PTR = m_ptr.static_type
+    itemsize: i32 = sizeof(PTR.itemtype)
+
+    def impl(ptr: PTR, align: i32, n: i32) -> i32:
+        addr: i32 = ptr_to_addr(ptr)
+        offset_bytes: i32 = (-addr) & (align - 1)
+        offset: i32 = offset_bytes // itemsize
+        if offset > n:
+            return n
+        return offset
+
+    if m_align.color == "blue":
+        align = m_align.blueval
+        if not (align > 0 and (align & (align - 1)) == 0):
+            raise StaticError("align must be a power of two")
+
+        return OpSpec(impl)
+
+    def impl_with_check(ptr: PTR, align: i32, n: i32) -> i32:
+        # align must be a power of two
+        assert align > 0 and (align & (align - 1)) == 0
+        return impl(ptr, align, n)
+
+    return OpSpec(impl_with_check)
 
 
 @blue.generic
