@@ -1545,7 +1545,12 @@ class TestParser:
         expected = """
         ForUnroll(
             target=StrLiteral(value='i'),
-            iter=Name(id='TUP'),
+            iter=Call(
+                func=Name(id='unroll'),
+                args=[
+                    Name(id='TUP'),
+                ],
+            ),
             body=[
                 Pass(),
             ],
@@ -1577,18 +1582,6 @@ class TestParser:
         """)
         stmt = mod.get_funcdef("foo").body.body[0]
         assert isinstance(stmt, ast.ForUnroll)
-
-    def test_ForUnroll_wrong_arity(self):
-        src = """
-        def foo() -> None:
-            for i in unroll(A, B):
-                pass
-        """
-        self.expect_errors(
-            src,
-            "`unroll()` takes exactly one argument",
-            ("got 2 arguments", "unroll(A, B)"),
-        )
 
     def test_multiple_For(self):
         mod = self.parse("""

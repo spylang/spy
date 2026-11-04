@@ -784,14 +784,6 @@ class Parser:
         assert isinstance(py_node.target, py_ast.Name)
         target = spy.ast.StrLiteral(py_node.target.loc, py_node.target.id)
 
-        if len(py_call.args) != 1 or py_call.keywords:
-            n = len(py_call.args) + len(py_call.keywords)
-            self.error(
-                "`unroll()` takes exactly one argument",
-                f"got {n} arguments",
-                py_call.loc,
-            )
-
         body = self.from_py_body_block(py_node.loc, py_node.body)
 
         def check_no_break_continue(node: spy.ast.Node) -> None:
@@ -822,7 +814,7 @@ class Parser:
         return spy.ast.ForUnroll(
             loc=py_node.loc,
             target=target,
-            iter=self.from_py_expr(py_call.args[0]),
+            iter=self.from_py_expr(py_call),
             body=body,
         )
 
