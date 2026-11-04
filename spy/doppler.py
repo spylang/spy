@@ -1,4 +1,5 @@
-from typing import TYPE_CHECKING, Literal, Optional
+import dataclasses
+from typing import TYPE_CHECKING, Any, Literal, Optional
 
 from fixedint import FixedInt
 
@@ -115,6 +116,44 @@ def unmake_const_maybe(vm: "SPyVM", expr: ast.Expr) -> Optional[W_Object]:
     elif isinstance(expr, ast.FQNConst):
         return vm.lookup_global(expr.fqn)
     return None
+
+
+def rename_syms(node: ast.Node, rename: dict[Symbol, Symbol]) -> ast.Node:
+    """
+    Return a deep copy of `node` in which every Symbol in `rename` is replaced by
+    its new Symbol.  Used by shift_stmt_ForUnroll.
+
+    Nested FuncDefs and ClassDefs are not visited: they have their own frameinfo.
+    We should investigate whether we can re-implement AlphaRenamer on top of this.
+    """
+    slots = {old.slot_name: new.slot_name for old, new in rename.items()}
+
+    def visit(value: Any) -> Any:
+        if isinstance(value, Symbol):
+            return rename.get(value, value)
+        elif isinstance(value, list):
+            return [visit(x) for x in value]
+        elif isinstance(value, (ast.FuncDef, ast.ClassDef)):
+            return value
+        elif isinstance(value, ast.Node):
+            changes = {
+                f.name: visit(getattr(value, f.name)) for f in dataclasses.fields(value)
+            }
+            new = value.replace(**changes)
+            # nodes which refer to the slot by name, in addition to the Symbol
+            if isinstance(new, ast.AssignUnpack):
+                new.targets = [
+                    t.replace(value=slots.get(t.value, t.value)) for t in new.targets
+                ]
+            elif isinstance(new, ast.VarDef) and new._sym is not None:
+                new.name = new.name.replace(value=new._sym.slot_name)
+            elif isinstance(new, ast.AssignExprLocal):
+                new.target = new.target.replace(value=new.sym.slot_name)
+            return new
+        else:
+            return value
+
+    return visit(node)  # type: ignore[no-any-return]
 
 
 class DopplerFrame(ASTFrame):
@@ -342,6 +381,27 @@ class DopplerFrame(ASTFrame):
         newbody = self.shift_block(while_node.body)
         return [while_node.replace(test=newtest, body=newbody)]
 
+    def all_declared_syms(self, stmt: ast.ForUnroll) -> list[Symbol]:
+        """
+        Get all the locals of this frame which are declared inside the ForUnroll,
+        including the target and the ones declared in nested blocks, but not in nested
+        funcdefs/classdefs: each unrolled copy of the body needs its own fresh ones.
+        """
+        assert stmt.body.scope is not None
+        frameinfo = stmt.body.scope.frameinfo
+        result: list[Symbol] = []
+        for block in stmt.body.walk(ast.Block):
+            assert isinstance(block, ast.Block) and block.scope is not None
+            if block.scope.frameinfo is not frameinfo:
+                # the body of a nested funcdef/classdef: it belongs to another frame
+                continue
+            for sym in block.scope.symbols.values():
+                if sym.storage in ("decl-global", "decl-cannot-lift"):
+                    # analysis-only markers, they are not variables
+                    continue
+                result.append(sym)
+        return result
+
     def shift_stmt_ForUnroll(self, stmt: ast.ForUnroll) -> list[ast.Stmt]:
         # This is the actual logic to unroll a `for x in unroll(seq)`:
         #   1. evaluate `unroll(seq)`
@@ -350,9 +410,21 @@ class DopplerFrame(ASTFrame):
         wam_items = self.eval_expr(stmt.iter)
         w_items = wam_items.w_val
         assert isinstance(w_items, W_InterpTuple)
-        target_slot = stmt.target_sym.slot_name
+        declared_syms = self.all_declared_syms(stmt)
         result: list[ast.Stmt] = []
         for w_item in w_items.items_w:
+            # every copy of the body gets its own fresh locals
+            rename: dict[Symbol, Symbol] = {}
+            for sym in declared_syms:
+                new_slot = self._new_frameinfo.get_fresh_slot(sym.src_name)
+                new_sym = sym.replace(slot_name=new_slot)
+                self._new_frameinfo.add(new_sym)
+                self.frameinfo.add(new_sym)  # declare_local looks it up here
+                rename[sym] = new_sym
+            body = rename_syms(stmt.body, rename)
+            assert isinstance(body, ast.Block)
+
+            target_slot = rename[stmt.target_sym].slot_name
             self.locals[target_slot] = LocalVar(
                 varname=target_slot,
                 decl_loc=stmt.target.loc,
@@ -360,7 +432,7 @@ class DopplerFrame(ASTFrame):
                 w_T=self.vm.dynamic_type(w_item),
                 w_val=w_item,
             )
-            result += self.shift_body(stmt.body.body)
+            result += self.shift_body(body.body)
         return result
 
     def shift_stmt_Raise(self, raise_node: ast.Raise) -> list[ast.Stmt]:
