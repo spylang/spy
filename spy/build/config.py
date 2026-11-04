@@ -8,7 +8,13 @@ from typing import Literal, Optional
 import py.path
 
 import spy.libspy
-from spy.build.build_info import BuildTarget, BuildType, OutputKind
+from spy.build.build_info import (
+    SIMD_ALLOWED_WIDTHS,
+    SIMD_DEFAULT_WIDTH,
+    BuildTarget,
+    BuildType,
+    OutputKind,
+)
 from spy.build.flags import get_cc, get_cflags, get_ldflags, get_libdir
 from spy.errors import WIP, SPyError
 
@@ -24,12 +30,34 @@ class BuildConfig:
     warning_as_error: bool = False
     gc: GCOption = "none"
     static: bool = False
+    simd_width: Optional[int] = None
 
     def __post_init__(self) -> None:
         if self.kind == "testlib" and self.target not in ("wasi", "emscripten"):
             raise WIP(
                 "--output-kind=testlib works only for wasi and emscripten targets"
             )
+        self._simd_width = resolve_simd_width(self.target, self.simd_width)
+
+    @property
+    def effective_simd_width(self) -> int:
+        return self._simd_width
+
+
+def resolve_simd_width(target: BuildTarget, override: Optional[int]) -> int:
+    """
+    Return the effective SIMD vector width (in bytes) for a build.
+    """
+    if override is None:
+        return SIMD_DEFAULT_WIDTH
+    allowed = SIMD_ALLOWED_WIDTHS[target]
+    if override not in allowed:
+        allowed_str = "/".join(str(w) for w in sorted(allowed))
+        raise ValueError(
+            f"--simd-width={override} is not valid for target {target!r}; "
+            f"allowed: {allowed_str}"
+        )
+    return override
 
 
 # ======= CFLAGS and LDFLAGS logic =======

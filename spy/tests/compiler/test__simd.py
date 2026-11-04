@@ -1,3 +1,7 @@
+import pytest
+
+from spy.build.build_info import SIMD_ALLOWED_WIDTHS, SIMD_DEFAULT_WIDTH
+from spy.build.config import resolve_simd_width
 from spy.errors import SPyError
 from spy.tests.support import CompilerTest, expect_errors, only_interp
 
@@ -340,3 +344,58 @@ class TestSIMD(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.entry() == (1.0, 2.0, 3.0, 4.0)
+
+    def test_simd_width_of_default(self):
+        # Default with no --simd-width
+        mod = self.compile("""
+            from _simd import simd_width_of
+
+            def w() -> i32:
+                return simd_width_of(f32)
+            """)
+        assert mod.w() == 4
+
+    def test_simd_width_of_override(self):
+        self.vm.simd_width = 32
+        mod = self.compile("""
+            from _simd import simd_width_of
+
+            def w() -> i32:
+                return simd_width_of(f32)
+            """)
+        assert mod.w() == 8
+
+    def test_simd_width_of_invalid_dtype(self):
+        src = """
+        from _simd import simd_width_of
+
+        def bad() -> i32:
+            return simd_width_of(bool)
+        """
+        errors = expect_errors(
+            "SIMD element type must be a numeric primitive, got `bool`"
+        )
+        self.compile_raises(src, "bad", errors)
+
+
+def test_simd_width_resolution():
+    # The default is the universally-safe width for every target.
+    for target in SIMD_ALLOWED_WIDTHS:
+        assert resolve_simd_width(target, None) == SIMD_DEFAULT_WIDTH
+    # native accepts 16/32/64.
+    assert resolve_simd_width("native", 16) == 16
+    assert resolve_simd_width("native", 32) == 32
+    assert resolve_simd_width("native", 64) == 64
+    # wasm targets are fixed at 16.
+    assert resolve_simd_width("wasi", 16) == 16
+    assert resolve_simd_width("emscripten", 16) == 16
+    # Non-power-of-two / out-of-range widths are rejected.
+    with pytest.raises(ValueError):
+        resolve_simd_width("native", 62)
+    with pytest.raises(ValueError):
+        resolve_simd_width("native", 300)
+    # 32/64 are not valid for wasm targets.
+    with pytest.raises(ValueError):
+        resolve_simd_width("wasi", 32)
+    with pytest.raises(ValueError):
+        resolve_simd_width("emscripten", 64)
