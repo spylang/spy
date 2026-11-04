@@ -62,6 +62,46 @@ class TestInterpList(CompilerTest):
         assert mod.foo(0) == [10, 1, 2]
         assert mod.foo(1) == [0, 11, 2]
 
+    def test_append(self):
+        mod = self.compile("""
+        from __spy__ import interp_list
+
+        def foo() -> interp_list[i32]:
+            x = interp_list[i32]()
+            x.append(1)
+            x.append(2)
+            return x
+        """)
+        assert mod.foo() == [1, 2]
+
+    def test_print_dtypes(self, capfd):
+        mod = self.compile("""
+        from __spy__ import interp_list, interp_tuple
+        from operator import OpSpec
+
+        @blue.metafunc
+        def print_dtypes(*args_m):
+            types: interp_list[type] = []
+            for m_arg in args_m:
+                types.append(m_arg.static_type)
+            TYPES = interp_tuple(*types)
+
+            def impl() -> None:
+                for DTYPE in unroll(TYPES):
+                    print(DTYPE)
+            return OpSpec(impl, [])
+
+        def foo() -> None:
+            print_dtypes(1, 'hello', 2.5)
+        """)
+        mod.foo()
+        out, _ = capfd.readouterr()
+        assert out.splitlines() == [
+            "<spy type 'i32'>",
+            "<spy type 'str'>",
+            "<spy type 'f64'>",
+        ]
+
     def test_eq(self):
         if self.backend == "doppler":
             pytest.skip("list PBCs not supported")

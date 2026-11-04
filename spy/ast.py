@@ -617,6 +617,12 @@ class List(Expr):
 
 
 @astnode
+class Starred(Expr):
+    precedence = 17
+    value: Expr
+
+
+@astnode
 class Tuple(Expr):
     precedence = 17
     items: list[Expr]

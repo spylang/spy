@@ -1,6 +1,12 @@
 import pytest
 
-from spy.tests.support import CompilerTest, expect_errors, no_C
+from spy.errors import SPyError
+from spy.fqn import FQN
+from spy.tests.support import (
+    CompilerTest,
+    expect_errors,
+    no_C,
+)
 from spy.vm.b import B
 
 
@@ -166,3 +172,137 @@ class TestMetaFunc(CompilerTest):
         result = mod.foo()
         assert result[0] == "x + 2"
         assert result[1].endswith("test.spy")
+
+    def test_variadic_starred(self):
+        src = """
+        from operator import OpSpec
+
+        @blue.metafunc
+        def foo(*args_m):
+            m_x = args_m[0]
+            m_y = args_m[1]
+
+            T = m_x.static_type
+            assert m_y.static_type == T
+
+            def impl_str(x: T, y: T) -> T:
+                return x + y
+
+            return OpSpec(impl_str, [*args_m])
+
+        def test_i32(x: i32, y: i32) -> i32:
+            return foo(x, y)
+
+        def test_str(x: str, y: str) -> str:
+            return foo(x, y)
+        """
+
+        mod = self.compile(src)
+        assert mod.test_i32(1, 2) == 3
+        assert mod.test_str("S", "Py") == "SPy"
+
+    def test_splat_of_a_red_value_inside_a_blue_function(self):
+        src = """
+        @blue
+        def make():
+            # cannot yet use a tuple, missing __fastiter__
+            t = [1, 2, 3]
+            l = [*t]  # red
+            l.append(4)
+            t2 = (*l,)
+
+            def func(i: i32) -> i32:
+                return t2[0] + i
+            return func
+
+        def foo(i: i32) -> i32:
+            return make()(i)
+        """
+        mod = self.compile(src)
+        assert mod.foo(2) == 3
+
+    def test_splat_call_args_blue_func(self):
+        src = """
+        @blue
+        def bfunc(a, b, c):
+            return a + b + c
+
+        @blue
+        def make():
+            t = [2, 3]
+            return bfunc(*t, 4), bfunc(1, *t), bfunc(*[1, 1], 1)
+
+        def foo() -> tuple[i32, i32, i32]:
+            return make()
+        """
+        mod = self.compile(src)
+        assert mod.foo() == (9, 6, 3)
+
+    def test_splat_call_args_empty(self):
+        src = """
+        @blue
+        def bfunc(a):
+            return a
+
+        @blue
+        def make():
+            empty = [*[]]
+            return bfunc(1, *empty)
+
+        def foo() -> i32:
+            return make()
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 1
+
+    def test_splat_call_args_dict_keys(self):
+        src = """
+        @blue
+        def bfunc(a, b):
+            return a + b
+
+        @blue
+        def make():
+            d = {1: "x", 2: "y"}
+            return bfunc(*d.keys())
+
+        def foo() -> i32:
+            return make()
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 3
+
+    def test_splat_call_args_method(self):
+        src = """
+        @blue
+        def make():
+            l = [1]
+            more = [2, 3]
+            l.extend([*more])
+            return len(l)
+
+        def foo() -> i32:
+            return make()
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 3
+
+    def test_splat_call_args_not_iterable(self):
+        src = """
+        @blue
+        def bfunc(a):
+            return a
+
+        @blue
+        def make():
+            return bfunc(*42)
+
+        def foo() -> i32:
+            return make()
+        """
+        errors = expect_errors(
+            "cannot unpack `i32`: it does not support iteration, "
+            "so it cannot be splatted with `*`",
+            ("this is not supported", "*42"),
+        )
+        self.compile_raises(src, "foo", errors)

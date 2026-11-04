@@ -212,6 +212,35 @@ class W_InterpList(W_BaseInterpList, Generic[T]):
 
         return W_OpSpec(w_setitem)
 
+    @builtin_method("__fastiter__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_FASTITER(vm: "SPyVM", wam_list: W_MetaArg) -> W_OpSpec:
+        from spy.vm.modules.__spy__.interp_tuple import W_InterpTupleIterator
+
+        w_listtype = W_InterpList._get_listtype(wam_list)
+        LIST = Annotated[W_InterpList, w_listtype]
+        ITER = Annotated[W_InterpTupleIterator, W_InterpTupleIterator._w]
+
+        @vm.register_builtin_func(w_listtype.fqn)
+        def w_fastiter(vm: "SPyVM", w_list: LIST) -> ITER:
+            return W_InterpTupleIterator(w_list.items_w, 0)
+
+        return W_OpSpec(w_fastiter)
+
+    @builtin_method("append", color="blue", kind="metafunc")
+    @staticmethod
+    def w_APPEND(vm: "SPyVM", wam_list: W_MetaArg, wam_item: W_MetaArg) -> W_OpSpec:
+        w_listtype = W_InterpList._get_listtype(wam_list)
+        w_T = w_listtype.w_itemtype
+        LIST = Annotated[W_InterpList, w_listtype]
+        T = Annotated[W_Object, w_T]
+
+        @vm.register_builtin_func(w_listtype.fqn)
+        def w_append(vm: "SPyVM", w_list: LIST, w_item: T) -> None:
+            w_list.items_w.append(w_item)
+
+        return W_OpSpec(w_append)
+
     @builtin_method("__eq__", color="blue", kind="metafunc")
     @staticmethod
     def w_EQ(vm: "SPyVM", wam_l: W_MetaArg, wam_r: W_MetaArg) -> W_OpSpec:

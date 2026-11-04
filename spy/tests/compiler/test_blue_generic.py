@@ -188,3 +188,60 @@ class TestBlueGeneric(CompilerTest):
             return mymod.foo[i32](2)
         """)
         assert mod.call_via_module_attr() == 4
+
+    def test_generic_starred_from_blue(self):
+        mod = self.compile("""
+        @blue.generic
+        def add(T):
+            def impl(x: T, y: T) -> T:
+                return x + y
+            return impl
+
+        @blue
+        def make():
+            types = (i32,)
+            return add[*types]
+
+        def foo() -> i32:
+            f = make()
+            return f(1, 2)
+        """)
+        assert mod.foo() == 3
+
+    def test_generic_starred_multiple_args(self):
+        mod = self.compile("""
+        @blue.generic
+        def pick(T, U):
+            def impl(x: T, y: U) -> U:
+                return y
+            return impl
+
+        @blue
+        def make():
+            more = (str,)
+            return pick[i32, *more]
+
+        def foo() -> str:
+            f = make()
+            return f(1, 'hello')
+        """)
+        assert mod.foo() == "hello"
+
+    def test_generic_starred_generic_class(self):
+        mod = self.compile("""
+        @struct
+        class Point[T]:
+            x: T
+            y: T
+
+        @blue
+        def make_point():
+            types = (i32,)
+            return Point[*types]
+
+        def foo() -> i32:
+            P = make_point()
+            p = P(2, 4)
+            return p.x + p.y
+        """)
+        assert mod.foo() == 6
