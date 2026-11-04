@@ -143,3 +143,23 @@ class TestUnroll(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == 306
+
+    def test_unroll_must_be_the_builtin(self):
+        src = """
+        from __spy__ import interp_tuple
+
+        def unroll(x: dynamic) -> dynamic:
+            return x
+
+        TUP = interp_tuple(1, 2)
+
+        def foo() -> None:
+            for i in unroll(TUP):
+                pass
+        """
+        errors = expect_errors(
+            "invalid `unroll` function",
+            ("this is not `builtins::unroll`", "unroll"),
+            ("`unroll` defined here", "def unroll(x: dynamic) -> dynamic"),
+        )
+        self.compile_raises(src, "foo", errors)

@@ -692,9 +692,27 @@ class AbstractFrame:
             except Continue:
                 continue
 
+    def check_is_unroll_builtin(self, node: ast.ForUnroll) -> None:
+        """
+        Check that ForUnroll calls the actual builtin::unroll.
+
+        This is needed because the syntax `for x in unroll(seq)` is special-cased by the
+        parser, and we need to defend in case `builtins::unroll` is shadowed.
+        """
+        call = node.iter
+        assert isinstance(call, ast.Call)
+        wam_func = self.eval_expr(call.func)
+        if wam_func.color != "blue" or wam_func.w_blueval is not B.w_unroll:
+            err = SPyError("W_TypeError", "invalid `unroll` function")
+            err.add("error", "this is not `builtins::unroll`", call.func.loc)
+            if wam_func.color == "blue" and isinstance(wam_func.w_blueval, W_Func):
+                err.add("note", "`unroll` defined here", wam_func.w_blueval.def_loc)
+            raise err
+
     def exec_stmt_ForUnroll(self, node: ast.ForUnroll) -> None:
         # The whole node is `for x in unroll(seq)`
         # node.iter is `unroll(seq)`
+        self.check_is_unroll_builtin(node)
         wam_items = self.eval_expr(node.iter)
         w_items = wam_items.w_val
         assert isinstance(w_items, W_InterpTuple)

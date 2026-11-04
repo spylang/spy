@@ -440,6 +440,7 @@ class DopplerFrame(ASTFrame):
         #    if True:  # unrolled #1
         #        i = 1
         #        ...
+        self.check_is_unroll_builtin(stmt)
         wam_items = self.eval_expr(stmt.iter)
         w_items = wam_items.w_val
         assert isinstance(w_items, W_InterpTuple)
