@@ -710,8 +710,6 @@ class AbstractFrame:
             #     forget all locals declared inside the unrolled body. This is important
             #     because subsequent iterations can potentially redeclare a local with a
             #     different type, see [py.scope-lifting-unroll];
-            #
-            #   - closures capture the values at the time of definition
             self.locals = dict(outer_locals)
             self.locals[target_slot] = LocalVar(
                 varname=target_slot,
