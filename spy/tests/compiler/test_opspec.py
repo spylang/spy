@@ -91,6 +91,29 @@ class TestOpSpec(CompilerTest):
         assert w_type is B.w_i32
         assert self.vm.unwrap_i32(w_blueval) == 42
 
+    def test_oparg_repr(self):
+        mod = self.compile("""
+        from operator import MetaArg
+
+        def red() -> str:
+            return repr(MetaArg('red', i32, None))
+
+        def blue_meta_metaarg() -> str:
+            m_r = MetaArg('red', i32, None)
+            return str(MetaArg('blue', MetaArg, m_r))
+
+        def red_meta_metaarg() -> str:
+            m_r = MetaArg('red', i32, None)
+            return str(MetaArg('red', MetaArg, m_r))
+        """)
+        assert mod.red() == "<spy MetaArg: i32, red>"
+        assert mod.blue_meta_metaarg() == (
+            "<spy MetaArg: MetaArg, blue, val=<spy MetaArg: i32, red>>"
+        )
+        assert mod.red_meta_metaarg() == (
+            "<spy MetaArg: MetaArg, red, val=<spy MetaArg: i32, red>>"
+        )
+
     def test_opspec_null(self):
         mod = self.compile("""
         from operator import OpSpec

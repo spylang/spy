@@ -217,16 +217,23 @@ class W_MetaArg(W_Object):
         return W_MetaArg(vm, color, w_T, w_obj, loc)
 
     def __repr__(self) -> str:
-        if self.is_blue():
-            extra = f" = {self.w_val}"
+        # the static type comes first, so that a meta-MetaArg reads as
+        # <spy MetaArg: MetaArg, ..., val=<spy MetaArg#1: ...>>
+        if self.w_static_T is W_MetaArg._w:
+            tname = "MetaArg"
         else:
-            extra = ""
-        t = self.w_static_T.fqn.debug_human_name
+            tname = self.w_static_T.fqn.debug_human_name
+        parts = [tname, self.color]
+        # red MetaArgs are abstract, but if they wrap another MetaArg we want to see
+        # it, else a red meta-MetaArg is impossible to debug
+        if self.is_blue() or isinstance(self._w_val, W_MetaArg):
+            parts.append(f"val={self._w_val}")
         if DEBUG_METAARG:
-            extra += f" id={self.debug_id}"
+            parts.append(f"id={self.debug_id}")
+        name = "spy MetaArg"
         if self.index is not None:
-            t += f" @{self.index}"
-        return f"<W_MetaArg {self.color} {t}{extra}>"
+            name += f"#{self.index}"
+        return f"<{name}: {', '.join(parts)}>"
 
     def is_blue(self) -> bool:
         return self.color == "blue"
@@ -303,6 +310,11 @@ class W_MetaArg(W_Object):
         self.blue_ensure(vm, B.w_str)
         assert self.w_val is not None
         return vm.unwrap_str(self.w_val)
+
+    @builtin_method("__repr__")
+    @staticmethod
+    def w_repr(vm: "SPyVM", w_self: "W_MetaArg") -> "W_Str":
+        return vm.wrap(repr(w_self))
 
     @builtin_property("color")
     @staticmethod
