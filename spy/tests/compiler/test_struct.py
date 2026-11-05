@@ -487,6 +487,41 @@ class TestStructOnStack(CompilerTest):
         with SPyError.raises("W_TypeError", match="invalid number of args"):
             mod.from_quadruple(4, 5, 6, 7)
 
+    def test_MetaArg_are_keyed_by_index(self):
+        # `sub` is reached in two ways, with the same colors and types but at
+        # different positions in the operator's arguments:
+        #   - sub(a, b)         -> CALL(sub, a, b),          a is 1, b is 2
+        #   - a.sub_method(b)   -> CALL_METHOD(a, "...", b), a is 0, b is 2
+        # The blue cache must not reuse the OpSpec of the first call for the
+        # second one.
+        src = """
+        from operator import OpSpec
+
+        @blue.metafunc
+        def sub(m_a, m_b):
+            def impl(a: P, b: P) -> i32:
+                return a.__ll__ - b.__ll__
+            return OpSpec(impl, [m_a, m_b])
+
+        @struct
+        class P:
+            __ll__: i32
+            sub_method = sub
+
+        def via_call(x: i32, y: i32) -> i32:
+            a = P.__make__(x)
+            b = P.__make__(y)
+            return sub(a, b)
+
+        def via_method(x: i32, y: i32) -> i32:
+            a = P.__make__(x)
+            b = P.__make__(y)
+            return a.sub_method(b)
+        """
+        mod = self.compile(src)
+        assert mod.via_call(10, 3) == 7
+        assert mod.via_method(10, 3) == 7
+
     def test_property(self):
         src = """
         @struct
