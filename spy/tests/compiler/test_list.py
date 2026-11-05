@@ -77,8 +77,8 @@ class TestList(CompilerTest):
         from operator import MetaArg
 
         def foo() -> list[MetaArg]:
-            m_a: MetaArg = i32
-            m_b: MetaArg = f64
+            m_a = MetaArg('red', i32, None)
+            m_b = MetaArg('red', f64, None)
             return [m_a, m_b]
         """
         mod = self.compile(src)

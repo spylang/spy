@@ -304,28 +304,6 @@ class W_MetaArg(W_Object):
         assert self.w_val is not None
         return vm.unwrap_str(self.w_val)
 
-    @builtin_method("__convert_from__", color="blue", kind="metafunc")
-    @staticmethod
-    def w_CONVERT_FROM(
-        vm: "SPyVM", wam_expT: "W_MetaArg", wam_gotT: "W_MetaArg", wam_x: "W_MetaArg"
-    ) -> "W_OpSpec":
-        w_gotT = wam_gotT.w_blueval
-        assert isinstance(w_gotT, W_Type)
-        if vm.issubclass(w_gotT, B.w_type):
-
-            @vm.register_builtin_func(W_MetaArg._w.fqn, "from_type")
-            def w_from_type(vm: "SPyVM", w_type: W_Type) -> W_MetaArg:
-                return W_MetaArg(
-                    vm,
-                    color="red",
-                    w_static_T=w_type,
-                    w_val=None,
-                    loc=Loc.here(),  # w_from_type
-                )
-
-            return W_OpSpec(w_from_type)
-        return W_OpSpec.NULL
-
     @builtin_property("color")
     @staticmethod
     def w_get_color(vm: "SPyVM", w_self: "W_MetaArg") -> "W_Str":
