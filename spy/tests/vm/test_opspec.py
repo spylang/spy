@@ -37,3 +37,33 @@ def test_oparg_key():
     wam_a = W_MetaArg.from_w_obj(vm, w_a)
     wam_b = W_MetaArg.from_w_obj(vm, w_b)
     assert wam_a.spy_key(vm) == wam_b.spy_key(vm)
+
+
+def test_oparg_index():
+    vm = SPyVM()
+    wam = W_MetaArg(vm, "red", B.w_i32, None, Loc.fake())
+    assert wam.index is None
+    wam0 = wam.with_index(vm, 0)
+    wam1 = wam.with_index(vm, 1)
+    assert wam0.index == 0
+    assert wam1.index == 1
+    assert wam.index is None  # MetaArgs are immutable
+    assert wam0.spy_key(vm) != wam1.spy_key(vm)
+    assert wam0.spy_key(vm) == wam.with_index(vm, 0).spy_key(vm)
+
+    wam_b = W_MetaArg(vm, "blue", B.w_i32, vm.wrap(42), Loc.fake())
+    assert wam_b.with_index(vm, 0).spy_key(vm) != wam_b.with_index(vm, 1).spy_key(vm)
+
+
+def test_oparg_index_preserved():
+    vm = SPyVM()
+    loc = Loc.fake()
+    wam = W_MetaArg(vm, "blue", B.w_i32, vm.wrap(42), loc, index=2)
+    wam_red = wam.as_red(vm)
+    assert wam_red.color == "red"
+    assert wam_red.index == 2
+    assert wam_red.loc is loc
+    wam3 = wam.with_index(vm, 3)
+    assert wam3.color == "blue"
+    assert wam3.w_val is wam.w_val
+    assert wam3.loc is loc

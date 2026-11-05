@@ -91,6 +91,29 @@ class TestOpSpec(CompilerTest):
         assert w_type is B.w_i32
         assert self.vm.unwrap_i32(w_blueval) == 42
 
+    def test_oparg_repr(self):
+        mod = self.compile("""
+        from operator import MetaArg
+
+        def red() -> str:
+            return repr(MetaArg('red', i32, None))
+
+        def blue_meta_metaarg() -> str:
+            m_r = MetaArg('red', i32, None)
+            return str(MetaArg('blue', MetaArg, m_r))
+
+        def red_meta_metaarg() -> str:
+            m_r = MetaArg('red', i32, None)
+            return str(MetaArg('red', MetaArg, m_r))
+        """)
+        assert mod.red() == "<spy MetaArg: i32, red>"
+        assert mod.blue_meta_metaarg() == (
+            "<spy MetaArg: MetaArg, blue, val=<spy MetaArg: i32, red>>"
+        )
+        assert mod.red_meta_metaarg() == (
+            "<spy MetaArg: MetaArg, red, val=<spy MetaArg: i32, red>>"
+        )
+
     def test_opspec_null(self):
         mod = self.compile("""
         from operator import OpSpec
@@ -119,35 +142,14 @@ class TestOpSpec(CompilerTest):
         assert w_opspec._w_const is not None
         assert self.vm.unwrap(w_opspec._w_const) == 7
 
-    def test_oparg_from_type(self):
-        mod = self.compile("""
-        from operator import MetaArg
-
-        def foo() -> MetaArg:
-            return i32
-
-        def bar() -> MetaArg:
-            return 42
-        """)
-        wam_x = mod.foo(unwrap=False)
-        assert wam_x.color == "red"
-        assert wam_x.w_static_T is B.w_i32
-        assert wam_x._w_val is None
-
-        errors = expect_errors(
-            "mismatched types", ("expected `operator::MetaArg`, got `i32`", "42")
-        )
-        with errors:
-            mod.bar()
-
-    def test_call_OP_with_types(self):
+    def test_call_OP_explicitly(self):
         from spy.vm.modules.operator import OP
 
         mod = self.compile("""
-        from operator import ADD, OpSpec
+        from operator import ADD, MetaArg
 
         def foo() -> dynamic:
-            return ADD(i32, i32)
+            return ADD(MetaArg('blue', i32, 1), MetaArg('blue', i32, 2))
         """)
         w_opimpl = mod.foo(unwrap=False)
         assert isinstance(w_opimpl, W_OpImpl)

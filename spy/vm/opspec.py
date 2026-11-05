@@ -89,6 +89,18 @@ class W_MetaArg(W_Object):
 
     Blue MetaArg always have an associated value.
 
+    When we call an OPERATOR, its MetaArgs MUST have an `index`, which represents the
+    position of the argument at the original call site. E.g.:
+        res = a + b
+        # ==>
+        w_impl = w_ADD([wam_a, wam_b])
+        wam_a.index == 0
+        wam_b.index == 1
+        w_res = w_impl(w_a, w_b)
+
+    The central place which computes/assigns the index is vm.call_OP. W_MetaArg is
+    immutable, so vm.call_OP creates new indexed copies by calling wam.with_index().
+
     The naming convention for variables of type W_MetaArg is wam_xxx (for
     Wrapped Argument Meta), because it's "quicker" to pronounce that the more
     correct wma_xxx.
@@ -101,6 +113,7 @@ class W_MetaArg(W_Object):
     loc: Loc
     _w_val: Optional[W_Object]
     sym: Optional[Symbol]
+    index: Optional[int]
 
     # see DEBUG_METAARG
     debug_counter: ClassVar[int] = 0
@@ -114,6 +127,7 @@ class W_MetaArg(W_Object):
         loc: Loc,
         *,
         sym: Optional[Symbol] = None,
+        index: Optional[int] = None,
     ) -> None:
         if color == "blue":
             assert w_val is not None
@@ -127,6 +141,7 @@ class W_MetaArg(W_Object):
         self._w_val = w_val
         self.loc = loc
         self.sym = sym
+        self.index = index
         # XXX: this sanity check fails in some tests. Uncomment it and fix the tests!
         if w_val is not None:
             # sanity check
@@ -139,13 +154,14 @@ class W_MetaArg(W_Object):
         """
         Two red opargs are equal if they have the same static types.
         Two blue opargs are equal if they also have the same values.
+        In both cases, they must also have the same index.
         """
         t = self.w_static_T.spy_key(vm)
         if self.color == "red":
-            return ("MetaArg", "red", t, None)
+            return ("MetaArg", "red", t, None, self.index)
         else:
             assert self._w_val is not None
-            return ("MetaArg", "blue", t, self._w_val.spy_key(vm))
+            return ("MetaArg", "blue", t, self._w_val.spy_key(vm), self.index)
 
     @builtin_method("__new__")
     @staticmethod
@@ -201,14 +217,23 @@ class W_MetaArg(W_Object):
         return W_MetaArg(vm, color, w_T, w_obj, loc)
 
     def __repr__(self) -> str:
-        if self.is_blue():
-            extra = f" = {self.w_val}"
+        # the static type comes first, so that a meta-MetaArg reads as
+        # <spy MetaArg: MetaArg, ..., val=<spy MetaArg#1: ...>>
+        if self.w_static_T is W_MetaArg._w:
+            tname = "MetaArg"
         else:
-            extra = ""
-        t = self.w_static_T.fqn.debug_human_name
+            tname = self.w_static_T.fqn.debug_human_name
+        parts = [tname, self.color]
+        # red MetaArgs are abstract, but if they wrap another MetaArg we want to see
+        # it, else a red meta-MetaArg is impossible to debug
+        if self.is_blue() or isinstance(self._w_val, W_MetaArg):
+            parts.append(f"val={self._w_val}")
         if DEBUG_METAARG:
-            extra += f" id={self.debug_id}"
-        return f"<W_MetaArg {self.color} {t}{extra}>"
+            parts.append(f"id={self.debug_id}")
+        name = "spy MetaArg"
+        if self.index is not None:
+            name += f"#{self.index}"
+        return f"<{name}: {', '.join(parts)}>"
 
     def is_blue(self) -> bool:
         return self.color == "blue"
@@ -217,7 +242,24 @@ class W_MetaArg(W_Object):
         if self.color == "red":
             return self
         return W_MetaArg(
-            vm, "red", self.w_static_T, self._w_val, self.loc, sym=self.sym
+            vm,
+            "red",
+            self.w_static_T,
+            self._w_val,
+            self.loc,
+            sym=self.sym,
+            index=self.index,
+        )
+
+    def with_index(self, vm: "SPyVM", index: Optional[int]) -> "W_MetaArg":
+        return W_MetaArg(
+            vm,
+            self.color,
+            self.w_static_T,
+            self._w_val,
+            self.loc,
+            sym=self.sym,
+            index=index,
         )
 
     @property
@@ -269,27 +311,10 @@ class W_MetaArg(W_Object):
         assert self.w_val is not None
         return vm.unwrap_str(self.w_val)
 
-    @builtin_method("__convert_from__", color="blue", kind="metafunc")
+    @builtin_method("__repr__")
     @staticmethod
-    def w_CONVERT_FROM(
-        vm: "SPyVM", wam_expT: "W_MetaArg", wam_gotT: "W_MetaArg", wam_x: "W_MetaArg"
-    ) -> "W_OpSpec":
-        w_gotT = wam_gotT.w_blueval
-        assert isinstance(w_gotT, W_Type)
-        if vm.issubclass(w_gotT, B.w_type):
-
-            @vm.register_builtin_func(W_MetaArg._w.fqn, "from_type")
-            def w_from_type(vm: "SPyVM", w_type: W_Type) -> W_MetaArg:
-                return W_MetaArg(
-                    vm,
-                    color="red",
-                    w_static_T=w_type,
-                    w_val=None,
-                    loc=Loc.here(),  # w_from_type
-                )
-
-            return W_OpSpec(w_from_type)
-        return W_OpSpec.NULL
+    def w_repr(vm: "SPyVM", w_self: "W_MetaArg") -> "W_Str":
+        return vm.wrap(repr(w_self))
 
     @builtin_property("color")
     @staticmethod
