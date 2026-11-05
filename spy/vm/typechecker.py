@@ -119,20 +119,18 @@ def typecheck_opspec(
 
         if wam_out_arg.is_blue():
             arg = ArgSpec.Const(wam_out_arg.w_blueval, wam_out_arg.loc)
+        elif wam_out_arg.index is not None:
+            # this is the "normal" case: red MetaArg with a .index
+            arg = ArgSpec.Arg(wam_out_arg.index)
         else:
-            # THIS IS PROBABLY A BUG, or at least a design issue. W_MetaArg compares by
-            # value and thus they are not supposed to have an identity. However, by
-            # calling .index we are relying on the interp-level identity of W_MetaArg
-            # objects, which is conceptually wrong. We should probably make W_MetaArg
-            # reference types, but this likely introduces other problems.
-            # See also:
-            #   - SPyVM.call_OP, comment "THIS IS AN UGLY WORKAROUND"
-            #   - test_list::test_list_MetaArg_identity.
-            #   - test_list::test_interp_list_MetaArg_ctor
-            #
-            # red W_MetaArg MUST come from in_args_wam
-            i = in_args_wam.index(wam_out_arg)
-            arg = ArgSpec.Arg(i)
+            # red MetaArg without an index: can happen only if we call the OPERATOR
+            # manually.
+            raise SPyError.simple(
+                "W_TypeError",
+                "red MetaArg without an .index",
+                "this MetaArg has .index == None",
+                wam_out_arg.loc,
+            )
 
         if w_conv_opimpl:
             expT = ArgSpec.Const(param.w_T, wam_out_arg.loc)

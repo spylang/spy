@@ -115,7 +115,7 @@ def CONVERT_maybe(
         # nothing to do
         return None
     wam_gotT = W_MetaArg.from_w_obj(vm, w_gotT, loc=wam_x.loc)
-    return vm.fast_call(OP.w_CONVERT, [wam_expT, wam_gotT, wam_x])  # type: ignore
+    return vm.call_OP(None, OP.w_CONVERT, [wam_expT, wam_gotT, wam_x])
 
 
 @OP.builtin_func
