@@ -58,12 +58,12 @@ class BlueCache:
         print(f"BlueCache.{what}: {w_func.fqn} {args} -> {w_res}")
 
     def _fmt_key(self, k: Any, keycolor: Optional[str] = None) -> str:
-        if isinstance(k, tuple) and len(k) == 4 and k[0] == "MetaArg":
+        if isinstance(k, tuple) and len(k) == 5 and k[0] == "MetaArg":
             # this is a key coming from W_MetaArg: it's common enough which
             # is worth special casing its formatting for readability
             # purposes
-            _, color, t, val = k
-            k = f"MetaArg('{color}', {t.fqn}, {val})"
+            _, color, t, val, index = k
+            k = f"MetaArg('{color}', {t.fqn}, {val}, @{index})"
             return Color.set(color, str(k))
         else:
             return str(k)
