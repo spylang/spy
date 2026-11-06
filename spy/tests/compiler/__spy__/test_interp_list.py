@@ -70,7 +70,7 @@ class TestInterpList(CompilerTest):
             x = interp_list[type](i32, f64)
             y = interp_list[type]()
             for v in x:
-                assert type(v) == type
+                assert STATIC_TYPE(v) == type
                 y.append(v)
             assert y[0] == i32
             assert y[1] == f64

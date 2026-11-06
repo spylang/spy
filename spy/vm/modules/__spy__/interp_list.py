@@ -4,7 +4,6 @@ from spy.fqn import FQN
 from spy.vm.b import OP, B
 from spy.vm.builtin import builtin_method
 from spy.vm.modules.__spy__ import SPY
-from spy.vm.modules.__spy__.interp_tuple import W_InterpTupleIterator
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_I32, W_Bool
@@ -46,6 +45,93 @@ def w_make_interp_list_type(vm: "SPyVM", w_T: W_Type) -> W_Type:
     return w_listtype
 
 
+@SPY.builtin_type("InterpListIteratorType")
+class W_InterpListIteratorType(W_Type):
+    """
+    The type of the iterators over a specialized list.
+    interp_list_iterator[i32] -> W_InterpListIteratorType(fqn, B.w_i32)
+    """
+
+    w_itemtype: W_Type
+
+    @classmethod
+    def from_itemtype(cls, w_itemtype: W_Type) -> Self:
+        fqn = FQN("__spy__").join("interp_list_iterator", [w_itemtype.fqn])
+        w_T = cls.from_pyclass(fqn, W_InterpListIterator)
+        w_T.w_itemtype = w_itemtype
+        return w_T
+
+
+class W_InterpListIterator(W_Object):
+    """
+    Iterator over a W_InterpList.
+    """
+
+    w_itertype: W_InterpListIteratorType
+    items_w: list[W_Object]
+    i: int
+
+    def __init__(
+        self,
+        w_itertype: W_InterpListIteratorType,
+        items_w: list[W_Object],
+        i: int,
+    ) -> None:
+        self.w_itertype = w_itertype
+        self.items_w = items_w
+        self.i = i
+
+    def __repr__(self) -> str:
+        cls = self.__class__.__name__
+        return f"{cls}({self.items_w}, {self.i})"
+
+    def spy_get_w_type(self, vm: "SPyVM") -> W_Type:
+        return self.w_itertype
+
+    @staticmethod
+    def _get_itertype(wam_it: W_MetaArg) -> W_InterpListIteratorType:
+        w_itertype = wam_it.w_static_T
+        assert isinstance(w_itertype, W_InterpListIteratorType)
+        return w_itertype
+
+    @builtin_method("__continue_iteration__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_CONTINUE_ITERATION(vm: "SPyVM", wam_it: W_MetaArg) -> W_OpSpec:
+        w_itertype = W_InterpListIterator._get_itertype(wam_it)
+        ITER = Annotated[W_InterpListIterator, w_itertype]
+
+        @vm.register_builtin_func(w_itertype.fqn)
+        def w_continue_iteration(vm: "SPyVM", w_it: ITER) -> W_Bool:
+            return vm.wrap(w_it.i < len(w_it.items_w))
+
+        return W_OpSpec(w_continue_iteration)
+
+    @builtin_method("__item__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_ITEM(vm: "SPyVM", wam_it: W_MetaArg) -> W_OpSpec:
+        w_itertype = W_InterpListIterator._get_itertype(wam_it)
+        ITER = Annotated[W_InterpListIterator, w_itertype]
+        T = Annotated[W_Object, w_itertype.w_itemtype]
+
+        @vm.register_builtin_func(w_itertype.fqn)
+        def w_item(vm: "SPyVM", w_it: ITER) -> T:
+            return w_it.items_w[w_it.i]
+
+        return W_OpSpec(w_item)
+
+    @builtin_method("__next__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_NEXT(vm: "SPyVM", wam_it: W_MetaArg) -> W_OpSpec:
+        w_itertype = W_InterpListIterator._get_itertype(wam_it)
+        ITER = Annotated[W_InterpListIterator, w_itertype]
+
+        @vm.register_builtin_func(w_itertype.fqn)
+        def w_next(vm: "SPyVM", w_it: ITER) -> ITER:
+            return W_InterpListIterator(w_itertype, w_it.items_w, w_it.i + 1)
+
+        return W_OpSpec(w_next)
+
+
 @SPY.builtin_type("InterpListType")
 class W_InterpListType(W_Type):
     """
@@ -54,11 +140,13 @@ class W_InterpListType(W_Type):
     """
 
     w_itemtype: W_Type
+    w_itertype: W_InterpListIteratorType
 
     @classmethod
     def from_itemtype(cls, fqn: FQN, w_itemtype: W_Type) -> Self:
         w_T = cls.from_pyclass(fqn, W_InterpList)
         w_T.w_itemtype = w_itemtype
+        w_T.w_itertype = W_InterpListIteratorType.from_itemtype(w_itemtype)
         return w_T
 
     def register_push_function(self, vm: "SPyVM") -> None:
@@ -217,11 +305,13 @@ class W_InterpList(W_BaseInterpList, Generic[T]):
     @staticmethod
     def w_FASTITER(vm: "SPyVM", wam_list: W_MetaArg) -> W_OpSpec:
         w_listtype = W_InterpList._get_listtype(wam_list)
+        w_itertype = w_listtype.w_itertype
         LIST = Annotated[W_InterpList, w_listtype]
+        ITER = Annotated[W_InterpListIterator, w_itertype]
 
         @vm.register_builtin_func(w_listtype.fqn)
-        def w_fastiter(vm: "SPyVM", w_list: LIST) -> W_InterpTupleIterator:
-            return W_InterpTupleIterator(w_list.items_w, 0)
+        def w_fastiter(vm: "SPyVM", w_list: LIST) -> ITER:
+            return W_InterpListIterator(w_itertype, w_list.items_w, 0)
 
         return W_OpSpec(w_fastiter)
 
