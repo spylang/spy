@@ -11,7 +11,12 @@ Usage:
 """
 
 import argparse
+import os
+import re
+import shlex
+import subprocess
 import sys
+import tempfile
 from os import getenv
 from typing import Optional
 
@@ -129,6 +134,7 @@ def get_cflags(
     build_type: BuildType,
     output_kind: OutputKind = "exe",
     warning_as_error: bool = False,
+    march: Optional[str] = None,
 ) -> list[str]:
     _check_target(target)
     _check_build_type(build_type)
@@ -138,6 +144,7 @@ def get_cflags(
     else:
         warning_flags = _WARNING_CFLAGS
     include = ["-I", str(_INCLUDE)]
+    march_flags = [f"-march={validate_march(march)}"] if march is not None else []
     return (
         _BASE_CFLAGS
         + _TARGET_CFLAGS[target]
@@ -145,6 +152,7 @@ def get_cflags(
         + _OUTPUT_KIND_CFLAGS[output_kind]
         + warning_flags
         + include
+        + march_flags
     )
 
 
@@ -152,6 +160,73 @@ def get_ldflags(target: str, build_type: BuildType) -> list[str]:
     _check_target(target)
     _check_build_type(build_type)
     return _TARGET_LDFLAGS[target] + _BUILD_TYPE_LDFLAGS[build_type]
+
+
+# A -march value ends up on a command line and in the name of a directory (see
+# spy.libspy.builder.ensure_libspy). Rather than trying to quote/sanitize it, we
+# accept only what real values look like: 'native', 'x86-64-v3', 'x86_64_v3',
+# 'armv8.2-a+crc', 'znver4', ...
+_MARCH_RE = re.compile(r"[A-Za-z0-9][A-Za-z0-9._+-]*")
+
+
+def validate_march(march: str) -> str:
+    """
+    Return `march` unchanged if it is syntactically a sane -march value, else
+    raise ValueError. This does NOT check that the compiler knows it: see
+    check_march for that.
+    """
+    if not _MARCH_RE.fullmatch(march):
+        raise ValueError(
+            f"invalid --march value {march!r}: it must start with a letter or "
+            f"a digit, and contain only letters, digits and '.', '_', '+', '-'"
+        )
+    return march
+
+
+def check_march(target: str, march: str) -> None:
+    """
+    Check that `march` is a valid value for `-march=` for the C compiler of
+    `target`, by asking the compiler itself (it takes a few ms).
+
+    Raise ValueError with a short, user-friendly message if it is not: this is
+    nicer than letting the build fail with the raw compiler output (zig
+    prints the list of all the CPUs it knows).
+
+    Note that gcc/clang and zig don't agree on the names: e.g. 'x86-64-v3' is
+    fine for gcc but not for `zig cc`, which wants 'x86_64_v3'.
+    """
+    validate_march(march)
+    _check_target(target)
+    cc = get_cc(target)
+    target_flags = [f for f in _TARGET_CFLAGS[target] if f.startswith("--target=")]
+    with tempfile.TemporaryDirectory() as tmpdir:
+        cmd = [
+            *shlex.split(cc),
+            *target_flags,
+            f"-march={march}",
+            "-x", "c", "-c", "-",
+            "-o", os.path.join(tmpdir, "probe.o"),
+        ]  # fmt: skip
+        try:
+            res = subprocess.run(cmd, input="", capture_output=True, text=True)
+        except FileNotFoundError:
+            # no compiler at all: the build will complain by itself
+            return
+    if res.returncode == 0:
+        return
+
+    # zig prints "info: available CPUs ..." before the actual error: look for it
+    lines = [line.strip() for line in res.stderr.splitlines() if line.strip()]
+    errors = [line for line in lines if "error" in line]
+    reason = errors[0] if errors else (lines[0] if lines else "unknown error")
+    msg = f"{march!r} is not a valid -march value for {cc!r}: {reason}"
+    if target == "native-static":
+        msg += (
+            "\n--static builds use zig cc, which has its own CPU names (e.g. "
+            "'x86_64_v3' instead of 'x86-64-v3'; list them with "
+            "`python -m ziglang targets`). 'native' works everywhere."
+        )
+    raise ValueError(msg)
 
 
 def get_build_dirname(build_type: BuildType, output_kind: OutputKind = "exe") -> str:
@@ -170,7 +245,9 @@ def get_build_dirname(build_type: BuildType, output_kind: OutputKind = "exe") ->
 
 
 def get_libdir(
-    target: str, build_type: BuildType, output_kind: OutputKind = "exe"
+    target: str,
+    build_type: BuildType,
+    output_kind: OutputKind = "exe",
 ) -> str:
     _check_target(target)
     return str(_BUILD.join(target, get_build_dirname(build_type, output_kind)))

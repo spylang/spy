@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = "==3.12.*"
 
 [[package]]
@@ -1168,6 +1168,7 @@ dependencies = [
     { name = "fixedint" },
     { name = "ninja", marker = "sys_platform != 'emscripten'" },
     { name = "pexpect", marker = "sys_platform != 'emscripten'" },
+    { name = "platformdirs" },
     { name = "py" },
     { name = "typer" },
     { name = "wasmtime", marker = "sys_platform != 'emscripten'" },
@@ -1209,6 +1210,7 @@ requires-dist = [
     { name = "fixedint", specifier = "==0.2.0" },
     { name = "ninja", marker = "sys_platform != 'emscripten'", specifier = "==1.13.2" },
     { name = "pexpect", marker = "sys_platform != 'emscripten'", specifier = "==4.9.0" },
+    { name = "platformdirs", specifier = "==4.10.0" },
     { name = "py", specifier = "==1.11.0" },
     { name = "typer", specifier = "==0.15.1" },
     { name = "wasmtime", marker = "sys_platform != 'emscripten'", specifier = "==48.0.0" },

@@ -3,6 +3,7 @@ from typing import Any
 
 from spy.cli.commands.astcompile import astcompile
 from spy.cli.commands.build import build
+from spy.cli.commands.cache import cache_app
 from spy.cli.commands.cleanup import cleanup
 from spy.cli.commands.colorize import colorize
 from spy.cli.commands.execute import execute
@@ -39,3 +40,4 @@ app.spy_command(imports, name="imports")
 app.spy_command(scopes, name="scopes")
 app.spy_command(cleanup, name="cleanup")
 app.spy_command(format, name="format")
+app.add_typer(cache_app, name="cache")

@@ -15,6 +15,7 @@ from spy.analyze.importing import ImportAnalyzer
 from spy.backend.c.cbackend import CBackend
 from spy.build.build_info import BuildTarget
 from spy.build.config import BuildConfig, GCOption, OutputKind
+from spy.build.flags import check_march
 from spy.cli._runners import init_vm, nullcontext, timer
 from spy.cli.commands.shared_args import (
     Base_Args,
@@ -109,6 +110,15 @@ class _build_mixin:
         ),
     ] = False
 
+    march: Annotated[
+        Optional[str],
+        Option(
+            "--march",
+            help="Pass -march={VALUE} to the C compiler, e.g. --march=native "
+            "(requires --target native).",
+        ),
+    ] = None
+
 
 @dataclass
 class Build_Args(
@@ -148,6 +158,19 @@ async def build(args: Build_Args) -> None:
     if args.static and sys.platform == "darwin":
         raise click.UsageError("--static is not supported on macOS")
 
+    if args.march is not None and args.target != "native":
+        raise click.UsageError(
+            f"--march can only be used with --target native, got --target={args.target}"
+        )
+
+    if args.march is not None:
+        # fail early (before generating any C and building libspy) and with a
+        # clear message: gcc/clang and zig (--static) don't accept the same names
+        try:
+            check_march("native-static" if args.static else "native", args.march)
+        except ValueError as e:
+            raise click.UsageError(str(e))
+
     config = BuildConfig(
         target=args.target,
         kind=args.output_kind,
@@ -155,6 +178,7 @@ async def build(args: Build_Args) -> None:
         warning_as_error=args.warning_as_error,
         gc=gc,
         static=args.static,
+        march=args.march,
     )
 
     cwd = py.path.local(".")
