@@ -143,6 +143,20 @@ class Void(Expr):
 Void._singleton = object.__new__(Void)
 
 
+# (parent_prec, child_prec) pairs for which gcc/clang warn even though the
+# child already binds tighter. Levels are those of BinOp._table.
+# fmt: off
+_REDUNDANT_PARENS = {
+    (10, 11),                                # + - inside shift
+    (8, 9),                                  # relational inside ==, !=
+    (7, 8), (7, 9), (7, 11),                 # eq, rel, + - inside &
+    (6, 7), (6, 8), (6, 9), (6, 11),         # &, eq, rel, + - inside ^
+    (5, 6), (5, 7), (5, 8), (5, 9), (5, 11), # ^, &, eq, rel, + - inside |
+    (3, 4),                                  # && inside ||
+}
+# fmt: on
+
+
 @dataclass
 class BinOp(Expr):
     op: str
@@ -184,9 +198,13 @@ class BinOp(Expr):
             l = f"({l})"
         elif self.left.precedence() == prec and assoc == "R":
             l = f"({l})"
+        elif (prec, self.left.precedence()) in _REDUNDANT_PARENS:
+            l = f"({l})"
         if self.right.precedence() < prec:
             r = f"({r})"
         elif self.right.precedence() == prec and assoc == "L":
+            r = f"({r})"
+        elif (prec, self.right.precedence()) in _REDUNDANT_PARENS:
             r = f"({r})"
         return f"{l} {self.op} {r}"
 

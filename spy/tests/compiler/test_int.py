@@ -1,7 +1,7 @@
 import pytest
 
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest, expect_errors, skip_backends
+from spy.tests.support import CompilerTest, expect_errors, only_C, skip_backends
 
 
 @pytest.fixture(params=["i32", "u32", "i8", "u8", "i64", "u64"])
@@ -283,6 +283,50 @@ class TestInt(CompilerTest):
         assert mod.b_or(127, 0) == 127 | 0
         assert mod.b_xor(16, 15) == 16 ^ 15
         assert mod.b_xor(16, 0) == 16 ^ 0
+
+    @only_C
+    def test_ambiguous_mix_no_warning(self):
+        # used to fail when SPY_WERROR=1 (as in the CI)
+        mod = self.compile("""
+        # additive inside a shift
+        def add_shl_l(x: i32, y: i32, z: i32) -> i32: return (x + y) << z
+        def add_shl_r(x: i32, y: i32, z: i32) -> i32: return x << (y + z)
+        def sub_shr_l(x: i32, y: i32, z: i32) -> i32: return (x - y) >> z
+        def sub_shr_r(x: i32, y: i32, z: i32) -> i32: return x >> (y - z)
+
+        # additive inside a bitwise operator
+        def add_and(x: i32, y: i32, z: i32) -> i32: return x & (y + z)
+        def sub_and(x: i32, y: i32, z: i32) -> i32: return (x - y) & z
+        def add_xor_r(x: i32, y: i32, z: i32) -> i32: return x ^ (y + z)
+        def add_xor_l(x: i32, y: i32, z: i32) -> i32: return (x + y) ^ z
+        def sub_or_l(x: i32, y: i32, z: i32) -> i32: return (x - y) | z
+        def add_or_r(x: i32, y: i32, z: i32) -> i32: return x | (y + z)
+
+        # bitwise inside bitwise
+        def and_xor_l(x: i32, y: i32, z: i32) -> i32: return (x & y) ^ z
+        def and_xor_r(x: i32, y: i32, z: i32) -> i32: return x ^ (y & z)
+        def and_or_l(x: i32, y: i32, z: i32) -> i32: return (x & y) | z
+        def and_or_r(x: i32, y: i32, z: i32) -> i32: return x | (y & z)
+        def xor_or_l(x: i32, y: i32, z: i32) -> i32: return (x ^ y) | z
+        def xor_or_r(x: i32, y: i32, z: i32) -> i32: return x | (y ^ z)
+        """)
+        x, y, z = 21, 3, 2
+        assert mod.add_shl_l(x, y, z) == 96
+        assert mod.add_shl_r(x, y, z) == 672
+        assert mod.sub_shr_l(x, y, z) == 4
+        assert mod.sub_shr_r(x, y, z) == 10
+        assert mod.add_and(x, y, z) == 5
+        assert mod.sub_and(x, y, z) == 2
+        assert mod.add_xor_r(x, y, z) == 16
+        assert mod.add_xor_l(x, y, z) == 26
+        assert mod.sub_or_l(x, y, z) == 18
+        assert mod.add_or_r(x, y, z) == 21
+        assert mod.and_xor_l(x, y, z) == 3
+        assert mod.and_xor_r(x, y, z) == 23
+        assert mod.and_or_l(x, y, z) == 3
+        assert mod.and_or_r(x, y, z) == 23
+        assert mod.xor_or_l(x, y, z) == 22
+        assert mod.xor_or_r(x, y, z) == 21
 
     def test_pow(self, int_type):
         mod = self.compile(f"""
