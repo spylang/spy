@@ -200,6 +200,21 @@ class TestVM:
         assert vm.unwrap(w_hello) == "hello"
         assert repr(w_hello) == "W_Str('hello')"
 
+    def test_intern_str(self):
+        vm = SPyVM()
+        w_a = vm.intern_str("hello")
+        w_b = vm.intern_str("hello")
+        w_c = vm.intern_str("world")
+        assert isinstance(w_a, W_Str)
+        assert vm.unwrap(w_a) == "hello"
+        assert w_a is w_b
+        assert w_a is not w_c
+        # wrap() must keep returning a fresh object
+        assert vm.wrap("hello") is not w_a
+        # the cache is per-VM: a W_Str lives in the memory of its own VM
+        vm2 = SPyVM()
+        assert vm2.intern_str("hello") is not w_a
+
     def test_call_function(self):
         vm = SPyVM()
         w_hash_i32 = B.w_hash_i32
