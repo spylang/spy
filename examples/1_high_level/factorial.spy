@@ -16,7 +16,10 @@ def factorial(n: i32) -> i32:
     return res
 
 
-def main() -> None:
-    print(factorial(5))
+def main(argv: list[str]) -> None:
+    n = 5
+    if len(argv) > 1:
+        n = int(argv[1])
+    print(factorial(n))
     # this is needed to force gcc to compile the function, else it just precomputes the result
     # print(factorial(int(time.time())))
