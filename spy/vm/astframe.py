@@ -816,7 +816,26 @@ class AbstractFrame:
         return W_MetaArg(self.vm, "blue", w_T, w_val, lit.loc)
 
     def eval_expr_StrLiteral(self, lit: ast.StrLiteral) -> W_MetaArg:
-        w_val = self.vm.wrap(lit.value)
+        # Use vm.intern_str instead of vm.wrap to avoid re-allocating the same string
+        # again and again. We pay a small cost because intern_str needs to do a quick
+        # dict lookup, but we same a lot of VM allocations.
+        #
+        # This is more a quick hack than a proper solution though.  The ideal solution
+        # would be to do the allocation at astcompile time, and turn ast.StrLiteral(s)
+        # into ast.Const(w_val=vm.wrap(s)).
+        #
+        # However, this is not trivial because W_Str objects cannot easily be pickled:
+        # we can solve it with a custom Pickler, but we might as well wait to have a
+        # proper AST serialization format.
+        #
+        # I did a quick benchmark on my machine by running factorial(1000) in three
+        # configurations:
+        #    - with vm.wrap (in use before PR 758): 1.709s
+        #    - with vm.intern_str:                  0.770s
+        #    - with a proper astcompile step:       0.767s
+        #
+        # For now, intern_str gives 99% of the benefit at 1% of the complexity.
+        w_val = self.vm.intern_str(lit.value)
         return W_MetaArg(self.vm, "blue", B.w_str, w_val, lit.loc)
 
     def eval_expr_BytesLiteral(self, lit: ast.BytesLiteral) -> W_MetaArg:

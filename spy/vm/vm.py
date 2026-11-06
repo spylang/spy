@@ -161,6 +161,7 @@ class SPyVM:
 
         self._globals_w = {}
         self._reverse_globals = {}
+        self._interned_strs: dict[str, W_Str] = {}
         self.irtags = {}
         self.modules_w = {}
         self.fqn_human_aliases = {}
@@ -659,6 +660,15 @@ class SPyVM:
     # need extra care for that. In particular, we need to make sure that they
     # are listed *before* the overload wrap(int), and we need to ignore
     # overload-overlap.
+
+    def intern_str(self, s: str) -> W_Str:
+        """
+        Like wrap(s), but return the same W_Str for equal string.
+        """
+        w_s = self._interned_strs.get(s)
+        if w_s is None:
+            w_s = self._interned_strs[s] = W_Str(self, s)
+        return w_s
 
     @overload
     def wrap(self, value: None) -> W_NoneType: ...
