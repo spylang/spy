@@ -256,17 +256,23 @@ class W_StructType(W_Type):
 
 
 def calc_layout(fields_w: dict[str, W_Field]) -> tuple[list["W_StructField"], int]:
-    from spy.vm.modules.unsafe.misc import sizeof
+    """
+    Compute offsets and size following the C rules: each field is aligned to
+    its alignof(), and the total size is padded to the alignment of the struct.
+    """
+    from spy.vm.modules.unsafe.misc import alignof, sizeof
 
     offset = 0
+    struct_align = 1
     struct_fields_w = []
     for name, w_field in fields_w.items():
         field_size = sizeof(w_field.w_T)
-        # compute alignment
-        offset = (offset + (field_size - 1)) & ~(field_size - 1)
+        field_align = alignof(w_field.w_T)
+        struct_align = max(struct_align, field_align)
+        offset = (offset + (field_align - 1)) & ~(field_align - 1)
         struct_fields_w.append(W_StructField(name, w_field.w_T, offset, w_field.loc))
         offset += field_size
-    size = offset
+    size = (offset + (struct_align - 1)) & ~(struct_align - 1)
     return struct_fields_w, size
 
 

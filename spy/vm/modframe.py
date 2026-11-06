@@ -106,7 +106,7 @@ class ModFrame(AbstractFrame):
             self.store_local(sym.slot_name, wam.w_val)
 
         elif sym.storage == "cell":
-            w_cell = W_Cell(fqn, wam.w_val)
+            w_cell = self.vm.make_cell(fqn, wam.w_val)
             self.vm.add_global(fqn, w_cell)
             self.store_local(sym.slot_name, w_cell)
 
