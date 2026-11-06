@@ -1,0 +1,58 @@
+from operator import OpSpec
+
+import _math
+
+pi = _math.pi
+tau = _math.tau
+e = _math.e
+
+
+@blue
+def _unary(name, impl):
+    @blue.metafunc
+    def meta(m_x):
+        if m_x.static_type == f64:
+            return OpSpec(impl)
+        raise TypeError(
+            "math."
+            + name
+            + "() does not support arguments of type "
+            + m_x.static_type.__name__
+        )
+
+    return meta
+
+
+@blue
+def _binary(name, impl):
+    @blue.metafunc
+    def meta(m_x, m_y):
+        if m_x.static_type == f64 and m_y.static_type == f64:
+            return OpSpec(impl)
+        raise TypeError(
+            "math."
+            + name
+            + "() does not support arguments of type "
+            + m_x.static_type.__name__
+            + ", "
+            + m_y.static_type.__name__
+        )
+
+    return meta
+
+
+sqrt = _unary("sqrt", _math.sqrt)
+cos = _unary("cos", _math.cos)
+sin = _unary("sin", _math.sin)
+tan = _unary("tan", _math.tan)
+log = _unary("log", _math.log)
+log10 = _unary("log10", _math.log10)
+exp = _unary("exp", _math.exp)
+acos = _unary("acos", _math.acos)
+asin = _unary("asin", _math.asin)
+atan = _unary("atan", _math.atan)
+atan2 = _binary("atan2", _math.atan2)
+ceil = _unary("ceil", _math.ceil)
+floor = _unary("floor", _math.floor)
+pow = _binary("pow", _math.pow)
+fabs = _unary("fabs", _math.fabs)

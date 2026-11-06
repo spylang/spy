@@ -38,11 +38,11 @@ from spy.vm.irtag import IRTag
 from spy.vm.member import W_Member
 from spy.vm.module import W_Module
 from spy.vm.modules.__spy__ import SPY
+from spy.vm.modules._math import MATH
 from spy.vm.modules._simd import SIMD
 from spy.vm.modules._testing_helpers import _TESTING_HELPERS
 from spy.vm.modules.builtins import BUILTINS
 from spy.vm.modules.jsffi import JSFFI
-from spy.vm.modules.math import MATH
 from spy.vm.modules.operator import OPERATOR, convop
 from spy.vm.modules.posix import POSIX
 from spy.vm.modules.rawbuffer import RAW_BUFFER

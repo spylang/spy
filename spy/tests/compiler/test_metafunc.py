@@ -111,6 +111,25 @@ class TestMetaFunc(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
+    def test_null_opspec(self):
+        src = """
+        from operator import OpSpec
+
+        @blue.metafunc
+        def m(m_x, m_y):
+            return OpSpec.NULL
+
+        def foo() -> i32:
+            return m(1, 'hello')
+        """
+        errors = expect_errors(
+            "`m` does not support arguments of type `i32`, `str`",
+            ("this is `i32`", "1"),
+            ("this is `str`", "'hello'"),
+            ("metafunc defined here", "def m(m_x, m_y):"),
+        )
+        self.compile_raises(src, "foo", errors)
+
     @no_C
     def test_STATIC_TYPE(self):
         mod = self.compile("""
