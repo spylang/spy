@@ -62,21 +62,35 @@ class TestInterpList(CompilerTest):
         assert mod.foo(0) == [10, 1, 2]
         assert mod.foo(1) == [0, 11, 2]
 
-    def test_append_iter(self):
+    def test_append(self):
         src = """
         from __spy__ import interp_list
 
-        def main() -> None:
-            x = interp_list[type](i32, f64)
-            y = interp_list[type]()
-            for v in x:
-                assert STATIC_TYPE(v) == type
-                y.append(v)
-            assert y[0] == i32
-            assert y[1] == f64
+        def foo() -> interp_list[i32]:
+            x = interp_list[i32]()
+            x.append(1)
+            x.append(2)
+            return x
         """
         mod = self.compile(src)
-        mod.main()
+        assert mod.foo() == [1, 2]
+
+    def test_iter(self):
+        src = """
+        from __spy__ import interp_list
+
+        def foo() -> i32:
+            x = interp_list[i32](1, 2)
+            for v in x:
+                assert STATIC_TYPE(v) == i32
+
+            target: i32
+            for target in x:
+                pass
+            return target
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 2
 
     def test_eq(self):
         if self.backend == "doppler":

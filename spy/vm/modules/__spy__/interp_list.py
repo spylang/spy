@@ -49,7 +49,6 @@ def w_make_interp_list_type(vm: "SPyVM", w_T: W_Type) -> W_Type:
 class W_InterpListIteratorType(W_Type):
     """
     The type of the iterators over a specialized list.
-    interp_list_iterator[i32] -> W_InterpListIteratorType(fqn, B.w_i32)
     """
 
     w_itemtype: W_Type
