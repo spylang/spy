@@ -288,8 +288,23 @@ class SPyBackend:
     def emit_stmt_Continue(self, stmt: ast.Continue) -> None:
         self.wl("continue")
 
+    def emit_BlockExpr_inline_maybe(self, expr: ast.Expr) -> ast.Expr:
+        """
+        If `expr` is a BlockExpr, emit its body as normal statements and return its
+        value.
+
+        This is safe only for stmts whose expr is the only thing which is evaluated by
+        the stmt itsels, like StmtExpr, Return and Assign.
+        """
+        while isinstance(expr, ast.BlockExpr):
+            for stmt in expr.body:
+                self.emit_stmt(stmt)
+            expr = expr.value
+        return expr
+
     def emit_stmt_Return(self, ret: ast.Return) -> None:
-        v = self.fmt_expr(ret.value)
+        value = self.emit_BlockExpr_inline_maybe(ret.value)
+        v = self.fmt_expr(value)
         self.wl(f"return {v}")
 
     def emit_stmt_Assign(self, assign: ast.Assign) -> None:
@@ -314,8 +329,9 @@ class SPyBackend:
 
     def emit_stmt_AssignLocal(self, assign: ast.AssignLocal) -> None:
         varname = assign.expr.sym.slot_name
+        value = self.emit_BlockExpr_inline_maybe(assign.expr.value)
         t = self.get_vartype_to_declare_maybe(varname)
-        v = self.fmt_expr(assign.expr.value)
+        v = self.fmt_expr(value)
         if self.ast_format == "full":
             self.wl(f"AssignLocal({varname} := {v})")
         elif t is not None:
@@ -334,7 +350,8 @@ class SPyBackend:
             if assign.expr.target_fqn is not None
             else assign.expr.sym.slot_name
         )
-        v = self.fmt_expr(assign.expr.value)
+        value = self.emit_BlockExpr_inline_maybe(assign.expr.value)
+        v = self.fmt_expr(value)
         if self.ast_format == "full":
             self.wl(f"AssignCell({varname} := {v})")
         else:
@@ -391,7 +408,8 @@ class SPyBackend:
         self.vars_declared.add(varname)
 
     def emit_stmt_StmtExpr(self, stmt: ast.StmtExpr) -> None:
-        v = self.fmt_expr(stmt.value)
+        value = self.emit_BlockExpr_inline_maybe(stmt.value)
+        v = self.fmt_expr(value)
         self.wl(f"{v}")
 
     def emit_stmt_While(self, while_node: ast.While) -> None:

@@ -458,7 +458,8 @@ class TestDoppler:
         """)
         expected = """
         def foo() -> i32:
-            return __block__(x$0: i32 = 10; x$0 + 1)
+            x$0: i32 = 10
+            return x$0 + 1
         """
         self.assert_dump(expected)
 
@@ -475,7 +476,8 @@ class TestDoppler:
         """)
         expected = """
         def foo() -> i32:
-            return __block__(x$0: i32 = 10; x$0 + 1)
+            x$0: i32 = 10
+            return x$0 + 1
         """
         self.assert_dump(expected, funcname="foo")
 
@@ -514,7 +516,8 @@ class TestDoppler:
         """)
         expected = """
         def foo() -> i32:
-            return __block__(x$0: i32 = 21; x$0 + x$0)
+            x$0: i32 = 21
+            return x$0 + x$0
         """
         self.assert_dump(expected, funcname="foo")
 
@@ -535,7 +538,10 @@ class TestDoppler:
         """)
         expected = """
         def foo() -> i32:
-            return __block__(x$0: i32 = 10; __block__(x$2: i32 = __block__(x$1: i32 = x$0; x$1 + 1); x$2 + 1))
+            x$0: i32 = 10
+            x$1: i32 = x$0
+            x$2: i32 = x$1 + 1
+            return x$2 + 1
         """
         self.assert_dump(expected, funcname="foo")
 
