@@ -151,6 +151,24 @@ class Symbol:
     def replace(self, **kwargs: Any) -> "Symbol":
         return replace(self, **kwargs)
 
+    @classmethod
+    def new_tmp(cls, slot_name: str, loc: Loc) -> "Symbol":
+        """
+        Create the Symbol for a compiler-generated local variable which doesn't
+        belong to any Scope. The called must add it to the appropriate FrameInfo. Used
+        by doppler and linearize.
+        """
+        return cls(
+            slot_name,
+            "var",
+            "auto",
+            "direct",
+            slot_name=slot_name,
+            loc=loc,
+            type_loc=loc,
+            frame_depth=0,
+        )
+
     @property
     def is_local(self) -> bool:
         return self.frame_depth == 0

@@ -172,18 +172,7 @@ class Linearizer:
             return expr
         loc = expr.loc
         name, sym = self.fresh_tmp(expr.w_T, loc)
-        self.hoisted.append(
-            ast.AssignLocal(
-                loc=loc,
-                expr=ast.AssignExprLocal(
-                    loc=loc,
-                    target=ast.StrLiteral(loc, name),
-                    sym=sym,
-                    value=expr,
-                    w_T=expr.w_T,
-                ),
-            )
-        )
+        self.hoisted.append(ast.AssignLocal.make(loc, sym, expr, expr.w_T))
         return ast.NameLocalDirect(loc=loc, sym=sym, w_T=expr.w_T)
 
     def fresh_tmp(self, w_T: "W_Type", loc: Loc) -> tuple[str, Symbol]:
@@ -193,16 +182,7 @@ class Linearizer:
         name = f"$v{self.tmp_counter}"
         self.tmp_counter += 1
         self.new_locals[name] = w_T
-        sym = Symbol(
-            name,
-            "var",
-            "auto",
-            "direct",
-            slot_name=name,
-            loc=loc,
-            type_loc=loc,
-            frame_depth=0,
-        )
+        sym = Symbol.new_tmp(name, loc)
         self.new_symbols.append(sym)
         return name, sym
 
@@ -335,7 +315,10 @@ class Linearizer:
     # evaluation.
     #
     # Expressions can be:
-    #   - pure: no side effects, no dependence on mutable state; never spilled.
+    #   - immediate (e.g. constants and literals) or calls to pure functions: no side
+    #     effects, no dependence on mutable state; never spilled. Note that for a call
+    #     to a pure function we check only the callee: the args are checked separately,
+    #     because they are visited by walk_postorder.
     #
     #   - names: trivially side-effect free, but they are not pure because earlier calls
     #     might modify their value. The gets added to `pending_spills`
@@ -344,7 +327,7 @@ class Linearizer:
     #     as a sequence point. Promote ``pending_spills`` into ``to_spill``
     #     and mark self for spill.
 
-    PURE_EXPRS = (
+    IMMEDIATE_EXPRS = (
         ast.Const,
         ast.Literal,
         ast.StrLiteral,
@@ -353,9 +336,10 @@ class Linearizer:
     )
     NAME_EXPRS = (ast.NameLocalDirect, ast.NameOuterDirect, ast.NameOuterCell)
 
-    def is_pure(self, expr: ast.Expr) -> bool:
-        if isinstance(expr, self.PURE_EXPRS):
-            return True
+    def is_immediate_expr(self, expr: ast.Expr) -> bool:
+        return isinstance(expr, self.IMMEDIATE_EXPRS)
+
+    def is_call_to_pure_func(self, expr: ast.Expr) -> bool:
         if isinstance(expr, ast.Call) and isinstance(expr.func, ast.FQNConst):
             w_obj = self.vm.lookup_global(expr.func.fqn)
             return isinstance(w_obj, W_Func) and w_obj.is_pure()
@@ -398,7 +382,7 @@ class Linearizer:
             for node in self.walk_postorder(top):
                 if node is to_skip:
                     continue
-                if self.is_pure(node):
+                if self.is_immediate_expr(node) or self.is_call_to_pure_func(node):
                     continue
                 if isinstance(node, self.NAME_EXPRS):
                     pending_spills.add(node)
@@ -444,25 +428,14 @@ class Linearizer:
         loc = op.loc
         assert op.w_T is not None
         name, sym = self.fresh_tmp(op.w_T, loc)
-        target = ast.StrLiteral(loc, name)
-        assign_rhs = ast.AssignLocal(
-            loc=loc,
-            expr=ast.AssignExprLocal(
-                loc=loc, target=target, sym=sym, value=new_right, w_T=op.w_T
-            ),
-        )
+        assign_rhs = ast.AssignLocal.make(loc, sym, new_right, op.w_T)
 
         # new_left is used as both the if-test and the value for the
         # short-circuit branch; spill it if needed so it is only evaluated once.
         # Names are safe to reuse without spilling (reading a name is not a call).
         if not isinstance(new_left, self.NAME_EXPRS):
             new_left = self.spill(new_left)
-        assign_left = ast.AssignLocal(
-            loc=loc,
-            expr=ast.AssignExprLocal(
-                loc=loc, target=target, sym=sym, value=new_left, w_T=op.w_T
-            ),
-        )
+        assign_left = ast.AssignLocal.make(loc, sym, new_left, op.w_T)
 
         if kind == "and":
             then_body: list[ast.Stmt] = rhs_hoisted + [assign_rhs]

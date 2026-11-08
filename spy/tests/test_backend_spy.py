@@ -486,11 +486,53 @@ class TestSPyBackend(CompilerTest):
             return __block__('''
                 x: i32 = 1
                 x
+            ''') + 2
+        """)
+        self.assert_dump("""
+        def foo() -> i32:
+            return __block__(x$0: i32 = 1; x$0) + 2
+        """)
+
+    def test_blockexpr_stmt(self):
+        self.compile("""
+        def foo() -> None:
+            __block__('''
+                x: i32 = 1
+                x
+            ''')
+        """)
+        self.assert_dump("""
+        def foo() -> None:
+            x$0: i32 = 1
+            x$0
+        """)
+
+    def test_blockexpr_assign(self):
+        self.compile("""
+        def foo() -> None:
+            y = __block__('''
+                x: i32 = 1
+                x
+            ''')
+        """)
+        self.assert_dump("""
+        def foo() -> None:
+            x$0: i32 = 1
+            y$0 = x$0
+        """)
+
+    def test_blockexpr_return(self):
+        self.compile("""
+        def foo() -> i32:
+            return __block__('''
+                x: i32 = 1
+                x
             ''')
         """)
         self.assert_dump("""
         def foo() -> i32:
-            return __block__(x$0: i32 = 1; x$0)
+            x$0: i32 = 1
+            return x$0
         """)
 
     def test_typed_consts(self):

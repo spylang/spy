@@ -623,15 +623,68 @@ class DopplerFrame(ASTFrame):
             return make_const(self.vm, op.loc, w_opimpl.w_const)
 
         assert w_opimpl.is_func_call()
-        real_args = self._shift_opimpl_args(w_opimpl, orig_args)
-        w_T = w_opimpl.w_functype.w_restype
 
+        # SPy guarantees that call arguments are always evaluated left-to-right. This is
+        # tricky in case a metafunc returns an OpImpl which drops, reorder or duplicate
+        # its metaargs.
+        #
+        # The general solution is to spill all the arguments into temp variables, to be
+        # used for the actual call. However, in order to make the output of the SPy
+        # backend nicer in the common case, we add a special case: if an OpImpl is
+        # "simple", we can emit the call directly; "simple" means that it evaluates ALL
+        # its red arguments in the right order.
+        #
+        # See also test_metafunc.py::test_*_evaluation_order.
+        if w_opimpl.is_simple:
+            # simple case
+            return self._shift_call(op, w_opimpl, orig_args)
+
+        # general case: first, spill the args into temps, then do the call
+        stmts, tmp_args = self._spill_args(op, orig_args)
+        call = self._shift_call(op, w_opimpl, tmp_args)
+        if stmts:
+            # we had to spill some arguments, create the BlockExpr
+            return ast.BlockExpr(op.loc, stmts, call, w_T=w_opimpl.w_functype.w_restype)
+        else:
+            # this happens if _spill_args didn't produce any actual spilling, e.g. if
+            # all the args are immediate. In this case, we can just return the simple
+            # call
+            return call
+
+    def _shift_call(
+        self, op: ast.Node, w_opimpl: W_OpImpl, orig_args: list[ast.Expr]
+    ) -> ast.Expr:
+        real_args = self._shift_opimpl_args(w_opimpl, orig_args)
         w_func = w_opimpl.w_func
         if isinstance(w_func, W_ASTFunc) and w_func.is_force_inline:
             return self._inline_call(op, w_func, real_args)
-
         func = make_const(self.vm, op.loc, w_func)
+        w_T = w_opimpl.w_functype.w_restype
         return ast.Call(op.loc, func, real_args, w_T=w_T)
+
+    def _spill_args(
+        self, op: ast.Node, args: list[ast.Expr]
+    ) -> tuple[list[ast.Stmt], list[ast.Expr]]:
+        """
+        Evaluate all the args in order into fresh temporaries.
+
+        Return the assignments, and the list of args to use in place of the original
+        ones (i.e., reads of the temporaries). Immediates are not spilled.
+        """
+        stmts: list[ast.Stmt] = []
+        new_args: list[ast.Expr] = []
+        for arg in args:
+            if unmake_const_maybe(self.vm, arg) is not None:
+                new_args.append(arg)
+                continue
+            assert arg.w_T is not None
+            slot = self._new_frameinfo.get_fresh_slot("tmp")
+            sym = Symbol.new_tmp(slot, arg.loc)
+            self._new_frameinfo.add(sym)
+            self._new_locals_types_w[slot] = arg.w_T
+            stmts.append(ast.AssignLocal.make(arg.loc, sym, arg, arg.w_T))
+            new_args.append(ast.NameLocalDirect(arg.loc, sym, w_T=arg.w_T))
+        return stmts, new_args
 
     def _inline_call(
         self,

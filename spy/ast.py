@@ -1060,6 +1060,16 @@ class AugAssign(Stmt):
 class AssignLocal(Stmt):
     expr: AssignExprLocal
 
+    @classmethod
+    def make(cls, loc: Loc, sym: Symbol, value: "Expr", w_T: "W_Type") -> "AssignLocal":
+        """
+        Build a typed assignment to the local variable `sym`, as emitted by redshift
+        and linearize.
+        """
+        target = StrLiteral(loc, sym.slot_name).as_typed_node()
+        assign = AssignExprLocal(loc, target, sym, value, w_T=w_T)
+        return cls(loc, assign)
+
 
 @astnode(">= astcompiled")
 class AssignCell(Stmt):
