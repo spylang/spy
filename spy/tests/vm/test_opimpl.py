@@ -31,7 +31,9 @@ def test_shuffle_args():
     vm = SPyVM()
     w_repeat = make_w_repeat(vm)
     w_functype = W_FuncType.parse("def(i32, str) -> str")
-    w_opimpl = W_OpImpl(w_functype, w_repeat, [ArgSpec.Arg(1), ArgSpec.Arg(0)])
+    w_opimpl = W_OpImpl(
+        w_functype, w_repeat, [ArgSpec.Arg(1), ArgSpec.Arg(0)], is_simple=False
+    )
     w_s = w_opimpl._execute(vm, [vm.wrap(3), vm.wrap("ab ")])
     assert vm.unwrap_str(w_s) == "ab ab ab "
     #
@@ -51,7 +53,10 @@ def test_const():
     w_functype = W_FuncType.parse("def(i32) -> str")
     w_s: W_Object = vm.wrap("ab ")
     w_opimpl = W_OpImpl(
-        w_functype, w_repeat, [ArgSpec.Const(w_s, Loc.here()), ArgSpec.Arg(0)]
+        w_functype,
+        w_repeat,
+        [ArgSpec.Const(w_s, Loc.here()), ArgSpec.Arg(0)],
+        is_simple=True,
     )
     w_s = w_opimpl._execute(vm, [vm.wrap(3)])
     assert vm.unwrap_str(w_s) == "ab ab ab "
@@ -73,6 +78,7 @@ def test_converter():
         w_conv_functype,
         OP.w_f64_to_i32,
         [ArgSpec.Arg(2)],
+        is_simple=True,
     )
 
     w_functype = W_FuncType.parse("def(f64, str) -> str")
@@ -85,6 +91,7 @@ def test_converter():
             ArgSpec.Arg(1),
             ArgSpec.Convert(w_conv_opimpl, expT, gotT, ArgSpec.Arg(0)),
         ],
+        is_simple=False,
     )
     w_s = w_opimpl._execute(vm, [vm.wrap(3.5), vm.wrap("ab ")])
     assert vm.unwrap_str(w_s) == "ab ab ab "

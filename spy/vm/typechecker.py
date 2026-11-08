@@ -56,7 +56,10 @@ def typecheck_opspec(
 
     if w_opspec.is_const():
         assert w_opspec._w_const is not None
-        return W_OpImpl.const(vm, w_opspec._w_const)
+        # a const evaluates none of the args, so it is simple only if there are no red
+        # args to evaluate
+        has_red_args = any(wam.color == "red" for wam in in_args_wam)
+        return W_OpImpl.const(vm, w_opspec._w_const, is_simple=not has_red_args)
 
     assert w_opspec._w_func is not None
 
@@ -138,8 +141,15 @@ def typecheck_opspec(
             arg = ArgSpec.Convert(w_conv_opimpl, expT, gotT, arg)
         args.append(arg)
 
+    # the opimpl is simple if all the red args are passed once and in order. The blue
+    # args are not relevant: they are turned into ArgSpec.Const, and they have no side
+    # effects.
+    red_in = [wam.index for wam in in_args_wam if wam.color == "red"]
+    red_out = [wam.index for wam in out_args_wam if wam.color == "red"]
+    is_simple = red_in == red_out
+
     # everything good!
-    w_opimpl = W_OpImpl(w_in_functype, w_opspec._w_func, args)
+    w_opimpl = W_OpImpl(w_in_functype, w_opspec._w_func, args, is_simple=is_simple)
     return w_opimpl
 
 

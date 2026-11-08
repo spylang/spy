@@ -167,7 +167,7 @@ class TestMetaFunc(CompilerTest):
             return OpSpec(impl, []) # NOTE: here we ignore m_x
 
         def foo() -> i32:
-            return bar(0)
+            return bar(inc())
         """
         mod = self.compile(src)
         assert mod.get_x() == 0

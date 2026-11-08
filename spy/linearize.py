@@ -172,18 +172,7 @@ class Linearizer:
             return expr
         loc = expr.loc
         name, sym = self.fresh_tmp(expr.w_T, loc)
-        self.hoisted.append(
-            ast.AssignLocal(
-                loc=loc,
-                expr=ast.AssignExprLocal(
-                    loc=loc,
-                    target=ast.StrLiteral(loc, name),
-                    sym=sym,
-                    value=expr,
-                    w_T=expr.w_T,
-                ),
-            )
-        )
+        self.hoisted.append(ast.AssignLocal.make(loc, sym, expr, expr.w_T))
         return ast.NameLocalDirect(loc=loc, sym=sym, w_T=expr.w_T)
 
     def fresh_tmp(self, w_T: "W_Type", loc: Loc) -> tuple[str, Symbol]:
@@ -193,16 +182,7 @@ class Linearizer:
         name = f"$v{self.tmp_counter}"
         self.tmp_counter += 1
         self.new_locals[name] = w_T
-        sym = Symbol(
-            name,
-            "var",
-            "auto",
-            "direct",
-            slot_name=name,
-            loc=loc,
-            type_loc=loc,
-            frame_depth=0,
-        )
+        sym = Symbol.new_tmp(name, loc)
         self.new_symbols.append(sym)
         return name, sym
 
@@ -448,25 +428,14 @@ class Linearizer:
         loc = op.loc
         assert op.w_T is not None
         name, sym = self.fresh_tmp(op.w_T, loc)
-        target = ast.StrLiteral(loc, name)
-        assign_rhs = ast.AssignLocal(
-            loc=loc,
-            expr=ast.AssignExprLocal(
-                loc=loc, target=target, sym=sym, value=new_right, w_T=op.w_T
-            ),
-        )
+        assign_rhs = ast.AssignLocal.make(loc, sym, new_right, op.w_T)
 
         # new_left is used as both the if-test and the value for the
         # short-circuit branch; spill it if needed so it is only evaluated once.
         # Names are safe to reuse without spilling (reading a name is not a call).
         if not isinstance(new_left, self.NAME_EXPRS):
             new_left = self.spill(new_left)
-        assign_left = ast.AssignLocal(
-            loc=loc,
-            expr=ast.AssignExprLocal(
-                loc=loc, target=target, sym=sym, value=new_left, w_T=op.w_T
-            ),
-        )
+        assign_left = ast.AssignLocal.make(loc, sym, new_left, op.w_T)
 
         if kind == "and":
             then_body: list[ast.Stmt] = rhs_hoisted + [assign_rhs]

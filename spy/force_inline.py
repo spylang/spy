@@ -238,16 +238,7 @@ def inline_call(
         param_sym = renamer.renamed_syms[funcdef_arg.sym]
 
         param_assigns.append(
-            ast.AssignLocal(
-                loc=caller_op.loc,
-                expr=ast.AssignExprLocal(
-                    loc=caller_op.loc,
-                    target=ast.StrLiteral(caller_op.loc, new_slot_name).as_typed_node(),
-                    sym=param_sym,
-                    value=real_args[i],
-                    w_T=func_param.w_T,
-                ),
-            )
+            ast.AssignLocal.make(caller_op.loc, param_sym, real_args[i], func_param.w_T)
         )
 
     for old_slot_name, w_T in w_callee.locals_types_w.items():
