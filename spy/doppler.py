@@ -582,6 +582,10 @@ class DopplerFrame(ASTFrame):
                     w_typeconv_opimpl,
                     [expT, gotT, new_expr],
                 )
+                # The conversion is a residual call, so the result is red even if the
+                # original value is blue. See
+                # e.g. test_converted_blue_empty_list_can_mutate
+                wam = W_MetaArg(self.vm, "red", lv.w_T, None, wam.loc)
 
         self.shifted_expr[expr] = new_expr
         # record the color of the ORIGINAL expression
