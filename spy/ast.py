@@ -622,13 +622,13 @@ class Tuple(Expr):
     items: list[Expr]
 
 
-@astnode
+@astnode("parsed")
 class KeyValuePair(Node):
     key: Expr
     value: Expr
 
 
-@astnode
+@astnode("parsed")
 class Dict(Expr):
     precedence = 17
     items: list[KeyValuePair]

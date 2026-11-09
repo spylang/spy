@@ -1144,66 +1144,6 @@ class AbstractFrame:
         wam_tuple = self.eval_opimpl(tup, w_opimpl, [wam_T] + items_wam)
         return wam_tuple
 
-    def eval_expr_Dict(self, dict: ast.Dict) -> W_MetaArg:
-        # 0. empty dicts are special
-        if len(dict.items) == 0:
-            w_T = SPY.w_EmptyDictType
-            w_val = SPY.w_empty_dict
-            return W_MetaArg(self.vm, "red", w_T, w_val, dict.loc)
-
-        # 1. evaluate type of key, value then infer the whole items type.
-        key_value_pair = []
-        w_keytype = None
-        w_valuetype = None
-        key_color: Color = "red"
-        value_color: Color = "red"
-        for pair in dict.items:
-            key = self.eval_expr(pair.key)
-            value = self.eval_expr(pair.value)
-            key_value_pair.append((key, value))
-            key_color = maybe_blue(key_color, key.color)
-            value_color = maybe_blue(value_color, value.color)
-            if w_keytype is None:
-                # first iteration; key, value type are both None
-                # according to dict behavior as pair of key, value
-                # set key, value type
-                assert w_valuetype is None
-                w_keytype = key.w_static_T
-                w_valuetype = value.w_static_T
-            else:
-                # second iteration and so on.
-                # compute union type covering both current key, value and new key, value type
-                assert w_valuetype is not None
-                w_keytype = self.vm.union_type(w_keytype, key.w_static_T)
-                w_valuetype = self.vm.union_type(w_valuetype, value.w_static_T)
-
-        assert w_keytype is not None
-        assert w_valuetype is not None
-
-        # 2. instantiate a new dict
-        w_DictType = self.vm.lookup_global(FQN("_dict::dict"))
-        w_T = self.vm.getitem_w(w_DictType, w_keytype, w_valuetype)  # dict[K, V]
-        wam_T = W_MetaArg.from_w_obj(self.vm, w_T)
-
-        w_opimpl = self.vm.call_OP(dict.loc, OP.w_CALL, [wam_T])
-        wam_dict = self.eval_opimpl(dict, w_opimpl, [wam_T])
-
-        # 3. push items into the dict
-        assert isinstance(w_T, W_Type)
-        fqn_push = w_T.fqn.join("_push")
-        w_push = self.vm.lookup_global(fqn_push)
-        wam_push = W_MetaArg.from_w_obj(self.vm, w_push)
-
-        for pair, (wam_key, wam_val) in zip(dict.items, key_value_pair):
-            w_opimpl = self.vm.call_OP(
-                dict.loc, OP.w_CALL, [wam_push, wam_dict, wam_key, wam_val]
-            )
-            wam_dict = self.eval_opimpl(
-                pair, w_opimpl, [wam_push, wam_dict, wam_key, wam_val]
-            )
-
-        return wam_dict
-
 
 class ASTFrame(AbstractFrame):
     """
