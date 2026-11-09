@@ -1117,48 +1117,6 @@ class AbstractFrame:
         w_opimpl = self.vm.call_OP(op.loc, OP.w_GETATTR, [wam_obj, wam_name])
         return self.eval_opimpl(op, w_opimpl, [wam_obj, wam_name])
 
-    def eval_expr_List(self, lst: ast.List) -> W_MetaArg:
-        # 0. empty lists are special
-        if len(lst.items) == 0:
-            w_T = SPY.w_EmptyListType
-            w_val = SPY.w_empty_list
-            return W_MetaArg(self.vm, "red", w_T, w_val, lst.loc)
-
-        # 1. evaluate the individual items and infer the itemtype
-        items_wam = []
-        w_itemtype = None
-        color: Color = "red"  # XXX should be blue?
-        for item in lst.items:
-            wam_item = self.eval_expr(item)
-            items_wam.append(wam_item)
-            color = maybe_blue(color, wam_item.color)
-            if w_itemtype is None:
-                w_itemtype = wam_item.w_static_T
-            w_itemtype = self.vm.union_type(w_itemtype, wam_item.w_static_T)
-        assert w_itemtype is not None
-
-        # 2. instantiate a new list
-        w_ListType = self.vm.lookup_global(FQN("_list::list"))
-        w_T = self.vm.getitem_w(w_ListType, w_itemtype, loc=lst.loc)  # list[i32]
-        wam_T = W_MetaArg.from_w_obj(self.vm, w_T)
-
-        w_opimpl = self.vm.call_OP(lst.loc, OP.w_CALL, [wam_T])
-        wam_list = self.eval_opimpl(lst, w_opimpl, [wam_T])
-
-        # 3. push items into the list
-        assert isinstance(w_T, W_Type)
-        fqn_push = w_T.fqn.join("_push")
-        w_push = self.vm.lookup_global(fqn_push)
-        wam_push = W_MetaArg.from_w_obj(self.vm, w_push)
-
-        for item, wam_item in zip(lst.items, items_wam):
-            w_opimpl = self.vm.call_OP(
-                lst.loc, OP.w_CALL, [wam_push, wam_list, wam_item]
-            )
-            wam_list = self.eval_opimpl(item, w_opimpl, [wam_push, wam_list, wam_item])
-
-        return wam_list
-
     def eval_expr_Slice(self, op: ast.Slice) -> W_MetaArg:
         w_SliceType = self.vm.lookup_global(FQN("_slice::Slice"))
         assert isinstance(w_SliceType, W_Type)

@@ -734,7 +734,21 @@ class ASTCompiler:
         return self.compile_expr_JoinedStr(spec)
 
     def compile_expr_List(self, expr: ast.List) -> ast.Expr:
-        return expr.replace(items=[self.compile_expr(item) for item in expr.items])
+        # We use the approach as f-strings; the pipeline is more or less:
+        # 1. source:
+        #     [1, 2]
+        #
+        # 2. parsed into:
+        #     ast.List(...)
+        #
+        # 3. astcompiled into a call to this metafunc:
+        #     `__spy__::list_literal`(1, 2)
+        #
+        # 4. which generates a @force_inline impl which does:
+        #     `list[i32]::_push`(`list[i32]::_push`(`list[i32]::new`(), 1), 2)
+        func = ast.FQNConst(expr.loc, FQN("__spy__::list_literal"))
+        args = [self.compile_expr(item) for item in expr.items]
+        return ast.Call(expr.loc, func, args)
 
     def compile_expr_Tuple(self, expr: ast.Tuple) -> ast.Expr:
         return expr.replace(items=[self.compile_expr(item) for item in expr.items])

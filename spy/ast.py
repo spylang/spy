@@ -610,7 +610,7 @@ class GetItem(Expr):
     args: list[Expr]
 
 
-@astnode
+@astnode("parsed")
 class List(Expr):
     precedence = 17
     items: list[Expr]

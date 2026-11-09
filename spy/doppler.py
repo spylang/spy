@@ -810,42 +810,6 @@ class DopplerFrame(ASTFrame):
         v = self.shifted_expr[unop.value]
         return self.shift_opimpl(unop, w_opimpl, [v])
 
-    def shift_expr_List(self, lst: ast.List, wam: W_MetaArg) -> ast.Expr:
-        # this logic is equivalent to what we have in eval_expr_List. Instead of
-        # actually doing calls, we create an AST instead.
-        if len(lst.items) == 0:
-            assert wam.w_static_T is SPY.w_EmptyListType
-            return make_const(self.vm, lst.loc, SPY.w_empty_list)
-
-        w_T = wam.w_static_T
-        # `new` is defined in the list[T] generic scope
-        fqn_new = w_T.fqn.parent().join("new")
-        w_new = self.vm.lookup_global(fqn_new)
-        node_new = make_const(self.vm, lst.loc, w_new)
-        #
-        fqn_push = w_T.fqn.join("_push")
-        w_push = self.vm.lookup_global(fqn_push)
-        node_push = make_const(self.vm, lst.loc, w_push)
-
-        # instantiate an empty list
-        newlst: ast.Expr = ast.Call(
-            loc=lst.loc,
-            func=node_new,
-            args=[],
-            w_T=w_T,
-        )
-
-        # add a call to push() for each item
-        for item in lst.items:
-            shifted_item = self.shifted_expr[item]
-            newlst = ast.Call(
-                item.loc,
-                func=node_push,
-                args=[newlst, shifted_item],
-                w_T=w_T,
-            )
-        return newlst
-
     def shift_expr_Tuple(self, tup: ast.Tuple, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[tup]
         v_T = make_const(self.vm, tup.loc, wam.w_static_T)
