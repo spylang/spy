@@ -354,6 +354,7 @@ class AbstractFrame:
             defaults_w=defaults_w,
             stage="astcompiled",
         )
+        w_func = self.vm.maybe_native_func(fqn, w_func)
         self.vm.add_global(fqn, w_func)
 
         if funcdef.decorators:
