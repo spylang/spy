@@ -13,7 +13,7 @@ from spy.util import magic_dispatch
 from spy.vm.b import B
 from spy.vm.cell import W_Cell
 from spy.vm.exc import W_TypeError
-from spy.vm.function import CLOSURE, FuncParam, LocalVar, W_ASTFunc, W_FuncType
+from spy.vm.function import CLOSURE, FuncParam, LocalVar, W_ASTFunc, W_Func, W_FuncType
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
 from spy.vm.modules.operator import OP, OP_from_token, OP_unary_from_token
@@ -1235,10 +1235,7 @@ class AbstractFrame:
 
         w_itemtype = None
         color: Color = "red"  # XXX should be blue?
-        for i, item in enumerate(items_wam):
-            wam_item = self.eval_expr(item)
-            items_wam[i] = wam_item
-
+        for wam_item in items_wam:
             color = maybe_blue(color, wam_item.color)
             if w_itemtype is None:
                 w_itemtype = wam_item.w_static_T
