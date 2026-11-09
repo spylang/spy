@@ -1,4 +1,4 @@
-from operator import OpSpec
+from operator import OpSpec, MetaArg
 from __spy__ import force_inline, interp_tuple
 
 
@@ -6,8 +6,10 @@ from __spy__ import force_inline, interp_tuple
 def tuple(*items_T):
     # XXX: we should use 'if type in items_T' as soon as it's supported
     for _T in items_T:
-        # `type` cannot be put in a struct, so we need to use interp_tuple for now
-        if _T == type:
+        # `type` and `MetaArg` cannot be put in a struct (they are
+        # interp-only types with no C layout), so we need to use
+        # interp_tuple for now.
+        if _T == type or _T == MetaArg:
             return interp_tuple
 
     @blue
