@@ -382,8 +382,12 @@ class TestSPyBackend(CompilerTest):
         def foo() -> dynamic:
             return [1, 2, 3]
         """
+        expected = """
+        def foo() -> dynamic:
+            return `__spy__::list_literal`(1, 2, 3)
+        """
         self.compile(src)
-        self.assert_dump(src)
+        self.assert_dump(expected)
 
     def test_tuple_literal(self):
         src = """
@@ -398,8 +402,12 @@ class TestSPyBackend(CompilerTest):
         def foo() -> dynamic:
             return [1, 2, 3][:1:-1]
         """
+        expected = """
+        def foo() -> dynamic:
+            return `__spy__::list_literal`(1, 2, 3)[:1:-1]
+        """
         self.compile(src)
-        self.assert_dump(src)
+        self.assert_dump(expected)
 
     def test_unpack_assign(self):
         src = """
@@ -475,7 +483,7 @@ class TestSPyBackend(CompilerTest):
         """
         expected = """
         def foo() -> None:
-            x$0 = {10: 50, 60: 40}
+            x$0 = `__spy__::dict_literal`(10, 50, 60, 40)
         """
         self.compile(src)
         self.assert_dump(expected)

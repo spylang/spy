@@ -312,10 +312,12 @@ class TestDoppler:
         self.redshift(src)
         self.assert_dump("""
         def foo() -> dynamic:
+            arg0$0: i32 = 1
+            arg1$0: i32 = 12
             return \
 `list[i32]::_push`(\
 `list[i32]::_push`(\
-`list[i32]::new`(), 1), 12)
+`list[i32]::new`(), arg0$0), arg1$0)
         """)
 
     def test_pure_blue_call_folded(self):
