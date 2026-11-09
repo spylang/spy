@@ -143,39 +143,15 @@ class TestMetaFunc(CompilerTest):
         assert w_T is B.w_i32
         assert mod.get_x() == 1
 
-    def test_side_effects_of_dropped_MetaArgs(self):
-        src = """
-        from operator import OpSpec
-
-        var x: i32 = 0
-
-        def get_x() -> i32:
-            return x
-
-        def inc() -> i32:
-            global x
-            x = x + 1
-            return x
-
-        @blue.metafunc
-        def bar(m_x):
-            def impl() -> i32:
-                return 42
-            return OpSpec(impl, []) # NOTE: here we ignore m_x
-
-        def foo() -> i32:
-            return bar(inc())
-        """
-        mod = self.compile(src)
-        assert mod.get_x() == 0
-        assert mod.foo() == 42
-        assert mod.get_x() == 1
-
-    def test_dropped_MetaArg_evaluation_order(self):
+    def test_MetaArg_eval_order_red_result(self):
         src = """
         from operator import OpSpec
 
         var log: i32 = 0
+
+        def reset() -> None:
+            global log
+            log = 0
 
         def get_log() -> i32:
             return log
@@ -185,98 +161,75 @@ class TestMetaFunc(CompilerTest):
             log = log * 10 + k
             return k
 
+        # ------------
         @blue.metafunc
-        def bar(m_a, m_b, m_c):
+        def drop_all_args(m_a):
+            def impl() -> i32:
+                return 42
+            return OpSpec(impl, []) # NOTE: here we ignore m_a
+
+        def call_drop_all_args() -> i32:
+            return drop_all_args(step(1))
+
+        # ------------
+        @blue.metafunc
+        def drop_middle_arg(m_a, m_b, m_c):
             def impl(a: i32, c: i32) -> i32:
                 return a * 10 + c
             return OpSpec(impl, [m_a, m_c]) # NOTE: here we ignore m_b
 
-        def foo() -> i32:
-            return bar(step(1), step(2), step(3))
-        """
-        mod = self.compile(src)
-        assert mod.foo() == 13
-        assert mod.get_log() == 123
+        def call_drop_middle_arg() -> i32:
+            return drop_middle_arg(step(1), step(2), step(3))
 
-    def test_dropped_trailing_MetaArg_evaluation_order(self):
-        src = """
-        from operator import OpSpec
-
-        var log: i32 = 0
-
-        def get_log() -> i32:
-            return log
-
-        def step(k: i32) -> i32:
-            global log
-            log = log * 10 + k
-            return k
-
+        #-------------
         @blue.metafunc
-        def bar(m_a, m_b):
+        def drop_trailing_arg(m_a, m_b):
             def impl(a: i32) -> i32:
                 return a
             return OpSpec(impl, [m_a]) # NOTE: here we ignore m_b
 
-        def foo() -> i32:
-            return bar(step(1), step(2))
-        """
-        mod = self.compile(src)
-        assert mod.foo() == 1
-        assert mod.get_log() == 12
+        def call_drop_trailing_arg() -> i32:
+            return drop_trailing_arg(step(1), step(2))
 
-    def test_reordered_MetaArgs_evaluation_order(self):
-        src = """
-        from operator import OpSpec
-
-        var log: i32 = 0
-
-        def get_log() -> i32:
-            return log
-
-        def step(k: i32) -> i32:
-            global log
-            log = log * 10 + k
-            return k
-
+        #-------------
         @blue.metafunc
-        def bar(m_a, m_b):
+        def reorder_args(m_a, m_b):
             def impl(b: i32, a: i32) -> i32:
                 return b * 10 + a
             return OpSpec(impl, [m_b, m_a]) # NOTE: here we swap the args
 
-        def foo() -> i32:
-            return bar(step(1), step(2))
-        """
-        mod = self.compile(src)
-        assert mod.foo() == 21
-        assert mod.get_log() == 12
+        def call_reorder_args() -> i32:
+            return reorder_args(step(1), step(2))
 
-    def test_duplicated_MetaArg_evaluated_once(self):
-        src = """
-        from operator import OpSpec
-
-        var log: i32 = 0
-
-        def get_log() -> i32:
-            return log
-
-        def step(k: i32) -> i32:
-            global log
-            log = log * 10 + k
-            return k
-
+        #-------------
         @blue.metafunc
-        def bar(m_a):
+        def duplicate_args(m_a):
             def impl(a1: i32, a2: i32) -> i32:
                 return a1 * 10 + a2
             return OpSpec(impl, [m_a, m_a]) # NOTE: here we pass m_a twice
 
-        def foo() -> i32:
-            return bar(step(1))
+        def call_duplicate_args() -> i32:
+            return duplicate_args(step(1))
+
         """
         mod = self.compile(src)
-        assert mod.foo() == 11
+        assert mod.call_drop_all_args() == 42
+        assert mod.get_log() == 1
+
+        mod.reset()
+        assert mod.call_drop_middle_arg() == 13
+        assert mod.get_log() == 123
+
+        mod.reset()
+        assert mod.call_drop_trailing_arg() == 1
+        assert mod.get_log() == 12
+
+        mod.reset()
+        assert mod.call_reorder_args() == 21
+        assert mod.get_log() == 12
+
+        mod.reset()
+        assert mod.call_duplicate_args() == 11
         assert mod.get_log() == 1
 
     def test_loc_source(self):

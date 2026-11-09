@@ -683,7 +683,7 @@ class DopplerFrame(ASTFrame):
         # "simple", we can emit the call directly; "simple" means that it evaluates ALL
         # its red arguments in the right order.
         #
-        # See also test_metafunc.py::test_*_evaluation_order.
+        # See also test_metafunc.py::test_MetaArg_eval_order_red_result.
         if w_opimpl.is_simple:
             # simple case
             return self._shift_call(op, w_opimpl, orig_args)
