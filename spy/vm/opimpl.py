@@ -146,6 +146,25 @@ class W_OpImpl(W_Object):
     def is_pure(self) -> bool:
         return self.is_const() or self.w_func.is_pure()
 
+    def used_args(self) -> set[int]:
+        """
+        Return the indices of the input args which are actually used
+        """
+        if self.is_const():
+            return set()
+
+        def visit(spec: ArgSpec) -> set[int]:
+            if isinstance(spec, Arg):
+                return {spec.i}
+            elif isinstance(spec, Convert):
+                return visit(spec.expT) | visit(spec.gotT) | visit(spec.arg)
+            return set()
+
+        used: set[int] = set()
+        for spec in self.args:
+            used |= visit(spec)
+        return used
+
     def _execute(self, vm: "SPyVM", args_w: Sequence[W_Object]) -> W_Object:
         if self.is_const():
             return self.w_const

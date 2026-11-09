@@ -1002,14 +1002,26 @@ class SPyVM:
         #   - blue function -> blue
         w_functype = w_opimpl.w_functype
         color: Color
-        if w_opimpl.is_pure():
+        if w_opimpl.is_const():
+            color = "blue"
+        elif w_opimpl.is_pure():
             colors = [wam.color for wam in args_wam]
             color = maybe_blue(*colors)
         else:
             color = w_functype.color
 
-        if color == "red" and redshifting:
+        args_w: list[W_Object]
+        if redshifting and color == "red":
             w_res = None
+        elif redshifting and color == "blue":
+            # <ai>The result is blue, so we execute the OpImpl now. Red args are abstract
+            # and have no w_val: this is fine if the OpImpl drops them, because they are
+            # evaluated by the caller.</ai>
+            used = w_opimpl.used_args()
+            args_w = [
+                wam.w_val if i in used else B.w_None for i, wam in enumerate(args_wam)
+            ]
+            w_res = w_opimpl._execute(self, args_w)
         else:
             args_w = [wam.w_val for wam in args_wam]
             w_res = w_opimpl._execute(self, args_w)

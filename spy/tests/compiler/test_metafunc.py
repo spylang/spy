@@ -123,9 +123,6 @@ class TestMetaFunc(CompilerTest):
 
     @no_C
     def test_STATIC_TYPE_side_effects(self):
-        if self.backend == "doppler":
-            pytest.skip("fixme: side effects of arguments which are redshifted away")
-
         src = """
         var x: i32 = 0
 
@@ -302,3 +299,126 @@ class TestMetaFunc(CompilerTest):
         result = mod.foo()
         assert result[0] == "x + 2"
         assert result[1].endswith("test.spy")
+
+    def test_blue_opimpl_with_red_args(self):
+        src = """
+        from operator import OpSpec
+        from __spy__ import COLOR
+
+        @blue.metafunc
+        def foo(m_x):
+            @blue
+            def impl() -> int:
+                return 3
+            return OpSpec(impl, [])
+
+        var calls: i32 = 0
+
+        def bump() -> i32:
+            global calls
+            calls = calls + 1
+            return calls
+
+        def call_foo(x: int) -> tuple[int, str, str]:
+            n = foo(x)
+            return n, COLOR(x), COLOR(n)
+
+        def call_foo_with_side_effects() -> tuple[int, str]:
+            n = foo(bump())
+            return n, COLOR(n)
+        """
+        mod = self.compile(src)
+        n, color_x, color_n = mod.call_foo(42)
+        assert n == 3
+        assert color_x == "red"
+        assert color_n == "blue"
+
+        assert mod.calls == 0
+        n, color_n = mod.call_foo_with_side_effects()
+        assert n == 3
+        assert color_n == "blue"
+        # the arguments of a blue opimpl must still be evaluated
+        assert mod.calls == 1
+
+    def test_opspec_const_with_red_args_is_always_blue(self):
+        src = """
+        from operator import OpSpec
+        from __spy__ import COLOR
+
+        @blue.metafunc
+        def foo(m_x):
+            return OpSpec.const(3)
+
+        var calls: i32 = 0
+
+        def bump() -> i32:
+            global calls
+            calls = calls + 1
+            return calls
+
+        def call_foo(x: int) -> tuple[int, str, str]:
+            n = foo(x)
+            return n, COLOR(x), COLOR(n)
+
+        def call_foo_with_side_effects() -> tuple[int, str]:
+            n = foo(bump())
+            return n, COLOR(n)
+        """
+        mod = self.compile(src)
+        n, color_x, color_n = mod.call_foo(42)
+        assert n == 3
+        assert color_x == "red"
+        assert color_n == "blue"
+
+        assert mod.calls == 0
+        n, color_n = mod.call_foo_with_side_effects()
+        assert n == 3
+        assert color_n == "blue"
+        # the arguments of a const OpSpec must still be evaluated
+        assert mod.calls == 1
+
+    def test_blue_and_keeps_side_effects_of_operands(self):
+        src = """
+        from operator import OpSpec
+
+        @blue.metafunc
+        def foo(m_x):
+            return OpSpec.const(True)
+
+        var calls: i32 = 0
+
+        def bump() -> i32:
+            global calls
+            calls = calls + 1
+            return calls
+
+        def call_and() -> bool:
+            return foo(bump()) and True
+        """
+        mod = self.compile(src)
+        assert mod.calls == 0
+        assert mod.call_and() is True
+        assert mod.calls == 1
+
+    def test_blue_or_keeps_side_effects_of_operands(self):
+        src = """
+        from operator import OpSpec
+
+        @blue.metafunc
+        def foo(m_x):
+            return OpSpec.const(False)
+
+        var calls: i32 = 0
+
+        def bump() -> i32:
+            global calls
+            calls = calls + 1
+            return calls
+
+        def call_or() -> bool:
+            return foo(bump()) or False
+        """
+        mod = self.compile(src)
+        assert mod.calls == 0
+        assert mod.call_or() is False
+        assert mod.calls == 1
