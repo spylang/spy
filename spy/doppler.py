@@ -582,6 +582,10 @@ class DopplerFrame(ASTFrame):
                     w_typeconv_opimpl,
                     [expT, gotT, new_expr],
                 )
+                # The conversion is a residual call, so the result is red even if the
+                # original value is blue. See
+                # e.g. test_converted_blue_empty_list_can_mutate
+                wam = W_MetaArg(self.vm, "red", lv.w_T, None, wam.loc)
 
         self.shifted_expr[expr] = new_expr
         # record the color of the ORIGINAL expression
@@ -806,42 +810,6 @@ class DopplerFrame(ASTFrame):
         v = self.shifted_expr[unop.value]
         return self.shift_opimpl(unop, w_opimpl, [v])
 
-    def shift_expr_List(self, lst: ast.List, wam: W_MetaArg) -> ast.Expr:
-        # this logic is equivalent to what we have in eval_expr_List. Instead of
-        # actually doing calls, we create an AST instead.
-        if len(lst.items) == 0:
-            assert wam.w_static_T is SPY.w_EmptyListType
-            return make_const(self.vm, lst.loc, SPY.w_empty_list)
-
-        w_T = wam.w_static_T
-        # `new` is defined in the list[T] generic scope
-        fqn_new = w_T.fqn.parent().join("new")
-        w_new = self.vm.lookup_global(fqn_new)
-        node_new = make_const(self.vm, lst.loc, w_new)
-        #
-        fqn_push = w_T.fqn.join("_push")
-        w_push = self.vm.lookup_global(fqn_push)
-        node_push = make_const(self.vm, lst.loc, w_push)
-
-        # instantiate an empty list
-        newlst: ast.Expr = ast.Call(
-            loc=lst.loc,
-            func=node_new,
-            args=[],
-            w_T=w_T,
-        )
-
-        # add a call to push() for each item
-        for item in lst.items:
-            shifted_item = self.shifted_expr[item]
-            newlst = ast.Call(
-                item.loc,
-                func=node_push,
-                args=[newlst, shifted_item],
-                w_T=w_T,
-            )
-        return newlst
-
     def shift_expr_Tuple(self, tup: ast.Tuple, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[tup]
         v_T = make_const(self.vm, tup.loc, wam.w_static_T)
@@ -855,41 +823,6 @@ class DopplerFrame(ASTFrame):
         v_stop = self.shifted_expr[op.stop]
         v_step = self.shifted_expr[op.step]
         return self.shift_opimpl(op, w_opimpl, [v_T, v_start, v_stop, v_step])
-
-    def shift_expr_Dict(self, dict: ast.Dict, wam: W_MetaArg) -> ast.Expr:
-        if len(dict.items) == 0:
-            assert wam.w_static_T is SPY.w_EmptyDictType
-            return make_const(self.vm, dict.loc, SPY.w_empty_dict)
-
-        # instantiate an empty dict
-        w_T = wam.w_static_T
-        fqn_new = w_T.fqn.join("__new__")
-        w_new = self.vm.lookup_global(fqn_new)
-        node_new = make_const(self.vm, dict.loc, w_new)
-        #
-        fqn_push = w_T.fqn.join("_push")
-        w_push = self.vm.lookup_global(fqn_push)
-        node_push = make_const(self.vm, dict.loc, w_push)
-
-        newdict: ast.Expr = ast.Call(
-            loc=dict.loc,
-            func=node_new,
-            args=[],
-            w_T=w_T,
-        )
-
-        # add a call to push() for each item (key, value)
-        for pair in dict.items:
-            shifted_key = self.shifted_expr[pair.key]
-            shifted_val = self.shifted_expr[pair.value]
-            newdict = ast.Call(
-                loc=pair.loc,
-                func=node_push,
-                args=[newdict, shifted_key, shifted_val],
-                w_T=w_T,
-            )
-
-        return newdict
 
     def shift_expr_GetItem(self, op: ast.GetItem, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]

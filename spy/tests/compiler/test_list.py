@@ -135,6 +135,22 @@ class TestList(CompilerTest):
         res = mod.foo()
         assert res == [1, 2, 3]
 
+    def test_converted_blue_empty_list_can_mutate(self):
+        src = """
+        @blue
+        def empty():
+            return []
+
+        def foo() -> list[i32]:
+            l: list[i32] = empty()
+            l.append(1)
+            l.append(2)
+            return l
+        """
+        mod = self.compile(src)
+        res = mod.foo()
+        assert res == [1, 2]
+
     def test_bare_empty_list_cannot_mutate(self):
         src = """
         def foo() -> list[i32]:
