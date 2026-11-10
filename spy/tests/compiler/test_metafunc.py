@@ -253,82 +253,87 @@ class TestMetaFunc(CompilerTest):
         assert result[0] == "x + 2"
         assert result[1].endswith("test.spy")
 
-    def test_blue_opimpl_with_red_args(self):
+    def test_MetaArg_eval_order_blue_result(self):
         src = """
         from operator import OpSpec
         from __spy__ import COLOR
 
+        var log: i32 = 0
+
+        def reset() -> None:
+            global log
+            log = 0
+
+        def get_log() -> i32:
+            return log
+
+        def step(k: i32) -> i32:
+            global log
+            log = log * 10 + k
+            return k
+
+        # ------------
         @blue.metafunc
-        def foo(m_x):
+        def drop_all_args(m_a, m_b, m_c):
             @blue
-            def impl() -> int:
-                return 3
-            return OpSpec(impl, [])
+            def impl() -> i32:
+                return 42
+            return OpSpec(impl, []) # NOTE: here we ignore all the args
 
-        var calls: i32 = 0
+        def call_drop_all_args() -> i32:
+            return drop_all_args(step(1), step(2), step(3))
 
-        def bump() -> i32:
-            global calls
-            calls = calls + 1
-            return calls
-
-        def call_foo(x: int) -> tuple[int, str, str]:
-            n = foo(x)
-            return n, COLOR(x), COLOR(n)
-
-        def call_foo_with_side_effects() -> tuple[int, str]:
-            n = foo(bump())
-            return n, COLOR(n)
-        """
-        mod = self.compile(src)
-        n, color_x, color_n = mod.call_foo(42)
-        assert n == 3
-        assert color_x == "red"
-        assert color_n == "blue"
-
-        assert mod.calls == 0
-        n, color_n = mod.call_foo_with_side_effects()
-        assert n == 3
-        assert color_n == "blue"
-        # the arguments of a blue opimpl must still be evaluated
-        assert mod.calls == 1
-
-    def test_opspec_const_with_red_args_is_always_blue(self):
-        src = """
-        from operator import OpSpec
-        from __spy__ import COLOR
-
+        # ------------
         @blue.metafunc
-        def foo(m_x):
-            return OpSpec.const(3)
+        def const_result(m_a, m_b):
+            return OpSpec.const(42)
 
-        var calls: i32 = 0
+        def call_const_result() -> i32:
+            return const_result(step(1), step(2))
 
-        def bump() -> i32:
-            global calls
-            calls = calls + 1
-            return calls
+        # ------------
+        @blue.metafunc
+        def use_blue_arg(m_a, m_b):
+            @blue
+            def impl(b: i32) -> i32:
+                return b
+            return OpSpec(impl, [m_b]) # NOTE: m_a is red and ignored, m_b is blue
 
-        def call_foo(x: int) -> tuple[int, str, str]:
-            n = foo(x)
-            return n, COLOR(x), COLOR(n)
+        def call_use_blue_arg() -> i32:
+            return use_blue_arg(step(1), 5)
 
-        def call_foo_with_side_effects() -> tuple[int, str]:
-            n = foo(bump())
-            return n, COLOR(n)
+        # ------------
+        def combine(a: i32, b: i32) -> i32:
+            return a * 10 + b
+
+        def call_nested() -> i32:
+            return combine(drop_all_args(step(1), step(2), step(3)), step(4))
+
+        # ------------
+        def call_colors(x: i32) -> tuple[str, str, str]:
+            n = drop_all_args(x, x, x)
+            m = const_result(x, x)
+            return COLOR(x), COLOR(n), COLOR(m)
         """
         mod = self.compile(src)
-        n, color_x, color_n = mod.call_foo(42)
-        assert n == 3
-        assert color_x == "red"
-        assert color_n == "blue"
+        assert mod.call_drop_all_args() == 42
+        assert mod.get_log() == 123
 
-        assert mod.calls == 0
-        n, color_n = mod.call_foo_with_side_effects()
-        assert n == 3
-        assert color_n == "blue"
-        # the arguments of a const OpSpec must still be evaluated
-        assert mod.calls == 1
+        mod.reset()
+        assert mod.call_const_result() == 42
+        assert mod.get_log() == 12
+
+        mod.reset()
+        assert mod.call_use_blue_arg() == 5
+        assert mod.get_log() == 1
+
+        mod.reset()
+        assert mod.call_nested() == 424
+        assert mod.get_log() == 1234
+
+        mod.reset()
+        assert mod.call_colors(7) == ("red", "blue", "blue")
+        assert mod.get_log() == 0
 
     def test_blue_and_keeps_side_effects_of_operands(self):
         src = """

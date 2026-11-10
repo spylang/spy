@@ -7,6 +7,7 @@ from spy import ast
 from spy.analyze.sym import Color, Scope, Symbol
 from spy.errors import SPyError
 from spy.fqn import FQN
+from spy.linearize import IMMEDIATE_EXPRS
 from spy.location import Loc
 from spy.util import magic_dispatch
 from spy.vm.astframe import ASTFrame
@@ -31,12 +32,7 @@ ErrorMode = Literal["eager", "lazy", "warn"]
 
 # Nodes that we can safely remove from the redshifted ASTs because they are guaranteed
 # not to have any side effect, and they don't have any children.
-TRIVIALLY_SIDE_EFFECT_FREE_EXPRS = (
-    ast.Const,
-    ast.Literal,
-    ast.StrLiteral,
-    ast.BytesLiteral,
-    ast.FQNConst,
+TRIVIALLY_SIDE_EFFECT_FREE_EXPRS = IMMEDIATE_EXPRS + (
     ast.NameImportRef,
     ast.NameLocalDirect,
     ast.NameLocalCell,
@@ -656,6 +652,28 @@ class DopplerFrame(ASTFrame):
         assert const.w_T is not None
         return ast.BlockExpr(op.loc, stmts, const, w_T=const.w_T)
 
+    def is_simple_opimpl(self, w_opimpl: W_OpImpl, orig_args: list[ast.Expr]) -> bool:
+        """
+        An OpImpl is "simple" if it uses all the non-constant args exactly once, and
+        in the original order.  If it is not simple, the caller must spill the args into
+        temporaries to preserve the evaluation order.
+
+        Note that we need to check about immediate/constant nodes, not just blue
+        values. A blue value MIGHT have a side effect, e.g. if it has been shifted into
+        a BlockExpr which evaluates some red args (see shift_blue_op).
+
+        Note that we exempt only constants, NOT the other TRIVIALLY_SIDE_EFFECT_FREE
+        exprs: reading a name has no side effects, but its *value* is order-sensitive,
+        because a sibling arg might assign it with a walrus expression. E.g.:
+            swap(x, (x := 10))
+        must read `x` before executing the walrus.
+        """
+        non_const = [
+            i for i, arg in enumerate(orig_args) if not isinstance(arg, IMMEDIATE_EXPRS)
+        ]
+        used = [i for i in w_opimpl.used_args() if i in non_const]
+        return used == non_const
+
     def shift_opimpl(
         self,
         op: ast.Node,
@@ -680,11 +698,11 @@ class DopplerFrame(ASTFrame):
         # The general solution is to spill all the arguments into temp variables, to be
         # used for the actual call. However, in order to make the output of the SPy
         # backend nicer in the common case, we add a special case: if an OpImpl is
-        # "simple", we can emit the call directly; "simple" means that it evaluates ALL
-        # its red arguments in the right order.
+        # "simple", we can emit the call directly.
         #
-        # See also test_metafunc.py::test_MetaArg_eval_order_red_result.
-        if w_opimpl.is_simple:
+        # See also test_metafunc.py::test_MetaArg_eval_order_red_result and
+        # test_metafunc.py::test_MetaArg_eval_order_blue_result
+        if self.is_simple_opimpl(w_opimpl, orig_args):
             # simple case
             return self._shift_call(op, w_opimpl, orig_args)
 
