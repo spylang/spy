@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = "==3.12.*"
 
 [[package]]
@@ -1167,7 +1167,6 @@ dependencies = [
     { name = "click" },
     { name = "fixedint" },
     { name = "ninja", marker = "sys_platform != 'emscripten'" },
-    { name = "pexpect", marker = "sys_platform != 'emscripten'" },
     { name = "py" },
     { name = "typer" },
     { name = "wasmtime", marker = "sys_platform != 'emscripten'" },
@@ -1189,7 +1188,6 @@ dev = [
     { name = "rodney" },
     { name = "ruff" },
     { name = "setuptools" },
-    { name = "types-pexpect", marker = "sys_platform != 'emscripten'" },
 ]
 docs = [
     { name = "mike" },
@@ -1208,7 +1206,6 @@ requires-dist = [
     { name = "click", specifier = "==8.1.8" },
     { name = "fixedint", specifier = "==0.2.0" },
     { name = "ninja", marker = "sys_platform != 'emscripten'", specifier = "==1.13.2" },
-    { name = "pexpect", marker = "sys_platform != 'emscripten'", specifier = "==4.9.0" },
     { name = "py", specifier = "==1.11.0" },
     { name = "typer", specifier = "==0.15.1" },
     { name = "wasmtime", marker = "sys_platform != 'emscripten'", specifier = "==48.0.0" },
@@ -1230,7 +1227,6 @@ dev = [
     { name = "rodney", specifier = ">=0.4.0" },
     { name = "ruff", specifier = "~=0.14.0" },
     { name = "setuptools" },
-    { name = "types-pexpect", marker = "sys_platform != 'emscripten'", specifier = "==4.9.0.20260518" },
 ]
 docs = [
     { name = "mike", specifier = "==2.1.3" },
@@ -1296,15 +1292,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/cb/ce/dca7b219718afd37a0068f4f2530a727c2b74a8b6e8e0c0080a4c0de4fcd/typer-0.15.1.tar.gz", hash = "sha256:a0588c0a7fa68a1978a069818657778f86abe6ff5ea6abf472f940a08bfe4f0a", size = 99789, upload-time = "2024-12-04T17:44:58.956Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d0/cc/0a838ba5ca64dc832aa43f727bd586309846b0ffb2ce52422543e6075e8a/typer-0.15.1-py3-none-any.whl", hash = "sha256:7994fb7b8155b64d3402518560648446072864beefd44aa2dc36972a5972e847", size = 44908, upload-time = "2024-12-04T17:44:57.291Z" },
-]
-
-[[package]]
-name = "types-pexpect"
-version = "4.9.0.20260518"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ee/84/c52c4841aeaf1d56551f14335ca99a40e7e04b4f8358b402115910828e8e/types_pexpect-4.9.0.20260518.tar.gz", hash = "sha256:38c373798209428dd90988b6fd4b8839c68c7e3ed79215f1ab11fa42d7ff9427", size = 13568, upload-time = "2026-05-18T06:03:35.378Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/01/11/17b1da645d5f2a12e4db83ae38dbb732fbac96fb3bd7416635c844f7d24e/types_pexpect-4.9.0.20260518-py3-none-any.whl", hash = "sha256:bf2422e825e4efe29cc4a1b7bdc3c375ae97d9c3046ce6b2018c100fb049c262", size = 17087, upload-time = "2026-05-18T06:03:34.14Z" },
 ]
 
 [[package]]

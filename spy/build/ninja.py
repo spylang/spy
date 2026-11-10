@@ -1,3 +1,4 @@
+import os
 import shlex
 from typing import Optional
 
@@ -142,6 +143,6 @@ class NinjaWriter:
     def build(self) -> py.path.local:
         assert self.out is not None
         cmdline = ["ninja", "-C", str(self.build_dir)]
-        # unbuffer run to get gcc to emit color codes
-        robust_run(cmdline, unbuffer=True)
+        env = {**os.environ, "CLICOLOR_FORCE": "1"}  # force ninja to emit colors
+        robust_run(cmdline, env=env)
         return self.build_dir.join(self.out)
