@@ -6,7 +6,8 @@
 [`examples/out-of-tree/spyvm_cui`](examples/out-of-tree/spyvm_cui) wraps the
 [CUI](https://github.com/yappologistic/CUI) native immediate-mode UI library as
 an out-of-tree builtin VM module. It opens the window below and works both
-interpreted and compiled:
+interpreted and compiled. The program is
+[`counter.spy`](examples/out-of-tree/spyvm_cui/demo/counter.spy).
 
 ![The SPy + CUI demo](assets/cui-demo.png)
 
