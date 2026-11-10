@@ -169,6 +169,46 @@ pytest -n auto -v -x
    Hello world!
    ```
 
+## Native GUI demo: CUI bindings
+
+<ai>
+> **Vibe-coded spike.** This demo and its bindings were written by an AI and have
+> not been reviewed by a human. Treat them as a demo, not as production code.
+
+[`examples/out-of-tree/spyvm_cui`](examples/out-of-tree/spyvm_cui) wraps the
+[CUI](https://github.com/yappologistic/CUI) native immediate-mode UI library as
+an out-of-tree builtin VM module. It opens the window below and works both
+interpreted and compiled.
+</ai>
+
+![The SPy + CUI demo](assets/cui-demo.png)
+
+<ai>
+Build the binding first (it fetches CUI on first use), then run the demo
+interpreted, with the library loaded through `ctypes`:
+</ai>
+
+```
+make -C examples/out-of-tree/spyvm_cui
+cd examples/out-of-tree/spyvm_cui/demo
+spy counter.spy
+```
+
+<ai>
+or compile it with the C backend:
+</ai>
+
+```
+spy build counter.spy
+./build/counter
+```
+
+<ai>
+It needs the X11 development headers (`libx11-dev` on Debian/Ubuntu). Only the
+native target is supported: CUI has no WASI build, so the interpreter uses
+`ctypes` instead of a WASM bundle.
+</ai>
+
 ## Inspecting compilation pipeline
 
 Moreover, there are more flags to stop the compilation pipeline and inspect
