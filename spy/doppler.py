@@ -41,6 +41,23 @@ TRIVIALLY_SIDE_EFFECT_FREE_EXPRS = IMMEDIATE_EXPRS + (
 )
 
 
+def is_immediate(expr: ast.Expr) -> bool:
+    """
+    <ai>Return True if `expr` is a constant. make_const turns a blue tuple into an
+    ast.Tuple of constants, so we must handle it: spilling it would create a temporary
+    of a type which might not exist at runtime (e.g. interp_tuple).</ai>
+    """
+    if isinstance(expr, ast.Tuple):
+        return all(is_immediate(item) for item in expr.items)
+    return isinstance(expr, IMMEDIATE_EXPRS)
+
+
+def is_trivially_side_effect_free(expr: ast.Expr) -> bool:
+    if isinstance(expr, ast.Tuple):
+        return all(is_trivially_side_effect_free(item) for item in expr.items)
+    return isinstance(expr, TRIVIALLY_SIDE_EFFECT_FREE_EXPRS)
+
+
 def redshift(vm: "SPyVM", w_func: W_ASTFunc, error_mode: ErrorMode) -> W_ASTFunc:
     dop = DopplerFrame(vm, w_func, error_mode)
     return dop.redshift()
@@ -643,9 +660,7 @@ class DopplerFrame(ASTFrame):
         evaluates the children and then return the blue const.
         """
         const = make_const(self.vm, op.loc, wam.w_val)  # the intended result
-        children = [
-            c for c in children if not isinstance(c, TRIVIALLY_SIDE_EFFECT_FREE_EXPRS)
-        ]
+        children = [c for c in children if not is_trivially_side_effect_free(c)]
         stmts, _ = self._spill_args(op, children)
         if not stmts:
             return const
@@ -668,9 +683,7 @@ class DopplerFrame(ASTFrame):
             swap(x, (x := 10))
         must read `x` before executing the walrus.
         """
-        non_const = [
-            i for i, arg in enumerate(orig_args) if not isinstance(arg, IMMEDIATE_EXPRS)
-        ]
+        non_const = [i for i, arg in enumerate(orig_args) if not is_immediate(arg)]
         used = [i for i in w_opimpl.used_args() if i in non_const]
         return used == non_const
 
@@ -741,7 +754,7 @@ class DopplerFrame(ASTFrame):
         stmts: list[ast.Stmt] = []
         new_args: list[ast.Expr] = []
         for arg in args:
-            if unmake_const_maybe(self.vm, arg) is not None:
+            if is_immediate(arg):
                 new_args.append(arg)
                 continue
             assert arg.w_T is not None
