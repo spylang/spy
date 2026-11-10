@@ -10,6 +10,33 @@ CUI needed by `demo/counter.spy`.
 
 [cui]: https://github.com/yappologistic/CUI
 
+## Demo
+
+> **Vibe-coded spike.** The code in this directory was written by an AI and has
+> not been reviewed by a human. Treat it as a demo, not as production code.
+
+![The SPy + CUI demo](counter.png)
+
+From `examples/out-of-tree/spyvm_cui/demo`. Build the binding first (see below),
+then run it interpreted, with CUI loaded through `ctypes`:
+
+```
+spy counter.spy
+```
+
+or compile it with the C backend:
+
+```
+spy build counter.spy
+./build/counter
+```
+
+Any CUI app can save a screenshot and quit, which is useful for tests:
+
+```
+CUI_SCREENSHOT=/tmp/shot.png CUI_SCREENSHOT_FRAMES=8 ./build/counter
+```
+
 ## How it works
 
 CUI is an immediate-mode library: every frame the program calls components, which
@@ -61,26 +88,6 @@ make -C examples/out-of-tree/spyvm_cui interp   # only the ctypes .so
 ```
 
 This needs CMake's dependencies for the X11 backend: `libx11-dev` on Debian/Ubuntu.
-
-## Run
-
-<ai>
-From `examples/out-of-tree/spyvm_cui/demo`. `spy.toml` loads the module.
-</ai>
-
-```
-spy counter.spy                 # interpreted, through ctypes
-spy build counter.spy           # native executable
-./build/counter
-```
-
-<ai>
-Any CUI app can save a screenshot and quit, which is useful for tests:
-</ai>
-
-```
-CUI_SCREENSHOT=/tmp/shot.png CUI_SCREENSHOT_FRAMES=8 ./build/counter
-```
 
 ## Not done
 
