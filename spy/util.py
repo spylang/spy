@@ -10,7 +10,16 @@ import tempfile
 import typing
 from collections import defaultdict
 from pathlib import Path
-from typing import Any, Callable, Generic, Iterator, Literal, Sequence, TypeVar
+from typing import (
+    Any,
+    Callable,
+    Generic,
+    Iterator,
+    Literal,
+    Optional,
+    Sequence,
+    TypeVar,
+)
 
 import py.path
 
@@ -143,50 +152,17 @@ def shortrepr(s: str, n: int) -> str:
     return repr(s)
 
 
-def unbuffer_run(cmdline_s: Sequence[str]) -> subprocess.CompletedProcess:
-    """
-    Simulate the behavior of the unbuffer command from the expect package.
-
-    Like unbuffer, this assumes the command only outputs to stdout.
-    """
-    import pexpect
-
-    try:
-        cmd = cmdline_s[0]
-        args = list(cmdline_s[1:])
-        child = pexpect.spawn(command=cmd, args=args)
-        child.expect(pexpect.EOF, timeout=60)
-        child.wait()  # avoid a race condition on child.exitstatus
-
-        # child.exitstatus is never None if child.wait() finished
-        assert child.exitstatus is not None
-        returncode = child.exitstatus
-
-        return subprocess.CompletedProcess(
-            args=cmdline_s, stdout=child.before, stderr="", returncode=returncode
-        )
-    except pexpect.exceptions.EOF:
-        return subprocess.CompletedProcess(
-            args=cmdline_s, stdout=child.before, stderr="", returncode=returncode
-        )
-
-
 def robust_run(
-    cmdline: Sequence[str | py.path.local], unbuffer: bool = False
+    cmdline: Sequence[str | py.path.local],
+    env: Optional[dict[str, str]] = None,
 ) -> subprocess.CompletedProcess:
     """
     Similar to subprocess.run, but raise an Exception with the content of
     stdout+stderr in case of failure.
-
-    If unbuffer is True, the command is run unbuffered using pexpect.
     """
     cmdline_s = [str(x) for x in cmdline]
-    if unbuffer:
-        # Note that unbuffer doesn't read from stdin by default
-        proc = unbuffer_run(cmdline_s)
-    else:
-        # Use capture_output=True to capture stdout and stderr separately
-        proc = subprocess.run(cmdline_s, capture_output=True)
+    # Use capture_output=True to capture stdout and stderr separately
+    proc = subprocess.run(cmdline_s, capture_output=True, env=env)
 
     if proc.returncode != 0:
         FORCE_COLORS = True

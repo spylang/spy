@@ -13,7 +13,6 @@ dependencies = [
     "ninja==1.13.2; sys_platform != 'emscripten'",
     "py==1.11.0",
     "typer==0.15.1",
-    "pexpect==4.9.0; sys_platform != 'emscripten'",
     "wasmtime==48.0.0; sys_platform != 'emscripten'",
     "ziglang==0.13.0; sys_platform != 'emscripten'",
 ]
@@ -25,7 +24,6 @@ dev = [
     "pytest-xdist==3.8.0",
     "ruff~=0.14.0",
     "mypy==1.15.0",
-    "types-pexpect==4.9.0.20260518; sys_platform != 'emscripten'",
     # the following are needed for "tests/compiler/test_cffi.py"
     "cffi",
     "setuptools",
@@ -87,10 +85,6 @@ testpaths = ["spy"]
 addopts = "--dist-dir=pyodide/node_modules/pyodide"
 asyncio_mode = "strict"
 asyncio_default_fixture_loop_scope = "function"
-# needed to ignore warnings caused by using pexpect to run ninja
-filterwarnings = [
-    'ignore:.*use of forkpty.*may lead to deadlocks:DeprecationWarning',
-]
 
 markers = [
     # compiler_backend
