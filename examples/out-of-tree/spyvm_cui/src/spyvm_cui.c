@@ -34,6 +34,7 @@ typedef struct {
 typedef struct {
     char key[KEYMAX];
     char buf[INPUT_CAP];
+    char placeholder[INPUT_CAP];
 } InputSlot;
 
 static BSlot g_bools[MAX_SLOTS];
@@ -311,10 +312,11 @@ static int core_segmented(const char *id, const char *items, int index) {
 static const char *core_input(const char *id, const char *label,
                               const char *placeholder) {
     InputSlot *s = input_slot(id);
+    snprintf(s->placeholder, sizeof s->placeholder, "%s", placeholder);
     cui_input_opts o;
     memset(&o, 0, sizeof o);
     o.label = label;
-    o.placeholder = placeholder;
+    o.placeholder = s->placeholder;
     g_input_flags = cui_input_ex(g_ui, id, s->buf, INPUT_CAP, &o);
     return s->buf;
 }
