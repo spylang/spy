@@ -697,11 +697,6 @@ class DopplerFrame(ASTFrame):
         if wam is not None and wam.color == "blue":
             return self.shift_blue_op(op, wam, orig_args)
 
-        if w_opimpl.is_const():
-            # XXX can we reach this?
-            assert w_opimpl.w_const is not None
-            return make_const(self.vm, op.loc, w_opimpl.w_const)
-
         assert w_opimpl.is_func_call()
 
         # SPy guarantees that call arguments are always evaluated left-to-right. This is
