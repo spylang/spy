@@ -1,0 +1,105 @@
+import cui
+
+
+def main(argv: list[str]) -> i32:
+    if not cui.app_create("SPy + CUI", 680, 760):
+        print("cannot create the CUI window")
+        return 1
+
+    count = 0
+    enabled = True
+    volume = 40.0
+    items: list[str] = []
+    filter = 0
+    confirm_clear = False
+
+    while cui.app_frame():
+        cui.page_begin()
+        cui.column_max_begin(24.0, 16.0, 620.0)
+
+        cui.row_fill_begin(12.0)
+        cui.heading("SPy + CUI", 2)
+        cui.spacer()
+        cui.badge("native", 2)
+        cui.row_end()
+        cui.secondary("A native immediate-mode UI, drawn from SPy.")
+        cui.separator()
+
+        enabled = cui.switch("Enable the counter", enabled)
+        volume = cui.slider("Volume", volume, 0.0, 100.0)
+
+        cui.row_begin(8.0)
+        if cui.button("Count +1", True) and enabled:
+            count = count + 1
+        if cui.button("Reset", False):
+            count = 0
+        cui.text("Clicked " + str(count) + " times")
+        cui.row_end()
+        cui.progress(volume / 100.0)
+
+        cui.separator()
+
+        draft = cui.input("new-item", "New item", "Type here and press Enter")
+        submitted = cui.input_submitted()
+        add_clicked = cui.button("Add", True)
+        if submitted or add_clicked:
+            if len(draft) > 0:
+                items.append(draft)
+                cui.input_clear("new-item")
+                cui.toast("Added: " + draft)
+
+        cui.row_fill_begin(8.0)
+        cui.label("Items: " + str(len(items)))
+        cui.spacer()
+        filter = cui.segmented("filter", "All|Short|Long", filter)
+        if cui.button("Clear all", False):
+            confirm_clear = True
+        cui.row_end()
+
+        remove = -1
+        shown = 0
+        cui.scroll_begin("items")
+        i = 0
+        while i < len(items):
+            title = items[i]
+            visible = True
+            if filter == 1 and len(title) > 8:
+                visible = False
+            if filter == 2 and len(title) <= 8:
+                visible = False
+            if visible:
+                shown = shown + 1
+                cui.push_id_int(i)
+                cui.row_fill_begin(8.0)
+                cui.text(title)
+                cui.spacer()
+                if cui.icon_button("x"):
+                    remove = i
+                cui.row_end()
+                cui.pop_id()
+            i = i + 1
+        if shown == 0:
+            cui.secondary("Nothing here yet.")
+        cui.scroll_end()
+        if remove >= 0:
+            items.pop(remove)
+
+        cui.column_end()
+
+        confirm_clear = cui.dialog_begin(
+            "Clear all items?", "This cannot be undone.", confirm_clear
+        )
+        if confirm_clear:
+            cui.dialog_footer_begin()
+            if cui.button("Cancel", False):
+                confirm_clear = False
+            if cui.button("Clear", True):
+                items.clear()
+                confirm_clear = False
+                cui.toast("Cleared")
+            cui.dialog_footer_end()
+            cui.dialog_end()
+        cui.page_end()
+
+    cui.app_destroy()
+    return 0
