@@ -321,6 +321,19 @@ class DopplerFrame(ASTFrame):
     def shift_stmt_Continue(self, stmt: ast.Continue) -> list[ast.Stmt]:
         return [stmt]
 
+    def _shift_blue_assign(self, shifted_value: ast.Expr) -> list[ast.Stmt]:
+        """
+        Redshift away an assignment to a blue local, but preserve the side effects
+        of the value.
+        """
+        stmts: list[ast.Stmt] = []
+        if isinstance(shifted_value, ast.BlockExpr):
+            stmts += shifted_value.body
+            shifted_value = shifted_value.value
+        if not is_trivially_side_effect_free(shifted_value):
+            stmts.append(ast.StmtExpr(shifted_value.loc, shifted_value))
+        return stmts
+
     def shift_stmt_VarDef(self, vardef: ast.VarDef) -> list[ast.Stmt]:
         # the frame is indexed by slot_name
         varname = vardef.sym.slot_name
@@ -328,8 +341,9 @@ class DopplerFrame(ASTFrame):
         self.exec_stmt_VarDef(vardef)
 
         if self.locals[varname].color == "blue":
-            # redshift away assignments to blue locals
-            return []
+            if vardef.value is None:
+                return []
+            return self._shift_blue_assign(self.shifted_expr[vardef.value])
 
         newname = vardef.name.as_typed_node()
         if is_auto and vardef.value is None:
@@ -368,13 +382,7 @@ class DopplerFrame(ASTFrame):
         lv = self.locals[varname]
         self.record_node_color(assign, lv.color)
         if lv.color == "blue":
-            # blue local: redshift away the assign, but preserve any side effects from
-            # BlockExpr bodies
-            shifted_value = self.shifted_expr[expr.value]
-            if isinstance(shifted_value, ast.BlockExpr):
-                return shifted_value.body
-            else:
-                return []
+            return self._shift_blue_assign(self.shifted_expr[expr.value])
         else:
             new_expr = self.shifted_expr[expr]
             return [assign.replace(expr=new_expr)]

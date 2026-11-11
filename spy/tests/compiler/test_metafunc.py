@@ -335,7 +335,7 @@ class TestMetaFunc(CompilerTest):
         assert mod.call_colors(7) == ("red", "blue", "blue")
         assert mod.get_log() == 0
 
-    def test_blue_and_keeps_side_effects_of_operands(self):
+    def test_blue_AssingLocal_keeps_side_effects(self):
         src = """
         from operator import OpSpec
 
@@ -345,38 +345,89 @@ class TestMetaFunc(CompilerTest):
 
         var calls: i32 = 0
 
+        def reset() -> None:
+            global calls
+            calls = 0
+
+        def get_calls() -> i32:
+            return calls
+
         def bump() -> i32:
             global calls
             calls = calls + 1
             return calls
 
         def call_and() -> bool:
-            return foo(bump()) and True
+            y = foo(bump()) and True
+            return y
+
+        def call_or() -> bool:
+            y = foo(bump()) or False
+            return y
+
+        def call_walrus() -> bool:
+            y = (x := foo(bump()))
+            return y
         """
         mod = self.compile(src)
-        assert mod.calls == 0
         assert mod.call_and() is True
-        assert mod.calls == 1
+        assert mod.get_calls() == 1
 
-    def test_blue_or_keeps_side_effects_of_operands(self):
+        mod.reset()
+        assert mod.call_or() is True
+        assert mod.get_calls() == 1
+
+        mod.reset()
+        assert mod.call_walrus() is True
+        assert mod.get_calls() == 1
+
+    def test_blue_walrus_keeps_side_effects(self):
         src = """
         from operator import OpSpec
 
         @blue.metafunc
         def foo(m_x):
-            return OpSpec.const(False)
+            return OpSpec.const(True)
 
         var calls: i32 = 0
+
+        def get_calls() -> i32:
+            return calls
 
         def bump() -> i32:
             global calls
             calls = calls + 1
             return calls
 
-        def call_or() -> bool:
-            return foo(bump()) or False
+        def call_walrus() -> bool:
+            return (x := foo(bump()))
         """
         mod = self.compile(src)
-        assert mod.calls == 0
-        assert mod.call_or() is False
-        assert mod.calls == 1
+        assert mod.call_walrus() is True
+        assert mod.get_calls() == 1
+
+    def test_blue_VarDef_keeps_side_effects(self):
+        src = """
+        from operator import OpSpec
+
+        @blue.metafunc
+        def foo(m_x):
+            return OpSpec.const(True)
+
+        var calls: i32 = 0
+
+        def get_calls() -> i32:
+            return calls
+
+        def bump() -> i32:
+            global calls
+            calls = calls + 1
+            return calls
+
+        def call_vardef() -> bool:
+            const y = foo(bump())
+            return y
+        """
+        mod = self.compile(src)
+        assert mod.call_vardef() is True
+        assert mod.get_calls() == 1

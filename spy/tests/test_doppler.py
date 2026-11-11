@@ -165,6 +165,41 @@ class TestDoppler:
             return 42
         """)
 
+    def test_fold_blue_and_or_but_keep_side_effects(self):
+        self.redshift("""
+        from operator import OpSpec
+
+        @blue.metafunc
+        def foo(m_x):
+            return OpSpec.const(True)
+
+        def f() -> i32:
+            return 0
+
+        def call_and() -> bool:
+            y = foo(f()) and True
+            return y
+
+        def call_or() -> bool:
+            y = True or foo(f())
+            return y
+
+        """)
+        expected = """
+        def call_and() -> bool:
+            tmp$0: i32 = `test::f`()
+            tmp$1: bool = True
+            return True
+        """
+        self.assert_dump(expected, funcname="call_and")
+        expected = """
+        def call_or() -> bool:
+            tmp$0: i32 = `test::f`()
+            tmp$1: bool = True
+            return True
+        """
+        self.assert_dump(expected, funcname="call_or")
+
     def test_assignexpr_argument_is_not_folded(self):
         self.redshift("""
         def inc(x: i32) -> i32:
