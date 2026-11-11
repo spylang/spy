@@ -6,7 +6,7 @@ A generic dynamic array implementation similar to Python's list.
 
 from unsafe import gc_alloc, gc_ptr, ptr_copy, ptr_copy_slice, ptr_move_slice
 from operator import OpSpec, MetaArg
-from __spy__ import interp_list, EmptyListType
+from __spy__ import interp_list, EmptyListType, lookup_fqn
 
 from _slice import Slice, tuple3
 
@@ -364,6 +364,34 @@ def list(T):
                 return OpSpec(eq_impl, [m_self, m_other])
             else:
                 return OpSpec.NULL
+
+        @blue.metafunc
+        def __repr__(m_self):
+            # Don't require element repr support for lists which are never formatted.
+            def impl(self: _ListImpl) -> str:
+                # strbuilder imports _str, which depends on this module.
+                StrBuilder = lookup_fqn("strbuilder::StrBuilder")
+                sb = StrBuilder(32)
+                sb.append("[")
+                ll = self.__ll__
+                i = 0
+                while i < ll.length:
+                    if i > 0:
+                        sb.append(", ")
+                    item: T = ll.items[i]
+                    sb.append(repr(item))
+                    i += 1
+                sb.append("]")
+                return sb.build()
+
+            return OpSpec(impl)
+
+        @blue.metafunc
+        def __str__(m_self):
+            def impl(self: _ListImpl) -> str:
+                return repr(self)
+
+            return OpSpec(impl, [m_self])
 
         def __fastiter__(self) -> list_iterator:
             return list_iterator(self.__ll__, 0)
