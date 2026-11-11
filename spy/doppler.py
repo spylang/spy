@@ -711,8 +711,8 @@ class DopplerFrame(ASTFrame):
         # backend nicer in the common case, we add a special case: if an OpImpl is
         # "simple", we can emit the call directly.
         #
-        # See also test_metafunc.py::test_MetaArg_eval_order_red_result and
-        # test_metafunc.py::test_MetaArg_eval_order_blue_result
+        # See also test_doppler_side_effects.py::test_MetaArg_eval_order_red_result and
+        # test_doppler_side_effects.py::test_MetaArg_eval_order_blue_result
         if self.is_simple_opimpl(w_opimpl, orig_args):
             # simple case
             return self._shift_call(op, w_opimpl, orig_args)
