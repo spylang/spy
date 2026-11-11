@@ -1014,9 +1014,10 @@ class SPyVM:
         if redshifting and color == "red":
             w_res = None
         elif redshifting and color == "blue":
-            # <ai>The result is blue, so we execute the OpImpl now. Red args are abstract
-            # and have no w_val: this is fine if the OpImpl drops them, because they are
-            # evaluated by the caller.</ai>
+            # The result is blue, so we can execute the OpImpl now.  However, we must
+            # defend from the case in which one MetaArg is red AND it's ununed in the
+            # OpImpl: this is allowed, but in that case we cannot read it's w_val.
+            # See e.g. test_MetaArg_eval_order_blue_result.
             used = w_opimpl.used_args()
             args_w = [
                 wam.w_val if i in used else B.w_None for i, wam in enumerate(args_wam)

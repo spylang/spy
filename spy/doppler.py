@@ -42,11 +42,6 @@ TRIVIALLY_SIDE_EFFECT_FREE_EXPRS = IMMEDIATE_EXPRS + (
 
 
 def is_immediate(expr: ast.Expr) -> bool:
-    """
-    <ai>Return True if `expr` is a constant. make_const turns a blue tuple into an
-    ast.Tuple of constants, so we must handle it: spilling it would create a temporary
-    of a type which might not exist at runtime (e.g. interp_tuple).</ai>
-    """
     if isinstance(expr, ast.Tuple):
         return all(is_immediate(item) for item in expr.items)
     return isinstance(expr, IMMEDIATE_EXPRS)
