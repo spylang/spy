@@ -83,30 +83,22 @@ class W_OpImpl(W_Object):
     _args: Optional[list[ArgSpec]]
     _w_const: Optional[W_Object]
 
-    # An OpImpl is "simple" if it evaluates all its red args exactly once and in order,
-    # i.e. no arguments are dropped, duplicated or reordered. See the comment in
-    # DopplerFrame.shift_opimpl.
-    is_simple: bool
-
     def __init__(
         self,
         w_functype: W_FuncType,
         w_func: Optional[W_Func],
         args: Optional[list[ArgSpec]],
-        *,
-        is_simple: bool,
     ) -> None:
         self.w_functype = w_functype
         self._w_func = w_func
         self._args = args
         self._w_const = None
-        self.is_simple = is_simple
 
     @staticmethod
-    def const(vm: "SPyVM", w_const: W_Object, *, is_simple: bool) -> "W_OpImpl":
+    def const(vm: "SPyVM", w_const: W_Object) -> "W_OpImpl":
         w_T = vm.dynamic_type(w_const)
         w_functype = W_FuncType.new([], w_T, color="blue")
-        w_opimpl = W_OpImpl(w_functype, None, None, is_simple=is_simple)
+        w_opimpl = W_OpImpl(w_functype, None, None)
         w_opimpl._w_const = w_const
         return w_opimpl
 
@@ -145,6 +137,26 @@ class W_OpImpl(W_Object):
 
     def is_pure(self) -> bool:
         return self.is_const() or self.w_func.is_pure()
+
+    def used_args(self) -> list[int]:
+        """
+        Return the indices of the input args which are actually used, in evaluation
+        order. If an arg is used more than once, its index appears more than once.
+        """
+        if self.is_const():
+            return []
+
+        def visit(spec: ArgSpec) -> list[int]:
+            if isinstance(spec, Arg):
+                return [spec.i]
+            elif isinstance(spec, Convert):
+                return visit(spec.expT) + visit(spec.gotT) + visit(spec.arg)
+            return []
+
+        used: list[int] = []
+        for spec in self.args:
+            used += visit(spec)
+        return used
 
     def _execute(self, vm: "SPyVM", args_w: Sequence[W_Object]) -> W_Object:
         if self.is_const():

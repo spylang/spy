@@ -1002,14 +1002,27 @@ class SPyVM:
         #   - blue function -> blue
         w_functype = w_opimpl.w_functype
         color: Color
-        if w_opimpl.is_pure():
+        if w_opimpl.is_const():
+            color = "blue"
+        elif w_opimpl.is_pure():
             colors = [wam.color for wam in args_wam]
             color = maybe_blue(*colors)
         else:
             color = w_functype.color
 
-        if color == "red" and redshifting:
+        args_w: list[W_Object]
+        if redshifting and color == "red":
             w_res = None
+        elif redshifting and color == "blue":
+            # The result is blue, so we can execute the OpImpl now.  However, we must
+            # defend from the case in which one MetaArg is red AND it's ununed in the
+            # OpImpl: this is allowed, but in that case we cannot read it's w_val.
+            # See e.g. test_MetaArg_eval_order_blue_result.
+            used = w_opimpl.used_args()
+            args_w = [
+                wam.w_val if i in used else B.w_None for i, wam in enumerate(args_wam)
+            ]
+            w_res = w_opimpl._execute(self, args_w)
         else:
             args_w = [wam.w_val for wam in args_wam]
             w_res = w_opimpl._execute(self, args_w)

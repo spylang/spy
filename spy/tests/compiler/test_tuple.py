@@ -92,6 +92,17 @@ class TestTuple(CompilerTest):
         tup = mod.mixed_type()
         assert tup == (1, 2.5, True, "hello")
 
+    def test_len_of_red_tuple_is_blue(self):
+        src = """
+        from __spy__ import COLOR
+
+        def color_of_tup(x: i32, y: i32) -> str:
+            tup = (x, y)
+            return COLOR(len(tup))
+        """
+        mod = self.compile(src)
+        assert mod.color_of_tup(4, 5) == "blue"
+
     def test_unpacking_wrong_number(self):
         src = """
         def make_tuple() -> tuple[int, int]:

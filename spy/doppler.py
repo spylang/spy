@@ -7,6 +7,7 @@ from spy import ast
 from spy.analyze.sym import Color, Scope, Symbol
 from spy.errors import SPyError
 from spy.fqn import FQN
+from spy.linearize import IMMEDIATE_EXPRS
 from spy.location import Loc
 from spy.util import magic_dispatch
 from spy.vm.astframe import ASTFrame
@@ -28,6 +29,28 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 ErrorMode = Literal["eager", "lazy", "warn"]
+
+# Nodes that we can safely remove from the redshifted ASTs because they are guaranteed
+# not to have any side effect, and they don't have any children.
+TRIVIALLY_SIDE_EFFECT_FREE_EXPRS = IMMEDIATE_EXPRS + (
+    ast.NameImportRef,
+    ast.NameLocalDirect,
+    ast.NameLocalCell,
+    ast.NameOuterDirect,
+    ast.NameOuterCell,
+)
+
+
+def is_immediate(expr: ast.Expr) -> bool:
+    if isinstance(expr, ast.Tuple):
+        return all(is_immediate(item) for item in expr.items)
+    return isinstance(expr, IMMEDIATE_EXPRS)
+
+
+def is_trivially_side_effect_free(expr: ast.Expr) -> bool:
+    if isinstance(expr, ast.Tuple):
+        return all(is_trivially_side_effect_free(item) for item in expr.items)
+    return isinstance(expr, TRIVIALLY_SIDE_EFFECT_FREE_EXPRS)
 
 
 def redshift(vm: "SPyVM", w_func: W_ASTFunc, error_mode: ErrorMode) -> W_ASTFunc:
@@ -293,6 +316,19 @@ class DopplerFrame(ASTFrame):
     def shift_stmt_Continue(self, stmt: ast.Continue) -> list[ast.Stmt]:
         return [stmt]
 
+    def _shift_blue_assign(self, shifted_value: ast.Expr) -> list[ast.Stmt]:
+        """
+        Redshift away an assignment to a blue local, but preserve the side effects
+        of the value.
+        """
+        stmts: list[ast.Stmt] = []
+        if isinstance(shifted_value, ast.BlockExpr):
+            stmts += shifted_value.body
+            shifted_value = shifted_value.value
+        if not is_trivially_side_effect_free(shifted_value):
+            stmts.append(ast.StmtExpr(shifted_value.loc, shifted_value))
+        return stmts
+
     def shift_stmt_VarDef(self, vardef: ast.VarDef) -> list[ast.Stmt]:
         # the frame is indexed by slot_name
         varname = vardef.sym.slot_name
@@ -300,8 +336,9 @@ class DopplerFrame(ASTFrame):
         self.exec_stmt_VarDef(vardef)
 
         if self.locals[varname].color == "blue":
-            # redshift away assignments to blue locals
-            return []
+            if vardef.value is None:
+                return []
+            return self._shift_blue_assign(self.shifted_expr[vardef.value])
 
         newname = vardef.name.as_typed_node()
         if is_auto and vardef.value is None:
@@ -340,13 +377,7 @@ class DopplerFrame(ASTFrame):
         lv = self.locals[varname]
         self.record_node_color(assign, lv.color)
         if lv.color == "blue":
-            # blue local: redshift away the assign, but preserve any side effects from
-            # BlockExpr bodies
-            shifted_value = self.shifted_expr[expr.value]
-            if isinstance(shifted_value, ast.BlockExpr):
-                return shifted_value.body
-            else:
-                return []
+            return self._shift_blue_assign(self.shifted_expr[expr.value])
         else:
             new_expr = self.shifted_expr[expr]
             return [assign.replace(expr=new_expr)]
@@ -608,7 +639,13 @@ class DopplerFrame(ASTFrame):
 
         "wam" is the result of "eval_expr(expr)".
         """
-        if wam.color == "blue" and not isinstance(expr, ast.BlockExpr):
+        # If we have a blue value AND no side effects, we can just turn it into a
+        # constant.  If the op MIGHT have side effects, we need to go through
+        # shift_expr, even if it's blue.
+        #
+        # This happens e.g. if we call `STATIC_TYPE(foo())`. The result is blue, but we
+        # still must evaluate `foo()`.
+        if wam.color == "blue" and isinstance(expr, TRIVIALLY_SIDE_EFFECT_FREE_EXPRS):
             return make_const(self.vm, expr.loc, wam.w_val)
         else:
             res = magic_dispatch(self, "shift_expr", expr, wam)
@@ -616,15 +653,52 @@ class DopplerFrame(ASTFrame):
             self.record_node_color(res, wam.color)
             return res
 
+    def shift_blue_op(
+        self, op: ast.Node, wam: W_MetaArg, children: list[ast.Expr]
+    ) -> ast.Expr:
+        """
+        Turn the given op into an AST constant.
+
+        Children nodes MIGHT cause side effect: if so, we return a BlockExpr which
+        evaluates the children and then return the blue const.
+        """
+        const = make_const(self.vm, op.loc, wam.w_val)  # the intended result
+        children = [c for c in children if not is_trivially_side_effect_free(c)]
+        stmts, _ = self._spill_args(op, children)
+        if not stmts:
+            return const
+        assert const.w_T is not None
+        return ast.BlockExpr(op.loc, stmts, const, w_T=const.w_T)
+
+    def is_simple_opimpl(self, w_opimpl: W_OpImpl, orig_args: list[ast.Expr]) -> bool:
+        """
+        An OpImpl is "simple" if it uses all the non-constant args exactly once, and
+        in the original order.  If it is not simple, the caller must spill the args into
+        temporaries to preserve the evaluation order.
+
+        Note that we need to check about immediate/constant nodes, not just blue
+        values. A blue value MIGHT have a side effect, e.g. if it has been shifted into
+        a BlockExpr which evaluates some red args (see shift_blue_op).
+
+        Note that we exempt only constants, NOT the other TRIVIALLY_SIDE_EFFECT_FREE
+        exprs: reading a name has no side effects, but its *value* is order-sensitive,
+        because a sibling arg might assign it with a walrus expression. E.g.:
+            swap(x, (x := 10))
+        must read `x` before executing the walrus.
+        """
+        non_const = [i for i, arg in enumerate(orig_args) if not is_immediate(arg)]
+        used = [i for i in w_opimpl.used_args() if i in non_const]
+        return used == non_const
+
     def shift_opimpl(
         self,
         op: ast.Node,
         w_opimpl: W_OpImpl,
         orig_args: list[ast.Expr],
+        wam: Optional[W_MetaArg] = None,
     ) -> ast.Expr:
-        if w_opimpl.is_const():
-            assert w_opimpl.w_const is not None
-            return make_const(self.vm, op.loc, w_opimpl.w_const)
+        if wam is not None and wam.color == "blue":
+            return self.shift_blue_op(op, wam, orig_args)
 
         assert w_opimpl.is_func_call()
 
@@ -635,11 +709,11 @@ class DopplerFrame(ASTFrame):
         # The general solution is to spill all the arguments into temp variables, to be
         # used for the actual call. However, in order to make the output of the SPy
         # backend nicer in the common case, we add a special case: if an OpImpl is
-        # "simple", we can emit the call directly; "simple" means that it evaluates ALL
-        # its red arguments in the right order.
+        # "simple", we can emit the call directly.
         #
-        # See also test_metafunc.py::test_*_evaluation_order.
-        if w_opimpl.is_simple:
+        # See also test_doppler_side_effects.py::test_MetaArg_eval_order_red_result and
+        # test_doppler_side_effects.py::test_MetaArg_eval_order_blue_result
+        if self.is_simple_opimpl(w_opimpl, orig_args):
             # simple case
             return self._shift_call(op, w_opimpl, orig_args)
 
@@ -678,7 +752,7 @@ class DopplerFrame(ASTFrame):
         stmts: list[ast.Stmt] = []
         new_args: list[ast.Expr] = []
         for arg in args:
-            if unmake_const_maybe(self.vm, arg) is not None:
+            if is_immediate(arg):
                 new_args.append(arg)
                 continue
             assert arg.w_T is not None
@@ -787,34 +861,38 @@ class DopplerFrame(ASTFrame):
         w_opimpl = self.opimpl[binop]
         l = self.shifted_expr[binop.left]
         r = self.shifted_expr[binop.right]
-        return self.shift_opimpl(binop, w_opimpl, [l, r])
+        return self.shift_opimpl(binop, w_opimpl, [l, r], wam)
 
     def shift_expr_CmpOp(self, op: ast.CmpOp, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]
         l = self.shifted_expr[op.left]
         r = self.shifted_expr[op.right]
-        return self.shift_opimpl(op, w_opimpl, [l, r])
+        return self.shift_opimpl(op, w_opimpl, [l, r], wam)
 
     def shift_expr_And(self, op: ast.And, wam: W_MetaArg) -> ast.Expr:
         l = self.shifted_expr[op.left]
         r = self.shifted_expr[op.right]
+        if wam.color == "blue":
+            return self.shift_blue_op(op, wam, [l, r])
         return ast.And(op.loc, l, r, w_T=wam.w_static_T)
 
     def shift_expr_Or(self, op: ast.Or, wam: W_MetaArg) -> ast.Expr:
         l = self.shifted_expr[op.left]
         r = self.shifted_expr[op.right]
+        if wam.color == "blue":
+            return self.shift_blue_op(op, wam, [l, r])
         return ast.Or(op.loc, l, r, w_T=wam.w_static_T)
 
     def shift_expr_UnaryOp(self, unop: ast.UnaryOp, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[unop]
         v = self.shifted_expr[unop.value]
-        return self.shift_opimpl(unop, w_opimpl, [v])
+        return self.shift_opimpl(unop, w_opimpl, [v], wam)
 
     def shift_expr_Tuple(self, tup: ast.Tuple, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[tup]
         v_T = make_const(self.vm, tup.loc, wam.w_static_T)
         newitems_v = [self.shifted_expr[item] for item in tup.items]
-        return self.shift_opimpl(tup, w_opimpl, [v_T] + newitems_v)
+        return self.shift_opimpl(tup, w_opimpl, [v_T] + newitems_v, wam)
 
     def shift_expr_Slice(self, op: ast.Slice, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]
@@ -822,19 +900,19 @@ class DopplerFrame(ASTFrame):
         v_start = self.shifted_expr[op.start]
         v_stop = self.shifted_expr[op.stop]
         v_step = self.shifted_expr[op.step]
-        return self.shift_opimpl(op, w_opimpl, [v_T, v_start, v_stop, v_step])
+        return self.shift_opimpl(op, w_opimpl, [v_T, v_start, v_stop, v_step], wam)
 
     def shift_expr_GetItem(self, op: ast.GetItem, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]
         v = self.shifted_expr[op.value]
         args = [self.shifted_expr[arg] for arg in op.args]
-        return self.shift_opimpl(op, w_opimpl, [v] + args)
+        return self.shift_opimpl(op, w_opimpl, [v] + args, wam)
 
     def shift_expr_GetAttr(self, op: ast.GetAttr, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]
         v = self.shifted_expr[op.value]
         v_attr = self.shifted_expr[op.attr]
-        return self.shift_opimpl(op, w_opimpl, [v, v_attr])
+        return self.shift_opimpl(op, w_opimpl, [v, v_attr], wam)
 
     def shift_expr_Call(self, call: ast.Call, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[call]
@@ -843,16 +921,16 @@ class DopplerFrame(ASTFrame):
 
         if self.special_calls.get(call) in ("getattr", "hasattr", "setattr"):
             # see also the corresponding code in ASTFrame.eval_expr_Call.
-            return self.shift_opimpl(call, w_opimpl, newargs)
+            return self.shift_opimpl(call, w_opimpl, newargs, wam)
         else:
-            return self.shift_opimpl(call, w_opimpl, [newfunc] + newargs)
+            return self.shift_opimpl(call, w_opimpl, [newfunc] + newargs, wam)
 
     def shift_expr_CallMethod(self, op: ast.CallMethod, wam: W_MetaArg) -> ast.Expr:
         w_opimpl = self.opimpl[op]
         v_obj = self.shifted_expr[op.target]
         v_meth = self.shifted_expr[op.method]
         newargs_v = [self.shifted_expr[arg] for arg in op.args]
-        return self.shift_opimpl(op, w_opimpl, [v_obj, v_meth] + newargs_v)
+        return self.shift_opimpl(op, w_opimpl, [v_obj, v_meth] + newargs_v, wam)
 
     def eval_expr_BlockExpr(self, block: ast.BlockExpr) -> W_MetaArg:
         # shift_stmt both evaluates and shifts each statement, so we store
@@ -868,8 +946,12 @@ class DopplerFrame(ASTFrame):
     def shift_expr_AssignExprLocal(
         self, assignexpr: ast.AssignExprLocal, wam: W_MetaArg
     ) -> ast.Expr:
-        new_target = assignexpr.target.as_typed_node()
         new_value = self.shifted_expr[assignexpr.value]
+        if wam.color == "blue":
+            # The assignment is redshifted away, but we keep the shifted value because
+            # it might might have side effects.
+            return new_value
+        new_target = assignexpr.target.as_typed_node()
         return assignexpr.replace(
             target=new_target,
             value=new_value,

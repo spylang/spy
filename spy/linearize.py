@@ -78,6 +78,20 @@ if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
 
+IMMEDIATE_EXPRS = (
+    ast.Const,
+    ast.Literal,
+    ast.StrLiteral,
+    ast.BytesLiteral,
+    ast.FQNConst,
+)
+NAME_EXPRS = (
+    ast.NameLocalDirect,
+    ast.NameOuterDirect,
+    ast.NameOuterCell,
+)
+
+
 def linearize(vm: "SPyVM", w_func: W_ASTFunc) -> W_ASTFunc:
     """
     Run the linearize pass on the given already-redshifted function.
@@ -327,17 +341,8 @@ class Linearizer:
     #     as a sequence point. Promote ``pending_spills`` into ``to_spill``
     #     and mark self for spill.
 
-    IMMEDIATE_EXPRS = (
-        ast.Const,
-        ast.Literal,
-        ast.StrLiteral,
-        ast.BytesLiteral,
-        ast.FQNConst,
-    )
-    NAME_EXPRS = (ast.NameLocalDirect, ast.NameOuterDirect, ast.NameOuterCell)
-
     def is_immediate_expr(self, expr: ast.Expr) -> bool:
-        return isinstance(expr, self.IMMEDIATE_EXPRS)
+        return isinstance(expr, IMMEDIATE_EXPRS)
 
     def is_call_to_pure_func(self, expr: ast.Expr) -> bool:
         if isinstance(expr, ast.Call) and isinstance(expr.func, ast.FQNConst):
@@ -384,7 +389,7 @@ class Linearizer:
                     continue
                 if self.is_immediate_expr(node) or self.is_call_to_pure_func(node):
                     continue
-                if isinstance(node, self.NAME_EXPRS):
+                if isinstance(node, NAME_EXPRS):
                     pending_spills.add(node)
                     continue
                 # side-effecting: flush pending into to_spill and mark self
@@ -433,7 +438,7 @@ class Linearizer:
         # new_left is used as both the if-test and the value for the
         # short-circuit branch; spill it if needed so it is only evaluated once.
         # Names are safe to reuse without spilling (reading a name is not a call).
-        if not isinstance(new_left, self.NAME_EXPRS):
+        if not isinstance(new_left, NAME_EXPRS):
             new_left = self.spill(new_left)
         assign_left = ast.AssignLocal.make(loc, sym, new_left, op.w_T)
 
