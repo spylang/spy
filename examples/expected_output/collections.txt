@@ -4,4 +4,4 @@ SPy
 20
 <spy `_dict::dict[str, i32]::_dict` object at <ADDR>>
 Hello SPy
-<spy `_list::list[str]::_ListImpl` object at <ADDR>>
+['Hello', 'SPy']

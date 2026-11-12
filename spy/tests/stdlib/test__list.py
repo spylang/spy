@@ -1,7 +1,7 @@
 import pytest
 
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest
+from spy.tests.support import CompilerTest, only_interp
 
 
 class TestList(CompilerTest):
@@ -23,6 +23,76 @@ class TestList(CompilerTest):
         mod = self.compile(src)
         assert mod.test_empty() == 0
         assert mod.test_append() == 3
+
+    def test_repr_str(self):
+        src = """
+        def repr_empty() -> str:
+            return repr(list[i32]())
+
+        def repr_ints(first: i32, second: i32) -> str:
+            return repr([first, second])
+
+        def repr_strings(first: str, second: str) -> str:
+            return repr([first, second])
+
+        def repr_tuples(name: str, value: i32) -> str:
+            return repr([(name, value)])
+
+        def str_ints(first: i32, second: i32) -> str:
+            return str([first, second])
+        """
+        mod = self.compile(src)
+        assert mod.repr_empty() == "[]"
+        assert mod.repr_ints(1, -2) == "[1, -2]"
+        assert mod.str_ints(1, -2) == "[1, -2]"
+        assert mod.repr_tuples("hello", 42) == "[('hello', 42)]"
+        for first, second in [
+            ("hello", "world"),
+            ("", "it's"),
+            ("a\n", "\x00"),
+            ("é", "🐍"),
+            ("a" * 100, "b" * 100),
+        ]:
+            assert mod.repr_strings(first, second) == repr([first, second])
+
+    @only_interp
+    def test_repr_nested(self):
+        # Nested lists fail redshifting in their equality methods independently of repr.
+        src = """
+        def format_items(first: i32, second: i32) -> str:
+            items = [[first], list[i32](), [second]]
+            return repr(items)
+        """
+        mod = self.compile(src)
+        assert mod.format_items(1, -2) == "[[1], [], [-2]]"
+
+    def test_repr_calls_elements_once_in_order(self):
+        src = """
+        @struct
+        class Item:
+            value: i32
+            calls: list[i32]
+
+            def __repr__(self) -> str:
+                self.calls.append(self.value)
+                return str(self.value)
+
+            def __str__(self) -> str:
+                return "not repr"
+
+        def format_items(first: i32, second: i32, use_str: bool) -> str:
+            calls: list[i32] = []
+            items = [Item(first, calls), Item(second, calls)]
+            if use_str:
+                result = str(items)
+            else:
+                result = repr(items)
+            assert calls == [first, second]
+            return result
+        """
+        mod = self.compile(src)
+        assert mod.format_items(3, -1, False) == "[3, -1]"
+        assert mod.format_items(3, -1, True) == "[3, -1]"
 
     def test_list_of_string(self):
         src = """
