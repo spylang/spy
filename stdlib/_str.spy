@@ -409,13 +409,25 @@ class methods:
             )
         return StrObject.to_sealed_str(res)
 
+    def lower(self: str) -> str:
+        # XXX: this works only for ASCII strings but it's good enough for now
+        ll = StrObject.from_str(self)
+        llnew = StrObject.alloc(ll.length)
+        for i in range(ll.length):
+            ch = ll.utf8[i]
+            if ch >= ord(b"A") and ch <= ord(b"Z"):
+                llnew.utf8[i] = ch + (ord(b"a") - ord(b"A"))
+            else:
+                llnew.utf8[i] = ch
+        return StrObject.to_sealed_str(llnew)
+
     def upper(self: str) -> str:
         # XXX: this works only for ASCII strings but it's good enough for now
         ll = StrObject.from_str(self)
         llnew = StrObject.alloc(ll.length)
         for i in range(ll.length):
             ch = ll.utf8[i]
-            if ord(b"a") <= ch and ch <= ord(b"z"):
+            if ch >= ord(b"a") and ch <= ord(b"z"):
                 llnew.utf8[i] = ch - (ord(b"a") - ord(b"A"))
             else:
                 llnew.utf8[i] = ch
