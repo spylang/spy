@@ -410,10 +410,28 @@ class methods:
         return StrObject.to_sealed_str(res)
 
     def lower(self: str) -> str:
-        return _update_case(self, False)
+        # XXX: this works only for ASCII strings but it's good enough for now
+        ll = StrObject.from_str(self)
+        llnew = StrObject.alloc(ll.length)
+        for i in range(ll.length):
+            ch = ll.utf8[i]
+            if ch >= ord(b"A") and ch <= ord(b"Z"):
+                llnew.utf8[i] = ch + (ord(b"a") - ord(b"A"))
+            else:
+                llnew.utf8[i] = ch
+        return StrObject.to_sealed_str(llnew)
 
     def upper(self: str) -> str:
-        return _update_case(self, True)
+        # XXX: this works only for ASCII strings but it's good enough for now
+        ll = StrObject.from_str(self)
+        llnew = StrObject.alloc(ll.length)
+        for i in range(ll.length):
+            ch = ll.utf8[i]
+            if ch >= ord(b"a") and ch <= ord(b"z"):
+                llnew.utf8[i] = ch - (ord(b"a") - ord(b"A"))
+            else:
+                llnew.utf8[i] = ch
+        return StrObject.to_sealed_str(llnew)
 
     @blue.metafunc
     def split(m_self, *args_m):
@@ -853,26 +871,3 @@ def __first_byte_mask(byte: u8) -> u8:
         # for 4-byte sequence
         return u8(0b0000_0111)
     assert False, "invalid first utf-8 byte: " + str(byte)
-
-
-def _update_case(input: str, to_upper: bool) -> str:
-    # XXX: this works only for ASCII strings but it's good enough for now
-    case_offset: u8 = ord(b"a") - ord(b"A")
-    first = ord(b"A")
-    last = ord(b"Z")
-    if to_upper:
-        first = ord(b"a")
-        last = ord(b"z")
-
-    ll = StrObject.from_str(input)
-    llnew = StrObject.alloc(ll.length)
-    for i in range(ll.length):
-        ch = ll.utf8[i]
-        if ch >= first and ch <= last:
-            if to_upper:
-                llnew.utf8[i] = ch - case_offset
-            else:
-                llnew.utf8[i] = ch + case_offset
-        else:
-            llnew.utf8[i] = ch
-    return StrObject.to_sealed_str(llnew)
