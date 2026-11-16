@@ -212,3 +212,25 @@ class methods:
                 j = j + 1
         out.utf8[j] = ord(b"'")
         return StrObject.to_sealed_str(out)
+
+    def lower(self: bytes) -> bytes:
+        ll = BytesObject.from_bytes(self)
+        out = BytesObject.alloc(ll.length)
+        for i in range(ll.length):
+            b = ll.data[i]
+            if b >= ord(b"A") and b <= ord(b"Z"):
+                out.data[i] = b + ord(b"a") - ord(b"A")
+            else:
+                out.data[i] = b
+        return BytesObject.to_sealed_bytes(out)
+
+    def upper(self: bytes) -> bytes:
+        ll = BytesObject.from_bytes(self)
+        out = BytesObject.alloc(ll.length)
+        for i in range(ll.length):
+            b = ll.data[i]
+            if b >= ord(b"a") and b <= ord(b"z"):
+                out.data[i] = b + ord(b"A") - ord(b"a")
+            else:
+                out.data[i] = b
+        return BytesObject.to_sealed_bytes(out)

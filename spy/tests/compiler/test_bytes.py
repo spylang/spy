@@ -184,3 +184,31 @@ class TestBytes(CompilerTest):
         mod = self.compile(src)
         assert mod.roundtrip("hello world") == "hello world"
         assert mod.roundtrip("àèìòù") == "àèìòù"
+
+    def test_lower(self):
+        src = """
+        def lower(b: bytes) -> bytes:
+            return b.lower()
+        """
+        mod = self.compile(src)
+        assert mod.lower(b"Hello World") == b"hello world"
+        assert mod.lower(b"@Hello World[") == b"@hello world["
+        assert mod.lower(b"") == b""
+        assert mod.lower(b"abc123") == b"abc123"
+        # bytes >= 0x80 must be left untouched, otherwise UTF-8 sequences break
+        assert mod.lower(b"\xc0\xde\xff") == b"\xc0\xde\xff"
+        assert mod.lower("CAFÉ".encode("utf-8")) == "cafÉ".encode("utf-8")
+
+    def test_upper(self):
+        src = """
+        def upper(b: bytes) -> bytes:
+            return b.upper()
+        """
+        mod = self.compile(src)
+        assert mod.upper(b"Hello World") == b"HELLO WORLD"
+        assert mod.upper(b"`hello world{") == b"`HELLO WORLD{"
+        assert mod.upper(b"") == b""
+        assert mod.upper(b"ABC123") == b"ABC123"
+        # bytes >= 0x80 must be left untouched, otherwise UTF-8 sequences break
+        assert mod.upper(b"\xe0\xfe\xff") == b"\xe0\xfe\xff"
+        assert mod.upper("café".encode("utf-8")) == "CAFé".encode("utf-8")
