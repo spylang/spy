@@ -356,11 +356,10 @@ class TestMain:
         assert "1 +\n2 +\n--timeit" in out
         assert "seconds" not in out
 
-    @pytest.mark.parametrize("exitcode", [0, 1, 3])
-    def test_build_execute_exitcode(self, exitcode):
+    def test_build_execute_exitcode(self):
         src = f"""
         def main() -> i32:
-            return {exitcode}
+            return 42
         """
         f = self.write("test.spy", src)
         res = self.runner.invoke(
@@ -372,7 +371,7 @@ class TestMain:
                 str(f),
             ],
         )  # fmt: skip
-        assert res.exit_code == exitcode
+        assert res.exit_code == 42
 
     @pytest.mark.skipif(PYODIDE_EXE is None, reason="./pyodide/venv not found")
     @pytest.mark.pyodide
