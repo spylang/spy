@@ -363,7 +363,6 @@ class TestMain:
             return {exitcode}
         """
         f = self.write("test.spy", src)
-        # NOTE: we cannot use self.run() because it raises if exit_code != 0
         res = self.runner.invoke(
             app,
             [
