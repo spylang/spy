@@ -357,7 +357,7 @@ class TestMain:
         assert "seconds" not in out
 
     def test_build_execute_exitcode(self):
-        src = f"""
+        src = """
         def main() -> i32:
             return 42
         """
