@@ -566,6 +566,17 @@ class TestStr(CompilerTest):
         assert mod.upper("ABC123") == "ABC123"
         assert mod.upper("") == ""
 
+    def test_lower(self):
+        src = """
+        def lower(s: str) -> str:
+            return s.lower()
+        """
+        mod = self.compile(src)
+        assert mod.lower("HELLO") == "hello"
+        assert mod.lower("Hello World") == "hello world"
+        assert mod.lower("abc123") == "abc123"
+        assert mod.lower("") == ""
+
     def test_strip(self):
         src = """
         def strip(s: str) -> str:
