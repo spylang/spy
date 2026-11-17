@@ -373,6 +373,8 @@ class W_F64(W_Object):
             return W_OpSpec(OP.w_i32_to_f64, [wam_arg])
         elif wam_arg.w_static_T == B.w_f32:
             return W_OpSpec(OP.w_f32_to_f64, [wam_arg])
+        elif wam_arg.w_static_T == B.w_f64:
+            return W_OpSpec(OP.w_f64_to_f64, [wam_arg])
         return W_OpSpec.NULL
 
     def __repr__(self) -> str:
