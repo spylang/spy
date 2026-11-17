@@ -30,8 +30,9 @@ _BASE_CFLAGS: list[str] = [
     "-DSPY_GC_NONE",
 ]
 
-# WASM-specific CFLAGS shared by wasi and emscripten
-_WASM_CFLAGS: list[str] = [
+# WASM ABI/codegen flags shared by wasi and emscripten. They must be passed BOTH when
+# compiling and when linking.
+_WASM_ABI_FLAGS: list[str] = [
     "-mmultivalue",
     "-Xclang",
     "-target-abi",
@@ -44,11 +45,11 @@ _TARGET_CFLAGS: dict[str, list[str]] = {
     "wasi": [
         "-DSPY_TARGET_WASI",
         "--target=wasm32-wasi-musl",
-        *_WASM_CFLAGS,
+        *_WASM_ABI_FLAGS,
     ],
     "emscripten": [
         "-DSPY_TARGET_EMSCRIPTEN",
-        *_WASM_CFLAGS,
+        *_WASM_ABI_FLAGS,
     ],
     "native": [
         "-DSPY_TARGET_NATIVE",
@@ -62,8 +63,11 @@ _TARGET_CFLAGS: dict[str, list[str]] = {
 _TARGET_LDFLAGS: dict[str, list[str]] = {
     "wasi": [
         "--target=wasm32-wasi-musl",
+        *_WASM_ABI_FLAGS,
     ],
-    "emscripten": [],
+    "emscripten": [
+        *_WASM_ABI_FLAGS,
+    ],
     "native": [],
     "native-static": [
         "--target=native-native-musl",
