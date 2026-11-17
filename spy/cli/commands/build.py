@@ -183,7 +183,8 @@ async def build(args: Build_Args) -> None:
 
     if args.execute:
         with timer() if args.timeit else nullcontext():
-            subprocess.run([str(executable)] + (args.argv or []))
+            proc = subprocess.run([str(executable)] + (args.argv or []))
+        sys.exit(proc.returncode)
 
 
 def get_build_dir(args: Build_Args) -> py.path.local:
