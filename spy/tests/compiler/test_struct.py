@@ -49,6 +49,96 @@ class TestStructOnStack(CompilerTest):
         assert mod.foo(3, 4) == 7
         assert mod.bar(5, 6) == 11
 
+    def test_make_blue(self):
+        src = """
+        from __spy__ import COLOR
+
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        @blue
+        def sum_fields(p: Point) -> i32:
+            return p.x + p.y
+
+        def ctor() -> i32:
+            return sum_fields(Point(1, 2))
+
+        def ctor_color() -> str:
+            return COLOR(Point(1, 2))
+
+        def make() -> i32:
+            return sum_fields(Point.__make__(3, 4))
+
+        def make_color() -> str:
+            return COLOR(Point.__make__(3, 4))
+        """
+        mod = self.compile(src)
+        assert mod.ctor() == 3
+        assert mod.ctor_color() == "blue"
+        assert mod.make() == 7
+        assert mod.make_color() == "blue"
+
+    def test_make_mixed_args(self):
+        src = """
+        from __spy__ import COLOR
+
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def ctor(x: i32) -> Point:
+            return Point(x, 2)
+
+        def ctor_color(x: i32) -> str:
+            return COLOR(Point(x, 2))
+
+        def make(y: i32) -> Point:
+            return Point.__make__(1, y)
+
+        def make_color(y: i32) -> str:
+            return COLOR(Point.__make__(1, y))
+        """
+        mod = self.compile(src)
+        assert mod.ctor(3) == (3, 2)
+        assert mod.ctor_color(3) == "red"
+        assert mod.make(4) == (1, 4)
+        assert mod.make_color(4) == "red"
+
+    def test_blue_nested_struct(self):
+        src = """
+        from unsafe import gc_ptr, raw_ptr
+
+        @struct
+        class Inner:
+            value: i32
+            name: str
+            gc: gc_ptr[i32]
+            raw: raw_ptr[i32]
+
+        @struct
+        class Outer:
+            inner: Inner
+            value: i32
+
+        @blue
+        def assert_blue(value):
+            return value
+
+        def foo() -> i32:
+            inner = Inner(42, "hello", gc_ptr[i32].NULL, raw_ptr[i32].NULL)
+            outer = assert_blue(Outer(inner, 7))
+            if outer.inner.gc != gc_ptr[i32].NULL:
+                return -1
+            if outer.inner.raw != raw_ptr[i32].NULL:
+                return -2
+            return outer.inner.value + outer.value + len(outer.inner.name)
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 54
+
     def test_str_field(self):
         mod = self.compile("""
         @struct

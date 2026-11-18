@@ -128,6 +128,38 @@ def w_force_inline(vm: "SPyVM", w_func: W_Object) -> W_Object:
     return w_func
 
 
+@SPY.builtin_func(color="blue")
+def w_unchecked_pure_trust_me(vm: "SPyVM", w_func: W_Object) -> W_Object:
+    """
+    Mark a red function as pure.
+
+    A pure function is red, but it's constant folded during redshifting if all its
+    arguments are blue.
+
+    THIS IS DANGEROUS. The compiler does not check that the function is actually pure:
+    if it's not, the VM will try to execute it during redshifting and bad things can
+    happen:
+
+      1. side effects happening at compile time instead of runtime
+      2. if the function depend on mutable state, a stale result will be cached
+    """
+    if not isinstance(w_func, W_ASTFunc):
+        err = SPyError(
+            "W_TypeError",
+            "@unchecked_pure_trust_me can only be applied to user defined functions",
+        )
+        raise err
+    if w_func.color != "red":
+        err = SPyError(
+            "W_TypeError",
+            "@unchecked_pure_trust_me cannot be applied to @blue functions",
+        )
+        err.add("error", "this is not a red function", w_func.def_loc)
+        raise err
+    w_func._is_pure = True
+    return w_func
+
+
 @SPY.builtin_func
 def w__stdout_write(vm: "SPyVM", w_s: W_Str) -> None:
     sys.stdout.write(vm.unwrap(w_s))

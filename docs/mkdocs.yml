@@ -84,6 +84,7 @@ nav:
     - reference/scoping.md
     - reference/cli.md
     - reference/environment.md
+    - reference/cpython_differences.md
   - Explanation:
     - explanation/index.md
     - explanation/compilation-pipeline.md

@@ -458,6 +458,68 @@ class TestDoppler:
         # this is the "+", but it has been shifted into a call to i32_add
         assert get_color(foo_rs, ast.Call, "i + 2 * 3") == "red"
 
+    def test_blue_struct_const(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        @blue
+        def make_point() -> Point:
+            return Point(1, 2)
+
+        def foo() -> Point:
+            return make_point()
+        """
+        self.redshift(src)
+        expected = """
+        def foo() -> `test::Point`:
+            return `test::Point::__make__`(1, 2)
+        """
+        self.assert_dump(expected, funcname="foo")
+
+    def test_blue_struct_assign_no_dead_code(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo() -> i32:
+            # p is blue and unused, should be removed
+            p = Point(1, 2)
+            return 0
+        """
+        self.redshift(src)
+        expected = """
+        def foo() -> i32:
+            return 0
+        """
+        self.assert_dump(expected, funcname="foo")
+
+    def test_blue_struct_null_pointer_const(self):
+        src = """
+        from unsafe import gc_ptr
+
+        @struct
+        class Holder:
+            ptr: gc_ptr[i32]
+
+        @blue
+        def make_holder() -> Holder:
+            return Holder(gc_ptr[i32].NULL)
+
+        def foo() -> Holder:
+            return make_holder()
+        """
+        self.redshift(src)
+        expected = """
+        def foo() -> `test::Holder`:
+            return `test::Holder::__make__`(`unsafe::gc_ptr[i32]::NULL`)
+        """
+        self.assert_dump(expected, funcname="foo")
+
     def test_dumper_uses_ast_color_map_for_bg(self, monkeypatch):
         # Verify that Dumper._dump_node passes correct bg argument based on ast_color_map
         from unittest.mock import Mock

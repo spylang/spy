@@ -166,7 +166,7 @@ class W_StructType(W_Type):
 
         # create the actual function object
         fqn = self.fqn.join("__make__")
-        w_make = W_BuiltinFunc(w_functype, fqn, w_make_impl)
+        w_make = W_BuiltinFunc(w_functype, fqn, w_make_impl, is_pure=True)
         return w_make
 
     def _create_w_eq_ne(self, name: str) -> W_ASTFunc:

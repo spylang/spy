@@ -19,6 +19,7 @@ from spy.vm.exc import W_Exception
 from spy.vm.function import W_ASTFunc
 from spy.vm.modules.__spy__.interp_list import W_InterpList
 from spy.vm.modules.types import W_Loc as W_Loc
+from spy.vm.modules.unsafe.ptr import W_Ptr
 from spy.vm.object import W_Object, W_Type
 from spy.vm.vm import SPyVM
 
@@ -491,6 +492,9 @@ class SPyBackend:
         elif w_T is TYPES.w_NoneType:
             assert w_val is B.w_None
             return "None"
+        elif isinstance(w_val, W_Ptr):
+            assert w_val.addr == 0, "only NULL ptrs can be constants"
+            return self.fmt_fqn(w_val.w_T.fqn.join("NULL"))
         elif w_T is TYPES.w_Loc:
             assert isinstance(w_val, W_Loc)
             r = w_val.loc._repr()

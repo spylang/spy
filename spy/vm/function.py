@@ -212,6 +212,7 @@ class W_Func(W_Object):
     fqn: FQN
     def_loc: Loc
     w_origin: Optional["W_Object"]
+    _is_pure: bool
 
     @property
     def color(self) -> Color:
@@ -234,7 +235,7 @@ class W_Func(W_Object):
         # this is a hack, but good enough to constant-fold arithmetic ops and other
         # selected ops.
         is_op = self.fqn.modname == "operator" and self.fqn.symbol_name != "raise"
-        if isinstance(self, W_BuiltinFunc) and self._is_pure:
+        if self._is_pure:
             return True
         return is_op or self.fqn in self._pure_fqns
 
@@ -405,6 +406,7 @@ class W_ASTFunc(W_Func):
         stage: LoweringStage,
         locals_types_w: Optional[dict[str, W_Type]] = None,
         is_force_inline: bool = False,
+        is_pure: bool = False,
     ) -> None:
         self.w_functype = w_functype
         self.fqn = fqn
@@ -415,6 +417,7 @@ class W_ASTFunc(W_Func):
         self.locals_types_w = locals_types_w
         self.w_replaced_by = None
         self.is_force_inline = is_force_inline
+        self._is_pure = is_pure
         self.w_origin = None
 
         # stage is almost always the same as funcdef.stage. The only time it's different

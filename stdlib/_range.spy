@@ -1,5 +1,6 @@
 from operator import OpSpec, MetaArg
 from _slice import Slice
+from __spy__ import unchecked_pure_trust_me
 
 
 @struct
@@ -10,12 +11,15 @@ class range:
 
     @blue.metafunc
     def __new__(m_cls, *args_m):
+        @unchecked_pure_trust_me
         def impl1(n: int) -> range:
             return range.__make__(0, n, 1)
 
+        @unchecked_pure_trust_me
         def impl2(a: int, b: int) -> range:
             return range.__make__(a, b, 1)
 
+        @unchecked_pure_trust_me
         def impl3(a: int, b: int, c: int) -> range:
             if c == 0:
                 raise ValueError("range() arg 3 must not be zero")
@@ -85,21 +89,6 @@ class range:
             self.start + indices.stop * self.step,
             self.step * indices.step,
         )
-
-    def __eq__(self, other: range) -> bool:
-        length = len(self)
-        if length != len(other):
-            return False
-        if length == 0:
-            return True
-        if self.start != other.start:
-            return False
-        if length == 1:
-            return True
-        return self.step == other.step
-
-    def __ne__(self, other: range) -> bool:
-        return not self.__eq__(other)
 
     def __contains__(self, value: int) -> bool:
         if self.step > 0:
