@@ -42,11 +42,11 @@ class TestRange(CompilerTest):
         mod = self.compile("""
         from _range import range
 
-        def make_range_with_zero_step() -> range:
-            return range(1, 2, 0)
+        def make_range(step: int) -> range:
+            return range(1, 2, step)
         """)
         with SPyError.raises("W_ValueError", match=r"range\(\) arg 3 must not be zero"):
-            mod.make_range_with_zero_step()
+            mod.make_range(0)
 
     def test_len(self):
         mod = self.compile("""
