@@ -48,9 +48,19 @@ def is_immediate(expr: ast.Expr) -> bool:
     return isinstance(expr, IMMEDIATE_EXPRS)
 
 
-def is_trivially_side_effect_free(expr: ast.Expr) -> bool:
+def is_trivially_side_effect_free(vm: "SPyVM", expr: ast.Expr) -> bool:
     if isinstance(expr, ast.Tuple):
-        return all(is_trivially_side_effect_free(item) for item in expr.items)
+        return all(is_trivially_side_effect_free(vm, item) for item in expr.items)
+    if isinstance(expr, ast.Call) and isinstance(expr.func, ast.FQNConst):
+        # A call to a pure function with side-effect-free args is side-effect-free.
+        # This happens e.g. when we invoke MyStruct.__make__(1, 2, 3). See
+        # test_doppler.py::test_blue_struct_assign_no_dead_code.
+        w_func = vm.lookup_global(expr.func.fqn)
+        return (
+            isinstance(w_func, W_Func)
+            and w_func.is_pure()
+            and all(is_trivially_side_effect_free(vm, arg) for arg in expr.args)
+        )
     return isinstance(expr, TRIVIALLY_SIDE_EFFECT_FREE_EXPRS)
 
 
@@ -338,7 +348,7 @@ class DopplerFrame(ASTFrame):
         if isinstance(shifted_value, ast.BlockExpr):
             stmts += shifted_value.body
             shifted_value = shifted_value.value
-        if not is_trivially_side_effect_free(shifted_value):
+        if not is_trivially_side_effect_free(self.vm, shifted_value):
             stmts.append(ast.StmtExpr(shifted_value.loc, shifted_value))
         return stmts
 
@@ -676,7 +686,9 @@ class DopplerFrame(ASTFrame):
         evaluates the children and then return the blue const.
         """
         const = make_const(self.vm, op.loc, wam.w_val)  # the intended result
-        children = [c for c in children if not is_trivially_side_effect_free(c)]
+        children = [
+            c for c in children if not is_trivially_side_effect_free(self.vm, c)
+        ]
         stmts, _ = self._spill_args(op, children)
         if not stmts:
             return const

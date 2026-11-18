@@ -479,6 +479,25 @@ class TestDoppler:
         """
         self.assert_dump(expected, funcname="foo")
 
+    def test_blue_struct_assign_no_dead_code(self):
+        src = """
+        @struct
+        class Point:
+            x: i32
+            y: i32
+
+        def foo() -> i32:
+            # p is blue and unused, should be removed
+            p = Point(1, 2)
+            return 0
+        """
+        self.redshift(src)
+        expected = """
+        def foo() -> i32:
+            return 0
+        """
+        self.assert_dump(expected, funcname="foo")
+
     def test_blue_struct_null_pointer_const(self):
         src = """
         from unsafe import gc_ptr
