@@ -590,6 +590,23 @@ class SPyVM:
         assert isinstance(w_t2.w_base, W_Type)
         return self.union_type(w_t1.w_base, w_t2.w_base)
 
+    def make_unsigned_type(self, w_T: W_Type) -> W_Type:
+        """
+        Return the unsigned counterpart of an integer type.
+        """
+        UNSIGNED_TYPES = {
+            B.w_i8: B.w_u8,
+            B.w_i32: B.w_u32,
+            B.w_i64: B.w_u64,
+            B.w_u8: B.w_u8,
+            B.w_u32: B.w_u32,
+            B.w_u64: B.w_u64,
+        }
+        if w_T in UNSIGNED_TYPES:
+            return UNSIGNED_TYPES[w_T]
+        t = w_T.fqn.human_name(self)
+        raise SPyError("W_TypeError", f"`{t}` does not have an unsigned counterpart")
+
     def isinstance(self, w_obj: W_Object, w_type: W_Type) -> bool:
         w_t1 = self.dynamic_type(w_obj)
         return w_t1 == w_type or self.issubclass(w_t1, w_type)

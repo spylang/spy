@@ -708,15 +708,6 @@ class CFuncWriter:
         else:
             return C.Call(f"{c_targettype}_from_raw", [c_p, c_length])
 
-    SIMD_IOTA_UTYPE = {
-        B.w_i8: "uint8_t",
-        B.w_u8: "uint8_t",
-        B.w_i32: "uint32_t",
-        B.w_u32: "uint32_t",
-        B.w_i64: "uint64_t",
-        B.w_u64: "uint64_t",
-    }
-
     def fmt_simd_make(self, fqn: FQN, call: ast.Call, irtag: IRTag) -> C.Expr:
         w_func = self.ctx.vm.lookup_global(fqn)
         assert isinstance(w_func, W_Func)
@@ -744,7 +735,8 @@ class CFuncWriter:
                     f"({s_start}) + ({s_step}) * {i}" for i in range(w_simdtype.length)
                 )
             else:
-                c_utype = self.SIMD_IOTA_UTYPE[w_simdtype.w_dtype]
+                w_utype = self.ctx.vm.make_unsigned_type(w_simdtype.w_dtype)
+                c_utype = self.ctx.w2c(w_utype)
                 strargs = ", ".join(
                     f"({c_dtype})(({c_utype})({s_start}) + ({c_utype})({s_step}) * {i})"
                     for i in range(w_simdtype.length)
