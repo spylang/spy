@@ -501,7 +501,6 @@ class TestDoppler:
         """
         self.assert_dump(expected, funcname="foo")
 
-
     def test_dumper_uses_ast_color_map_for_bg(self, monkeypatch):
         # Verify that Dumper._dump_node passes correct bg argument based on ast_color_map
         from unittest.mock import Mock
