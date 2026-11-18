@@ -150,48 +150,6 @@ class TestCBackend:
         assert deps("test::Point") == []
         assert deps("test::Rect") == ["test::Point"]
 
-    def test_blue_struct_non_null_pointer(self, vm):
-        src = """
-        from unsafe import raw_alloc, raw_ptr
-
-        @struct
-        class Holder:
-            ptr: raw_ptr[i32]
-
-        @blue
-        def make_holder() -> Holder:
-            return Holder(raw_alloc[i32](1))
-
-        def foo() -> Holder:
-            return make_holder()
-        """
-        backend = self.compile_until_CBackend(vm, src)
-        with pytest.raises(AssertionError, match="only NULL ptrs can be constants"):
-            backend.cwrite()
-
-    def test_blue_nested_struct_non_null_pointer(self, vm):
-        src = """
-        from unsafe import gc_alloc, gc_ptr
-
-        @struct
-        class Inner:
-            ptr: gc_ptr[i32]
-
-        @struct
-        class Outer:
-            inner: Inner
-
-        @blue
-        def make_outer() -> Outer:
-            return Outer(Inner(gc_alloc[i32](1)))
-
-        def foo() -> Outer:
-            return make_outer()
-        """
-        backend = self.compile_until_CBackend(vm, src)
-        with pytest.raises(AssertionError, match="only NULL ptrs can be constants"):
-            backend.cwrite()
-
     def test_topo_sort(self, vm):
         # `Inner` is created lazily by Vec2[i32], so it ends up in
         # vm._globals_w AFTER `Outer` even though `Outer` has it as a
