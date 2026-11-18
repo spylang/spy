@@ -1,5 +1,6 @@
 from operator import OpSpec, MetaArg
 from _slice import Slice
+from __spy__ import unchecked_pure_trust_me
 
 
 @struct
@@ -10,12 +11,15 @@ class range:
 
     @blue.metafunc
     def __new__(m_cls, *args_m):
+        @unchecked_pure_trust_me
         def impl1(n: int) -> range:
             return range.__make__(0, n, 1)
 
+        @unchecked_pure_trust_me
         def impl2(a: int, b: int) -> range:
             return range.__make__(a, b, 1)
 
+        @unchecked_pure_trust_me
         def impl3(a: int, b: int, c: int) -> range:
             if c == 0:
                 raise ValueError("range() arg 3 must not be zero")

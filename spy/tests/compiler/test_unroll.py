@@ -51,6 +51,17 @@ class TestUnroll(CompilerTest):
         )
         self.compile_raises(src, "foo", errors)
 
+    def test_unroll_range(self):
+        src = """
+        def foo() -> i32:
+            total = 0
+            for i in unroll(range(5)):
+                total = total + i
+            return total
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 10
+
     def test_body_locals_change_type(self):
         src = """
         from __spy__ import interp_tuple
