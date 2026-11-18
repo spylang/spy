@@ -37,17 +37,6 @@ SIMD_DTYPES = (
 )
 
 
-# (min, max) of the integer lane dtypes
-SIMD_INT_RANGES = {
-    B.w_i8: (-(2**7), 2**7 - 1),
-    B.w_u8: (0, 2**8 - 1),
-    B.w_i32: (-(2**31), 2**31 - 1),
-    B.w_u32: (0, 2**32 - 1),
-    B.w_i64: (-(2**63), 2**63 - 1),
-    B.w_u64: (0, 2**64 - 1),
-}
-
-
 @SIMD.builtin_type("SimdType")
 class W_SimdType(W_Type):
     """
@@ -202,12 +191,14 @@ class W_Simd(W_Object):
             w_default = w_dtype.pyclass(default)  # type: ignore
             args_wam_full.append(W_MetaArg.from_w_obj(vm, w_default, loc=wam_self.loc))
 
-        if w_dtype in SIMD_INT_RANGES and all(
-            wam.is_blue() and wam.w_static_T in SIMD_INT_RANGES for wam in args_wam_full
+        dtype_limits = vm.int_limits(w_dtype)
+        if dtype_limits is not None and all(
+            wam.is_blue() and vm.int_limits(wam.w_static_T) is not None
+            for wam in args_wam_full
         ):
             start_i = int(args_wam_full[0].w_blueval.value)  # type: ignore
             step_i = int(args_wam_full[1].w_blueval.value)  # type: ignore
-            lo, hi = SIMD_INT_RANGES[w_dtype]
+            lo, hi = dtype_limits
             if not (lo <= start_i <= hi and lo <= start_i + (N - 1) * step_i <= hi):
                 lane = next(i for i in range(N) if not lo <= start_i + i * step_i <= hi)
                 t = w_simdtype.fqn.human_name(vm)

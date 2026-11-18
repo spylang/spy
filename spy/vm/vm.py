@@ -607,6 +607,20 @@ class SPyVM:
         t = w_T.fqn.human_name(self)
         raise SPyError("W_TypeError", f"`{t}` does not have an unsigned counterpart")
 
+    def int_limits(self, w_T: W_Type) -> tuple[int, int] | None:
+        """
+        Return (min, max) of an integer type, or None if w_T is not an integer type.
+        """
+        INT_LIMITS = {
+            B.w_i8: (-(2**7), 2**7 - 1),
+            B.w_u8: (0, 2**8 - 1),
+            B.w_i32: (-(2**31), 2**31 - 1),
+            B.w_u32: (0, 2**32 - 1),
+            B.w_i64: (-(2**63), 2**63 - 1),
+            B.w_u64: (0, 2**64 - 1),
+        }
+        return INT_LIMITS.get(w_T)
+
     def isinstance(self, w_obj: W_Object, w_type: W_Type) -> bool:
         w_t1 = self.dynamic_type(w_obj)
         return w_t1 == w_type or self.issubclass(w_t1, w_type)
