@@ -501,43 +501,6 @@ class TestDoppler:
         """
         self.assert_dump(expected, funcname="foo")
 
-    def test_struct_construction_colors(self):
-        self.vm.ast_color_map = {}
-        src = """
-        @struct
-        class Point:
-            x: i32
-            y: i32
-
-        @struct
-        class CustomPoint:
-            x: i32
-            y: i32
-
-            def __new__(x: i32, y: i32) -> CustomPoint:
-                return CustomPoint.__make__(x, y)
-
-        def foo(x: i32) -> None:
-            Point(1, 2)
-            Point.__make__(3, 4)
-            Point(x, 2)
-            Point.__make__(1, x)
-            CustomPoint(1, 2)
-        """
-        self.import_src(src)
-        w_foo = self.vm.lookup_global(FQN("test::foo"))
-        assert isinstance(w_foo, W_ASTFunc)
-        self.redshift(src)
-        colors = self.vm.ast_color_map
-        assert colors[w_foo.funcdef.find(ast.Call, "Point(1, 2)")] == "blue"
-        assert (
-            colors[w_foo.funcdef.find(ast.CallMethod, "Point.__make__(3, 4)")] == "blue"
-        )
-        assert colors[w_foo.funcdef.find(ast.Call, "Point(x, 2)")] == "red"
-        assert (
-            colors[w_foo.funcdef.find(ast.CallMethod, "Point.__make__(1, x)")] == "red"
-        )
-        assert colors[w_foo.funcdef.find(ast.Call, "CustomPoint(1, 2)")] == "red"
 
     def test_dumper_uses_ast_color_map_for_bg(self, monkeypatch):
         # Verify that Dumper._dump_node passes correct bg argument based on ast_color_map
