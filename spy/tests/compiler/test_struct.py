@@ -51,6 +51,8 @@ class TestStructOnStack(CompilerTest):
 
     def test_make_blue(self):
         src = """
+        from __spy__ import COLOR
+
         @struct
         class Point:
             x: i32
@@ -60,34 +62,50 @@ class TestStructOnStack(CompilerTest):
         def sum_fields(p: Point) -> i32:
             return p.x + p.y
 
-        def foo() -> i32:
+        def ctor() -> i32:
             return sum_fields(Point(1, 2))
 
-        def bar() -> i32:
+        def ctor_color() -> str:
+            return COLOR(Point(1, 2))
+
+        def make() -> i32:
             return sum_fields(Point.__make__(3, 4))
+
+        def make_color() -> str:
+            return COLOR(Point.__make__(3, 4))
         """
         mod = self.compile(src)
-        assert mod.foo() == 3
-        assert mod.bar() == 7
+        assert mod.ctor() == 3
+        assert mod.ctor_color() == "blue"
+        assert mod.make() == 7
+        assert mod.make_color() == "blue"
 
     def test_make_mixed_args(self):
         src = """
+        from __spy__ import COLOR
+
         @struct
         class Point:
             x: i32
             y: i32
 
-        def foo(x: i32) -> Point:
+        def ctor(x: i32) -> Point:
             return Point(x, 2)
 
-        def bar(y: i32) -> Point:
+        def ctor_color(x: i32) -> str:
+            return COLOR(Point(x, 2))
+
+        def make(y: i32) -> Point:
             return Point.__make__(1, y)
+
+        def make_color(y: i32) -> str:
+            return COLOR(Point.__make__(1, y))
         """
         mod = self.compile(src)
-        assert mod.foo(3) == (3, 2)
-        assert mod.foo(5) == (5, 2)
-        assert mod.bar(4) == (1, 4)
-        assert mod.bar(6) == (1, 6)
+        assert mod.ctor(3) == (3, 2)
+        assert mod.ctor_color(3) == "red"
+        assert mod.make(4) == (1, 4)
+        assert mod.make_color(4) == "red"
 
     def test_blue_nested_struct(self):
         src = """
