@@ -146,6 +146,7 @@ class Linearizer:
             stage="linearized",
             locals_types_w=new_locals_types_w,
             is_force_inline=self.w_func.is_force_inline,
+            is_pure=self.w_func._is_pure,
         )
         # mark the original function as invalid
         self.w_func.replace_with(w_newfunc)

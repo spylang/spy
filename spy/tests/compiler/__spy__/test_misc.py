@@ -1,7 +1,7 @@
 import pytest
 
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest, only_interp
+from spy.tests.support import CompilerTest, expect_errors, only_interp, skip_backends
 
 
 class TestMisc(CompilerTest):
@@ -74,3 +74,64 @@ class TestMisc(CompilerTest):
         """
         with SPyError.raises("W_ValueError", match="FQN not found"):
             self.compile(src)
+
+    @only_interp
+    def test_unchecked_pure_decorator(self):
+        mod = self.compile("""
+        from __spy__ import unchecked_pure_trust_me, COLOR
+
+        @unchecked_pure_trust_me
+        def inc(x: i32) -> i32:
+            return x + 1
+
+        def foo() -> str:
+            return COLOR(inc(10))
+
+        def bar(x: i32) -> str:
+            return COLOR(inc(x))
+
+        """)
+        assert mod.inc.w_func.is_pure()
+        assert mod.foo() == "blue"
+        assert mod.bar(1) == "red"
+
+    def test_cannot_apply_unchecked_pure_to_blue_func(self):
+        src = """
+        from __spy__ import unchecked_pure_trust_me
+
+        @unchecked_pure_trust_me
+        @blue
+        def foo():
+            return 42
+
+        def main() -> None:
+            pass
+        """
+        errors = expect_errors(
+            "@unchecked_pure_trust_me cannot be applied to @blue functions",
+            ("this is not a red function", "def foo():"),
+        )
+        self.compile_raises(src, "main", errors, error_reporting="eager")
+
+    def test_unchecked_pure_trust_me_blue_call_raises_static_error(self):
+        src = """
+        from __spy__ import unchecked_pure_trust_me
+
+        @unchecked_pure_trust_me
+        def ensure_positive(x: i32) -> i32:
+            if x < 0:
+                raise ValueError("x is negative")
+            return x
+
+        def foo() -> i32:
+            return ensure_positive(-1)
+        """
+        errors = expect_errors(
+            "x is negative",
+        )
+        # On interp, the error happens at runtime. On doppler/C, it is caught at
+        # redshift time and reported as StaticError
+        if self.backend == "interp":
+            self.compile_raises(src, "foo", errors)
+        else:
+            self.compile_raises(src, "foo", errors, error_reporting="eager")

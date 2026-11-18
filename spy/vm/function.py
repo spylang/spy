@@ -406,6 +406,7 @@ class W_ASTFunc(W_Func):
         stage: LoweringStage,
         locals_types_w: Optional[dict[str, W_Type]] = None,
         is_force_inline: bool = False,
+        is_pure: bool = False,
     ) -> None:
         self.w_functype = w_functype
         self.fqn = fqn
@@ -416,7 +417,7 @@ class W_ASTFunc(W_Func):
         self.locals_types_w = locals_types_w
         self.w_replaced_by = None
         self.is_force_inline = is_force_inline
-        self._is_pure = False
+        self._is_pure = is_pure
         self.w_origin = None
 
         # stage is almost always the same as funcdef.stage. The only time it's different
