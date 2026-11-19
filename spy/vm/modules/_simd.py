@@ -106,26 +106,8 @@ class W_Simd(W_Object):
             err.add("error", f"this is `{t}`", wam_self.loc)
             raise err
 
-        # the applevel signature is this:
-        #     def __make__(v1: T, v2: T, ..., vN: T) -> SIMD[T, N]
-        #
-        # but the interp-level signature uses varargs for convenience, so we must
-        # compute w_functype explicitly.  See test_builtin::test_explicit_functype.
-
-        w_T = w_simdtype.w_dtype
-        params = [FuncParam(w_T, "simple") for _ in range(length)]
-        w_functype = W_FuncType.new(params, w_simdtype)
-
-        @vm.register_builtin_func(
-            w_simdtype.fqn,
-            "__make__",
-            irtag=IRTag("simd.make"),
-            w_functype=w_functype,
-        )
-        def w_make(vm: "SPyVM", *args_w: W_Object) -> W_Simd:
-            assert len(args_w) == w_simdtype.length
-            return W_Simd(w_simdtype, list(args_w))
-
+        w_make = vm.lookup_global(w_simdtype.fqn.join("__make__"))
+        assert isinstance(w_make, W_Func)
         return W_OpSpec(w_make, list(args_wam))
 
     # ===== constructors which don't take one value per lane =====
@@ -165,16 +147,24 @@ class W_Simd(W_Object):
     @builtin_classmethod("iota", color="blue", kind="metafunc")
     @staticmethod
     def w_IOTA(vm: "SPyVM", wam_self: W_MetaArg, *args_wam: W_MetaArg) -> W_OpSpec:
-        # SIMD[T, N].iota(start=0, step=1) -> (start, start + step, ...)
+        """
+        `SIMD[T, N].iota(start=0, step=1)` returns the vector whose lane `i`
+        is `start + i * step`.
+
+        Integer lanes never wrap around: if a lane falls outside the range of
+        `T`, an error is raised, at compile time when `start` and `step` are
+        blue and at runtime otherwise.
+        """
         w_simdtype = wam_self.w_blueval
         assert isinstance(w_simdtype, W_SimdType)
         w_dtype = w_simdtype.w_dtype
         N = w_simdtype.length
         SIMD_T = Annotated[W_Simd, w_simdtype]
         T = Annotated[W_Object, w_dtype]
+        t = w_simdtype.fqn.human_name(vm)
+        dtype = w_dtype.fqn.human_name(vm)
 
         if len(args_wam) > 2:
-            t = w_simdtype.fqn.human_name(vm)
             err = SPyError(
                 "W_TypeError",
                 f"`{t}.iota` expects at most 2 arguments (start, step), "
@@ -192,17 +182,18 @@ class W_Simd(W_Object):
             args_wam_full.append(W_MetaArg.from_w_obj(vm, w_default, loc=wam_self.loc))
 
         dtype_limits = vm.int_limits(w_dtype)
-        if dtype_limits is not None and all(
+        blue_int_args = all(
             wam.is_blue() and vm.int_limits(wam.w_static_T) is not None
             for wam in args_wam_full
-        ):
+        )
+        if dtype_limits is not None and blue_int_args:
+            # all the lanes are known at compile time: check them now and
+            # return a constant, so that no check is needed at runtime
             start_i = int(args_wam_full[0].w_blueval.value)  # type: ignore
             step_i = int(args_wam_full[1].w_blueval.value)  # type: ignore
             lo, hi = dtype_limits
             if not (lo <= start_i <= hi and lo <= start_i + (N - 1) * step_i <= hi):
                 lane = next(i for i in range(N) if not lo <= start_i + i * step_i <= hi)
-                t = w_simdtype.fqn.human_name(vm)
-                dtype = w_dtype.fqn.human_name(vm)
                 err = SPyError(
                     "W_TypeError",
                     f"`{t}.iota` overflows `{dtype}`: "
@@ -210,25 +201,53 @@ class W_Simd(W_Object):
                 )
                 err.add("error", f"this is `{t}`", wam_self.loc)
                 raise err
+            lanes_w = [w_dtype.pyclass(start_i + i * step_i) for i in range(N)]  # type: ignore
+            return W_OpSpec.const(W_Simd(w_simdtype, lanes_w))
 
-        @vm.register_builtin_func(w_simdtype.fqn, "iota", irtag=IRTag("simd.iota"))
-        def w_iota(vm: "SPyVM", w_start: T, w_step: T) -> SIMD_T:
-            start = w_start.value  # type: ignore
-            step = w_step.value  # type: ignore
-            if w_dtype is B.w_f32:
-                # like C
-                items = [
-                    float32(start.value + float32(step.value * i).value)
-                    for i in range(N)
-                ]
-            elif w_dtype is B.w_f64:
-                items = [start + step * i for i in range(N)]
-            else:
-                # fixed-width ints: wraps around
-                cls = type(start)
-                items = [start + step * cls(i) for i in range(N)]
-            lanes_w = [w_dtype.pyclass(x) for x in items]  # type: ignore
-            return W_Simd(w_simdtype, lanes_w)
+        if dtype_limits is None:
+            # float dtypes: lanes follow C float semantics, no overflow check
+            @vm.register_builtin_func(
+                w_simdtype.fqn, "iota", irtag=IRTag("simd.iota"), is_pure=True
+            )
+            def w_iota(vm: "SPyVM", w_start: T, w_step: T) -> SIMD_T:
+                start = w_start.value  # type: ignore
+                step = w_step.value  # type: ignore
+                items: list
+                if w_dtype is B.w_f32:
+                    # like C
+                    items = [
+                        float32(start.value + float32(step.value * i).value)
+                        for i in range(N)
+                    ]
+                else:
+                    items = [start + step * i for i in range(N)]
+                lanes_w = [w_dtype.pyclass(x) for x in items]  # type: ignore
+                return W_Simd(w_simdtype, lanes_w)
+
+        else:
+            # int dtypes with red arguments: check at runtime that no lane
+            # overflows instead of wrapping
+            @vm.register_builtin_func(
+                w_simdtype.fqn, "iota", irtag=IRTag("simd.iota"), is_pure=True
+            )
+            def w_iota(vm: "SPyVM", w_start: T, w_step: T) -> SIMD_T:
+                start = w_start.value  # type: ignore
+                step = w_step.value  # type: ignore
+                assert dtype_limits is not None
+                lo, hi = dtype_limits
+                start_i = int(start)
+                step_i = int(step)
+                items = []
+                for i in range(N):
+                    v = start_i + i * step_i
+                    if not lo <= v <= hi:
+                        raise SPyError(
+                            "W_PanicError",
+                            f"`{t}.iota` overflows `{dtype}`: lane {i} would be {v}",
+                        )
+                    items.append(v)
+                lanes_w = [w_dtype.pyclass(x) for x in items]  # type: ignore
+                return W_Simd(w_simdtype, lanes_w)
 
         return W_OpSpec(w_iota, args_wam_full)
 
@@ -358,4 +377,23 @@ def w_SIMD(vm: "SPyVM", w_dtype: W_Type, w_length: W_I32) -> W_Dynamic:
     w_simdtype.w_dtype = w_dtype
     w_simdtype.length = length
     vm.make_fqn_const(w_simdtype)
+
+    # the applevel signature is this:
+    #     def __make__(v1: T, v2: T, ..., vN: T) -> SIMD[T, N]
+    #
+    # but the interp-level signature uses varargs for convenience, so we must
+    # compute w_functype explicitly.  See test_builtin::test_explicit_functype.
+    params = [FuncParam(w_dtype, "simple") for _ in range(length)]
+    w_functype = W_FuncType.new(params, w_simdtype)
+
+    @vm.register_builtin_func(
+        w_simdtype.fqn,
+        "__make__",
+        irtag=IRTag("simd.make"),
+        w_functype=w_functype,
+    )
+    def w_make(vm: "SPyVM", *args_w: W_Object) -> W_Simd:
+        assert len(args_w) == length
+        return W_Simd(w_simdtype, list(args_w))
+
     return w_simdtype

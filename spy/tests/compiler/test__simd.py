@@ -441,9 +441,13 @@ class TestSIMD(CompilerTest):
         assert mod.t_i8(-100, -5) == (-100, -105, -110, -115)
         assert mod.t_i64(0, -1) == (0, -1, -2, -3)
 
-        # red arguments: lanes wrap around
-        assert mod.t_i8(120, 5) == (120, 125, -126, -121)
-        assert mod.t_u8(250, 3) == (250, 253, 0, 3)
+        # red arguments: overflow raises at runtime instead of wrapping
+        with SPyError.raises("W_PanicError", match="overflows `i8`"):
+            mod.t_i8(120, 5)
+        with SPyError.raises("W_PanicError", match="overflows `u8`"):
+            mod.t_u8(250, 3)
+        with SPyError.raises("W_PanicError", match="overflows `i8`"):
+            mod.t_i8(-120, -5)
 
     @only_interp
     def test_iota_overflow(self):

@@ -735,12 +735,38 @@ class CFuncWriter:
                     f"({s_start}) + ({s_step}) * {i}" for i in range(w_simdtype.length)
                 )
             else:
+                # int lanes must not overflow: emit a runtime check which
+                # panics on overflow, like the interp-level implementation
                 w_utype = self.ctx.vm.make_unsigned_type(w_simdtype.w_dtype)
                 c_utype = self.ctx.w2c(w_utype)
                 strargs = ", ".join(
                     f"({c_dtype})(({c_utype})({s_start}) + ({c_utype})({s_step}) * {i})"
                     for i in range(w_simdtype.length)
                 )
+                vm = self.ctx.vm
+                limits = vm.int_limits(w_simdtype.w_dtype)
+                assert limits is not None
+                base = str(c_dtype).upper().replace("_T", "")
+                if limits[0] == 0:  # unsigned dtype
+                    cond = f"_cur > {base}_MAX - ({s_step})"
+                else:
+                    cond = (
+                        f"(({s_step}) > 0 ? _cur > {base}_MAX - ({s_step}) "
+                        f": _cur < {base}_MIN - ({s_step}))"
+                    )
+                t = w_simdtype.fqn.human_name(vm)
+                dtype = w_simdtype.w_dtype.fqn.human_name(vm)
+                c_msg = C.Literal.from_bytes(f"`{t}.iota` overflows `{dtype}`".encode())
+                check = (
+                    f"{c_dtype} _cur = ({s_start}); "
+                    f"for (int32_t _i = 1; _i < {w_simdtype.length}; _i++) {{ "
+                    f"if ({cond}) "
+                    f'spy_panic("PanicError", {c_msg}, __FILE__, __LINE__); '
+                    f"_cur = ({c_dtype})(({c_utype})_cur + ({c_utype})({s_step})); "
+                    f"}}"
+                )
+                c_lanes = C.Cast(c_simdtype, C.Literal("{ %s }" % strargs))
+                return C.Literal(f"({{ {check} {c_lanes}; }})")
         elif irtag.tag == "simd.make":
             # SIMD[T, N](v0, ..., v_{N-1}) -> (V){v0, ..., v_{N-1}}
             strargs = ", ".join(map(str, c_args))

@@ -429,6 +429,7 @@ class SPyVM:
         extra_types: dict = {},
         irtag: IRTag = IRTag.Empty,
         w_functype: Optional[W_FuncType] = None,
+        is_pure: bool = False,
     ) -> Callable:
         """
         Decorator to turn an interp-level function into a W_BuiltinFunc.
@@ -485,6 +486,7 @@ class SPyVM:
                 kind=kind,
                 extra_types=extra_types,
                 w_functype=w_functype,
+                is_pure=is_pure,
             )
 
             # check whether the fqn is already in use
