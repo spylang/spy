@@ -119,16 +119,9 @@ class W_Simd(W_Object):
         assert isinstance(w_simdtype, W_SimdType)
         w_dtype = w_simdtype.w_dtype
         N = w_simdtype.length
-        SIMD_T = Annotated[W_Simd, w_simdtype]
-        T = Annotated[W_Object, w_dtype]
-
-        @vm.register_builtin_func(w_simdtype.fqn, "zeros", irtag=IRTag("simd.zeros"))
-        def w_zeros(vm: "SPyVM") -> SIMD_T:
-            zero = 0.0 if w_dtype in (B.w_f32, B.w_f64) else 0
-            lanes_w = [w_dtype.pyclass(zero) for _ in range(N)]  # type: ignore
-            return W_Simd(w_simdtype, lanes_w)
-
-        return W_OpSpec(w_zeros, [])
+        zero = 0.0 if w_dtype in (B.w_f32, B.w_f64) else 0
+        lanes_w = [w_dtype.pyclass(zero) for _ in range(N)]  # type: ignore
+        return W_OpSpec.const(W_Simd(w_simdtype, lanes_w))
 
     @builtin_classmethod("splat", color="blue", kind="metafunc")
     @staticmethod
@@ -138,7 +131,9 @@ class W_Simd(W_Object):
         SIMD_T = Annotated[W_Simd, w_simdtype]
         T = Annotated[W_Object, w_simdtype.w_dtype]
 
-        @vm.register_builtin_func(w_simdtype.fqn, "splat", irtag=IRTag("simd.splat"))
+        @vm.register_builtin_func(
+            w_simdtype.fqn, "splat", irtag=IRTag("simd.splat"), is_pure=True
+        )
         def w_splat(vm: "SPyVM", w_x: T) -> SIMD_T:
             return W_Simd(w_simdtype, [w_x] * w_simdtype.length)
 

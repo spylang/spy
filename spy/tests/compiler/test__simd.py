@@ -74,6 +74,7 @@ class TestSIMD(CompilerTest):
 
     def test_constructors(self):
         src = """
+        from __spy__ import COLOR
         from _simd import SIMD
 
         VEC = SIMD[i32, 4]
@@ -82,10 +83,17 @@ class TestSIMD(CompilerTest):
             return v[0], v[1], v[2], v[3]
 
         def zeros() -> tuple[i32, i32, i32, i32]:
-            return lanes(VEC.zeros())
+            v = VEC.zeros()
+            assert COLOR(v) == "blue"
+            return lanes(v)
 
         def splat(x: i32) -> tuple[i32, i32, i32, i32]:
             return lanes(VEC.splat(x))
+
+        def splat_literal() -> tuple[i32, i32, i32, i32]:
+            v = VEC.splat(42)
+            assert COLOR(v) == "blue"
+            return lanes(v)
 
         def explicit(a: i32, b: i32, c: i32, d: i32) -> tuple[i32, i32, i32, i32]:
             return lanes(VEC(a, b, c, d))
@@ -102,6 +110,7 @@ class TestSIMD(CompilerTest):
         mod = self.compile(src)
         assert mod.zeros() == (0, 0, 0, 0)
         assert mod.splat(42) == (42, 42, 42, 42)
+        assert mod.splat_literal() == (42, 42, 42, 42)
         assert mod.explicit(1, 2, 3, 4) == (1, 2, 3, 4)
         assert mod.convert(5, 6, 7, 8) == (5, 6, 7, 8)
         assert mod.splat_is_explicit(9)
@@ -343,6 +352,7 @@ class TestSIMD(CompilerTest):
 
     def test_iota(self):
         src = """
+        from __spy__ import COLOR
         from _simd import SIMD
 
         VEC = SIMD[i32, 4]
@@ -351,7 +361,9 @@ class TestSIMD(CompilerTest):
             return v[0], v[1], v[2], v[3]
 
         def iota() -> tuple[i32, i32, i32, i32]:
-            return lanes(VEC.iota())
+            v = VEC.iota()
+            assert COLOR(v) == "blue"
+            return lanes(v)
 
         def iota_start(start: i32) -> tuple[i32, i32, i32, i32]:
             return lanes(VEC.iota(start))
@@ -360,7 +372,9 @@ class TestSIMD(CompilerTest):
             return lanes(VEC.iota(start, step))
 
         def iota_literals() -> tuple[i32, i32, i32, i32]:
-            return lanes(VEC.iota(10, 2))
+            v = VEC.iota(10, 2)
+            assert COLOR(v) == "blue"
+            return lanes(v)
 
         def last[N]() -> i32:
             return SIMD[i32, N].iota()[N - 1]
