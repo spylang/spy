@@ -168,13 +168,13 @@ class W_Simd(W_Object):
             err.add("error", f"this is `{t}`", wam_self.loc)
             raise err
 
-        defaults: list[int | float] = [0, 1]
-        if w_dtype in (B.w_f32, B.w_f64):
-            defaults = [0.0, 1.0]
         args_wam_full = list(args_wam)
-        for default in defaults[len(args_wam) :]:
-            w_default = w_dtype.pyclass(default)  # type: ignore
-            args_wam_full.append(W_MetaArg.from_w_obj(vm, w_default, loc=wam_self.loc))
+        if len(args_wam_full) == 0:
+            w_zero = w_dtype.pyclass(0)  # type: ignore
+            args_wam_full.append(W_MetaArg.from_w_obj(vm, w_zero, loc=wam_self.loc))
+        if len(args_wam_full) == 1:
+            w_one = w_dtype.pyclass(1)  # type: ignore
+            args_wam_full.append(W_MetaArg.from_w_obj(vm, w_one, loc=wam_self.loc))
 
         dtype_limits = vm.int_limits(w_dtype)
         blue_int_args = all(
