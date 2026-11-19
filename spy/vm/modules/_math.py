@@ -1,19 +1,18 @@
 import math
 from typing import TYPE_CHECKING
 
-from spy.fqn import FQN
 from spy.vm.primitive import W_F64
 from spy.vm.registry import ModuleRegistry
 
 if TYPE_CHECKING:
     from spy.vm.vm import SPyVM
 
-MATH = ModuleRegistry("math")
+MATH = ModuleRegistry("_math")
 
 
 @MATH.builtin_func("__INIT__", color="blue")
 def w_INIT(vm: "SPyVM") -> None:
-    w_mod = vm.modules_w["math"]
+    w_mod = vm.modules_w["_math"]
     w_mod.setattr("pi", vm.wrap(math.pi))
     w_mod.setattr("tau", vm.wrap(math.tau))
     w_mod.setattr("e", vm.wrap(math.e))

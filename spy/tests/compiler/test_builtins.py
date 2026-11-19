@@ -415,13 +415,13 @@ class TestBuiltins(CompilerTest):
         src = """
         from __spy__ import interp_list
 
-        import math
+        import _math
 
         def dir_i32() -> interp_list[str]:
             return dir(5)
 
         def dir_math() -> interp_list[str]:
-            return dir(math)
+            return dir(_math)
         """
         mod = self.compile(src)
         di = mod.dir_i32()
