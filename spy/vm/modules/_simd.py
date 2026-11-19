@@ -186,17 +186,17 @@ class W_Simd(W_Object):
             # return a constant, so that no check is needed at runtime
             start_i = int(args_wam_full[0].w_blueval.value)  # type: ignore
             step_i = int(args_wam_full[1].w_blueval.value)  # type: ignore
+            lanes = [start_i + i * step_i for i in range(N)]
             lo, hi = dtype_limits
-            if not (lo <= start_i <= hi and lo <= start_i + (N - 1) * step_i <= hi):
-                lane = next(i for i in range(N) if not lo <= start_i + i * step_i <= hi)
-                err = SPyError(
-                    "W_TypeError",
-                    f"`{t}.iota` overflows `{dtype}`: "
-                    f"lane {lane} would be {start_i + lane * step_i}",
-                )
-                err.add("error", f"this is `{t}`", wam_self.loc)
-                raise err
-            lanes_w = [w_dtype.pyclass(start_i + i * step_i) for i in range(N)]  # type: ignore
+            for lane, value in enumerate(lanes):
+                if not lo <= value <= hi:
+                    err = SPyError(
+                        "W_TypeError",
+                        f"`{t}.iota` overflows `{dtype}`: lane {lane} would be {value}",
+                    )
+                    err.add("error", f"this is `{t}`", wam_self.loc)
+                    raise err
+            lanes_w = [w_dtype.pyclass(v) for v in lanes]  # type: ignore
             return W_OpSpec.const(W_Simd(w_simdtype, lanes_w))
 
         if dtype_limits is None:

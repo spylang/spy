@@ -423,6 +423,18 @@ class TestSIMD(CompilerTest):
         d_f32 = default[f32]
         d_f64 = default[f64]
 
+        # `step * i` overflows the dtype although every lane is valid
+        def big_step_i8(start: i8, step: i8) -> tuple[i8, i8, i8, i8]:
+            v = SIMD[i8, 4].iota(start, step)
+            return v[0], v[1], v[2], v[3]
+
+        def big_step_i64(start: i64, step: i64) -> tuple[i64, i64, i64, i64]:
+            v = SIMD[i64, 4].iota(start, step)
+            return v[0], v[1], v[2], v[3]
+
+        def single_lane(start: i32, step: i32) -> i32:
+            return SIMD[i32, 1].iota(start, step)[0]
+
         t_i8 = start_step[i8]
         t_u8 = start_step[u8]
         t_i32 = start_step[i32]
@@ -463,6 +475,15 @@ class TestSIMD(CompilerTest):
         assert mod.t_i8(-100, -5) == (-100, -105, -110, -115)
         assert mod.t_i64(0, -1) == (0, -1, -2, -3)
 
+        # only the lanes have to fit in the dtype, not `step * i`
+        assert mod.big_step_i8(-100, 50) == (-100, -50, 0, 50)
+        start = 2**63 - 1
+        step = -(2**62) - 1
+        assert mod.big_step_i64(start, step) == tuple(
+            start + i * step for i in range(4)
+        )
+        assert mod.single_lane(7, 2**31 - 1) == 7
+
         # red arguments: overflow raises at runtime instead of wrapping
         with SPyError.raises("W_PanicError", match="overflows `i8`"):
             mod.t_i8(120, 5)
@@ -470,6 +491,10 @@ class TestSIMD(CompilerTest):
             mod.t_u8(250, 3)
         with SPyError.raises("W_PanicError", match="overflows `i8`"):
             mod.t_i8(-120, -5)
+        with SPyError.raises("W_PanicError", match="overflows `u64`"):
+            mod.t_u64(2**64 - 3, 1)
+        with SPyError.raises("W_PanicError", match="overflows `i64`"):
+            mod.t_i64(2**63 - 2, 1)
 
     @only_interp
     def test_iota_overflow(self):
