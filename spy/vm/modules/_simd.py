@@ -283,6 +283,9 @@ class W_Simd(W_Object):
         w_converter = vm.lookup_global(FQN(f"simd::{converter}"))
         w_impl = vm.getitem_w(w_converter, w_dtype, vm.wrap(length), w_gotT)
         assert isinstance(w_impl, W_Func)
+        if wam_obj.is_blue():
+            w_res = vm.fast_call(w_impl, [wam_obj.w_blueval])
+            return W_OpSpec.const(w_res)
         return W_OpSpec(w_impl, [wam_obj])
 
     # ===== lane read: v[i] (red index) -> simd.getitem =====

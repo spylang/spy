@@ -102,6 +102,13 @@ class TestSIMD(CompilerTest):
             v: VEC = [a, b, c, d]
             return lanes(v)
 
+        def convert_blue_tuple() -> tuple[i32, i32, i32, i32]:
+            tup = (1, 2, 3, 4)
+            assert COLOR(tup) == "blue"
+            v: VEC = tup
+            assert COLOR(v) == "blue"
+            return lanes(v)
+
         def splat_is_explicit(x: i32) -> bool:
             v = VEC.splat(x)
             w = VEC(x, x, x, x)
@@ -113,6 +120,7 @@ class TestSIMD(CompilerTest):
         assert mod.splat_literal() == (42, 42, 42, 42)
         assert mod.explicit(1, 2, 3, 4) == (1, 2, 3, 4)
         assert mod.convert(5, 6, 7, 8) == (5, 6, 7, 8)
+        assert mod.convert_blue_tuple() == (1, 2, 3, 4)
         assert mod.splat_is_explicit(9)
 
     def test_constructors_all_dtypes(self):
