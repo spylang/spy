@@ -223,3 +223,24 @@ class TestMetaFunc(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.foo() == 3
+
+    @no_C
+    def test_args_m_len_is_blue(self):
+        src = """
+        from operator import OpSpec
+        from __spy__ import COLOR
+
+        @blue.metafunc
+        def meta(*args_m):
+            N = len(args_m)
+            assert N == 2
+            assert COLOR(N) == "blue"
+            return OpSpec.const(3)
+
+        def foo() -> i32:
+            var a = 1
+            var b = 2.0
+            return meta(a, b)
+        """
+        mod = self.compile(src)
+        assert mod.foo() == 3
