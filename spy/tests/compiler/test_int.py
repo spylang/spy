@@ -1,7 +1,7 @@
 import pytest
 
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest, expect_errors, skip_backends
+from spy.tests.support import CompilerTest, expect_errors, only_C, skip_backends
 
 
 @pytest.fixture(params=["i32", "u32", "i8", "u8", "i64", "u64"])
@@ -283,6 +283,15 @@ class TestInt(CompilerTest):
         assert mod.b_or(127, 0) == 127 | 0
         assert mod.b_xor(16, 15) == 16 ^ 15
         assert mod.b_xor(16, 0) == 16 ^ 0
+
+    @only_C
+    def test_ambiguous_mix_no_warning(self):
+        # operators mixed without parens trigger -Wparentheses warnings in gcc/clang;
+        # see -Wno-parentheses in spy/build/flags.py
+        mod = self.compile("""
+        def add_shl_l(x: i32, y: i32, z: i32) -> i32: return (x + y) << z
+        """)
+        assert mod.add_shl_l(21, 3, 2) == 96
 
     def test_pow(self, int_type):
         mod = self.compile(f"""
