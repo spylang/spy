@@ -389,6 +389,7 @@ def w_SIMD(vm: "SPyVM", w_dtype: W_Type, w_length: W_I32) -> W_Dynamic:
         "__make__",
         irtag=IRTag("simd.make"),
         w_functype=w_functype,
+        is_pure=True,
     )
     def w_make(vm: "SPyVM", *args_w: W_Object) -> W_Simd:
         assert len(args_w) == length
