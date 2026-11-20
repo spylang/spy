@@ -82,7 +82,14 @@ _OUTPUT_KIND_CFLAGS: dict[str, list[str]] = {
 }
 
 _WARNING_CFLAGS: list[str] = ["-Werror=implicit-function-declaration"]
-_WARNING_AS_ERROR_CFLAGS: list[str] = ["-Werror", "-Wno-unreachable-code"]
+# -Wno-parentheses: gcc/clang warn on mixed operators without parens (e.g. `a + b << c`,
+# `a & b == c`), but the rules differ between compilers and versions. The C backend
+# does not try to avoid those warnings, so they must not become errors.
+_WARNING_AS_ERROR_CFLAGS: list[str] = [
+    "-Werror",
+    "-Wno-unreachable-code",
+    "-Wno-parentheses",
+]
 
 _BUILD_TYPE_CFLAGS: dict[str, list[str]] = {
     "release": ["-DSPY_RELEASE", "-O3", "-flto"],
