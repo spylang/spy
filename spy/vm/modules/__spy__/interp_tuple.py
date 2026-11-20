@@ -86,7 +86,7 @@ class W_InterpTuple(W_Object):
         # XXX bound check?
         return w_tup.items_w[i]
 
-    @builtin_method("__len__")
+    @builtin_method("__len__", is_pure=True)
     @staticmethod
     def w_len(vm: "SPyVM", w_tup: "W_InterpTuple") -> W_I32:
         n = len(w_tup.items_w)
