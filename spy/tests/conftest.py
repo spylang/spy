@@ -146,7 +146,7 @@ def configure_pyodide():
             fullStdLib: false,
             enableRunUntilComplete: true,
         });
-        await pyodide.loadPackage(["pytest", "typing-extensions"]);
+        await pyodide.loadPackage(["pytest"]);
         """,
     )
     pytest_pyodide_config.set_initialize_script(

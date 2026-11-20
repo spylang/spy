@@ -2,11 +2,10 @@
 A pythonic wrapper around wasmtime.
 """
 
-from typing import Any, Optional
+from typing import Any, Optional, Self
 
 import py.path
 import wasmtime as wt
-from typing_extensions import Self
 
 from .base import HostModule, LLWasmInstanceBase, LLWasmMemoryBase, LLWasmModuleBase
 
