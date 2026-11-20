@@ -357,7 +357,9 @@ class W_F64(W_Object):
     }
     value: float
 
-    def __init__(self, value: float) -> None:
+    def __init__(self, value: float | int) -> None:
+        if isinstance(value, int):
+            value = float(value)
         assert type(value) is float
         self.value = value
 
@@ -413,7 +415,9 @@ class W_F32(W_Object):
     }
     value: float32
 
-    def __init__(self, value: float | float32) -> None:
+    def __init__(self, value: float | float32 | int) -> None:
+        if isinstance(value, int):
+            value = float(value)
         self.value = float32(value) if type(value) is float else value  # type: ignore[assignment]
 
     @builtin_method("__new__", color="blue", kind="metafunc")
