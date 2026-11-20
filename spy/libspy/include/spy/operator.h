@@ -51,6 +51,7 @@ DEFINE_CONV(u64, f64)
 DEFINE_CONV(f32, f64)
 
 DEFINE_CONV(f64, f32)
+DEFINE_CONV(f64, f64)
 
 #undef i8
 #undef u8
