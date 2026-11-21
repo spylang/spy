@@ -39,7 +39,7 @@ class InterpModuleWrapper:
         return ["vm", "w_mod"] + list(self.w_mod.keys())
 
     def __getattr__(self, attr: str) -> Any:
-        w_obj = self.w_mod.getattr_maybe(attr)
+        w_obj = self.w_mod.getattr_maybe(self.vm, attr)
         if w_obj is None:
             raise AttributeError(attr)
 

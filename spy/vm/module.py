@@ -5,7 +5,7 @@ from spy.fqn import FQN
 from spy.vm.b import TYPES, B
 from spy.vm.builtin import builtin_method
 from spy.vm.function import W_ASTFunc, W_Func
-from spy.vm.object import W_Object
+from spy.vm.object import W_LazyAttr, W_Object
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_Dynamic
 from spy.vm.str import W_Str
@@ -54,7 +54,7 @@ class W_Module(W_Object):
         w_mod = wam_mod.w_blueval
         assert isinstance(w_mod, W_Module)
         name = wam_name.blue_unwrap_str(vm)
-        w_attr = w_mod.getattr_maybe(name)
+        w_attr = w_mod.getattr_maybe(vm, name)
         if w_attr is None:
             return W_OpSpec.NULL
         return W_OpSpec.const(w_attr)
@@ -78,7 +78,7 @@ class W_Module(W_Object):
         w_mod = wam_mod.w_blueval
         assert isinstance(w_mod, W_Module)
         name = wam_name.blue_unwrap_str(vm)
-        w_func = w_mod.getattr_maybe(name)
+        w_func = w_mod.getattr_maybe(vm, name)
         if w_func is None:
             return W_OpSpec.NULL
 
@@ -96,8 +96,12 @@ class W_Module(W_Object):
 
     # ==== public interp-level API ====
 
-    def getattr_maybe(self, attr: str) -> Optional[W_Object]:
-        return self._dict_w.get(attr)
+    def getattr_maybe(self, vm: "SPyVM", attr: str) -> Optional[W_Object]:
+        w_obj = self._dict_w.get(attr)
+        if isinstance(w_obj, W_LazyAttr):
+            w_obj = w_obj.load(vm)
+            self._dict_w[attr] = w_obj
+        return w_obj
 
     def getattr(self, attr: str) -> W_Object:
         return self._dict_w[attr]

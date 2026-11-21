@@ -1,0 +1,24 @@
+@blue
+def specialize(val):
+    """
+    Shortcut for `Specialized[val]()`.
+    `Specialized[val]` is a singleton type with exactly one instance,
+
+    Generic types such as `tuple` can use it to treat an item as a blue constant instead
+    of storing it.
+    """
+    return Specialized[val]()
+
+
+@blue.generic
+def Specialized(val):
+    VAL = val
+
+    @struct
+    class _S:
+        val = VAL
+
+        def __repr__(self) -> str:
+            return "specialize(" + repr(VAL) + ")"
+
+    return _S

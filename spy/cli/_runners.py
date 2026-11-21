@@ -88,7 +88,7 @@ def execute_spy_main(
     redshift: bool = False,
     _timeit: bool = False,
 ) -> None:
-    w_main = w_mod.getattr_maybe("main")
+    w_main = w_mod.getattr_maybe(vm, "main")
     if w_main is None:
         print("Cannot find function main()")
         return

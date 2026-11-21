@@ -356,7 +356,7 @@ class SPyVM:
         if impref.attr is None:
             return w_mod
         elif w_mod is not None:
-            return w_mod.getattr_maybe(impref.attr)
+            return w_mod.getattr_maybe(self, impref.attr)
         else:
             return None
 
