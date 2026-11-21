@@ -851,6 +851,7 @@ class W_Type(W_Object):
         vm: "SPyVM", wam_T: "W_MetaArg", wam_name: "W_MetaArg"
     ) -> "W_OpSpec":
         from spy.vm.opspec import W_MetaArg, W_OpSpec
+        from spy.vm.property import W_StaticMethod
 
         if wam_T.color != "blue":
             # it's unclear how to implement getattr on red types, since we
@@ -873,6 +874,12 @@ class W_Type(W_Object):
         # 2. Look in the __dict__ of this type and its bases
         w_attr = w_T.lookup(vm, name)
         if w_attr is not None:
+            # this is a bit of a hack: we don't yet support the descriptor protocol when
+            # invoked from a class (see the WIP below), so here we just specialcase
+            # W_StaticMethod
+            if isinstance(w_attr, W_StaticMethod):
+                return W_OpSpec.const(w_attr.w_obj)
+
             # implement descriptor functionality, if any
             if w_get := vm.dynamic_type(w_attr).lookup_func(vm, "__get__"):
                 raise WIP("implement me: descriptor accessed via class")
