@@ -1,6 +1,5 @@
 from operator import OpSpec
-from __spy__ import force_inline, interp_tuple
-from strbuilder import StrBuilder
+from __spy__ import force_inline, interp_tuple, lookup_fqn
 
 
 @blue.generic
@@ -82,6 +81,9 @@ def tuple(*items_T):
             return OpSpec(contains, [m_self, m_v])
 
         def __repr__(self) -> str:
+            # we don't support circular imports and function-level imports. This is a
+            # hacky workaround for 'from _strbuilder import StrBuilder'
+            StrBuilder = lookup_fqn("strbuilder::StrBuilder")
             sb = StrBuilder(N * 4 + 2)
             sb.append("(")
             for i in unroll(range(N)):

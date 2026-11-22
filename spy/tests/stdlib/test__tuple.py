@@ -114,8 +114,8 @@ class TestTange(CompilerTest):
             return v in t
         """)
         assert mod.c0(1) == False
-        assert mod.c1(1) == True
-        assert mod.c1(3) == False
+        assert mod.c2(1) == True
+        assert mod.c2(3) == False
 
     def test_contains_heterogeneous_error(self):
         src = """
