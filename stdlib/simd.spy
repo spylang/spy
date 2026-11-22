@@ -1,4 +1,3 @@
-
 from _simd import SIMD
 
 
@@ -31,27 +30,10 @@ def from_tuple(T, N, TUP):
     the tuple.
     """
 
-    # tuple indices must be blue, so `build` unrolls the loop at compile time
-    # by recursion (same technique as in _tuple.spy)
-    @blue
-    def build(idx):
-        if idx == N:
-
-            def done(v: SIMD[T, N], t: TUP) -> SIMD[T, N]:
-                return v
-
-            return done
-
-        rest = build(idx + 1)
-
-        def step(v: SIMD[T, N], t: TUP) -> SIMD[T, N]:
-            return rest(v._with_lane(idx, t[idx]), t)
-
-        return step
-
-    fill = build(0)
-
     def impl(t: TUP) -> SIMD[T, N]:
-        return fill(SIMD[T, N].zeros(), t)
+        v = SIMD[T, N].zeros()
+        for i in unroll(range(N)):
+            v = v._with_lane(i, t[i])
+        return v
 
     return impl

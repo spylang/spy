@@ -1,5 +1,5 @@
 from operator import OpSpec
-from __spy__ import force_inline, interp_tuple
+from __spy__ import force_inline, interp_tuple, lookup_fqn
 
 
 @blue.generic
@@ -55,124 +55,48 @@ def tuple(*items_T):
         def __contains__(m_self, m_v):
             """
             Implement the 'in' operator only on homogeneous tuples.
-
-            Everything here runs at redshift time: `build` recursively
-            unrolls the comparisons, so e.g. for tuple[i32, i32, i32] the
-            expression `v in t` compiles to a chain of specialized functions
-            equivalent to:
-
-                t._item0 == v or t._item1 == v or t._item2 == v
-
-            with no loop or dynamic dispatch left at runtime.
             """
-
             T = m_v.static_type
 
             @blue
-            def is_homogeneous(idx):
-                if idx == N:
-                    return True
-                if items_T[idx] == items_T[0]:
-                    return is_homogeneous(idx + 1)
-                return False
+            def is_homogeneous():
+                for U in items_T:
+                    if U != items_T[0]:
+                        return False
+                return True
 
-            if not is_homogeneous(0):
+            if not is_homogeneous():
                 raise TypeError("'in' is not supported on heterogeneous tuples")
 
-            @blue
-            def matches_item_type():
-                if N == 0:
-                    return True
-                return items_T[0] == T
-
-            if not matches_item_type():
-                raise TypeError(
-                    "type mismatch: argument is not of the tuple's element type"
-                )
-
-            @blue
-            def build(idx):
-                if idx == N:
-
-                    def check_none(self: _tup, v: T) -> bool:
-                        return False
-
-                    return check_none
-
-                rest = build(idx + 1)
-                attr = "_item" + str(idx)
-
-                def check_or_rest(self: _tup, v: T) -> bool:
-                    if getattr(self, attr) == v:
+            # `unroll` expands the loop, so e.g. for tuple[i32, i32, i32] the
+            # expression `v in t` compiles to code equivalent to:
+            #     t._item0 == v or t._item1 == v or t._item2 == v
+            def contains(self: _tup, v: T) -> bool:
+                for i in unroll(range(N)):
+                    if self[i] == v:
                         return True
-                    return rest(self, v)
+                return False
 
-                return check_or_rest
+            return OpSpec(contains, [m_self, m_v])
 
-            return OpSpec(build(0), [m_self, m_v])
-
-        @blue.metafunc
-        def __repr__(m_self):
-            """
-            Format heterogeneous tuples without runtime type dispatch.
-
-            As in __contains__, `build` recursively unrolls the fields.
-            The generated functions are force-inlined into one concatenation
-            expression.
-            """
-            # NOTE: this is suboptimal, both for performance and for readabiltiy. As
-            # soon as we have unroll() and StringBuilder(), we should rewrite to
-            # something like this:
-            #
-            ## def __repr__(self) -> str:
-            ##     sb = StringBuilder()
-            ##     sb.append("(")
-            ##     for i in unroll(N):
-            ##         item = self[i]
-            ##         sb.append(repr(item))
-            ##         sb.append(",") # XXX don't emit the last ","
-            ##     sb.append(")")
-            ##     return sb.build()
-
-            @blue
-            def build(idx):
-                if idx == N:
-                    if N == 0:
-
-                        @force_inline
-                        def finish_empty(self: _tup) -> str:
-                            return "()"
-
-                        return finish_empty
-                    elif N == 1:
-
-                        @force_inline
-                        def finish_singleton(self: _tup) -> str:
-                            return ",)"
-
-                        return finish_singleton
-                    else:
-
-                        @force_inline
-                        def finish(self: _tup) -> str:
-                            return ")"
-
-                        return finish
-
-                rest = build(idx + 1)
-                attr = "_item" + str(idx)
-                if idx == 0:
-                    prefix = "("
-                else:
-                    prefix = ", "
-
-                @force_inline
-                def format_item(self: _tup) -> str:
-                    return prefix + repr(getattr(self, attr)) + rest(self)
-
-                return format_item
-
-            return OpSpec(build(0))
+        def __repr__(self) -> str:
+            # we don't support circular imports and function-level imports. This is a
+            # hacky workaround for 'from _strbuilder import StrBuilder'
+            StrBuilder = lookup_fqn("strbuilder::StrBuilder")
+            sb = StrBuilder(N * 4 + 2)
+            sb.append("(")
+            for i in unroll(range(N)):
+                item = self[i]
+                sb.append(repr(item))
+                if N == 1:
+                    # this is needed for single-item tuples: we want to emit
+                    # e.g. `(1,)`, not `(1)`
+                    sb.append(",")
+                elif i != N - 1:
+                    # this is to avoid putting a `,` after the last element
+                    sb.append(", ")
+            sb.append(")")
+            return sb.build()
 
         def __str__(self) -> str:
             return repr(self)

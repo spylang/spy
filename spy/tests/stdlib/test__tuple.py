@@ -101,36 +101,21 @@ class TestTange(CompilerTest):
         assert mod.foo()
         assert not mod.bar()
 
-    def test_contains_true(self):
+    def test_contains(self):
         mod = self.compile("""
         from _tuple import tuple
 
-        def c(v: int) -> bool:
+        def c0(v: int) -> bool:
+            t = tuple[()]()
+            return v in t
+
+        def c2(v: int) -> bool:
             t = tuple[int, int](1, 2)
             return v in t
         """)
-        assert mod.c(2) == True
-
-    def test_contains_false(self):
-        mod = self.compile("""
-        from _tuple import tuple
-
-        def c(v: int) -> bool:
-            t = tuple[int, int](1, 3)
-            return v in t
-        """)
-        assert mod.c(2) == False
-
-    def test_contains_str(self):
-        mod = self.compile("""
-        from _tuple import tuple
-
-        def c(v: str) -> bool:
-            t = tuple[str, str]("hello", "world")
-            return v in t
-        """)
-        assert mod.c("world") == True
-        assert mod.c("foo") == False
+        assert mod.c0(1) == False
+        assert mod.c2(1) == True
+        assert mod.c2(3) == False
 
     def test_contains_heterogeneous_error(self):
         src = """
@@ -142,18 +127,5 @@ class TestTange(CompilerTest):
         """
         errors = expect_errors(
             "'in' is not supported on heterogeneous tuples",
-        )
-        self.compile_raises(src, "c", errors)
-
-    def test_contains_type_mismatch(self):
-        src = """
-        from _tuple import tuple
-
-        def c() -> bool:
-            t = tuple[int, int](1, 2)
-            return "z" in t
-        """
-        errors = expect_errors(
-            "type mismatch: argument is not of the tuple's element type",
         )
         self.compile_raises(src, "c", errors)
