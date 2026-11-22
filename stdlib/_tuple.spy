@@ -59,14 +59,13 @@ def tuple(*items_T):
             T = m_v.static_type
 
             @blue
-            def is_homogeneous(idx):
-                if idx == N:
-                    return True
-                if items_T[idx] == items_T[0]:
-                    return is_homogeneous(idx + 1)
-                return False
+            def is_homogeneous():
+                for U in items_T:
+                    if U != items_T[0]:
+                        return False
+                return True
 
-            if not is_homogeneous(0):
+            if not is_homogeneous():
                 raise TypeError("'in' is not supported on heterogeneous tuples")
 
             # `unroll` expands the loop, so e.g. for tuple[i32, i32, i32] the
