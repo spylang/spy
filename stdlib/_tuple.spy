@@ -4,11 +4,9 @@ from __spy__ import force_inline, interp_tuple, lookup_fqn
 
 @blue.generic
 def tuple(*items_T):
-    # XXX: we should use 'if type in items_T' as soon as it's supported
-    for _T in items_T:
+    if type in items_T:
         # `type` cannot be put in a struct, so we need to use interp_tuple for now
-        if _T == type:
-            return interp_tuple
+        return interp_tuple
 
     @blue
     def get_fields():
