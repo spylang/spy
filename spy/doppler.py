@@ -20,13 +20,12 @@ from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
 from spy.vm.modules.types import TYPES
 from spy.vm.modules.unsafe.misc import W_Align
 from spy.vm.modules.unsafe.ptr import W_Ptr
-from spy.vm.object import W_Object
+from spy.vm.object import W_Object, W_Type
 from spy.vm.opimpl import ArgSpec, W_OpImpl
 from spy.vm.opspec import W_MetaArg
 from spy.vm.struct import W_Struct
 
 if TYPE_CHECKING:
-    from spy.vm.object import W_Type
     from spy.vm.vm import SPyVM
 
 ErrorMode = Literal["eager", "lazy", "warn"]
@@ -377,7 +376,7 @@ class DopplerFrame(ASTFrame):
         elif is_auto:
             # use the actual type computed during type inference
             w_T = self.locals[varname].w_T
-            assert w_T is not None
+            assert isinstance(w_T, W_Type)
             newtype = make_const(self.vm, vardef.type.loc, w_T)
         else:
             newtype = self.shifted_expr[vardef.type]
@@ -628,7 +627,7 @@ class DopplerFrame(ASTFrame):
                 new_expr = make_const(self.vm, expr.loc, wam.w_val)
             else:
                 # add a residual call to the convert function
-                assert lv.w_T is not None
+                assert isinstance(lv.w_T, W_Type)
                 expT = make_const(self.vm, lv.decl_loc, lv.w_T)
                 gotT = make_const(self.vm, wam.loc, wam.w_static_T)
                 new_expr = self.shift_opimpl(

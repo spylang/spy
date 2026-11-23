@@ -13,7 +13,16 @@ from spy.util import magic_dispatch
 from spy.vm.b import B
 from spy.vm.cell import W_Cell
 from spy.vm.exc import W_NameError, W_TypeError
-from spy.vm.function import CLOSURE, FuncParam, LocalVar, W_ASTFunc, W_Func, W_FuncType
+from spy.vm.function import (
+    CLOSURE,
+    INFERRED,
+    FuncParam,
+    LocalVar,
+    TypeSentinel,
+    W_ASTFunc,
+    W_Func,
+    W_FuncType,
+)
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
 from spy.vm.modules.operator import OP, OP_from_token, OP_unary_from_token
@@ -87,12 +96,12 @@ class AbstractFrame:
         res = {}
         for name, lv in self.locals.items():
             if lv.color == "red":
-                assert lv.w_T is not None
+                assert isinstance(lv.w_T, W_Type)
                 res[name] = lv.w_T
         return res
 
     def declare_local(
-        self, name: str, desired_color: Color, w_type: Optional[W_Type], loc: Loc
+        self, name: str, desired_color: Color, w_type: W_Type | TypeSentinel, loc: Loc
     ) -> None:
         if name in self.locals:
             # this is the same check that we already do in
@@ -106,7 +115,7 @@ class AbstractFrame:
             err.add("note", "this is the previous declaration", old_loc)
             raise err
 
-        if w_type is not None and not isinstance(w_type, W_FuncType):
+        if isinstance(w_type, W_Type) and not isinstance(w_type, W_FuncType):
             self.vm.make_fqn_const(w_type)
 
         # determine the color of the local var:
@@ -140,7 +149,7 @@ class AbstractFrame:
 
     def store_local(self, name: str, w_value: W_Object) -> None:
         lv = self.locals[name]
-        if lv.w_T is None:
+        if lv.w_T is INFERRED:
             # deferred type inference, see exec_stmt_VarDef
             lv.w_T = self.vm.dynamic_type(w_value)
         # sanity check
@@ -182,7 +191,7 @@ class AbstractFrame:
         if varname is None:
             return None  # no typecheck needed
         lv = self.locals[varname]
-        assert lv.w_T is not None
+        assert isinstance(lv.w_T, W_Type)
         w_expT = lv.w_T
         wam_expT = W_MetaArg.from_w_obj(self.vm, lv.w_T, loc=lv.decl_loc)
         try:
@@ -226,7 +235,7 @@ class AbstractFrame:
             # apply the conversion
             assert varname is not None
             lv = self.locals[varname]
-            assert lv.w_T is not None
+            assert isinstance(lv.w_T, W_Type)
             wam_expT = W_MetaArg.from_w_obj(self.vm, lv.w_T, loc=lv.decl_loc)
             wam_gotT = W_MetaArg.from_w_obj(self.vm, wam.w_static_T, loc=wam.loc)
             wam_val = self.vm.eval_opimpl(
@@ -536,7 +545,7 @@ class AbstractFrame:
             if is_auto:
                 # deferred inference, type will be fixed on first assignment
                 # see also eval_expr_AssignExprLocal
-                self.declare_local(varname, "red", None, vardef.loc)
+                self.declare_local(varname, "red", INFERRED, vardef.loc)
             else:
                 w_T = self.eval_expr_type(vardef.type)
                 self.declare_local(varname, "red", w_T, vardef.loc)
@@ -876,7 +885,7 @@ class AbstractFrame:
             w_val = None
         else:
             w_val = self.load_local(sym.slot_name)
-        assert lv.w_T is not None
+        assert isinstance(lv.w_T, W_Type)
         return W_MetaArg(self.vm, lv.color, lv.w_T, w_val, name.loc, sym=sym)
 
     def eval_expr_NameLocalCell(self, name: ast.NameLocalCell) -> W_MetaArg:
@@ -888,7 +897,7 @@ class AbstractFrame:
             w_cell = self.load_local(sym.slot_name)
             assert isinstance(w_cell, W_Cell)
             w_val = w_cell.get()
-        assert lv.w_T is not None
+        assert isinstance(lv.w_T, W_Type)
         return W_MetaArg(self.vm, lv.color, lv.w_T, w_val, name.loc, sym=sym)
 
     def eval_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> W_MetaArg:
@@ -932,7 +941,7 @@ class AbstractFrame:
             wam = self.eval_expr(value)
             self.declare_local(varname, wam.color, wam.w_static_T, target.loc)
             lv = self.locals[varname]
-        elif lv.w_T is None:
+        elif lv.w_T is INFERRED:
             # deferred type inference: var x: auto with no initializer
             wam = self.eval_expr(value)
             lv.color = wam.color if assign.sym.varkind == "const" else "red"
