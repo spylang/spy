@@ -7,7 +7,7 @@ from spy.location import Loc
 from spy.vm.astframe import AbstractFrame
 from spy.vm.b import B
 from spy.vm.field import W_Field
-from spy.vm.function import CLOSURE, W_Func
+from spy.vm.function import CLOSURE, LocalVar, W_Func
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.object import ClassBody, W_Type
 
@@ -39,7 +39,12 @@ class ClassFrame(AbstractFrame):
         # __extra_fields__ inside a ClassDef, it will be automatically typechecked
         w_str_type_dict = self.vm.getitem_w(SPY.w_interp_dict, B.w_str, B.w_type)
         assert isinstance(w_str_type_dict, W_Type)
-        self.declare_local("__extra_fields__", "red", w_str_type_dict, Loc.fake())
+        self.locals["__extra_fields__"] = LocalVar(
+            varname="__extra_fields__",
+            decl_loc=Loc.fake(),
+            color="red",
+            w_T=w_str_type_dict,
+        )
 
         self.exec_Block(self.classdef.body)
 

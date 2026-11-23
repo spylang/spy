@@ -143,16 +143,13 @@ class AbstractFrame:
         #     y = some_red_func()  # const, red
         # They are both const, but "y" cannot be "blue" because we don't know its value
         # during redshift.
-        if name == "__extra_fields__":
-            # XXX: maybe we should declare it as a local in ClassFrame.__init__?
-            color: Color = "red"
+        sym = self.frameinfo.lookup(name)
+        assert sym.is_local
+        color: Color
+        if sym.varkind == "const" and desired_color == "blue":
+            color = "blue"
         else:
-            sym = self.frameinfo.lookup(name)
-            assert sym.is_local
-            if sym.varkind == "const" and desired_color == "blue":
-                color = "blue"
-            else:
-                color = "red"
+            color = "red"
 
         self.locals[name] = LocalVar(
             varname=name, decl_loc=loc, color=color, w_T=w_type, w_val=None
