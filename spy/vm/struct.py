@@ -380,7 +380,9 @@ class W_StructField(W_Object):
         STRUCT = Annotated[W_Struct, w_structtype]
         irtag = IRTag("struct.getfield", name=name)
 
-        @vm.register_builtin_func(w_structtype.fqn, f"__get_{name}__", irtag=irtag)
+        @vm.register_builtin_func(
+            w_structtype.fqn, f"__get_{name}__", irtag=irtag, is_pure=True
+        )
         def w_get(vm: "SPyVM", w_struct: STRUCT) -> T:
             return w_struct.values_w[name]
 
