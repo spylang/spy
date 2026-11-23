@@ -1,5 +1,6 @@
 import pytest
 
+from spy.errors import SPyError
 from spy.tests.support import CompilerTest, expect_errors
 
 
@@ -129,3 +130,59 @@ class TestTange(CompilerTest):
             "'in' is not supported on heterogeneous tuples",
         )
         self.compile_raises(src, "c", errors)
+
+    def test_specialized_literal(self):
+        src = """
+        from _tuple import tuple
+        from __spy__ import Specialized, specialize, COLOR
+
+        def getitem_val() -> i32:
+            t = specialize(3), 1, "hello"
+            return t[0]
+
+        def getitem_color() -> str:
+            t = specialize(3), 1, "hello"
+            return COLOR(t[0])
+
+        def check_static_types() -> bool:
+            t = specialize(3), 1, "hello"
+            TUP = tuple[Specialized[3], int, str]
+            return STATIC_TYPE(t) == TUP and STATIC_TYPE(t[0]) == i32
+        """
+        mod = self.compile(src)
+        assert mod.getitem_val() == 3
+        assert mod.getitem_color() == "blue"
+        assert mod.check_static_types()
+
+    def test_specialized_ctor(self):
+        src = """
+        from _tuple import tuple
+        from __spy__ import Specialized, specialize
+
+        TUP = tuple[Specialized[3], str]
+
+        def accepts_i32() -> i32:
+            t = TUP(3, "hello")
+            return t[0]
+
+        def accepts_specialized() -> i32:
+            t = TUP(specialize(3), "hello")
+            return t[0]
+
+        def rejects_wrong_i32() -> i32:
+            t = TUP(5, "hello")
+            return t[0]
+
+        def rejects_wrong_specialized() -> i32:
+            t = TUP(specialize(5), "hello")
+            return t[0]
+        """
+        mod = self.compile(src, error_mode="lazy")
+        assert mod.accepts_i32() == 3
+        assert mod.accepts_specialized() == 3
+
+        msg = "tuple item 0 does not match the specialized value"
+        with SPyError.raises("W_TypeError", match=msg):
+            mod.rejects_wrong_i32()
+        with SPyError.raises("W_TypeError", match=msg):
+            mod.rejects_wrong_specialized()

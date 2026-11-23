@@ -79,7 +79,7 @@ class W_InterpTuple(W_Object):
     ) -> Annotated[W_InterpTupleIterator, W_InterpTupleIterator._w]:
         return W_InterpTupleIterator(w_tup.items_w, 0)
 
-    @builtin_method("__getitem__")
+    @builtin_method("__getitem__", is_pure=True)
     @staticmethod
     def w_getitem(vm: "SPyVM", w_tup: "W_InterpTuple", w_i: W_I32) -> W_Dynamic:
         i = vm.unwrap_i32(w_i)
