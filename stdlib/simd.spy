@@ -8,9 +8,18 @@ def align_offset(m_ptr, m_align, m_n):
     """
     align_offset(ptr, align, n) -> i32
 
-    Return how many elements of `ptr`'s item type must be skipped so that
-    `ptr + offset` is aligned to `align` bytes, clamped to `n`.
-    `align` must be a power of two.
+    Return the number of items to skip from the start of `ptr` so that the
+    resulting pointer is aligned to `align` bytes (`align` must be a power of
+    two). `n` is the number of items available in the buffer: if the aligned
+    address is further than that, `n` is returned.
+
+    Typical usage: process the first `offset` items with scalar code, then use
+    SIMD on the aligned remainder.
+
+        p: gc_ptr[i32] = gc_alloc[i32](n)
+        offset = align_offset(p, 16, n)    # 0 <= offset <= n
+        q = align_cast[16](p + offset)     # q is 16-byte aligned
+        # (if offset == n there is nothing left: don't use q)
     """
     PTR = m_ptr.static_type
     itemsize: i32 = sizeof(PTR.itemtype)
