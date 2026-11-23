@@ -35,7 +35,7 @@ def _check_ptr_static(vm: "SPyVM", wam_ptr: W_MetaArg, opname: str) -> W_PtrType
     raise err
 
 
-def _is_simd_cast(w_srcT: W_Type, w_dstT: W_Type) -> bool:
+def _is_valid_simd_cast(w_srcT: W_Type, w_dstT: W_Type) -> bool:
     """
     Return True for the only casts which are allowed: T <-> SIMD[T, N].
     """
@@ -69,17 +69,16 @@ def w_cast(vm: "SPyVM", w_DstItemT: W_Type) -> W_Dynamic:
     cast[DstItemT](ptr)
 
     Only casts between T and SIMD[T, N] (in both directions) are allowed;
-    any other cast is a compile-time TypeError.
+    any other cast is a TypeError.
 
-    The source ptr's alignment and memkind are preserved. The length is
-    recomputed from the byte size, with truncation.
+    The source ptr's alignment and memkind are preserved.
     """
     ns = UNSAFE.w_cast.compute_inner_ns([w_DstItemT])
 
     @vm.register_builtin_func(ns, "impl", color="blue", kind="metafunc")
     def w_cast_dispatch(vm: "SPyVM", wam_ptr: W_MetaArg) -> W_OpSpec:
         w_srcT = _check_ptr_static(vm, wam_ptr, "cast")
-        if not _is_simd_cast(w_srcT.w_itemT, w_DstItemT):
+        if not _is_valid_simd_cast(w_srcT.w_itemT, w_DstItemT):
             src_t = w_srcT.w_itemT.fqn.human_name(vm)
             dst_t = w_DstItemT.fqn.human_name(vm)
             err = SPyError("W_TypeError", "invalid cast")
