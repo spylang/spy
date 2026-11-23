@@ -7,7 +7,7 @@ from spy.location import Loc
 from spy.vm.astframe import AbstractFrame
 from spy.vm.b import B
 from spy.vm.field import W_Field
-from spy.vm.function import CLOSURE, LocalVar, W_Func
+from spy.vm.function import CLOSURE, UNDECLARED, LocalVar, W_Func
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.object import ClassBody, W_Type
 
@@ -56,6 +56,9 @@ class ClassFrame(AbstractFrame):
             if name == "__extra_fields__":
                 if lv.w_val is not None:
                     body.dict_w["__extra_fields__"] = lv.w_val
+                continue
+            if lv.w_T is UNDECLARED:
+                # the declaration was never executed, e.g. in a branch not taken
                 continue
             if lv.w_val is None:
                 # locals declared but not assigned
