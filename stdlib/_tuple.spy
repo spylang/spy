@@ -39,9 +39,19 @@ def tuple(*items_T):
         # __new__, but f-strings are always for now.
         return f"tuple item {i} does not match the specialized value"
 
+    @blue
+    def has_specialized_items():
+        for i in unroll(range(N)):
+            if is_specialized_type(items_T[i]):
+                return True
+        return False
+
     @struct
     class _tup:
         __extra_fields__ = get_fields()
+
+        # see SPyVM.is_specialized_tuple_type
+        __is_specialized_type__ = has_specialized_items()
 
         @blue.metafunc
         def __len__(m_self):

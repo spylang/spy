@@ -107,9 +107,17 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
         items = [make_const(vm, loc, w_item) for w_item in w_val.items_w]
         res = ast.Tuple(loc, items, w_T=w_T)
 
-    elif vm.is_tuple_type(w_T):
-        # transform the struct into a syntactical ast.Tuple node, so that we can put it
-        # in the AST without necessarily create a FQN
+    elif vm.is_tuple_type(w_T) and not vm.is_specialized_tuple_type(w_T):
+        # tuples are special-cased and transformed into a syntactical ast.Tuple
+        # node. This is mostly done to improve the readability of the redshifted output,
+        # but it's not strictly necessary, as tuples are _also_ structs and they would
+        # be handled by the next `elif`. The difference is more or less this:
+        #    (1, 2, "hello")
+        # vs
+        #    `tuple[i32, i32, str]::__make__`(1, 2, 'hello')
+        #
+        # Note that specialized tuples don't take the shortcut and they are rendered
+        # redshifted as normal structs
         assert isinstance(w_val, W_Struct)
         n = len(w_val.values_w)  # length of the tuple
         items_w = [w_val.values_w[f"_item{i}"] for i in range(n)]
