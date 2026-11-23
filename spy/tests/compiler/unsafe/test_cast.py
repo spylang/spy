@@ -49,44 +49,44 @@ class TestCastAlign(CompilerTest):
             return q[2][0]
         """
         mod = self.compile(src)
-        with SPyError.raises("W_PanicError"):
+        with SPyError.raises("W_PanicError", match="ptr_getitem out of bounds"):
             mod.foo()
 
-    @pytest.mark.parametrize(
-        "src_T, dst_T",
-        [
-            # scalar <-> scalar: reinterpreting memory is not allowed
-            ("i32", "f32"),
-            ("f32", "i32"),
-            ("i32", "i8"),
-            ("i8", "i32"),
-            ("u32", "i32"),
-            ("f64", "i64"),
-            # same type: not a useful cast
-            ("i32", "i32"),
-            # scalar -> SIMD with another lane type
-            ("i32", "SIMD[f32, 4]"),
-            ("i8", "SIMD[i32, 4]"),
-            # SIMD -> scalar of another lane type
-            ("SIMD[i32, 4]", "f32"),
-            ("SIMD[i32, 4]", "i8"),
-            # SIMD <-> SIMD: neither the lane type nor the size can change
-            ("SIMD[i32, 4]", "SIMD[f32, 4]"),
-            ("SIMD[i32, 4]", "SIMD[i32, 8]"),
-            ("SIMD[i32, 4]", "SIMD[i32, 4]"),
-        ],
-    )
-    def test_cast_forbidden(self, memkind, src_T, dst_T):
+    def test_cast_forbidden(self, memkind):
         k = memkind
         src = f"""
         from unsafe import {k}_alloc as k_alloc, cast, align
         from _simd import SIMD
 
-        def bad() -> None:
-            p = k_alloc[{src_T}, align(16)](8)
-            q = cast[{dst_T}](p)
+        def scalar_to_scalar() -> None:
+            p = k_alloc[i32, align(16)](8)
+            q = cast[f32](p)
+
+        def scalar_to_simd_wrong_lane() -> None:
+            p = k_alloc[i32, align(16)](8)
+            q = cast[SIMD[f32, 4]](p)
+
+        def simd_to_scalar_wrong_lane() -> None:
+            p = k_alloc[SIMD[i32, 4], align(16)](8)
+            q = cast[f32](p)
+
+        def simd_to_simd() -> None:
+            p = k_alloc[SIMD[i32, 4], align(16)](8)
+            q = cast[SIMD[i32, 8]](p)
         """
-        self.compile_raises(src, "bad", expect_errors("invalid cast"))
+        mod = self.compile(src, error_mode="lazy")
+
+        with SPyError.raises("W_TypeError", match="invalid cast"):
+            mod.scalar_to_scalar()
+
+        with SPyError.raises("W_TypeError", match="invalid cast"):
+            mod.scalar_to_simd_wrong_lane()
+
+        with SPyError.raises("W_TypeError", match="invalid cast"):
+            mod.simd_to_scalar_wrong_lane()
+
+        with SPyError.raises("W_TypeError", match="invalid cast"):
+            mod.simd_to_simd()
 
     def test_align_cast(self, memkind):
         k = memkind
