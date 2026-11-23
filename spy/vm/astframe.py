@@ -956,8 +956,8 @@ class AbstractFrame:
         value = assign.value
         varname = assign.sym.slot_name
 
-        lv = self.locals.get(varname)
-        if lv is None:
+        lv = self.locals[varname]
+        if lv.w_T is UNDECLARED:
             # first assignment, implicit declaration
             wam = self.eval_expr(value)
             self.declare_local(varname, wam.color, wam.w_static_T, target.loc)
