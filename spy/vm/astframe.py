@@ -1226,7 +1226,18 @@ class ASTFrame(AbstractFrame):
         assert isinstance(w_func, W_ASTFunc)
         assert w_func.funcdef.frameinfo.kind == "function"
         assert w_func.funcdef.stage in ("astcompiled", "redshifted", "linearized")
-        ns = w_func.compute_inner_ns(args_w or [])
+
+        # `ns` is used for two things:
+        #    - as the namespace for nested functions and types
+        #    - in tracebacks
+        # For blue function, we want a qualified ns (e.g. `list[i32]`), but for red
+        # functions we just use the fqn (else a call to e.g. `inc(4)` would be shown as
+        # `inc[4]` in tracebacks)
+        if w_func.color == "blue":
+            ns = w_func.compute_inner_ns(vm, args_w or [])
+        else:
+            ns = w_func.fqn
+
         super().__init__(
             vm, ns, w_func.funcdef.loc, w_func.funcdef.frameinfo, w_func.closure
         )

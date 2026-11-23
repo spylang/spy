@@ -804,7 +804,10 @@ class W_Type(W_Object):
     @builtin_method("__repr__", is_pure=True)
     @staticmethod
     def w_repr(vm: "SPyVM", w_self: "W_Type") -> "W_Str":
-        return vm.wrap(repr(w_self))
+        # use human_name(vm), so that we honor vm.fqn_human_aliases.  For example by
+        # doing this we get `<spy type 'list[i32]'>` instead of
+        # `<spy type '_list::list[i32]::_ListImpl'>`.
+        return vm.wrap(f"<spy type '{w_self.fqn.human_name(vm)}'>")
 
     @builtin_property("__name__", is_pure=True)
     @staticmethod

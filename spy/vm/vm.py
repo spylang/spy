@@ -900,7 +900,7 @@ class SPyVM:
                 and isinstance(w_result, (W_Type, W_Func))
                 and w_result.w_origin is None
             ):
-                expected_ns = w_func.compute_inner_ns(args_w)
+                expected_ns = w_func.compute_inner_ns(self, args_w)
                 if w_result.fqn.namespace == expected_ns:
                     w_result.w_origin = w_func
                     if w_result.fqn != expected_ns:

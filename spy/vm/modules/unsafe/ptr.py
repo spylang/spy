@@ -624,7 +624,7 @@ def w_ptr_getfield(vm: "SPyVM", w_T: W_Type, w_memkind: W_Str) -> W_Dynamic:
         by = "byval"
 
     T = Annotated[W_Object, w_T]
-    ns = UNSAFE.w_ptr_getfield.compute_inner_ns([w_T])
+    ns = UNSAFE.w_ptr_getfield.compute_inner_ns(vm, [w_T])
     # example FQNs:
     #     unsafe::ptr_getfield[i32]::byval
     #     unsafe::ptr_getfield[raw_ref[Point]]::byref
@@ -651,7 +651,7 @@ def w_ptr_getfield(vm: "SPyVM", w_T: W_Type, w_memkind: W_Str) -> W_Dynamic:
 @UNSAFE.builtin_func(color="blue")
 def w_ptr_setfield(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     T = Annotated[W_Object, w_T]
-    ns = UNSAFE.w_ptr_setfield.compute_inner_ns([w_T])
+    ns = UNSAFE.w_ptr_setfield.compute_inner_ns(vm, [w_T])
     # example FQN: unsafe::ptr_setfield[i32]::impl
     irtag = IRTag("ptr.setfield")
 
