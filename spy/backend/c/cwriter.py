@@ -698,12 +698,9 @@ class CFuncWriter:
         assert isinstance(w_srcT, W_PtrType)
         c_src = self.fmt_expr(call.args[0])
         c_srctype = self.ctx.w2c(w_srcT)
-        c_targettype = self.ctx.c_restype_by_fqn(fqn)
-
-        w_func = self.ctx.vm.lookup_global(fqn)
-        assert isinstance(w_func, W_Func)
-        w_dstT = w_func.w_functype.w_restype
+        w_dstT = call.w_T
         assert isinstance(w_dstT, W_PtrType)
+        c_targettype = self.ctx.w2c(w_dstT)
 
         src_size = sizeof(w_srcT.w_itemT)
         dst_size = sizeof(w_dstT.w_itemT)
