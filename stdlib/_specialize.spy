@@ -10,15 +10,9 @@ def specialize(val):
     return Specialized[val]()
 
 
-@blue.generic
-def Specialized(val):
-    VAL = val
+@struct
+class Specialized[VAL]:
+    val = VAL
 
-    @struct
-    class _S:
-        val = VAL
-
-        def __repr__(self) -> str:
-            return "specialize(" + repr(VAL) + ")"
-
-    return _S
+    def __repr__(self) -> str:
+        return "specialize(" + repr(VAL) + ")"

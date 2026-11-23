@@ -148,9 +148,13 @@ class TestMisc(CompilerTest):
             s = call_specialize()
             return s.val
 
-        def getrepr() -> str:
+        def getrepr_instance() -> str:
             s = call_specialize()
             return repr(s)
+
+        def getrepr_type() -> str:
+            s = call_specialize()
+            return repr(type(s))
 
         def Specialized_ctor_is_same_as_specialize() -> bool:
             T = Specialized[3]
@@ -158,5 +162,6 @@ class TestMisc(CompilerTest):
         """
         mod = self.compile(src)
         assert mod.getval() == 3
-        assert mod.getrepr() == "specialize(3)"
+        assert mod.getrepr_instance() == "specialize(3)"
+        assert mod.getrepr_type() == "<spy type '_specialize::Specialized[3]'>"
         assert mod.Specialized_ctor_is_same_as_specialize()
