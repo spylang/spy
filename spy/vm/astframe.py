@@ -16,6 +16,7 @@ from spy.vm.exc import W_NameError, W_TypeError
 from spy.vm.function import (
     CLOSURE,
     INFERRED,
+    UNDECLARED,
     FuncParam,
     LocalVar,
     TypeSentinel,
@@ -81,10 +82,9 @@ class AbstractFrame:
         self.loc = loc
         self.frameinfo = frameinfo
         self.closure = closure
-        # TODO: once the scope migration is done, we know all the slots in advance
-        # (from the frameinfo), so we could pre-initialize self.locals with the right
-        # slots instead of populating it lazily via declare_local.
         self.locals = {}
+        for slot_name in frameinfo._symbols:
+            self.reset_local(slot_name)  # initialize in UNDECLARED state
         self.special_calls = {}
 
     # overridden by DopplerFrame
@@ -100,15 +100,30 @@ class AbstractFrame:
                 res[name] = lv.w_T
         return res
 
+    def reset_local(self, name: str) -> None:
+        """
+        Put the local `name` back in the UNDECLARED state.
+
+        Used e.g. at the start of a loop iteration where we want a fresh slot.
+        """
+        sym = self.frameinfo.lookup(name)
+        self.locals[name] = LocalVar(
+            varname=name,
+            decl_loc=sym.loc,
+            color="red",
+            w_T=UNDECLARED,
+        )
+
     def declare_local(
         self, name: str, desired_color: Color, w_type: W_Type | TypeSentinel, loc: Loc
     ) -> None:
-        if name in self.locals:
+        lv = self.locals[name]
+        if lv.w_T is not UNDECLARED:
             # this is the same check that we already do in
             # ScopeAnalyzer.define_name. This logic is duplicated because for
             # RED frames we raise the error eagerly in the analyzer, but for
             # BLUE frames we raise it here
-            old_loc = self.locals[name].decl_loc
+            old_loc = lv.decl_loc
             msg = f"variable `{name}` already declared"
             err = SPyError("W_ScopeError", msg)
             err.add("error", "this is the new declaration", loc)
@@ -128,8 +143,8 @@ class AbstractFrame:
         #     y = some_red_func()  # const, red
         # They are both const, but "y" cannot be "blue" because we don't know its value
         # during redshift.
-        if name[0] == "@" or name == "__extra_fields__":
-            # special case '@if', '@while', etc.
+        if name == "__extra_fields__":
+            # XXX: maybe we should declare it as a local in ClassFrame.__init__?
             color: Color = "red"
         else:
             sym = self.frameinfo.lookup(name)
@@ -145,10 +160,16 @@ class AbstractFrame:
 
     def declare_reserved_bool_locals(self) -> None:
         for name in ("@if", "@and", "@or", "@while", "@assert"):
-            self.declare_local(name, "red", B.w_bool, Loc.fake())
+            self.locals[name] = LocalVar(
+                varname=name,
+                decl_loc=Loc.fake(),
+                color="red",
+                w_T=B.w_bool,
+            )
 
     def store_local(self, name: str, w_value: W_Object) -> None:
         lv = self.locals[name]
+        assert lv.w_T is not UNDECLARED, f"store to undeclared local: {name}"
         if lv.w_T is INFERRED:
             # deferred type inference, see exec_stmt_VarDef
             lv.w_T = self.vm.dynamic_type(w_value)
@@ -538,7 +559,7 @@ class AbstractFrame:
         varname = sym.slot_name
         # [scope.loop-fresh]: if we have a VarDef inside a loop, it needs to be
         # reinitialized at each iteration
-        self.locals.pop(varname, None)
+        self.reset_local(varname)
         is_auto = isinstance(vardef.type, ast.Auto)
 
         if vardef.value is None:

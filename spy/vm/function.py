@@ -35,12 +35,17 @@ class TypeSentinel(enum.Enum):
     """
     Sentinels for LocalVar.w_T, used when a local has no real type yet:
       - INFERRED: `var x: auto` before its first assignment.
+      - UNDECLARED: the slot exists in the FrameInfo, but the declaration has not
+        been executed yet (or it was not executed at all, e.g. in a branch not
+        taken).
     """
 
     INFERRED = enum.auto()
+    UNDECLARED = enum.auto()
 
 
 INFERRED: Final = TypeSentinel.INFERRED
+UNDECLARED: Final = TypeSentinel.UNDECLARED
 
 
 @dataclass
