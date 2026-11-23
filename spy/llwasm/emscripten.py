@@ -3,12 +3,11 @@ A pythonic way to instantiate Emscripten binaries.
 """
 
 from asyncio import Future
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Self
 
 import py.path
 from pyodide.code import run_js
 from pyodide.ffi import JsProxy, run_sync
-from typing_extensions import Self
 
 from .base import HostModule, LLWasmInstanceBase, LLWasmMemoryBase, LLWasmModuleBase
 
