@@ -505,8 +505,11 @@ class DopplerFrame(ASTFrame):
             for sym in declared_syms:
                 new_slot = self._new_frameinfo.get_fresh_slot(sym.src_name)
                 new_sym = sym.replace(slot_name=new_slot)
+                # add the new slot&local to the old frame
+                self.frameinfo.add(new_sym)
+                self.reset_local(new_slot)
+                # and to the new one
                 self._new_frameinfo.add(new_sym)
-                self.frameinfo.add(new_sym)  # declare_local looks it up here
                 rename[sym] = new_sym
             body = rename_syms(stmt.body, rename)
             assert isinstance(body, ast.Block)

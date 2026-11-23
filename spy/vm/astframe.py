@@ -95,6 +95,10 @@ class AbstractFrame:
     def get_locals_types_w(self) -> dict[str, W_Type]:
         res = {}
         for name, lv in self.locals.items():
+            if lv.w_T is UNDECLARED:
+                # e.g. the original body of an unrolled loop: only its renamed
+                # copies are executed
+                continue
             if lv.color == "red":
                 assert isinstance(lv.w_T, W_Type)
                 res[name] = lv.w_T
