@@ -1,0 +1,35 @@
+from operator import MetaArg
+
+
+@blue
+def specialize(val):
+    """
+    Shortcut for `Specialized[val]()`.
+    `Specialized[val]` is a singleton type with exactly one instance,
+
+    Generic types such as `tuple` can use it to treat an item as a blue constant instead
+    of storing it.
+    """
+    return Specialized[val]()
+
+
+@struct
+class Specialized[VAL]:
+    val = VAL
+
+    @staticmethod
+    @blue
+    def matches(m_arg: MetaArg):
+        """
+        Check whether the given MetaArg is acceptable for this specialized type:
+        either the singleton instance itself or a blue value equal to `val`.
+        """
+        if m_arg.static_type == Self:
+            return True
+        # comparing values of different types raises, so check the type first
+        if m_arg.color != "blue" or m_arg.static_type != STATIC_TYPE(VAL):
+            return False
+        return m_arg.blueval == VAL
+
+    def __repr__(self) -> str:
+        return "specialize(" + repr(VAL) + ")"

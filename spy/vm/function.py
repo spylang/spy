@@ -268,11 +268,11 @@ class W_Func(W_Object):
         FQN("_str::methods::replace"),
     }
 
-    def compute_inner_ns(self, args_w: Sequence[W_Object]) -> FQN:
+    def compute_inner_ns(self, vm: "SPyVM", args_w: Sequence[W_Object]) -> FQN:
         """
         Try to generate a meaningful namespace for blue functions. The
-        idea is that if a blue func takes type parameters, we want to include
-        them in the qualifiers. E.g.:
+        idea is that if a blue func takes type or integer parameters, we want to
+        include them in the qualifiers. E.g.:
 
             @blue
             def add(T):
@@ -284,7 +284,8 @@ class W_Func(W_Object):
             add(str) # ==> add[str]::impl
 
         At the moment, the implementation is a bit ad-hoc and hackish, as it
-        considers ONLY type params as qualifiers, and ignores everything else.
+        considers ONLY type and integer params as qualifiers, and ignores
+        everything else.
 
         Note that this is more about readability than correctness: in case of
         blue params which are ignored, we might get clashing namespaces, but
@@ -295,7 +296,15 @@ class W_Func(W_Object):
         comp, we will probably need a deterministic and reproducible way to
         compute unique FQNs out of a blue call.
         """
-        quals = [w_arg.fqn for w_arg in args_w if isinstance(w_arg, W_Type)]
+        from spy.vm.b import B
+
+        integer_types = (B.w_i8, B.w_u8, B.w_i32, B.w_u32, B.w_i64, B.w_u64)
+        quals: list[FQN] = []
+        for w_arg in args_w:
+            if isinstance(w_arg, W_Type):
+                quals.append(w_arg.fqn)
+            elif vm.dynamic_type(w_arg) in integer_types:
+                quals.append(FQN(str(vm.unwrap(w_arg))))
         return self.fqn.with_qualifiers(quals)
 
     def spy_get_w_type(self, vm: "SPyVM") -> W_Type:

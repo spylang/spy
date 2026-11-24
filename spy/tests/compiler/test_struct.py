@@ -557,6 +557,17 @@ class TestStructOnStack(CompilerTest):
             m = MyInt.one()
             return m.__ll__
 
+        def staticmethod_get_from_class() -> i32:
+            # this does first getattr and then call
+            meth = MyInt.one
+            return meth().__ll__
+
+        def staticmethod_get_from_instance() -> i32:
+            # this does first getattr and then call
+            m = MyInt.one()
+            meth = m.one
+            return meth().__ll__
+
         def from_pair(x: i32, y: i32) -> i32:
             m = MyInt.from_pair(x, y)
             return m.__ll__
@@ -569,9 +580,12 @@ class TestStructOnStack(CompilerTest):
             # this raises TypeError
             MyInt.from_many(x, y, z, w)
             return 9999 # never reached
+
         """
         mod = self.compile(src, error_mode="lazy")
         assert mod.one() == 1
+        assert mod.staticmethod_get_from_class() == 1
+        assert mod.staticmethod_get_from_instance() == 1
         assert mod.from_pair(4, 5) == 9
         assert mod.from_triple(4, 5, 6) == 15
         with SPyError.raises("W_TypeError", match="invalid number of args"):

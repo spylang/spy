@@ -51,6 +51,15 @@ class W_StaticMethod(W_Object):
     def w_new(vm: "SPyVM", w_obj: W_Object) -> "W_StaticMethod":
         return W_StaticMethod(w_obj)
 
+    @builtin_method("__get__", color="blue", kind="metafunc")
+    @staticmethod
+    def w_GET(vm: "SPyVM", wam_self: "W_MetaArg", wam_o: "W_MetaArg") -> "W_OpSpec":
+        from spy.vm.opspec import W_OpSpec
+
+        w_self = wam_self.w_blueval
+        assert isinstance(w_self, W_StaticMethod)
+        return W_OpSpec.const(w_self.w_obj)
+
     def __repr__(self) -> str:
         return f"<spy staticmethod {self.w_obj}>"
 

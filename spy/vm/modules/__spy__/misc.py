@@ -5,7 +5,7 @@ from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.vm.builtin import builtin_method
 from spy.vm.function import W_ASTFunc, W_Func
-from spy.vm.object import W_Object
+from spy.vm.object import W_LazyAttr, W_Object
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_Bool, W_Dynamic
 from spy.vm.str import W_Str
@@ -44,6 +44,9 @@ def w_INIT(vm: "SPyVM") -> None:
     w_mod = vm.modules_w["__spy__"]
     w_mod.setattr("strict_scoping", vm.wrap("strict_scoping"))
     w_mod.setattr("pythonic_scoping", vm.wrap("pythonic_scoping"))
+
+    w_mod.setattr("Specialized", W_LazyAttr(FQN("_specialize::Specialized")))
+    w_mod.setattr("specialize", W_LazyAttr(FQN("_specialize::specialize")))
 
     for w_listtype in interp_list.PREBUILT_INTERP_LIST_TYPES.values():
         w_listtype.register_push_function(vm)

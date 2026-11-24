@@ -327,7 +327,7 @@ def w_from_dynamic(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
         b: i32 = from_dynamic[i32](a)
     """
     T = Annotated[W_Object, w_T]
-    ns = OP.w_from_dynamic.compute_inner_ns([w_T])
+    ns = OP.w_from_dynamic.compute_inner_ns(vm, [w_T])
 
     # operator::from_dynamic[i32]::impl
     @vm.register_builtin_func(ns, "impl")

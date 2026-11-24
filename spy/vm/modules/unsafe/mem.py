@@ -212,7 +212,7 @@ def w_ptr_copy(
     DST = Annotated[W_Ptr, w_dst_T]
     SRC = Annotated[W_Ptr, w_src_T]
     ITEMSIZE = sizeof(w_dst_T.w_itemT)
-    ns = UNSAFE.w_ptr_copy.compute_inner_ns([w_dst_T, w_src_T])
+    ns = UNSAFE.w_ptr_copy.compute_inner_ns(vm, [w_dst_T, w_src_T])
     irtag = IRTag("unsafe.memop", cfunc="spy_ptr_copy")
 
     @vm.register_builtin_func(ns, "impl", irtag=irtag)
@@ -249,7 +249,7 @@ def w_ptr_copy_slice(
     DST = Annotated[W_Ptr, w_dst_T]
     SRC = Annotated[W_Ptr, w_src_T]
     ITEMSIZE = sizeof(w_dst_T.w_itemT)
-    ns = UNSAFE.w_ptr_copy_slice.compute_inner_ns([w_dst_T, w_src_T])
+    ns = UNSAFE.w_ptr_copy_slice.compute_inner_ns(vm, [w_dst_T, w_src_T])
     irtag = IRTag("unsafe.memop", cfunc="spy_ptr_copy_slice")
 
     @vm.register_builtin_func(ns, "impl", irtag=irtag)
@@ -302,7 +302,7 @@ def w_ptr_move(
     DST = Annotated[W_Ptr, w_dst_T]
     SRC = Annotated[W_Ptr, w_src_T]
     ITEMSIZE = sizeof(w_dst_T.w_itemT)
-    ns = UNSAFE.w_ptr_move.compute_inner_ns([w_dst_T, w_src_T])
+    ns = UNSAFE.w_ptr_move.compute_inner_ns(vm, [w_dst_T, w_src_T])
     irtag = IRTag("unsafe.memop", cfunc="spy_ptr_move")
 
     @vm.register_builtin_func(ns, "impl", irtag=irtag)
@@ -336,7 +336,7 @@ def w_ptr_move_slice(
     DST = Annotated[W_Ptr, w_dst_T]
     SRC = Annotated[W_Ptr, w_src_T]
     ITEMSIZE = sizeof(w_dst_T.w_itemT)
-    ns = UNSAFE.w_ptr_move_slice.compute_inner_ns([w_dst_T, w_src_T])
+    ns = UNSAFE.w_ptr_move_slice.compute_inner_ns(vm, [w_dst_T, w_src_T])
     irtag = IRTag("unsafe.memop", cfunc="spy_ptr_move_slice")
 
     @vm.register_builtin_func(ns, "impl", irtag=irtag)
@@ -390,7 +390,7 @@ def w_ptr_setbytes(
     w_dst_T = _check_ptr(vm, wam_dst)
     DST = Annotated[W_Ptr, w_dst_T]
     ITEMSIZE = sizeof(w_dst_T.w_itemT)
-    ns = UNSAFE.w_ptr_setbytes.compute_inner_ns([w_dst_T])
+    ns = UNSAFE.w_ptr_setbytes.compute_inner_ns(vm, [w_dst_T])
     irtag = IRTag("unsafe.memop", cfunc="spy_ptr_setbytes")
 
     @vm.register_builtin_func(ns, "impl", irtag=irtag)
@@ -420,7 +420,7 @@ def w_ptr_setbytes_slice(
     w_dst_T = _check_ptr(vm, wam_dst)
     DST = Annotated[W_Ptr, w_dst_T]
     ITEMSIZE = sizeof(w_dst_T.w_itemT)
-    ns = UNSAFE.w_ptr_setbytes_slice.compute_inner_ns([w_dst_T])
+    ns = UNSAFE.w_ptr_setbytes_slice.compute_inner_ns(vm, [w_dst_T])
     irtag = IRTag("unsafe.memop", cfunc="spy_ptr_setbytes_slice")
 
     @vm.register_builtin_func(ns, "impl", irtag=irtag)
@@ -464,7 +464,7 @@ def w_ptr_cmp(
     A = Annotated[W_Ptr, w_a_T]
     B_ = Annotated[W_Ptr, w_b_T]
     ITEMSIZE = sizeof(w_a_T.w_itemT)
-    ns = UNSAFE.w_ptr_cmp.compute_inner_ns([w_a_T, w_b_T])
+    ns = UNSAFE.w_ptr_cmp.compute_inner_ns(vm, [w_a_T, w_b_T])
     irtag = IRTag("unsafe.memop", cfunc="spy_ptr_cmp")
 
     @vm.register_builtin_func(ns, "impl", irtag=irtag)
@@ -499,7 +499,7 @@ def w_ptr_cmp_slice(
     A = Annotated[W_Ptr, w_a_T]
     B_ = Annotated[W_Ptr, w_b_T]
     ITEMSIZE = sizeof(w_a_T.w_itemT)
-    ns = UNSAFE.w_ptr_cmp_slice.compute_inner_ns([w_a_T, w_b_T])
+    ns = UNSAFE.w_ptr_cmp_slice.compute_inner_ns(vm, [w_a_T, w_b_T])
     irtag = IRTag("unsafe.memop", cfunc="spy_ptr_cmp_slice")
 
     @vm.register_builtin_func(ns, "impl", irtag=irtag)
@@ -540,7 +540,7 @@ def w_ptr_cmp_slice(
 @UNSAFE.builtin_func(color="blue")
 def w_mem_read(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     T = Annotated[W_Object, w_T]
-    ns = UNSAFE.w_mem_read.compute_inner_ns([w_T])
+    ns = UNSAFE.w_mem_read.compute_inner_ns(vm, [w_T])
 
     @vm.register_builtin_func(ns, "impl")
     def w_mem_read_T(vm: "SPyVM", w_addr: W_I32) -> T:
@@ -553,7 +553,7 @@ def w_mem_read(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
 @UNSAFE.builtin_func(color="blue")
 def w_mem_write(vm: "SPyVM", w_T: W_Type) -> W_Dynamic:
     T = Annotated[W_Object, w_T]
-    ns = UNSAFE.w_mem_write.compute_inner_ns([w_T])
+    ns = UNSAFE.w_mem_write.compute_inner_ns(vm, [w_T])
 
     @vm.register_builtin_func(ns, "impl")
     def w_mem_write_T(vm: "SPyVM", w_addr: W_I32, w_val: T) -> None:

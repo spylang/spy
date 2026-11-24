@@ -1,14 +1,19 @@
-from operator import OpSpec
-from __spy__ import force_inline, interp_tuple, lookup_fqn
+from operator import OpSpec, MetaArg
+from __spy__ import force_inline, interp_tuple, lookup_fqn, Specialized
+
+
+@blue
+def is_specialized_type(T):
+    return T.__origin__ is Specialized
 
 
 @blue.generic
 def tuple(*items_T):
-    # XXX: we should use 'if type in items_T' as soon as it's supported
-    for _T in items_T:
+    if type in items_T:
         # `type` cannot be put in a struct, so we need to use interp_tuple for now
-        if _T == type:
-            return interp_tuple
+        return interp_tuple
+
+    N = len(items_T)
 
     @blue
     def get_fields():
@@ -19,21 +24,52 @@ def tuple(*items_T):
         }
         """
         fields: dict[str, type] = {}
-        for i in range(len(items_T)):
-            fname = "_item" + str(i)
-            T = items_T[i]
-            fields[fname] = T
+        for i in unroll(range(N)):
+            if is_specialized_type(items_T[i]):
+                # `specialize(X)` fields are blue consts, they don't need any storage
+                pass
+            else:
+                fname = "_item" + str(i)
+                fields[fname] = items_T[i]
         return fields
 
-    N = len(items_T)
+    @blue
+    def make_specialized_err_msg(i):
+        # this is a hack: in theory we should be able to use this line directly inside
+        # __new__, but f-strings are always for now.
+        return f"tuple item {i} does not match the specialized value"
+
+    @blue
+    def has_specialized_items():
+        for i in unroll(range(N)):
+            if is_specialized_type(items_T[i]):
+                return True
+        return False
 
     @struct
     class _tup:
         __extra_fields__ = get_fields()
 
+        # see SPyVM.is_specialized_tuple_type
+        __is_specialized_type__ = has_specialized_items()
+
         @blue.metafunc
         def __len__(m_self):
             return OpSpec.const(N)
+
+        @blue.metafunc
+        def __new__(m_cls, *args_m):
+            new_args_m: list[MetaArg] = []
+            for i in unroll(range(N)):
+                T = items_T[i]
+                m_arg = args_m[i]
+                if is_specialized_type(T):
+                    # a specialized item doesn't take any storage, drop it
+                    if not T.matches(m_arg):
+                        raise TypeError(make_specialized_err_msg(i))
+                else:
+                    new_args_m.append(m_arg)
+            return OpSpec(_tup.__make__, new_args_m)
 
         @blue.metafunc
         def __getitem__(m_self, m_i):
@@ -42,8 +78,11 @@ def tuple(*items_T):
 
             # idx is blue so all the following lines are pre-evaluated at compile time
             i = m_i.blueval
-            attr = "_item" + str(i)
             T = items_T[i]
+            if is_specialized_type(T):
+                return OpSpec.const(T.val)
+
+            attr = "_item" + str(i)
 
             def get(self: _tup) -> T:
                 # attr is blue, so this is equivalent to e.g. `self.item0`

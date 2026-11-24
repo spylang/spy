@@ -141,23 +141,19 @@ class TestFunction:
         with pytest.raises(AssertionError):
             w_f1.replace_with(w_f2)
 
-    def test_compute_inner_ns_no_type_args(self):
+    def test_compute_inner_ns(self):
         vm = SPyVM()
-        w_f = make_w_func("test::foo")
-        ns = w_f.compute_inner_ns([vm.wrap(42)])
-        # non-type arg is ignored: no qualifiers
-        assert ns == FQN("test::foo")
-
-    def test_compute_inner_ns_with_type_args(self):
-        w_f = make_w_func("test::add")
-        ns = w_f.compute_inner_ns([B.w_i32])
-        assert ns == FQN("test::add[i32]")
-
-    def test_compute_inner_ns_builtin(self):
         w_functype = make_FuncType(B.w_i32, w_restype=B.w_i32, color="blue")
-        w_f = W_BuiltinFunc(w_functype, FQN("test::myfunc"), lambda vm, x: x)
-        ns = w_f.compute_inner_ns([B.w_i32])
-        assert ns == FQN("test::myfunc[i32]")
+        w_f = W_BuiltinFunc(w_functype, FQN("test::foo"), lambda vm, x: x)
+        # no args
+        assert w_f.compute_inner_ns(vm, []) == FQN("test::foo")
+        # types are qualifiers
+        assert w_f.compute_inner_ns(vm, [B.w_i32]) == FQN("test::foo[i32]")
+        # integers are qualifiers
+        ns = w_f.compute_inner_ns(vm, [vm.wrap(42), B.w_i32])
+        assert ns == FQN("test::foo[42, i32]")
+        # everything else is ignored
+        assert w_f.compute_inner_ns(vm, [vm.wrap("hello")]) == FQN("test::foo")
 
     def test_W_ASTFunc_repr(self):
         w_f1 = make_w_func("test::foo")

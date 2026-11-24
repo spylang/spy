@@ -65,7 +65,7 @@ class ModFrame(AbstractFrame):
                 assert False
         #
         # call the __INIT__, if present
-        w_init = self.w_mod.getattr_maybe("__INIT__")
+        w_init = self.w_mod.getattr_maybe(self.vm, "__INIT__")
         if w_init is not None:
             assert isinstance(w_init, W_ASTFunc)
             if w_init.color != "blue":

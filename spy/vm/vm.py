@@ -356,7 +356,7 @@ class SPyVM:
         if impref.attr is None:
             return w_mod
         elif w_mod is not None:
-            return w_mod.getattr_maybe(impref.attr)
+            return w_mod.getattr_maybe(self, impref.attr)
         else:
             return None
 
@@ -874,6 +874,14 @@ class SPyVM:
         w_origin = w_T.w_origin
         return isinstance(w_origin, W_Func) and w_origin.fqn == FQN("_tuple::tuple")
 
+    def is_specialized_tuple_type(self, w_T: W_Type) -> bool:
+        if self.is_tuple_type(w_T):
+            w_marker = w_T.dict_w["__is_specialized_type__"]
+            assert isinstance(w_marker, W_Bool)
+            return self.is_True(w_marker)
+        else:
+            return False
+
     @staticmethod
     def is_list_of_str_type(w_T: W_Type) -> bool:
         return w_T.fqn == FQN("_list::list[str]::_ListImpl")
@@ -900,7 +908,7 @@ class SPyVM:
                 and isinstance(w_result, (W_Type, W_Func))
                 and w_result.w_origin is None
             ):
-                expected_ns = w_func.compute_inner_ns(args_w)
+                expected_ns = w_func.compute_inner_ns(self, args_w)
                 if w_result.fqn.namespace == expected_ns:
                     w_result.w_origin = w_func
                     if w_result.fqn != expected_ns:

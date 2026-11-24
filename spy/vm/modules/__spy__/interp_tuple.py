@@ -79,12 +79,25 @@ class W_InterpTuple(W_Object):
     ) -> Annotated[W_InterpTupleIterator, W_InterpTupleIterator._w]:
         return W_InterpTupleIterator(w_tup.items_w, 0)
 
-    @builtin_method("__getitem__")
+    @builtin_method("__getitem__", is_pure=True)
     @staticmethod
     def w_getitem(vm: "SPyVM", w_tup: "W_InterpTuple", w_i: W_I32) -> W_Dynamic:
         i = vm.unwrap_i32(w_i)
         # XXX bound check?
         return w_tup.items_w[i]
+
+    @builtin_method("__contains__")
+    @staticmethod
+    def w_contains(vm: "SPyVM", w_tup: "W_InterpTuple", w_v: W_Dynamic) -> W_Bool:
+        w_T = vm.dynamic_type(w_v)
+        for w_item in w_tup.items_w:
+            # the tuple is heterogeneous, and SPy cannot compare e.g. `str` and
+            # `i32`: items of a different type are never equal
+            if vm.dynamic_type(w_item) is not w_T:
+                continue
+            if vm.is_True(vm.eq_w(w_item, w_v)):
+                return B.w_True
+        return B.w_False
 
     @builtin_method("__len__")
     @staticmethod

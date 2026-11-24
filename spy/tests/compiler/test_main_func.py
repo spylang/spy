@@ -20,7 +20,7 @@ from spy.vm.object import W_Type
 class TestMainFunc(CompilerTest):
     def typecheck_main(self, src: str, ctx: Any = None) -> tuple[W_Type, bool]:
         mod = self.compile(src)
-        w_main = mod.w_mod.getattr_maybe("main")
+        w_main = mod.w_mod.getattr_maybe(mod.vm, "main")
         if ctx is None:
             ctx = nullcontext()
 

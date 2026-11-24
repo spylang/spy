@@ -40,6 +40,22 @@ class TestInterpTuple(CompilerTest):
         x = mod.foo()
         assert x == 3
 
+    def test_contains(self):
+        mod = self.compile("""
+        from __spy__ import interp_tuple
+
+        def foo(x: i32) -> bool:
+            tup = interp_tuple(1, 2, 'hello')
+            return x in tup
+
+        def bar() -> bool:
+            tup = interp_tuple(1, 2, 'hello')
+            return 'hello' in tup
+        """)
+        assert mod.foo(2)
+        assert not mod.foo(3)
+        assert mod.bar()
+
     def test_unpacking(self):
         mod = self.compile("""
         from __spy__ import interp_tuple
