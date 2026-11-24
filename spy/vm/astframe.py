@@ -190,7 +190,7 @@ class AbstractFrame:
         self.locals[name].w_T = w_T
 
     def load_local(self, name: str) -> W_Object:
-        localvar = self.locals.get(name)
+        localvar = self.locals[name]
         if localvar is None or localvar.w_val is None:
             raise SPyError("W_UnboundLocalError", "read from uninitialized local")
         return localvar.w_val
