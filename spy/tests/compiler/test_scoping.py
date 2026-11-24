@@ -1,8 +1,11 @@
+import pytest
+
 from spy.errors import SPyError
 from spy.tests.support import (
     CompilerTest,
     expect_errors,
     only_interp,
+    skip_backends,
 )
 
 
@@ -521,3 +524,47 @@ class TestScoping(CompilerTest):
             ("this is an implicit declaration", "x"),
         )
         self.compile_raises(src, "foo", errors, error_reporting="eager")
+
+    # ======= read of an uninitialized local =======
+
+    def test_read_uninitialized_local_conditional(self):
+        src = """
+        def foo(c: i32) -> i32:
+            if c:
+                x = 1
+            return x
+        """
+        mod = self.compile(src)
+        if self.backend == "doppler":
+            pytest.skip("FIXME: doppler redshifts foo to `return 1`")
+        elif self.backend == "C":
+            pytest.skip("FIXME: causes Undefined Behavior")
+        with SPyError.raises("W_Exception", match="read from uninitialized local"):
+            mod.foo(0)
+
+    @skip_backends("C", reason="UB")
+    def test_read_uninitialized_local_auto(self):
+        src = """
+        def foo() -> i32:
+            var x: auto
+            return x
+        """
+        if self.backend in ("doppler", "C"):
+            pytest.skip("FIXME: doppler hits an AssertionError in redshift")
+        mod = self.compile(src)
+        with SPyError.raises("W_Exception", match="read from uninitialized local"):
+            mod.foo()
+
+    @pytest.mark.skip(reason="FIXME: AssertionError instead of W_Exception")
+    def test_read_uninitialized_outer_local(self):
+        src = """
+        def foo() -> i32:
+            def inner() -> i32:
+                return x
+            r = inner()
+            x = 1
+            return r
+        """
+        mod = self.compile(src)
+        with SPyError.raises("W_Exception", match="read from uninitialized local"):
+            mod.foo()
