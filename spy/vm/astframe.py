@@ -13,7 +13,17 @@ from spy.util import magic_dispatch
 from spy.vm.b import B
 from spy.vm.cell import W_Cell
 from spy.vm.exc import W_NameError, W_TypeError
-from spy.vm.function import CLOSURE, FuncParam, LocalVar, W_ASTFunc, W_Func, W_FuncType
+from spy.vm.function import (
+    CLOSURE,
+    INFERRED,
+    UNDECLARED,
+    FuncParam,
+    LocalVar,
+    TypeSentinel,
+    W_ASTFunc,
+    W_Func,
+    W_FuncType,
+)
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
 from spy.vm.modules.operator import OP, OP_from_token, OP_unary_from_token
@@ -72,10 +82,9 @@ class AbstractFrame:
         self.loc = loc
         self.frameinfo = frameinfo
         self.closure = closure
-        # TODO: once the scope migration is done, we know all the slots in advance
-        # (from the frameinfo), so we could pre-initialize self.locals with the right
-        # slots instead of populating it lazily via declare_local.
         self.locals = {}
+        for slot_name in frameinfo._symbols:
+            self.reset_local(slot_name)  # initialize in UNDECLARED state
         self.special_calls = {}
 
     # overridden by DopplerFrame
@@ -86,27 +95,46 @@ class AbstractFrame:
     def get_locals_types_w(self) -> dict[str, W_Type]:
         res = {}
         for name, lv in self.locals.items():
+            if lv.w_T is UNDECLARED:
+                # e.g. the original body of an unrolled loop: only its renamed
+                # copies are executed
+                continue
             if lv.color == "red":
-                assert lv.w_T is not None
+                assert isinstance(lv.w_T, W_Type)
                 res[name] = lv.w_T
         return res
 
+    def reset_local(self, name: str) -> None:
+        """
+        Put the local `name` back in the UNDECLARED state.
+
+        Used e.g. at the start of a loop iteration where we want a fresh slot.
+        """
+        sym = self.frameinfo.lookup(name)
+        self.locals[name] = LocalVar(
+            varname=name,
+            decl_loc=sym.loc,
+            color="red",
+            w_T=UNDECLARED,
+        )
+
     def declare_local(
-        self, name: str, desired_color: Color, w_type: Optional[W_Type], loc: Loc
+        self, name: str, desired_color: Color, w_type: W_Type | TypeSentinel, loc: Loc
     ) -> None:
-        if name in self.locals:
+        lv = self.locals[name]
+        if lv.w_T is not UNDECLARED:
             # this is the same check that we already do in
             # ScopeAnalyzer.define_name. This logic is duplicated because for
             # RED frames we raise the error eagerly in the analyzer, but for
             # BLUE frames we raise it here
-            old_loc = self.locals[name].decl_loc
+            old_loc = lv.decl_loc
             msg = f"variable `{name}` already declared"
             err = SPyError("W_ScopeError", msg)
             err.add("error", "this is the new declaration", loc)
             err.add("note", "this is the previous declaration", old_loc)
             raise err
 
-        if w_type is not None and not isinstance(w_type, W_FuncType):
+        if isinstance(w_type, W_Type) and not isinstance(w_type, W_FuncType):
             self.vm.make_fqn_const(w_type)
 
         # determine the color of the local var:
@@ -119,16 +147,13 @@ class AbstractFrame:
         #     y = some_red_func()  # const, red
         # They are both const, but "y" cannot be "blue" because we don't know its value
         # during redshift.
-        if name[0] == "@" or name == "__extra_fields__":
-            # special case '@if', '@while', etc.
-            color: Color = "red"
+        sym = self.frameinfo.lookup(name)
+        assert sym.is_local
+        color: Color
+        if sym.varkind == "const" and desired_color == "blue":
+            color = "blue"
         else:
-            sym = self.frameinfo.lookup(name)
-            assert sym.is_local
-            if sym.varkind == "const" and desired_color == "blue":
-                color = "blue"
-            else:
-                color = "red"
+            color = "red"
 
         self.locals[name] = LocalVar(
             varname=name, decl_loc=loc, color=color, w_T=w_type, w_val=None
@@ -136,11 +161,17 @@ class AbstractFrame:
 
     def declare_reserved_bool_locals(self) -> None:
         for name in ("@if", "@and", "@or", "@while", "@assert"):
-            self.declare_local(name, "red", B.w_bool, Loc.fake())
+            self.locals[name] = LocalVar(
+                varname=name,
+                decl_loc=Loc.fake(),
+                color="red",
+                w_T=B.w_bool,
+            )
 
     def store_local(self, name: str, w_value: W_Object) -> None:
         lv = self.locals[name]
-        if lv.w_T is None:
+        assert lv.w_T is not UNDECLARED, f"store to undeclared local: {name}"
+        if lv.w_T is INFERRED:
             # deferred type inference, see exec_stmt_VarDef
             lv.w_T = self.vm.dynamic_type(w_value)
         # sanity check
@@ -158,11 +189,44 @@ class AbstractFrame:
         """
         self.locals[name].w_T = w_T
 
-    def load_local(self, name: str) -> W_Object:
-        localvar = self.locals.get(name)
-        if localvar is None or localvar.w_val is None:
-            raise SPyError("W_Exception", "read from uninitialized local")
-        return localvar.w_val
+    def load_local(self, name: str, loc: Loc) -> Optional[W_Object]:
+        """
+        Read the value of the given local variable.
+
+        During redshift, red locals don't have a value: return None for those.
+
+        Raise UnboundLocalError if the variable has not been assigned.
+
+        Note that in order to do it properly during redshift, we would need a proper
+        "definite assignment" algorithm which we don't have yet.  Instead, we do a poor
+        man's replacement: a local is consered assigned if it has a type. This works for
+        linear code, but doesn't in case of conditionals.  See
+        e.g. test_scoping::test_UnboundLocalError_*
+        """
+        lv = self.locals[name]
+        if self.redshifting:
+            if lv.w_T is UNDECLARED or lv.w_T is INFERRED:
+                # definitely not assigned
+                self.raise_UnboundLocalError(loc)
+            elif lv.color == "red":
+                # red local, no value
+                return None
+            elif lv.color == "blue":
+                # blue local, we can read it
+                return lv.w_val
+        else:
+            # normal interp mode
+            if lv.w_val is None:
+                self.raise_UnboundLocalError(loc)
+            return lv.w_val
+
+    def raise_UnboundLocalError(self, loc: Loc) -> Never:
+        raise SPyError.simple(
+            "W_UnboundLocalError",
+            "read from uninitialized local",
+            "this local has no value yet",
+            loc,
+        )
 
     def exec_stmt(self, stmt: ast.Stmt) -> None:
         return magic_dispatch(self, "exec_stmt", stmt)
@@ -182,7 +246,7 @@ class AbstractFrame:
         if varname is None:
             return None  # no typecheck needed
         lv = self.locals[varname]
-        assert lv.w_T is not None
+        assert isinstance(lv.w_T, W_Type)
         w_expT = lv.w_T
         wam_expT = W_MetaArg.from_w_obj(self.vm, lv.w_T, loc=lv.decl_loc)
         try:
@@ -226,7 +290,7 @@ class AbstractFrame:
             # apply the conversion
             assert varname is not None
             lv = self.locals[varname]
-            assert lv.w_T is not None
+            assert isinstance(lv.w_T, W_Type)
             wam_expT = W_MetaArg.from_w_obj(self.vm, lv.w_T, loc=lv.decl_loc)
             wam_gotT = W_MetaArg.from_w_obj(self.vm, wam.w_static_T, loc=wam.loc)
             wam_val = self.vm.eval_opimpl(
@@ -455,7 +519,7 @@ class AbstractFrame:
         # we are DEFINING a type which has already been declared by
         # fwdecl_ClassDef. Look it up
         slot_name = classdef.sym.slot_name
-        w_T = self.load_local(slot_name)
+        w_T = self.load_local(slot_name, classdef.loc)
         assert isinstance(w_T, W_Type)
         assert w_T.fqn.parts[-1].name == classdef.name  # sanity check
         assert not w_T.is_defined()
@@ -529,14 +593,14 @@ class AbstractFrame:
         varname = sym.slot_name
         # [scope.loop-fresh]: if we have a VarDef inside a loop, it needs to be
         # reinitialized at each iteration
-        self.locals.pop(varname, None)
+        self.reset_local(varname)
         is_auto = isinstance(vardef.type, ast.Auto)
 
         if vardef.value is None:
             if is_auto:
                 # deferred inference, type will be fixed on first assignment
                 # see also eval_expr_AssignExprLocal
-                self.declare_local(varname, "red", None, vardef.loc)
+                self.declare_local(varname, "red", INFERRED, vardef.loc)
             else:
                 w_T = self.eval_expr_type(vardef.type)
                 self.declare_local(varname, "red", w_T, vardef.loc)
@@ -872,23 +936,21 @@ class AbstractFrame:
     def eval_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> W_MetaArg:
         sym = name.sym
         lv = self.locals[sym.slot_name]
-        if lv.color == "red" and self.redshifting:
-            w_val = None
-        else:
-            w_val = self.load_local(sym.slot_name)
-        assert lv.w_T is not None
+        w_val = self.load_local(sym.slot_name, name.loc)
+        assert isinstance(lv.w_T, W_Type)
         return W_MetaArg(self.vm, lv.color, lv.w_T, w_val, name.loc, sym=sym)
 
     def eval_expr_NameLocalCell(self, name: ast.NameLocalCell) -> W_MetaArg:
         sym = name.sym
         lv = self.locals[sym.slot_name]
-        if lv.color == "red" and self.redshifting:
+        w_cell = self.load_local(sym.slot_name, name.loc)
+        if w_cell is None:
+            assert self.redshifting  # sanity check
             w_val = None
         else:
-            w_cell = self.load_local(sym.slot_name)
             assert isinstance(w_cell, W_Cell)
             w_val = w_cell.get()
-        assert lv.w_T is not None
+        assert isinstance(lv.w_T, W_Type)
         return W_MetaArg(self.vm, lv.color, lv.w_T, w_val, name.loc, sym=sym)
 
     def eval_expr_NameOuterDirect(self, name: ast.NameOuterDirect) -> W_MetaArg:
@@ -897,7 +959,8 @@ class AbstractFrame:
         assert not sym.is_local
         outervars = self.closure[-sym.frame_depth]
         w_val = outervars[sym.slot_name].w_val
-        assert w_val is not None
+        if w_val is None:
+            self.raise_UnboundLocalError(name.loc)
         w_T = self.vm.dynamic_type(w_val)
         return W_MetaArg(self.vm, color, w_T, w_val, name.loc, sym=sym)
 
@@ -910,6 +973,8 @@ class AbstractFrame:
         else:
             outervars = self.closure[-sym.frame_depth]
             w_cell = outervars[sym.slot_name].w_val
+            if w_cell is None:
+                self.raise_UnboundLocalError(name.loc)
         assert isinstance(w_cell, W_Cell)
         w_val = w_cell.get()
         w_T = self.vm.dynamic_type(w_val)
@@ -926,13 +991,13 @@ class AbstractFrame:
         value = assign.value
         varname = assign.sym.slot_name
 
-        lv = self.locals.get(varname)
-        if lv is None:
+        lv = self.locals[varname]
+        if lv.w_T is UNDECLARED:
             # first assignment, implicit declaration
             wam = self.eval_expr(value)
             self.declare_local(varname, wam.color, wam.w_static_T, target.loc)
             lv = self.locals[varname]
-        elif lv.w_T is None:
+        elif lv.w_T is INFERRED:
             # deferred type inference: var x: auto with no initializer
             wam = self.eval_expr(value)
             lv.color = wam.color if assign.sym.varkind == "const" else "red"

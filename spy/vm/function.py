@@ -1,8 +1,10 @@
+import enum
 from dataclasses import dataclass
 from typing import (
     TYPE_CHECKING,
     Any,
     Callable,
+    Final,
     Iterator,
     Optional,
     Self,
@@ -29,12 +31,29 @@ if TYPE_CHECKING:
 # but they are manipulated by ASTFrame.
 
 
+class TypeSentinel(enum.Enum):
+    """
+    Sentinels for LocalVar.w_T, used when a local has no real type yet:
+      - INFERRED: `var x: auto` before its first assignment.
+      - UNDECLARED: the slot exists in the FrameInfo, but the declaration has not
+        been executed yet (or it was not executed at all, e.g. in a branch not
+        taken).
+    """
+
+    INFERRED = enum.auto()
+    UNDECLARED = enum.auto()
+
+
+INFERRED: Final = TypeSentinel.INFERRED
+UNDECLARED: Final = TypeSentinel.UNDECLARED
+
+
 @dataclass
 class LocalVar:
     varname: str
     decl_loc: Loc
     color: Color
-    w_T: Optional[W_Type]  # None means "auto, type not yet fixed"
+    w_T: W_Type | TypeSentinel
     w_val: Optional[W_Object] = None
 
 

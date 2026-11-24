@@ -584,11 +584,12 @@ class ScopeAnalyzer:
         self.push_scope(inner_scope)
         self.scopes[node] = inner_scope
 
-        # (3) collect the generic arguments
+        # (3) collect the generic arguments and @return special var
         for arg in args:
             self.create_new_local(
                 arg, arg.name, "explicit", "const", "blue-param", arg.loc, arg.type.loc
             )
+        self.create_new_local(node, "@return", "explicit", "var", "auto", loc, loc)
 
         # (4) collect the inner funcdef/classdef
         self.collect(inner)

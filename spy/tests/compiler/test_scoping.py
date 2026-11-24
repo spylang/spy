@@ -1,8 +1,11 @@
+import pytest
+
 from spy.errors import SPyError
 from spy.tests.support import (
     CompilerTest,
     expect_errors,
     only_interp,
+    skip_backends,
 )
 
 
@@ -257,7 +260,9 @@ class TestScoping(CompilerTest):
                 x
         """
         mod = self.compile(src)
-        with SPyError.raises("W_Exception", match="read from uninitialized local"):
+        with SPyError.raises(
+            "W_UnboundLocalError", match="read from uninitialized local"
+        ):
             mod.foo()
 
     def test_strict_scope_loop_fresh_reassigned(self):
@@ -521,3 +526,56 @@ class TestScoping(CompilerTest):
             ("this is an implicit declaration", "x"),
         )
         self.compile_raises(src, "foo", errors, error_reporting="eager")
+
+    # ======= read of an uninitialized local =======
+
+    def test_UnboundLocalError_conditional(self):
+        src = """
+        def foo(c: i32) -> i32:
+            if c:
+                x = 1
+            return x
+        """
+        mod = self.compile(src)
+        if self.backend == "doppler":
+            pytest.skip("FIXME: doppler redshifts foo to `return 1`")
+        elif self.backend == "C":
+            pytest.skip("FIXME: causes Undefined Behavior")
+        with SPyError.raises("W_UnboundLocalError"):
+            mod.foo(0)
+
+    @skip_backends("C", reason="UB")
+    def test_UnboundLocalError_auto(self):
+        src = """
+        def foo() -> i32:
+            var x: auto
+            return x
+        """
+        with SPyError.raises("W_UnboundLocalError"):
+            mod = self.compile(src)
+            mod.foo()
+
+    @skip_backends("doppler", "C", reason="red nested FuncDef")
+    def test_UnboundLocalError_outer(self):
+        src = """
+        def foo() -> i32:
+            def inner() -> i32:
+                return x
+            r = inner()
+            x = 1
+            return r
+        """
+        mod = self.compile(src)
+        with SPyError.raises("W_UnboundLocalError"):
+            mod.foo()
+
+    def test_UnboundLocalError_outer_cell(self):
+        src = """
+        def foo() -> i32:
+            return x
+
+        var y: i32 = foo()
+        var x: i32 = 42
+        """
+        with SPyError.raises("W_UnboundLocalError"):
+            self.compile(src)
