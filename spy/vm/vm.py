@@ -877,6 +877,7 @@ class SPyVM:
     def is_specialized_tuple_type(self, w_T: W_Type) -> bool:
         if self.is_tuple_type(w_T):
             w_marker = w_T.dict_w["__is_specialized_type__"]
+            assert isinstance(w_marker, W_Bool)
             return self.is_True(w_marker)
         else:
             return False
