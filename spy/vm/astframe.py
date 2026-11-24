@@ -189,29 +189,44 @@ class AbstractFrame:
         """
         self.locals[name].w_T = w_T
 
-    def load_local(self, name: str) -> W_Object:
-        localvar = self.locals[name]
-        if localvar is None or localvar.w_val is None:
-            raise SPyError("W_UnboundLocalError", "read from uninitialized local")
-        return localvar.w_val
-
-    def raise_eager_UnboundLocalError_maybe(self, lv: LocalVar, loc: Loc) -> None:
+    def load_local(self, name: str, loc: Loc) -> Optional[W_Object]:
         """
-        load_local raises UnboundLocalError when the VALUE of the local is not
-        there.
+        Read the value of the given local variable.
 
-        During redshifting we never go through load_local, but we check that at least we
-        know the type of the local. This is some kind of poor man's definite assignment
-        check, which works only in very simple cases. In more complex cases (e.g. as
-        soon as we have an `if`) it doesn't work, but for now better than nothing.
+        During redshift, red locals don't have a value: return None for those.
+
+        Raise UnboundLocalError if the variable has not been assigned.
+
+        Note that in order to do it properly during redshift, we would need a proper
+        "definite assignment" algorithm which we don't have yet.  Instead, we do a poor
+        man's replacement: a local is consered assigned if it has a type. This works for
+        linear code, but doesn't in case of conditionals.  See
+        e.g. test_scoping::test_UnboundLocalError_*
         """
-        if lv.w_T is UNDECLARED or lv.w_T is INFERRED:
-            raise SPyError.simple(
-                "W_UnboundLocalError",
-                "read from uninitialized local",
-                "this local has no value yet",
-                loc,
-            )
+        lv = self.locals[name]
+        if self.redshifting:
+            if lv.w_T is UNDECLARED or lv.w_T is INFERRED:
+                # definitely not assigned
+                self.raise_UnboundLocalError(loc)
+            elif lv.color == "red":
+                # red local, no value
+                return None
+            elif lv.color == "blue":
+                # blue local, we can read it
+                return lv.w_val
+        else:
+            # normal interp mode
+            if lv.w_val is None:
+                self.raise_UnboundLocalError(loc)
+            return lv.w_val
+
+    def raise_UnboundLocalError(self, loc: Loc) -> Never:
+        raise SPyError.simple(
+            "W_UnboundLocalError",
+            "read from uninitialized local",
+            "this local has no value yet",
+            loc,
+        )
 
     def exec_stmt(self, stmt: ast.Stmt) -> None:
         return magic_dispatch(self, "exec_stmt", stmt)
@@ -504,7 +519,7 @@ class AbstractFrame:
         # we are DEFINING a type which has already been declared by
         # fwdecl_ClassDef. Look it up
         slot_name = classdef.sym.slot_name
-        w_T = self.load_local(slot_name)
+        w_T = self.load_local(slot_name, classdef.loc)
         assert isinstance(w_T, W_Type)
         assert w_T.fqn.parts[-1].name == classdef.name  # sanity check
         assert not w_T.is_defined()
@@ -921,22 +936,18 @@ class AbstractFrame:
     def eval_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> W_MetaArg:
         sym = name.sym
         lv = self.locals[sym.slot_name]
-        self.raise_eager_UnboundLocalError_maybe(lv, name.loc)
-        if lv.color == "red" and self.redshifting:
-            w_val = None
-        else:
-            w_val = self.load_local(sym.slot_name)
+        w_val = self.load_local(sym.slot_name, name.loc)
         assert isinstance(lv.w_T, W_Type)
         return W_MetaArg(self.vm, lv.color, lv.w_T, w_val, name.loc, sym=sym)
 
     def eval_expr_NameLocalCell(self, name: ast.NameLocalCell) -> W_MetaArg:
         sym = name.sym
         lv = self.locals[sym.slot_name]
-        self.raise_eager_UnboundLocalError_maybe(lv, name.loc)
-        if lv.color == "red" and self.redshifting:
+        w_cell = self.load_local(sym.slot_name, name.loc)
+        if w_cell is None:
+            assert self.redshifting  # sanity check
             w_val = None
         else:
-            w_cell = self.load_local(sym.slot_name)
             assert isinstance(w_cell, W_Cell)
             w_val = w_cell.get()
         assert isinstance(lv.w_T, W_Type)
