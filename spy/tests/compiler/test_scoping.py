@@ -555,7 +555,7 @@ class TestScoping(CompilerTest):
             mod = self.compile(src)
             mod.foo()
 
-    @pytest.mark.skip(reason="FIXME: AssertionError instead of W_UnboundLocalError")
+    @skip_backends("doppler", "C", reason="red nested FuncDef")
     def test_UnboundLocalError_outer(self):
         src = """
         def foo() -> i32:
@@ -568,3 +568,14 @@ class TestScoping(CompilerTest):
         mod = self.compile(src)
         with SPyError.raises("W_UnboundLocalError"):
             mod.foo()
+
+    def test_UnboundLocalError_outer_cell(self):
+        src = """
+        def foo() -> i32:
+            return x
+
+        var y: i32 = foo()
+        var x: i32 = 42
+        """
+        with SPyError.raises("W_UnboundLocalError"):
+            self.compile(src)

@@ -959,7 +959,8 @@ class AbstractFrame:
         assert not sym.is_local
         outervars = self.closure[-sym.frame_depth]
         w_val = outervars[sym.slot_name].w_val
-        assert w_val is not None
+        if w_val is None:
+            self.raise_UnboundLocalError(name.loc)
         w_T = self.vm.dynamic_type(w_val)
         return W_MetaArg(self.vm, color, w_T, w_val, name.loc, sym=sym)
 
@@ -972,6 +973,8 @@ class AbstractFrame:
         else:
             outervars = self.closure[-sym.frame_depth]
             w_cell = outervars[sym.slot_name].w_val
+            if w_cell is None:
+                self.raise_UnboundLocalError(name.loc)
         assert isinstance(w_cell, W_Cell)
         w_val = w_cell.get()
         w_T = self.vm.dynamic_type(w_val)
