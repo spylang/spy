@@ -192,8 +192,26 @@ class AbstractFrame:
     def load_local(self, name: str) -> W_Object:
         localvar = self.locals.get(name)
         if localvar is None or localvar.w_val is None:
-            raise SPyError("W_Exception", "read from uninitialized local")
+            raise SPyError("W_UnboundLocalError", "read from uninitialized local")
         return localvar.w_val
+
+    def raise_eager_UnboundLocalError_maybe(self, lv: LocalVar, loc: Loc) -> None:
+        """
+        load_local raises UnboundLocalError when the VALUE of the local is not
+        there.
+
+        During redshifting we never go through load_local, but we check that at least we
+        know the type of the local. This is some kind of poor man's definite assignment
+        check, which works only in very simple cases. In more complex cases (e.g. as
+        soon as we have an `if`) it doesn't work, but for now better than nothing.
+        """
+        if lv.w_T is UNDECLARED or lv.w_T is INFERRED:
+            raise SPyError.simple(
+                "W_UnboundLocalError",
+                "read from uninitialized local",
+                "this local has no value yet",
+                loc,
+            )
 
     def exec_stmt(self, stmt: ast.Stmt) -> None:
         return magic_dispatch(self, "exec_stmt", stmt)
@@ -903,6 +921,7 @@ class AbstractFrame:
     def eval_expr_NameLocalDirect(self, name: ast.NameLocalDirect) -> W_MetaArg:
         sym = name.sym
         lv = self.locals[sym.slot_name]
+        self.raise_eager_UnboundLocalError_maybe(lv, name.loc)
         if lv.color == "red" and self.redshifting:
             w_val = None
         else:
@@ -913,6 +932,7 @@ class AbstractFrame:
     def eval_expr_NameLocalCell(self, name: ast.NameLocalCell) -> W_MetaArg:
         sym = name.sym
         lv = self.locals[sym.slot_name]
+        self.raise_eager_UnboundLocalError_maybe(lv, name.loc)
         if lv.color == "red" and self.redshifting:
             w_val = None
         else:

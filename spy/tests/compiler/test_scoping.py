@@ -260,7 +260,9 @@ class TestScoping(CompilerTest):
                 x
         """
         mod = self.compile(src)
-        with SPyError.raises("W_Exception", match="read from uninitialized local"):
+        with SPyError.raises(
+            "W_UnboundLocalError", match="read from uninitialized local"
+        ):
             mod.foo()
 
     def test_strict_scope_loop_fresh_reassigned(self):
@@ -527,7 +529,7 @@ class TestScoping(CompilerTest):
 
     # ======= read of an uninitialized local =======
 
-    def test_read_uninitialized_local_conditional(self):
+    def test_UnboundLocalError_conditional(self):
         src = """
         def foo(c: i32) -> i32:
             if c:
@@ -539,24 +541,22 @@ class TestScoping(CompilerTest):
             pytest.skip("FIXME: doppler redshifts foo to `return 1`")
         elif self.backend == "C":
             pytest.skip("FIXME: causes Undefined Behavior")
-        with SPyError.raises("W_Exception", match="read from uninitialized local"):
+        with SPyError.raises("W_UnboundLocalError"):
             mod.foo(0)
 
     @skip_backends("C", reason="UB")
-    def test_read_uninitialized_local_auto(self):
+    def test_UnboundLocalError_auto(self):
         src = """
         def foo() -> i32:
             var x: auto
             return x
         """
-        if self.backend in ("doppler", "C"):
-            pytest.skip("FIXME: doppler hits an AssertionError in redshift")
-        mod = self.compile(src)
-        with SPyError.raises("W_Exception", match="read from uninitialized local"):
+        with SPyError.raises("W_UnboundLocalError"):
+            mod = self.compile(src)
             mod.foo()
 
-    @pytest.mark.skip(reason="FIXME: AssertionError instead of W_Exception")
-    def test_read_uninitialized_outer_local(self):
+    @pytest.mark.skip(reason="FIXME: AssertionError instead of W_UnboundLocalError")
+    def test_UnboundLocalError_outer(self):
         src = """
         def foo() -> i32:
             def inner() -> i32:
@@ -566,5 +566,5 @@ class TestScoping(CompilerTest):
             return r
         """
         mod = self.compile(src)
-        with SPyError.raises("W_Exception", match="read from uninitialized local"):
+        with SPyError.raises("W_UnboundLocalError"):
             mod.foo()

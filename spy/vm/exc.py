@@ -339,6 +339,11 @@ class W_NameError(W_StaticError):
     pass
 
 
+@BUILTINS.builtin_type("UnboundLocalError")
+class W_UnboundLocalError(W_NameError):
+    pass
+
+
 @BUILTINS.builtin_type("PanicError")
 class W_PanicError(W_Exception):
     pass

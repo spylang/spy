@@ -208,17 +208,6 @@ class TestException(CompilerTest):
         with SPyError.raises("W_TypeError", match=r"cannot do `i32` \+ `str`"):
             mod.foo()
 
-    @pytest.mark.skip(reason="FIXME")
-    def test_lazy_error_in_assignment(self):
-        src = """
-        def foo() -> i32:
-            x = 1 + "hello"
-            return x
-        """
-        mod = self.compile(src, error_mode="lazy")
-        with SPyError.raises("W_TypeError", match=r"cannot do `i32` \+ `str`"):
-            mod.foo()
-
     @pytest.mark.parametrize("error_mode", ["lazy", "eager"])
     def test_static_error(self, error_mode):
         src = """
