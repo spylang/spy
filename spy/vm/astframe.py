@@ -66,6 +66,7 @@ class AbstractFrame:
     """
 
     vm: "SPyVM"
+    color: Color  # "blue" for blue funcs, mods, classes; "red" for red funcs
     ns: FQN
     loc: Loc
     closure: CLOSURE
@@ -74,10 +75,17 @@ class AbstractFrame:
     special_calls: dict[ast.Call, str]
 
     def __init__(
-        self, vm: "SPyVM", ns: FQN, loc: Loc, frameinfo: FrameInfo, closure: CLOSURE
+        self,
+        vm: "SPyVM",
+        color: Color,
+        ns: FQN,
+        loc: Loc,
+        frameinfo: FrameInfo,
+        closure: CLOSURE,
     ) -> None:
         assert type(self) is not AbstractFrame, "abstract class"
         self.vm = vm
+        self.color = color
         self.ns = ns
         self.loc = loc
         self.frameinfo = frameinfo
@@ -1131,13 +1139,19 @@ class AbstractFrame:
         args_wam = [self.eval_expr(arg) for arg in call.args]
         w_opimpl = self.vm.call_OP(call.loc, OP.w_CALL, [wam_func] + args_wam)
 
-        # special case getattr, hasattr and setattr: if we arrive at this point it means that the
-        # call typed correctly (right number, type and color of arguments). The returned
-        # opimpl is not supposed to be executed, see builtins.w_getattr.
+        # *** special case: getattr, hasattr and setattr ***
+        # If we arrive at this point it means that the call typed correctly (right
+        # number, type and color of arguments). The returned opimpl is not supposed to
+        # be executed, see builtins.w_getattr.
         #
         # Instead, we pretend to be ast.GetAttr or ast.SetAttr: this ensures that we get
         # nice error messages like "type `X` has not attribute 'y'".  See also the
         # corresponding code in DopplerFrame.shift_expr_Call.
+        #
+        # *** special case: force_blue ***
+        # We cannot implement it as a normal metafunc because:
+        #   1. it can be called only from a blue frame, and we have this info only here
+        #   2. we need to access the red ._w_val, which a metafunc can't do
         if wam_func.color == "blue" and wam_func.w_blueval is B.w_getattr:
             self.special_calls[call] = "getattr"
             w_opimpl = self.vm.call_OP(call.loc, OP.w_GETATTR, args_wam)
@@ -1153,9 +1167,23 @@ class AbstractFrame:
             w_opimpl = self.vm.call_OP(call.loc, OP.w_SETATTR, args_wam)
             return self.eval_opimpl(call, w_opimpl, args_wam)
 
+        elif wam_func.color == "blue" and wam_func.w_blueval is SPY.w_force_blue:
+            return self.eval_force_blue(call, args_wam)
+
         else:
             # normal case
             return self.eval_opimpl(call, w_opimpl, [wam_func] + args_wam)
+
+    def eval_force_blue(self, call: ast.Call, args_wam: list[W_MetaArg]) -> W_MetaArg:
+        if self.color != "blue":
+            # in a red frame run by the interpreter the value would exist too, but it
+            # would not exist when redshifting: interp and doppler would differ
+            err = SPyError("W_TypeError", "force_blue can be used only in a blue frame")
+            err.add("error", "this frame is red", call.loc)
+            raise err
+        assert len(args_wam) == 1
+        wam = args_wam[0]
+        return W_MetaArg(self.vm, "blue", wam.w_static_T, wam.w_val, call.loc)
 
     def eval_expr_CallMethod(self, op: ast.CallMethod) -> W_Object:
         wam_obj = self.eval_expr(op.target)
@@ -1239,7 +1267,12 @@ class ASTFrame(AbstractFrame):
             ns = w_func.fqn
 
         super().__init__(
-            vm, ns, w_func.funcdef.loc, w_func.funcdef.frameinfo, w_func.closure
+            vm,
+            w_func.color,
+            ns,
+            w_func.funcdef.loc,
+            w_func.funcdef.frameinfo,
+            w_func.closure,
         )
         self.w_func = w_func
         self.funcdef = w_func.funcdef
@@ -1248,7 +1281,7 @@ class ASTFrame(AbstractFrame):
         cls = self.__class__.__name__
         if self.w_func.stage != "astcompiled":
             extra = f" ({self.w_func.stage})"
-        elif self.w_func.color == "blue":
+        elif self.color == "blue":
             extra = " (blue)"
         else:
             extra = ""

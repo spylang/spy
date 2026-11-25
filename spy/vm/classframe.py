@@ -26,7 +26,7 @@ class ClassFrame(AbstractFrame):
         self, vm: "SPyVM", classdef: ast.ClassDef, ns: FQN, closure: CLOSURE
     ) -> None:
         assert classdef.frameinfo.kind == "class"
-        super().__init__(vm, ns, classdef.loc, classdef.frameinfo, closure)
+        super().__init__(vm, "blue", ns, classdef.loc, classdef.frameinfo, closure)
         self.classdef = classdef
 
     def __repr__(self) -> str:
