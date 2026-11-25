@@ -213,3 +213,6 @@ CLAUDE.local.md
 
 # pixi environments
 .pixi/*
+
+# macOS disk artifacts
+.DS_Store
