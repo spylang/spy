@@ -32,6 +32,28 @@ def w_as_red(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
     return W_OpSpec(w_id_impl)
 
 
+@SPY.builtin_func(color="blue", kind="metafunc")
+def w_force_blue(vm: "SPyVM", wam_obj: W_MetaArg) -> W_OpSpec:
+    """
+    Forcibly turn a red value into a blue value.
+
+    This can be used ONLY in blue frames and it's a hack. In theory in a blue frame all
+    the values are evaluated eagerly and there should not be any red/blue distinction,
+    but in practice it's not the case and sometimes values are marked "red" when they
+    shouldn't. This acts as a stopgap.
+    """
+    # NOTE: the actual implementation lives in AbstractFrame.eval_force_blue. See the
+    # comment in AbstractFrame.eval_expr_Call.
+
+    @vm.register_builtin_func("__spy__", "force_blue", [wam_obj.w_static_T.fqn])
+    def w_fn(vm: "SPyVM", w_obj: W_Object) -> W_Object:
+        assert False, (
+            "this function shouldn't be called, it's special cased by astframe"
+        )
+
+    return W_OpSpec(w_fn)
+
+
 @SPY.builtin_func
 def w_is_compiled(vm: "SPyVM") -> W_Bool:
     from spy.vm.b import B

@@ -31,7 +31,7 @@ class ModFrame(AbstractFrame):
     ) -> None:
         assert mod.stage == "astcompiled"
         assert mod.frameinfo.kind == "module"
-        super().__init__(vm, ns, mod.loc, mod.frameinfo, closure=())
+        super().__init__(vm, "blue", ns, mod.loc, mod.frameinfo, closure=())
         self.mod = mod
         self.w_mod = W_Module(ns.modname, mod.filename)
         self.vm.register_module(self.w_mod)

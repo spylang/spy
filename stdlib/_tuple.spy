@@ -1,5 +1,5 @@
 from operator import OpSpec, MetaArg
-from __spy__ import force_inline, interp_tuple, lookup_fqn, Specialized
+from __spy__ import force_blue, force_inline, interp_tuple, lookup_fqn, Specialized
 
 
 @blue
@@ -13,45 +13,30 @@ def tuple(*items_T):
         # `type` cannot be put in a struct, so we need to use interp_tuple for now
         return interp_tuple
 
-    N = len(items_T)
+    N = force_blue(len(items_T))
 
-    @blue
-    def get_fields():
-        """
-        Return a dict like {
-            "_item0": int,
-            "_item1": int,
-        }
-        """
-        fields: dict[str, type] = {}
-        for i in unroll(range(N)):
-            if is_specialized_type(items_T[i]):
-                # `specialize(X)` fields are blue consts, they don't need any storage
-                pass
-            else:
-                fname = "_item" + str(i)
-                fields[fname] = items_T[i]
-        return fields
+    # a dict like {"_item0": int, "_item1": int}
+    fields: dict[str, type] = {}
+    has_specialized_items = False
+    for i in unroll(range(N)):
+        T = items_T[i]
+        if is_specialized_type(T):
+            # `specialize(X)` fields are blue consts, they don't need any storage
+            has_specialized_items = True
+        else:
+            fields[f"_item{i}"] = T
 
-    @blue
-    def make_specialized_err_msg(i):
-        # this is a hack: in theory we should be able to use this line directly inside
-        # __new__, but f-strings are always for now.
-        return f"tuple item {i} does not match the specialized value"
-
-    @blue
-    def has_specialized_items():
-        for i in unroll(range(N)):
-            if is_specialized_type(items_T[i]):
-                return True
-        return False
+    is_homogeneous = True
+    for U in items_T:
+        if U != items_T[0]:
+            is_homogeneous = False
 
     @struct
     class _tup:
-        __extra_fields__ = get_fields()
+        __extra_fields__ = fields
 
         # see SPyVM.is_specialized_tuple_type
-        __is_specialized_type__ = has_specialized_items()
+        __is_specialized_type__ = has_specialized_items
 
         @blue.metafunc
         def __len__(m_self):
@@ -66,7 +51,8 @@ def tuple(*items_T):
                 if is_specialized_type(T):
                     # a specialized item doesn't take any storage, drop it
                     if not T.matches(m_arg):
-                        raise TypeError(make_specialized_err_msg(i))
+                        msg = f"tuple item {i} does not match the specialized value"
+                        raise TypeError(force_blue(msg))
                 else:
                     new_args_m.append(m_arg)
             return OpSpec(_tup.__make__, new_args_m)
@@ -97,14 +83,7 @@ def tuple(*items_T):
             """
             T = m_v.static_type
 
-            @blue
-            def is_homogeneous():
-                for U in items_T:
-                    if U != items_T[0]:
-                        return False
-                return True
-
-            if not is_homogeneous():
+            if not is_homogeneous:
                 raise TypeError("'in' is not supported on heterogeneous tuples")
 
             # `unroll` expands the loop, so e.g. for tuple[i32, i32, i32] the
