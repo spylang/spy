@@ -76,6 +76,7 @@ nav:
   - How-to guides:
     - howto/main_function.md
     - howto/generics.md
+    - howto/structs.md
   - Reference:
     - reference/python_builtins.md
     - reference/spy_builtin_functions.md
