@@ -15,6 +15,7 @@ The cache lives project-local (next to the spy package root) so that
 it stays aligned with the current checkout's libspy version.
 """
 
+import functools
 import hashlib
 import json
 import subprocess
@@ -59,6 +60,7 @@ def link_bundle(
     robust_run(cmdline)
 
 
+@functools.lru_cache(maxsize=None)
 def _zig_version() -> str:
     result = subprocess.run(
         ["python", "-m", "ziglang", "version"],

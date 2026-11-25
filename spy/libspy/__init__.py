@@ -40,6 +40,9 @@ else:
 # what to do when we do e.g. spy build --release fine sine
 
 
+_BUNDLE_MODULES: dict[str, LLWasmModule] = {}
+
+
 def get_LLMOD(
     extra_archives: list[py.path.local] = [],
     *,
@@ -67,7 +70,10 @@ def get_LLMOD(
     libspy_a = WASI_TESTLIB.join("libspy.a")
     all_archives = [libspy_a] + list(extra_archives)
     bundle_path = get_or_build_bundle(all_archives, force_rebuild=force_rebuild)
-    return LLWasmModule(str(bundle_path))
+    key = str(bundle_path)
+    if force_rebuild or key not in _BUNDLE_MODULES:
+        _BUNDLE_MODULES[key] = LLWasmModule(key)
+    return _BUNDLE_MODULES[key]
 
 
 async def async_get_LLMOD() -> LLWasmModule:
