@@ -323,6 +323,15 @@ class TestFloat(CompilerTest):
         assert mod.i32_to_f32(42) == 42.0
         assert mod.f64_to_f32(42.5) == 42.5
 
+    def test_f64_to_f64(self):
+        src = """
+        def float_f64(x: f64) -> f64: return float(x)
+        def f64_f64(x: f64) -> f64: return f64(x)
+        """
+        mod = self.compile(src)
+        assert mod.float_f64(42.5) == 42.5
+        assert mod.f64_f64(-1.25) == -1.25
+
     def test_prebuilt_const(self):
         src = """
         def foo() -> f64:

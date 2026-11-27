@@ -235,6 +235,11 @@ def w_f32_to_f64(vm: "SPyVM", w_x: W_F32) -> W_F64:
 
 
 @OP.builtin_func
+def w_f64_to_f64(vm: "SPyVM", w_x: W_F64) -> W_F64:
+    return w_x
+
+
+@OP.builtin_func
 def w_f32_to_i32(vm: "SPyVM", w_x: W_F32) -> W_I32:
     i32_MIN, i32_MAX = -(2**31) - 1, 2**31 - 1
     val = vm.unwrap_f32(w_x)
