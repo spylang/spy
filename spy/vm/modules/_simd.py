@@ -10,6 +10,7 @@ from spy.vm.b import B
 from spy.vm.builtin import builtin_classmethod, builtin_method
 from spy.vm.function import FuncParam, W_BuiltinFunc, W_Func, W_FuncType
 from spy.vm.irtag import IRTag
+from spy.vm.modules.unsafe.misc import sizeof
 from spy.vm.object import W_Object, W_Type
 from spy.vm.opspec import W_MetaArg, W_OpSpec
 from spy.vm.primitive import W_I32, W_Dynamic
@@ -288,3 +289,18 @@ def w_SIMD(vm: "SPyVM", w_dtype: W_Type, w_length: W_I32) -> W_Dynamic:
     w_simdtype.length = length
     vm.make_fqn_const(w_simdtype)
     return w_simdtype
+
+
+@SIMD.builtin_func(color="blue")
+def w_simd_width_of(vm: "SPyVM", w_dtype: W_Type) -> W_I32:
+    """
+    Return the configured SIMD vector width as a *lane count* for `dtype`.
+    """
+    if w_dtype not in SIMD_DTYPES:
+        t = w_dtype.fqn.human_name(vm)
+        raise SPyError(
+            "W_TypeError",
+            f"SIMD element type must be a numeric primitive, got `{t}`",
+        )
+    nbytes = sizeof(w_dtype)
+    return W_I32(vm.simd_width // nbytes)
