@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from spy import ast
 from spy.backend.c import c_ast as C
-from spy.backend.c.context import C_Ident, Context
+from spy.backend.c.context import C_Ident, C_Type, Context
 from spy.errors import SPyError
 from spy.fqn import FQN
 from spy.location import Loc
@@ -15,6 +15,7 @@ from spy.vm.function import W_ASTFunc, W_Func
 from spy.vm.irtag import IRTag
 from spy.vm.modules._simd import W_SimdType
 from spy.vm.modules.posix import W__FILE
+from spy.vm.modules.unsafe.misc import sizeof
 from spy.vm.modules.unsafe.ptr import W_Ptr, W_PtrType
 
 if TYPE_CHECKING:
@@ -600,7 +601,7 @@ class CFuncWriter:
         elif irtag.tag == "struct.getfield":
             return self.fmt_struct_getfield(fqn, call, irtag)
 
-        elif irtag.tag in ("simd.make", "simd.splat", "simd.zeros"):
+        elif irtag.tag in ("simd.make", "simd.splat", "simd.zeros", "simd.iota"):
             return self.fmt_simd_make(fqn, call, irtag)
 
         elif irtag.tag == "simd.with_lane":
@@ -725,12 +726,69 @@ class CFuncWriter:
             assert len(c_args) == 1
             s_arg = str(c_args[0])
             strargs = ", ".join([s_arg] * w_simdtype.length)
+        elif irtag.tag == "simd.iota":
+            return self.fmt_simd_iota(w_simdtype, c_simdtype, c_args)
         elif irtag.tag == "simd.make":
             # SIMD[T, N](v0, ..., v_{N-1}) -> (V){v0, ..., v_{N-1}}
             strargs = ", ".join(map(str, c_args))
         else:
             assert False
         return C.Cast(c_simdtype, C.Literal("{ %s }" % strargs))
+
+    def fmt_simd_iota(
+        self, w_simdtype: W_SimdType, c_simdtype: C_Type, c_args: list[C.Expr]
+    ) -> C.Expr:
+        """
+        SIMD[T, N].iota(start, step) -> splat(start) + splat(step) * {0, 1, ..., N-1}
+
+        For integer lanes the arithmetic is done on the unsigned counterpart
+        of T, because `step * i` can overflow T (undefined behavior for signed
+        types) even when every lane is representable.
+
+        Since the lanes are monotonic in i, checking the last lane is enough
+        to guarantee that none overflows.
+        """
+        assert len(c_args) == 2
+        s_start, s_step = str(c_args[0]), str(c_args[1])
+        vm = self.ctx.vm
+        w_dtype = w_simdtype.w_dtype
+        N = w_simdtype.length
+        c_dtype = self.ctx.w2c(w_dtype)
+        ramp = ", ".join(str(i) for i in range(N))
+        decl = f"{c_dtype} _spy_start = ({s_start}); {c_dtype} _spy_step = ({s_step}); "
+
+        if w_dtype in (B.w_f32, B.w_f64):
+            # the ramp is exactly representable in f32 and f64 (for any
+            # reasonable N), no overflow check for floats
+            return C.Literal(
+                f"({{ {decl}({c_simdtype}){{ {ramp} }} * _spy_step + _spy_start; }})"
+            )
+
+        # int lanes must not overflow: emit a runtime check which panics on overflow
+        limits = vm.int_limits(w_dtype)
+        assert limits is not None
+        w_utype = vm.make_unsigned_type(w_dtype)
+        c_utype = self.ctx.w2c(w_utype)
+        nbytes = sizeof(w_dtype) * N
+        base = str(c_dtype).upper().replace("_T", "")
+        c_min = "0" if limits[0] == 0 else f"{base}_MIN"
+        c_max = f"{base}_MAX"
+        # a type wide enough so that start + step * (N-1) cannot overflow it
+        c_wide = "int64_t" if sizeof(w_dtype) < 8 else "__int128"
+        t = w_simdtype.fqn.human_name(vm)
+        dtype = w_dtype.fqn.human_name(vm)
+        c_msg = C.Literal.from_bytes(f"`{t}.iota` overflows `{dtype}`".encode())
+        return C.Literal(
+            f"({{ "
+            f"typedef {c_utype} _spy_U __attribute__((vector_size({nbytes}))); "
+            f"{decl}"
+            f"{c_wide} _spy_last = ({c_wide})_spy_start + ({c_wide})_spy_step * {N - 1}; "
+            f"if (_spy_last < {c_min} || _spy_last > {c_max}) "
+            f'spy_panic("PanicError", {c_msg}, __FILE__, __LINE__); '
+            f"({c_simdtype})((_spy_U){{ {ramp} }} * ({c_utype})_spy_step "
+            f"+ ({c_utype})_spy_start); "
+            f"}})"
+        )
 
     def fmt_simd_with_lane(self, fqn: FQN, call: ast.Call) -> C.Expr:
         # v._with_lane(i, x): vectors are values, so we modify a copy. A

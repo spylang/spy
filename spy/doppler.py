@@ -17,6 +17,7 @@ from spy.vm.exc import W_Exception, W_StaticError
 from spy.vm.function import LocalVar, W_ASTFunc, W_Func
 from spy.vm.modules.__spy__ import SPY
 from spy.vm.modules.__spy__.interp_tuple import W_InterpTuple
+from spy.vm.modules._simd import W_Simd, W_SimdType
 from spy.vm.modules.types import TYPES
 from spy.vm.modules.unsafe.misc import W_Align
 from spy.vm.modules.unsafe.ptr import W_Ptr
@@ -145,6 +146,16 @@ def make_const(vm: "SPyVM", loc: Loc, w_val: W_Object) -> ast.Expr:
 
     elif isinstance(w_val, W_Exception):
         res = ast.Const(loc, w_val, w_T=w_T)
+
+    elif isinstance(w_val, W_Simd):
+        # a constant SIMD vector: rebuild it as a call to __make__ with constant
+        # lanes, which the C backend renders as a compound literal
+        assert isinstance(w_T, W_SimdType)
+        w_make = vm.lookup_global(w_T.fqn.join("__make__"))
+        assert isinstance(w_make, W_Func)
+        func = ast.FQNConst(loc, w_make.fqn, w_T=vm.dynamic_type(w_make))
+        args = [make_const(vm, loc, w_lane) for w_lane in w_val.lanes_w]
+        res = ast.Call(loc, func, args, w_T=w_T)
 
     else:
         # this is a non-primitive prebuilt constant.
