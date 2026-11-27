@@ -68,6 +68,9 @@ class TestStructOnStack(CompilerTest):
         def ctor_color() -> str:
             return COLOR(Point(1, 2))
 
+        def item_color() -> str:
+            return COLOR(Point(1, 2).x)
+
         def make() -> i32:
             return sum_fields(Point.__make__(3, 4))
 
@@ -77,6 +80,7 @@ class TestStructOnStack(CompilerTest):
         mod = self.compile(src)
         assert mod.ctor() == 3
         assert mod.ctor_color() == "blue"
+        assert mod.item_color() == "blue"
         assert mod.make() == 7
         assert mod.make_color() == "blue"
 

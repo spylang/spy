@@ -1,4 +1,50 @@
 from _simd import SIMD
+from operator import OpSpec
+from unsafe import ptr_to_addr, sizeof
+
+
+@blue.metafunc
+def align_offset(m_ptr, m_align, m_n):
+    """
+    align_offset(ptr, align, n) -> i32
+
+    Return the number of items to skip from the start of `ptr` so that the
+    resulting pointer is aligned to `align` bytes (`align` must be a power of
+    two). `n` is the number of items available in the buffer: if the aligned
+    address is further than that, `n` is returned.
+
+    Typical usage: process the first `offset` items with scalar code, then use
+    SIMD on the aligned remainder.
+
+        p: gc_ptr[i32] = gc_alloc[i32](n)
+        offset = align_offset(p, 16, n)    # 0 <= offset <= n
+        q = align_cast[16](p + offset)     # q is 16-byte aligned
+        # (if offset == n there is nothing left: don't use q)
+    """
+    PTR = m_ptr.static_type
+    itemsize: i32 = sizeof(PTR.itemtype)
+
+    def impl(ptr: PTR, align: i32, n: i32) -> i32:
+        addr: i32 = ptr_to_addr(ptr)
+        offset_bytes: i32 = (-addr) & (align - 1)
+        offset: i32 = offset_bytes // itemsize
+        if offset > n:
+            return n
+        return offset
+
+    if m_align.color == "blue":
+        align = m_align.blueval
+        if not (align > 0 and (align & (align - 1)) == 0):
+            raise StaticError("align must be a power of two")
+
+        return OpSpec(impl)
+
+    def impl_with_check(ptr: PTR, align: i32, n: i32) -> i32:
+        # align must be a power of two
+        assert align > 0 and (align & (align - 1)) == 0
+        return impl(ptr, align, n)
+
+    return OpSpec(impl_with_check)
 
 
 @blue.generic

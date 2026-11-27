@@ -428,6 +428,7 @@ class SPyVM:
         kind: FuncKind = "plain",
         extra_types: dict = {},
         irtag: IRTag = IRTag.Empty,
+        is_pure: bool = False,
         w_functype: Optional[W_FuncType] = None,
     ) -> Callable:
         """
@@ -484,6 +485,7 @@ class SPyVM:
                 color=color,
                 kind=kind,
                 extra_types=extra_types,
+                is_pure=is_pure,
                 w_functype=w_functype,
             )
 

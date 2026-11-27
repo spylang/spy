@@ -17,9 +17,12 @@ class TestUnsafePtr(CompilerTest):
     def test_itemtype(self):
         src = """
         from unsafe import raw_ptr, raw_ref
+        from __spy__ import COLOR
 
         def get_itemtype_ptr() -> type:
-            return raw_ptr[i32].itemtype
+            T = raw_ptr[i32].itemtype
+            assert COLOR(T) == "blue"
+            return T
 
         def get_itemtype_ref() -> type:
             return raw_ref[f64].itemtype

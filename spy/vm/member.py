@@ -72,7 +72,7 @@ class W_Member(W_Object):
         T = Annotated[W_Object, w_T]  # type of the object
         V = Annotated[W_Object, w_self.w_type]  # type of the attribute
 
-        @vm.register_builtin_func(w_T.fqn, f"__get_{w_self.name}__")
+        @vm.register_builtin_func(w_T.fqn, f"__get_{w_self.name}__", is_pure=True)
         def w_get(vm: "SPyVM", w_obj: T) -> V:
             return getattr(w_obj, field)
 

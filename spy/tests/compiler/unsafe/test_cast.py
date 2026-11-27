@@ -1,7 +1,7 @@
 import pytest
 
 from spy.errors import SPyError
-from spy.tests.support import CompilerTest
+from spy.tests.support import CompilerTest, expect_errors
 
 
 @pytest.fixture(params=["raw", "gc"])
@@ -10,6 +10,84 @@ def memkind(request):
 
 
 class TestCastAlign(CompilerTest):
+    def test_cast_simd(self, memkind):
+        k = memkind
+        src = f"""
+        from unsafe import {k}_alloc as k_alloc, {k}_ptr as k_ptr, cast, align
+        from _simd import SIMD
+
+        def foo() -> tuple[f32, f32, i32, f32, i32]:
+            p = k_alloc[f32, align(16)](10)
+            for i in range(10):
+                p[i] = f32(i)
+
+            # q.length = p.length // 4; equals to 2, the last 2 f32 are unreachable
+            q: k_ptr[SIMD[f32, 4], align(16)] = cast[SIMD[f32, 4]](p)
+            v = q[1]  # p[4:8]
+            q[0] = SIMD[f32, 4].splat(9.0)
+
+            # r.length r = q.length * 4 = 8
+            r: k_ptr[f32, align(16)] = cast[f32](q)
+            return v[0], v[3], q._debug_get_length(), r[2], r._debug_get_length()
+        """
+        mod = self.compile(src)
+        v0, v3, q_length, r2, r_length = mod.foo()
+        assert (v0, v3) == (4.0, 7.0)
+        assert q_length == 2
+        assert r2 == 9.0
+        assert r_length == 8
+
+    def test_cast_out_of_bounds_panics(self, memkind):
+        k = memkind
+        src = f"""
+        from unsafe import {k}_alloc as k_alloc, cast, align
+        from _simd import SIMD
+
+        def foo() -> i32:
+            p = k_alloc[i32, align(16)](10)
+            q = cast[SIMD[i32, 4]](p)  # length is 2
+            return q[2][0]
+        """
+        mod = self.compile(src)
+        with SPyError.raises("W_PanicError", match="ptr_getitem out of bounds"):
+            mod.foo()
+
+    def test_cast_forbidden(self, memkind):
+        k = memkind
+        src = f"""
+        from unsafe import {k}_alloc as k_alloc, cast, align
+        from _simd import SIMD
+
+        def scalar_to_scalar() -> None:
+            p = k_alloc[i32, align(16)](8)
+            q = cast[f32](p)
+
+        def scalar_to_simd_wrong_lane() -> None:
+            p = k_alloc[i32, align(16)](8)
+            q = cast[SIMD[f32, 4]](p)
+
+        def simd_to_scalar_wrong_lane() -> None:
+            p = k_alloc[SIMD[i32, 4], align(16)](8)
+            q = cast[f32](p)
+
+        def simd_to_simd() -> None:
+            p = k_alloc[SIMD[i32, 4], align(16)](8)
+            q = cast[SIMD[i32, 8]](p)
+        """
+        mod = self.compile(src, error_mode="lazy")
+
+        with SPyError.raises("W_TypeError", match="invalid cast"):
+            mod.scalar_to_scalar()
+
+        with SPyError.raises("W_TypeError", match="invalid cast"):
+            mod.scalar_to_simd_wrong_lane()
+
+        with SPyError.raises("W_TypeError", match="invalid cast"):
+            mod.simd_to_scalar_wrong_lane()
+
+        with SPyError.raises("W_TypeError", match="invalid cast"):
+            mod.simd_to_simd()
+
     def test_align_cast(self, memkind):
         k = memkind
         src = f"""
